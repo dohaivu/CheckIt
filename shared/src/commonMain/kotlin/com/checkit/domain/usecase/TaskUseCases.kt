@@ -116,10 +116,7 @@ class SelectTaskBoardItemsUseCase {
         }
         val listFilteredNotes = when (selection) {
             is TaskBoardSelection.ListSelection -> board.notes.filter { it.listId == selection.listId && !it.isTrashed }
-            is TaskBoardSelection.FilterSelection -> board.notes.filter { note ->
-                selection.filter.includeTrashed && note.isTrashed ||
-                    selection.filter.tagId != null && !note.isTrashed && note.tags.any { it.id == selection.filter.tagId }
-            }
+            is TaskBoardSelection.FilterSelection -> board.notes.filter { it.matches(selection.filter, today) }
         }
 
         return TaskBoardItems(
@@ -155,4 +152,21 @@ private fun TaskItem.matchesDueDate(preset: DueDatePreset, today: LocalDate): Bo
         DueDatePreset.Upcoming -> dueDate != null && dueDate >= today && dueDate <= today.plus(7, DateTimeUnit.DAY)
         DueDatePreset.Overdue -> dueDate != null && dueDate < today && status != TaskStatus.Completed
         DueDatePreset.Someday -> dueDate == null && priority == TaskPriority.None
+    }
+
+private fun NoteItem.matches(filter: TaskFilter, today: LocalDate): Boolean {
+    if (filter.includeTrashed) return isTrashed
+    if (isTrashed) return false
+    if (filter.tagId != null && tags.none { it.id == filter.tagId }) return false
+    if (filter.status != null || filter.priority != null) return false
+    if (filter.dueDatePreset != null && !matchesNoteDate(filter.dueDatePreset, date, today)) return false
+    return true
+}
+
+private fun matchesNoteDate(preset: DueDatePreset, date: LocalDate, today: LocalDate): Boolean =
+    when (preset) {
+        DueDatePreset.Today -> date == today
+        DueDatePreset.Upcoming -> date >= today && date <= today.plus(7, DateTimeUnit.DAY)
+        DueDatePreset.Overdue -> date < today
+        DueDatePreset.Someday -> false
     }

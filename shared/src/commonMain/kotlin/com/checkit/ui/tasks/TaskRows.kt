@@ -123,6 +123,12 @@ internal fun NoteRow(
             Icon(Icons.Default.Notes, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(note.content, style = MaterialTheme.typography.bodyMedium)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CompactChip(Icons.Default.Event, note.date.compact())
+                }
                 if (list != null || note.tags.isNotEmpty()) {
                     FlowRow(
                         modifier = Modifier.fillMaxWidth(),
