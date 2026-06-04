@@ -83,6 +83,12 @@ interface CheckItDao {
     @Query("UPDATE task_lists SET name = :name, color = :color, icon = :icon WHERE id = :listId")
     suspend fun updateList(listId: Long, name: String, color: String, icon: String)
 
+    @Query("UPDATE tags SET name = :name, color = :color, icon = :icon WHERE id = :tagId")
+    suspend fun updateTag(tagId: Long, name: String, color: String, icon: String)
+
+    @Query("SELECT COUNT(*) FROM tags WHERE name = :name AND id != :excludeId")
+    suspend fun tagNameInUseExcept(name: String, excludeId: Long): Int
+
     @Query(
         """
         UPDATE tasks

@@ -26,13 +26,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.checkit.ui.EditorMode
-import com.checkit.ui.ListEditorDefaults
-import com.checkit.ui.ListEditorState
+import com.checkit.ui.TagEditorDefaults
+import com.checkit.ui.TagEditorState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun TaskListEditorSheet(
-    editor: ListEditorState,
+internal fun TaskTagEditorSheet(
+    editor: TagEditorState,
     onDismiss: () -> Unit,
     onSave: () -> Unit,
     onNameChange: (String) -> Unit,
@@ -53,7 +53,7 @@ internal fun TaskListEditorSheet(
                         Icon(Icons.Default.Close, contentDescription = "Close")
                     }
                     Text(
-                        text = if (editor.mode == EditorMode.Add) "New list" else "Edit list",
+                        text = if (editor.mode == EditorMode.Add) "New tag" else "Edit tag",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -75,7 +75,7 @@ internal fun TaskListEditorSheet(
             item {
                 SectionLabel("Color")
                 ColorPicker(
-                    colors = ListEditorDefaults.Colors,
+                    colors = TagEditorDefaults.Colors,
                     selected = editor.color,
                     onSelect = onColorChange
                 )
@@ -83,7 +83,7 @@ internal fun TaskListEditorSheet(
             item {
                 SectionLabel("Icon")
                 IconPicker(
-                    icons = ListEditorDefaults.Icons,
+                    icons = TagEditorDefaults.Icons,
                     selected = editor.icon,
                     tint = editor.color.toColor(),
                     onSelect = onIconChange

@@ -13,14 +13,17 @@ import com.checkit.data.SettingsRepository
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.domain.usecase.AddNoteUseCase
 import com.checkit.domain.usecase.AddTaskListUseCase
+import com.checkit.domain.usecase.AddTaskTagUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
+import com.checkit.domain.usecase.IsTagNameTakenUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.UpdateNoteUseCase
 import com.checkit.domain.usecase.UpdateTaskListUseCase
+import com.checkit.domain.usecase.UpdateTaskTagUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
 import com.checkit.ui.calendar.CalendarViewModel
 import com.checkit.ui.tasks.TaskViewModel
@@ -58,6 +61,9 @@ val provideInteractorModule = module {
     single { EnsureDefaultTaskDataUseCase(get()) }
     single { AddTaskListUseCase(get()) }
     single { UpdateTaskListUseCase(get()) }
+    single { AddTaskTagUseCase(get()) }
+    single { UpdateTaskTagUseCase(get()) }
+    single { IsTagNameTakenUseCase(get()) }
     single { AddTaskUseCase(get()) }
     single { UpdateTaskUseCase(get()) }
     single { DeleteTaskUseCase(get()) }
@@ -80,7 +86,12 @@ val provideLocalServiceModule = module {
 }
 
 val provideViewModelModule = module {
-    viewModel { TaskViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModel {
+        TaskViewModel(
+            get(), get(), get(), get(), get(), get(), get(), get(), get(), get(),
+            get(), get(), get(), get(), get()
+        )
+    }
     viewModel { CalendarViewModel(get()) }
     viewModel { ReportViewModel(get()) }
     viewModel { SettingsViewModel(get(), get(), get()) }

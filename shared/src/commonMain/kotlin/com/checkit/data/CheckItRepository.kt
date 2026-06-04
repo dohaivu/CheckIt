@@ -23,6 +23,9 @@ interface CheckItRepository {
     suspend fun ensureDefaultTaskData()
     suspend fun addList(input: TaskListWriteInput): Long
     suspend fun updateList(listId: Long, input: TaskListWriteInput)
+    suspend fun addTag(input: TaskTagWriteInput): Long
+    suspend fun updateTag(tagId: Long, input: TaskTagWriteInput)
+    suspend fun isTagNameTaken(name: String, excludeTagId: Long? = null): Boolean
     suspend fun addTask(input: TaskWriteInput): Long
     suspend fun updateTask(taskId: Long, input: TaskWriteInput)
     suspend fun trashTask(taskId: Long)
@@ -33,6 +36,12 @@ interface CheckItRepository {
 }
 
 data class TaskListWriteInput(
+    val name: String,
+    val color: String,
+    val icon: String
+)
+
+data class TaskTagWriteInput(
     val name: String,
     val color: String,
     val icon: String
@@ -181,6 +190,22 @@ class RoomCheckItRepository(
     override suspend fun updateList(listId: Long, input: TaskListWriteInput) {
         dao.updateList(listId = listId, name = input.name, color = input.color, icon = input.icon)
     }
+
+    override suspend fun addTag(input: TaskTagWriteInput): Long =
+        dao.insertTag(
+            TagEntity(
+                name = input.name,
+                icon = input.icon,
+                color = input.color
+            )
+        )
+
+    override suspend fun updateTag(tagId: Long, input: TaskTagWriteInput) {
+        dao.updateTag(tagId = tagId, name = input.name, color = input.color, icon = input.icon)
+    }
+
+    override suspend fun isTagNameTaken(name: String, excludeTagId: Long?): Boolean =
+        dao.tagNameInUseExcept(name = name, excludeId = excludeTagId ?: -1L) > 0
 
     override suspend fun addTask(input: TaskWriteInput): Long {
         val now = Clock.System.now().toEpochMilliseconds()

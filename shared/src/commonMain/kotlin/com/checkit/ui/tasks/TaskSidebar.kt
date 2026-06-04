@@ -47,7 +47,9 @@ internal fun TaskSidebar(
     onFilterClick: (Long) -> Unit,
     onTagClick: (Long) -> Unit,
     onAddListClick: () -> Unit,
-    onEditListClick: (TaskList) -> Unit
+    onEditListClick: (TaskList) -> Unit,
+    onAddTagClick: () -> Unit,
+    onEditTagClick: (TaskTag) -> Unit
 ) {
     Surface(
         modifier = Modifier.width(260.dp).fillMaxHeight(),
@@ -108,7 +110,18 @@ internal fun TaskSidebar(
             }
             item {
                 Spacer(Modifier.height(10.dp))
-                SidebarHeader("Tags")
+                SidebarHeader(
+                    text = "Tags",
+                    action = {
+                        IconButton(onClick = onAddTagClick, modifier = Modifier.size(28.dp)) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Add tag",
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                )
             }
             items(tags, key = { "tag-${it.id}" }) { tag ->
                 SidebarItem(
@@ -116,7 +129,20 @@ internal fun TaskSidebar(
                     icon = materialIcon(tag.icon),
                     color = tag.color.toColor(),
                     selected = selectedTagId == tag.id,
-                    onClick = { onTagClick(tag.id) }
+                    onClick = { onTagClick(tag.id) },
+                    trailing = {
+                        IconButton(
+                            onClick = { onEditTagClick(tag) },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit ${tag.name}",
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 )
             }
         }

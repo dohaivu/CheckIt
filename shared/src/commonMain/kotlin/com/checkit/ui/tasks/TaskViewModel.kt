@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.checkit.data.NoteWriteInput
 import com.checkit.data.TaskListWriteInput
+import com.checkit.data.TaskTagWriteInput
 import com.checkit.data.TaskWriteInput
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
@@ -11,22 +12,27 @@ import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskList
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
+import com.checkit.domain.TaskTag
 import com.checkit.domain.usecase.AddNoteUseCase
 import com.checkit.domain.usecase.AddTaskListUseCase
+import com.checkit.domain.usecase.AddTaskTagUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
+import com.checkit.domain.usecase.IsTagNameTakenUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.TaskBoardSelection
 import com.checkit.domain.usecase.UpdateNoteUseCase
 import com.checkit.domain.usecase.UpdateTaskListUseCase
+import com.checkit.domain.usecase.UpdateTaskTagUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
 import com.checkit.ui.EditorMode
 import com.checkit.ui.ListEditorState
 import com.checkit.ui.RepeatPreset
+import com.checkit.ui.TagEditorState
 import com.checkit.ui.TaskEditorState
 import com.checkit.ui.TaskUiState
 import com.checkit.ui.TaskWorkspaceView
@@ -52,7 +58,10 @@ class TaskViewModel(
     private val updateNote: UpdateNoteUseCase,
     private val deleteNote: DeleteNoteUseCase,
     private val addTaskList: AddTaskListUseCase,
-    private val updateTaskList: UpdateTaskListUseCase
+    private val updateTaskList: UpdateTaskListUseCase,
+    private val addTaskTag: AddTaskTagUseCase,
+    private val updateTaskTag: UpdateTaskTagUseCase,
+    private val isTagNameTaken: IsTagNameTakenUseCase
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(TaskUiState())
     val uiState: StateFlow<TaskUiState> = _uiState.asStateFlow()
@@ -221,6 +230,67 @@ class TaskViewModel(
         }
     }
 
+    fun openNewTag() {
+        _uiState.update { it.copy(tagEditor = TagEditorState(mode = EditorMode.Add)) }
+    }
+
+    fun openEditTag(tag: TaskTag) {
+        _uiState.update {
+            it.copy(
+                tagEditor = TagEditorState(
+                    mode = EditorMode.Edit,
+                    tagId = tag.id,
+                    name = tag.name,
+                    color = tag.color,
+                    icon = tag.icon
+                )
+            )
+        }
+    }
+
+    fun dismissTagEditor() {
+        _uiState.update { it.copy(tagEditor = null) }
+    }
+
+    fun updateTagEditorName(name: String) = updateTagEditor { it.copy(name = name) }
+    fun updateTagEditorColor(color: String) = updateTagEditor { it.copy(color = color) }
+    fun updateTagEditorIcon(icon: String) = updateTagEditor { it.copy(icon = icon) }
+
+    fun saveTagEditor() {
+        val form = _uiState.value.tagEditor ?: return
+        val trimmedName = form.name.trim()
+        if (trimmedName.isBlank()) {
+            showMessage("Add a tag name")
+            return
+        }
+        viewModelScope.launch {
+            if (isTagNameTaken(trimmedName, form.tagId)) {
+                showMessage("Tag name already exists")
+                return@launch
+            }
+            val input = TaskTagWriteInput(
+                name = trimmedName,
+                color = form.color,
+                icon = form.icon
+            )
+            val savedId = if (form.mode == EditorMode.Add) {
+                addTaskTag(input)
+            } else {
+                val tagId = form.tagId ?: return@launch
+                updateTaskTag(tagId, input)
+                tagId
+            }
+            _uiState.update {
+                it.copy(
+                    tagEditor = null,
+                    selectedListId = null,
+                    selectedFilterId = null,
+                    selectedTagId = savedId
+                ).refreshVisibleItems()
+            }
+        }
+    }
+
     fun updateTaskName(name: String) = updateTaskForm { it.copy(name = name) }
     fun updateTaskDescription(description: String) = updateTaskForm { it.copy(description = description) }
     fun updateTaskDueDate(dueDate: LocalDate?) = updateTaskForm { it.copy(dueDate = dueDate) }
@@ -335,6 +405,13 @@ class TaskViewModel(
         _uiState.update { state ->
             val form = state.listEditor ?: return@update state
             state.copy(listEditor = transform(form))
+        }
+    }
+
+    private fun updateTagEditor(transform: (TagEditorState) -> TagEditorState) {
+        _uiState.update { state ->
+            val form = state.tagEditor ?: return@update state
+            state.copy(tagEditor = transform(form))
         }
     }
 

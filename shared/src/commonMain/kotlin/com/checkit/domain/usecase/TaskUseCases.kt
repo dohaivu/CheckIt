@@ -3,6 +3,7 @@ package com.checkit.domain.usecase
 import com.checkit.data.CheckItRepository
 import com.checkit.data.NoteWriteInput
 import com.checkit.data.TaskListWriteInput
+import com.checkit.data.TaskTagWriteInput
 import com.checkit.data.TaskWriteInput
 import com.checkit.domain.DueDatePreset
 import com.checkit.domain.NoteItem
@@ -39,6 +40,26 @@ class UpdateTaskListUseCase(
 ) {
     suspend operator fun invoke(listId: Long, input: TaskListWriteInput) =
         repository.updateList(listId, input)
+}
+
+class AddTaskTagUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(input: TaskTagWriteInput): Long = repository.addTag(input)
+}
+
+class UpdateTaskTagUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(tagId: Long, input: TaskTagWriteInput) =
+        repository.updateTag(tagId, input)
+}
+
+class IsTagNameTakenUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(name: String, excludeTagId: Long? = null): Boolean =
+        repository.isTagNameTaken(name, excludeTagId)
 }
 
 class AddTaskUseCase(

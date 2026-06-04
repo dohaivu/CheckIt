@@ -1,13 +1,30 @@
 package com.checkit.ui.tasks
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.Flight
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Inbox
+import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.LocalOffer
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Notes
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.PriorityHigh
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material.icons.filled.ViewAgenda
@@ -28,12 +45,30 @@ internal fun TaskWorkspaceView.icon(): ImageVector = when (this) {
 }
 
 internal fun materialIcon(name: String): ImageVector = when (name) {
+    "AttachMoney" -> Icons.Default.AttachMoney
+    "Bookmark" -> Icons.Default.Bookmark
+    "Code" -> Icons.Default.Code
     "Delete" -> Icons.Default.Delete
+    "Email" -> Icons.Default.Email
+    "Favorite" -> Icons.Default.Favorite
+    "FitnessCenter" -> Icons.Default.FitnessCenter
+    "Flag" -> Icons.Default.Flag
+    "Flight" -> Icons.Default.Flight
+    "Folder" -> Icons.Default.Folder
     "Home" -> Icons.Default.Home
     "Inbox" -> Icons.Default.Inbox
+    "Lightbulb" -> Icons.Default.Lightbulb
+    "LocalOffer" -> Icons.Default.LocalOffer
+    "MusicNote" -> Icons.Default.MusicNote
     "Notes" -> Icons.Default.Notes
+    "Person" -> Icons.Default.Person
+    "Pets" -> Icons.Default.Pets
     "PriorityHigh" -> Icons.Default.PriorityHigh
+    "Restaurant" -> Icons.Default.Restaurant
     "Schedule" -> Icons.Default.Schedule
+    "School" -> Icons.Default.School
+    "ShoppingCart" -> Icons.Default.ShoppingCart
+    "Star" -> Icons.Default.Star
     "TaskAlt" -> Icons.Default.TaskAlt
     "Today" -> Icons.Default.Today
     "Work" -> Icons.Default.Work

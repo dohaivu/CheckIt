@@ -23,6 +23,7 @@ data class TaskUiState(
     val visibleNotes: List<NoteItem> = emptyList(),
     val editor: TaskEditorState? = null,
     val listEditor: ListEditorState? = null,
+    val tagEditor: TagEditorState? = null,
     val isLoading: Boolean = true,
     val message: String? = null
 ) {
@@ -81,6 +82,14 @@ data class ListEditorState(
     val icon: String = ListEditorDefaults.Icons.first()
 )
 
+data class TagEditorState(
+    val mode: EditorMode,
+    val tagId: Long? = null,
+    val name: String = "",
+    val color: String = TagEditorDefaults.Colors.first(),
+    val icon: String = TagEditorDefaults.Icons.first()
+)
+
 object ListEditorDefaults {
     val Colors: List<String> = listOf(
         "#2563EB",
@@ -96,11 +105,33 @@ object ListEditorDefaults {
         "Inbox",
         "Home",
         "Work",
+        "Folder",
         "TaskAlt",
+        "Notes",
         "Today",
         "Schedule",
-        "Notes",
-        "PriorityHigh"
+        "ShoppingCart",
+        "Flight",
+        "School",
+        "Star"
+    )
+}
+
+object TagEditorDefaults {
+    val Colors: List<String> = ListEditorDefaults.Colors
+    val Icons: List<String> = listOf(
+        "LocalOffer",
+        "Star",
+        "Favorite",
+        "Flag",
+        "Bookmark",
+        "Lightbulb",
+        "ShoppingCart",
+        "AttachMoney",
+        "FitnessCenter",
+        "Flight",
+        "School",
+        "Restaurant"
     )
 }
 
