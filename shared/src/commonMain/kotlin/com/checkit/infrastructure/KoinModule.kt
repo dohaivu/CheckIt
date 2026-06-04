@@ -6,6 +6,7 @@ import com.checkit.data.RoomCheckItRepository
 import com.checkit.data.CheckItDatabase
 import com.checkit.data.buildCheckItDatabase
 import com.checkit.data.provideDatabaseBuilder
+import com.checkit.domain.SettingsRepository
 import com.checkit.ui.calendar.CalendarViewModel
 import com.checkit.ui.tasks.TaskViewModel
 import com.checkit.ui.reports.ReportViewModel
@@ -48,11 +49,12 @@ val provideDatabaseModule = module {
 
 val provideLocalServiceModule = module {
     single { AppDataStore(createPreferencesDataStore()) }
+    single<SettingsRepository> { DataStoreSettingsRepository(get()) }
 }
 
 val provideViewModelModule = module {
     viewModel { TaskViewModel(get() ) }
     viewModel { CalendarViewModel(get()) }
     viewModel { ReportViewModel(get()) }
-    viewModel { SettingsViewModel(get(), get()) }
+    viewModel { SettingsViewModel(get(), get(), get()) }
 }
