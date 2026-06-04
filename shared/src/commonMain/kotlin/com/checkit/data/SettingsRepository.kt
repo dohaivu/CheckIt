@@ -1,4 +1,4 @@
-package com.checkit.domain
+package com.checkit.data
 
 import kotlinx.coroutines.flow.Flow
 

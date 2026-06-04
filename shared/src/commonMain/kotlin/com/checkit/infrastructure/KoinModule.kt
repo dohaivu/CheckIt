@@ -1,12 +1,15 @@
 package com.checkit.infrastructure
 
 import androidx.room.RoomDatabase
+import com.checkit.data.AppDataStore
 import com.checkit.data.CheckItRepository
 import com.checkit.data.RoomCheckItRepository
 import com.checkit.data.CheckItDatabase
+import com.checkit.data.DataStoreSettingsRepository
 import com.checkit.data.buildCheckItDatabase
+import com.checkit.data.createPreferencesDataStore
 import com.checkit.data.provideDatabaseBuilder
-import com.checkit.domain.SettingsRepository
+import com.checkit.data.SettingsRepository
 import com.checkit.ui.calendar.CalendarViewModel
 import com.checkit.ui.tasks.TaskViewModel
 import com.checkit.ui.reports.ReportViewModel

@@ -280,11 +280,6 @@ private fun daysFromMonday(dayOfWeek: DayOfWeek): Int =
 private fun daysToSunday(dayOfWeek: DayOfWeek): Int =
     (DayOfWeek.SUNDAY.ordinal - dayOfWeek.ordinal + 7) % 7
 
-internal data class YearMonthTotal(
-    val totalBaseAmountCents: Long,
-    val expenseCount: Int
-)
-
 internal fun DayOfWeek.headerColor(colors: CalendarCellColors): Color = when (this) {
     DayOfWeek.SATURDAY -> colors.saturday
     DayOfWeek.SUNDAY -> colors.sunday

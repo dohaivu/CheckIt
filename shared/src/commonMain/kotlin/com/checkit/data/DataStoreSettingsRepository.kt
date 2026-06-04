@@ -1,7 +1,5 @@
-package com.checkit.infrastructure
+package com.checkit.data
 
-import com.checkit.domain.SettingsRepository
-import com.checkit.domain.UserSettings
 import kotlinx.coroutines.flow.Flow
 
 class DataStoreSettingsRepository(

@@ -3,7 +3,7 @@ package com.checkit.ui
 import com.checkit.domain.ActiveTagToken
 import com.checkit.ui.components.ReportPeriod
 
-data class ExpenseUiState(
+data class TaskUiState(
     val activeTagToken: ActiveTagToken? = null,
     val tagSuggestions: List<String> = emptyList(),
     val message: String? = null

@@ -1,4 +1,4 @@
-package com.checkit.infrastructure
+package com.checkit.data
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -16,7 +16,7 @@ fun getPreferencesDataStorePath(): String {
         create = false,
         error = null
     )
-    return requireNotNull(documentDirectory).path + "/$dataStoreFileName"
+    return requireNotNull(documentDirectory).path + "/${dataStoreFileName}"
 }
 
 actual fun createPreferencesDataStore(): DataStore<Preferences> {

@@ -77,7 +77,7 @@ fun CheckItApp(
     settingsViewModel: SettingsViewModel = koinViewModel()
 ) {
     val backStack = remember { mutableStateListOf<NavKey>(Routes.Task) }
-    val expenseMessage by remember(taskViewModel) {
+    val taskMessage by remember(taskViewModel) {
         taskViewModel.uiState.map { it.message }.distinctUntilChanged()
     }.collectAsState(null)
     val settingsMessage by remember(settingsViewModel) {
@@ -97,8 +97,8 @@ fun CheckItApp(
     val currentRoute = backStack.lastOrNull() ?: Routes.Task
     val selectedTab = currentRoute.asTab()
 
-    LaunchedEffect(expenseMessage, settingsMessage) {
-        val message = expenseMessage ?: settingsMessage ?: return@LaunchedEffect
+    LaunchedEffect(taskMessage, settingsMessage) {
+        val message = taskMessage ?: settingsMessage ?: return@LaunchedEffect
         snackbarHostState.showSnackbar(message)
 
         if (settingsMessage != null) {
@@ -174,8 +174,8 @@ fun CheckItApp(
                         NavEntry(key) {
                             when (key) {
                                 Routes.Task -> {
-                                    val expenseState by taskViewModel.uiState.collectAsState()
-                                    TaskScreen(expenseState, taskViewModel)
+                                    val taskUiState by taskViewModel.uiState.collectAsState()
+                                    TaskScreen(taskUiState, taskViewModel)
                                 }
                                 Routes.Calendar -> {
                                     val calendarState by calendarViewModel.uiState.collectAsState()
