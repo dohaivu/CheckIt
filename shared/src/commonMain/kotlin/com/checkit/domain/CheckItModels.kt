@@ -58,6 +58,7 @@ data class NoteItem(
     val listId: Long,
     val content: String,
     val tags: List<TaskTag> = emptyList(),
+    val date: LocalDate,
     val createdAtMillis: Long,
     val editedAtMillis: Long,
     val sortOrder: Int,

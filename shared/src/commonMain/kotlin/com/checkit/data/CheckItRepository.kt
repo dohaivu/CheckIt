@@ -24,6 +24,7 @@ interface CheckItRepository {
     suspend fun addTask(input: TaskWriteInput): Long
     suspend fun updateTask(taskId: Long, input: TaskWriteInput)
     suspend fun trashTask(taskId: Long)
+    suspend fun completeTask(taskId: Long)
     suspend fun addNote(input: NoteWriteInput): Long
     suspend fun updateNote(noteId: Long, input: NoteWriteInput)
     suspend fun trashNote(noteId: Long)
@@ -39,12 +40,15 @@ data class TaskWriteInput(
     val startTimeMinutes: Int?,
     val endTimeMinutes: Int?,
     val durationMinutes: Int?,
-    val repeatRRule: String?
+    val repeatRRule: String?,
+    val tagIds: List<Long>
 )
 
 data class NoteWriteInput(
     val listId: Long,
-    val content: String
+    val content: String,
+    val date: LocalDate,
+    val tagIds: List<Long>
 )
 
 class RoomCheckItRepository(
@@ -142,6 +146,7 @@ class RoomCheckItRepository(
             NoteEntity(
                 listId = inboxId,
                 content = "Ideas, meeting notes, and loose thoughts live beside tasks in each list.",
+                dateEpochDays = today.toEpochDays().toInt(),
                 createdAtMillis = now,
                 editedAtMillis = now,
                 sortOrder = 1
@@ -157,7 +162,7 @@ class RoomCheckItRepository(
 
     override suspend fun addTask(input: TaskWriteInput): Long {
         val now = Clock.System.now().toEpochMilliseconds()
-        return dao.insertTask(
+        val taskId = dao.insertTask(
             TaskEntity(
                 listId = input.listId,
                 name = input.name,
@@ -174,6 +179,8 @@ class RoomCheckItRepository(
                 updatedAtMillis = now
             )
         )
+        input.tagIds.forEach { tagId -> dao.insertTaskTag(TaskTagEntity(taskId, tagId)) }
+        return taskId
     }
 
     override suspend fun updateTask(taskId: Long, input: TaskWriteInput) {
@@ -190,31 +197,50 @@ class RoomCheckItRepository(
             repeatRRule = input.repeatRRule,
             updatedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
+        dao.deleteTaskTags(taskId)
+        input.tagIds.forEach { tagId -> dao.insertTaskTag(TaskTagEntity(taskId, tagId)) }
     }
 
     override suspend fun trashTask(taskId: Long) {
         dao.trashTask(taskId, Clock.System.now().toEpochMilliseconds())
     }
 
+    override suspend fun completeTask(taskId: Long) {
+        val instant = Clock.System.now()
+        val today = instant.toLocalDateTime(TimeZone.currentSystemDefault()).date
+        dao.completeTask(
+            taskId = taskId,
+            status = TaskStatus.Completed.name,
+            completedDateEpochDays = today.toEpochDays().toInt(),
+            updatedAtMillis = instant.toEpochMilliseconds()
+        )
+    }
+
     override suspend fun addNote(input: NoteWriteInput): Long {
         val now = Clock.System.now().toEpochMilliseconds()
-        return dao.insertNote(
+        val noteId = dao.insertNote(
             NoteEntity(
                 listId = input.listId,
                 content = input.content,
+                dateEpochDays = input.date.toEpochDays().toInt(),
                 createdAtMillis = now,
                 editedAtMillis = now,
                 sortOrder = dao.nextNoteSortOrder(input.listId)
             )
         )
+        input.tagIds.forEach { tagId -> dao.insertNoteTag(NoteTagEntity(noteId, tagId)) }
+        return noteId
     }
 
     override suspend fun updateNote(noteId: Long, input: NoteWriteInput) {
         dao.updateNote(
             noteId = noteId,
             content = input.content,
+            dateEpochDays = input.date.toEpochDays().toInt(),
             editedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
+        dao.deleteNoteTags(noteId)
+        input.tagIds.forEach { tagId -> dao.insertNoteTag(NoteTagEntity(noteId, tagId)) }
     }
 
     override suspend fun trashNote(noteId: Long) {
@@ -312,6 +338,7 @@ private fun NoteEntity.toDomain(tags: List<TaskTag>) = NoteItem(
     listId = listId,
     content = content,
     tags = tags,
+    date = LocalDate.fromEpochDays(dateEpochDays),
     createdAtMillis = createdAtMillis,
     editedAtMillis = editedAtMillis,
     sortOrder = sortOrder,

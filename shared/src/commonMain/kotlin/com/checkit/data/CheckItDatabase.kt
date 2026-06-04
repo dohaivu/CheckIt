@@ -107,6 +107,7 @@ data class NoteEntity(
     val id: Long = 0L,
     val listId: Long,
     val content: String,
+    val dateEpochDays: Int,
     val createdAtMillis: Long,
     val editedAtMillis: Long,
     val sortOrder: Int,

@@ -29,15 +29,19 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.TaskFilter
 import com.checkit.domain.TaskList
+import com.checkit.domain.TaskTag
 
 @Composable
 internal fun TaskSidebar(
     lists: List<TaskList>,
     filters: List<TaskFilter>,
+    tags: List<TaskTag>,
     selectedListId: Long?,
     selectedFilterId: Long?,
+    selectedTagId: Long?,
     onListClick: (Long) -> Unit,
-    onFilterClick: (Long) -> Unit
+    onFilterClick: (Long) -> Unit,
+    onTagClick: (Long) -> Unit
 ) {
     Surface(
         modifier = Modifier.width(260.dp).fillMaxHeight(),
@@ -68,6 +72,19 @@ internal fun TaskSidebar(
                     color = filter.color.toColor(),
                     selected = selectedFilterId == filter.id,
                     onClick = { onFilterClick(filter.id) }
+                )
+            }
+            item {
+                Spacer(Modifier.height(10.dp))
+                SidebarHeader("Tags")
+            }
+            items(tags, key = { "tag-${it.id}" }) { tag ->
+                SidebarItem(
+                    title = tag.name,
+                    icon = materialIcon(tag.icon),
+                    color = tag.color.toColor(),
+                    selected = selectedTagId == tag.id,
+                    onClick = { onTagClick(tag.id) }
                 )
             }
         }

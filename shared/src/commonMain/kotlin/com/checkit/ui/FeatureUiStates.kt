@@ -17,6 +17,7 @@ data class TaskUiState(
     val board: TaskBoard = TaskBoard(),
     val selectedListId: Long? = null,
     val selectedFilterId: Long? = null,
+    val selectedTagId: Long? = null,
     val selectedView: TaskWorkspaceView = TaskWorkspaceView.List,
     val visibleTasks: List<TaskItem> = emptyList(),
     val visibleNotes: List<NoteItem> = emptyList(),
@@ -26,7 +27,8 @@ data class TaskUiState(
 ) {
     val selectedList: TaskList? = board.lists.firstOrNull { it.id == selectedListId }
     val selectedFilter: TaskFilter? = board.filters.firstOrNull { it.id == selectedFilterId }
-    val title: String = selectedList?.name ?: selectedFilter?.name ?: "Tasks"
+    val selectedTag = board.tags.firstOrNull { it.id == selectedTagId }
+    val title: String = selectedList?.name ?: selectedFilter?.name ?: selectedTag?.name ?: "Tasks"
 }
 
 enum class TaskWorkspaceView {
@@ -47,7 +49,8 @@ sealed interface TaskEditorState {
         val endTimeMinutes: Int? = null,
         val repeatPreset: RepeatPreset = RepeatPreset.None,
         val status: TaskStatus = TaskStatus.Open,
-        val priority: TaskPriority = TaskPriority.None
+        val priority: TaskPriority = TaskPriority.None,
+        val selectedTagIds: Set<Long> = emptySet()
     ) : TaskEditorState {
         val durationMinutes: Int?
             get() = calculateDurationMinutes(startTimeMinutes, endTimeMinutes)
@@ -57,12 +60,15 @@ sealed interface TaskEditorState {
         val mode: EditorMode,
         val noteId: Long? = null,
         val listId: Long,
-        val content: String = ""
+        val content: String = "",
+        val date: LocalDate,
+        val selectedTagIds: Set<Long> = emptySet()
     ) : TaskEditorState
 }
 
 enum class EditorMode {
     Add,
+    View,
     Edit
 }
 

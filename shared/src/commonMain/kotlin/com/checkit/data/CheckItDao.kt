@@ -38,6 +38,12 @@ interface CheckItDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertNoteTag(noteTag: NoteTagEntity)
 
+    @Query("DELETE FROM task_tags WHERE taskId = :taskId")
+    suspend fun deleteTaskTags(taskId: Long)
+
+    @Query("DELETE FROM note_tags WHERE noteId = :noteId")
+    suspend fun deleteNoteTags(noteId: Long)
+
     @Query("SELECT * FROM task_lists ORDER BY sortOrder ASC, name ASC")
     fun observeLists(): Flow<List<TaskListEntity>>
 
@@ -104,8 +110,24 @@ interface CheckItDao {
     @Query("UPDATE tasks SET trashedAtMillis = :trashedAtMillis, updatedAtMillis = :trashedAtMillis WHERE id = :taskId")
     suspend fun trashTask(taskId: Long, trashedAtMillis: Long)
 
-    @Query("UPDATE notes SET content = :content, editedAtMillis = :editedAtMillis WHERE id = :noteId")
-    suspend fun updateNote(noteId: Long, content: String, editedAtMillis: Long)
+    @Query(
+        """
+        UPDATE tasks
+        SET status = :status,
+            completedDateEpochDays = :completedDateEpochDays,
+            updatedAtMillis = :updatedAtMillis
+        WHERE id = :taskId
+        """
+    )
+    suspend fun completeTask(
+        taskId: Long,
+        status: String,
+        completedDateEpochDays: Int,
+        updatedAtMillis: Long
+    )
+
+    @Query("UPDATE notes SET content = :content, dateEpochDays = :dateEpochDays, editedAtMillis = :editedAtMillis WHERE id = :noteId")
+    suspend fun updateNote(noteId: Long, content: String, dateEpochDays: Int, editedAtMillis: Long)
 
     @Query("UPDATE notes SET trashedAtMillis = :trashedAtMillis, editedAtMillis = :trashedAtMillis WHERE id = :noteId")
     suspend fun trashNote(noteId: Long, trashedAtMillis: Long)

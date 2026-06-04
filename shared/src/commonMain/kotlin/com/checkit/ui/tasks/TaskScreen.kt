@@ -44,14 +44,20 @@ internal fun TaskScreen(
                 TaskSidebar(
                     lists = state.board.lists,
                     filters = state.board.filters,
+                    tags = state.board.tags,
                     selectedListId = state.selectedListId,
                     selectedFilterId = state.selectedFilterId,
+                    selectedTagId = state.selectedTagId,
                     onListClick = { listId ->
                         viewModel.selectList(listId)
                         scope.launch { drawerState.close() }
                     },
                     onFilterClick = { filterId ->
                         viewModel.selectFilter(filterId)
+                        scope.launch { drawerState.close() }
+                    },
+                    onTagClick = { tagId ->
+                        viewModel.selectTag(tagId)
                         scope.launch { drawerState.close() }
                     }
                 )
@@ -117,9 +123,12 @@ internal fun TaskScreen(
     state.editor?.let { editor ->
         TaskEditorSheet(
             editor = editor,
+            availableTags = state.board.tags,
             onDismiss = viewModel::dismissEditor,
+            onEdit = viewModel::editCurrentItem,
             onSave = viewModel::saveEditor,
             onDelete = viewModel::deleteEditorItem,
+            onComplete = viewModel::completeCurrentTask,
             onTaskNameChange = viewModel::updateTaskName,
             onTaskDescriptionChange = viewModel::updateTaskDescription,
             onTaskDueDateChange = viewModel::updateTaskDueDate,
@@ -127,7 +136,10 @@ internal fun TaskScreen(
             onTaskEndTimeChange = viewModel::updateTaskEndTime,
             onTaskRepeatChange = viewModel::updateTaskRepeat,
             onTaskPriorityChange = viewModel::updateTaskPriority,
-            onNoteContentChange = viewModel::updateNoteContent
+            onTaskTagToggle = viewModel::toggleTaskTag,
+            onNoteContentChange = viewModel::updateNoteContent,
+            onNoteDateChange = viewModel::updateNoteDate,
+            onNoteTagToggle = viewModel::toggleNoteTag
         )
     }
 }

@@ -19,7 +19,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.MoreTime
 import androidx.compose.material.icons.filled.MoreVert
@@ -54,9 +56,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.TaskPriority
+import com.checkit.domain.TaskStatus
+import com.checkit.domain.TaskTag
 import com.checkit.ui.EditorMode
 import com.checkit.ui.RepeatPreset
 import com.checkit.ui.TaskEditorState
@@ -68,9 +71,12 @@ import kotlinx.datetime.LocalDate
 @Composable
 internal fun TaskEditorSheet(
     editor: TaskEditorState,
+    availableTags: List<TaskTag>,
     onDismiss: () -> Unit,
+    onEdit: () -> Unit,
     onSave: () -> Unit,
     onDelete: () -> Unit,
+    onComplete: () -> Unit,
     onTaskNameChange: (String) -> Unit,
     onTaskDescriptionChange: (String) -> Unit,
     onTaskDueDateChange: (LocalDate?) -> Unit,
@@ -78,7 +84,10 @@ internal fun TaskEditorSheet(
     onTaskEndTimeChange: (Int?) -> Unit,
     onTaskRepeatChange: (RepeatPreset) -> Unit,
     onTaskPriorityChange: (TaskPriority) -> Unit,
-    onNoteContentChange: (String) -> Unit
+    onTaskTagToggle: (Long) -> Unit,
+    onNoteContentChange: (String) -> Unit,
+    onNoteDateChange: (LocalDate) -> Unit,
+    onNoteTagToggle: (Long) -> Unit
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         LazyColumn(
@@ -90,31 +99,54 @@ internal fun TaskEditorSheet(
         ) {
             item {
                 SheetHeader(
-                    title = editor.sheetTitle(),
-                    canDelete = editor.isEditable(),
+                    isViewMode = editor.isViewMode(),
+                    canDelete = editor.canDelete(),
                     onDismiss = onDismiss,
+                    onEdit = onEdit,
                     onSave = onSave,
                     onDelete = onDelete
                 )
             }
             when (editor) {
                 is TaskEditorState.TaskForm -> item {
-                    TaskFormContent(
-                        form = editor,
-                        onNameChange = onTaskNameChange,
-                        onDescriptionChange = onTaskDescriptionChange,
-                        onDueDateChange = onTaskDueDateChange,
-                        onStartTimeChange = onTaskStartTimeChange,
-                        onEndTimeChange = onTaskEndTimeChange,
-                        onRepeatChange = onTaskRepeatChange,
-                        onPriorityChange = onTaskPriorityChange
-                    )
+                    if (editor.mode == EditorMode.View) {
+                        TaskViewContent(editor, availableTags)
+                    } else {
+                        TaskFormContent(
+                            form = editor,
+                            availableTags = availableTags,
+                            onNameChange = onTaskNameChange,
+                            onDescriptionChange = onTaskDescriptionChange,
+                            onDueDateChange = onTaskDueDateChange,
+                            onStartTimeChange = onTaskStartTimeChange,
+                            onEndTimeChange = onTaskEndTimeChange,
+                            onRepeatChange = onTaskRepeatChange,
+                            onPriorityChange = onTaskPriorityChange,
+                            onTagToggle = onTaskTagToggle
+                        )
+                    }
                 }
                 is TaskEditorState.NoteForm -> item {
-                    NoteFormContent(
-                        form = editor,
-                        onContentChange = onNoteContentChange
-                    )
+                    if (editor.mode == EditorMode.View) {
+                        NoteViewContent(editor, availableTags)
+                    } else {
+                        NoteFormContent(
+                            form = editor,
+                            availableTags = availableTags,
+                            onContentChange = onNoteContentChange,
+                            onDateChange = onNoteDateChange,
+                            onTagToggle = onNoteTagToggle
+                        )
+                    }
+                }
+            }
+            if (editor is TaskEditorState.TaskForm && editor.mode == EditorMode.View && editor.status != TaskStatus.Completed) {
+                item {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        Button(onClick = onComplete) {
+                            Text("Complete")
+                        }
+                    }
                 }
             }
             item { Spacer(Modifier.height(24.dp)) }
@@ -124,26 +156,25 @@ internal fun TaskEditorSheet(
 
 @Composable
 private fun SheetHeader(
-    title: String,
+    isViewMode: Boolean,
     canDelete: Boolean,
     onDismiss: () -> Unit,
+    onEdit: () -> Unit,
     onSave: () -> Unit,
     onDelete: () -> Unit
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     Row(verticalAlignment = Alignment.CenterVertically) {
-        TextButton(onClick = onDismiss) {
-            Text("Cancel")
+        IconButton(onClick = onDismiss) {
+            Icon(Icons.Default.Close, contentDescription = "Close")
         }
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.weight(1f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        if (canDelete) {
+        Spacer(Modifier.weight(1f))
+        if (isViewMode) {
+            IconButton(onClick = onEdit) {
+                Icon(Icons.Default.Edit, contentDescription = "Edit")
+            }
+        }
+        if (canDelete && isViewMode) {
             Box {
                 IconButton(onClick = { menuExpanded = true }) {
                     Icon(Icons.Default.MoreVert, contentDescription = "Options")
@@ -163,8 +194,150 @@ private fun SheetHeader(
                 }
             }
         }
-        Button(onClick = onSave) {
-            Text("Save")
+        if (!isViewMode) {
+            Button(onClick = onSave) {
+                Text("Save")
+            }
+        }
+    }
+}
+
+@Composable
+private fun TaskViewContent(
+    form: TaskEditorState.TaskForm,
+    availableTags: List<TaskTag>
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        Text(
+            text = form.name.ifBlank { "Untitled task" },
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.SemiBold
+        )
+        form.description.takeIf { it.isNotBlank() }?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        DetailRow(
+            icon = Icons.Default.Event,
+            primary = form.dueDate?.compact() ?: "No date",
+            secondary = listOfNotNull(
+                form.startTimeMinutes?.toClockLabel(),
+                form.endTimeMinutes?.toClockLabel()?.let { "- $it" },
+                form.durationMinutes?.formatDuration()?.let { "· $it" }
+            ).joinToString(" ").ifBlank { null }
+        )
+        DetailRow(
+            icon = Icons.Default.CheckCircle,
+            primary = form.status.name,
+            secondary = "Priority ${form.priority.name}"
+        )
+        if (form.repeatPreset != RepeatPreset.None) {
+            DetailRow(
+                icon = Icons.Default.MoreTime,
+                primary = form.repeatPreset.label
+            )
+        }
+        TagDisplayRow(
+            selectedTagIds = form.selectedTagIds,
+            availableTags = availableTags
+        )
+    }
+}
+
+@Composable
+private fun NoteViewContent(
+    form: TaskEditorState.NoteForm,
+    availableTags: List<TaskTag>
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        Text(
+            text = form.content.ifBlank { "Empty note" },
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.SemiBold
+        )
+        DetailRow(
+            icon = Icons.Default.Event,
+            primary = form.date.compact()
+        )
+        TagDisplayRow(
+            selectedTagIds = form.selectedTagIds,
+            availableTags = availableTags
+        )
+    }
+}
+
+@Composable
+private fun DetailRow(
+    icon: ImageVector,
+    primary: String,
+    secondary: String? = null
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(18.dp), verticalAlignment = Alignment.Top) {
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column {
+            Text(primary, style = MaterialTheme.typography.bodyLarge)
+            secondary?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TagDisplayRow(
+    selectedTagIds: Set<Long>,
+    availableTags: List<TaskTag>
+) {
+    val selectedTags = availableTags.filter { it.id in selectedTagIds }
+    if (selectedTags.isEmpty()) return
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = "Tags",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(selectedTags, key = { it.id }) { tag ->
+                ElevatedFilterChip(
+                    selected = true,
+                    onClick = {},
+                    label = { Text(tag.name) },
+                    leadingIcon = { Icon(materialIcon(tag.icon), contentDescription = null) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TagPickerRow(
+    availableTags: List<TaskTag>,
+    selectedTagIds: Set<Long>,
+    onTagToggle: (Long) -> Unit
+) {
+    if (availableTags.isEmpty()) return
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = "Tags",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(availableTags, key = { it.id }) { tag ->
+                ElevatedFilterChip(
+                    selected = tag.id in selectedTagIds,
+                    onClick = { onTagToggle(tag.id) },
+                    label = { Text(tag.name) },
+                    leadingIcon = { Icon(materialIcon(tag.icon), contentDescription = null) }
+                )
+            }
         }
     }
 }
@@ -172,13 +345,15 @@ private fun SheetHeader(
 @Composable
 private fun TaskFormContent(
     form: TaskEditorState.TaskForm,
+    availableTags: List<TaskTag>,
     onNameChange: (String) -> Unit,
     onDescriptionChange: (String) -> Unit,
     onDueDateChange: (LocalDate?) -> Unit,
     onStartTimeChange: (Int?) -> Unit,
     onEndTimeChange: (Int?) -> Unit,
     onRepeatChange: (RepeatPreset) -> Unit,
-    onPriorityChange: (TaskPriority) -> Unit
+    onPriorityChange: (TaskPriority) -> Unit,
+    onTagToggle: (Long) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         OutlinedTextField(
@@ -225,6 +400,11 @@ private fun TaskFormContent(
             onSelect = onPriorityChange
         )
         RepeatDropdown(selected = form.repeatPreset, onSelect = onRepeatChange)
+        TagPickerRow(
+            availableTags = availableTags,
+            selectedTagIds = form.selectedTagIds,
+            onTagToggle = onTagToggle
+        )
     }
 }
 
@@ -404,16 +584,65 @@ private fun SelectableInfoRow(
 @Composable
 private fun NoteFormContent(
     form: TaskEditorState.NoteForm,
-    onContentChange: (String) -> Unit
+    availableTags: List<TaskTag>,
+    onContentChange: (String) -> Unit,
+    onDateChange: (LocalDate) -> Unit,
+    onTagToggle: (Long) -> Unit
 ) {
-    OutlinedTextField(
-        value = form.content,
-        onValueChange = onContentChange,
-        modifier = Modifier.fillMaxWidth(),
-        label = { Text("Note") },
-        minLines = 6,
-        leadingIcon = { Icon(Icons.Default.Notes, contentDescription = null) }
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        OutlinedTextField(
+            value = form.content,
+            onValueChange = onContentChange,
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Note") },
+            minLines = 6,
+            leadingIcon = { Icon(Icons.Default.Notes, contentDescription = null) }
+        )
+        RequiredDatePickerRow(date = form.date, onDateChange = onDateChange)
+        TagPickerRow(
+            availableTags = availableTags,
+            selectedTagIds = form.selectedTagIds,
+            onTagToggle = onTagToggle
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RequiredDatePickerRow(
+    date: LocalDate,
+    onDateChange: (LocalDate) -> Unit
+) {
+    var showPicker by remember { mutableStateOf(false) }
+    SelectableInfoRow(
+        icon = Icons.Default.Event,
+        label = "Date",
+        value = date.compact(),
+        onClick = { showPicker = true }
     )
+    if (showPicker) {
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = date.toUtcStartMillis())
+        DatePickerDialog(
+            onDismissRequest = { showPicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDateChange(datePickerState.selectedDateMillis?.toUtcLocalDate() ?: date)
+                        showPicker = false
+                    }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPicker = false }) {
+                    Text("Cancel")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
 }
 
 @Composable
@@ -442,12 +671,12 @@ private fun <T> ChoiceRow(
     }
 }
 
-private fun TaskEditorState.sheetTitle(): String = when (this) {
-    is TaskEditorState.TaskForm -> if (mode == EditorMode.Add) "New task" else "Edit task"
-    is TaskEditorState.NoteForm -> if (mode == EditorMode.Add) "New note" else "Edit note"
+private fun TaskEditorState.isViewMode(): Boolean = when (this) {
+    is TaskEditorState.TaskForm -> mode == EditorMode.View
+    is TaskEditorState.NoteForm -> mode == EditorMode.View
 }
 
-private fun TaskEditorState.isEditable(): Boolean = when (this) {
-    is TaskEditorState.TaskForm -> mode == EditorMode.Edit
-    is TaskEditorState.NoteForm -> mode == EditorMode.Edit
+private fun TaskEditorState.canDelete(): Boolean = when (this) {
+    is TaskEditorState.TaskForm -> mode != EditorMode.Add
+    is TaskEditorState.NoteForm -> mode != EditorMode.Add
 }

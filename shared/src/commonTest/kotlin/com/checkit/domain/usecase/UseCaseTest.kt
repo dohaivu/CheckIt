@@ -1,6 +1,7 @@
 package com.checkit.domain.usecase
 
 import com.checkit.domain.DueDatePreset
+import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskFilter
 import com.checkit.domain.TaskItem
@@ -64,6 +65,34 @@ class UseCaseTest {
     }
 
     @Test
+    fun tagFilterReturnsMatchingTasksAndNotes() {
+        val tag = TaskTag(id = 7, name = "Work", icon = "Work", color = "#7C3AED")
+        val board = TaskBoard(
+            tasks = listOf(
+                task(id = 1, tags = listOf(tag)),
+                task(id = 2)
+            ),
+            notes = listOf(
+                note(id = 3, tags = listOf(tag)),
+                note(id = 4)
+            )
+        )
+        val filter = TaskFilter(
+            id = 4,
+            name = "Work",
+            icon = "Work",
+            color = "#7C3AED",
+            tagId = tag.id,
+            sortOrder = 0
+        )
+
+        val items = selectItems(board, TaskBoardSelection.FilterSelection(filter), today)
+
+        assertEquals(listOf(1L), items.tasks.map { it.id })
+        assertEquals(listOf(3L), items.notes.map { it.id })
+    }
+
+    @Test
     fun trashedFilterOnlyReturnsTrashedTasks() {
         val board = TaskBoard(
             tasks = listOf(
@@ -104,5 +133,19 @@ class UseCaseTest {
         createdAtMillis = 0L,
         updatedAtMillis = 0L,
         trashedAtMillis = trashedAtMillis
+    )
+
+    private fun note(
+        id: Long,
+        tags: List<TaskTag> = emptyList()
+    ) = NoteItem(
+        id = id,
+        listId = 1,
+        content = "Note $id",
+        tags = tags,
+        date = today,
+        createdAtMillis = 0L,
+        editedAtMillis = 0L,
+        sortOrder = id.toInt()
     )
 }

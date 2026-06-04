@@ -13,6 +13,7 @@ import com.checkit.data.SettingsRepository
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.domain.usecase.AddNoteUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
+import com.checkit.domain.usecase.CompleteTaskUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
@@ -56,6 +57,7 @@ val provideInteractorModule = module {
     single { AddTaskUseCase(get()) }
     single { UpdateTaskUseCase(get()) }
     single { DeleteTaskUseCase(get()) }
+    single { CompleteTaskUseCase(get()) }
     single { AddNoteUseCase(get()) }
     single { UpdateNoteUseCase(get()) }
     single { DeleteNoteUseCase(get()) }
@@ -74,7 +76,7 @@ val provideLocalServiceModule = module {
 }
 
 val provideViewModelModule = module {
-    viewModel { TaskViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { TaskViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { CalendarViewModel(get()) }
     viewModel { ReportViewModel(get()) }
     viewModel { SettingsViewModel(get(), get(), get()) }
