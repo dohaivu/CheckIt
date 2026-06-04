@@ -83,24 +83,32 @@ class TaskViewModel(
 
     fun selectList(listId: Long) {
         _uiState.update {
-            it.copy(selectedListId = listId, selectedFilterId = null, selectedTagId = null).refreshVisibleItems()
+            it.copy(selectedListId = listId, selectedFilterId = null, selectedTagId = null)
+                .refreshVisibleItems()
+                .coerceViewToAvailable()
         }
     }
 
     fun selectFilter(filterId: Long) {
         _uiState.update {
-            it.copy(selectedListId = null, selectedFilterId = filterId, selectedTagId = null).refreshVisibleItems()
+            it.copy(selectedListId = null, selectedFilterId = filterId, selectedTagId = null)
+                .refreshVisibleItems()
+                .coerceViewToAvailable()
         }
     }
 
     fun selectTag(tagId: Long) {
         _uiState.update {
-            it.copy(selectedListId = null, selectedFilterId = null, selectedTagId = tagId).refreshVisibleItems()
+            it.copy(selectedListId = null, selectedFilterId = null, selectedTagId = tagId)
+                .refreshVisibleItems()
+                .coerceViewToAvailable()
         }
     }
 
     fun selectView(view: TaskWorkspaceView) {
-        _uiState.update { it.copy(selectedView = view) }
+        _uiState.update {
+            if (view in it.availableViews) it.copy(selectedView = view) else it
+        }
     }
 
     fun openNewTask() {
@@ -433,8 +441,11 @@ class TaskViewModel(
             selectedFilterId = nextFilterId,
             selectedTagId = nextTagId,
             isLoading = false
-        ).refreshVisibleItems()
+        ).refreshVisibleItems().coerceViewToAvailable()
     }
+
+    private fun TaskUiState.coerceViewToAvailable(): TaskUiState =
+        if (selectedView in availableViews) this else copy(selectedView = TaskWorkspaceView.List)
 
     private fun TaskUiState.refreshVisibleItems(): TaskUiState {
         selectedTagId?.let { tagId ->

@@ -1,6 +1,7 @@
 package com.checkit.ui
 
 import com.checkit.domain.ActiveTagToken
+import com.checkit.domain.DueDatePreset
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskFilter
@@ -31,6 +32,12 @@ data class TaskUiState(
     val selectedFilter: TaskFilter? = board.filters.firstOrNull { it.id == selectedFilterId }
     val selectedTag = board.tags.firstOrNull { it.id == selectedTagId }
     val title: String = selectedList?.name ?: selectedFilter?.name ?: selectedTag?.name ?: "Tasks"
+    val isTodayFilterSelected: Boolean = selectedFilter?.dueDatePreset == DueDatePreset.Today
+    val availableViews: List<TaskWorkspaceView> = if (isTodayFilterSelected) {
+        TaskWorkspaceView.entries
+    } else {
+        TaskWorkspaceView.entries.filter { it != TaskWorkspaceView.Timeline }
+    }
 }
 
 enum class TaskWorkspaceView {

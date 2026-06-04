@@ -23,7 +23,6 @@ import androidx.compose.ui.text.font.FontWeight
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.tab_tasks
 import com.checkit.ui.TaskUiState
-import com.checkit.ui.TaskWorkspaceView
 import com.checkit.ui.components.TinyTopAppBar
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
@@ -92,7 +91,7 @@ internal fun TaskScreen(
                         )
                     },
                     actions = {
-                        TaskWorkspaceView.entries.forEach { view ->
+                        state.availableViews.forEach { view ->
                             IconButton(onClick = { viewModel.selectView(view) }) {
                                 Icon(
                                     imageVector = view.icon(),
