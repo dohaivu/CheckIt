@@ -10,6 +10,9 @@ import com.checkit.data.buildCheckItDatabase
 import com.checkit.data.createPreferencesDataStore
 import com.checkit.data.provideDatabaseBuilder
 import com.checkit.data.SettingsRepository
+import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
+import com.checkit.domain.usecase.ObserveTaskBoardUseCase
+import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.ui.calendar.CalendarViewModel
 import com.checkit.ui.tasks.TaskViewModel
 import com.checkit.ui.reports.ReportViewModel
@@ -42,6 +45,9 @@ fun initKoin(config: KoinAppDeclaration? = null) =
 val provideInteractorModule = module {
     single { HttpClient() }
     single<CheckItRepository> { RoomCheckItRepository(get()) }
+    single { ObserveTaskBoardUseCase(get()) }
+    single { EnsureDefaultTaskDataUseCase(get()) }
+    single { SelectTaskBoardItemsUseCase() }
 }
 
 val provideDatabaseModule = module {
@@ -56,7 +62,7 @@ val provideLocalServiceModule = module {
 }
 
 val provideViewModelModule = module {
-    viewModel { TaskViewModel(get() ) }
+    viewModel { TaskViewModel(get(), get(), get()) }
     viewModel { CalendarViewModel(get()) }
     viewModel { ReportViewModel(get()) }
     viewModel { SettingsViewModel(get(), get(), get()) }

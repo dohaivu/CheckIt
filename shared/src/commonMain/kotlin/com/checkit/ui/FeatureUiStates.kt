@@ -1,13 +1,35 @@
 package com.checkit.ui
 
 import com.checkit.domain.ActiveTagToken
+import com.checkit.domain.NoteItem
+import com.checkit.domain.TaskBoard
+import com.checkit.domain.TaskFilter
+import com.checkit.domain.TaskItem
+import com.checkit.domain.TaskList
 import com.checkit.ui.components.ReportPeriod
 
 data class TaskUiState(
     val activeTagToken: ActiveTagToken? = null,
     val tagSuggestions: List<String> = emptyList(),
+    val board: TaskBoard = TaskBoard(),
+    val selectedListId: Long? = null,
+    val selectedFilterId: Long? = null,
+    val selectedView: TaskWorkspaceView = TaskWorkspaceView.List,
+    val visibleTasks: List<TaskItem> = emptyList(),
+    val visibleNotes: List<NoteItem> = emptyList(),
+    val isLoading: Boolean = true,
     val message: String? = null
-)
+) {
+    val selectedList: TaskList? = board.lists.firstOrNull { it.id == selectedListId }
+    val selectedFilter: TaskFilter? = board.filters.firstOrNull { it.id == selectedFilterId }
+    val title: String = selectedList?.name ?: selectedFilter?.name ?: "Tasks"
+}
+
+enum class TaskWorkspaceView {
+    List,
+    Agenda,
+    Timeline
+}
 
 data class CalendarUiState(
     val selectedPeriod: ReportPeriod = ReportPeriod.Month,
