@@ -11,8 +11,14 @@ import com.checkit.data.createPreferencesDataStore
 import com.checkit.data.provideDatabaseBuilder
 import com.checkit.data.SettingsRepository
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
+import com.checkit.domain.usecase.AddNoteUseCase
+import com.checkit.domain.usecase.AddTaskUseCase
+import com.checkit.domain.usecase.DeleteNoteUseCase
+import com.checkit.domain.usecase.DeleteTaskUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
+import com.checkit.domain.usecase.UpdateNoteUseCase
+import com.checkit.domain.usecase.UpdateTaskUseCase
 import com.checkit.ui.calendar.CalendarViewModel
 import com.checkit.ui.tasks.TaskViewModel
 import com.checkit.ui.reports.ReportViewModel
@@ -47,6 +53,12 @@ val provideInteractorModule = module {
     single<CheckItRepository> { RoomCheckItRepository(get()) }
     single { ObserveTaskBoardUseCase(get()) }
     single { EnsureDefaultTaskDataUseCase(get()) }
+    single { AddTaskUseCase(get()) }
+    single { UpdateTaskUseCase(get()) }
+    single { DeleteTaskUseCase(get()) }
+    single { AddNoteUseCase(get()) }
+    single { UpdateNoteUseCase(get()) }
+    single { DeleteNoteUseCase(get()) }
     single { SelectTaskBoardItemsUseCase() }
 }
 
@@ -62,7 +74,7 @@ val provideLocalServiceModule = module {
 }
 
 val provideViewModelModule = module {
-    viewModel { TaskViewModel(get(), get(), get()) }
+    viewModel { TaskViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { CalendarViewModel(get()) }
     viewModel { ReportViewModel(get()) }
     viewModel { SettingsViewModel(get(), get(), get()) }

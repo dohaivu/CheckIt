@@ -64,4 +64,49 @@ interface CheckItDao {
 
     @Query("SELECT * FROM note_tags")
     fun observeNoteTags(): Flow<List<NoteTagEntity>>
+
+    @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM tasks WHERE listId = :listId")
+    suspend fun nextTaskSortOrder(listId: Long): Int
+
+    @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM notes WHERE listId = :listId")
+    suspend fun nextNoteSortOrder(listId: Long): Int
+
+    @Query(
+        """
+        UPDATE tasks
+        SET name = :name,
+            description = :description,
+            status = :status,
+            priority = :priority,
+            dueDateEpochDays = :dueDateEpochDays,
+            startTimeMinutes = :startTimeMinutes,
+            endTimeMinutes = :endTimeMinutes,
+            durationMinutes = :durationMinutes,
+            repeatRRule = :repeatRRule,
+            updatedAtMillis = :updatedAtMillis
+        WHERE id = :taskId
+        """
+    )
+    suspend fun updateTask(
+        taskId: Long,
+        name: String,
+        description: String,
+        status: String,
+        priority: String,
+        dueDateEpochDays: Int?,
+        startTimeMinutes: Int?,
+        endTimeMinutes: Int?,
+        durationMinutes: Int?,
+        repeatRRule: String?,
+        updatedAtMillis: Long
+    )
+
+    @Query("UPDATE tasks SET trashedAtMillis = :trashedAtMillis, updatedAtMillis = :trashedAtMillis WHERE id = :taskId")
+    suspend fun trashTask(taskId: Long, trashedAtMillis: Long)
+
+    @Query("UPDATE notes SET content = :content, editedAtMillis = :editedAtMillis WHERE id = :noteId")
+    suspend fun updateNote(noteId: Long, content: String, editedAtMillis: Long)
+
+    @Query("UPDATE notes SET trashedAtMillis = :trashedAtMillis, editedAtMillis = :trashedAtMillis WHERE id = :noteId")
+    suspend fun trashNote(noteId: Long, trashedAtMillis: Long)
 }

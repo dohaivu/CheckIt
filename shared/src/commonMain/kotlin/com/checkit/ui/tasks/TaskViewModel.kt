@@ -2,11 +2,26 @@ package com.checkit.ui.tasks
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.checkit.data.NoteWriteInput
+import com.checkit.data.TaskWriteInput
+import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
+import com.checkit.domain.TaskItem
+import com.checkit.domain.TaskPriority
+import com.checkit.domain.TaskStatus
+import com.checkit.domain.usecase.AddNoteUseCase
+import com.checkit.domain.usecase.AddTaskUseCase
+import com.checkit.domain.usecase.DeleteNoteUseCase
+import com.checkit.domain.usecase.DeleteTaskUseCase
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.TaskBoardSelection
+import com.checkit.domain.usecase.UpdateNoteUseCase
+import com.checkit.domain.usecase.UpdateTaskUseCase
+import com.checkit.ui.EditorMode
+import com.checkit.ui.RepeatPreset
+import com.checkit.ui.TaskEditorState
 import com.checkit.ui.TaskUiState
 import com.checkit.ui.TaskWorkspaceView
 import com.checkit.ui.today
@@ -16,11 +31,19 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.number
 
 class TaskViewModel(
     private val observeTaskBoard: ObserveTaskBoardUseCase,
     private val ensureDefaultTaskData: EnsureDefaultTaskDataUseCase,
-    private val selectTaskBoardItems: SelectTaskBoardItemsUseCase
+    private val selectTaskBoardItems: SelectTaskBoardItemsUseCase,
+    private val addTask: AddTaskUseCase,
+    private val updateTask: UpdateTaskUseCase,
+    private val deleteTask: DeleteTaskUseCase,
+    private val addNote: AddNoteUseCase,
+    private val updateNote: UpdateNoteUseCase,
+    private val deleteNote: DeleteNoteUseCase
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(TaskUiState())
     val uiState: StateFlow<TaskUiState> = _uiState.asStateFlow()
@@ -54,6 +77,159 @@ class TaskViewModel(
 
     fun selectView(view: TaskWorkspaceView) {
         _uiState.update { it.copy(selectedView = view) }
+    }
+
+    fun openNewTask() {
+        val listId = editableListId() ?: return showMessage("Create a list before adding tasks")
+        _uiState.update {
+            it.copy(
+                editor = TaskEditorState.TaskForm(
+                    mode = EditorMode.Add,
+                    listId = listId,
+                    dueDate = today()
+                )
+            )
+        }
+    }
+
+    fun openNewNote() {
+        val listId = editableListId() ?: return showMessage("Create a list before adding notes")
+        _uiState.update {
+            it.copy(editor = TaskEditorState.NoteForm(mode = EditorMode.Add, listId = listId))
+        }
+    }
+
+    fun openTask(task: TaskItem) {
+        _uiState.update {
+            it.copy(
+                editor = TaskEditorState.TaskForm(
+                    mode = EditorMode.Edit,
+                    taskId = task.id,
+                    listId = task.listId,
+                    name = task.name,
+                    description = task.description,
+                    dueDate = task.dueDate,
+                    startTimeMinutes = task.startTimeMinutes,
+                    endTimeMinutes = task.endTimeMinutes,
+                    repeatPreset = RepeatPreset.fromRRule(task.repeatRRule),
+                    status = task.status,
+                    priority = task.priority
+                )
+            )
+        }
+    }
+
+    fun openNote(note: NoteItem) {
+        _uiState.update {
+            it.copy(
+                editor = TaskEditorState.NoteForm(
+                    mode = EditorMode.Edit,
+                    noteId = note.id,
+                    listId = note.listId,
+                    content = note.content
+                )
+            )
+        }
+    }
+
+    fun dismissEditor() {
+        _uiState.update { it.copy(editor = null) }
+    }
+
+    fun updateTaskName(name: String) = updateTaskForm { it.copy(name = name) }
+    fun updateTaskDescription(description: String) = updateTaskForm { it.copy(description = description) }
+    fun updateTaskDueDate(dueDate: LocalDate?) = updateTaskForm { it.copy(dueDate = dueDate) }
+    fun updateTaskStartTime(startTimeMinutes: Int?) = updateTaskForm { it.copy(startTimeMinutes = startTimeMinutes) }
+    fun updateTaskEndTime(endTimeMinutes: Int?) = updateTaskForm { it.copy(endTimeMinutes = endTimeMinutes) }
+    fun updateTaskRepeat(repeatPreset: RepeatPreset) = updateTaskForm { it.copy(repeatPreset = repeatPreset) }
+    fun updateTaskPriority(priority: TaskPriority) = updateTaskForm { it.copy(priority = priority) }
+    fun updateNoteContent(content: String) = updateNoteForm { it.copy(content = content) }
+
+    fun saveEditor() {
+        val editor = _uiState.value.editor ?: return
+        when (editor) {
+            is TaskEditorState.TaskForm -> saveTask(editor)
+            is TaskEditorState.NoteForm -> saveNote(editor)
+        }
+    }
+
+    fun deleteEditorItem() {
+        val editor = _uiState.value.editor ?: return
+        viewModelScope.launch {
+            when (editor) {
+                is TaskEditorState.TaskForm -> editor.taskId?.let { deleteTask(it) }
+                is TaskEditorState.NoteForm -> editor.noteId?.let { deleteNote(it) }
+            }
+            _uiState.update { it.copy(editor = null, message = "Moved to trash") }
+        }
+    }
+
+    private fun saveTask(form: TaskEditorState.TaskForm) {
+        val input = form.toWriteInput() ?: return
+        viewModelScope.launch {
+            if (form.mode == EditorMode.Add) {
+                addTask(input)
+            } else {
+                updateTask(form.taskId ?: return@launch, input)
+            }
+            _uiState.update { it.copy(editor = null) }
+        }
+    }
+
+    private fun saveNote(form: TaskEditorState.NoteForm) {
+        if (form.content.isBlank()) {
+            showMessage("Add note content")
+            return
+        }
+        viewModelScope.launch {
+            val input = NoteWriteInput(listId = form.listId, content = form.content.trim())
+            if (form.mode == EditorMode.Add) {
+                addNote(input)
+            } else {
+                updateNote(form.noteId ?: return@launch, input)
+            }
+            _uiState.update { it.copy(editor = null) }
+        }
+    }
+
+    private fun TaskEditorState.TaskForm.toWriteInput(): TaskWriteInput? {
+        if (name.isBlank()) {
+            showMessage("Add a task title")
+            return null
+        }
+        return TaskWriteInput(
+            listId = listId,
+            name = name.trim(),
+            description = description.trim(),
+            status = status,
+            priority = priority,
+            dueDate = dueDate,
+            startTimeMinutes = startTimeMinutes,
+            endTimeMinutes = endTimeMinutes,
+            durationMinutes = durationMinutes,
+            repeatRRule = repeatPreset.rrule
+        )
+    }
+
+    private fun updateTaskForm(transform: (TaskEditorState.TaskForm) -> TaskEditorState.TaskForm) {
+        _uiState.update { state ->
+            val form = state.editor as? TaskEditorState.TaskForm ?: return@update state
+            state.copy(editor = transform(form))
+        }
+    }
+
+    private fun updateNoteForm(transform: (TaskEditorState.NoteForm) -> TaskEditorState.NoteForm) {
+        _uiState.update { state ->
+            val form = state.editor as? TaskEditorState.NoteForm ?: return@update state
+            state.copy(editor = transform(form))
+        }
+    }
+
+    private fun editableListId(): Long? =
+        _uiState.value.selectedListId ?: _uiState.value.board.lists.firstOrNull()?.id
+
+    private fun showMessage(message: String) {
+        _uiState.update { it.copy(message = message) }
     }
 
     private fun TaskUiState.withBoard(board: TaskBoard): TaskUiState {

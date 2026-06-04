@@ -21,7 +21,31 @@ import kotlin.time.Clock
 interface CheckItRepository {
     fun observeTaskBoard(): Flow<TaskBoard>
     suspend fun ensureDefaultTaskData()
+    suspend fun addTask(input: TaskWriteInput): Long
+    suspend fun updateTask(taskId: Long, input: TaskWriteInput)
+    suspend fun trashTask(taskId: Long)
+    suspend fun addNote(input: NoteWriteInput): Long
+    suspend fun updateNote(noteId: Long, input: NoteWriteInput)
+    suspend fun trashNote(noteId: Long)
 }
+
+data class TaskWriteInput(
+    val listId: Long,
+    val name: String,
+    val description: String,
+    val status: TaskStatus,
+    val priority: TaskPriority,
+    val dueDate: LocalDate?,
+    val startTimeMinutes: Int?,
+    val endTimeMinutes: Int?,
+    val durationMinutes: Int?,
+    val repeatRRule: String?
+)
+
+data class NoteWriteInput(
+    val listId: Long,
+    val content: String
+)
 
 class RoomCheckItRepository(
     private val dao: CheckItDao,
@@ -129,6 +153,72 @@ class RoomCheckItRepository(
         dao.insertFilter(TaskFilterEntity(name = "Completed", icon = "TaskAlt", color = "#059669", status = TaskStatus.Completed.name, sortOrder = 1))
         dao.insertFilter(TaskFilterEntity(name = "High priority", icon = "PriorityHigh", color = "#DC2626", priority = TaskPriority.High.name, sortOrder = 2))
         dao.insertFilter(TaskFilterEntity(name = "Trashed", icon = "Delete", color = "#6B7280", includeTrashed = true, sortOrder = 3))
+    }
+
+    override suspend fun addTask(input: TaskWriteInput): Long {
+        val now = Clock.System.now().toEpochMilliseconds()
+        return dao.insertTask(
+            TaskEntity(
+                listId = input.listId,
+                name = input.name,
+                description = input.description,
+                status = input.status.name,
+                priority = input.priority.name,
+                dueDateEpochDays = input.dueDate?.toEpochDays()?.toInt(),
+                startTimeMinutes = input.startTimeMinutes,
+                endTimeMinutes = input.endTimeMinutes,
+                durationMinutes = input.durationMinutes,
+                repeatRRule = input.repeatRRule,
+                sortOrder = dao.nextTaskSortOrder(input.listId),
+                createdAtMillis = now,
+                updatedAtMillis = now
+            )
+        )
+    }
+
+    override suspend fun updateTask(taskId: Long, input: TaskWriteInput) {
+        dao.updateTask(
+            taskId = taskId,
+            name = input.name,
+            description = input.description,
+            status = input.status.name,
+            priority = input.priority.name,
+            dueDateEpochDays = input.dueDate?.toEpochDays()?.toInt(),
+            startTimeMinutes = input.startTimeMinutes,
+            endTimeMinutes = input.endTimeMinutes,
+            durationMinutes = input.durationMinutes,
+            repeatRRule = input.repeatRRule,
+            updatedAtMillis = Clock.System.now().toEpochMilliseconds()
+        )
+    }
+
+    override suspend fun trashTask(taskId: Long) {
+        dao.trashTask(taskId, Clock.System.now().toEpochMilliseconds())
+    }
+
+    override suspend fun addNote(input: NoteWriteInput): Long {
+        val now = Clock.System.now().toEpochMilliseconds()
+        return dao.insertNote(
+            NoteEntity(
+                listId = input.listId,
+                content = input.content,
+                createdAtMillis = now,
+                editedAtMillis = now,
+                sortOrder = dao.nextNoteSortOrder(input.listId)
+            )
+        )
+    }
+
+    override suspend fun updateNote(noteId: Long, input: NoteWriteInput) {
+        dao.updateNote(
+            noteId = noteId,
+            content = input.content,
+            editedAtMillis = Clock.System.now().toEpochMilliseconds()
+        )
+    }
+
+    override suspend fun trashNote(noteId: Long) {
+        dao.trashNote(noteId, Clock.System.now().toEpochMilliseconds())
     }
 }
 

@@ -1,6 +1,8 @@
 package com.checkit.domain.usecase
 
 import com.checkit.data.CheckItRepository
+import com.checkit.data.NoteWriteInput
+import com.checkit.data.TaskWriteInput
 import com.checkit.domain.DueDatePreset
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
@@ -23,6 +25,42 @@ class EnsureDefaultTaskDataUseCase(
     private val repository: CheckItRepository
 ) {
     suspend operator fun invoke() = repository.ensureDefaultTaskData()
+}
+
+class AddTaskUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(input: TaskWriteInput): Long = repository.addTask(input)
+}
+
+class UpdateTaskUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(taskId: Long, input: TaskWriteInput) = repository.updateTask(taskId, input)
+}
+
+class DeleteTaskUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(taskId: Long) = repository.trashTask(taskId)
+}
+
+class AddNoteUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(input: NoteWriteInput): Long = repository.addNote(input)
+}
+
+class UpdateNoteUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(noteId: Long, input: NoteWriteInput) = repository.updateNote(noteId, input)
+}
+
+class DeleteNoteUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(noteId: Long) = repository.trashNote(noteId)
 }
 
 class SelectTaskBoardItemsUseCase {
