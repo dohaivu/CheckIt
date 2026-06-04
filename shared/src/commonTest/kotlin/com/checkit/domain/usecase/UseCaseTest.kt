@@ -114,6 +114,29 @@ class UseCaseTest {
         assertEquals(listOf(2L), items.tasks.map { it.id })
     }
 
+    @Test
+    fun allFilterReturnsAllNonTrashedTasks() {
+        val board = TaskBoard(
+            tasks = listOf(
+                task(id = 1, dueDate = today),
+                task(id = 2, dueDate = LocalDate(2026, 6, 5), status = TaskStatus.Completed),
+                task(id = 3, trashedAtMillis = 1000L),
+                task(id = 4, priority = TaskPriority.High)
+            )
+        )
+        val filter = TaskFilter(
+            id = 0,
+            name = "All",
+            icon = "AllInclusive",
+            color = "#475569",
+            sortOrder = -1
+        )
+
+        val items = selectItems(board, TaskBoardSelection.FilterSelection(filter), today)
+
+        assertEquals(listOf(1L, 2L, 4L), items.tasks.map { it.id })
+    }
+
     private fun task(
         id: Long,
         dueDate: LocalDate? = null,

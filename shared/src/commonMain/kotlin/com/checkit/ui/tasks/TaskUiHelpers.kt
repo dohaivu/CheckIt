@@ -1,6 +1,7 @@
 package com.checkit.ui.tasks
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AllInclusive
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Code
@@ -45,6 +46,7 @@ internal fun TaskWorkspaceView.icon(): ImageVector = when (this) {
 }
 
 internal fun materialIcon(name: String): ImageVector = when (name) {
+    "AllInclusive" -> Icons.Default.AllInclusive
     "AttachMoney" -> Icons.Default.AttachMoney
     "Bookmark" -> Icons.Default.Bookmark
     "Code" -> Icons.Default.Code

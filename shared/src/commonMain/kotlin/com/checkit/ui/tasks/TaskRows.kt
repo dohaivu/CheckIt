@@ -3,6 +3,7 @@ package com.checkit.ui.tasks
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -16,25 +17,32 @@ import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.ElevatedFilterChip
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
+import com.checkit.domain.TaskList
 import com.checkit.domain.TaskStatus
+import com.checkit.domain.TaskTag
 
 @Composable
 internal fun TaskRow(
     task: TaskItem,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    list: TaskList? = null
 ) {
     Surface(
         modifier = Modifier.clickable(onClick = onClick),
@@ -74,9 +82,26 @@ internal fun TaskRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                task.tags.forEach { tag ->
-                    CompactChip(materialIcon(tag.icon), tag.name)
+            if (list != null || task.tags.isNotEmpty()) {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    list?.let {
+                        CompactChip(
+                            icon = materialIcon(it.icon),
+                            label = it.name,
+                            iconTint = it.color.toColor()
+                        )
+                    }
+                    task.tags.forEach { tag ->
+                        CompactChip(
+                            icon = materialIcon(tag.icon),
+                            label = tag.name,
+                            iconTint = tag.color.toColor()
+                        )
+                    }
                 }
             }
         }
@@ -86,7 +111,8 @@ internal fun TaskRow(
 @Composable
 internal fun NoteRow(
     note: NoteItem,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    list: TaskList? = null
 ) {
     Surface(
         modifier = Modifier.clickable(onClick = onClick),
@@ -97,8 +123,27 @@ internal fun NoteRow(
             Icon(Icons.Default.Notes, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(note.content, style = MaterialTheme.typography.bodyMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    note.tags.forEach { tag -> CompactChip(materialIcon(tag.icon), tag.name) }
+                if (list != null || note.tags.isNotEmpty()) {
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        list?.let {
+                            CompactChip(
+                                icon = materialIcon(it.icon),
+                                label = it.name,
+                                iconTint = it.color.toColor()
+                            )
+                        }
+                        note.tags.forEach { tag ->
+                            CompactChip(
+                                icon = materialIcon(tag.icon),
+                                label = tag.name,
+                                iconTint = tag.color.toColor()
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -106,10 +151,42 @@ internal fun NoteRow(
 }
 
 @Composable
-private fun CompactChip(icon: ImageVector, label: String) {
+private fun CompactChip(
+    icon: ImageVector,
+    label: String,
+    iconTint: Color? = null
+) {
     AssistChip(
         onClick = {},
         label = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp)) }
+        leadingIcon = {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = iconTint ?: LocalContentColor.current,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun TagChip(
+    tag: TaskTag,
+    selected: Boolean = false,
+    onClick: (() -> Unit)? = null
+) {
+    ElevatedFilterChip(
+        selected = selected,
+        onClick = onClick ?: {},
+        label = { Text(tag.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        leadingIcon = {
+            Icon(
+                imageVector = materialIcon(tag.icon),
+                contentDescription = null,
+                tint = tag.color.toColor()
+            )
+        }
     )
 }

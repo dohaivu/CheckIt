@@ -10,10 +10,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.TaskItem
+import com.checkit.domain.TaskList
 
 @Composable
 internal fun TaskAgendaView(
     tasks: List<TaskItem>,
+    lists: List<TaskList>,
+    showListName: Boolean,
     onTaskClick: (TaskItem) -> Unit
 ) {
     val grouped = tasks.groupBy { it.dueDate }
@@ -27,7 +30,13 @@ internal fun TaskAgendaView(
                     modifier = Modifier.padding(top = 8.dp)
                 )
             }
-            items(dayTasks, key = { "agenda-${it.id}" }) { task -> TaskRow(task, onClick = { onTaskClick(task) }) }
+            items(dayTasks, key = { "agenda-${it.id}" }) { task ->
+                TaskRow(
+                    task = task,
+                    onClick = { onTaskClick(task) },
+                    list = if (showListName) lists.firstOrNull { it.id == task.listId } else null
+                )
+            }
         }
     }
 }

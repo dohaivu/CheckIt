@@ -18,10 +18,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.TaskItem
+import com.checkit.domain.TaskList
 
 @Composable
 internal fun TaskTimelineView(
     tasks: List<TaskItem>,
+    lists: List<TaskList>,
+    showListName: Boolean,
     onTaskClick: (TaskItem) -> Unit
 ) {
     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -42,7 +45,11 @@ internal fun TaskTimelineView(
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    TaskRow(task, onClick = { onTaskClick(task) })
+                    TaskRow(
+                        task = task,
+                        onClick = { onTaskClick(task) },
+                        list = if (showListName) lists.firstOrNull { it.id == task.listId } else null
+                    )
                 }
             }
         }

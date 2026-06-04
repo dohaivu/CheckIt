@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -303,14 +304,13 @@ private fun TagDisplayRow(
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(selectedTags, key = { it.id }) { tag ->
-                ElevatedFilterChip(
-                    selected = true,
-                    onClick = {},
-                    label = { Text(tag.name) },
-                    leadingIcon = { Icon(materialIcon(tag.icon), contentDescription = null) }
-                )
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            selectedTags.forEach { tag ->
+                TagChip(tag = tag, selected = true)
             }
         }
     }
@@ -329,13 +329,16 @@ private fun TagPickerRow(
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(availableTags, key = { it.id }) { tag ->
-                ElevatedFilterChip(
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            availableTags.forEach { tag ->
+                TagChip(
+                    tag = tag,
                     selected = tag.id in selectedTagIds,
-                    onClick = { onTagToggle(tag.id) },
-                    label = { Text(tag.name) },
-                    leadingIcon = { Icon(materialIcon(tag.icon), contentDescription = null) }
+                    onClick = { onTagToggle(tag.id) }
                 )
             }
         }

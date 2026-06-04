@@ -7,16 +7,31 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
+import com.checkit.domain.TaskList
 
 @Composable
 internal fun TaskListView(
     tasks: List<TaskItem>,
     notes: List<NoteItem>,
+    lists: List<TaskList>,
+    showListName: Boolean,
     onTaskClick: (TaskItem) -> Unit,
     onNoteClick: (NoteItem) -> Unit
 ) {
     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(tasks, key = { "task-${it.id}" }) { task -> TaskRow(task, onClick = { onTaskClick(task) }) }
-        items(notes, key = { "note-${it.id}" }) { note -> NoteRow(note, onClick = { onNoteClick(note) }) }
+        items(tasks, key = { "task-${it.id}" }) { task ->
+            TaskRow(
+                task = task,
+                onClick = { onTaskClick(task) },
+                list = if (showListName) lists.firstOrNull { it.id == task.listId } else null
+            )
+        }
+        items(notes, key = { "note-${it.id}" }) { note ->
+            NoteRow(
+                note = note,
+                onClick = { onNoteClick(note) },
+                list = if (showListName) lists.firstOrNull { it.id == note.listId } else null
+            )
+        }
     }
 }

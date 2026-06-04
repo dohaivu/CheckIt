@@ -24,6 +24,7 @@ internal fun TaskContent(
     onNoteClick: (NoteItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val showListName = state.selectedList == null
     Column(modifier.padding(horizontal = 18.dp, vertical = 12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -40,9 +41,26 @@ internal fun TaskContent(
         }
         Spacer(Modifier.height(12.dp))
         when (state.selectedView) {
-            TaskWorkspaceView.List -> TaskListView(state.visibleTasks, state.visibleNotes, onTaskClick, onNoteClick)
-            TaskWorkspaceView.Agenda -> TaskAgendaView(state.visibleTasks, onTaskClick)
-            TaskWorkspaceView.Timeline -> TaskTimelineView(state.visibleTasks, onTaskClick)
+            TaskWorkspaceView.List -> TaskListView(
+                tasks = state.visibleTasks,
+                notes = state.visibleNotes,
+                lists = state.board.lists,
+                showListName = showListName,
+                onTaskClick = onTaskClick,
+                onNoteClick = onNoteClick
+            )
+            TaskWorkspaceView.Agenda -> TaskAgendaView(
+                tasks = state.visibleTasks,
+                lists = state.board.lists,
+                showListName = showListName,
+                onTaskClick = onTaskClick
+            )
+            TaskWorkspaceView.Timeline -> TaskTimelineView(
+                tasks = state.visibleTasks,
+                lists = state.board.lists,
+                showListName = showListName,
+                onTaskClick = onTaskClick
+            )
         }
     }
 }
