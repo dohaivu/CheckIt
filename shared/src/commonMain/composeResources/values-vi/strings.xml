@@ -1,0 +1,61 @@
+<resources>
+    <string name="cancel">Hủy</string>
+    <string name="clear_text">Xóa văn bản</string>
+
+    <string name="calendar_title">Lịch</string>
+    <string name="monthly">Theo tháng</string>
+    <string name="annual">Theo năm</string>
+    <string name="previous_month">Tháng trước</string>
+    <string name="next_month">Tháng sau</string>
+    <string name="previous_year">Năm trước</string>
+    <string name="next_year">Năm sau</string>
+    <string name="year_range">01 Thg 1 - 31 Thg 12</string>
+    <string name="month_january">Tháng 1</string>
+    <string name="month_february">Tháng 2</string>
+    <string name="month_march">Tháng 3</string>
+    <string name="month_april">Tháng 4</string>
+    <string name="month_may">Tháng 5</string>
+    <string name="month_june">Tháng 6</string>
+    <string name="month_july">Tháng 7</string>
+    <string name="month_august">Tháng 8</string>
+    <string name="month_september">Tháng 9</string>
+    <string name="month_october">Tháng 10</string>
+    <string name="month_november">Tháng 11</string>
+    <string name="month_december">Tháng 12</string>
+    <string name="month_short_january">Thg 1</string>
+    <string name="month_short_february">Thg 2</string>
+    <string name="month_short_march">Thg 3</string>
+    <string name="month_short_april">Thg 4</string>
+    <string name="month_short_may">Thg 5</string>
+    <string name="month_short_june">Thg 6</string>
+    <string name="month_short_july">Thg 7</string>
+    <string name="month_short_august">Thg 8</string>
+    <string name="month_short_september">Thg 9</string>
+    <string name="month_short_october">Thg 10</string>
+    <string name="month_short_november">Thg 11</string>
+    <string name="month_short_december">Thg 12</string>
+    <string name="day_short_monday">T2</string>
+    <string name="day_short_tuesday">T3</string>
+    <string name="day_short_wednesday">T4</string>
+    <string name="day_short_thursday">T5</string>
+    <string name="day_short_friday">T6</string>
+    <string name="day_short_saturday">T7</string>
+    <string name="day_short_sunday">CN</string>
+
+    <string name="tab_tasks">Nhiệm vụ</string>
+    <string name="tab_calendar">Lịch</string>
+    <string name="tab_report">Báo cáo</string>
+    <string name="tab_settings">Khác</string>
+
+    <string name="settings_title">Cài đặt</string>
+    <string name="version">Phiên bản %1$s</string>
+    <string name="language">Ngôn ngữ</string>
+    <string name="theme">Giao diện</string>
+    <string name="theme_system">Theo hệ thống</string>
+    <string name="theme_light">Sáng</string>
+    <string name="theme_dark">Tối</string>
+    <string name="color_scheme">Bảng màu</string>
+    <string name="color_scheme_sunset">Hoàng hôn</string>
+    <string name="color_scheme_sky_blue">Xanh da trời</string>
+    <string name="color_scheme_system_default">Mặc định hệ thống</string>
+</resources>

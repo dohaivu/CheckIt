@@ -1,0 +1,127 @@
+name: Release APK
+
+on:
+  push:
+    tags:
+      - "*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-apk-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release-apk:
+    name: Build release APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Prepare release version
+        run: |
+          VERSION_NAME="${GITHUB_REF_NAME#v}"
+          echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
+
+      - name: Decode release keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          test -n "$ANDROID_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_KEY_ALIAS"
+          test -n "$ANDROID_KEY_PASSWORD"
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/spendwise-release.jks"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/spendwise-release.jks" >> "$GITHUB_ENV"
+          echo "ANDROID_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "ANDROID_KEY_ALIAS=$ANDROID_KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD" >> "$GITHUB_ENV"
+
+      - name: Prepare Google services config
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            printf '%s' "$GOOGLE_SERVICES_JSON" > androidApp/google-services.json
+          else
+            cat > androidApp/google-services.json <<'JSON'
+          {
+            "project_info": {
+              "project_number": "000000000000",
+              "project_id": "spendwise-release",
+              "storage_bucket": "spendwise-release.appspot.com"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+                  "android_client_info": {
+                    "package_name": "com.aimpact.app.checkit"
+                  }
+                },
+                "oauth_client": [],
+                "api_key": [
+                  {
+                    "current_key": "dummy"
+                  }
+                ],
+                "services": {
+                  "appinvite_service": {
+                    "other_platform_oauth_client": []
+                  }
+                }
+              }
+            ],
+            "configuration_version": "1"
+          }
+          JSON
+          fi
+
+      - name: Build release APK
+        run: ./gradlew :androidApp:assembleRelease --no-configuration-cache
+
+      - name: Prepare APK artifact
+        run: |
+          mkdir -p release-apk
+          APK_PATH="$(find androidApp/build/outputs/apk/release -name '*.apk' ! -name '*unsigned*' | head -n 1)"
+          test -n "$APK_PATH"
+          cp "$APK_PATH" "release-apk/SpendWise-${GITHUB_REF_NAME}.apk"
+          echo "APK_FILE=release-apk/SpendWise-${GITHUB_REF_NAME}.apk" >> "$GITHUB_ENV"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SpendWise-${{ github.ref_name }}-apk
+          path: ${{ env.APK_FILE }}
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "$APK_FILE" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "$APK_FILE" \
+              --title "$GITHUB_REF_NAME" \
+              --notes "Android APK release for $GITHUB_REF_NAME."
+          fi
