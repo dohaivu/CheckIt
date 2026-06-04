@@ -21,6 +21,8 @@ import kotlin.time.Clock
 interface CheckItRepository {
     fun observeTaskBoard(): Flow<TaskBoard>
     suspend fun ensureDefaultTaskData()
+    suspend fun addList(input: TaskListWriteInput): Long
+    suspend fun updateList(listId: Long, input: TaskListWriteInput)
     suspend fun addTask(input: TaskWriteInput): Long
     suspend fun updateTask(taskId: Long, input: TaskWriteInput)
     suspend fun trashTask(taskId: Long)
@@ -29,6 +31,12 @@ interface CheckItRepository {
     suspend fun updateNote(noteId: Long, input: NoteWriteInput)
     suspend fun trashNote(noteId: Long)
 }
+
+data class TaskListWriteInput(
+    val name: String,
+    val color: String,
+    val icon: String
+)
 
 data class TaskWriteInput(
     val listId: Long,
@@ -158,6 +166,20 @@ class RoomCheckItRepository(
         dao.insertFilter(TaskFilterEntity(name = "Completed", icon = "TaskAlt", color = "#059669", status = TaskStatus.Completed.name, sortOrder = 1))
         dao.insertFilter(TaskFilterEntity(name = "High priority", icon = "PriorityHigh", color = "#DC2626", priority = TaskPriority.High.name, sortOrder = 2))
         dao.insertFilter(TaskFilterEntity(name = "Trashed", icon = "Delete", color = "#6B7280", includeTrashed = true, sortOrder = 3))
+    }
+
+    override suspend fun addList(input: TaskListWriteInput): Long =
+        dao.insertList(
+            TaskListEntity(
+                name = input.name,
+                color = input.color,
+                icon = input.icon,
+                sortOrder = dao.nextListSortOrder()
+            )
+        )
+
+    override suspend fun updateList(listId: Long, input: TaskListWriteInput) {
+        dao.updateList(listId = listId, name = input.name, color = input.color, icon = input.icon)
     }
 
     override suspend fun addTask(input: TaskWriteInput): Long {

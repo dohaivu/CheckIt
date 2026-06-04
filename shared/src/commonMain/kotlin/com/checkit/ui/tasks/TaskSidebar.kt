@@ -15,7 +15,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -41,7 +45,9 @@ internal fun TaskSidebar(
     selectedTagId: Long?,
     onListClick: (Long) -> Unit,
     onFilterClick: (Long) -> Unit,
-    onTagClick: (Long) -> Unit
+    onTagClick: (Long) -> Unit,
+    onAddListClick: () -> Unit,
+    onEditListClick: (TaskList) -> Unit
 ) {
     Surface(
         modifier = Modifier.width(260.dp).fillMaxHeight(),
@@ -51,14 +57,40 @@ internal fun TaskSidebar(
             modifier = Modifier.fillMaxSize().padding(10.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            item { SidebarHeader("Lists") }
+            item {
+                SidebarHeader(
+                    text = "Lists",
+                    action = {
+                        IconButton(onClick = onAddListClick, modifier = Modifier.size(28.dp)) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Add list",
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                )
+            }
             items(lists, key = { "list-${it.id}" }) { list ->
                 SidebarItem(
                     title = list.name,
                     icon = materialIcon(list.icon),
                     color = list.color.toColor(),
                     selected = selectedListId == list.id,
-                    onClick = { onListClick(list.id) }
+                    onClick = { onListClick(list.id) },
+                    trailing = {
+                        IconButton(
+                            onClick = { onEditListClick(list) },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit ${list.name}",
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 )
             }
             item {
@@ -92,13 +124,24 @@ internal fun TaskSidebar(
 }
 
 @Composable
-private fun SidebarHeader(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-    )
+private fun SidebarHeader(
+    text: String,
+    action: (@Composable () -> Unit)? = null
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f)
+        )
+        action?.invoke()
+    }
 }
 
 @Composable
@@ -107,7 +150,8 @@ private fun SidebarItem(
     icon: ImageVector,
     color: Color,
     selected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    trailing: (@Composable () -> Unit)? = null
 ) {
     val background = if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
     Row(
@@ -125,7 +169,9 @@ private fun SidebarItem(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+            modifier = Modifier.weight(1f)
         )
+        trailing?.invoke()
     }
 }

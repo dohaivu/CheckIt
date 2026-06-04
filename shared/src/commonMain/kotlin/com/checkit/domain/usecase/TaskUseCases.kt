@@ -2,6 +2,7 @@ package com.checkit.domain.usecase
 
 import com.checkit.data.CheckItRepository
 import com.checkit.data.NoteWriteInput
+import com.checkit.data.TaskListWriteInput
 import com.checkit.data.TaskWriteInput
 import com.checkit.domain.DueDatePreset
 import com.checkit.domain.NoteItem
@@ -25,6 +26,19 @@ class EnsureDefaultTaskDataUseCase(
     private val repository: CheckItRepository
 ) {
     suspend operator fun invoke() = repository.ensureDefaultTaskData()
+}
+
+class AddTaskListUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(input: TaskListWriteInput): Long = repository.addList(input)
+}
+
+class UpdateTaskListUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(listId: Long, input: TaskListWriteInput) =
+        repository.updateList(listId, input)
 }
 
 class AddTaskUseCase(

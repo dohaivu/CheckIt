@@ -22,6 +22,7 @@ data class TaskUiState(
     val visibleTasks: List<TaskItem> = emptyList(),
     val visibleNotes: List<NoteItem> = emptyList(),
     val editor: TaskEditorState? = null,
+    val listEditor: ListEditorState? = null,
     val isLoading: Boolean = true,
     val message: String? = null
 ) {
@@ -70,6 +71,37 @@ enum class EditorMode {
     Add,
     View,
     Edit
+}
+
+data class ListEditorState(
+    val mode: EditorMode,
+    val listId: Long? = null,
+    val name: String = "",
+    val color: String = ListEditorDefaults.Colors.first(),
+    val icon: String = ListEditorDefaults.Icons.first()
+)
+
+object ListEditorDefaults {
+    val Colors: List<String> = listOf(
+        "#2563EB",
+        "#7C3AED",
+        "#059669",
+        "#DC2626",
+        "#CA8A04",
+        "#0891B2",
+        "#DB2777",
+        "#64748B"
+    )
+    val Icons: List<String> = listOf(
+        "Inbox",
+        "Home",
+        "Work",
+        "TaskAlt",
+        "Today",
+        "Schedule",
+        "Notes",
+        "PriorityHigh"
+    )
 }
 
 enum class RepeatPreset(

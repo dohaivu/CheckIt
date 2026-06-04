@@ -59,7 +59,9 @@ internal fun TaskScreen(
                     onTagClick = { tagId ->
                         viewModel.selectTag(tagId)
                         scope.launch { drawerState.close() }
-                    }
+                    },
+                    onAddListClick = { viewModel.openNewList() },
+                    onEditListClick = { list -> viewModel.openEditList(list) }
                 )
             }
         }
@@ -140,6 +142,17 @@ internal fun TaskScreen(
             onNoteContentChange = viewModel::updateNoteContent,
             onNoteDateChange = viewModel::updateNoteDate,
             onNoteTagToggle = viewModel::toggleNoteTag
+        )
+    }
+
+    state.listEditor?.let { listEditor ->
+        TaskListEditorSheet(
+            editor = listEditor,
+            onDismiss = viewModel::dismissListEditor,
+            onSave = viewModel::saveListEditor,
+            onNameChange = viewModel::updateListEditorName,
+            onColorChange = viewModel::updateListEditorColor,
+            onIconChange = viewModel::updateListEditorIcon
         )
     }
 }

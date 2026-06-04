@@ -77,6 +77,12 @@ interface CheckItDao {
     @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM notes WHERE listId = :listId")
     suspend fun nextNoteSortOrder(listId: Long): Int
 
+    @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM task_lists")
+    suspend fun nextListSortOrder(): Int
+
+    @Query("UPDATE task_lists SET name = :name, color = :color, icon = :icon WHERE id = :listId")
+    suspend fun updateList(listId: Long, name: String, color: String, icon: String)
+
     @Query(
         """
         UPDATE tasks

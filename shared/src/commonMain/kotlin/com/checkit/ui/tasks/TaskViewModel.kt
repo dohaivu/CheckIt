@@ -3,13 +3,16 @@ package com.checkit.ui.tasks
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.checkit.data.NoteWriteInput
+import com.checkit.data.TaskListWriteInput
 import com.checkit.data.TaskWriteInput
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
+import com.checkit.domain.TaskList
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.usecase.AddNoteUseCase
+import com.checkit.domain.usecase.AddTaskListUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
@@ -19,8 +22,10 @@ import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.TaskBoardSelection
 import com.checkit.domain.usecase.UpdateNoteUseCase
+import com.checkit.domain.usecase.UpdateTaskListUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
 import com.checkit.ui.EditorMode
+import com.checkit.ui.ListEditorState
 import com.checkit.ui.RepeatPreset
 import com.checkit.ui.TaskEditorState
 import com.checkit.ui.TaskUiState
@@ -45,7 +50,9 @@ class TaskViewModel(
     private val completeTask: CompleteTaskUseCase,
     private val addNote: AddNoteUseCase,
     private val updateNote: UpdateNoteUseCase,
-    private val deleteNote: DeleteNoteUseCase
+    private val deleteNote: DeleteNoteUseCase,
+    private val addTaskList: AddTaskListUseCase,
+    private val updateTaskList: UpdateTaskListUseCase
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(TaskUiState())
     val uiState: StateFlow<TaskUiState> = _uiState.asStateFlow()
@@ -158,6 +165,62 @@ class TaskViewModel(
         _uiState.update { it.copy(editor = null) }
     }
 
+    fun openNewList() {
+        _uiState.update { it.copy(listEditor = ListEditorState(mode = EditorMode.Add)) }
+    }
+
+    fun openEditList(list: TaskList) {
+        _uiState.update {
+            it.copy(
+                listEditor = ListEditorState(
+                    mode = EditorMode.Edit,
+                    listId = list.id,
+                    name = list.name,
+                    color = list.color,
+                    icon = list.icon
+                )
+            )
+        }
+    }
+
+    fun dismissListEditor() {
+        _uiState.update { it.copy(listEditor = null) }
+    }
+
+    fun updateListEditorName(name: String) = updateListEditor { it.copy(name = name) }
+    fun updateListEditorColor(color: String) = updateListEditor { it.copy(color = color) }
+    fun updateListEditorIcon(icon: String) = updateListEditor { it.copy(icon = icon) }
+
+    fun saveListEditor() {
+        val form = _uiState.value.listEditor ?: return
+        if (form.name.isBlank()) {
+            showMessage("Add a list name")
+            return
+        }
+        val input = TaskListWriteInput(
+            name = form.name.trim(),
+            color = form.color,
+            icon = form.icon
+        )
+        viewModelScope.launch {
+            val savedId = if (form.mode == EditorMode.Add) {
+                addTaskList(input)
+            } else {
+                val listId = form.listId ?: return@launch
+                updateTaskList(listId, input)
+                listId
+            }
+            _uiState.update {
+                it.copy(
+                    listEditor = null,
+                    selectedListId = savedId,
+                    selectedFilterId = null,
+                    selectedTagId = null
+                ).refreshVisibleItems()
+            }
+        }
+    }
+
     fun updateTaskName(name: String) = updateTaskForm { it.copy(name = name) }
     fun updateTaskDescription(description: String) = updateTaskForm { it.copy(description = description) }
     fun updateTaskDueDate(dueDate: LocalDate?) = updateTaskForm { it.copy(dueDate = dueDate) }
@@ -265,6 +328,13 @@ class TaskViewModel(
         _uiState.update { state ->
             val form = state.editor as? TaskEditorState.NoteForm ?: return@update state
             state.copy(editor = transform(form))
+        }
+    }
+
+    private fun updateListEditor(transform: (ListEditorState) -> ListEditorState) {
+        _uiState.update { state ->
+            val form = state.listEditor ?: return@update state
+            state.copy(listEditor = transform(form))
         }
     }
 
