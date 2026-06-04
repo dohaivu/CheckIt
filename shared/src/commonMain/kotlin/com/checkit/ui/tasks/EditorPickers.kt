@@ -5,8 +5,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,21 +34,19 @@ internal fun SectionLabel(text: String) {
 internal fun ColorPicker(
     colors: List<String>,
     selected: String,
-    onSelect: (String) -> Unit,
-    columns: Int = 8
+    onSelect: (String) -> Unit
 ) {
-    val rows = colors.chunked(columns)
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        rows.forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                row.forEach { hex ->
-                    ColorSwatch(
-                        color = hex.toColor(),
-                        isSelected = hex.equals(selected, ignoreCase = true),
-                        onClick = { onSelect(hex) }
-                    )
-                }
-            }
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        colors.forEach { hex ->
+            ColorSwatch(
+                color = hex.toColor(),
+                isSelected = hex.equals(selected, ignoreCase = true),
+                onClick = { onSelect(hex) }
+            )
         }
     }
 }
@@ -64,7 +62,7 @@ private fun ColorSwatch(
             .size(36.dp)
             .background(color, CircleShape)
             .border(
-                width = if (isSelected) 2.dp else 0.dp,
+                width = 0.dp,
                 color = MaterialTheme.colorScheme.onSurface,
                 shape = CircleShape
             )
@@ -87,36 +85,34 @@ internal fun IconPicker(
     icons: List<String>,
     selected: String,
     tint: Color,
-    onSelect: (String) -> Unit,
-    columns: Int = 4
+    onSelect: (String) -> Unit
 ) {
-    val rows = icons.chunked(columns)
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        rows.forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                row.forEach { iconName ->
-                    val isSelected = iconName == selected
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .background(
-                                color = if (isSelected) {
-                                    MaterialTheme.colorScheme.primaryContainer
-                                } else {
-                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
-                                },
-                                shape = RoundedCornerShape(10.dp)
-                            )
-                            .clickable { onSelect(iconName) },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = materialIcon(iconName),
-                            contentDescription = iconName,
-                            tint = tint
-                        )
-                    }
-                }
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        icons.forEach { iconName ->
+            val isSelected = iconName == selected
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(
+                        color = if (isSelected) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+                        },
+                        shape = RoundedCornerShape(10.dp)
+                    )
+                    .clickable { onSelect(iconName) },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = materialIcon(iconName),
+                    contentDescription = iconName,
+                    tint = tint
+                )
             }
         }
     }
