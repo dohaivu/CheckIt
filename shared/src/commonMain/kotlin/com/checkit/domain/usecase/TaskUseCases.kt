@@ -5,6 +5,8 @@ import com.checkit.data.NoteWriteInput
 import com.checkit.data.TaskListWriteInput
 import com.checkit.data.TaskTagWriteInput
 import com.checkit.data.TaskWriteInput
+import com.checkit.domain.DailyPlan
+import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DueDatePreset
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
@@ -21,6 +23,12 @@ class ObserveTaskBoardUseCase(
     private val repository: CheckItRepository
 ) {
     operator fun invoke(): Flow<TaskBoard> = repository.observeTaskBoard()
+}
+
+class ObserveDailyPlansUseCase(
+    private val repository: CheckItRepository
+) {
+    operator fun invoke(): Flow<List<DailyPlan>> = repository.observeDailyPlans()
 }
 
 class EnsureDefaultTaskDataUseCase(
@@ -84,6 +92,47 @@ class CompleteTaskUseCase(
     private val repository: CheckItRepository
 ) {
     suspend operator fun invoke(taskId: Long) = repository.completeTask(taskId)
+}
+
+class AddTaskToDailyPlanUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(date: LocalDate, task: TaskItem): Long =
+        repository.addTaskToDailyPlan(date, task)
+}
+
+class AddManualDoneToDailyPlanUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(
+        date: LocalDate,
+        title: String,
+        note: String?,
+        startTimeMinutes: Int?,
+        endTimeMinutes: Int?
+    ): Long =
+        repository.addManualDoneToDailyPlan(date, title, note, startTimeMinutes, endTimeMinutes)
+}
+
+class AddNoteToDailyPlanUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(date: LocalDate, note: String): Long =
+        repository.addNoteToDailyPlan(date, note)
+}
+
+class UpdateDailyPlanItemStatusUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(itemId: Long, status: DailyPlanItemStatus) =
+        repository.updateDailyPlanItemStatus(itemId, status)
+}
+
+class UpdateDailyPlanItemTimeUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(itemId: Long, startTimeMinutes: Int?, endTimeMinutes: Int?) =
+        repository.updateDailyPlanItemTime(itemId, startTimeMinutes, endTimeMinutes)
 }
 
 class AddNoteUseCase(

@@ -59,13 +59,16 @@ internal fun TaskAgendaView(
     showListName: Boolean,
     onTaskClick: (TaskItem) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
+    dayLimit: Int? = null,
     modifier: Modifier = Modifier
 ) {
     val today = today()
     val listById = remember(lists) { lists.associateBy { it.id } }
     val tasksByDate = remember(tasks) { tasks.filter { it.dueDate != null }.groupBy { it.dueDate } }
     val notesByDate = remember(notes) { notes.groupBy { it.date } }
-    val state = rememberLazyListState(initialFirstVisibleItemIndex = TodayIndex)
+    val boundedDayCount = dayLimit?.coerceAtLeast(1)
+    val initialIndex = if (boundedDayCount == null) TodayIndex else 0
+    val state = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
     val scope = rememberCoroutineScope()
 
     Box(modifier.fillMaxSize()) {
@@ -76,10 +79,10 @@ internal fun TaskAgendaView(
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             items(
-                count = AgendaDayCount,
-                key = { index -> "agenda-day-${today.plus(index - TodayIndex, DateTimeUnit.DAY)}" }
+                count = boundedDayCount ?: AgendaDayCount,
+                key = { index -> "agenda-day-${today.plus(index - initialIndex, DateTimeUnit.DAY)}" }
             ) { index ->
-                val date = today.plus(index - TodayIndex, DateTimeUnit.DAY)
+                val date = today.plus(index - initialIndex, DateTimeUnit.DAY)
                 AgendaDaySection(
                     date = date,
                     today = today,
@@ -94,7 +97,7 @@ internal fun TaskAgendaView(
         }
 
         FilledTonalButton(
-            onClick = { scope.launch { state.animateScrollToItem(TodayIndex) } },
+            onClick = { scope.launch { state.animateScrollToItem(initialIndex) } },
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(16.dp)

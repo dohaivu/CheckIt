@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckBox
+import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Notifications
@@ -187,7 +190,7 @@ private fun TaskTitleRow(
 @Composable
 private fun TaskStatusIcon(status: TaskStatus) {
     Icon(
-        imageVector = if (status == TaskStatus.Completed) Icons.Default.CheckCircle else Icons.Default.TaskAlt,
+        imageVector = if (status == TaskStatus.Completed) Icons.Default.CheckBox else Icons.Default.CheckBoxOutlineBlank,
         contentDescription = null,
         tint = if (status == TaskStatus.Completed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.size(22.dp)

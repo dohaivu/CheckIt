@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
@@ -50,7 +52,9 @@ import com.checkit.ui.isSameMonth
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.shortName
 import com.checkit.ui.TaskListDisplayType
+import com.checkit.ui.myday.DailyPlanCard
 import com.checkit.ui.tasks.TaskListView
+import com.checkit.ui.today
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
@@ -70,7 +74,13 @@ internal fun CalendarScreen(
 ) {
     val tasksForDate = state.tasksForDate(state.selectedDate)
     val notesForDate = state.notesForDate(state.selectedDate)
-    val hasItemsForDate = tasksForDate.isNotEmpty() || notesForDate.isNotEmpty()
+    val showDailyPlan = state.selectedDate <= today()
+    val dailyPlanItems = state.dailyPlanForDate(state.selectedDate)?.items.orEmpty()
+    val hasItemsForDate = if (showDailyPlan) {
+        dailyPlanItems.isNotEmpty()
+    } else {
+        tasksForDate.isNotEmpty() || notesForDate.isNotEmpty()
+    }
     var listDisplayType by remember { mutableStateOf(TaskListDisplayType.Brief) }
 
     Scaffold(
@@ -112,23 +122,34 @@ internal fun CalendarScreen(
             )
             SelectedDateHeader(
                 date = state.selectedDate,
-                taskCount = tasksForDate.size,
-                noteCount = notesForDate.size
+                taskCount = if (showDailyPlan) dailyPlanItems.size else tasksForDate.size,
+                noteCount = if (showDailyPlan) 0 else notesForDate.size
             )
             if (hasItemsForDate) {
-                TaskListView(
-                    tasks = tasksForDate,
-                    notes = notesForDate,
-                    lists = state.board.lists,
-                    showListName = true,
-                    displayType = listDisplayType,
-                    onDisplayTypeChange = { listDisplayType = it },
-                    onTaskClick = onTaskClick,
-                    onNoteClick = onNoteClick,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                )
+                if (showDailyPlan) {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(dailyPlanItems, key = { it.id }) { item ->
+                            DailyPlanCard(item = item, onToggleDone = { })
+                        }
+                    }
+                } else {
+                    TaskListView(
+                        tasks = tasksForDate,
+                        notes = notesForDate,
+                        lists = state.board.lists,
+                        showListName = true,
+                        displayType = listDisplayType,
+                        onDisplayTypeChange = { listDisplayType = it },
+                        onTaskClick = onTaskClick,
+                        onNoteClick = onNoteClick,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                    )
+                }
             } else {
                 Box(
                     modifier = Modifier
@@ -137,7 +158,7 @@ internal fun CalendarScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "No tasks or notes for this day",
+                        text = if (showDailyPlan) "No My Day history for this day" else "No tasks or notes for this day",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

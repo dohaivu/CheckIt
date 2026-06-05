@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -36,11 +37,14 @@ import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.tab_calendar
+import checkit.shared.generated.resources.tab_my_day
 import checkit.shared.generated.resources.tab_tasks
 import checkit.shared.generated.resources.tab_report
 import checkit.shared.generated.resources.tab_settings
 import com.checkit.ui.calendar.CalendarScreen
 import com.checkit.ui.calendar.CalendarViewModel
+import com.checkit.ui.myday.MyDayScreen
+import com.checkit.ui.myday.MyDayViewModel
 import com.checkit.ui.tasks.TaskScreen
 import com.checkit.ui.tasks.TaskViewModel
 import com.checkit.ui.localization.AppLocaleProvider
@@ -64,6 +68,9 @@ private data object Routes {
     data object Calendar : NavKey
 
     @Serializable
+    data object MyDay : NavKey
+
+    @Serializable
     data object Report : NavKey
 
     @Serializable
@@ -73,6 +80,7 @@ private data object Routes {
 @Composable
 fun CheckItApp(
     taskViewModel: TaskViewModel = koinViewModel(),
+    myDayViewModel: MyDayViewModel = koinViewModel(),
     calendarViewModel: CalendarViewModel = koinViewModel(),
     reportViewModel: ReportViewModel = koinViewModel(),
     settingsViewModel: SettingsViewModel = koinViewModel()
@@ -83,6 +91,9 @@ fun CheckItApp(
     }.collectAsState(null)
     val settingsMessage by remember(settingsViewModel) {
         settingsViewModel.uiState.map { it.message }.distinctUntilChanged()
+    }.collectAsState(null)
+    val myDayMessage by remember(myDayViewModel) {
+        myDayViewModel.uiState.map { it.message }.distinctUntilChanged()
     }.collectAsState(null)
     val appLanguage by remember(settingsViewModel) {
         settingsViewModel.uiState.map { it.language }.distinctUntilChanged()
@@ -99,10 +110,13 @@ fun CheckItApp(
     val selectedTab = currentRoute.asTab()
     val taskUiState by taskViewModel.uiState.collectAsState()
 
-    LaunchedEffect(taskMessage, settingsMessage) {
-        val message = taskMessage ?: settingsMessage ?: return@LaunchedEffect
+    LaunchedEffect(taskMessage, myDayMessage, settingsMessage) {
+        val message = taskMessage ?: myDayMessage ?: settingsMessage ?: return@LaunchedEffect
         snackbarHostState.showSnackbar(message)
 
+        if (myDayMessage != null) {
+            myDayViewModel.consumeMessage()
+        }
         if (settingsMessage != null) {
             settingsViewModel.consumeMessage()
         }
@@ -178,6 +192,12 @@ fun CheckItApp(
                                 Routes.Task -> {
                                     TaskScreen(taskUiState, taskViewModel)
                                 }
+                                Routes.MyDay -> {
+                                    MyDayScreen(
+                                        viewModel = myDayViewModel,
+                                        onTaskClick = taskViewModel::openTask
+                                    )
+                                }
                                 Routes.Calendar -> {
                                     val calendarState by calendarViewModel.uiState.collectAsState()
                                     CalendarScreen(
@@ -241,6 +261,7 @@ fun CheckItApp(
 
 private fun NavKey.asTab(): CheckItTab? = when (this) {
     Routes.Task -> CheckItTab.Task
+    Routes.MyDay -> CheckItTab.MyDay
     Routes.Calendar -> CheckItTab.Calendar
     Routes.Report -> CheckItTab.Report
     Routes.Settings -> CheckItTab.Settings
@@ -249,6 +270,7 @@ private fun NavKey.asTab(): CheckItTab? = when (this) {
 
 private fun CheckItTab.route(): NavKey = when (this) {
     CheckItTab.Task -> Routes.Task
+    CheckItTab.MyDay -> Routes.MyDay
     CheckItTab.Calendar -> Routes.Calendar
     CheckItTab.Report -> Routes.Report
     CheckItTab.Settings -> Routes.Settings
@@ -256,6 +278,7 @@ private fun CheckItTab.route(): NavKey = when (this) {
 
 private fun CheckItTab.icon() = when (this) {
     CheckItTab.Task -> Icons.Default.Add
+    CheckItTab.MyDay -> Icons.Default.Today
     CheckItTab.Calendar -> Icons.Default.CalendarMonth
     CheckItTab.Report -> Icons.Default.BarChart
     CheckItTab.Settings -> Icons.Default.MoreHoriz
@@ -264,6 +287,7 @@ private fun CheckItTab.icon() = when (this) {
 @Composable
 private fun CheckItTab.label(): String = when (this) {
     CheckItTab.Task -> stringResource(Res.string.tab_tasks)
+    CheckItTab.MyDay -> stringResource(Res.string.tab_my_day)
     CheckItTab.Calendar -> stringResource(Res.string.tab_calendar)
     CheckItTab.Report -> stringResource(Res.string.tab_report)
     CheckItTab.Settings -> stringResource(Res.string.tab_settings)

@@ -2,6 +2,7 @@ package com.checkit.ui
 
 enum class CheckItTab {
     Task,
+    MyDay,
     Calendar,
     Report,
     Settings
@@ -69,5 +70,4 @@ enum class AppColorSchemeMode {
         }
     }
 }
-
 

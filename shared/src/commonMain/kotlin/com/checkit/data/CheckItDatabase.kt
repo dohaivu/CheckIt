@@ -114,6 +114,54 @@ data class NoteEntity(
 )
 
 @Entity(
+    tableName = "daily_plans",
+    indices = [Index(value = ["dateEpochDays"], unique = true)]
+)
+data class DailyPlanEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0L,
+    val dateEpochDays: Int,
+    val createdAtMillis: Long,
+    val updatedAtMillis: Long
+)
+
+@Entity(
+    tableName = "daily_plan_items",
+    foreignKeys = [
+        ForeignKey(
+            entity = DailyPlanEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["dailyPlanId"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = TaskEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["taskId"],
+            onDelete = ForeignKey.SET_NULL
+        )
+    ],
+    indices = [Index("dailyPlanId"), Index("taskId"), Index("status")]
+)
+data class DailyPlanItemEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0L,
+    val dailyPlanId: Long,
+    val taskId: Long? = null,
+    val titleSnapshot: String,
+    val note: String? = null,
+    val source: String,
+    val status: String,
+    val sortOrder: Int,
+    val plannedStartTimeMinutes: Int? = null,
+    val plannedEndTimeMinutes: Int? = null,
+    val actualStartTimeMinutes: Int? = null,
+    val actualEndTimeMinutes: Int? = null,
+    val addedAtMillis: Long,
+    val completedAtMillis: Long? = null
+)
+
+@Entity(
     tableName = "task_tags",
     primaryKeys = ["taskId", "tagId"],
     foreignKeys = [
@@ -213,13 +261,15 @@ data class TaskFilterEntity(
         TaskEntity::class,
         SubTaskEntity::class,
         NoteEntity::class,
+        DailyPlanEntity::class,
+        DailyPlanItemEntity::class,
         TagEntity::class,
         TaskTagEntity::class,
         NoteTagEntity::class,
         TaskReminderEntity::class,
         TaskFilterEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)

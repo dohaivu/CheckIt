@@ -43,6 +43,7 @@
     <string name="day_short_sunday">Sun</string>
 
     <string name="tab_tasks">Tasks</string>
+    <string name="tab_my_day">My Day</string>
     <string name="tab_calendar">Calendar</string>
     <string name="tab_report">Report</string>
     <string name="tab_settings">Settings</string>

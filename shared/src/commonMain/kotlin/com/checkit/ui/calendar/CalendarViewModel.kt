@@ -3,6 +3,7 @@ package com.checkit.ui.calendar
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
+import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.ui.CalendarUiState
 import com.checkit.ui.components.ReportPeriod
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DateTimeUnit
@@ -22,6 +24,7 @@ import kotlinx.datetime.plus
 
 class CalendarViewModel(
     private val observeTaskBoard: ObserveTaskBoardUseCase,
+    private val observeDailyPlans: ObserveDailyPlansUseCase,
     private val ensureDefaultTaskData: EnsureDefaultTaskDataUseCase
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(CalendarUiState())
@@ -30,12 +33,14 @@ class CalendarViewModel(
     init {
         viewModelScope.launch {
             ensureDefaultTaskData()
-            observeTaskBoard()
+            combine(observeTaskBoard(), observeDailyPlans()) { board, dailyPlans ->
+                board to dailyPlans
+            }
                 .catch { error ->
                     _uiState.update { it.copy() }
                 }
-                .collect { board ->
-                    _uiState.update { it.copy(board = board) }
+                .collect { (board, dailyPlans) ->
+                    _uiState.update { it.copy(board = board, dailyPlans = dailyPlans) }
                 }
         }
     }
