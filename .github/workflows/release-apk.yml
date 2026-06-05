@@ -3,7 +3,8 @@ name: Release APK
 on:
   push:
     tags:
-      - "*"
+      - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -20,6 +21,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK
         uses: actions/setup-java@v4
@@ -34,12 +37,13 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Prepare release version
+        shell: bash
         run: |
           VERSION_NAME="${GITHUB_REF_NAME#v}"
           echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
-          echo "VERSION_CODE=$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
 
       - name: Decode release keystore
+        shell: bash
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -50,13 +54,14 @@ jobs:
           test -n "$ANDROID_KEYSTORE_PASSWORD"
           test -n "$ANDROID_KEY_ALIAS"
           test -n "$ANDROID_KEY_PASSWORD"
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/spendwise-release.jks"
-          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/spendwise-release.jks" >> "$GITHUB_ENV"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/checkit-release.jks"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/checkit-release.jks" >> "$GITHUB_ENV"
           echo "ANDROID_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
           echo "ANDROID_KEY_ALIAS=$ANDROID_KEY_ALIAS" >> "$GITHUB_ENV"
           echo "ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD" >> "$GITHUB_ENV"
 
       - name: Prepare Google services config
+        shell: bash
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
@@ -67,8 +72,8 @@ jobs:
           {
             "project_info": {
               "project_number": "000000000000",
-              "project_id": "spendwise-release",
-              "storage_bucket": "spendwise-release.appspot.com"
+              "project_id": "checkit-release",
+              "storage_bucket": "checkit-release.appspot.com"
             },
             "client": [
               {
@@ -100,21 +105,24 @@ jobs:
         run: ./gradlew :androidApp:assembleRelease --no-configuration-cache
 
       - name: Prepare APK artifact
+        shell: bash
         run: |
           mkdir -p release-apk
           APK_PATH="$(find androidApp/build/outputs/apk/release -name '*.apk' ! -name '*unsigned*' | head -n 1)"
           test -n "$APK_PATH"
-          cp "$APK_PATH" "release-apk/SpendWise-${GITHUB_REF_NAME}.apk"
-          echo "APK_FILE=release-apk/SpendWise-${GITHUB_REF_NAME}.apk" >> "$GITHUB_ENV"
+          cp "$APK_PATH" "release-apk/CheckIt-${GITHUB_REF_NAME}.apk"
+          echo "APK_FILE=release-apk/CheckIt-${GITHUB_REF_NAME}.apk" >> "$GITHUB_ENV"
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SpendWise-${{ github.ref_name }}-apk
+          name: CheckIt-${{ github.ref_name }}-apk
           path: ${{ env.APK_FILE }}
           if-no-files-found: error
 
       - name: Publish GitHub Release
+        if: github.event_name == 'push'
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -123,5 +131,5 @@ jobs:
           else
             gh release create "$GITHUB_REF_NAME" "$APK_FILE" \
               --title "$GITHUB_REF_NAME" \
-              --notes "Android APK release for $GITHUB_REF_NAME."
+              --notes "Android APK release for CheckIt $VERSION_NAME."
           fi

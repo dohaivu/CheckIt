@@ -7,35 +7,50 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Notes
+import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.calendar_title
+import com.checkit.domain.NoteItem
+import com.checkit.domain.TaskItem
 import com.checkit.ui.CalendarUiState
+import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.MonthHeader
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.firstDayOfMonth
 import com.checkit.ui.isSameMonth
+import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.shortName
-import kotlinx.coroutines.launch
+import com.checkit.ui.TaskListDisplayType
+import com.checkit.ui.tasks.TaskListView
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
@@ -49,11 +64,14 @@ internal fun CalendarScreen(
     state: CalendarUiState,
     calendarViewModel: CalendarViewModel,
     onDateDoubleClick: (LocalDate) -> Unit,
+    onTaskClick: (TaskItem) -> Unit,
+    onNoteClick: (NoteItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
-
-    val transactionListState = rememberLazyListState()
-    val coroutineScope = rememberCoroutineScope()
+    val tasksForDate = state.tasksForDate(state.selectedDate)
+    val notesForDate = state.notesForDate(state.selectedDate)
+    val hasItemsForDate = tasksForDate.isNotEmpty() || notesForDate.isNotEmpty()
+    var listDisplayType by remember { mutableStateOf(TaskListDisplayType.Brief) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -85,17 +103,97 @@ internal fun CalendarScreen(
             MonthCalendar(
                 month = state.selectedMonth,
                 selectedDate = state.selectedDate,
-                onDateSelected = { date ->
-                    calendarViewModel.selectDate(date)
-                    state.calendarData.headerIndexes[date]?.let { index ->
-                        coroutineScope.launch {
-                            transactionListState.scrollToItem(index)
-                        }
-                    }
-                },
-                onDateDoubleClick = onDateDoubleClick
+                onDateSelected = calendarViewModel::selectDate,
+                onDateDoubleClick = onDateDoubleClick,
+                state = state
             )
+            AppHorizontalDivider(
+                modifier = Modifier.padding(top = 6.dp)
+            )
+            SelectedDateHeader(
+                date = state.selectedDate,
+                taskCount = tasksForDate.size,
+                noteCount = notesForDate.size
+            )
+            if (hasItemsForDate) {
+                TaskListView(
+                    tasks = tasksForDate,
+                    notes = notesForDate,
+                    lists = state.board.lists,
+                    showListName = true,
+                    displayType = listDisplayType,
+                    onDisplayTypeChange = { listDisplayType = it },
+                    onTaskClick = onTaskClick,
+                    onNoteClick = onNoteClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp, horizontal = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No tasks or notes for this day",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun SelectedDateHeader(
+    date: LocalDate,
+    taskCount: Int,
+    noteCount: Int
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = date.localizedCompactDateWithDayName(),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f)
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            CountBadge(icon = Icons.Default.TaskAlt, count = taskCount)
+            CountBadge(icon = Icons.AutoMirrored.Filled.Notes, count = noteCount)
+        }
+    }
+}
+
+@Composable
+private fun CountBadge(icon: androidx.compose.ui.graphics.vector.ImageVector, count: Int) {
+    if (count <= 0) return
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(14.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = count.toString(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -104,7 +202,8 @@ private fun MonthCalendar(
     month: LocalDate,
     selectedDate: LocalDate,
     onDateSelected: (LocalDate) -> Unit,
-    onDateDoubleClick: (LocalDate) -> Unit
+    onDateDoubleClick: (LocalDate) -> Unit,
+    state: CalendarUiState
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val colors = remember(colorScheme) {
@@ -148,7 +247,8 @@ private fun MonthCalendar(
                 selectedDate = selectedDate,
                 colors = colors,
                 onDateSelected = onDateSelected,
-                onDateDoubleClick = onDateDoubleClick
+                onDateDoubleClick = onDateDoubleClick,
+                state = state
             )
         }
     }
@@ -162,7 +262,8 @@ private fun CalendarWeekRow(
     selectedDate: LocalDate,
     colors: CalendarCellColors,
     onDateSelected: (LocalDate) -> Unit,
-    onDateDoubleClick: (LocalDate) -> Unit
+    onDateDoubleClick: (LocalDate) -> Unit,
+    state: CalendarUiState
 ) {
     Row(Modifier.fillMaxWidth()) {
         week.forEach { date ->
@@ -173,6 +274,7 @@ private fun CalendarWeekRow(
                 colors = colors,
                 onDateSelected = onDateSelected,
                 onDateDoubleClick = onDateDoubleClick,
+                markerColors = state.markerColorsForDate(date),
                 modifier = Modifier.weight(1f)
             )
         }
@@ -188,6 +290,7 @@ private fun CalendarDayCell(
     colors: CalendarCellColors,
     onDateSelected: (LocalDate) -> Unit,
     onDateDoubleClick: (LocalDate) -> Unit,
+    markerColors: List<Color>,
     modifier: Modifier = Modifier
 ) {
     val isMonthDate = date.isSameMonth(month)
@@ -197,8 +300,7 @@ private fun CalendarDayCell(
         date.dayOfWeek == DayOfWeek.SUNDAY -> colors.sunday
         else -> colors.day
     }
-    val totalColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val backgroundColor = colors.defaultBackground
+    val backgroundColor = if (isSelected) colors.selectedBackground else colors.defaultBackground
 
     Box(
         modifier = modifier
@@ -211,31 +313,50 @@ private fun CalendarDayCell(
                 onDoubleClick = { onDateDoubleClick(date) }
             )
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 2.dp, bottom = 2.dp, start = 2.dp, end = 2.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
             Text(
                 text = date.day.toString(),
-                modifier = Modifier.padding(top = 4.dp, bottom = 0.dp, start = 4.dp, end = 4.dp),
+                modifier = Modifier.fillMaxWidth(),
                 style = MaterialTheme.typography.bodyMedium,
                 color = dayColor,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                textAlign = TextAlign.Start
             )
-            if (isMonthDate) {
-                Text(
-                    text = "",
-                    modifier = Modifier.padding(end = 2.dp).fillMaxWidth(),
-                    style = MaterialTheme.typography.labelSmall.copy(color = totalColor),
-                    maxLines = 1,
-                    textAlign = TextAlign.End,
-                    autoSize = TextAutoSize.StepBased(
-                        minFontSize = 6.sp,
-                        maxFontSize = 11.sp
-                    )
-                )
+            if (isMonthDate && markerColors.isNotEmpty()) {
+                DayMarkers(colors = markerColors)
             }
         }
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun DayMarkers(colors: List<Color>) {
+    FlowRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 1.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+        maxItemsInEachRow = MaxMarkersPerRow
+    ) {
+        colors.forEach { color ->
+            Box(
+                modifier = Modifier
+                    .size(5.dp)
+                    .clip(CircleShape)
+                    .background(color)
+            )
+        }
+    }
+}
+
+private const val MaxMarkersPerRow: Int = 6
 
 private fun calendarGridDates(month: LocalDate): List<LocalDate> {
     val first = month.firstDayOfMonth()

@@ -3,6 +3,8 @@ package com.checkit.data
 import androidx.room.ConstructedBy
 import androidx.room.Database
 import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.RoomDatabase
 import androidx.room.RoomDatabaseConstructor
@@ -11,19 +13,211 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 
 @Entity(
+    tableName = "task_lists",
+)
+data class TaskListEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0L,
+    val name: String,
+    val color: String,
+    val icon: String,
+    val sortOrder: Int,
+    val isArchived: Boolean = false
+)
+
+@Entity(
+    tableName = "tags",
+    indices = [Index(value = ["name"], unique = true)]
+)
+data class TagEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0L,
+    val name: String,
+    val color: String
+)
+
+@Entity(
     tableName = "tasks",
+    foreignKeys = [
+        ForeignKey(
+            entity = TaskListEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["listId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("listId"), Index("status"), Index("priority"), Index("dueDateEpochDays")]
 )
 data class TaskEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0L,
-    val note: String,
+    val listId: Long,
+    val name: String,
+    val description: String = "",
+    val status: String,
+    val priority: String,
+    val dueDateEpochDays: Int? = null,
+    val completedDateEpochDays: Int? = null,
+    val startTimeMinutes: Int? = null,
+    val endTimeMinutes: Int? = null,
+    val durationMinutes: Int? = null,
+    val repeatRRule: String? = null,
+    val sortOrder: Int,
     val createdAtMillis: Long,
-    val updatedAtMillis: Long
+    val updatedAtMillis: Long,
+    val trashedAtMillis: Long? = null
+)
+
+@Entity(
+    tableName = "sub_tasks",
+    foreignKeys = [
+        ForeignKey(
+            entity = TaskEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["taskId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("taskId")]
+)
+data class SubTaskEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0L,
+    val taskId: Long,
+    val name: String,
+    val isCompleted: Boolean = false,
+    val sortOrder: Int
+)
+
+@Entity(
+    tableName = "notes",
+    foreignKeys = [
+        ForeignKey(
+            entity = TaskListEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["listId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("listId")]
+)
+data class NoteEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0L,
+    val listId: Long,
+    val content: String,
+    val dateEpochDays: Int,
+    val createdAtMillis: Long,
+    val editedAtMillis: Long,
+    val sortOrder: Int,
+    val trashedAtMillis: Long? = null
+)
+
+@Entity(
+    tableName = "task_tags",
+    primaryKeys = ["taskId", "tagId"],
+    foreignKeys = [
+        ForeignKey(
+            entity = TaskEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["taskId"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = TagEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["tagId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("taskId"), Index("tagId")]
+)
+data class TaskTagEntity(
+    val taskId: Long,
+    val tagId: Long
+)
+
+@Entity(
+    tableName = "note_tags",
+    primaryKeys = ["noteId", "tagId"],
+    foreignKeys = [
+        ForeignKey(
+            entity = NoteEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["noteId"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = TagEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["tagId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("noteId"), Index("tagId")]
+)
+data class NoteTagEntity(
+    val noteId: Long,
+    val tagId: Long
+)
+
+@Entity(
+    tableName = "task_reminders",
+    foreignKeys = [
+        ForeignKey(
+            entity = TaskEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["taskId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("taskId"), Index("remindAtMillis")]
+)
+data class TaskReminderEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0L,
+    val taskId: Long,
+    val remindAtMillis: Long,
+    val label: String = ""
+)
+
+@Entity(
+    tableName = "task_filters",
+    foreignKeys = [
+        ForeignKey(
+            entity = TagEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["tagId"],
+            onDelete = ForeignKey.SET_NULL
+        )
+    ],
+    indices = [Index("tagId")]
+)
+data class TaskFilterEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0L,
+    val name: String,
+    val icon: String,
+    val color: String,
+    val tagId: Long? = null,
+    val dueDatePreset: String? = null,
+    val status: String? = null,
+    val priority: String? = null,
+    val includeTrashed: Boolean = false,
+    val sortOrder: Int
 )
 
 @Database(
     entities = [
-        TaskEntity::class
+        TaskListEntity::class,
+        TaskEntity::class,
+        SubTaskEntity::class,
+        NoteEntity::class,
+        TagEntity::class,
+        TaskTagEntity::class,
+        NoteTagEntity::class,
+        TaskReminderEntity::class,
+        TaskFilterEntity::class
     ],
     version = 1,
     exportSchema = false
