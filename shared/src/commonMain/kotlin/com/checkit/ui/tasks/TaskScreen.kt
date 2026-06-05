@@ -163,8 +163,7 @@ internal fun TaskScreen(
             onDismiss = viewModel::dismissTagEditor,
             onSave = viewModel::saveTagEditor,
             onNameChange = viewModel::updateTagEditorName,
-            onColorChange = viewModel::updateTagEditorColor,
-            onIconChange = viewModel::updateTagEditorIcon
+            onColorChange = viewModel::updateTagEditorColor
         )
     }
 }

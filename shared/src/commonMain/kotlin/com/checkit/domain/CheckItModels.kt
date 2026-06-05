@@ -70,7 +70,6 @@ data class NoteItem(
 data class TaskTag(
     val id: Long,
     val name: String,
-    val icon: String,
     val color: String
 )
 

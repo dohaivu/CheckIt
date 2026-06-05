@@ -43,8 +43,7 @@ data class TaskListWriteInput(
 
 data class TaskTagWriteInput(
     val name: String,
-    val color: String,
-    val icon: String
+    val color: String
 )
 
 data class TaskWriteInput(
@@ -129,8 +128,8 @@ class RoomCheckItRepository(
                 sortOrder = 0
             )
         )
-        val workId = dao.insertTag(TagEntity(name = "Work", icon = "Work", color = "#7C3AED"))
-        val homeId = dao.insertTag(TagEntity(name = "Home", icon = "Home", color = "#059669"))
+        val workId = dao.insertTag(TagEntity(name = "Work", color = "#7C3AED"))
+        val homeId = dao.insertTag(TagEntity(name = "Home", color = "#059669"))
         val todayTaskId = dao.insertTask(
             TaskEntity(
                 listId = inboxId,
@@ -196,13 +195,12 @@ class RoomCheckItRepository(
         dao.insertTag(
             TagEntity(
                 name = input.name,
-                icon = input.icon,
                 color = input.color
             )
         )
 
     override suspend fun updateTag(tagId: Long, input: TaskTagWriteInput) {
-        dao.updateTag(tagId = tagId, name = input.name, color = input.color, icon = input.icon)
+        dao.updateTag(tagId = tagId, name = input.name, color = input.color)
     }
 
     override suspend fun isTagNameTaken(name: String, excludeTagId: Long?): Boolean =
@@ -323,7 +321,6 @@ private fun TaskListEntity.toDomain() = TaskList(
 private fun TagEntity.toDomain() = TaskTag(
     id = id,
     name = name,
-    icon = icon,
     color = color
 )
 

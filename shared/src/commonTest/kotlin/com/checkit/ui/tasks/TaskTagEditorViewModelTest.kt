@@ -41,7 +41,6 @@ class TaskTagEditorViewModelTest {
     private val existingTag = TaskTag(
         id = 42L,
         name = "Work",
-        icon = "Work",
         color = "#7C3AED"
     )
 
@@ -94,7 +93,6 @@ class TaskTagEditorViewModelTest {
         assertEquals(42L, editor.tagId)
         assertEquals("Work", editor.name)
         assertEquals("#7C3AED", editor.color)
-        assertEquals("Work", editor.icon)
     }
 
     @Test
@@ -130,7 +128,6 @@ class TaskTagEditorViewModelTest {
         viewModel.openNewTag()
         viewModel.updateTagEditorName("  Personal  ")
         viewModel.updateTagEditorColor("#059669")
-        viewModel.updateTagEditorIcon("Home")
 
         viewModel.saveTagEditor()
         dispatcher.scheduler.advanceUntilIdle()
@@ -139,7 +136,6 @@ class TaskTagEditorViewModelTest {
         val added = repository.addedTags.single()
         assertEquals("Personal", added.name)
         assertEquals("#059669", added.color)
-        assertEquals("Home", added.icon)
         val state = viewModel.uiState.value
         assertNull(state.tagEditor)
         assertEquals(repository.lastAssignedTagId, state.selectedTagId)

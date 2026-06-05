@@ -249,8 +249,7 @@ class TaskViewModel(
                     mode = EditorMode.Edit,
                     tagId = tag.id,
                     name = tag.name,
-                    color = tag.color,
-                    icon = tag.icon
+                    color = tag.color
                 )
             )
         }
@@ -262,7 +261,6 @@ class TaskViewModel(
 
     fun updateTagEditorName(name: String) = updateTagEditor { it.copy(name = name) }
     fun updateTagEditorColor(color: String) = updateTagEditor { it.copy(color = color) }
-    fun updateTagEditorIcon(icon: String) = updateTagEditor { it.copy(icon = icon) }
 
     fun saveTagEditor() {
         val form = _uiState.value.tagEditor ?: return
@@ -278,8 +276,7 @@ class TaskViewModel(
             }
             val input = TaskTagWriteInput(
                 name = trimmedName,
-                color = form.color,
-                icon = form.icon
+                color = form.color
             )
             val savedId = if (form.mode == EditorMode.Add) {
                 addTaskTag(input)

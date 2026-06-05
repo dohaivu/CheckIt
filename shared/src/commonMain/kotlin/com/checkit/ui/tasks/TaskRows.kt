@@ -1,13 +1,16 @@
 package com.checkit.ui.tasks
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
@@ -95,13 +98,7 @@ internal fun TaskRow(
                             iconTint = it.color.toColor()
                         )
                     }
-                    task.tags.forEach { tag ->
-                        CompactChip(
-                            icon = materialIcon(tag.icon),
-                            label = tag.name,
-                            iconTint = tag.color.toColor()
-                        )
-                    }
+                    task.tags.forEach { tag -> TagChip(tag = tag) }
                 }
             }
         }
@@ -142,13 +139,7 @@ internal fun NoteRow(
                                 iconTint = it.color.toColor()
                             )
                         }
-                        note.tags.forEach { tag ->
-                            CompactChip(
-                                icon = materialIcon(tag.icon),
-                                label = tag.name,
-                                iconTint = tag.color.toColor()
-                            )
-                        }
+                        note.tags.forEach { tag -> TagChip(tag = tag) }
                     }
                 }
             }
@@ -188,10 +179,10 @@ internal fun TagChip(
         onClick = onClick ?: {},
         label = { Text(tag.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         leadingIcon = {
-            Icon(
-                imageVector = materialIcon(tag.icon),
-                contentDescription = null,
-                tint = tag.color.toColor()
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .background(tag.color.toColor(), CircleShape)
             )
         }
     )

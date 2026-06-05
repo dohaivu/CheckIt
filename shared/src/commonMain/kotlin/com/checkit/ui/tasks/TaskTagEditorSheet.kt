@@ -36,8 +36,7 @@ internal fun TaskTagEditorSheet(
     onDismiss: () -> Unit,
     onSave: () -> Unit,
     onNameChange: (String) -> Unit,
-    onColorChange: (String) -> Unit,
-    onIconChange: (String) -> Unit
+    onColorChange: (String) -> Unit
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         LazyColumn(
@@ -78,15 +77,6 @@ internal fun TaskTagEditorSheet(
                     colors = TagEditorDefaults.Colors,
                     selected = editor.color,
                     onSelect = onColorChange
-                )
-            }
-            item {
-                SectionLabel("Icon")
-                IconPicker(
-                    icons = TagEditorDefaults.Icons,
-                    selected = editor.icon,
-                    tint = editor.color.toColor(),
-                    onSelect = onIconChange
                 )
             }
             item { Spacer(Modifier.height(24.dp)) }

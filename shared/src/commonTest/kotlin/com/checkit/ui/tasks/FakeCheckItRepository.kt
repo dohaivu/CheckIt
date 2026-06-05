@@ -75,7 +75,6 @@ internal class FakeCheckItRepository(
                 tags = board.tags + TaskTag(
                     id = id,
                     name = input.name,
-                    icon = input.icon,
                     color = input.color
                 )
             )
@@ -89,7 +88,7 @@ internal class FakeCheckItRepository(
             board.copy(
                 tags = board.tags.map { tag ->
                     if (tag.id == tagId) {
-                        tag.copy(name = input.name, icon = input.icon, color = input.color)
+                        tag.copy(name = input.name, color = input.color)
                     } else {
                         tag
                     }

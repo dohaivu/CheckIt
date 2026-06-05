@@ -93,8 +93,7 @@ data class TagEditorState(
     val mode: EditorMode,
     val tagId: Long? = null,
     val name: String = "",
-    val color: String = TagEditorDefaults.Colors.first(),
-    val icon: String = TagEditorDefaults.Icons.first()
+    val color: String = TagEditorDefaults.Colors.first()
 )
 
 object ListEditorDefaults {
@@ -126,20 +125,6 @@ object ListEditorDefaults {
 
 object TagEditorDefaults {
     val Colors: List<String> = ListEditorDefaults.Colors
-    val Icons: List<String> = listOf(
-        "LocalOffer",
-        "Star",
-        "Favorite",
-        "Flag",
-        "Bookmark",
-        "Lightbulb",
-        "ShoppingCart",
-        "AttachMoney",
-        "FitnessCenter",
-        "Flight",
-        "School",
-        "Restaurant"
-    )
 }
 
 enum class RepeatPreset(

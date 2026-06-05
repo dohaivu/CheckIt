@@ -3,6 +3,7 @@ package com.checkit.ui.tasks
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -126,7 +128,7 @@ internal fun TaskSidebar(
             items(tags, key = { "tag-${it.id}" }) { tag ->
                 SidebarItem(
                     title = tag.name,
-                    icon = materialIcon(tag.icon),
+                    icon = null,
                     color = tag.color.toColor(),
                     selected = selectedTagId == tag.id,
                     onClick = { onTagClick(tag.id) },
@@ -173,7 +175,7 @@ private fun SidebarHeader(
 @Composable
 private fun SidebarItem(
     title: String,
-    icon: ImageVector,
+    icon: ImageVector?,
     color: Color,
     selected: Boolean,
     onClick: () -> Unit,
@@ -189,7 +191,11 @@ private fun SidebarItem(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
+        if (icon != null) {
+            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
+        } else {
+            Box(modifier = Modifier.size(10.dp).background(color, CircleShape))
+        }
         Text(
             text = title,
             maxLines = 1,

@@ -41,7 +41,7 @@ class UseCaseTest {
 
     @Test
     fun tagAndPriorityFilterCanBeCombined() {
-        val tag = TaskTag(id = 7, name = "Work", icon = "Work", color = "#7C3AED")
+        val tag = TaskTag(id = 7, name = "Work", color = "#7C3AED")
         val board = TaskBoard(
             tasks = listOf(
                 task(id = 1, tags = listOf(tag), priority = TaskPriority.High),
@@ -66,7 +66,7 @@ class UseCaseTest {
 
     @Test
     fun tagFilterReturnsMatchingTasksAndNotes() {
-        val tag = TaskTag(id = 7, name = "Work", icon = "Work", color = "#7C3AED")
+        val tag = TaskTag(id = 7, name = "Work", color = "#7C3AED")
         val board = TaskBoard(
             tasks = listOf(
                 task(id = 1, tags = listOf(tag)),
