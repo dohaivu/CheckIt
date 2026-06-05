@@ -21,6 +21,7 @@ import com.checkit.domain.usecase.AddTaskListUseCase
 import com.checkit.domain.usecase.AddTaskTagUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
+import com.checkit.domain.usecase.CompleteNoteUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
@@ -60,6 +61,7 @@ class TaskViewModel(
     private val updateTask: UpdateTaskUseCase,
     private val deleteTask: DeleteTaskUseCase,
     private val completeTask: CompleteTaskUseCase,
+    private val completeNote: CompleteNoteUseCase,
     private val addNote: AddNoteUseCase,
     private val updateNote: UpdateNoteUseCase,
     private val deleteNote: DeleteNoteUseCase,
@@ -226,6 +228,7 @@ class TaskViewModel(
                     noteId = note.id,
                     listId = note.listId,
                     content = note.content,
+                    status = note.status,
                     date = note.date,
                     selectedTagIds = note.tags.map { it.id }.toSet()
                 )
@@ -443,11 +446,14 @@ class TaskViewModel(
         }
     }
 
-    fun completeCurrentTask() {
-        val taskId = (_uiState.value.editor as? TaskEditorState.TaskForm)?.taskId ?: return
+    fun completeCurrentItem() {
+        val editor = _uiState.value.editor ?: return
         viewModelScope.launch {
-            completeTask(taskId)
-            _uiState.update { it.copy(editor = null, message = "Task completed") }
+            when (editor) {
+                is TaskEditorState.TaskForm -> completeTask(editor.taskId ?: return@launch)
+                is TaskEditorState.NoteForm -> completeNote(editor.noteId ?: return@launch)
+            }
+            _uiState.update { it.copy(editor = null, message = "Completed") }
         }
     }
 
@@ -491,6 +497,7 @@ class TaskViewModel(
             val input = NoteWriteInput(
                 listId = form.listId,
                 content = form.content.trim(),
+                status = form.status,
                 date = form.date,
                 tagIds = form.selectedTagIds.toList()
             )
@@ -623,7 +630,9 @@ class TaskViewModel(
         selectedTagId?.let { tagId ->
             return copy(
                 visibleTasks = board.tasks.filter { task -> !task.isTrashed && task.tags.any { it.id == tagId } },
-                visibleNotes = board.notes.filter { note -> !note.isTrashed && note.tags.any { it.id == tagId } }
+                visibleNotes = board.notes.filter { note ->
+                    !note.isTrashed && note.status != TaskStatus.Completed && note.tags.any { it.id == tagId }
+                }
             )
         }
         val selection = selectedFilter?.let { TaskBoardSelection.FilterSelection(it) }

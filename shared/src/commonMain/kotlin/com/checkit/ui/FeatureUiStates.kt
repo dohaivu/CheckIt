@@ -122,6 +122,7 @@ sealed interface TaskEditorState {
         val noteId: Long? = null,
         val listId: Long,
         val content: String = "",
+        val status: TaskStatus = TaskStatus.Open,
         val date: LocalDate,
         val selectedTagIds: Set<Long> = emptySet()
     ) : TaskEditorState

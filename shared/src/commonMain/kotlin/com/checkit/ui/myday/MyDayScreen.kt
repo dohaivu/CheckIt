@@ -599,6 +599,7 @@ private fun MyDayUiState.toTaskViewProjection(): MyDayTaskViewProjection {
                     id = item.id,
                     listId = listId,
                     content = item.note.orEmpty(),
+                    status = item.status.toTaskStatus(),
                     date = today,
                     createdAtMillis = item.addedAtMillis,
                     editedAtMillis = item.completedAtMillis ?: item.addedAtMillis,

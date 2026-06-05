@@ -176,7 +176,7 @@ internal fun TaskEditorSheet(
                     }
                 }
             }
-            if (editor is TaskEditorState.TaskForm && editor.mode == EditorMode.View && editor.status != TaskStatus.Completed) {
+            if (editor.isCompletableView()) {
                 item {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                         Button(onClick = onComplete) {
@@ -361,6 +361,7 @@ private fun NoteViewContent(
             fontWeight = FontWeight.SemiBold
         )
         DetailChip(Icons.Default.Event, form.date.compact())
+        DetailChip(Icons.Default.CheckCircle, form.status.name)
         TagDisplayRow(
             selectedTagIds = form.selectedTagIds,
             availableTags = availableTags
@@ -919,4 +920,9 @@ private fun TaskEditorState.isAddMode(): Boolean = when (this) {
 private fun TaskEditorState.canDelete(): Boolean = when (this) {
     is TaskEditorState.TaskForm -> mode != EditorMode.Add
     is TaskEditorState.NoteForm -> mode != EditorMode.Add
+}
+
+private fun TaskEditorState.isCompletableView(): Boolean = when (this) {
+    is TaskEditorState.TaskForm -> mode == EditorMode.View && status != TaskStatus.Completed
+    is TaskEditorState.NoteForm -> mode == EditorMode.View && status != TaskStatus.Completed
 }

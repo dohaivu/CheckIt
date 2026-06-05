@@ -19,6 +19,7 @@ import com.checkit.domain.usecase.AddTaskListUseCase
 import com.checkit.domain.usecase.AddTaskTagUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
+import com.checkit.domain.usecase.CompleteNoteUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
 import com.checkit.domain.usecase.IsTagNameTakenUseCase
@@ -76,6 +77,7 @@ val provideInteractorModule = module {
     single { UpdateTaskUseCase(get()) }
     single { DeleteTaskUseCase(get()) }
     single { CompleteTaskUseCase(get()) }
+    single { CompleteNoteUseCase(get()) }
     single { AddTaskToDailyPlanUseCase(get()) }
     single { AddManualDoneToDailyPlanUseCase(get()) }
     single { AddNoteToDailyPlanUseCase(get()) }
@@ -102,7 +104,7 @@ val provideViewModelModule = module {
     viewModel {
         TaskViewModel(
             get(), get(), get(), get(), get(), get(), get(), get(), get(), get(),
-            get(), get(), get(), get(), get()
+            get(), get(), get(), get(), get(), get()
         )
     }
     viewModel { CalendarViewModel(get(), get(), get()) }

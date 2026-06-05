@@ -147,6 +147,7 @@ internal class FakeCheckItRepository(
     }
     override suspend fun trashTask(taskId: Long) = Unit
     override suspend fun completeTask(taskId: Long) = Unit
+    override suspend fun completeNote(noteId: Long) = Unit
     override suspend fun addTaskToDailyPlan(date: LocalDate, task: TaskItem): Long = 0L
     override suspend fun addManualDoneToDailyPlan(
         date: LocalDate,

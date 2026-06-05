@@ -231,7 +231,7 @@ fun CheckItApp(
                         onEdit = taskViewModel::editCurrentItem,
                         onSave = taskViewModel::saveEditor,
                         onDelete = taskViewModel::deleteEditorItem,
-                        onComplete = taskViewModel::completeCurrentTask,
+                        onComplete = taskViewModel::completeCurrentItem,
                         onTaskNameChange = taskViewModel::updateTaskName,
                         onTaskDescriptionChange = taskViewModel::updateTaskDescription,
                         onTaskDueDateChange = taskViewModel::updateTaskDueDate,

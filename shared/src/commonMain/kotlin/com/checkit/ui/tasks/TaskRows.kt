@@ -1,7 +1,9 @@
 package com.checkit.ui.tasks
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -49,10 +51,19 @@ internal fun TaskRow(
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 1.dp
     ) {
-        when (displayType) {
-            TaskListDisplayType.Brief -> BriefTaskRowContent(task)
-            TaskListDisplayType.Standard -> StandardTaskRowContent(task, list)
-            TaskListDisplayType.Detail -> DetailTaskRowContent(task, list)
+        Box {
+            when (displayType) {
+                TaskListDisplayType.Brief -> BriefTaskRowContent(task)
+                TaskListDisplayType.Standard -> StandardTaskRowContent(task, list)
+                TaskListDisplayType.Detail -> DetailTaskRowContent(task, list)
+            }
+            if (task.status == TaskStatus.Completed) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = CompletedRowCoverAlpha))
+                )
+            }
         }
     }
 }
@@ -67,12 +78,21 @@ internal fun NoteRow(
     Surface(
         modifier = Modifier.clickable(onClick = onClick),
         shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = DefaultNoteRowBackgroundAlpha)
     ) {
-        when (displayType) {
-            TaskListDisplayType.Brief -> BriefNoteRowContent(note)
-            TaskListDisplayType.Standard -> StandardNoteRowContent(note, list)
-            TaskListDisplayType.Detail -> DetailNoteRowContent(note, list)
+        Box {
+            when (displayType) {
+                TaskListDisplayType.Brief -> BriefNoteRowContent(note)
+                TaskListDisplayType.Standard -> StandardNoteRowContent(note, list)
+                TaskListDisplayType.Detail -> DetailNoteRowContent(note, list)
+            }
+            if (note.status == TaskStatus.Completed) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = CompletedRowCoverAlpha))
+                )
+            }
         }
     }
 }
@@ -139,7 +159,7 @@ private fun BriefNoteRowContent(note: NoteItem) {
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(Icons.Default.Notes, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
+        NoteStatusIcon(note.status)
         Text(
             text = note.content,
             modifier = Modifier.weight(1f),
@@ -218,7 +238,7 @@ private fun NoteRowScaffold(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
-            Icon(Icons.Default.Notes, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
+            NoteStatusIcon(note.status)
             Text(note.content, style = MaterialTheme.typography.bodyMedium, maxLines = contentMaxLines, overflow = TextOverflow.Ellipsis)
         }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -231,6 +251,19 @@ private fun NoteRowScaffold(
         )
     }
 }
+
+@Composable
+private fun NoteStatusIcon(status: TaskStatus) {
+    Icon(
+        imageVector = if (status == TaskStatus.Completed) Icons.Default.CheckCircle else Icons.Default.Notes,
+        contentDescription = null,
+        tint = if (status == TaskStatus.Completed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
+        modifier = Modifier.size(22.dp)
+    )
+}
+
+private const val DefaultNoteRowBackgroundAlpha = 0.55f
+private const val CompletedRowCoverAlpha = 0.62f
 
 @Composable
 private fun SupportingPills(

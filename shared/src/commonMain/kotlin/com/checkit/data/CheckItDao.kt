@@ -330,8 +330,11 @@ interface CheckItDao {
         endTimeMinutes: Int?
     )
 
-    @Query("UPDATE notes SET content = :content, dateEpochDays = :dateEpochDays, editedAtMillis = :editedAtMillis WHERE id = :noteId")
-    suspend fun updateNote(noteId: Long, content: String, dateEpochDays: Int, editedAtMillis: Long)
+    @Query("UPDATE notes SET content = :content, status = :status, dateEpochDays = :dateEpochDays, editedAtMillis = :editedAtMillis WHERE id = :noteId")
+    suspend fun updateNote(noteId: Long, content: String, status: String, dateEpochDays: Int, editedAtMillis: Long)
+
+    @Query("UPDATE notes SET status = :status, editedAtMillis = :editedAtMillis WHERE id = :noteId")
+    suspend fun updateNoteStatus(noteId: Long, status: String, editedAtMillis: Long)
 
     @Query("UPDATE notes SET trashedAtMillis = :trashedAtMillis, editedAtMillis = :trashedAtMillis WHERE id = :noteId")
     suspend fun trashNote(noteId: Long, trashedAtMillis: Long)

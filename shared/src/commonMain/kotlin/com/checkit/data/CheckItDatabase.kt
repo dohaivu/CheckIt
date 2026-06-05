@@ -106,6 +106,7 @@ data class NoteEntity(
     val id: Long = 0L,
     val listId: Long,
     val content: String,
+    val status: String = "Open",
     val dateEpochDays: Int,
     val createdAtMillis: Long,
     val editedAtMillis: Long,
@@ -269,7 +270,7 @@ data class TaskFilterEntity(
         TaskReminderEntity::class,
         TaskFilterEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)

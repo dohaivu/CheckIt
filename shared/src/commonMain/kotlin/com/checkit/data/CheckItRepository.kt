@@ -54,6 +54,7 @@ interface CheckItRepository {
     suspend fun updateDailyPlanItemTime(itemId: Long, startTimeMinutes: Int?, endTimeMinutes: Int?)
     suspend fun addNote(input: NoteWriteInput): Long
     suspend fun updateNote(noteId: Long, input: NoteWriteInput)
+    suspend fun completeNote(noteId: Long)
     suspend fun trashNote(noteId: Long)
 }
 
@@ -92,6 +93,7 @@ data class SubTaskWriteInput(
 data class NoteWriteInput(
     val listId: Long,
     val content: String,
+    val status: TaskStatus,
     val date: LocalDate,
     val tagIds: List<Long>
 )
@@ -210,6 +212,7 @@ class RoomCheckItRepository(
             NoteEntity(
                 listId = inboxId,
                 content = "Ideas, meeting notes, and loose thoughts live beside tasks in each list.",
+                status = TaskStatus.Open.name,
                 dateEpochDays = today.toEpochDays().toInt(),
                 createdAtMillis = now,
                 editedAtMillis = now,
@@ -414,6 +417,7 @@ class RoomCheckItRepository(
             NoteEntity(
                 listId = input.listId,
                 content = input.content,
+                status = input.status.name,
                 dateEpochDays = input.date.toEpochDays().toInt(),
                 createdAtMillis = now,
                 editedAtMillis = now,
@@ -428,6 +432,7 @@ class RoomCheckItRepository(
         dao.updateNote(
             noteId = noteId,
             content = input.content,
+            status = input.status.name,
             dateEpochDays = input.date.toEpochDays().toInt(),
             editedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
@@ -437,6 +442,14 @@ class RoomCheckItRepository(
 
     override suspend fun trashNote(noteId: Long) {
         dao.trashNote(noteId, Clock.System.now().toEpochMilliseconds())
+    }
+
+    override suspend fun completeNote(noteId: Long) {
+        dao.updateNoteStatus(
+            noteId = noteId,
+            status = TaskStatus.Completed.name,
+            editedAtMillis = Clock.System.now().toEpochMilliseconds()
+        )
     }
 
     private suspend fun scheduleTaskReminders(taskId: Long, input: TaskWriteInput) {
@@ -593,6 +606,7 @@ private fun NoteEntity.toDomain(tags: List<TaskTag>) = NoteItem(
     id = id,
     listId = listId,
     content = content,
+    status = enumValueOf(status),
     tags = tags,
     date = LocalDate.fromEpochDays(dateEpochDays),
     createdAtMillis = createdAtMillis,

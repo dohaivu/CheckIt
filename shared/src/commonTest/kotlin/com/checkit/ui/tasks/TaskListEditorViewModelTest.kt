@@ -6,6 +6,7 @@ import com.checkit.domain.usecase.AddTaskListUseCase
 import com.checkit.domain.usecase.AddTaskTagUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
+import com.checkit.domain.usecase.CompleteNoteUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
@@ -49,6 +50,7 @@ class TaskListEditorViewModelTest {
             updateTask = UpdateTaskUseCase(repository),
             deleteTask = DeleteTaskUseCase(repository),
             completeTask = CompleteTaskUseCase(repository),
+            completeNote = CompleteNoteUseCase(repository),
             addNote = AddNoteUseCase(repository),
             updateNote = UpdateNoteUseCase(repository),
             deleteNote = DeleteNoteUseCase(repository),

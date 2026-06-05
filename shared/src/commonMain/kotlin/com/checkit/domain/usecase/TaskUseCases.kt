@@ -147,6 +147,12 @@ class UpdateNoteUseCase(
     suspend operator fun invoke(noteId: Long, input: NoteWriteInput) = repository.updateNote(noteId, input)
 }
 
+class CompleteNoteUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(noteId: Long) = repository.completeNote(noteId)
+}
+
 class DeleteNoteUseCase(
     private val repository: CheckItRepository
 ) {
@@ -207,7 +213,9 @@ private fun NoteItem.matches(filter: TaskFilter, today: LocalDate): Boolean {
     if (filter.includeTrashed) return isTrashed
     if (isTrashed) return false
     if (filter.tagId != null && tags.none { it.id == filter.tagId }) return false
-    if (filter.status != null || filter.priority != null) return false
+    if (filter.status != null && status != filter.status) return false
+    if (filter.status == null && status == TaskStatus.Completed) return false
+    if (filter.priority != null) return false
     if (filter.dueDatePreset != null && !matchesNoteDate(filter.dueDatePreset, date, today)) return false
     return true
 }
