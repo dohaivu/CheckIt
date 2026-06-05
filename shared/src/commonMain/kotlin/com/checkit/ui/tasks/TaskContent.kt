@@ -28,7 +28,7 @@ internal fun TaskContent(
     modifier: Modifier = Modifier
 ) {
     val showListName = state.selectedList == null
-    Column(modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 12.dp)) {
+    Column(modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = state.title,
@@ -42,7 +42,7 @@ internal fun TaskContent(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(4.dp))
         when (state.selectedView) {
             TaskWorkspaceView.List -> TaskListView(
                 tasks = state.visibleTasks,

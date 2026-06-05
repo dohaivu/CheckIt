@@ -3,12 +3,12 @@ package com.checkit.ui.tasks
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,19 +17,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.TaskAlt
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -48,7 +50,10 @@ import androidx.compose.ui.zIndex
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskList
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlin.math.roundToInt
+import kotlin.time.Clock
 
 @Composable
 internal fun TaskTimelineView(
@@ -98,19 +103,42 @@ private fun AllDaySection(
 ) {
     if (tasks.isEmpty() && notes.isEmpty()) return
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            text = "All-day",
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        FlowRow(
+    val totalItemCount = tasks.size + notes.size
+    var expanded by remember(totalItemCount) { mutableStateOf(totalItemCount <= CollapsedAllDayItemCount) }
+    val visibleTasks = if (expanded) tasks else tasks.take(CollapsedAllDayItemCount)
+    val remainingSlots = (CollapsedAllDayItemCount - visibleTasks.size).coerceAtLeast(0)
+    val visibleNotes = if (expanded) notes else notes.take(remainingSlots)
+    val hiddenItemCount = totalItemCount - visibleTasks.size - visibleNotes.size
+
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            tasks.forEach { task ->
-                AllDayChip(
+            Text(
+                text = "All-day",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f)
+            )
+            if (totalItemCount > CollapsedAllDayItemCount) {
+                Text(
+                    text = if (expanded) "Show less" else "+$hiddenItemCount more",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .clickable { expanded = !expanded }
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
+        }
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(0.dp)
+        ) {
+            visibleTasks.forEach { task ->
+                AllDayItemRow(
                     label = task.name.ifBlank { "Untitled task" },
                     icon = { Icon(Icons.Default.TaskAlt, contentDescription = null, modifier = Modifier.size(16.dp)) },
                     color = task.priority.color(),
@@ -118,8 +146,8 @@ private fun AllDaySection(
                     supportingLabel = if (showListName) lists.firstOrNull { it.id == task.listId }?.name else null
                 )
             }
-            notes.forEach { note ->
-                AllDayChip(
+            visibleNotes.forEach { note ->
+                AllDayItemRow(
                     label = note.content.ifBlank { "Empty note" },
                     icon = { Icon(Icons.Default.Notes, contentDescription = null, modifier = Modifier.size(16.dp)) },
                     color = MaterialTheme.colorScheme.secondary,
@@ -132,29 +160,45 @@ private fun AllDaySection(
 }
 
 @Composable
-private fun AllDayChip(
+private fun AllDayItemRow(
     label: String,
     icon: @Composable () -> Unit,
     color: Color,
     onClick: () -> Unit,
     supportingLabel: String?
 ) {
-    AssistChip(
-        onClick = onClick,
-        leadingIcon = icon,
-        label = {
-            Text(
-                text = supportingLabel?.let { "$label · $it" } ?: label,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        },
-        modifier = Modifier,
-        border = null,
-        colors = androidx.compose.material3.AssistChipDefaults.assistChipColors(
-            leadingIconContentColor = color
+    val rowLabel = remember(label, supportingLabel) { compactAllDayLabel(label, supportingLabel) }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(32.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Box(
+            modifier = Modifier.size(18.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            icon()
+        }
+        Text(
+            text = rowLabel,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
         )
-    )
+        Box(
+            modifier = Modifier
+                .size(6.dp)
+                .clip(CircleShape)
+                .background(color.copy(alpha = 0.8f))
+        )
+    }
 }
 
 @Composable
@@ -169,12 +213,14 @@ private fun TimelineGrid(
 ) {
     val density = LocalDensity.current
     val scrollState = rememberScrollState()
-    val hourHeight = 88.dp
-    val axisWidth = 58.dp
+    val hourHeight = 80.dp
+    val axisWidth = 56.dp
     val totalHeight = hourHeight * HoursPerDay
     val hourHeightPx = with(density) { hourHeight.toPx() }
     val axisWidthPx = with(density) { axisWidth.toPx() }
     val taskLayouts = remember(tasks) { buildTaskLayouts(tasks) }
+    val currentTimeMinutes = remember { currentTimeMinutes() }
+    var selectedTaskId by remember { mutableStateOf<Long?>(null) }
 
     BoxWithConstraints(
         modifier = modifier
@@ -182,12 +228,18 @@ private fun TimelineGrid(
             .verticalScroll(scrollState)
     ) {
         val taskAreaWidth = (maxWidth - axisWidth - 14.dp).coerceAtLeast(1.dp)
+        LaunchedEffect(currentTimeMinutes, hourHeightPx) {
+            val targetScroll = (minutesToY(currentTimeMinutes, hourHeightPx) -
+                hourHeightPx * CurrentTimeVisibleHoursBefore).roundToInt().coerceAtLeast(0)
+            scrollState.scrollTo(targetScroll)
+        }
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(totalHeight)
                 .pointerInput(hourHeightPx, axisWidthPx) {
                     detectTapGestures(
+                        onTap = { selectedTaskId = null },
                         onLongPress = { offset ->
                             if (offset.x >= axisWidthPx) {
                                 val start = offset.y.toMinutes(hourHeightPx).snapToQuarterHour()
@@ -202,6 +254,11 @@ private fun TimelineGrid(
                 hourHeight = hourHeight,
                 axisWidth = axisWidth
             )
+            CurrentTimeLine(
+                currentTimeMinutes = currentTimeMinutes,
+                hourHeight = hourHeight,
+                axisWidth = axisWidth
+            )
             taskLayouts.forEach { layout ->
                 TimelineTaskCard(
                     layout = layout,
@@ -211,7 +268,9 @@ private fun TimelineGrid(
                     hourHeight = hourHeight,
                     hourHeightPx = hourHeightPx,
                     showListName = showListName,
+                    isSelected = selectedTaskId == layout.task.id,
                     onClick = { onTaskClick(layout.task) },
+                    onSelect = { selectedTaskId = layout.task.id },
                     onTimeChange = { start, end -> onTaskTimeChange(layout.task, start, end) }
                 )
             }
@@ -226,48 +285,78 @@ private fun HourRows(
 ) {
     Column {
         repeat(HoursPerDay) { hour ->
-            Row(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(hourHeight)
             ) {
                 Box(
                     modifier = Modifier
+                        .offset(y = (-12).dp)
                         .width(axisWidth)
-                        .height(hourHeight)
-                        .padding(top = 2.dp),
-                    contentAlignment = Alignment.TopEnd
+                        .height(24.dp)
+                        .padding(end = 8.dp),
+                    contentAlignment = Alignment.CenterEnd
                 ) {
                     Text(
                         text = hour.hourLabel(),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(end = 8.dp)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Box(
                     modifier = Modifier
-                        .weight(1f)
-                        .height(hourHeight)
-                ) {
+                        .offset(x = axisWidth)
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.75f))
+                )
+                repeat(3) { quarter ->
                     Box(
                         modifier = Modifier
+                            .offset(
+                                x = axisWidth,
+                                y = hourHeight * ((quarter + 1) / 4f)
+                            )
                             .fillMaxWidth()
                             .height(1.dp)
-                            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.75f))
+                            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
                     )
-                    repeat(3) { quarter ->
-                        Box(
-                            modifier = Modifier
-                                .offset(y = hourHeight * ((quarter + 1) / 4f))
-                                .fillMaxWidth()
-                                .height(1.dp)
-                                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
-                        )
-                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun CurrentTimeLine(
+    currentTimeMinutes: Int,
+    hourHeight: Dp,
+    axisWidth: Dp
+) {
+    val color = MaterialTheme.colorScheme.error
+    val y = hourHeight * (currentTimeMinutes / 60f)
+    Box(
+        modifier = Modifier
+            .offset(y = y - 4.dp)
+            .fillMaxWidth()
+            .height(8.dp)
+            .zIndex(2f)
+    ) {
+        Box(
+            modifier = Modifier
+                .offset(x = axisWidth - 5.dp, y = 1.dp)
+                .size(7.dp)
+                .clip(CircleShape)
+                .background(color)
+        )
+        Box(
+            modifier = Modifier
+                .offset(x = axisWidth, y = 4.dp)
+                .fillMaxWidth()
+                .height(1.5.dp)
+                .background(color)
+        )
     }
 }
 
@@ -280,7 +369,9 @@ private fun TimelineTaskCard(
     hourHeight: Dp,
     hourHeightPx: Float,
     showListName: Boolean,
+    isSelected: Boolean,
     onClick: () -> Unit,
+    onSelect: () -> Unit,
     onTimeChange: (startTimeMinutes: Int, endTimeMinutes: Int) -> Unit
 ) {
     val task = layout.task
@@ -301,6 +392,7 @@ private fun TimelineTaskCard(
     var bottomResizeOffsetY by remember(task.id, start, end) { mutableFloatStateOf(0f) }
     val resizeHeightDelta = with(density) { (bottomResizeOffsetY - topResizeOffsetY).toDp() }
     val visualHeight = (height + resizeHeightDelta).coerceAtLeast(36.dp)
+    val containerAlpha = if (isSelected) SelectedTaskCardAlpha else DefaultTaskCardAlpha
 
     Surface(
         modifier = Modifier
@@ -312,10 +404,16 @@ private fun TimelineTaskCard(
             }
             .width(cardWidth)
             .height(visualHeight)
-            .zIndex(1f + layout.lane)
-            .clickable(onClick = onClick)
+            .zIndex(if (isSelected) 3f else 1f + layout.lane)
+            .pointerInput(task.id) {
+                detectTapGestures(
+                    onTap = { onClick() },
+                    onLongPress = { onSelect() }
+                )
+            }
             .pointerInput(task.id, start, end, hourHeightPx) {
-                detectDragGestures(
+                detectDragGesturesAfterLongPress(
+                    onDragStart = { onSelect() },
                     onDragEnd = {
                         val deltaMinutes = dragOffsetY.toMinutes(hourHeightPx).snapToQuarterHour()
                         val (nextStart, nextEnd) = moveTimelineRange(start, end, deltaMinutes)
@@ -330,29 +428,31 @@ private fun TimelineTaskCard(
                 )
             },
         shape = RoundedCornerShape(8.dp),
-        color = task.priority.color().copy(alpha = 0.17f),
-        tonalElevation = 1.dp
+        color = task.priority.color().copy(alpha = containerAlpha),
+        tonalElevation = if (isSelected) 3.dp else 1.dp
     ) {
         Box {
-            ResizeHandle(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .pointerInput(task.id, start, end, hourHeightPx) {
-                        detectDragGestures(
-                            onDragEnd = {
-                                val deltaMinutes = topResizeOffsetY.toMinutes(hourHeightPx).snapToQuarterHour()
-                                val (nextStart, nextEnd) = resizeTimelineStart(start, end, deltaMinutes)
-                                onTimeChange(nextStart, nextEnd)
-                                topResizeOffsetY = 0f
-                            },
-                            onDragCancel = { topResizeOffsetY = 0f },
-                            onDrag = { change, dragAmount ->
-                                change.consume()
-                                topResizeOffsetY += dragAmount.y
-                            }
-                        )
-                    }
-            )
+            if (isSelected) {
+                ResizeHandle(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .pointerInput(task.id, start, end, hourHeightPx) {
+                            detectDragGestures(
+                                onDragEnd = {
+                                    val deltaMinutes = topResizeOffsetY.toMinutes(hourHeightPx).snapToQuarterHour()
+                                    val (nextStart, nextEnd) = resizeTimelineStart(start, end, deltaMinutes)
+                                    onTimeChange(nextStart, nextEnd)
+                                    topResizeOffsetY = 0f
+                                },
+                                onDragCancel = { topResizeOffsetY = 0f },
+                                onDrag = { change, dragAmount ->
+                                    change.consume()
+                                    topResizeOffsetY += dragAmount.y
+                                }
+                            )
+                        }
+                )
+            }
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -374,25 +474,27 @@ private fun TimelineTaskCard(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            ResizeHandle(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .pointerInput(task.id, start, end, hourHeightPx) {
-                        detectDragGestures(
-                            onDragEnd = {
-                                val deltaMinutes = bottomResizeOffsetY.toMinutes(hourHeightPx).snapToQuarterHour()
-                                val (nextStart, nextEnd) = resizeTimelineEnd(start, end, deltaMinutes)
-                                onTimeChange(nextStart, nextEnd)
-                                bottomResizeOffsetY = 0f
-                            },
-                            onDragCancel = { bottomResizeOffsetY = 0f },
-                            onDrag = { change, dragAmount ->
-                                change.consume()
-                                bottomResizeOffsetY += dragAmount.y
-                            }
-                        )
-                    }
-            )
+            if (isSelected) {
+                ResizeHandle(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .pointerInput(task.id, start, end, hourHeightPx) {
+                            detectDragGestures(
+                                onDragEnd = {
+                                    val deltaMinutes = bottomResizeOffsetY.toMinutes(hourHeightPx).snapToQuarterHour()
+                                    val (nextStart, nextEnd) = resizeTimelineEnd(start, end, deltaMinutes)
+                                    onTimeChange(nextStart, nextEnd)
+                                    bottomResizeOffsetY = 0f
+                                },
+                                onDragCancel = { bottomResizeOffsetY = 0f },
+                                onDrag = { change, dragAmount ->
+                                    change.consume()
+                                    bottomResizeOffsetY += dragAmount.y
+                                }
+                            )
+                        }
+                )
+            }
         }
     }
 }
@@ -464,6 +566,24 @@ private fun Offset.toMinutes(hourHeightPx: Float): Int =
 private fun Float.toMinutes(hourHeightPx: Float): Int =
     ((this / hourHeightPx) * 60f).roundToInt()
 
+private fun minutesToY(minutes: Int, hourHeightPx: Float): Float =
+    (minutes / 60f) * hourHeightPx
+
+private fun currentTimeMinutes(): Int {
+    val time = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).time
+    return time.hour * 60 + time.minute
+}
+
+private fun compactAllDayLabel(label: String, supportingLabel: String?): String {
+    val primary = label
+        .lineSequence()
+        .map { it.trim() }
+        .filter { it.isNotEmpty() }
+        .joinToString(" ")
+        .ifBlank { label }
+    return supportingLabel?.let { "$primary · $it" } ?: primary
+}
+
 internal fun Int.snapToQuarterHour(): Int =
     (this / TimelineStepMinutes.toFloat()).roundToInt() * TimelineStepMinutes
 
@@ -515,3 +635,7 @@ private const val TimelineStepMinutes = 15
 private const val DefaultDurationMinutes = 60
 private const val MinimumDurationMinutes = 15
 private const val LastStartMinute = MinutesPerDay - MinimumDurationMinutes
+private const val CurrentTimeVisibleHoursBefore = 2f
+private const val CollapsedAllDayItemCount = 2
+private const val DefaultTaskCardAlpha = 0.17f
+private const val SelectedTaskCardAlpha = 0.28f

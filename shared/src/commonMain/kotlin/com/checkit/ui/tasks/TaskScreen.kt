@@ -85,7 +85,7 @@ internal fun TaskScreen(
                     },
                     title = {
                         Text(
-                            stringResource(Res.string.tab_tasks),
+                            state.title,
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -119,7 +119,7 @@ internal fun TaskScreen(
                     onNoteClick = viewModel::openNote,
                     onTimelineCreateTask = viewModel::openNewTaskAt,
                     onTimelineTaskTimeChange = viewModel::updateTaskTime,
-                    modifier = Modifier.fillMaxSize().padding(padding)
+                    modifier = Modifier.fillMaxSize().padding(top = padding.calculateTopPadding())
                 )
             }
         }
