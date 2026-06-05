@@ -8,19 +8,44 @@ import kotlinx.datetime.toInstant
 
 enum class TaskReminderPreset(
     val offsetMinutes: Int,
-    val label: String
+    val timedLabel: String,
+    val allDayLabel: String? = null
 ) {
-    AtTime(0, "At time of event"),
+    AtTime(0, "At time of event", "On the day at 9 AM"),
     TenMinutesBefore(10, "10 mins before"),
     OneHourBefore(60, "1 hour before"),
-    OneDayBefore(24 * 60, "1 day before");
+    OneDayBefore(24 * 60, "1 day before", "The day before at 9 AM"),
+    TwoDaysBefore(2 * 24 * 60, "2 days before", "2 days before at 9 AM"),
+    OneWeekBefore(7 * 24 * 60, "1 week before", "1 week before at 9 AM");
+
+    val label: String get() = timedLabel
 
     companion object {
-        val default: TaskReminderPreset = TenMinutesBefore
+        val timedDefault: TaskReminderPreset = TenMinutesBefore
+        val allDayDefault: TaskReminderPreset = AtTime
         val offsets: Set<Int> = entries.map { it.offsetMinutes }.toSet()
 
-        fun labelFor(offsetMinutes: Int): String =
-            entries.firstOrNull { it.offsetMinutes == offsetMinutes }?.label ?: "${offsetMinutes} mins before"
+        fun availableFor(startTimeMinutes: Int?): List<TaskReminderPreset> =
+            if (startTimeMinutes == null) {
+                entries.filter { it.allDayLabel != null }
+            } else {
+                listOf(AtTime, TenMinutesBefore, OneHourBefore, OneDayBefore)
+            }
+
+        fun defaultFor(startTimeMinutes: Int?): TaskReminderPreset =
+            if (startTimeMinutes == null) allDayDefault else timedDefault
+
+        fun normalizeOffsets(startTimeMinutes: Int?, offsets: Set<Int>): Set<Int> {
+            if (offsets.isEmpty()) return emptySet()
+            val availableOffsets = availableFor(startTimeMinutes).map { it.offsetMinutes }.toSet()
+            val kept = offsets.intersect(availableOffsets)
+            return kept.ifEmpty { setOf(defaultFor(startTimeMinutes).offsetMinutes) }
+        }
+
+        fun labelFor(offsetMinutes: Int, startTimeMinutes: Int?): String =
+            entries.firstOrNull { it.offsetMinutes == offsetMinutes }?.let { preset ->
+                if (startTimeMinutes == null) preset.allDayLabel ?: preset.timedLabel else preset.timedLabel
+            } ?: "${offsetMinutes} mins before"
     }
 }
 
@@ -61,7 +86,7 @@ object TaskReminderPlanner {
                 TaskReminderWriteInput(
                     offsetMinutes = offsetMinutes,
                     remindAtMillis = eventMillis - offsetMinutes * 60_000L,
-                    label = TaskReminderPreset.labelFor(offsetMinutes)
+                    label = TaskReminderPreset.labelFor(offsetMinutes, startTimeMinutes)
                 )
             }
     }
@@ -74,7 +99,7 @@ object TaskReminderPlanner {
                 null
             } else {
                 val offsetMinutes = (offsetMillis / 60_000L).toInt()
-                offsetMinutes.takeIf { it in TaskReminderPreset.offsets }
+                offsetMinutes.takeIf { it in TaskReminderPreset.availableFor(task.startTimeMinutes).map { preset -> preset.offsetMinutes } }
             }
         }.toSet()
     }

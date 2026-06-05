@@ -55,4 +55,25 @@ class TaskReminderPlannerTest {
 
         assertEquals(setOf(10, 60), TaskReminderPlanner.selectedOffsetsFor(task, utc))
     }
+
+    @Test
+    fun buildReminderInputsUsesAllDayLabelsWhenTaskHasNoStartTime() {
+        val reminders = TaskReminderPlanner.buildReminderInputs(
+            dueDate = LocalDate(2026, 6, 5),
+            startTimeMinutes = null,
+            selectedOffsets = setOf(0, 24 * 60, 2 * 24 * 60, 7 * 24 * 60),
+            timeZone = utc
+        )
+
+        assertEquals(
+            listOf(
+                "On the day at 9 AM",
+                "The day before at 9 AM",
+                "2 days before at 9 AM",
+                "1 week before at 9 AM"
+            ),
+            reminders.map { it.label }
+        )
+        assertEquals(1_780_650_000_000L, reminders.first().remindAtMillis)
+    }
 }

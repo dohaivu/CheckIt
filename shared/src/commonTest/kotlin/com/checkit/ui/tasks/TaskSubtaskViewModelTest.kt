@@ -125,6 +125,21 @@ class TaskSubtaskViewModelTest {
         assertEquals(listOf("10 mins before", "1 hour before"), reminders.map { it.label })
     }
 
+    @Test
+    fun saveAllDayTaskPersistsAllDayReminderDefault() = runTest(dispatcher) {
+        createViewModel(TaskBoard(lists = listOf(inboxList())))
+        viewModel.openNewTask()
+        viewModel.updateTaskName("All day reminder")
+        viewModel.setTaskRemindersEnabled(true)
+
+        viewModel.saveEditor()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val reminders = repository.addedTasks.single().reminders
+        assertEquals(listOf(0), reminders.map { it.offsetMinutes })
+        assertEquals(listOf("On the day at 9 AM"), reminders.map { it.label })
+    }
+
     private fun createViewModel(board: TaskBoard) {
         repository = FakeCheckItRepository(initialBoard = board)
         viewModel = TaskViewModel(

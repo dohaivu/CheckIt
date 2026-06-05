@@ -268,7 +268,10 @@ private fun TaskViewContent(
                 primary = form.repeatPreset.label
             )
         }
-        ReminderDisplayRow(reminderOffsets = form.reminderOffsets)
+        ReminderDisplayRow(
+            reminderOffsets = form.reminderOffsets,
+            startTimeMinutes = form.startTimeMinutes
+        )
         SubtaskChecklist(
             subtasks = form.subtasks,
             mode = form.mode,
@@ -285,14 +288,17 @@ private fun TaskViewContent(
 }
 
 @Composable
-private fun ReminderDisplayRow(reminderOffsets: Set<Int>) {
+private fun ReminderDisplayRow(
+    reminderOffsets: Set<Int>,
+    startTimeMinutes: Int?
+) {
     if (reminderOffsets.isEmpty()) return
     DetailRow(
         icon = Icons.Default.Notifications,
         primary = "Reminders",
         secondary = reminderOffsets
             .sorted()
-            .joinToString { TaskReminderPreset.labelFor(it) }
+            .joinToString { TaskReminderPreset.labelFor(it, startTimeMinutes) }
     )
 }
 
@@ -460,6 +466,7 @@ private fun TaskFormContent(
         ReminderPicker(
             reminderOffsets = form.reminderOffsets,
             hasDate = form.dueDate != null,
+            startTimeMinutes = form.startTimeMinutes,
             onEnabledChange = onRemindersEnabledChange,
             onReminderToggle = onReminderToggle
         )
@@ -598,10 +605,13 @@ private fun RepeatDropdown(
 private fun ReminderPicker(
     reminderOffsets: Set<Int>,
     hasDate: Boolean,
+    startTimeMinutes: Int?,
     onEnabledChange: (Boolean) -> Unit,
     onReminderToggle: (Int) -> Unit
 ) {
     val enabled = reminderOffsets.isNotEmpty()
+    val presets = TaskReminderPreset.availableFor(startTimeMinutes)
+    var showOptions by remember { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
@@ -609,7 +619,19 @@ private fun ReminderPicker(
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (hasDate) {
+                            Modifier.clickable {
+                                if (!enabled) onEnabledChange(true)
+                                showOptions = true
+                            }
+                        } else {
+                            Modifier
+                        }
+                    )
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
@@ -617,41 +639,57 @@ private fun ReminderPicker(
                 Column(Modifier.weight(1f)) {
                     Text("Reminders", style = MaterialTheme.typography.bodyLarge)
                     Text(
-                        text = if (hasDate) "Notify before the task time" else "Set a date to schedule reminders",
+                        text = when {
+                            !hasDate -> "Set a date to schedule reminders"
+                            !enabled -> "Off"
+                            else -> reminderOffsets
+                                .sorted()
+                                .joinToString { TaskReminderPreset.labelFor(it, startTimeMinutes) }
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Switch(
                     checked = enabled,
-                    onCheckedChange = { checked -> if (hasDate || !checked) onEnabledChange(checked) },
+                    onCheckedChange = { checked ->
+                        if (hasDate || !checked) {
+                            onEnabledChange(checked)
+                            showOptions = checked
+                        }
+                    },
                     enabled = hasDate || enabled
                 )
             }
         }
-        if (enabled) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.32f)
-            ) {
-                Column {
-                    TaskReminderPreset.entries.forEach { preset ->
-                        ReminderOptionRow(
-                            preset = preset,
-                            selected = preset.offsetMinutes in reminderOffsets,
-                            onClick = { onReminderToggle(preset.offsetMinutes) }
-                        )
+        if (showOptions && hasDate) {
+            AlertDialog(
+                onDismissRequest = { showOptions = false },
+                title = { Text("Reminders") },
+                text = {
+                    Column {
+                        presets.forEach { preset ->
+                            ReminderOptionRow(
+                                label = TaskReminderPreset.labelFor(preset.offsetMinutes, startTimeMinutes),
+                                selected = preset.offsetMinutes in reminderOffsets,
+                                onClick = { onReminderToggle(preset.offsetMinutes) }
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showOptions = false }) {
+                        Text("Done")
                     }
                 }
-            }
+            )
         }
     }
 }
 
 @Composable
 private fun ReminderOptionRow(
-    preset: TaskReminderPreset,
+    label: String,
     selected: Boolean,
     onClick: () -> Unit
 ) {
@@ -669,7 +707,7 @@ private fun ReminderOptionRow(
             tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
         )
         Text(
-            text = preset.label,
+            text = label,
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.weight(1f)
         )

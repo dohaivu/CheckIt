@@ -311,14 +311,19 @@ class TaskViewModel(
             reminderOffsets = if (dueDate == null) emptySet() else it.reminderOffsets
         )
     }
-    fun updateTaskStartTime(startTimeMinutes: Int?) = updateTaskForm { it.copy(startTimeMinutes = startTimeMinutes) }
+    fun updateTaskStartTime(startTimeMinutes: Int?) = updateTaskForm {
+        it.copy(
+            startTimeMinutes = startTimeMinutes,
+            reminderOffsets = TaskReminderPreset.normalizeOffsets(startTimeMinutes, it.reminderOffsets)
+        )
+    }
     fun updateTaskEndTime(endTimeMinutes: Int?) = updateTaskForm { it.copy(endTimeMinutes = endTimeMinutes) }
     fun updateTaskRepeat(repeatPreset: RepeatPreset) = updateTaskForm { it.copy(repeatPreset = repeatPreset) }
     fun updateTaskPriority(priority: TaskPriority) = updateTaskForm { it.copy(priority = priority) }
     fun setTaskRemindersEnabled(enabled: Boolean) = updateTaskForm { form ->
         form.copy(
             reminderOffsets = if (enabled) {
-                form.reminderOffsets.ifEmpty { setOf(TaskReminderPreset.default.offsetMinutes) }
+                form.reminderOffsets.ifEmpty { setOf(TaskReminderPreset.defaultFor(form.startTimeMinutes).offsetMinutes) }
             } else {
                 emptySet()
             }
