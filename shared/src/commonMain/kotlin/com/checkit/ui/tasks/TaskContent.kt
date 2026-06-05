@@ -54,9 +54,12 @@ internal fun TaskContent(
             )
             TaskWorkspaceView.Agenda -> TaskAgendaView(
                 tasks = state.visibleTasks,
+                notes = state.visibleNotes,
                 lists = state.board.lists,
                 showListName = showListName,
-                onTaskClick = onTaskClick
+                onTaskClick = onTaskClick,
+                onNoteClick = onNoteClick,
+                modifier = Modifier.weight(1f)
             )
             TaskWorkspaceView.Timeline -> TaskTimelineView(
                 tasks = state.visibleTasks,
