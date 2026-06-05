@@ -48,6 +48,7 @@ import com.checkit.ui.reports.ReportScreen
 import com.checkit.ui.reports.ReportViewModel
 import com.checkit.ui.settings.SettingsScreen
 import com.checkit.ui.settings.SettingsViewModel
+import com.checkit.ui.tasks.TaskEditorSheet
 import com.checkit.ui.theme.AppTheme
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -96,6 +97,7 @@ fun CheckItApp(
     val backState = rememberNavigationEventState(NavigationEventInfo.None)
     val currentRoute = backStack.lastOrNull() ?: Routes.Task
     val selectedTab = currentRoute.asTab()
+    val taskUiState by taskViewModel.uiState.collectAsState()
 
     LaunchedEffect(taskMessage, settingsMessage) {
         val message = taskMessage ?: settingsMessage ?: return@LaunchedEffect
@@ -174,7 +176,6 @@ fun CheckItApp(
                         NavEntry(key) {
                             when (key) {
                                 Routes.Task -> {
-                                    val taskUiState by taskViewModel.uiState.collectAsState()
                                     TaskScreen(taskUiState, taskViewModel)
                                 }
                                 Routes.Calendar -> {
@@ -182,9 +183,7 @@ fun CheckItApp(
                                     CalendarScreen(
                                         state = calendarState,
                                         calendarViewModel = calendarViewModel,
-                                        onDateDoubleClick = { date ->
-                                            resetTo(Routes.Task)
-                                        },
+                                        onDateDoubleClick = taskViewModel::openNewTaskOnDate,
                                         onTaskClick = taskViewModel::openTask,
                                         onNoteClick = taskViewModel::openNote
                                     )
@@ -204,6 +203,34 @@ fun CheckItApp(
                         }
                     }
                 )
+                taskUiState.editor?.let { editor ->
+                    TaskEditorSheet(
+                        editor = editor,
+                        availableTags = taskUiState.board.tags,
+                        onDismiss = taskViewModel::dismissEditor,
+                        onEdit = taskViewModel::editCurrentItem,
+                        onSave = taskViewModel::saveEditor,
+                        onDelete = taskViewModel::deleteEditorItem,
+                        onComplete = taskViewModel::completeCurrentTask,
+                        onTaskNameChange = taskViewModel::updateTaskName,
+                        onTaskDescriptionChange = taskViewModel::updateTaskDescription,
+                        onTaskDueDateChange = taskViewModel::updateTaskDueDate,
+                        onTaskStartTimeChange = taskViewModel::updateTaskStartTime,
+                        onTaskEndTimeChange = taskViewModel::updateTaskEndTime,
+                        onTaskRepeatChange = taskViewModel::updateTaskRepeat,
+                        onTaskPriorityChange = taskViewModel::updateTaskPriority,
+                        onTaskRemindersEnabledChange = taskViewModel::setTaskRemindersEnabled,
+                        onTaskReminderToggle = taskViewModel::toggleTaskReminder,
+                        onSubTaskToggle = taskViewModel::toggleSubTask,
+                        onSubTaskAdd = taskViewModel::addSubTask,
+                        onSubTaskNameChange = taskViewModel::updateSubTaskName,
+                        onSubTaskRemove = taskViewModel::removeSubTask,
+                        onTaskTagToggle = taskViewModel::toggleTaskTag,
+                        onNoteContentChange = taskViewModel::updateNoteContent,
+                        onNoteDateChange = taskViewModel::updateNoteDate,
+                        onNoteTagToggle = taskViewModel::toggleNoteTag
+                    )
+                }
             }
         }
     }

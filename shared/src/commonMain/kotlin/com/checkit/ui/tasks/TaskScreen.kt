@@ -20,12 +20,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import checkit.shared.generated.resources.Res
-import checkit.shared.generated.resources.tab_tasks
 import com.checkit.ui.TaskUiState
 import com.checkit.ui.components.TinyTopAppBar
 import kotlinx.coroutines.launch
-import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun TaskScreen(
@@ -123,35 +120,6 @@ internal fun TaskScreen(
                 )
             }
         }
-    }
-
-    state.editor?.let { editor ->
-        TaskEditorSheet(
-            editor = editor,
-            availableTags = state.board.tags,
-            onDismiss = viewModel::dismissEditor,
-            onEdit = viewModel::editCurrentItem,
-            onSave = viewModel::saveEditor,
-            onDelete = viewModel::deleteEditorItem,
-            onComplete = viewModel::completeCurrentTask,
-            onTaskNameChange = viewModel::updateTaskName,
-            onTaskDescriptionChange = viewModel::updateTaskDescription,
-            onTaskDueDateChange = viewModel::updateTaskDueDate,
-            onTaskStartTimeChange = viewModel::updateTaskStartTime,
-            onTaskEndTimeChange = viewModel::updateTaskEndTime,
-            onTaskRepeatChange = viewModel::updateTaskRepeat,
-            onTaskPriorityChange = viewModel::updateTaskPriority,
-            onTaskRemindersEnabledChange = viewModel::setTaskRemindersEnabled,
-            onTaskReminderToggle = viewModel::toggleTaskReminder,
-            onSubTaskToggle = viewModel::toggleSubTask,
-            onSubTaskAdd = viewModel::addSubTask,
-            onSubTaskNameChange = viewModel::updateSubTaskName,
-            onSubTaskRemove = viewModel::removeSubTask,
-            onTaskTagToggle = viewModel::toggleTaskTag,
-            onNoteContentChange = viewModel::updateNoteContent,
-            onNoteDateChange = viewModel::updateNoteDate,
-            onNoteTagToggle = viewModel::toggleNoteTag
-        )
     }
 
     state.listEditor?.let { listEditor ->

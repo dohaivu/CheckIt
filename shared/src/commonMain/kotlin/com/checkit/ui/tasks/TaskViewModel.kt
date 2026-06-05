@@ -117,13 +117,17 @@ class TaskViewModel(
     }
 
     fun openNewTask() {
+        openNewTaskOnDate(today())
+    }
+
+    fun openNewTaskOnDate(date: LocalDate) {
         val listId = editableListId() ?: return showMessage("Create a list before adding tasks")
         _uiState.update {
             it.copy(
                 editor = TaskEditorState.TaskForm(
                     mode = EditorMode.Add,
                     listId = listId,
-                    dueDate = today()
+                    dueDate = date
                 )
             )
         }
