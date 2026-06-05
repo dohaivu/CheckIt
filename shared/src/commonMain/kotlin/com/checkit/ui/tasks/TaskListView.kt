@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
@@ -16,9 +17,13 @@ internal fun TaskListView(
     lists: List<TaskList>,
     showListName: Boolean,
     onTaskClick: (TaskItem) -> Unit,
-    onNoteClick: (NoteItem) -> Unit
+    onNoteClick: (NoteItem) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    LazyColumn(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
         items(tasks, key = { "task-${it.id}" }) { task ->
             TaskRow(
                 task = task,

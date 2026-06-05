@@ -185,6 +185,8 @@ fun CheckItApp(
                                         onDateDoubleClick = { date ->
                                             resetTo(Routes.Task)
                                         },
+                                        onTaskClick = taskViewModel::openTask,
+                                        onNoteClick = taskViewModel::openNote
                                     )
                                 }
                                 Routes.Report -> {

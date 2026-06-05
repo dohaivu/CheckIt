@@ -92,7 +92,7 @@ val provideViewModelModule = module {
             get(), get(), get(), get(), get()
         )
     }
-    viewModel { CalendarViewModel(get()) }
+    viewModel { CalendarViewModel(get(), get()) }
     viewModel { ReportViewModel(get()) }
     viewModel { SettingsViewModel(get(), get(), get()) }
 }

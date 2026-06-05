@@ -1,7 +1,9 @@
 package com.checkit.ui.calendar
 
 import androidx.lifecycle.ViewModel
-import com.checkit.data.CheckItRepository
+import androidx.lifecycle.viewModelScope
+import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
+import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.ui.CalendarUiState
 import com.checkit.ui.components.ReportPeriod
 import com.checkit.ui.firstDayOfMonth
@@ -10,20 +12,32 @@ import com.checkit.ui.today
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 
 class CalendarViewModel(
-    repository: CheckItRepository
+    private val observeTaskBoard: ObserveTaskBoardUseCase,
+    private val ensureDefaultTaskData: EnsureDefaultTaskDataUseCase
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(CalendarUiState())
     val uiState: StateFlow<CalendarUiState> = _uiState.asStateFlow()
 
     init {
-
+        viewModelScope.launch {
+            ensureDefaultTaskData()
+            observeTaskBoard()
+                .catch { error ->
+                    _uiState.update { it.copy() }
+                }
+                .collect { board ->
+                    _uiState.update { it.copy(board = board) }
+                }
+        }
     }
 
     fun selectMonth(month: LocalDate) {

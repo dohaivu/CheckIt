@@ -1,5 +1,6 @@
 package com.checkit.ui
 
+import androidx.compose.ui.graphics.Color
 import com.checkit.domain.ActiveTagToken
 import com.checkit.domain.DueDatePreset
 import com.checkit.domain.NoteItem
@@ -171,15 +172,43 @@ data class CalendarUiState(
     val selectedPeriod: ReportPeriod = ReportPeriod.Month,
     val selectedMonth: kotlinx.datetime.LocalDate = today().firstDayOfMonth(),
     val selectedDate: kotlinx.datetime.LocalDate = today(),
-    val calendarData: CalendarData = CalendarData()
-)
+    val board: TaskBoard = TaskBoard()
+) {
+    val listsById: Map<Long, TaskList> = board.lists.associateBy { it.id }
 
+    fun tasksForDate(date: kotlinx.datetime.LocalDate): List<TaskItem> =
+        board.tasks.filter { !it.isTrashed && it.dueDate == date }
+            .sortedWith(compareBy<TaskItem> { it.sortOrder }.thenBy { it.dueDate })
 
-data class CalendarData(
-    val monthTransactionCount: Int = 0,
-    val headerIndexes: Map<kotlinx.datetime.LocalDate, Int> = emptyMap(),
-    val filteredMonthTotal: Long = 0L
-)
+    fun notesForDate(date: kotlinx.datetime.LocalDate): List<NoteItem> =
+        board.notes.filter { !it.isTrashed && it.date == date }.sortedBy { it.sortOrder }
+
+    fun markerColorsForDate(date: kotlinx.datetime.LocalDate): List<Color> {
+        val tasks = tasksForDate(date)
+        val notes = notesForDate(date)
+        val combined = tasks.map { listColorFor(it.listId) } + notes.map { listColorFor(it.listId) }
+        return if (combined.size <= MarkerCap) combined else combined.take(MarkerCap)
+    }
+
+    private fun listColorFor(listId: Long): Color =
+        listsById[listId]?.color?.parseHexColorOrNull()
+            ?: ListEditorDefaults.Colors.first().parseHexColorOrNull()
+            ?: Color(0xFF64748B)
+
+    private companion object {
+        const val MarkerCap: Int = 6
+    }
+}
+
+private fun String.parseHexColorOrNull(): Color? {
+    val hex = removePrefix("#")
+    val rgb = hex.toIntOrNull(16) ?: return null
+    return Color(
+        red = ((rgb shr 16) and 0xFF) / 255f,
+        green = ((rgb shr 8) and 0xFF) / 255f,
+        blue = (rgb and 0xFF) / 255f
+    )
+}
 
 data class ReportUiState(
     val selectedMonth: kotlinx.datetime.LocalDate = today().firstDayOfMonth(),
