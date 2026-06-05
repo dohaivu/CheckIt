@@ -36,8 +36,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskPriority
 import com.checkit.ui.TaskWorkspaceView
+import com.checkit.ui.shortName
+import com.checkit.ui.shortMonthName
+import com.checkit.ui.today
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.number
+import kotlinx.datetime.plus
 
 internal fun TaskWorkspaceView.icon(): ImageVector = when (this) {
     TaskWorkspaceView.List -> Icons.Default.ViewList
@@ -96,7 +101,23 @@ internal fun String.toColor(): Color =
         }
         ?: Color(0xFF64748B)
 
-internal fun LocalDate.compact(): String = "${month.number}/$day/$year"
+internal fun LocalDate.compact(): String {
+    val today = today()
+    return when (this) {
+        today -> "Today"
+        today.plus(1, DateTimeUnit.DAY) -> "Tomorrow"
+        today.plus(-1, DateTimeUnit.DAY) -> "Yesterday"
+        today.plus(2, DateTimeUnit.DAY),
+        today.plus(3, DateTimeUnit.DAY),
+        today.plus(4, DateTimeUnit.DAY),
+        today.plus(5, DateTimeUnit.DAY),
+        today.plus(6, DateTimeUnit.DAY) -> dayOfWeek.shortName()
+        else -> {
+            val monthDay = "${shortMonthName()} $day"
+            if (year == today.year) monthDay else "$monthDay, $year"
+        }
+    }
+}
 
 internal fun TaskItem.timeRangeLabel(): String {
     val start = startTimeMinutes?.toClockLabel() ?: "Any time"
