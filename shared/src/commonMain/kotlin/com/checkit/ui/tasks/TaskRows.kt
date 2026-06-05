@@ -210,19 +210,22 @@ private fun NoteRowScaffold(
     contentMaxLines: Int,
     visibleTagCount: Int
 ) {
-    Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Icon(Icons.Default.Notes, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+            Icon(Icons.Default.Notes, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
             Text(note.content, style = MaterialTheme.typography.bodyMedium, maxLines = contentMaxLines, overflow = TextOverflow.Ellipsis)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                DetailChip(Icons.Default.Event, note.date.compact())
-            }
-            SupportingPills(
-                list = list,
-                tags = note.tags.take(visibleTagCount),
-                overflowCount = (note.tags.size - visibleTagCount).coerceAtLeast(0)
-            )
         }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            DetailChip(Icons.Default.Event, note.date.compact())
+        }
+        SupportingPills(
+            list = list,
+            tags = note.tags.take(visibleTagCount),
+            overflowCount = (note.tags.size - visibleTagCount).coerceAtLeast(0)
+        )
     }
 }
 
