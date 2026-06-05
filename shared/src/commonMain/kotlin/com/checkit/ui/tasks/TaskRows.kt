@@ -12,7 +12,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Event
-import androidx.compose.material.icons.filled.MoreTime
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.Schedule
@@ -104,7 +103,7 @@ private fun StandardTaskRowContent(task: TaskItem, list: TaskList?) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             task.dueDate?.let { DetailChip(Icons.Default.Event, it.compact()) }
             task.durationMinutes?.let { DetailChip(Icons.Default.Schedule, it.formatDuration()) }
-            if (task.repeatRRule != null) DetailChip(Icons.Default.MoreTime, "Repeats")
+            RepeatPill(task.repeatRRule)
             if (task.priority != TaskPriority.None) PriorityPill(priority = task.priority)
         }
         task.subtasks.takeIf { it.isNotEmpty() }?.let { SubtaskProgressText(task) }
@@ -121,7 +120,7 @@ private fun DetailTaskRowContent(task: TaskItem, list: TaskList?) {
             task.startTimeMinutes?.let { DetailChip(Icons.Default.Schedule, it.toClockLabel()) }
             task.endTimeMinutes?.let { DetailChip(Icons.Default.Schedule, it.toClockLabel()) }
             task.durationMinutes?.let { DetailChip(Icons.Default.Schedule, it.formatDuration()) }
-            if (task.repeatRRule != null) DetailChip(Icons.Default.MoreTime, "Repeats")
+            RepeatPill(task.repeatRRule)
             if (task.reminders.isNotEmpty()) DetailChip(Icons.Default.Notifications, "${task.reminders.size} reminders")
             if (task.priority != TaskPriority.None) PriorityPill(priority = task.priority)
         }

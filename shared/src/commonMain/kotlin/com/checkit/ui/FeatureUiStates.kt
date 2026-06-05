@@ -155,9 +155,9 @@ enum class RepeatPreset(
     val rrule: String?
 ) {
     None("Does not repeat", null),
-    EveryDay("Every day", "FREQ=DAILY;INTERVAL=1"),
-    EveryWeek("Every week", "FREQ=WEEKLY;INTERVAL=1"),
-    EveryMonth("Every month", "FREQ=MONTHLY;INTERVAL=1");
+    EveryDay("Everyday", "FREQ=DAILY;INTERVAL=1"),
+    EveryWeek("Weekly", "FREQ=WEEKLY;INTERVAL=1"),
+    EveryMonth("Monthly", "FREQ=MONTHLY;INTERVAL=1");
 
     companion object {
         fun fromRRule(rrule: String?): RepeatPreset =

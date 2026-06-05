@@ -312,7 +312,7 @@ private fun TaskViewContent(
             }
         }
         if (form.repeatPreset != RepeatPreset.None) {
-            DetailChip(Icons.Default.MoreTime, form.repeatPreset.label)
+            RepeatPill(form.repeatPreset.rrule)
         }
         ReminderDisplayRow(
             reminderOffsets = form.reminderOffsets,
