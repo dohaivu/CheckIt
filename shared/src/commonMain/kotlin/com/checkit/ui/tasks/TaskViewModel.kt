@@ -37,6 +37,7 @@ import com.checkit.ui.ListEditorState
 import com.checkit.ui.RepeatPreset
 import com.checkit.ui.SubTaskEditorState
 import com.checkit.ui.TagEditorState
+import com.checkit.ui.TaskListDisplayType
 import com.checkit.ui.TaskEditorState
 import com.checkit.ui.TaskUiState
 import com.checkit.ui.TaskWorkspaceView
@@ -114,6 +115,10 @@ class TaskViewModel(
         _uiState.update {
             if (view in it.availableViews) it.copy(selectedView = view) else it
         }
+    }
+
+    fun selectListDisplayType(displayType: TaskListDisplayType) {
+        _uiState.update { it.copy(listDisplayType = displayType) }
     }
 
     fun openNewTask() {

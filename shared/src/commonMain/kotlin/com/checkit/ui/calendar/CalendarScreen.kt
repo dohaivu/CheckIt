@@ -26,7 +26,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,6 +49,7 @@ import com.checkit.ui.firstDayOfMonth
 import com.checkit.ui.isSameMonth
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.shortName
+import com.checkit.ui.TaskListDisplayType
 import com.checkit.ui.tasks.TaskListView
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
@@ -67,6 +71,7 @@ internal fun CalendarScreen(
     val tasksForDate = state.tasksForDate(state.selectedDate)
     val notesForDate = state.notesForDate(state.selectedDate)
     val hasItemsForDate = tasksForDate.isNotEmpty() || notesForDate.isNotEmpty()
+    var listDisplayType by remember { mutableStateOf(TaskListDisplayType.Brief) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -116,6 +121,8 @@ internal fun CalendarScreen(
                     notes = notesForDate,
                     lists = state.board.lists,
                     showListName = true,
+                    displayType = listDisplayType,
+                    onDisplayTypeChange = { listDisplayType = it },
                     onTaskClick = onTaskClick,
                     onNoteClick = onNoteClick,
                     modifier = Modifier

@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
+import com.checkit.ui.TaskListDisplayType
 import com.checkit.ui.TaskUiState
 import com.checkit.ui.TaskWorkspaceView
 
@@ -23,6 +24,7 @@ internal fun TaskContent(
     state: TaskUiState,
     onTaskClick: (TaskItem) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
+    onListDisplayTypeChange: (TaskListDisplayType) -> Unit,
     onTimelineCreateTask: (Int, Int) -> Unit,
     onTimelineTaskTimeChange: (TaskItem, Int, Int) -> Unit,
     modifier: Modifier = Modifier
@@ -49,8 +51,11 @@ internal fun TaskContent(
                 notes = state.visibleNotes,
                 lists = state.board.lists,
                 showListName = showListName,
+                displayType = state.listDisplayType,
+                onDisplayTypeChange = onListDisplayTypeChange,
                 onTaskClick = onTaskClick,
-                onNoteClick = onNoteClick
+                onNoteClick = onNoteClick,
+                modifier = Modifier.weight(1f)
             )
             TaskWorkspaceView.Agenda -> TaskAgendaView(
                 tasks = state.visibleTasks,

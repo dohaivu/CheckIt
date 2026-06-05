@@ -22,6 +22,7 @@ data class TaskUiState(
     val selectedFilterId: Long? = null,
     val selectedTagId: Long? = null,
     val selectedView: TaskWorkspaceView = TaskWorkspaceView.List,
+    val listDisplayType: TaskListDisplayType = TaskListDisplayType.Standard,
     val visibleTasks: List<TaskItem> = emptyList(),
     val visibleNotes: List<NoteItem> = emptyList(),
     val editor: TaskEditorState? = null,
@@ -46,6 +47,12 @@ enum class TaskWorkspaceView {
     List,
     Agenda,
     Timeline
+}
+
+enum class TaskListDisplayType {
+    Brief,
+    Standard,
+    Detail
 }
 
 sealed interface TaskEditorState {
