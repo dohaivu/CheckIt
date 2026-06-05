@@ -3,6 +3,7 @@ package com.checkit.ui.tasks
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.checkit.data.NoteWriteInput
+import com.checkit.data.SubTaskWriteInput
 import com.checkit.data.TaskListWriteInput
 import com.checkit.data.TaskTagWriteInput
 import com.checkit.data.TaskWriteInput
@@ -32,10 +33,12 @@ import com.checkit.domain.usecase.UpdateTaskUseCase
 import com.checkit.ui.EditorMode
 import com.checkit.ui.ListEditorState
 import com.checkit.ui.RepeatPreset
+import com.checkit.ui.SubTaskEditorState
 import com.checkit.ui.TagEditorState
 import com.checkit.ui.TaskEditorState
 import com.checkit.ui.TaskUiState
 import com.checkit.ui.TaskWorkspaceView
+import com.checkit.ui.toEditorState
 import com.checkit.ui.today
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -144,6 +147,7 @@ class TaskViewModel(
                     startTimeMinutes = task.startTimeMinutes,
                     endTimeMinutes = task.endTimeMinutes,
                     repeatPreset = RepeatPreset.fromRRule(task.repeatRRule),
+                    subtasks = task.subtasks.map { subtask -> subtask.toEditorState() },
                     status = task.status,
                     priority = task.priority,
                     selectedTagIds = task.tags.map { it.id }.toSet()
@@ -303,6 +307,30 @@ class TaskViewModel(
     fun updateTaskEndTime(endTimeMinutes: Int?) = updateTaskForm { it.copy(endTimeMinutes = endTimeMinutes) }
     fun updateTaskRepeat(repeatPreset: RepeatPreset) = updateTaskForm { it.copy(repeatPreset = repeatPreset) }
     fun updateTaskPriority(priority: TaskPriority) = updateTaskForm { it.copy(priority = priority) }
+    fun addSubTask() = updateTaskForm { form ->
+        form.copy(subtasks = form.subtasks + SubTaskEditorState(name = ""))
+    }
+    fun updateSubTaskName(index: Int, name: String) = updateTaskForm { form ->
+        form.copy(
+            subtasks = form.subtasks.mapIndexed { subtaskIndex, subtask ->
+                if (subtaskIndex == index) subtask.copy(name = name) else subtask
+            }
+        )
+    }
+    fun removeSubTask(index: Int) = updateTaskForm { form ->
+        form.copy(subtasks = form.subtasks.filterIndexed { subtaskIndex, _ -> subtaskIndex != index })
+    }
+    fun toggleSubTask(index: Int) {
+        val current = _uiState.value.editor as? TaskEditorState.TaskForm ?: return
+        val nextSubtasks = current.subtasks.mapIndexed { subtaskIndex, subtask ->
+            if (subtaskIndex == index) subtask.copy(isCompleted = !subtask.isCompleted) else subtask
+        }
+        val nextForm = current.copy(subtasks = nextSubtasks)
+        _uiState.update { it.copy(editor = nextForm) }
+        if (current.mode == EditorMode.View) {
+            persistTaskInPlace(nextForm)
+        }
+    }
     fun toggleTaskTag(tagId: Long) = updateTaskForm { form ->
         form.copy(selectedTagIds = form.selectedTagIds.toggle(tagId))
     }
@@ -388,8 +416,20 @@ class TaskViewModel(
             endTimeMinutes = endTimeMinutes,
             durationMinutes = durationMinutes,
             repeatRRule = repeatPreset.rrule,
+            subtasks = subtasks
+                .map { it.copy(name = it.name.trim()) }
+                .filter { it.name.isNotBlank() }
+                .map { SubTaskWriteInput(name = it.name, isCompleted = it.isCompleted) },
             tagIds = selectedTagIds.toList()
         )
+    }
+
+    private fun persistTaskInPlace(form: TaskEditorState.TaskForm) {
+        val input = form.toWriteInput() ?: return
+        val taskId = form.taskId ?: return
+        viewModelScope.launch {
+            updateTask(taskId, input)
+        }
     }
 
     private fun updateTaskForm(transform: (TaskEditorState.TaskForm) -> TaskEditorState.TaskForm) {

@@ -5,7 +5,9 @@ import com.checkit.data.NoteWriteInput
 import com.checkit.data.TaskListWriteInput
 import com.checkit.data.TaskTagWriteInput
 import com.checkit.data.TaskWriteInput
+import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
+import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskList
 import com.checkit.domain.TaskTag
 import kotlinx.coroutines.flow.Flow
@@ -20,6 +22,8 @@ internal class FakeCheckItRepository(
     val updatedLists = mutableListOf<Pair<Long, TaskListWriteInput>>()
     val addedTags = mutableListOf<TaskTagWriteInput>()
     val updatedTags = mutableListOf<Pair<Long, TaskTagWriteInput>>()
+    val addedTasks = mutableListOf<TaskWriteInput>()
+    val updatedTasks = mutableListOf<Pair<Long, TaskWriteInput>>()
 
     var lastAssignedListId: Long = 0L
         private set
@@ -28,6 +32,7 @@ internal class FakeCheckItRepository(
 
     private var nextListId: Long = 100L
     private var nextTagId: Long = 500L
+    private var nextTaskId: Long = 1_000L
 
     override fun observeTaskBoard(): Flow<TaskBoard> = boardFlow
 
@@ -102,11 +107,73 @@ internal class FakeCheckItRepository(
             tag.name.equals(name, ignoreCase = false) && tag.id != excludeTagId
         }
 
-    override suspend fun addTask(input: TaskWriteInput): Long = 0L
-    override suspend fun updateTask(taskId: Long, input: TaskWriteInput) = Unit
+    override suspend fun addTask(input: TaskWriteInput): Long {
+        addedTasks.add(input)
+        val id = nextTaskId++
+        boardFlow.update { board ->
+            board.copy(
+                tasks = board.tasks + input.toTaskItem(
+                    taskId = id,
+                    sortOrder = board.tasks.size
+                )
+            )
+        }
+        return id
+    }
+
+    override suspend fun updateTask(taskId: Long, input: TaskWriteInput) {
+        updatedTasks.add(taskId to input)
+        boardFlow.update { board ->
+            board.copy(
+                tasks = board.tasks.map { task ->
+                    if (task.id == taskId) {
+                        input.toTaskItem(
+                            taskId = taskId,
+                            sortOrder = task.sortOrder,
+                            createdAtMillis = task.createdAtMillis,
+                            updatedAtMillis = task.updatedAtMillis + 1
+                        )
+                    } else {
+                        task
+                    }
+                }
+            )
+        }
+    }
     override suspend fun trashTask(taskId: Long) = Unit
     override suspend fun completeTask(taskId: Long) = Unit
     override suspend fun addNote(input: NoteWriteInput): Long = 0L
     override suspend fun updateNote(noteId: Long, input: NoteWriteInput) = Unit
     override suspend fun trashNote(noteId: Long) = Unit
 }
+
+private fun TaskWriteInput.toTaskItem(
+    taskId: Long,
+    sortOrder: Int,
+    createdAtMillis: Long = 0L,
+    updatedAtMillis: Long = 0L
+) = TaskItem(
+    id = taskId,
+    listId = listId,
+    name = name,
+    description = description,
+    subtasks = subtasks.mapIndexed { index, subtask ->
+        SubTaskItem(
+            id = index + 1L,
+            taskId = taskId,
+            name = subtask.name,
+            isCompleted = subtask.isCompleted,
+            sortOrder = index
+        )
+    },
+    status = status,
+    priority = priority,
+    dueDate = dueDate,
+    startTimeMinutes = startTimeMinutes,
+    endTimeMinutes = endTimeMinutes,
+    durationMinutes = durationMinutes,
+    repeatRRule = repeatRRule,
+    sortOrder = sortOrder,
+    createdAtMillis = createdAtMillis,
+    updatedAtMillis = updatedAtMillis
+)

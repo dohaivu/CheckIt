@@ -85,6 +85,10 @@ internal fun TaskEditorSheet(
     onTaskEndTimeChange: (Int?) -> Unit,
     onTaskRepeatChange: (RepeatPreset) -> Unit,
     onTaskPriorityChange: (TaskPriority) -> Unit,
+    onSubTaskToggle: (Int) -> Unit,
+    onSubTaskAdd: () -> Unit,
+    onSubTaskNameChange: (Int, String) -> Unit,
+    onSubTaskRemove: (Int) -> Unit,
     onTaskTagToggle: (Long) -> Unit,
     onNoteContentChange: (String) -> Unit,
     onNoteDateChange: (LocalDate) -> Unit,
@@ -111,7 +115,11 @@ internal fun TaskEditorSheet(
             when (editor) {
                 is TaskEditorState.TaskForm -> item {
                     if (editor.mode == EditorMode.View) {
-                        TaskViewContent(editor, availableTags)
+                        TaskViewContent(
+                            form = editor,
+                            availableTags = availableTags,
+                            onSubTaskToggle = onSubTaskToggle
+                        )
                     } else {
                         TaskFormContent(
                             form = editor,
@@ -123,6 +131,10 @@ internal fun TaskEditorSheet(
                             onEndTimeChange = onTaskEndTimeChange,
                             onRepeatChange = onTaskRepeatChange,
                             onPriorityChange = onTaskPriorityChange,
+                            onSubTaskToggle = onSubTaskToggle,
+                            onSubTaskAdd = onSubTaskAdd,
+                            onSubTaskNameChange = onSubTaskNameChange,
+                            onSubTaskRemove = onSubTaskRemove,
                             onTagToggle = onTaskTagToggle
                         )
                     }
@@ -206,7 +218,8 @@ private fun SheetHeader(
 @Composable
 private fun TaskViewContent(
     form: TaskEditorState.TaskForm,
-    availableTags: List<TaskTag>
+    availableTags: List<TaskTag>,
+    onSubTaskToggle: (Int) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
         Text(
@@ -241,6 +254,14 @@ private fun TaskViewContent(
                 primary = form.repeatPreset.label
             )
         }
+        SubtaskChecklist(
+            subtasks = form.subtasks,
+            mode = form.mode,
+            onToggle = onSubTaskToggle,
+            onAdd = {},
+            onNameChange = { _, _ -> },
+            onRemove = {}
+        )
         TagDisplayRow(
             selectedTagIds = form.selectedTagIds,
             availableTags = availableTags
@@ -356,6 +377,10 @@ private fun TaskFormContent(
     onEndTimeChange: (Int?) -> Unit,
     onRepeatChange: (RepeatPreset) -> Unit,
     onPriorityChange: (TaskPriority) -> Unit,
+    onSubTaskToggle: (Int) -> Unit,
+    onSubTaskAdd: () -> Unit,
+    onSubTaskNameChange: (Int, String) -> Unit,
+    onSubTaskRemove: (Int) -> Unit,
     onTagToggle: (Long) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -403,6 +428,14 @@ private fun TaskFormContent(
             onSelect = onPriorityChange
         )
         RepeatDropdown(selected = form.repeatPreset, onSelect = onRepeatChange)
+        SubtaskChecklist(
+            subtasks = form.subtasks,
+            mode = form.mode,
+            onToggle = onSubTaskToggle,
+            onAdd = onSubTaskAdd,
+            onNameChange = onSubTaskNameChange,
+            onRemove = onSubTaskRemove
+        )
         TagPickerRow(
             availableTags = availableTags,
             selectedTagIds = form.selectedTagIds,

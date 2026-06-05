@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -40,6 +41,9 @@ interface CheckItDao {
 
     @Query("DELETE FROM task_tags WHERE taskId = :taskId")
     suspend fun deleteTaskTags(taskId: Long)
+
+    @Query("DELETE FROM sub_tasks WHERE taskId = :taskId")
+    suspend fun deleteSubTasks(taskId: Long)
 
     @Query("DELETE FROM note_tags WHERE noteId = :noteId")
     suspend fun deleteNoteTags(noteId: Long)
@@ -121,6 +125,21 @@ interface CheckItDao {
 
     @Query("UPDATE tasks SET trashedAtMillis = :trashedAtMillis, updatedAtMillis = :trashedAtMillis WHERE id = :taskId")
     suspend fun trashTask(taskId: Long, trashedAtMillis: Long)
+
+    @Transaction
+    suspend fun replaceTaskSubTasks(taskId: Long, subtasks: List<SubTaskWriteInput>) {
+        deleteSubTasks(taskId)
+        subtasks.forEachIndexed { index, subtask ->
+            insertSubTask(
+                SubTaskEntity(
+                    taskId = taskId,
+                    name = subtask.name,
+                    isCompleted = subtask.isCompleted,
+                    sortOrder = index
+                )
+            )
+        }
+    }
 
     @Query(
         """

@@ -3,6 +3,7 @@ package com.checkit.ui
 import com.checkit.domain.ActiveTagToken
 import com.checkit.domain.DueDatePreset
 import com.checkit.domain.NoteItem
+import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskFilter
 import com.checkit.domain.TaskItem
@@ -57,6 +58,7 @@ sealed interface TaskEditorState {
         val startTimeMinutes: Int? = null,
         val endTimeMinutes: Int? = null,
         val repeatPreset: RepeatPreset = RepeatPreset.None,
+        val subtasks: List<SubTaskEditorState> = emptyList(),
         val status: TaskStatus = TaskStatus.Open,
         val priority: TaskPriority = TaskPriority.None,
         val selectedTagIds: Set<Long> = emptySet()
@@ -80,6 +82,18 @@ enum class EditorMode {
     View,
     Edit
 }
+
+data class SubTaskEditorState(
+    val id: Long? = null,
+    val name: String,
+    val isCompleted: Boolean = false
+)
+
+fun SubTaskItem.toEditorState() = SubTaskEditorState(
+    id = id,
+    name = name,
+    isCompleted = isCompleted
+)
 
 data class ListEditorState(
     val mode: EditorMode,

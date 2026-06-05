@@ -50,6 +50,7 @@ data class TaskWriteInput(
     val listId: Long,
     val name: String,
     val description: String,
+    val subtasks: List<SubTaskWriteInput>,
     val status: TaskStatus,
     val priority: TaskPriority,
     val dueDate: LocalDate?,
@@ -58,6 +59,11 @@ data class TaskWriteInput(
     val durationMinutes: Int?,
     val repeatRRule: String?,
     val tagIds: List<Long>
+)
+
+data class SubTaskWriteInput(
+    val name: String,
+    val isCompleted: Boolean
 )
 
 data class NoteWriteInput(
@@ -226,6 +232,7 @@ class RoomCheckItRepository(
             )
         )
         input.tagIds.forEach { tagId -> dao.insertTaskTag(TaskTagEntity(taskId, tagId)) }
+        dao.replaceTaskSubTasks(taskId, input.subtasks)
         return taskId
     }
 
@@ -245,6 +252,7 @@ class RoomCheckItRepository(
         )
         dao.deleteTaskTags(taskId)
         input.tagIds.forEach { tagId -> dao.insertTaskTag(TaskTagEntity(taskId, tagId)) }
+        dao.replaceTaskSubTasks(taskId, input.subtasks)
     }
 
     override suspend fun trashTask(taskId: Long) {
