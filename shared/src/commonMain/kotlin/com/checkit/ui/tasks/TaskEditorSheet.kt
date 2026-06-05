@@ -86,6 +86,7 @@ internal fun TaskEditorSheet(
     onSave: () -> Unit,
     onDelete: () -> Unit,
     onComplete: () -> Unit,
+    onOpen: () -> Unit,
     onTaskNameChange: (String) -> Unit,
     onTaskDescriptionChange: (String) -> Unit,
     onTaskDueDateChange: (LocalDate?) -> Unit,
@@ -181,6 +182,15 @@ internal fun TaskEditorSheet(
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                         Button(onClick = onComplete) {
                             Text("Complete")
+                        }
+                    }
+                }
+            }
+            if (editor.isOpenableView()) {
+                item {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        Button(onClick = onOpen) {
+                            Text("Open")
                         }
                     }
                 }
@@ -925,4 +935,9 @@ private fun TaskEditorState.canDelete(): Boolean = when (this) {
 private fun TaskEditorState.isCompletableView(): Boolean = when (this) {
     is TaskEditorState.TaskForm -> mode == EditorMode.View && status != TaskStatus.Completed
     is TaskEditorState.NoteForm -> mode == EditorMode.View && status != TaskStatus.Completed
+}
+
+private fun TaskEditorState.isOpenableView(): Boolean = when (this) {
+    is TaskEditorState.TaskForm -> mode == EditorMode.View && status == TaskStatus.Completed
+    is TaskEditorState.NoteForm -> mode == EditorMode.View && status == TaskStatus.Completed
 }

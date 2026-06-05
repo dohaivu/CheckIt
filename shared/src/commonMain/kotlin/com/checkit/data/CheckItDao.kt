@@ -289,6 +289,21 @@ interface CheckItDao {
 
     @Query(
         """
+        UPDATE tasks
+        SET status = :status,
+            completedDateEpochDays = NULL,
+            updatedAtMillis = :updatedAtMillis
+        WHERE id = :taskId
+        """
+    )
+    suspend fun updateTaskStatusOpen(
+        taskId: Long,
+        status: String,
+        updatedAtMillis: Long
+    )
+
+    @Query(
+        """
         UPDATE daily_plan_items
         SET status = :status,
             completedAtMillis = :completedAtMillis

@@ -94,6 +94,12 @@ class CompleteTaskUseCase(
     suspend operator fun invoke(taskId: Long) = repository.completeTask(taskId)
 }
 
+class OpenTaskUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(taskId: Long) = repository.openTask(taskId)
+}
+
 class AddTaskToDailyPlanUseCase(
     private val repository: CheckItRepository
 ) {
@@ -151,6 +157,12 @@ class CompleteNoteUseCase(
     private val repository: CheckItRepository
 ) {
     suspend operator fun invoke(noteId: Long) = repository.completeNote(noteId)
+}
+
+class OpenNoteUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(noteId: Long) = repository.openNote(noteId)
 }
 
 class DeleteNoteUseCase(

@@ -27,6 +27,8 @@ import com.checkit.domain.usecase.DeleteTaskUseCase
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.domain.usecase.IsTagNameTakenUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
+import com.checkit.domain.usecase.OpenNoteUseCase
+import com.checkit.domain.usecase.OpenTaskUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.TaskBoardSelection
 import com.checkit.domain.usecase.UpdateNoteUseCase
@@ -62,6 +64,8 @@ class TaskViewModel(
     private val deleteTask: DeleteTaskUseCase,
     private val completeTask: CompleteTaskUseCase,
     private val completeNote: CompleteNoteUseCase,
+    private val openTask: OpenTaskUseCase,
+    private val openNote: OpenNoteUseCase,
     private val addNote: AddNoteUseCase,
     private val updateNote: UpdateNoteUseCase,
     private val deleteNote: DeleteNoteUseCase,
@@ -454,6 +458,17 @@ class TaskViewModel(
                 is TaskEditorState.NoteForm -> completeNote(editor.noteId ?: return@launch)
             }
             _uiState.update { it.copy(editor = null, message = "Completed") }
+        }
+    }
+
+    fun openCurrentItem() {
+        val editor = _uiState.value.editor ?: return
+        viewModelScope.launch {
+            when (editor) {
+                is TaskEditorState.TaskForm -> openTask(editor.taskId ?: return@launch)
+                is TaskEditorState.NoteForm -> openNote(editor.noteId ?: return@launch)
+            }
+            _uiState.update { it.copy(editor = null, message = "Opened") }
         }
     }
 

@@ -41,6 +41,7 @@ interface CheckItRepository {
     suspend fun updateTask(taskId: Long, input: TaskWriteInput)
     suspend fun trashTask(taskId: Long)
     suspend fun completeTask(taskId: Long)
+    suspend fun openTask(taskId: Long)
     suspend fun addTaskToDailyPlan(date: LocalDate, task: TaskItem): Long
     suspend fun addManualDoneToDailyPlan(
         date: LocalDate,
@@ -55,6 +56,7 @@ interface CheckItRepository {
     suspend fun addNote(input: NoteWriteInput): Long
     suspend fun updateNote(noteId: Long, input: NoteWriteInput)
     suspend fun completeNote(noteId: Long)
+    suspend fun openNote(noteId: Long)
     suspend fun trashNote(noteId: Long)
 }
 
@@ -327,6 +329,20 @@ class RoomCheckItRepository(
         reminderNotificationScheduler.cancelTaskReminders(taskId)
     }
 
+    override suspend fun openTask(taskId: Long) {
+        val now = Clock.System.now().toEpochMilliseconds()
+        dao.updateTaskStatusOpen(
+            taskId = taskId,
+            status = TaskStatus.Open.name,
+            updatedAtMillis = now
+        )
+        dao.updateDailyPlanItemsForTaskStatus(
+            taskId = taskId,
+            status = DailyPlanItemStatus.Planned.name,
+            completedAtMillis = null
+        )
+    }
+
     override suspend fun addTaskToDailyPlan(date: LocalDate, task: TaskItem): Long {
         val planId = ensureDailyPlan(date)
         if (dao.dailyPlanTaskItemCount(planId, task.id) > 0) return planId
@@ -448,6 +464,14 @@ class RoomCheckItRepository(
         dao.updateNoteStatus(
             noteId = noteId,
             status = TaskStatus.Completed.name,
+            editedAtMillis = Clock.System.now().toEpochMilliseconds()
+        )
+    }
+
+    override suspend fun openNote(noteId: Long) {
+        dao.updateNoteStatus(
+            noteId = noteId,
+            status = TaskStatus.Open.name,
             editedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
     }
