@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,8 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
@@ -37,7 +36,6 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ElevatedFilterChip
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -51,6 +49,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -62,6 +61,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -285,7 +285,7 @@ private fun TaskViewContent(
     availableTags: List<TaskTag>,
     onSubTaskToggle: (Int) -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
         Text(
             text = form.name.ifBlank { "Untitled task" },
             style = MaterialTheme.typography.headlineMedium,
@@ -298,25 +298,21 @@ private fun TaskViewContent(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        DetailRow(
-            icon = Icons.Default.Event,
-            primary = form.dueDate?.compact() ?: "No date",
-            secondary = listOfNotNull(
-                form.startTimeMinutes?.toClockLabel(),
-                form.endTimeMinutes?.toClockLabel()?.let { "- $it" },
-                form.durationMinutes?.formatDuration()?.let { "· $it" }
-            ).joinToString(" ").ifBlank { null }
-        )
-        DetailRow(
-            icon = Icons.Default.CheckCircle,
-            primary = form.status.name,
-            secondary = "Priority ${form.priority.name}"
-        )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            DetailChip(Icons.Default.Event, form.dueDate?.compact() ?: "No date")
+            form.startTimeMinutes?.let { DetailChip(Icons.Default.Schedule, it.toClockLabel()) }
+            form.endTimeMinutes?.let { DetailChip(Icons.Default.Schedule, it.toClockLabel()) }
+            form.durationMinutes?.let { DetailChip(Icons.Default.Schedule, it.formatDuration()) }
+            DetailChip(Icons.Default.CheckCircle, form.status.name)
+            if (form.priority != TaskPriority.None) {
+                PriorityPill(priority = form.priority, selected = true)
+            }
+        }
         if (form.repeatPreset != RepeatPreset.None) {
-            DetailRow(
-                icon = Icons.Default.MoreTime,
-                primary = form.repeatPreset.label
-            )
+            DetailChip(Icons.Default.MoreTime, form.repeatPreset.label)
         }
         ReminderDisplayRow(
             reminderOffsets = form.reminderOffsets,
@@ -343,13 +339,14 @@ private fun ReminderDisplayRow(
     startTimeMinutes: Int?
 ) {
     if (reminderOffsets.isEmpty()) return
-    DetailRow(
-        icon = Icons.Default.Notifications,
-        primary = "Reminders",
-        secondary = reminderOffsets
-            .sorted()
-            .joinToString { TaskReminderPreset.labelFor(it, startTimeMinutes) }
-    )
+    QuietSection {
+        DetailRow(
+            icon = Icons.Default.Notifications,
+            primary = reminderOffsets
+                .sorted()
+                .joinToString { TaskReminderPreset.labelFor(it, startTimeMinutes) }
+        )
+    }
 }
 
 @Composable
@@ -357,21 +354,80 @@ private fun NoteViewContent(
     form: TaskEditorState.NoteForm,
     availableTags: List<TaskTag>
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
         Text(
             text = form.content.ifBlank { "Empty note" },
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.SemiBold
         )
-        DetailRow(
-            icon = Icons.Default.Event,
-            primary = form.date.compact()
-        )
+        DetailChip(Icons.Default.Event, form.date.compact())
         TagDisplayRow(
             selectedTagIds = form.selectedTagIds,
             availableTags = availableTags
         )
     }
+}
+
+@Composable
+private fun DetailChip(
+    icon: ImageVector,
+    label: String
+) {
+    Surface(
+        shape = RoundedCornerShape(999.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(16.dp)
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+@Composable
+private fun EditorSection(content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        content = content
+    )
+}
+
+@Composable
+private fun QuietSection(content: @Composable ColumnScope.() -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.22f)
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            content = content
+        )
+    }
+}
+
+@Composable
+private fun SectionHeader(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
 }
 
 @Composable
@@ -402,19 +458,14 @@ private fun TagDisplayRow(
 ) {
     val selectedTags = availableTags.filter { it.id in selectedTagIds }
     if (selectedTags.isEmpty()) return
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            text = "Tags",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+    QuietSection {
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             selectedTags.forEach { tag ->
-                TagChip(tag = tag, selected = true)
+                TaskTagPill(tag = tag, selected = true)
             }
         }
     }
@@ -428,18 +479,14 @@ private fun TagPickerRow(
 ) {
     if (availableTags.isEmpty()) return
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            text = "Tags",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        SectionHeader("Tags")
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             availableTags.forEach { tag ->
-                TagChip(
+                TaskTagPill(
                     tag = tag,
                     selected = tag.id in selectedTagIds,
                     onClick = { onTagToggle(tag.id) }
@@ -468,58 +515,63 @@ private fun TaskFormContent(
     onSubTaskRemove: (Int) -> Unit,
     onTagToggle: (Long) -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
         OutlinedTextField(
             value = form.name,
             onValueChange = onNameChange,
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Title") },
+            placeholder = { Text("Task title") },
             singleLine = true,
-            leadingIcon = { Icon(Icons.Default.TaskAlt, contentDescription = null) }
+            textStyle = MaterialTheme.typography.headlineSmall.copy(
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.SemiBold
+            ),
+            shape = MaterialTheme.shapes.medium,
+            colors = editorTextFieldColors()
         )
         OutlinedTextField(
             value = form.description,
             onValueChange = onDescriptionChange,
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Description") },
+            placeholder = { Text("Add details") },
             minLines = 2,
-            leadingIcon = { Icon(Icons.Default.Notes, contentDescription = null) }
+            shape = MaterialTheme.shapes.medium,
+            colors = editorTextFieldColors()
         )
-        DatePickerRow(date = form.dueDate, onDateChange = onDueDateChange)
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            TimePickerRow(
-                label = "Start",
-                timeMinutes = form.startTimeMinutes,
-                onTimeChange = onStartTimeChange,
-                modifier = Modifier.weight(1f)
-            )
-            TimePickerRow(
-                label = "End",
-                timeMinutes = form.endTimeMinutes,
-                onTimeChange = onEndTimeChange,
-                modifier = Modifier.weight(1f)
+        EditorSection {
+            DatePickerRow(date = form.dueDate, onDateChange = onDueDateChange)
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                TimePickerRow(
+                    label = "Start",
+                    timeMinutes = form.startTimeMinutes,
+                    onTimeChange = onStartTimeChange,
+                    modifier = Modifier.weight(1f)
+                )
+                TimePickerRow(
+                    label = "End",
+                    timeMinutes = form.endTimeMinutes,
+                    onTimeChange = onEndTimeChange,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            form.durationMinutes?.let { duration ->
+                DetailRow(
+                    icon = Icons.Default.Schedule,
+                    primary = duration.formatDuration()
+                )
+            }
+        }
+        EditorSection {
+            PriorityPickerRow(selected = form.priority, onSelect = onPriorityChange)
+            RepeatDropdown(selected = form.repeatPreset, onSelect = onRepeatChange)
+            ReminderPicker(
+                reminderOffsets = form.reminderOffsets,
+                hasDate = form.dueDate != null,
+                startTimeMinutes = form.startTimeMinutes,
+                onEnabledChange = onRemindersEnabledChange,
+                onReminderToggle = onReminderToggle
             )
         }
-        InfoRow(
-            icon = Icons.Default.Schedule,
-            label = "Duration",
-            value = form.durationMinutes?.formatDuration() ?: "Set start and end"
-        )
-        ChoiceRow(
-            label = "Priority",
-            values = TaskPriority.entries,
-            selected = form.priority,
-            labelFor = { it.name },
-            onSelect = onPriorityChange
-        )
-        RepeatDropdown(selected = form.repeatPreset, onSelect = onRepeatChange)
-        ReminderPicker(
-            reminderOffsets = form.reminderOffsets,
-            hasDate = form.dueDate != null,
-            startTimeMinutes = form.startTimeMinutes,
-            onEnabledChange = onRemindersEnabledChange,
-            onReminderToggle = onReminderToggle
-        )
         SubtaskChecklist(
             subtasks = form.subtasks,
             mode = form.mode,
@@ -535,6 +587,17 @@ private fun TaskFormContent(
         )
     }
 }
+
+@Composable
+private fun editorTextFieldColors() = TextFieldDefaults.colors(
+    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f),
+    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f),
+    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f),
+    focusedIndicatorColor = Color.Transparent,
+    unfocusedIndicatorColor = Color.Transparent,
+    disabledIndicatorColor = Color.Transparent,
+    cursorColor = MaterialTheme.colorScheme.primary
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -665,8 +728,8 @@ private fun ReminderPicker(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+            shape = MaterialTheme.shapes.medium,
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f)
         ) {
             Row(
                 modifier = Modifier
@@ -687,10 +750,10 @@ private fun ReminderPicker(
             ) {
                 Icon(Icons.Default.Notifications, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Column(Modifier.weight(1f)) {
-                    Text("Reminders", style = MaterialTheme.typography.bodyLarge)
+                    Text("Reminders", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
                     Text(
                         text = when {
-                            !hasDate -> "Set a date to schedule reminders"
+                            !hasDate -> "Set a date first"
                             !enabled -> "Off"
                             else -> reminderOffsets
                                 .sorted()
@@ -765,23 +828,6 @@ private fun ReminderOptionRow(
 }
 
 @Composable
-private fun InfoRow(
-    icon: ImageVector,
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier
-) {
-    SelectableInfoRow(
-        icon = icon,
-        label = label,
-        value = value,
-        onClick = {},
-        modifier = modifier,
-        enabled = false
-    )
-}
-
-@Composable
 private fun SelectableInfoRow(
     icon: ImageVector,
     label: String,
@@ -793,8 +839,8 @@ private fun SelectableInfoRow(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f)
     ) {
         Row(
             modifier = Modifier
@@ -806,12 +852,12 @@ private fun SelectableInfoRow(
         ) {
             Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             Column(Modifier.weight(1f)) {
+                Text(text = value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
                 Text(
                     text = label,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Text(text = value, style = MaterialTheme.typography.bodyMedium)
             }
             onClear?.let {
                 IconButton(onClick = it, modifier = Modifier.size(32.dp)) {
@@ -830,16 +876,19 @@ private fun NoteFormContent(
     onDateChange: (LocalDate) -> Unit,
     onTagToggle: (Long) -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
         OutlinedTextField(
             value = form.content,
             onValueChange = onContentChange,
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Note") },
+            placeholder = { Text("Write a note") },
             minLines = 6,
-            leadingIcon = { Icon(Icons.Default.Notes, contentDescription = null) }
+            shape = MaterialTheme.shapes.medium,
+            colors = editorTextFieldColors()
         )
-        RequiredDatePickerRow(date = form.date, onDateChange = onDateChange)
+        EditorSection {
+            RequiredDatePickerRow(date = form.date, onDateChange = onDateChange)
+        }
         TagPickerRow(
             availableTags = availableTags,
             selectedTagIds = form.selectedTagIds,
@@ -882,32 +931,6 @@ private fun RequiredDatePickerRow(
             }
         ) {
             DatePicker(state = datePickerState)
-        }
-    }
-}
-
-@Composable
-private fun <T> ChoiceRow(
-    label: String,
-    values: List<T>,
-    selected: T,
-    labelFor: (T) -> String,
-    onSelect: (T) -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(values, key = { labelFor(it) }) { value ->
-                ElevatedFilterChip(
-                    selected = selected == value,
-                    onClick = { onSelect(value) },
-                    label = { Text(labelFor(value)) }
-                )
-            }
         }
     }
 }

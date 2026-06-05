@@ -105,8 +105,7 @@ enum class TaskPriority {
     None,
     Low,
     Medium,
-    High,
-    Urgent
+    High
 }
 
 enum class DueDatePreset {
