@@ -129,6 +129,21 @@ class TaskViewModel(
         }
     }
 
+    fun openNewTaskAt(startTimeMinutes: Int, endTimeMinutes: Int) {
+        val listId = editableListId() ?: return showMessage("Create a list before adding tasks")
+        _uiState.update {
+            it.copy(
+                editor = TaskEditorState.TaskForm(
+                    mode = EditorMode.Add,
+                    listId = listId,
+                    dueDate = today(),
+                    startTimeMinutes = startTimeMinutes.coerceIn(0, LastTimelineStartMinute),
+                    endTimeMinutes = endTimeMinutes.coerceIn(MinimumTimelineDurationMinutes, MinutesPerDay)
+                )
+            )
+        }
+    }
+
     fun openNewNote() {
         val listId = editableListId() ?: return showMessage("Create a list before adding notes")
         _uiState.update {
@@ -392,6 +407,25 @@ class TaskViewModel(
         }
     }
 
+    fun updateTaskTime(task: TaskItem, startTimeMinutes: Int, endTimeMinutes: Int) {
+        val normalizedStart = startTimeMinutes.coerceIn(0, LastTimelineStartMinute)
+        val normalizedEnd = endTimeMinutes.coerceIn(
+            normalizedStart + MinimumTimelineDurationMinutes,
+            MinutesPerDay
+        )
+        val reminderOffsets = TaskReminderPlanner.selectedOffsetsFor(task)
+        viewModelScope.launch {
+            updateTask(
+                task.id,
+                task.toWriteInput(
+                    startTimeMinutes = normalizedStart,
+                    endTimeMinutes = normalizedEnd,
+                    reminderOffsets = reminderOffsets
+                )
+            )
+        }
+    }
+
     private fun saveTask(form: TaskEditorState.TaskForm) {
         val input = form.toWriteInput() ?: return
         viewModelScope.launch {
@@ -451,6 +485,33 @@ class TaskViewModel(
                 selectedOffsets = reminderOffsets
             ),
             tagIds = selectedTagIds.toList()
+        )
+    }
+
+    private fun TaskItem.toWriteInput(
+        startTimeMinutes: Int?,
+        endTimeMinutes: Int?,
+        reminderOffsets: Set<Int>
+    ): TaskWriteInput {
+        val duration = calculateDurationMinutes(startTimeMinutes, endTimeMinutes)
+        return TaskWriteInput(
+            listId = listId,
+            name = name,
+            description = description,
+            status = status,
+            priority = priority,
+            dueDate = dueDate,
+            startTimeMinutes = startTimeMinutes,
+            endTimeMinutes = endTimeMinutes,
+            durationMinutes = duration,
+            repeatRRule = repeatRRule,
+            subtasks = subtasks.map { SubTaskWriteInput(name = it.name, isCompleted = it.isCompleted) },
+            reminders = TaskReminderPlanner.buildReminderInputs(
+                dueDate = dueDate,
+                startTimeMinutes = startTimeMinutes,
+                selectedOffsets = reminderOffsets
+            ),
+            tagIds = tags.map { it.id }
         )
     }
 
@@ -531,3 +592,17 @@ class TaskViewModel(
 
 private fun <T> Set<T>.toggle(value: T): Set<T> =
     if (contains(value)) this - value else this + value
+
+private const val MinutesPerDay = 24 * 60
+private const val MinimumTimelineDurationMinutes = 15
+private const val LastTimelineStartMinute = MinutesPerDay - MinimumTimelineDurationMinutes
+
+private fun calculateDurationMinutes(startTimeMinutes: Int?, endTimeMinutes: Int?): Int? {
+    val start = startTimeMinutes ?: return null
+    val end = endTimeMinutes ?: return null
+    return if (end >= start) {
+        end - start
+    } else {
+        MinutesPerDay - start + end
+    }
+}

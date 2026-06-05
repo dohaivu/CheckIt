@@ -117,6 +117,8 @@ internal fun TaskScreen(
                     state = state,
                     onTaskClick = viewModel::openTask,
                     onNoteClick = viewModel::openNote,
+                    onTimelineCreateTask = viewModel::openNewTaskAt,
+                    onTimelineTaskTimeChange = viewModel::updateTaskTime,
                     modifier = Modifier.fillMaxSize().padding(padding)
                 )
             }

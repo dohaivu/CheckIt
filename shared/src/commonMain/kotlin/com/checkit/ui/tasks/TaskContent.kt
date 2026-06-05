@@ -3,6 +3,7 @@ package com.checkit.ui.tasks
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -22,10 +23,12 @@ internal fun TaskContent(
     state: TaskUiState,
     onTaskClick: (TaskItem) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
+    onTimelineCreateTask: (Int, Int) -> Unit,
+    onTimelineTaskTimeChange: (TaskItem, Int, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val showListName = state.selectedList == null
-    Column(modifier.padding(horizontal = 18.dp, vertical = 12.dp)) {
+    Column(modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = state.title,
@@ -57,9 +60,14 @@ internal fun TaskContent(
             )
             TaskWorkspaceView.Timeline -> TaskTimelineView(
                 tasks = state.visibleTasks,
+                notes = state.visibleNotes,
                 lists = state.board.lists,
                 showListName = showListName,
-                onTaskClick = onTaskClick
+                onTaskClick = onTaskClick,
+                onNoteClick = onNoteClick,
+                onCreateTask = onTimelineCreateTask,
+                onTaskTimeChange = onTimelineTaskTimeChange,
+                modifier = Modifier.weight(1f)
             )
         }
     }
