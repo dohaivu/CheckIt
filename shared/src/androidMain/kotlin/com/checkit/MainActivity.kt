@@ -10,6 +10,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.app.ActivityCompat
+import com.checkit.notifications.CheckItNotificationCenter
 import com.checkit.ui.CheckItApp
 
 class MainActivity : ComponentActivity() {
@@ -25,6 +26,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        CheckItNotificationCenter(this).ensureChannels()
 
         setContent {
             CheckItApp(

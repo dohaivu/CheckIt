@@ -26,7 +26,9 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.MoreTime
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Notes
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.AlertDialog
@@ -43,6 +45,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
@@ -60,6 +63,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.TaskPriority
+import com.checkit.domain.TaskReminderPreset
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskTag
 import com.checkit.ui.EditorMode
@@ -86,6 +90,8 @@ internal fun TaskEditorSheet(
     onTaskEndTimeChange: (Int?) -> Unit,
     onTaskRepeatChange: (RepeatPreset) -> Unit,
     onTaskPriorityChange: (TaskPriority) -> Unit,
+    onTaskRemindersEnabledChange: (Boolean) -> Unit,
+    onTaskReminderToggle: (Int) -> Unit,
     onSubTaskToggle: (Int) -> Unit,
     onSubTaskAdd: () -> Unit,
     onSubTaskNameChange: (Int, String) -> Unit,
@@ -137,6 +143,8 @@ internal fun TaskEditorSheet(
                             onEndTimeChange = onTaskEndTimeChange,
                             onRepeatChange = onTaskRepeatChange,
                             onPriorityChange = onTaskPriorityChange,
+                            onRemindersEnabledChange = onTaskRemindersEnabledChange,
+                            onReminderToggle = onTaskReminderToggle,
                             onSubTaskToggle = onSubTaskToggle,
                             onSubTaskAdd = onSubTaskAdd,
                             onSubTaskNameChange = onSubTaskNameChange,
@@ -260,6 +268,7 @@ private fun TaskViewContent(
                 primary = form.repeatPreset.label
             )
         }
+        ReminderDisplayRow(reminderOffsets = form.reminderOffsets)
         SubtaskChecklist(
             subtasks = form.subtasks,
             mode = form.mode,
@@ -273,6 +282,18 @@ private fun TaskViewContent(
             availableTags = availableTags
         )
     }
+}
+
+@Composable
+private fun ReminderDisplayRow(reminderOffsets: Set<Int>) {
+    if (reminderOffsets.isEmpty()) return
+    DetailRow(
+        icon = Icons.Default.Notifications,
+        primary = "Reminders",
+        secondary = reminderOffsets
+            .sorted()
+            .joinToString { TaskReminderPreset.labelFor(it) }
+    )
 }
 
 @Composable
@@ -383,6 +404,8 @@ private fun TaskFormContent(
     onEndTimeChange: (Int?) -> Unit,
     onRepeatChange: (RepeatPreset) -> Unit,
     onPriorityChange: (TaskPriority) -> Unit,
+    onRemindersEnabledChange: (Boolean) -> Unit,
+    onReminderToggle: (Int) -> Unit,
     onSubTaskToggle: (Int) -> Unit,
     onSubTaskAdd: () -> Unit,
     onSubTaskNameChange: (Int, String) -> Unit,
@@ -434,6 +457,12 @@ private fun TaskFormContent(
             onSelect = onPriorityChange
         )
         RepeatDropdown(selected = form.repeatPreset, onSelect = onRepeatChange)
+        ReminderPicker(
+            reminderOffsets = form.reminderOffsets,
+            hasDate = form.dueDate != null,
+            onEnabledChange = onRemindersEnabledChange,
+            onReminderToggle = onReminderToggle
+        )
         SubtaskChecklist(
             subtasks = form.subtasks,
             mode = form.mode,
@@ -562,6 +591,88 @@ private fun RepeatDropdown(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun ReminderPicker(
+    reminderOffsets: Set<Int>,
+    hasDate: Boolean,
+    onEnabledChange: (Boolean) -> Unit,
+    onReminderToggle: (Int) -> Unit
+) {
+    val enabled = reminderOffsets.isNotEmpty()
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(8.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Icon(Icons.Default.Notifications, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Column(Modifier.weight(1f)) {
+                    Text("Reminders", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        text = if (hasDate) "Notify before the task time" else "Set a date to schedule reminders",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = enabled,
+                    onCheckedChange = { checked -> if (hasDate || !checked) onEnabledChange(checked) },
+                    enabled = hasDate || enabled
+                )
+            }
+        }
+        if (enabled) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.32f)
+            ) {
+                Column {
+                    TaskReminderPreset.entries.forEach { preset ->
+                        ReminderOptionRow(
+                            preset = preset,
+                            selected = preset.offsetMinutes in reminderOffsets,
+                            onClick = { onReminderToggle(preset.offsetMinutes) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReminderOptionRow(
+    preset: TaskReminderPreset,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Icon(
+            imageVector = if (selected) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+            contentDescription = null,
+            tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = preset.label,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 

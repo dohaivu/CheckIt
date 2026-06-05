@@ -59,6 +59,7 @@ sealed interface TaskEditorState {
         val endTimeMinutes: Int? = null,
         val repeatPreset: RepeatPreset = RepeatPreset.None,
         val subtasks: List<SubTaskEditorState> = emptyList(),
+        val reminderOffsets: Set<Int> = emptySet(),
         val status: TaskStatus = TaskStatus.Open,
         val priority: TaskPriority = TaskPriority.None,
         val selectedTagIds: Set<Long> = emptySet()

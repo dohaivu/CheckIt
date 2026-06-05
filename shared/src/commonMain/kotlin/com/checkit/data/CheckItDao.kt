@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import com.checkit.domain.TaskReminderWriteInput
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -44,6 +45,9 @@ interface CheckItDao {
 
     @Query("DELETE FROM sub_tasks WHERE taskId = :taskId")
     suspend fun deleteSubTasks(taskId: Long)
+
+    @Query("DELETE FROM task_reminders WHERE taskId = :taskId")
+    suspend fun deleteTaskReminders(taskId: Long)
 
     @Query("DELETE FROM note_tags WHERE noteId = :noteId")
     suspend fun deleteNoteTags(noteId: Long)
@@ -136,6 +140,20 @@ interface CheckItDao {
                     name = subtask.name,
                     isCompleted = subtask.isCompleted,
                     sortOrder = index
+                )
+            )
+        }
+    }
+
+    @Transaction
+    suspend fun replaceTaskReminders(taskId: Long, reminders: List<TaskReminderWriteInput>) {
+        deleteTaskReminders(taskId)
+        reminders.forEach { reminder ->
+            insertReminder(
+                TaskReminderEntity(
+                    taskId = taskId,
+                    remindAtMillis = reminder.remindAtMillis,
+                    label = reminder.label
                 )
             )
         }

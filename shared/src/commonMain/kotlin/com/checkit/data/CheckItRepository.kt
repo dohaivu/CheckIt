@@ -9,8 +9,12 @@ import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskList
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskReminder
+import com.checkit.domain.TaskReminderWriteInput
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskTag
+import com.checkit.notifications.NoOpTaskReminderNotificationScheduler
+import com.checkit.notifications.ScheduledTaskReminder
+import com.checkit.notifications.TaskReminderNotificationScheduler
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.datetime.LocalDate
@@ -58,6 +62,7 @@ data class TaskWriteInput(
     val endTimeMinutes: Int?,
     val durationMinutes: Int?,
     val repeatRRule: String?,
+    val reminders: List<TaskReminderWriteInput>,
     val tagIds: List<Long>
 )
 
@@ -75,6 +80,7 @@ data class NoteWriteInput(
 
 class RoomCheckItRepository(
     private val dao: CheckItDao,
+    private val reminderNotificationScheduler: TaskReminderNotificationScheduler = NoOpTaskReminderNotificationScheduler()
 ) : CheckItRepository {
     override fun observeTaskBoard(): Flow<TaskBoard> =
         combine(
@@ -233,6 +239,8 @@ class RoomCheckItRepository(
         )
         input.tagIds.forEach { tagId -> dao.insertTaskTag(TaskTagEntity(taskId, tagId)) }
         dao.replaceTaskSubTasks(taskId, input.subtasks)
+        dao.replaceTaskReminders(taskId, input.reminders)
+        scheduleTaskReminders(taskId, input)
         return taskId
     }
 
@@ -253,10 +261,13 @@ class RoomCheckItRepository(
         dao.deleteTaskTags(taskId)
         input.tagIds.forEach { tagId -> dao.insertTaskTag(TaskTagEntity(taskId, tagId)) }
         dao.replaceTaskSubTasks(taskId, input.subtasks)
+        dao.replaceTaskReminders(taskId, input.reminders)
+        scheduleTaskReminders(taskId, input)
     }
 
     override suspend fun trashTask(taskId: Long) {
         dao.trashTask(taskId, Clock.System.now().toEpochMilliseconds())
+        reminderNotificationScheduler.cancelTaskReminders(taskId)
     }
 
     override suspend fun completeTask(taskId: Long) {
@@ -268,6 +279,7 @@ class RoomCheckItRepository(
             completedDateEpochDays = today.toEpochDays().toInt(),
             updatedAtMillis = instant.toEpochMilliseconds()
         )
+        reminderNotificationScheduler.cancelTaskReminders(taskId)
     }
 
     override suspend fun addNote(input: NoteWriteInput): Long {
@@ -299,6 +311,24 @@ class RoomCheckItRepository(
 
     override suspend fun trashNote(noteId: Long) {
         dao.trashNote(noteId, Clock.System.now().toEpochMilliseconds())
+    }
+
+    private suspend fun scheduleTaskReminders(taskId: Long, input: TaskWriteInput) {
+        if (input.status == TaskStatus.Completed || input.status == TaskStatus.Cancelled) {
+            reminderNotificationScheduler.cancelTaskReminders(taskId)
+            return
+        }
+        reminderNotificationScheduler.scheduleTaskReminders(
+            taskId = taskId,
+            reminders = input.reminders.map { reminder ->
+                ScheduledTaskReminder(
+                    taskId = taskId,
+                    taskName = input.name,
+                    remindAtMillis = reminder.remindAtMillis,
+                    label = reminder.label
+                )
+            }
+        )
     }
 }
 

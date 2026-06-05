@@ -44,6 +44,7 @@ kotlin {
     sourceSets {
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
+            implementation(libs.androidx.core.ktx)
             implementation(libs.androidx.lifecycle.process)
             implementation(libs.kotlinx.coroutine.android)
             implementation(libs.koin.android)

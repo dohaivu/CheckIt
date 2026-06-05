@@ -9,6 +9,7 @@ import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskList
+import com.checkit.domain.TaskReminder
 import com.checkit.domain.TaskTag
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -172,6 +173,14 @@ private fun TaskWriteInput.toTaskItem(
     startTimeMinutes = startTimeMinutes,
     endTimeMinutes = endTimeMinutes,
     durationMinutes = durationMinutes,
+    reminders = reminders.mapIndexed { index, reminder ->
+        TaskReminder(
+            id = index + 1L,
+            taskId = taskId,
+            remindAtMillis = reminder.remindAtMillis,
+            label = reminder.label
+        )
+    },
     repeatRRule = repeatRRule,
     sortOrder = sortOrder,
     createdAtMillis = createdAtMillis,

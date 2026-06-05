@@ -12,6 +12,8 @@ import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskList
 import com.checkit.domain.TaskPriority
+import com.checkit.domain.TaskReminderPlanner
+import com.checkit.domain.TaskReminderPreset
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskTag
 import com.checkit.domain.usecase.AddNoteUseCase
@@ -148,6 +150,7 @@ class TaskViewModel(
                     endTimeMinutes = task.endTimeMinutes,
                     repeatPreset = RepeatPreset.fromRRule(task.repeatRRule),
                     subtasks = task.subtasks.map { subtask -> subtask.toEditorState() },
+                    reminderOffsets = TaskReminderPlanner.selectedOffsetsFor(task),
                     status = task.status,
                     priority = task.priority,
                     selectedTagIds = task.tags.map { it.id }.toSet()
@@ -302,11 +305,28 @@ class TaskViewModel(
 
     fun updateTaskName(name: String) = updateTaskForm { it.copy(name = name) }
     fun updateTaskDescription(description: String) = updateTaskForm { it.copy(description = description) }
-    fun updateTaskDueDate(dueDate: LocalDate?) = updateTaskForm { it.copy(dueDate = dueDate) }
+    fun updateTaskDueDate(dueDate: LocalDate?) = updateTaskForm {
+        it.copy(
+            dueDate = dueDate,
+            reminderOffsets = if (dueDate == null) emptySet() else it.reminderOffsets
+        )
+    }
     fun updateTaskStartTime(startTimeMinutes: Int?) = updateTaskForm { it.copy(startTimeMinutes = startTimeMinutes) }
     fun updateTaskEndTime(endTimeMinutes: Int?) = updateTaskForm { it.copy(endTimeMinutes = endTimeMinutes) }
     fun updateTaskRepeat(repeatPreset: RepeatPreset) = updateTaskForm { it.copy(repeatPreset = repeatPreset) }
     fun updateTaskPriority(priority: TaskPriority) = updateTaskForm { it.copy(priority = priority) }
+    fun setTaskRemindersEnabled(enabled: Boolean) = updateTaskForm { form ->
+        form.copy(
+            reminderOffsets = if (enabled) {
+                form.reminderOffsets.ifEmpty { setOf(TaskReminderPreset.default.offsetMinutes) }
+            } else {
+                emptySet()
+            }
+        )
+    }
+    fun toggleTaskReminder(offsetMinutes: Int) = updateTaskForm { form ->
+        form.copy(reminderOffsets = form.reminderOffsets.toggle(offsetMinutes))
+    }
     fun addSubTask() = updateTaskForm { form ->
         form.copy(subtasks = form.subtasks + SubTaskEditorState(name = ""))
     }
@@ -420,6 +440,11 @@ class TaskViewModel(
                 .map { it.copy(name = it.name.trim()) }
                 .filter { it.name.isNotBlank() }
                 .map { SubTaskWriteInput(name = it.name, isCompleted = it.isCompleted) },
+            reminders = TaskReminderPlanner.buildReminderInputs(
+                dueDate = dueDate,
+                startTimeMinutes = startTimeMinutes,
+                selectedOffsets = reminderOffsets
+            ),
             tagIds = selectedTagIds.toList()
         )
     }
@@ -499,5 +524,5 @@ class TaskViewModel(
     }
 }
 
-private fun Set<Long>.toggle(value: Long): Set<Long> =
+private fun <T> Set<T>.toggle(value: T): Set<T> =
     if (contains(value)) this - value else this + value

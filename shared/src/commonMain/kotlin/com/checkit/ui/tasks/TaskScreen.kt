@@ -139,6 +139,8 @@ internal fun TaskScreen(
             onTaskEndTimeChange = viewModel::updateTaskEndTime,
             onTaskRepeatChange = viewModel::updateTaskRepeat,
             onTaskPriorityChange = viewModel::updateTaskPriority,
+            onTaskRemindersEnabledChange = viewModel::setTaskRemindersEnabled,
+            onTaskReminderToggle = viewModel::toggleTaskReminder,
             onSubTaskToggle = viewModel::toggleSubTask,
             onSubTaskAdd = viewModel::addSubTask,
             onSubTaskNameChange = viewModel::updateSubTaskName,

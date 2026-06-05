@@ -56,7 +56,7 @@ fun initKoin(config: KoinAppDeclaration? = null) =
 
 val provideInteractorModule = module {
     single { HttpClient() }
-    single<CheckItRepository> { RoomCheckItRepository(get()) }
+    single<CheckItRepository> { RoomCheckItRepository(get(), get()) }
     single { ObserveTaskBoardUseCase(get()) }
     single { EnsureDefaultTaskDataUseCase(get()) }
     single { AddTaskListUseCase(get()) }

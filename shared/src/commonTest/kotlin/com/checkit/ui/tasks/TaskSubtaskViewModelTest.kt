@@ -108,6 +108,23 @@ class TaskSubtaskViewModelTest {
         assertNull(viewModel.uiState.value.editor)
     }
 
+    @Test
+    fun saveTaskPersistsSelectedReminderOffsets() = runTest(dispatcher) {
+        createViewModel(TaskBoard(lists = listOf(inboxList())))
+        viewModel.openNewTask()
+        viewModel.updateTaskName("Remind me")
+        viewModel.updateTaskStartTime(8 * 60 + 30)
+        viewModel.setTaskRemindersEnabled(true)
+        viewModel.toggleTaskReminder(60)
+
+        viewModel.saveEditor()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val reminders = repository.addedTasks.single().reminders
+        assertEquals(listOf(10, 60), reminders.map { it.offsetMinutes })
+        assertEquals(listOf("10 mins before", "1 hour before"), reminders.map { it.label })
+    }
+
     private fun createViewModel(board: TaskBoard) {
         repository = FakeCheckItRepository(initialBoard = board)
         viewModel = TaskViewModel(
