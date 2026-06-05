@@ -44,6 +44,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -99,7 +102,9 @@ internal fun TaskEditorSheet(
     onTaskTagToggle: (Long) -> Unit,
     onNoteContentChange: (String) -> Unit,
     onNoteDateChange: (LocalDate) -> Unit,
-    onNoteTagToggle: (Long) -> Unit
+    onNoteTagToggle: (Long) -> Unit,
+    onSwitchAddModeToTask: () -> Unit,
+    onSwitchAddModeToNote: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -117,11 +122,15 @@ internal fun TaskEditorSheet(
             item {
                 SheetHeader(
                     isViewMode = editor.isViewMode(),
+                    isAddMode = editor.isAddMode(),
+                    isTaskSelected = editor is TaskEditorState.TaskForm,
                     canDelete = editor.canDelete(),
                     onDismiss = onDismiss,
                     onEdit = onEdit,
                     onSave = onSave,
-                    onDelete = onDelete
+                    onDelete = onDelete,
+                    onSwitchAddModeToTask = onSwitchAddModeToTask,
+                    onSwitchAddModeToNote = onSwitchAddModeToNote
                 )
             }
             when (editor) {
@@ -181,49 +190,90 @@ internal fun TaskEditorSheet(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AddModeSwitch(
+    isTaskSelected: Boolean,
+    onTaskClick: () -> Unit,
+    onNoteClick: () -> Unit
+) {
+    SingleChoiceSegmentedButtonRow {
+        SegmentedButton(
+            selected = isTaskSelected,
+            onClick = onTaskClick,
+            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+            icon = { Icon(Icons.Default.TaskAlt, contentDescription = null) },
+            label = { Text("Task") }
+        )
+        SegmentedButton(
+            selected = !isTaskSelected,
+            onClick = onNoteClick,
+            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+            icon = { Icon(Icons.Default.Notes, contentDescription = null) },
+            label = { Text("Note") }
+        )
+    }
+}
+
 @Composable
 private fun SheetHeader(
     isViewMode: Boolean,
+    isAddMode: Boolean,
+    isTaskSelected: Boolean,
     canDelete: Boolean,
     onDismiss: () -> Unit,
     onEdit: () -> Unit,
     onSave: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onSwitchAddModeToTask: () -> Unit,
+    onSwitchAddModeToNote: () -> Unit
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    Box(modifier = Modifier.fillMaxWidth()) {
         IconButton(onClick = onDismiss) {
             Icon(Icons.Default.Close, contentDescription = "Close")
         }
-        Spacer(Modifier.weight(1f))
-        if (isViewMode) {
-            IconButton(onClick = onEdit) {
-                Icon(Icons.Default.Edit, contentDescription = "Edit")
+
+        if (isAddMode) {
+            Box(modifier = Modifier.align(Alignment.Center)) {
+                AddModeSwitch(
+                    isTaskSelected = isTaskSelected,
+                    onTaskClick = onSwitchAddModeToTask,
+                    onNoteClick = onSwitchAddModeToNote
+                )
             }
         }
-        if (canDelete && isViewMode) {
-            Box {
-                IconButton(onClick = { menuExpanded = true }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "Options")
-                }
-                DropdownMenu(
-                    expanded = menuExpanded,
-                    onDismissRequest = { menuExpanded = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Delete") },
-                        leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
-                        onClick = {
-                            menuExpanded = false
-                            onDelete()
-                        }
-                    )
+
+        Row(modifier = Modifier.align(Alignment.CenterEnd), verticalAlignment = Alignment.CenterVertically) {
+            if (isViewMode) {
+                IconButton(onClick = onEdit) {
+                    Icon(Icons.Default.Edit, contentDescription = "Edit")
                 }
             }
-        }
-        if (!isViewMode) {
-            Button(onClick = onSave) {
-                Text("Save")
+            if (canDelete && isViewMode) {
+                Box {
+                    IconButton(onClick = { menuExpanded = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "Options")
+                    }
+                    DropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Delete") },
+                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
+                            onClick = {
+                                menuExpanded = false
+                                onDelete()
+                            }
+                        )
+                    }
+                }
+            }
+            if (!isViewMode) {
+                Button(onClick = onSave) {
+                    Text("Save")
+                }
             }
         }
     }
@@ -865,6 +915,11 @@ private fun <T> ChoiceRow(
 private fun TaskEditorState.isViewMode(): Boolean = when (this) {
     is TaskEditorState.TaskForm -> mode == EditorMode.View
     is TaskEditorState.NoteForm -> mode == EditorMode.View
+}
+
+private fun TaskEditorState.isAddMode(): Boolean = when (this) {
+    is TaskEditorState.TaskForm -> mode == EditorMode.Add
+    is TaskEditorState.NoteForm -> mode == EditorMode.Add
 }
 
 private fun TaskEditorState.canDelete(): Boolean = when (this) {

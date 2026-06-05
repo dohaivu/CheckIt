@@ -155,6 +155,41 @@ class TaskViewModel(
         }
     }
 
+    fun switchAddEditorToTask() {
+        _uiState.update { state ->
+            val note = state.editor as? TaskEditorState.NoteForm ?: return@update state
+            if (note.mode != EditorMode.Add) return@update state
+            state.copy(
+                editor = TaskEditorState.TaskForm(
+                    mode = EditorMode.Add,
+                    listId = note.listId,
+                    name = note.content,
+                    dueDate = note.date,
+                    selectedTagIds = note.selectedTagIds
+                )
+            )
+        }
+    }
+
+    fun switchAddEditorToNote() {
+        _uiState.update { state ->
+            val task = state.editor as? TaskEditorState.TaskForm ?: return@update state
+            if (task.mode != EditorMode.Add) return@update state
+            val content = listOf(task.name, task.description)
+                .filter { it.isNotBlank() }
+                .joinToString("\n\n")
+            state.copy(
+                editor = TaskEditorState.NoteForm(
+                    mode = EditorMode.Add,
+                    listId = task.listId,
+                    content = content,
+                    date = task.dueDate ?: today(),
+                    selectedTagIds = task.selectedTagIds
+                )
+            )
+        }
+    }
+
     fun openTask(task: TaskItem) {
         _uiState.update {
             it.copy(
