@@ -338,8 +338,7 @@ private fun TaskViewContent(
                 DetailChip(materialIcon(list.icon), list.name, iconTint = list.color.toColor())
             }
             DetailChip(Icons.Default.Event, form.dueDate?.compact() ?: "No date")
-            form.startTimeMinutes?.let { DetailChip(Icons.Default.Schedule, it.toClockLabel()) }
-            form.endTimeMinutes?.let { DetailChip(Icons.Default.Schedule, it.toClockLabel()) }
+            TimeRangeDetailChip(form.startTimeMinutes, form.endTimeMinutes)
             form.durationMinutes?.let { DetailChip(Icons.Default.Schedule, it.formatDuration()) }
             DetailChip(Icons.Default.CheckCircle, form.status.name)
             if (form.priority != TaskPriority.None) {

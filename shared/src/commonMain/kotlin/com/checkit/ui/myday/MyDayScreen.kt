@@ -86,6 +86,7 @@ import com.checkit.ui.tasks.TaskCard
 import com.checkit.ui.tasks.TaskTimelineView
 import com.checkit.ui.tasks.DetailChip
 import com.checkit.ui.tasks.DurationText
+import com.checkit.ui.tasks.TimeRangeDetailChip
 import com.checkit.ui.tasks.TimePickerRow
 import com.checkit.ui.tasks.editorTextFieldColors
 import com.checkit.ui.tasks.taskCardColor
@@ -626,8 +627,7 @@ private fun DailyPlanItemViewContent(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             DetailChip(Icons.Default.Event, "My Day")
-            state.startTimeMinutes?.let { DetailChip(Icons.Default.Schedule, it.toClockLabel()) }
-            state.endTimeMinutes?.let { DetailChip(Icons.Default.Schedule, it.toClockLabel()) }
+            TimeRangeDetailChip(state.startTimeMinutes, state.endTimeMinutes)
             DetailChip(Icons.Default.CheckCircle, if (state.status == DailyPlanItemStatus.Done) "Done" else "Planned")
             if (hasTask) {
                 DetailChip(Icons.Default.TaskAlt, "Task")
