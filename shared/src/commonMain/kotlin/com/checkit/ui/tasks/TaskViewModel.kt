@@ -370,6 +370,7 @@ class TaskViewModel(
     }
 
     fun updateTaskName(name: String) = updateTaskForm { it.copy(name = name) }
+    fun updateTaskListId(listId: Long) = updateTaskForm { it.copy(listId = listId) }
     fun updateTaskDescription(description: String) = updateTaskForm { it.copy(description = description) }
     fun updateTaskDueDate(dueDate: LocalDate?) = updateTaskForm {
         it.copy(
@@ -426,6 +427,7 @@ class TaskViewModel(
         form.copy(selectedTagIds = form.selectedTagIds.toggle(tagId))
     }
     fun updateNoteContent(content: String) = updateNoteForm { it.copy(content = content) }
+    fun updateNoteListId(listId: Long) = updateNoteForm { it.copy(listId = listId) }
     fun updateNoteDate(date: LocalDate) = updateNoteForm { it.copy(date = date) }
     fun toggleNoteTag(tagId: Long) = updateNoteForm { form ->
         form.copy(selectedTagIds = form.selectedTagIds.toggle(tagId))

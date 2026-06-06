@@ -212,7 +212,8 @@ interface CheckItDao {
     @Query(
         """
         UPDATE tasks
-        SET name = :name,
+        SET listId = :listId,
+            name = :name,
             description = :description,
             status = :status,
             priority = :priority,
@@ -227,6 +228,7 @@ interface CheckItDao {
     )
     suspend fun updateTask(
         taskId: Long,
+        listId: Long,
         name: String,
         description: String,
         status: String,
@@ -345,8 +347,8 @@ interface CheckItDao {
         endTimeMinutes: Int?
     )
 
-    @Query("UPDATE notes SET content = :content, status = :status, dateEpochDays = :dateEpochDays, editedAtMillis = :editedAtMillis WHERE id = :noteId")
-    suspend fun updateNote(noteId: Long, content: String, status: String, dateEpochDays: Int, editedAtMillis: Long)
+    @Query("UPDATE notes SET listId = :listId, content = :content, status = :status, dateEpochDays = :dateEpochDays, editedAtMillis = :editedAtMillis WHERE id = :noteId")
+    suspend fun updateNote(noteId: Long, listId: Long, content: String, status: String, dateEpochDays: Int, editedAtMillis: Long)
 
     @Query("UPDATE notes SET status = :status, editedAtMillis = :editedAtMillis WHERE id = :noteId")
     suspend fun updateNoteStatus(noteId: Long, status: String, editedAtMillis: Long)

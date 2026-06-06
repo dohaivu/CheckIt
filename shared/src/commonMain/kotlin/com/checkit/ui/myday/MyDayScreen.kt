@@ -84,6 +84,7 @@ import kotlinx.datetime.LocalDate
 internal fun MyDayScreen(
     viewModel: MyDayViewModel,
     onTaskClick: (TaskItem) -> Unit,
+    onCreateTask: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -156,7 +157,11 @@ internal fun MyDayScreen(
             tasks = state.suggestedTasks,
             onDismiss = viewModel::dismissSuggestions,
             onTaskClick = onTaskClick,
-            onAddTask = viewModel::addTask
+            onAddTask = viewModel::addTask,
+            onCreateTask = {
+                viewModel.dismissSuggestions()
+                onCreateTask()
+            }
         )
     }
 
@@ -368,7 +373,8 @@ private fun SuggestionsSheet(
     tasks: List<TaskItem>,
     onDismiss: () -> Unit,
     onTaskClick: (TaskItem) -> Unit,
-    onAddTask: (TaskItem) -> Unit
+    onAddTask: (TaskItem) -> Unit,
+    onCreateTask: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(
@@ -380,7 +386,21 @@ private fun SuggestionsSheet(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Text("Add to My Day", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Add to My Day",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Button(onClick = onCreateTask) {
+                    Text("Add")
+                }
+            }
             if (tasks.isEmpty()) {
                 EmptyStateText("No suggested tasks")
             } else {

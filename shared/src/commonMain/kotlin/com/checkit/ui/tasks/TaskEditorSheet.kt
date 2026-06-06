@@ -66,6 +66,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.TaskPriority
+import com.checkit.domain.TaskList
 import com.checkit.domain.TaskReminderPreset
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskTag
@@ -80,6 +81,7 @@ import kotlinx.datetime.LocalDate
 @Composable
 internal fun TaskEditorSheet(
     editor: TaskEditorState,
+    availableLists: List<TaskList>,
     availableTags: List<TaskTag>,
     onDismiss: () -> Unit,
     onEdit: () -> Unit,
@@ -88,6 +90,7 @@ internal fun TaskEditorSheet(
     onComplete: () -> Unit,
     onOpen: () -> Unit,
     onTaskNameChange: (String) -> Unit,
+    onTaskListChange: (Long) -> Unit,
     onTaskDescriptionChange: (String) -> Unit,
     onTaskDueDateChange: (LocalDate?) -> Unit,
     onTaskStartTimeChange: (Int?) -> Unit,
@@ -102,6 +105,7 @@ internal fun TaskEditorSheet(
     onSubTaskRemove: (Int) -> Unit,
     onTaskTagToggle: (Long) -> Unit,
     onNoteContentChange: (String) -> Unit,
+    onNoteListChange: (Long) -> Unit,
     onNoteDateChange: (LocalDate) -> Unit,
     onNoteTagToggle: (Long) -> Unit,
     onSwitchAddModeToTask: () -> Unit,
@@ -140,14 +144,17 @@ internal fun TaskEditorSheet(
                     if (editor.mode == EditorMode.View) {
                         TaskViewContent(
                             form = editor,
+                            availableLists = availableLists,
                             availableTags = availableTags,
                             onSubTaskToggle = onSubTaskToggle
                         )
                     } else {
                         TaskFormContent(
                             form = editor,
+                            availableLists = availableLists,
                             availableTags = availableTags,
                             onNameChange = onTaskNameChange,
+                            onListChange = onTaskListChange,
                             onDescriptionChange = onTaskDescriptionChange,
                             onDueDateChange = onTaskDueDateChange,
                             onStartTimeChange = onTaskStartTimeChange,
@@ -166,12 +173,14 @@ internal fun TaskEditorSheet(
                 }
                 is TaskEditorState.NoteForm -> item {
                     if (editor.mode == EditorMode.View) {
-                        NoteViewContent(editor, availableTags)
+                        NoteViewContent(editor, availableLists, availableTags)
                     } else {
                         NoteFormContent(
                             form = editor,
+                            availableLists = availableLists,
                             availableTags = availableTags,
                             onContentChange = onNoteContentChange,
+                            onListChange = onNoteListChange,
                             onDateChange = onNoteDateChange,
                             onTagToggle = onNoteTagToggle
                         )
@@ -293,9 +302,11 @@ private fun SheetHeader(
 @Composable
 private fun TaskViewContent(
     form: TaskEditorState.TaskForm,
+    availableLists: List<TaskList>,
     availableTags: List<TaskTag>,
     onSubTaskToggle: (Int) -> Unit
 ) {
+    val selectedList = availableLists.firstOrNull { it.id == form.listId }
     Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
         Text(
             text = form.name.ifBlank { "Untitled task" },
@@ -313,6 +324,9 @@ private fun TaskViewContent(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            selectedList?.let { list ->
+                DetailChip(materialIcon(list.icon), list.name, iconTint = list.color.toColor())
+            }
             DetailChip(Icons.Default.Event, form.dueDate?.compact() ?: "No date")
             form.startTimeMinutes?.let { DetailChip(Icons.Default.Schedule, it.toClockLabel()) }
             form.endTimeMinutes?.let { DetailChip(Icons.Default.Schedule, it.toClockLabel()) }
@@ -363,16 +377,26 @@ private fun ReminderDisplayRow(
 @Composable
 private fun NoteViewContent(
     form: TaskEditorState.NoteForm,
+    availableLists: List<TaskList>,
     availableTags: List<TaskTag>
 ) {
+    val selectedList = availableLists.firstOrNull { it.id == form.listId }
     Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
         Text(
             text = form.content.ifBlank { "Empty note" },
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.SemiBold
         )
-        DetailChip(Icons.Default.Event, form.date.compact())
-        DetailChip(Icons.Default.CheckCircle, form.status.name)
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            selectedList?.let { list ->
+                DetailChip(materialIcon(list.icon), list.name, iconTint = list.color.toColor())
+            }
+            DetailChip(Icons.Default.Event, form.date.compact())
+            DetailChip(Icons.Default.CheckCircle, form.status.name)
+        }
         TagDisplayRow(
             selectedTagIds = form.selectedTagIds,
             availableTags = availableTags
@@ -482,8 +506,10 @@ private fun TagPickerRow(
 @Composable
 private fun TaskFormContent(
     form: TaskEditorState.TaskForm,
+    availableLists: List<TaskList>,
     availableTags: List<TaskTag>,
     onNameChange: (String) -> Unit,
+    onListChange: (Long) -> Unit,
     onDescriptionChange: (String) -> Unit,
     onDueDateChange: (LocalDate?) -> Unit,
     onStartTimeChange: (Int?) -> Unit,
@@ -522,6 +548,11 @@ private fun TaskFormContent(
             colors = editorTextFieldColors()
         )
         EditorSection {
+            ListPickerRow(
+                selectedListId = form.listId,
+                lists = availableLists,
+                onListChange = onListChange
+            )
             DatePickerRow(date = form.dueDate, onDateChange = onDueDateChange)
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 TimePickerRow(
@@ -664,6 +695,46 @@ private fun TimePickerRow(
             },
             text = { TimePicker(state = timePickerState) }
         )
+    }
+}
+
+@Composable
+private fun ListPickerRow(
+    selectedListId: Long,
+    lists: List<TaskList>,
+    onListChange: (Long) -> Unit
+) {
+    if (lists.isEmpty()) return
+    var expanded by remember { mutableStateOf(false) }
+    val selectedList = lists.firstOrNull { it.id == selectedListId } ?: lists.first()
+    Box {
+        SelectableInfoRow(
+            icon = materialIcon(selectedList.icon),
+            label = "List",
+            value = selectedList.name,
+            onClick = { expanded = true }
+        )
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            lists.forEach { list ->
+                DropdownMenuItem(
+                    text = { Text(list.name) },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = materialIcon(list.icon),
+                            contentDescription = null,
+                            tint = list.color.toColor()
+                        )
+                    },
+                    onClick = {
+                        onListChange(list.id)
+                        expanded = false
+                    }
+                )
+            }
+        }
     }
 }
 
@@ -854,8 +925,10 @@ private fun SelectableInfoRow(
 @Composable
 private fun NoteFormContent(
     form: TaskEditorState.NoteForm,
+    availableLists: List<TaskList>,
     availableTags: List<TaskTag>,
     onContentChange: (String) -> Unit,
+    onListChange: (Long) -> Unit,
     onDateChange: (LocalDate) -> Unit,
     onTagToggle: (Long) -> Unit
 ) {
@@ -870,6 +943,11 @@ private fun NoteFormContent(
             colors = editorTextFieldColors()
         )
         EditorSection {
+            ListPickerRow(
+                selectedListId = form.listId,
+                lists = availableLists,
+                onListChange = onListChange
+            )
             RequiredDatePickerRow(date = form.date, onDateChange = onDateChange)
         }
         TagPickerRow(

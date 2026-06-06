@@ -195,7 +195,8 @@ fun CheckItApp(
                                 Routes.MyDay -> {
                                     MyDayScreen(
                                         viewModel = myDayViewModel,
-                                        onTaskClick = taskViewModel::openTask
+                                        onTaskClick = taskViewModel::openTask,
+                                        onCreateTask = taskViewModel::openNewTask
                                     )
                                 }
                                 Routes.Calendar -> {
@@ -226,6 +227,7 @@ fun CheckItApp(
                 taskUiState.editor?.let { editor ->
                     TaskEditorSheet(
                         editor = editor,
+                        availableLists = taskUiState.board.lists,
                         availableTags = taskUiState.board.tags,
                         onDismiss = taskViewModel::dismissEditor,
                         onEdit = taskViewModel::editCurrentItem,
@@ -234,6 +236,7 @@ fun CheckItApp(
                         onComplete = taskViewModel::completeCurrentItem,
                         onOpen = taskViewModel::openCurrentItem,
                         onTaskNameChange = taskViewModel::updateTaskName,
+                        onTaskListChange = taskViewModel::updateTaskListId,
                         onTaskDescriptionChange = taskViewModel::updateTaskDescription,
                         onTaskDueDateChange = taskViewModel::updateTaskDueDate,
                         onTaskStartTimeChange = taskViewModel::updateTaskStartTime,
@@ -248,6 +251,7 @@ fun CheckItApp(
                         onSubTaskRemove = taskViewModel::removeSubTask,
                         onTaskTagToggle = taskViewModel::toggleTaskTag,
                         onNoteContentChange = taskViewModel::updateNoteContent,
+                        onNoteListChange = taskViewModel::updateNoteListId,
                         onNoteDateChange = taskViewModel::updateNoteDate,
                         onNoteTagToggle = taskViewModel::toggleNoteTag,
                         onSwitchAddModeToTask = taskViewModel::switchAddEditorToTask,

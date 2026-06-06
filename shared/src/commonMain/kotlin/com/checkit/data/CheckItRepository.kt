@@ -288,6 +288,7 @@ class RoomCheckItRepository(
     override suspend fun updateTask(taskId: Long, input: TaskWriteInput) {
         dao.updateTask(
             taskId = taskId,
+            listId = input.listId,
             name = input.name,
             description = input.description,
             status = input.status.name,
@@ -447,6 +448,7 @@ class RoomCheckItRepository(
     override suspend fun updateNote(noteId: Long, input: NoteWriteInput) {
         dao.updateNote(
             noteId = noteId,
+            listId = input.listId,
             content = input.content,
             status = input.status.name,
             dateEpochDays = input.date.toEpochDays().toInt(),
