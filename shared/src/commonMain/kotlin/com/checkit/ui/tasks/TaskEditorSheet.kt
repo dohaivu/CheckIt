@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -76,6 +77,9 @@ import com.checkit.ui.TaskEditorState
 import com.checkit.ui.toUtcLocalDate
 import com.checkit.ui.toUtcStartMillis
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -118,94 +122,99 @@ internal fun TaskEditorSheet(
         sheetState = sheetState,
         sheetGesturesEnabled = false
     ) {
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .windowInsetsPadding(WindowInsets.ime)
-                .padding(horizontal = 20.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            item {
-                SheetHeader(
-                    isViewMode = editor.isViewMode(),
-                    isAddMode = editor.isAddMode(),
-                    isTaskSelected = editor is TaskEditorState.TaskForm,
-                    canDelete = editor.canDelete(),
-                    onDismiss = onDismiss,
-                    onEdit = onEdit,
-                    onSave = onSave,
-                    onDelete = onDelete,
-                    onSwitchAddModeToTask = onSwitchAddModeToTask,
-                    onSwitchAddModeToNote = onSwitchAddModeToNote
-                )
-            }
-            when (editor) {
-                is TaskEditorState.TaskForm -> item {
-                    if (editor.mode == EditorMode.View) {
-                        TaskViewContent(
-                            form = editor,
-                            availableLists = availableLists,
-                            availableTags = availableTags,
-                            onSubTaskToggle = onSubTaskToggle
-                        )
-                    } else {
-                        TaskFormContent(
-                            form = editor,
-                            availableLists = availableLists,
-                            availableTags = availableTags,
-                            onNameChange = onTaskNameChange,
-                            onListChange = onTaskListChange,
-                            onDescriptionChange = onTaskDescriptionChange,
-                            onDueDateChange = onTaskDueDateChange,
-                            onStartTimeChange = onTaskStartTimeChange,
-                            onEndTimeChange = onTaskEndTimeChange,
-                            onRepeatChange = onTaskRepeatChange,
-                            onPriorityChange = onTaskPriorityChange,
-                            onRemindersEnabledChange = onTaskRemindersEnabledChange,
-                            onReminderToggle = onTaskReminderToggle,
-                            onSubTaskToggle = onSubTaskToggle,
-                            onSubTaskAdd = onSubTaskAdd,
-                            onSubTaskNameChange = onSubTaskNameChange,
-                            onSubTaskRemove = onSubTaskRemove,
-                            onTagToggle = onTaskTagToggle
-                        )
+            SheetHeader(
+                isViewMode = editor.isViewMode(),
+                isAddMode = editor.isAddMode(),
+                isTaskSelected = editor is TaskEditorState.TaskForm,
+                canDelete = editor.canDelete(),
+                onDismiss = onDismiss,
+                onEdit = onEdit,
+                onSave = onSave,
+                onDelete = onDelete,
+                onSwitchAddModeToTask = onSwitchAddModeToTask,
+                onSwitchAddModeToNote = onSwitchAddModeToNote,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+            )
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false)
+                    .padding(horizontal = 20.dp),
+                contentPadding = PaddingValues(top = 6.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                when (editor) {
+                    is TaskEditorState.TaskForm -> item {
+                        if (editor.mode == EditorMode.View) {
+                            TaskViewContent(
+                                form = editor,
+                                availableLists = availableLists,
+                                availableTags = availableTags,
+                                onSubTaskToggle = onSubTaskToggle
+                            )
+                        } else {
+                            TaskFormContent(
+                                form = editor,
+                                availableLists = availableLists,
+                                availableTags = availableTags,
+                                onNameChange = onTaskNameChange,
+                                onListChange = onTaskListChange,
+                                onDescriptionChange = onTaskDescriptionChange,
+                                onDueDateChange = onTaskDueDateChange,
+                                onStartTimeChange = onTaskStartTimeChange,
+                                onEndTimeChange = onTaskEndTimeChange,
+                                onRepeatChange = onTaskRepeatChange,
+                                onPriorityChange = onTaskPriorityChange,
+                                onRemindersEnabledChange = onTaskRemindersEnabledChange,
+                                onReminderToggle = onTaskReminderToggle,
+                                onSubTaskToggle = onSubTaskToggle,
+                                onSubTaskAdd = onSubTaskAdd,
+                                onSubTaskNameChange = onSubTaskNameChange,
+                                onSubTaskRemove = onSubTaskRemove,
+                                onTagToggle = onTaskTagToggle
+                            )
+                        }
+                    }
+                    is TaskEditorState.NoteForm -> item {
+                        if (editor.mode == EditorMode.View) {
+                            NoteViewContent(editor, availableLists, availableTags)
+                        } else {
+                            NoteFormContent(
+                                form = editor,
+                                availableLists = availableLists,
+                                availableTags = availableTags,
+                                onContentChange = onNoteContentChange,
+                                onListChange = onNoteListChange,
+                                onDateChange = onNoteDateChange,
+                                onTagToggle = onNoteTagToggle
+                            )
+                        }
                     }
                 }
-                is TaskEditorState.NoteForm -> item {
-                    if (editor.mode == EditorMode.View) {
-                        NoteViewContent(editor, availableLists, availableTags)
-                    } else {
-                        NoteFormContent(
-                            form = editor,
-                            availableLists = availableLists,
-                            availableTags = availableTags,
-                            onContentChange = onNoteContentChange,
-                            onListChange = onNoteListChange,
-                            onDateChange = onNoteDateChange,
-                            onTagToggle = onNoteTagToggle
-                        )
+                if (editor.isCompletableView()) {
+                    item {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            Button(onClick = onComplete) {
+                                Text("Complete")
+                            }
+                        }
                     }
                 }
-            }
-            if (editor.isCompletableView()) {
-                item {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        Button(onClick = onComplete) {
-                            Text("Complete")
+                if (editor.isOpenableView()) {
+                    item {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            Button(onClick = onOpen) {
+                                Text("Open")
+                            }
                         }
                     }
                 }
             }
-            if (editor.isOpenableView()) {
-                item {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        Button(onClick = onOpen) {
-                            Text("Open")
-                        }
-                    }
-                }
-            }
-            item { Spacer(Modifier.height(24.dp)) }
         }
     }
 }
@@ -246,10 +255,11 @@ private fun SheetHeader(
     onSave: () -> Unit,
     onDelete: () -> Unit,
     onSwitchAddModeToTask: () -> Unit,
-    onSwitchAddModeToNote: () -> Unit
+    onSwitchAddModeToNote: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
-    Box(modifier = Modifier.fillMaxWidth()) {
+    Box(modifier = modifier.fillMaxWidth()) {
         IconButton(onClick = onDismiss) {
             Icon(Icons.Default.Close, contentDescription = "Close")
         }
@@ -429,15 +439,6 @@ private fun QuietSection(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-private fun SectionHeader(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
-    )
-}
-
-@Composable
 private fun DetailRow(
     icon: ImageVector,
     primary: String,
@@ -486,7 +487,6 @@ private fun TagPickerRow(
 ) {
     if (availableTags.isEmpty()) return
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        SectionHeader("Tags")
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -558,20 +558,23 @@ private fun TaskFormContent(
                 TimePickerRow(
                     label = "Start",
                     timeMinutes = form.startTimeMinutes,
+                    initialTimeMinutes = currentTimeMinutes(),
                     onTimeChange = onStartTimeChange,
                     modifier = Modifier.weight(1f)
                 )
+                form.durationMinutes?.let { duration ->
+                    DurationText(
+                        duration = duration,
+                        modifier = Modifier.align(Alignment.CenterVertically)
+                    )
+                }
                 TimePickerRow(
                     label = "End",
                     timeMinutes = form.endTimeMinutes,
+                    initialTimeMinutes = ((form.startTimeMinutes ?: currentTimeMinutes()) + 60).coerceAtMost(MinutesPerDay - 1),
+                    enabled = form.startTimeMinutes != null,
                     onTimeChange = onEndTimeChange,
                     modifier = Modifier.weight(1f)
-                )
-            }
-            form.durationMinutes?.let { duration ->
-                DetailRow(
-                    icon = Icons.Default.Schedule,
-                    primary = duration.formatDuration()
                 )
             }
         }
@@ -603,7 +606,7 @@ private fun TaskFormContent(
 }
 
 @Composable
-private fun editorTextFieldColors() = TextFieldDefaults.colors(
+fun editorTextFieldColors() = TextFieldDefaults.colors(
     focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f),
     unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f),
     disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f),
@@ -657,7 +660,9 @@ private fun DatePickerRow(
 private fun TimePickerRow(
     label: String,
     timeMinutes: Int?,
+    initialTimeMinutes: Int,
     onTimeChange: (Int?) -> Unit,
+    enabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     var showPicker by remember { mutableStateOf(false) }
@@ -666,11 +671,12 @@ private fun TimePickerRow(
         label = label,
         value = timeMinutes?.toClockLabel() ?: "No time",
         onClick = { showPicker = true },
-        onClear = if (timeMinutes == null) null else ({ onTimeChange(null) }),
+        onClear = if (timeMinutes == null || !enabled) null else ({ onTimeChange(null) }),
+        enabled = enabled,
         modifier = modifier
     )
-    if (showPicker) {
-        val initial = timeMinutes ?: 9 * 60
+    if (showPicker && enabled) {
+        val initial = timeMinutes ?: initialTimeMinutes.coerceIn(0, MinutesPerDay - 1)
         val timePickerState = rememberTimePickerState(
             initialHour = initial / 60,
             initialMinute = initial % 60,
@@ -696,6 +702,19 @@ private fun TimePickerRow(
             text = { TimePicker(state = timePickerState) }
         )
     }
+}
+
+@Composable
+private fun DurationText(
+    duration: Int,
+    modifier: Modifier = Modifier
+) {
+    Text(
+        text = duration.formatDuration(),
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier
+    )
 }
 
 @Composable
@@ -1020,3 +1039,10 @@ private fun TaskEditorState.isOpenableView(): Boolean = when (this) {
     is TaskEditorState.TaskForm -> mode == EditorMode.View && status == TaskStatus.Completed
     is TaskEditorState.NoteForm -> mode == EditorMode.View && status == TaskStatus.Completed
 }
+
+private fun currentTimeMinutes(): Int {
+    val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).time
+    return now.hour * 60 + now.minute
+}
+
+private const val MinutesPerDay = 24 * 60

@@ -43,11 +43,6 @@ internal fun SubtaskChecklist(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Text(
-            text = "Subtasks",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
         subtasks.forEachIndexed { index, subtask ->
             SubtaskRow(
                 subtask = subtask,
@@ -107,8 +102,10 @@ private fun SubtaskRow(
                 value = subtask.name,
                 onValueChange = onNameChange,
                 modifier = Modifier.weight(1f),
-                label = { Text("Subtask") },
+                placeholder = { Text("Subtask") },
                 singleLine = true,
+                shape = MaterialTheme.shapes.medium,
+                colors = editorTextFieldColors(),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                 keyboardActions = KeyboardActions(onNext = { }),
             )
