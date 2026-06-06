@@ -57,7 +57,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
@@ -304,43 +303,20 @@ internal fun DailyPlanCard(
         return
     }
 
-    Surface(
+    TaskCard(
+        title = item.displayTitle(),
+        timeLabel = item.timeLabel(),
+        supportingText = item.displaySupportingText(),
+        color = dailyItemColor(task, list),
+        leadingContent = if (item.source == DailyPlanItemSource.CheckInNote) {
+            { Icon(Icons.Default.Notes, contentDescription = null, modifier = Modifier.size(16.dp)) }
+        } else {
+            null
+        },
+        completed = isDone,
+        onClick = onClick,
         modifier = modifier
-            .fillMaxWidth()
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
-        shape = RoundedCornerShape(8.dp),
-        color = dailyItemColor(task, list).copy(alpha = 0.11f)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.Top,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(
-                    text = if (item.source == DailyPlanItemSource.CheckInNote) item.note.orEmpty() else item.titleSnapshot,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                if (item.source != DailyPlanItemSource.CheckInNote && !item.note.isNullOrBlank()) {
-                    Text(
-                        text = item.note,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                Text(
-                    text = item.timeLabel() ?: item.source.label(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
+    )
 }
 
 @Composable
@@ -755,6 +731,19 @@ private fun DailyPlanItem.timeLabel(): String? {
     val end = endTimeMinutes
     return if (end == null) start.toClockLabel() else "${start.toClockLabel()} - ${end.toClockLabel()}"
 }
+
+private fun DailyPlanItem.displayTitle(): String =
+    when (source) {
+        DailyPlanItemSource.CheckInNote -> note.orEmpty().ifBlank { "Empty note" }
+        else -> titleSnapshot.ifBlank { "Untitled item" }
+    }
+
+private fun DailyPlanItem.displaySupportingText(): String =
+    when {
+        source == DailyPlanItemSource.CheckInNote -> source.label()
+        !note.isNullOrBlank() -> note.orEmpty()
+        else -> source.label()
+    }
 
 private fun DailyPlanItemSource.label(): String = when (this) {
     DailyPlanItemSource.ExistingTask -> "Task"
