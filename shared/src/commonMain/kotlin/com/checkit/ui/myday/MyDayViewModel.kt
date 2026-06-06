@@ -2,19 +2,20 @@ package com.checkit.ui.myday
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.checkit.data.DailyPlanItemWriteInput
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.TaskItem
 import com.checkit.domain.usecase.AddManualDoneToDailyPlanUseCase
-import com.checkit.domain.usecase.AddNoteToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
+import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
-import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
+import com.checkit.domain.usecase.UpdateDailyPlanItemUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
-import com.checkit.ui.CheckInState
+import com.checkit.ui.DailyPlanItemEditorState
 import com.checkit.ui.MyDayUiState
 import com.checkit.ui.MyDayView
 import com.checkit.ui.today
@@ -32,9 +33,9 @@ class MyDayViewModel(
     private val ensureDefaultTaskData: EnsureDefaultTaskDataUseCase,
     private val addTaskToDailyPlan: AddTaskToDailyPlanUseCase,
     private val addManualDoneToDailyPlan: AddManualDoneToDailyPlanUseCase,
-    private val addNoteToDailyPlan: AddNoteToDailyPlanUseCase,
-    private val updateDailyPlanItemStatus: UpdateDailyPlanItemStatusUseCase,
     private val updateDailyPlanItemTime: UpdateDailyPlanItemTimeUseCase,
+    private val updateDailyPlanItem: UpdateDailyPlanItemUseCase,
+    private val deleteDailyPlanItem: DeleteDailyPlanItemUseCase,
     private val completeTask: CompleteTaskUseCase
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(MyDayUiState())
@@ -74,21 +75,28 @@ class MyDayViewModel(
         }
     }
 
-    fun markDone(item: DailyPlanItem) {
-        viewModelScope.launch {
-            updateDailyPlanItemStatus(item.id, DailyPlanItemStatus.Done)
-            item.taskId?.let { completeTask(it) }
-        }
-    }
-
-    fun markPlanned(item: DailyPlanItem) {
-        viewModelScope.launch {
-            updateDailyPlanItemStatus(item.id, DailyPlanItemStatus.Planned)
-        }
-    }
-
     fun openCheckIn() {
-        _uiState.update { it.copy(checkIn = CheckInState()) }
+        _uiState.update { it.copy(itemEditor = DailyPlanItemEditorState()) }
+    }
+
+    fun openItemEditor(item: DailyPlanItem) {
+        _uiState.update {
+            it.copy(
+                itemEditor = DailyPlanItemEditorState(
+                    itemId = item.id,
+                    taskId = item.taskId,
+                    title = if (item.source == com.checkit.domain.DailyPlanItemSource.CheckInNote) {
+                        item.note.orEmpty()
+                    } else {
+                        item.titleSnapshot
+                    },
+                    note = if (item.source == com.checkit.domain.DailyPlanItemSource.CheckInNote) "" else item.note.orEmpty(),
+                    status = item.status,
+                    startTimeMinutes = item.startTimeMinutes,
+                    endTimeMinutes = item.endTimeMinutes
+                )
+            )
+        }
     }
 
     fun openSuggestions() {
@@ -100,38 +108,70 @@ class MyDayViewModel(
     }
 
     fun dismissCheckIn() {
-        _uiState.update { it.copy(checkIn = null) }
+        _uiState.update { it.copy(itemEditor = null) }
     }
 
-    fun updateDoneTitle(title: String) = updateCheckIn { it.copy(doneTitle = title) }
-    fun updateDoneNote(note: String) = updateCheckIn { it.copy(doneNote = note) }
-    fun updateStatusNote(note: String) = updateCheckIn { it.copy(statusNote = note) }
-    fun updateStartTime(timeMinutes: Int?) = updateCheckIn { it.copy(startTimeMinutes = timeMinutes) }
-    fun updateEndTime(timeMinutes: Int?) = updateCheckIn { it.copy(endTimeMinutes = timeMinutes) }
+    fun updateDoneTitle(title: String) = updateItemEditor { it.copy(title = title) }
+    fun updateDoneNote(note: String) = updateItemEditor { it.copy(note = note) }
+    fun updateStartTime(timeMinutes: Int?) = updateItemEditor { it.copy(startTimeMinutes = timeMinutes) }
+    fun updateEndTime(timeMinutes: Int?) = updateItemEditor { it.copy(endTimeMinutes = timeMinutes) }
 
     fun saveCheckIn() {
-        val checkIn = _uiState.value.checkIn ?: return
-        val doneTitle = checkIn.doneTitle.trim()
-        val doneNote = checkIn.doneNote.trim()
-        val statusNote = checkIn.statusNote.trim()
-        if (doneTitle.isBlank() && statusNote.isBlank()) {
-            _uiState.update { it.copy(message = "Add a done item or note") }
+        val editor = _uiState.value.itemEditor ?: return
+        val title = editor.title.trim()
+        val note = editor.note.trim()
+        if (title.isBlank()) {
+            _uiState.update { it.copy(message = "Add a done item") }
             return
         }
         viewModelScope.launch {
-            if (doneTitle.isNotBlank()) {
+            if (editor.itemId == null) {
                 addManualDoneToDailyPlan(
                     today(),
-                    doneTitle,
-                    doneNote.takeIf { it.isNotBlank() },
-                    checkIn.startTimeMinutes,
-                    checkIn.endTimeMinutes
+                    title,
+                    note.takeIf { it.isNotBlank() },
+                    editor.startTimeMinutes,
+                    editor.endTimeMinutes
+                )
+            } else {
+                updateDailyPlanItem(
+                    editor.itemId,
+                    editor.toWriteInput(editor.status)
                 )
             }
-            if (statusNote.isNotBlank()) {
-                addNoteToDailyPlan(today(), statusNote)
+            _uiState.update { it.copy(itemEditor = null, message = "Saved") }
+        }
+    }
+
+    fun markEditorDone() {
+        val editor = _uiState.value.itemEditor ?: return
+        val title = editor.title.trim()
+        if (title.isBlank()) {
+            _uiState.update { it.copy(message = "Add a done item") }
+            return
+        }
+        viewModelScope.launch {
+            if (editor.itemId == null) {
+                addManualDoneToDailyPlan(
+                    today(),
+                    title,
+                    editor.note.trim().takeIf { it.isNotBlank() },
+                    editor.startTimeMinutes,
+                    editor.endTimeMinutes
+                )
+            } else {
+                updateDailyPlanItem(editor.itemId, editor.toWriteInput(DailyPlanItemStatus.Done))
             }
-            _uiState.update { it.copy(checkIn = null, message = "CheckIn saved") }
+            editor.taskId?.let { completeTask(it) }
+            _uiState.update { it.copy(itemEditor = null, message = "Done") }
+        }
+    }
+
+    fun deleteEditorItem() {
+        val itemId = _uiState.value.itemEditor?.itemId ?: return
+        viewModelScope.launch {
+            deleteDailyPlanItem(itemId)
+            _uiState.update { it.copy(itemEditor = null, message = "Deleted") }
         }
     }
 
@@ -139,9 +179,17 @@ class MyDayViewModel(
         _uiState.update { it.copy(message = null) }
     }
 
-    private fun updateCheckIn(transform: (CheckInState) -> CheckInState) {
+    private fun updateItemEditor(transform: (DailyPlanItemEditorState) -> DailyPlanItemEditorState) {
         _uiState.update { state ->
-            state.checkIn?.let { state.copy(checkIn = transform(it)) } ?: state
+            state.itemEditor?.let { state.copy(itemEditor = transform(it)) } ?: state
         }
     }
 }
+
+private fun DailyPlanItemEditorState.toWriteInput(status: DailyPlanItemStatus) = DailyPlanItemWriteInput(
+    title = title,
+    note = note,
+    status = status,
+    startTimeMinutes = startTimeMinutes,
+    endTimeMinutes = endTimeMinutes
+)

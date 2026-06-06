@@ -53,6 +53,7 @@ import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.shortName
 import com.checkit.ui.TaskListDisplayType
 import com.checkit.ui.myday.DailyPlanCard
+import com.checkit.ui.myday.DailyPlanItemEditorSheet
 import com.checkit.ui.tasks.TaskListView
 import com.checkit.ui.today
 import kotlinx.datetime.DateTimeUnit
@@ -77,6 +78,7 @@ internal fun CalendarScreen(
     val showDailyPlan = state.selectedDate <= today()
     val dailyPlanItems = state.dailyPlanForDate(state.selectedDate)?.items.orEmpty()
     val taskById = remember(state.board.tasks) { state.board.tasks.associateBy { it.id } }
+    val listById = remember(state.board.lists) { state.board.lists.associateBy { it.id } }
     val hasItemsForDate = if (showDailyPlan) {
         dailyPlanItems.isNotEmpty()
     } else {
@@ -133,10 +135,12 @@ internal fun CalendarScreen(
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         items(dailyPlanItems, key = { it.id }) { item ->
+                            val task = item.taskId?.let { taskById[it] }
                             DailyPlanCard(
                                 item = item,
-                                onToggleDone = { },
-                                onClick = item.taskId?.let { taskId -> { taskById[taskId]?.let(onTaskClick) } }
+                                task = task,
+                                list = task?.let { listById[it.listId] },
+                                onClick = { calendarViewModel.openItemEditor(item) }
                             )
                         }
                     }
@@ -170,6 +174,22 @@ internal fun CalendarScreen(
                 }
             }
         }
+    }
+
+    state.itemEditor?.let { editor ->
+        val task = editor.taskId?.let { taskId -> taskById[taskId] }
+        DailyPlanItemEditorSheet(
+            state = editor,
+            onDismiss = calendarViewModel::dismissItemEditor,
+            onDoneTitleChange = calendarViewModel::updateEditorTitle,
+            onDoneNoteChange = calendarViewModel::updateEditorNote,
+            onStartTimeChange = calendarViewModel::updateEditorStartTime,
+            onEndTimeChange = calendarViewModel::updateEditorEndTime,
+            onSave = calendarViewModel::saveEditorItem,
+            onDone = calendarViewModel::markEditorDone,
+            onDelete = calendarViewModel::deleteEditorItem,
+            onOpenTask = task?.let { { onTaskClick(it) } }
+        )
     }
 }
 

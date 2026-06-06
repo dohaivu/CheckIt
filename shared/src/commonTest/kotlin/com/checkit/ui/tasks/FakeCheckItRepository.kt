@@ -1,12 +1,12 @@
 package com.checkit.ui.tasks
 
 import com.checkit.data.CheckItRepository
+import com.checkit.data.DailyPlanItemWriteInput
 import com.checkit.data.NoteWriteInput
 import com.checkit.data.TaskListWriteInput
 import com.checkit.data.TaskTagWriteInput
 import com.checkit.data.TaskWriteInput
 import com.checkit.domain.DailyPlan
-import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
@@ -158,9 +158,9 @@ internal class FakeCheckItRepository(
         startTimeMinutes: Int?,
         endTimeMinutes: Int?
     ): Long = 0L
-    override suspend fun addNoteToDailyPlan(date: LocalDate, note: String): Long = 0L
-    override suspend fun updateDailyPlanItemStatus(itemId: Long, status: DailyPlanItemStatus) = Unit
     override suspend fun updateDailyPlanItemTime(itemId: Long, startTimeMinutes: Int?, endTimeMinutes: Int?) = Unit
+    override suspend fun updateDailyPlanItem(itemId: Long, input: DailyPlanItemWriteInput) = Unit
+    override suspend fun deleteDailyPlanItem(itemId: Long) = Unit
     override suspend fun addNote(input: NoteWriteInput): Long = 0L
     override suspend fun updateNote(noteId: Long, input: NoteWriteInput) = Unit
     override suspend fun trashNote(noteId: Long) = Unit

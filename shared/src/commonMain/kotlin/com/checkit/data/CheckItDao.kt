@@ -315,20 +315,6 @@ interface CheckItDao {
         UPDATE daily_plan_items
         SET status = :status,
             completedAtMillis = :completedAtMillis
-        WHERE id = :itemId
-        """
-    )
-    suspend fun updateDailyPlanItemStatus(
-        itemId: Long,
-        status: String,
-        completedAtMillis: Long?
-    )
-
-    @Query(
-        """
-        UPDATE daily_plan_items
-        SET status = :status,
-            completedAtMillis = :completedAtMillis
         WHERE taskId = :taskId
           AND status != :status
         """
@@ -343,7 +329,7 @@ interface CheckItDao {
         """
         DELETE FROM daily_plan_items
         WHERE taskId = :taskId
-          AND status IN ('Planned', 'InProgress')
+          AND status = 'Planned'
         """
     )
     suspend fun deleteOpenDailyPlanItemsForTask(taskId: Long)
@@ -361,6 +347,31 @@ interface CheckItDao {
         startTimeMinutes: Int?,
         endTimeMinutes: Int?
     )
+
+    @Query(
+        """
+        UPDATE daily_plan_items
+        SET titleSnapshot = :titleSnapshot,
+            note = :note,
+            status = :status,
+            startTimeMinutes = :startTimeMinutes,
+            endTimeMinutes = :endTimeMinutes,
+            completedAtMillis = :completedAtMillis
+        WHERE id = :itemId
+        """
+    )
+    suspend fun updateDailyPlanItem(
+        itemId: Long,
+        titleSnapshot: String,
+        note: String?,
+        status: String,
+        startTimeMinutes: Int?,
+        endTimeMinutes: Int?,
+        completedAtMillis: Long?
+    )
+
+    @Query("DELETE FROM daily_plan_items WHERE id = :itemId")
+    suspend fun deleteDailyPlanItem(itemId: Long)
 
     @Query(
         """

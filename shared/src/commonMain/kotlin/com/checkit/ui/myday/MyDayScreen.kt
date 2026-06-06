@@ -1,6 +1,5 @@
 package com.checkit.ui.myday
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,16 +17,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Notes
-import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.ViewAgenda
 import androidx.compose.material3.AlertDialog
@@ -56,10 +53,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.DailyPlanItem
@@ -70,7 +67,7 @@ import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskList
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
-import com.checkit.ui.CheckInState
+import com.checkit.ui.DailyPlanItemEditorState
 import com.checkit.ui.MyDayUiState
 import com.checkit.ui.MyDayView
 import com.checkit.ui.components.TinyTopAppBar
@@ -78,6 +75,8 @@ import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.tasks.TaskAgendaView
 import com.checkit.ui.tasks.TaskCard
 import com.checkit.ui.tasks.TaskTimelineView
+import com.checkit.ui.tasks.taskCardColor
+import com.checkit.ui.tasks.timeRangeLabel
 import kotlinx.datetime.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -132,21 +131,18 @@ internal fun MyDayScreen(
             when (state.selectedView) {
                 MyDayView.Agenda -> MyDayAgenda(
                     state = state,
-                    onTaskClick = onTaskClick,
+                    onItemClick = viewModel::openItemEditor,
                     modifier = Modifier.weight(1f)
                 )
                 MyDayView.Timeline -> MyDayTimeline(
                     state = state,
-                    onTaskClick = onTaskClick,
+                    onItemClick = viewModel::openItemEditor,
                     onTaskTimeChange = viewModel::updateItemTime,
                     modifier = Modifier.weight(1f)
                 )
                 MyDayView.Board -> MyDayBoard(
                     state = state,
-                    onToggleDone = { item ->
-                        if (item.status == DailyPlanItemStatus.Done) viewModel.markPlanned(item) else viewModel.markDone(item)
-                    },
-                    onTaskClick = onTaskClick,
+                    onItemClick = viewModel::openItemEditor,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -156,6 +152,7 @@ internal fun MyDayScreen(
     if (state.showSuggestions) {
         SuggestionsSheet(
             tasks = state.suggestedTasks,
+            lists = state.board.lists,
             onDismiss = viewModel::dismissSuggestions,
             onTaskClick = onTaskClick,
             onAddTask = viewModel::addTask,
@@ -166,16 +163,19 @@ internal fun MyDayScreen(
         )
     }
 
-    state.checkIn?.let { checkIn ->
-        CheckInSheet(
-            state = checkIn,
+    state.itemEditor?.let { editor ->
+        val task = editor.taskId?.let { taskId -> state.board.tasks.firstOrNull { it.id == taskId } }
+        DailyPlanItemEditorSheet(
+            state = editor,
             onDismiss = viewModel::dismissCheckIn,
             onDoneTitleChange = viewModel::updateDoneTitle,
             onDoneNoteChange = viewModel::updateDoneNote,
-            onStatusNoteChange = viewModel::updateStatusNote,
             onStartTimeChange = viewModel::updateStartTime,
             onEndTimeChange = viewModel::updateEndTime,
-            onSave = viewModel::saveCheckIn
+            onSave = viewModel::saveCheckIn,
+            onDone = viewModel::markEditorDone,
+            onDelete = viewModel::deleteEditorItem,
+            onOpenTask = task?.let { { onTaskClick(it) } }
         )
     }
 }
@@ -201,7 +201,7 @@ private fun MyDayViewSelector(
 @Composable
 private fun MyDayAgenda(
     state: MyDayUiState,
-    onTaskClick: (TaskItem) -> Unit,
+    onItemClick: (DailyPlanItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val projection = remember(state.items, state.board, state.today) { state.toTaskViewProjection() }
@@ -210,8 +210,8 @@ private fun MyDayAgenda(
         notes = projection.notes,
         lists = projection.lists,
         showListName = false,
-        onTaskClick = { task -> projection.realTaskFor(task)?.let(onTaskClick) },
-        onNoteClick = { },
+        onTaskClick = { task -> projection.dailyItemFor(task)?.let(onItemClick) },
+        onNoteClick = { note -> projection.dailyItemFor(note)?.let(onItemClick) },
         dayLimit = 1,
         modifier = modifier
     )
@@ -220,7 +220,7 @@ private fun MyDayAgenda(
 @Composable
 private fun MyDayTimeline(
     state: MyDayUiState,
-    onTaskClick: (TaskItem) -> Unit,
+    onItemClick: (DailyPlanItem) -> Unit,
     onTaskTimeChange: (DailyPlanItem, Int, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -230,8 +230,8 @@ private fun MyDayTimeline(
         notes = projection.notes,
         lists = projection.lists,
         showListName = false,
-        onTaskClick = { task -> projection.realTaskFor(task)?.let(onTaskClick) },
-        onNoteClick = { },
+        onTaskClick = { task -> projection.dailyItemFor(task)?.let(onItemClick) },
+        onNoteClick = { note -> projection.dailyItemFor(note)?.let(onItemClick) },
         onCreateTask = { _, _ -> },
         onTaskTimeChange = { task, start, end ->
             projection.dailyItemFor(task)?.let { onTaskTimeChange(it, start, end) }
@@ -243,11 +243,11 @@ private fun MyDayTimeline(
 @Composable
 private fun MyDayBoard(
     state: MyDayUiState,
-    onToggleDone: (DailyPlanItem) -> Unit,
-    onTaskClick: (TaskItem) -> Unit,
+    onItemClick: (DailyPlanItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val taskById = remember(state.board.tasks) { state.board.tasks.associateBy { it.id } }
+    val listById = remember(state.board.lists) { state.board.lists.associateBy { it.id } }
     LazyColumn(
         modifier = modifier.fillMaxWidth(),
         contentPadding = PaddingValues(bottom = 24.dp),
@@ -260,8 +260,9 @@ private fun MyDayBoard(
             items(state.plannedItems, key = { "planned-${it.id}" }) { item ->
                 DailyPlanCard(
                     item = item,
-                    onToggleDone = { onToggleDone(item) },
-                    onClick = item.taskId?.let { taskId -> { taskById[taskId]?.let(onTaskClick) } }
+                    task = item.taskId?.let { taskById[it] },
+                    list = item.taskId?.let { taskById[it] }?.let { task -> listById[task.listId] },
+                    onClick = { onItemClick(item) }
                 )
             }
         }
@@ -272,8 +273,9 @@ private fun MyDayBoard(
             items(state.doneItems, key = { "done-${it.id}" }) { item ->
                 DailyPlanCard(
                     item = item,
-                    onToggleDone = { onToggleDone(item) },
-                    onClick = item.taskId?.let { taskId -> { taskById[taskId]?.let(onTaskClick) } }
+                    task = item.taskId?.let { taskById[it] },
+                    list = item.taskId?.let { taskById[it] }?.let { task -> listById[task.listId] },
+                    onClick = { onItemClick(item) }
                 )
             }
         }
@@ -283,7 +285,8 @@ private fun MyDayBoard(
 @Composable
 internal fun DailyPlanCard(
     item: DailyPlanItem,
-    onToggleDone: () -> Unit,
+    task: TaskItem? = null,
+    list: TaskList? = null,
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -293,16 +296,7 @@ internal fun DailyPlanCard(
             title = item.titleSnapshot.ifBlank { "Untitled task" },
             timeLabel = item.timeLabel(),
             supportingText = item.note?.takeIf { it.isNotBlank() },
-            color = dailyItemColor(item),
-            leadingContent = {
-                IconButton(onClick = onToggleDone, modifier = Modifier.size(36.dp)) {
-                    Icon(
-                        imageVector = if (isDone) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
-                        contentDescription = null,
-                        tint = if (isDone) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            },
+            color = dailyItemColor(task, list),
             completed = isDone,
             onClick = onClick,
             modifier = modifier
@@ -315,20 +309,13 @@ internal fun DailyPlanCard(
             .fillMaxWidth()
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         shape = RoundedCornerShape(8.dp),
-        color = dailyItemColor(item).copy(alpha = 0.11f)
+        color = dailyItemColor(task, list).copy(alpha = 0.11f)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            IconButton(onClick = onToggleDone, modifier = Modifier.size(36.dp)) {
-                Icon(
-                    imageVector = if (isDone) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
-                    contentDescription = null,
-                    tint = if (isDone) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(
                     text = if (item.source == DailyPlanItemSource.CheckInNote) item.note.orEmpty() else item.titleSnapshot,
@@ -359,33 +346,24 @@ internal fun DailyPlanCard(
 @Composable
 private fun SuggestionCard(
     task: TaskItem,
+    list: TaskList?,
     onClick: () -> Unit,
     onAdd: () -> Unit
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+    Box(modifier = Modifier.fillMaxWidth()) {
+        TaskCard(
+            title = task.name.ifBlank { "Untitled task" },
+            timeLabel = task.timeRangeLabel(),
+            supportingText = task.dueDate?.localizedCompactDateWithDayName() ?: list?.name,
+            color = taskCardColor(task, list),
+            onClick = onClick,
+            modifier = Modifier.fillMaxWidth()
+        )
+        IconButton(
+            onClick = onAdd,
+            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 8.dp)
         ) {
-            Box(
-                modifier = Modifier.size(8.dp).clip(CircleShape).background(task.priorityColor()),
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(task.name.ifBlank { "Untitled task" }, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(
-                    text = task.dueDate?.localizedCompactDateWithDayName() ?: "High priority",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            IconButton(onClick = onAdd) {
-                Icon(Icons.Default.Add, contentDescription = null)
-            }
+            Icon(Icons.Default.Add, contentDescription = null)
         }
     }
 }
@@ -394,12 +372,14 @@ private fun SuggestionCard(
 @Composable
 private fun SuggestionsSheet(
     tasks: List<TaskItem>,
+    lists: List<TaskList>,
     onDismiss: () -> Unit,
     onTaskClick: (TaskItem) -> Unit,
     onAddTask: (TaskItem) -> Unit,
     onCreateTask: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val listById = remember(lists) { lists.associateBy { it.id } }
     ModalBottomSheet(
         onDismissRequest = onDismiss, 
         sheetState = sheetState,
@@ -435,33 +415,13 @@ private fun SuggestionsSheet(
                     items(tasks, key = { it.id }) { task ->
                         SuggestionCard(
                             task = task,
+                            list = listById[task.listId],
                             onClick = { onTaskClick(task) },
                             onAdd = { onAddTask(task) }
                         )
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun EmptyMyDay() {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
-    ) {
-        Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Text("Plan your day", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Text(
-                "Choose a few tasks below, then use CheckIn during the day to log what actually happened.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }
@@ -489,69 +449,125 @@ private fun EmptyStateText(text: String) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun CheckInSheet(
-    state: CheckInState,
+internal fun DailyPlanItemEditorSheet(
+    state: DailyPlanItemEditorState,
     onDismiss: () -> Unit,
     onDoneTitleChange: (String) -> Unit,
     onDoneNoteChange: (String) -> Unit,
-    onStatusNoteChange: (String) -> Unit,
     onStartTimeChange: (Int?) -> Unit,
     onEndTimeChange: (Int?) -> Unit,
-    onSave: () -> Unit
+    onSave: () -> Unit,
+    onDone: () -> Unit,
+    onDelete: () -> Unit,
+    onOpenTask: (() -> Unit)?
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        sheetGesturesEnabled = false
+    ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Log today", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
-            OutlinedTextField(
-                value = state.doneTitle,
-                onValueChange = onDoneTitleChange,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Done outside the app") },
-                singleLine = true
+            DailyPlanItemSheetHeader(
+                title = if (state.isAddMode) "Log today" else "My Day item",
+                onDismiss = onDismiss,
+                onSave = onSave
             )
-            OutlinedTextField(
-                value = state.doneNote,
-                onValueChange = onDoneNoteChange,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Details") },
-                minLines = 2
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                CheckInTimePickerRow(
-                    label = "Start",
-                    timeMinutes = state.startTimeMinutes,
-                    onTimeChange = onStartTimeChange,
-                    modifier = Modifier.weight(1f)
-                )
-                CheckInTimePickerRow(
-                    label = "End",
-                    timeMinutes = state.endTimeMinutes,
-                    onTimeChange = onEndTimeChange,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            OutlinedTextField(
-                value = state.statusNote,
-                onValueChange = onStatusNoteChange,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Status note") },
-                minLines = 3
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp),
-                horizontalArrangement = Arrangement.End
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp).padding(horizontal = 20.dp),
+                contentPadding = PaddingValues(top = 8.dp, bottom = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                TextButton(onClick = onDismiss) {
-                    Text("Cancel")
+                item {
+                    OutlinedTextField(
+                        value = state.title,
+                        onValueChange = onDoneTitleChange,
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Done outside the app") },
+                        singleLine = true
+                    )
                 }
-                Button(onClick = onSave) {
-                    Text("Save")
+                item {
+                    OutlinedTextField(
+                        value = state.note,
+                        onValueChange = onDoneNoteChange,
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Details") },
+                        minLines = 2
+                    )
+                }
+                item {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        CheckInTimePickerRow(
+                            label = "Start",
+                            timeMinutes = state.startTimeMinutes,
+                            onTimeChange = onStartTimeChange,
+                            modifier = Modifier.weight(1f)
+                        )
+                        CheckInTimePickerRow(
+                            label = "End",
+                            timeMinutes = state.endTimeMinutes,
+                            onTimeChange = onEndTimeChange,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (state.canDelete) {
+                            TextButton(onClick = onDelete) {
+                                Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Delete")
+                            }
+                        }
+                        Spacer(Modifier.weight(1f))
+                        if (onOpenTask != null) {
+                            TextButton(onClick = onOpenTask) {
+                                Text("Open Task")
+                            }
+                        }
+                        if (state.canDelete) {
+                            Button(onClick = onDone) {
+                                Text("Done")
+                            }
+                        }
+                    }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun DailyPlanItemSheetHeader(
+    title: String,
+    onDismiss: () -> Unit,
+    onSave: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        IconButton(onClick = onDismiss) {
+            Icon(Icons.Default.Close, contentDescription = "Close")
+        }
+        Text(
+            text = title,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center
+        )
+        Button(onClick = onSave) {
+            Text("Save")
         }
     }
 }
@@ -632,25 +648,25 @@ private data class MyDayTaskViewProjection(
     val notes: List<NoteItem>,
     val lists: List<TaskList>,
     val dailyItemBySyntheticTaskId: Map<Long, DailyPlanItem>,
-    val realTaskBySyntheticTaskId: Map<Long, TaskItem>
+    val dailyItemBySyntheticNoteId: Map<Long, DailyPlanItem>
 ) {
     fun dailyItemFor(task: TaskItem): DailyPlanItem? = dailyItemBySyntheticTaskId[task.id]
-    fun realTaskFor(task: TaskItem): TaskItem? = realTaskBySyntheticTaskId[task.id]
+    fun dailyItemFor(note: NoteItem): DailyPlanItem? = dailyItemBySyntheticNoteId[note.id]
 }
 
 private fun MyDayUiState.toTaskViewProjection(): MyDayTaskViewProjection {
     val fallbackList = TaskList(
         id = MyDayListId,
         name = "My Day",
-        color = "#CA8A04",
+        color = "#64748B",
         icon = "Today",
         sortOrder = 0
     )
-    val lists = if (board.lists.isEmpty()) listOf(fallbackList) else board.lists
-    val listId = lists.first().id
+    val lists = board.lists + fallbackList
+    val listId = fallbackList.id
     val realTasksById = board.tasks.associateBy { it.id }
     val dailyItemBySyntheticTaskId = mutableMapOf<Long, DailyPlanItem>()
-    val realTaskBySyntheticTaskId = mutableMapOf<Long, TaskItem>()
+    val dailyItemBySyntheticNoteId = mutableMapOf<Long, DailyPlanItem>()
     val projectedTasks = mutableListOf<TaskItem>()
     val projectedNotes = mutableListOf<NoteItem>()
 
@@ -667,6 +683,7 @@ private fun MyDayUiState.toTaskViewProjection(): MyDayTaskViewProjection {
                     editedAtMillis = item.completedAtMillis ?: item.addedAtMillis,
                     sortOrder = item.sortOrder
                 )
+                dailyItemBySyntheticNoteId[item.id] = item
             }
             else -> {
                 val realTask = item.taskId?.let { realTasksById[it] }
@@ -695,7 +712,6 @@ private fun MyDayUiState.toTaskViewProjection(): MyDayTaskViewProjection {
                 )
                 projectedTasks += projectedTask
                 dailyItemBySyntheticTaskId[projectedTask.id] = item
-                realTask?.let { realTaskBySyntheticTaskId[projectedTask.id] = it }
             }
         }
     }
@@ -705,16 +721,13 @@ private fun MyDayUiState.toTaskViewProjection(): MyDayTaskViewProjection {
         notes = projectedNotes,
         lists = lists,
         dailyItemBySyntheticTaskId = dailyItemBySyntheticTaskId,
-        realTaskBySyntheticTaskId = realTaskBySyntheticTaskId
+        dailyItemBySyntheticNoteId = dailyItemBySyntheticNoteId
     )
 }
 
 private fun DailyPlanItemStatus.toTaskStatus(): TaskStatus = when (this) {
     DailyPlanItemStatus.Planned -> TaskStatus.Open
-    DailyPlanItemStatus.InProgress -> TaskStatus.InProgress
     DailyPlanItemStatus.Done -> TaskStatus.Completed
-    DailyPlanItemStatus.Skipped,
-    DailyPlanItemStatus.Moved -> TaskStatus.Cancelled
 }
 
 private fun DailyPlanItem.durationMinutes(): Int? {
@@ -750,13 +763,10 @@ private fun DailyPlanItemSource.label(): String = when (this) {
     DailyPlanItemSource.CheckInNote -> "CheckIn note"
 }
 
-private fun dailyItemColor(item: DailyPlanItem): Color = when (item.status) {
-    DailyPlanItemStatus.Done -> Color(0xFF059669)
-    DailyPlanItemStatus.InProgress -> Color(0xFF2563EB)
-    DailyPlanItemStatus.Skipped,
-    DailyPlanItemStatus.Moved -> Color(0xFF64748B)
-    DailyPlanItemStatus.Planned -> Color(0xFFCA8A04)
-}
+private fun dailyItemColor(task: TaskItem?, list: TaskList?): Color =
+    list?.color?.parseHexColorOrNull()
+        ?: task?.priorityColor()
+        ?: Color(0xFF64748B)
 
 private fun TaskItem.priorityColor(): Color = when (priority.name) {
     "High" -> Color(0xFFDC2626)
@@ -764,6 +774,17 @@ private fun TaskItem.priorityColor(): Color = when (priority.name) {
     "Low" -> Color(0xFF2563EB)
     else -> Color(0xFF64748B)
 }
+
+private fun String.parseHexColorOrNull(): Color? =
+    removePrefix("#")
+        .toIntOrNull(16)
+        ?.let { rgb ->
+            Color(
+                red = ((rgb shr 16) and 0xFF) / 255f,
+                green = ((rgb shr 8) and 0xFF) / 255f,
+                blue = (rgb and 0xFF) / 255f
+            )
+        }
 
 private fun Int.toClockLabel(): String {
     val hour = this / 60

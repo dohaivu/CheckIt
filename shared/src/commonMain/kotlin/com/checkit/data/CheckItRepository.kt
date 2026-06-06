@@ -50,9 +50,9 @@ interface CheckItRepository {
         startTimeMinutes: Int?,
         endTimeMinutes: Int?
     ): Long
-    suspend fun addNoteToDailyPlan(date: LocalDate, note: String): Long
-    suspend fun updateDailyPlanItemStatus(itemId: Long, status: DailyPlanItemStatus)
     suspend fun updateDailyPlanItemTime(itemId: Long, startTimeMinutes: Int?, endTimeMinutes: Int?)
+    suspend fun updateDailyPlanItem(itemId: Long, input: DailyPlanItemWriteInput)
+    suspend fun deleteDailyPlanItem(itemId: Long)
     suspend fun addNote(input: NoteWriteInput): Long
     suspend fun updateNote(noteId: Long, input: NoteWriteInput)
     suspend fun completeNote(noteId: Long)
@@ -98,6 +98,14 @@ data class NoteWriteInput(
     val status: TaskStatus,
     val date: LocalDate,
     val tagIds: List<Long>
+)
+
+data class DailyPlanItemWriteInput(
+    val title: String,
+    val note: String?,
+    val status: DailyPlanItemStatus,
+    val startTimeMinutes: Int?,
+    val endTimeMinutes: Int?
 )
 
 class RoomCheckItRepository(
@@ -398,31 +406,6 @@ class RoomCheckItRepository(
         )
     }
 
-    override suspend fun addNoteToDailyPlan(date: LocalDate, note: String): Long {
-        val planId = ensureDailyPlan(date)
-        val now = Clock.System.now().toEpochMilliseconds()
-        return dao.insertDailyPlanItem(
-            DailyPlanItemEntity(
-                dailyPlanId = planId,
-                titleSnapshot = "CheckIn note",
-                note = note.trim(),
-                source = DailyPlanItemSource.CheckInNote.name,
-                status = DailyPlanItemStatus.Done.name,
-                sortOrder = dao.nextDailyPlanItemSortOrder(planId),
-                addedAtMillis = now,
-                completedAtMillis = now
-            )
-        )
-    }
-
-    override suspend fun updateDailyPlanItemStatus(itemId: Long, status: DailyPlanItemStatus) {
-        dao.updateDailyPlanItemStatus(
-            itemId = itemId,
-            status = status.name,
-            completedAtMillis = if (status == DailyPlanItemStatus.Done) Clock.System.now().toEpochMilliseconds() else null
-        )
-    }
-
     override suspend fun updateDailyPlanItemTime(
         itemId: Long,
         startTimeMinutes: Int?,
@@ -433,6 +416,26 @@ class RoomCheckItRepository(
         item?.taskId?.let { taskId ->
             dao.clearTaskTime(taskId, Clock.System.now().toEpochMilliseconds())
         }
+    }
+
+    override suspend fun updateDailyPlanItem(itemId: Long, input: DailyPlanItemWriteInput) {
+        dao.updateDailyPlanItem(
+            itemId = itemId,
+            titleSnapshot = input.title.trim(),
+            note = input.note?.trim()?.takeIf { it.isNotBlank() },
+            status = input.status.name,
+            startTimeMinutes = input.startTimeMinutes,
+            endTimeMinutes = input.endTimeMinutes,
+            completedAtMillis = if (input.status == DailyPlanItemStatus.Done) {
+                Clock.System.now().toEpochMilliseconds()
+            } else {
+                null
+            }
+        )
+    }
+
+    override suspend fun deleteDailyPlanItem(itemId: Long) {
+        dao.deleteDailyPlanItem(itemId)
     }
 
     override suspend fun addNote(input: NoteWriteInput): Long {

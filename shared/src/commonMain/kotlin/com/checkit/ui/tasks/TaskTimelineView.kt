@@ -139,12 +139,13 @@ private fun AllDaySection(
             verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
             visibleTasks.forEach { task ->
+                val list = lists.firstOrNull { it.id == task.listId }
                 AllDayItemRow(
                     label = task.name.ifBlank { "Untitled task" },
                     icon = { Icon(Icons.Default.TaskAlt, contentDescription = null, modifier = Modifier.size(16.dp)) },
-                    color = task.priority.color(),
+                    color = taskCardColor(task, list),
                     onClick = { onTaskClick(task) },
-                    supportingLabel = if (showListName) lists.firstOrNull { it.id == task.listId }?.name else null
+                    supportingLabel = if (showListName) list?.name else null
                 )
             }
             visibleNotes.forEach { note ->
@@ -387,7 +388,7 @@ private fun TimelineTaskCard(
     val cardWidth = (laneWidth - 4.dp).coerceAtLeast(44.dp)
     val x = axisWidth + 6.dp + laneWidth * layout.lane
     val xPx = with(density) { x.roundToPx() }
-    val list = if (showListName) lists.firstOrNull { it.id == task.listId } else null
+    val list = lists.firstOrNull { it.id == task.listId }
     var dragOffsetY by remember(task.id, start, end) { mutableFloatStateOf(0f) }
     var topResizeOffsetY by remember(task.id, start, end) { mutableFloatStateOf(0f) }
     var bottomResizeOffsetY by remember(task.id, start, end) { mutableFloatStateOf(0f) }
@@ -432,7 +433,7 @@ private fun TimelineTaskCard(
         TaskCard(
             title = task.name.ifBlank { "Untitled task" },
             timeLabel = "${start.toClockLabel()} - ${end.toClockLabel()}",
-            supportingText = list?.name,
+            supportingText = if (showListName) list?.name else null,
             color = taskCardColor(task, list),
             minHeight = 36.dp,
             titleMaxLines = 1,

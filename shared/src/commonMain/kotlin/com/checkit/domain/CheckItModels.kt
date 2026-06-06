@@ -77,10 +77,7 @@ enum class DailyPlanItemSource {
 
 enum class DailyPlanItemStatus {
     Planned,
-    InProgress,
-    Done,
-    Skipped,
-    Moved
+    Done
 }
 
 data class SubTaskItem(

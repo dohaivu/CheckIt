@@ -71,7 +71,7 @@ data class MyDayUiState(
     val board: TaskBoard = TaskBoard(),
     val dailyPlans: List<DailyPlan> = emptyList(),
     val selectedView: MyDayView = MyDayView.Agenda,
-    val checkIn: CheckInState? = null,
+    val itemEditor: DailyPlanItemEditorState? = null,
     val showSuggestions: Boolean = false,
     val isLoading: Boolean = true,
     val message: String? = null
@@ -97,13 +97,19 @@ enum class MyDayView {
     Board
 }
 
-data class CheckInState(
-    val doneTitle: String = "",
-    val doneNote: String = "",
-    val statusNote: String = "",
+data class DailyPlanItemEditorState(
+    val itemId: Long? = null,
+    val taskId: Long? = null,
+    val title: String = "",
+    val note: String = "",
+    val status: DailyPlanItemStatus = DailyPlanItemStatus.Done,
     val startTimeMinutes: Int? = null,
     val endTimeMinutes: Int? = null
-)
+) {
+    val isAddMode: Boolean get() = itemId == null
+    val canDelete: Boolean get() = itemId != null
+    val canOpenTask: Boolean get() = taskId != null
+}
 
 sealed interface TaskEditorState {
     data class TaskForm(
@@ -231,7 +237,8 @@ data class CalendarUiState(
     val selectedMonth: kotlinx.datetime.LocalDate = today().firstDayOfMonth(),
     val selectedDate: kotlinx.datetime.LocalDate = today(),
     val board: TaskBoard = TaskBoard(),
-    val dailyPlans: List<DailyPlan> = emptyList()
+    val dailyPlans: List<DailyPlan> = emptyList(),
+    val itemEditor: DailyPlanItemEditorState? = null
 ) {
     val listsById: Map<Long, TaskList> = board.lists.associateBy { it.id }
     val dailyPlanByDate: Map<kotlinx.datetime.LocalDate, DailyPlan> = dailyPlans.associateBy { it.date }
@@ -264,15 +271,10 @@ data class CalendarUiState(
             ?: Color(0xFF64748B)
 
     private fun dailyItemColor(item: DailyPlanItem): Color =
-        when (item.status) {
-            DailyPlanItemStatus.Done -> Color(0xFF059669)
-            DailyPlanItemStatus.InProgress -> Color(0xFF2563EB)
-            DailyPlanItemStatus.Skipped, DailyPlanItemStatus.Moved -> Color(0xFF64748B)
-            DailyPlanItemStatus.Planned -> item.taskId
-                ?.let { taskId -> board.tasks.firstOrNull { it.id == taskId }?.listId }
-                ?.let { listColorFor(it) }
-                ?: Color(0xFFCA8A04)
-        }
+        item.taskId
+            ?.let { taskId -> board.tasks.firstOrNull { it.id == taskId }?.listId }
+            ?.let { listColorFor(it) }
+            ?: Color(0xFF64748B)
 
     private companion object {
         const val MarkerCap: Int = 6

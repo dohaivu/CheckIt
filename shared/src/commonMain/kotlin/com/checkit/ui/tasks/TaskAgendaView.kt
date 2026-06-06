@@ -146,7 +146,8 @@ private fun AgendaDaySection(
             timedTasks.forEachIndexed { index, task ->
                 AgendaTimedTaskRow(
                     task = task,
-                    list = if (showListName) lists[task.listId] else null,
+                    list = lists[task.listId],
+                    showListName = showListName,
                     showTopLine = index > 0 || hasAllDayItems,
                     showBottomLine = index < timedTasks.lastIndex,
                     onClick = { onTaskClick(task) }
@@ -229,6 +230,7 @@ private fun AgendaAllDayRow(
 private fun AgendaTimedTaskRow(
     task: TaskItem,
     list: TaskList?,
+    showListName: Boolean,
     showTopLine: Boolean,
     showBottomLine: Boolean,
     onClick: () -> Unit
@@ -241,7 +243,7 @@ private fun AgendaTimedTaskRow(
         TaskCard(
             title = task.name.ifBlank { "Untitled task" },
             timeLabel = task.timeRangeLabel(),
-            supportingText = list?.name,
+            supportingText = if (showListName) list?.name else null,
             color = taskCardColor(task, list),
             completed = task.status == TaskStatus.Completed,
             onClick = onClick
