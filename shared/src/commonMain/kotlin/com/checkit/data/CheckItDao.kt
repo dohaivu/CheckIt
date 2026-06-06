@@ -176,6 +176,16 @@ interface CheckItDao {
     @Query("SELECT * FROM daily_plan_items WHERE id = :itemId LIMIT 1")
     suspend fun dailyPlanItemById(itemId: Long): DailyPlanItemEntity?
 
+    @Query(
+        """
+        SELECT daily_plan_items.*
+        FROM daily_plan_items
+        INNER JOIN daily_plans ON daily_plans.id = daily_plan_items.dailyPlanId
+        WHERE daily_plans.dateEpochDays = :dateEpochDays
+        """
+    )
+    suspend fun dailyPlanItemsForDate(dateEpochDays: Int): List<DailyPlanItemEntity>
+
     @Query("SELECT * FROM daily_plans WHERE dateEpochDays = :dateEpochDays LIMIT 1")
     suspend fun dailyPlanForDate(dateEpochDays: Int): DailyPlanEntity?
 

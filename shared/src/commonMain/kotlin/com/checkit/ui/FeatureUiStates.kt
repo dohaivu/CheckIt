@@ -91,6 +91,15 @@ data class MyDayUiState(
         .sortedWith(compareBy<TaskItem> { it.dueDate ?: LocalDate.fromEpochDays(Int.MAX_VALUE) }.thenBy { it.sortOrder })
 }
 
+data class ReminderSettingsUiState(
+    val planEnabled: Boolean = true,
+    val planTimeMinutes: Int = 7 * 60,
+    val reviewEnabled: Boolean = true,
+    val reviewTimeMinutes: Int = 21 * 60,
+    val checkInEnabled: Boolean = true,
+    val checkInLastShownAtMillis: Long? = null,
+)
+
 enum class MyDayView {
     Agenda,
     Timeline,
@@ -298,6 +307,7 @@ data class SettingsUiState(
     val language: AppLanguage = AppLanguage.English,
     val themeMode: AppThemeMode = AppThemeMode.System,
     val colorSchemeMode: AppColorSchemeMode = AppColorSchemeMode.Sunset,
+    val reminders: ReminderSettingsUiState = ReminderSettingsUiState(),
     val tagUsageSort: TagUsageSort = TagUsageSort.MostUsed,
     val message: String? = null
 )

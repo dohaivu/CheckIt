@@ -12,6 +12,8 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.checkit.MainActivity
+import com.checkit.domain.NotificationDoNotDisturbPolicy
+import java.time.LocalTime
 
 class CheckItNotificationCenter(
     private val context: Context
@@ -19,7 +21,26 @@ class CheckItNotificationCenter(
     private val notificationManager = NotificationManagerCompat.from(context)
 
     fun showTaskReminder(taskId: Long, taskName: String, label: String) {
+        showReminder(
+            notificationId = notificationId(taskId),
+            requestCode = taskId.hashCode(),
+            title = taskName.ifBlank { "Task reminder" },
+            body = label
+        )
+    }
+
+    fun showAppReminder(notificationId: Int, title: String, body: String) {
+        showReminder(
+            notificationId = notificationId,
+            requestCode = notificationId,
+            title = title,
+            body = body
+        )
+    }
+
+    private fun showReminder(notificationId: Int, requestCode: Int, title: String, body: String) {
         if (!canPostNotifications()) return
+        if (!canNotifyNow()) return
 
         ensureChannels()
         val intent = Intent(context, MainActivity::class.java).apply {
@@ -27,21 +48,21 @@ class CheckItNotificationCenter(
         }
         val pendingIntent = PendingIntent.getActivity(
             context,
-            taskId.hashCode(),
+            requestCode,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val notification = NotificationCompat.Builder(context, ReminderChannelId)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle(taskName.ifBlank { "Task reminder" })
-            .setContentText(label)
+            .setContentTitle(title)
+            .setContentText(body)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .build()
 
-        notificationManager.notify(notificationId(taskId), notification)
+        notificationManager.notify(notificationId, notification)
     }
 
     fun ensureChannels() {
@@ -59,6 +80,11 @@ class CheckItNotificationCenter(
     private fun canPostNotifications(): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+
+    private fun canNotifyNow(): Boolean {
+        val now = LocalTime.now()
+        return NotificationDoNotDisturbPolicy.canNotifyAt(now.hour * 60 + now.minute)
+    }
 
     private fun notificationId(taskId: Long): Int =
         (taskId xor (taskId ushr 32)).toInt()

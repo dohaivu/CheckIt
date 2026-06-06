@@ -10,7 +10,9 @@ import com.checkit.data.buildCheckItDatabase
 import com.checkit.data.createPreferencesDataStore
 import com.checkit.data.provideDatabaseBuilder
 import com.checkit.data.SettingsRepository
+import com.checkit.domain.CheckInReminderPolicy
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
+import com.checkit.notifications.AppReminderScheduler
 import com.checkit.domain.usecase.AddNoteUseCase
 import com.checkit.domain.usecase.AddManualDoneToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
@@ -91,6 +93,7 @@ val provideInteractorModule = module {
     single { UpdateNoteUseCase(get()) }
     single { DeleteNoteUseCase(get()) }
     single { SelectTaskBoardItemsUseCase() }
+    single { CheckInReminderPolicy(get(), get()) }
 }
 
 val provideDatabaseModule = module {
@@ -118,5 +121,5 @@ val provideViewModelModule = module {
         )
     }
     viewModel { ReportViewModel(get()) }
-    viewModel { SettingsViewModel(get(), get(), get()) }
+    viewModel { SettingsViewModel(get(), get(), get(), get<AppReminderScheduler>()) }
 }

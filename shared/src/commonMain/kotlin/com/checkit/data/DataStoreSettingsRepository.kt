@@ -19,4 +19,28 @@ class DataStoreSettingsRepository(
     override suspend fun setColorSchemeModeCode(code: String) {
         dataStore.setColorSchemeModeCode(code)
     }
+
+    override suspend fun setPlanReminderEnabled(enabled: Boolean) {
+        dataStore.setPlanReminderEnabled(enabled)
+    }
+
+    override suspend fun setPlanReminderTimeMinutes(minutes: Int) {
+        dataStore.setPlanReminderTimeMinutes(minutes)
+    }
+
+    override suspend fun setReviewReminderEnabled(enabled: Boolean) {
+        dataStore.setReviewReminderEnabled(enabled)
+    }
+
+    override suspend fun setReviewReminderTimeMinutes(minutes: Int) {
+        dataStore.setReviewReminderTimeMinutes(minutes)
+    }
+
+    override suspend fun setCheckInReminderEnabled(enabled: Boolean) {
+        dataStore.setCheckInReminderEnabled(enabled)
+    }
+
+    override suspend fun setCheckInReminderLastShownAtMillis(millis: Long) {
+        dataStore.setCheckInReminderLastShownAtMillis(millis)
+    }
 }
