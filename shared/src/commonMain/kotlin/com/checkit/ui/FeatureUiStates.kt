@@ -26,6 +26,8 @@ data class TaskUiState(
     val selectedTagId: Long? = null,
     val selectedView: TaskWorkspaceView = TaskWorkspaceView.List,
     val listDisplayType: TaskListDisplayType = TaskListDisplayType.Standard,
+    val showCompleted: Boolean = false,
+    val sortOption: TaskSortOption = TaskSortOption.Custom,
     val visibleTasks: List<TaskItem> = emptyList(),
     val visibleNotes: List<NoteItem> = emptyList(),
     val editor: TaskEditorState? = null,
@@ -38,8 +40,8 @@ data class TaskUiState(
     val selectedFilter: TaskFilter? = board.filters.firstOrNull { it.id == selectedFilterId }
     val selectedTag = board.tags.firstOrNull { it.id == selectedTagId }
     val title: String = selectedList?.name ?: selectedFilter?.name ?: selectedTag?.name ?: "Tasks"
-    val isTodayFilterSelected: Boolean = selectedFilter?.dueDatePreset == DueDatePreset.Today
-    val availableViews: List<TaskWorkspaceView> = if (isTodayFilterSelected) {
+    val dayLimit: Int? = if (selectedFilter?.dueDatePreset == DueDatePreset.Today) 1 else null
+    val availableViews: List<TaskWorkspaceView> = if (dayLimit == 1) {
         TaskWorkspaceView.entries
     } else {
         TaskWorkspaceView.entries.filter { it != TaskWorkspaceView.Timeline }
@@ -56,6 +58,13 @@ enum class TaskListDisplayType {
     Brief,
     Standard,
     Detail
+}
+
+enum class TaskSortOption {
+    Custom,
+    Priority,
+    Title,
+    Date
 }
 
 data class MyDayUiState(

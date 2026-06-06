@@ -42,6 +42,7 @@ import com.checkit.ui.SubTaskEditorState
 import com.checkit.ui.TagEditorState
 import com.checkit.ui.TaskListDisplayType
 import com.checkit.ui.TaskEditorState
+import com.checkit.ui.TaskSortOption
 import com.checkit.ui.TaskUiState
 import com.checkit.ui.TaskWorkspaceView
 import com.checkit.ui.toEditorState
@@ -125,6 +126,14 @@ class TaskViewModel(
 
     fun selectListDisplayType(displayType: TaskListDisplayType) {
         _uiState.update { it.copy(listDisplayType = displayType) }
+    }
+
+    fun setShowCompleted(showCompleted: Boolean) {
+        _uiState.update { it.copy(showCompleted = showCompleted).refreshVisibleItems() }
+    }
+
+    fun selectSortOption(sortOption: TaskSortOption) {
+        _uiState.update { it.copy(sortOption = sortOption).refreshVisibleItems() }
     }
 
     fun openNewTask() {
@@ -645,20 +654,71 @@ class TaskViewModel(
 
     private fun TaskUiState.refreshVisibleItems(): TaskUiState {
         selectedTagId?.let { tagId ->
-            return copy(
-                visibleTasks = board.tasks.filter { task -> !task.isTrashed && task.tags.any { it.id == tagId } },
-                visibleNotes = board.notes.filter { note ->
-                    !note.isTrashed && note.status != TaskStatus.Completed && note.tags.any { it.id == tagId }
-                }
+            return withVisibleItems(
+                tasks = board.tasks.filter { task -> !task.isTrashed && task.tags.any { it.id == tagId } },
+                notes = board.notes.filter { note -> !note.isTrashed && note.tags.any { it.id == tagId } }
             )
         }
         val selection = selectedFilter?.let { TaskBoardSelection.FilterSelection(it) }
             ?: selectedListId?.let { TaskBoardSelection.ListSelection(it) }
             ?: return copy(visibleTasks = emptyList(), visibleNotes = emptyList())
         val items = selectTaskBoardItems(board, selection, today())
-        return copy(visibleTasks = items.tasks, visibleNotes = items.notes)
+        return withVisibleItems(items.tasks, items.notes)
+    }
+
+    private fun TaskUiState.withVisibleItems(
+        tasks: List<TaskItem>,
+        notes: List<NoteItem>
+    ): TaskUiState {
+        val shouldHideCompleted = !showCompleted && selectedFilter?.status != TaskStatus.Completed
+        val completionFilteredTasks = if (shouldHideCompleted) {
+            tasks.filter { it.status != TaskStatus.Completed }
+        } else {
+            tasks
+        }
+        val completionFilteredNotes = if (shouldHideCompleted) {
+            notes.filter { it.status != TaskStatus.Completed }
+        } else {
+            notes
+        }
+        return copy(
+            visibleTasks = completionFilteredTasks.sortedTasksFor(sortOption),
+            visibleNotes = completionFilteredNotes.sortedNotesFor(sortOption)
+        )
     }
 }
+
+private fun List<TaskItem>.sortedTasksFor(sortOption: TaskSortOption): List<TaskItem> =
+    when (sortOption) {
+        TaskSortOption.Custom -> sortedWith(compareBy<TaskItem> { it.sortOrder }.thenBy { it.dueDate })
+        TaskSortOption.Priority -> sortedWith(
+            compareBy<TaskItem> { it.priority.rankForSort() }
+                .thenBy { it.dueDate ?: LocalDate.fromEpochDays(Int.MAX_VALUE) }
+                .thenBy { it.sortOrder }
+        )
+        TaskSortOption.Title -> sortedWith(compareBy<TaskItem> { it.name.lowercase() }.thenBy { it.sortOrder })
+        TaskSortOption.Date -> sortedWith(
+            compareBy<TaskItem> { it.dueDate ?: LocalDate.fromEpochDays(Int.MAX_VALUE) }
+                .thenBy { it.startTimeMinutes ?: Int.MAX_VALUE }
+                .thenBy { it.sortOrder }
+        )
+    }
+
+private fun List<NoteItem>.sortedNotesFor(sortOption: TaskSortOption): List<NoteItem> =
+    when (sortOption) {
+        TaskSortOption.Custom,
+        TaskSortOption.Priority -> sortedBy { it.sortOrder }
+        TaskSortOption.Title -> sortedWith(compareBy<NoteItem> { it.content.lowercase() }.thenBy { it.sortOrder })
+        TaskSortOption.Date -> sortedWith(compareBy<NoteItem> { it.date }.thenBy { it.sortOrder })
+    }
+
+private fun TaskPriority.rankForSort(): Int =
+    when (this) {
+        TaskPriority.High -> 0
+        TaskPriority.Medium -> 1
+        TaskPriority.Low -> 2
+        TaskPriority.None -> 3
+    }
 
 private fun <T> Set<T>.toggle(value: T): Set<T> =
     if (contains(value)) this - value else this + value

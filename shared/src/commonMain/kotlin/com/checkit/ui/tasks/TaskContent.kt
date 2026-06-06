@@ -64,6 +64,7 @@ internal fun TaskContent(
                 showListName = showListName,
                 onTaskClick = onTaskClick,
                 onNoteClick = onNoteClick,
+                dayLimit = state.dayLimit,
                 modifier = Modifier.weight(1f)
             )
             TaskWorkspaceView.Timeline -> TaskTimelineView(

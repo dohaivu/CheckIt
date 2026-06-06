@@ -226,7 +226,6 @@ private fun NoteItem.matches(filter: TaskFilter, today: LocalDate): Boolean {
     if (isTrashed) return false
     if (filter.tagId != null && tags.none { it.id == filter.tagId }) return false
     if (filter.status != null && status != filter.status) return false
-    if (filter.status == null && status == TaskStatus.Completed) return false
     if (filter.priority != null) return false
     if (filter.dueDatePreset != null && !matchesNoteDate(filter.dueDatePreset, date, today)) return false
     return true

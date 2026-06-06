@@ -90,10 +90,13 @@ internal fun TaskScreen(
                     },
                     actions = {
                         ViewOptionsMenu(
-                            isShowCompleted = true,
+                            showCompleted = state.showCompleted,
+                            onShowCompletedChange = viewModel::setShowCompleted,
                             availableViews = state.availableViews,
                             selectedView = state.selectedView,
-                            selectView = viewModel::selectView
+                            selectView = viewModel::selectView,
+                            sortOption = state.sortOption,
+                            selectSortOption = viewModel::selectSortOption
                         )
                     }
                 )
