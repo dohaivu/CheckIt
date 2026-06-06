@@ -370,7 +370,7 @@ private fun SuggestionCard(
         TaskCard(
             title = task.name.ifBlank { "Untitled task" },
             timeLabel = task.timeRangeLabel(),
-            supportingText = task.dueDate?.localizedCompactDateWithDayName() ?: list?.name,
+            supportingText = task.doDate?.localizedCompactDateWithDayName() ?: list?.name,
             color = taskCardColor(task, list),
             onClick = onClick,
             modifier = Modifier.fillMaxWidth()
@@ -743,7 +743,7 @@ private fun List<DailyPlanItem>.toTaskViewProjection(
                 val realTask = item.taskId?.let { realTasksById[it] }
                 val projectedTask = realTask?.copy(
                     id = item.id,
-                    dueDate = date,
+                    doDate = date,
                     startTimeMinutes = item.startTimeMinutes,
                     endTimeMinutes = item.endTimeMinutes,
                     status = item.status.toTaskStatus(),
@@ -755,7 +755,7 @@ private fun List<DailyPlanItem>.toTaskViewProjection(
                     description = item.note.orEmpty(),
                     status = item.status.toTaskStatus(),
                     priority = TaskPriority.None,
-                    dueDate = date,
+                    doDate = date,
                     completedDate = date.takeIf { item.status == DailyPlanItemStatus.Done },
                     startTimeMinutes = item.startTimeMinutes,
                     endTimeMinutes = item.endTimeMinutes,

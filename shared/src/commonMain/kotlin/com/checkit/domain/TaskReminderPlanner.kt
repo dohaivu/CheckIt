@@ -59,11 +59,11 @@ object TaskReminderPlanner {
     private const val DefaultReminderHour = 9
 
     fun eventTimeMillis(
-        dueDate: LocalDate?,
+        doDate: LocalDate?,
         startTimeMinutes: Int?,
         timeZone: TimeZone = TimeZone.currentSystemDefault()
     ): Long? {
-        val date = dueDate ?: return null
+        val date = doDate ?: return null
         val minutes = startTimeMinutes ?: DefaultReminderHour * 60
         return LocalDateTime(
             date = date,
@@ -72,12 +72,12 @@ object TaskReminderPlanner {
     }
 
     fun buildReminderInputs(
-        dueDate: LocalDate?,
+        doDate: LocalDate?,
         startTimeMinutes: Int?,
         selectedOffsets: Set<Int>,
         timeZone: TimeZone = TimeZone.currentSystemDefault()
     ): List<TaskReminderWriteInput> {
-        val eventMillis = eventTimeMillis(dueDate, startTimeMinutes, timeZone) ?: return emptyList()
+        val eventMillis = eventTimeMillis(doDate, startTimeMinutes, timeZone) ?: return emptyList()
         return selectedOffsets
             .filter { it >= 0 }
             .distinct()
@@ -92,7 +92,7 @@ object TaskReminderPlanner {
     }
 
     fun selectedOffsetsFor(task: TaskItem, timeZone: TimeZone = TimeZone.currentSystemDefault()): Set<Int> {
-        val eventMillis = eventTimeMillis(task.dueDate, task.startTimeMinutes, timeZone) ?: return emptySet()
+        val eventMillis = eventTimeMillis(task.doDate, task.startTimeMinutes, timeZone) ?: return emptySet()
         return task.reminders.mapNotNull { reminder ->
             val offsetMillis = eventMillis - reminder.remindAtMillis
             if (offsetMillis < 0 || offsetMillis % 60_000L != 0L) {

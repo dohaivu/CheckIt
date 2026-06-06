@@ -113,8 +113,7 @@ private fun BriefTaskRowContent(task: TaskItem) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
-        task.startTimeMinutes?.let { DetailChip(Icons.Default.Schedule, it.toClockLabel()) }
-            ?: task.dueDate?.let { DetailChip(Icons.Default.Event, it.compact()) }
+        DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes)
         if (task.priority != TaskPriority.None) PriorityPill(priority = task.priority)
     }
 }
@@ -124,7 +123,7 @@ private fun StandardTaskRowContent(task: TaskItem, list: TaskList?) {
     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         TaskTitleRow(task, descriptionMaxLines = 1, showStatusText = false)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            task.dueDate?.let { DetailChip(Icons.Default.Event, it.compact()) }
+            DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes)
             task.durationMinutes?.let { DetailChip(Icons.Default.Schedule, it.formatDuration()) }
             RepeatPill(task.repeatRRule)
             if (task.priority != TaskPriority.None) PriorityPill(priority = task.priority)
@@ -139,9 +138,7 @@ private fun DetailTaskRowContent(task: TaskItem, list: TaskList?) {
     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         TaskTitleRow(task, descriptionMaxLines = 3, showStatusText = true)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            task.dueDate?.let { DetailChip(Icons.Default.Event, it.compact()) }
-            task.startTimeMinutes?.let { DetailChip(Icons.Default.Schedule, it.toClockLabel()) }
-            task.endTimeMinutes?.let { DetailChip(Icons.Default.Schedule, it.toClockLabel()) }
+            DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes)
             task.durationMinutes?.let { DetailChip(Icons.Default.Schedule, it.formatDuration()) }
             RepeatPill(task.repeatRRule)
             if (task.reminders.isNotEmpty()) DetailChip(Icons.Default.Notifications, "${task.reminders.size} reminders")

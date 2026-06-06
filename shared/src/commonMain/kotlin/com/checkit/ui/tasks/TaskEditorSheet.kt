@@ -337,8 +337,7 @@ private fun TaskViewContent(
             selectedList?.let { list ->
                 DetailChip(materialIcon(list.icon), list.name, iconTint = list.color.toColor())
             }
-            DetailChip(Icons.Default.Event, form.dueDate?.compact() ?: "No date")
-            TimeRangeDetailChip(form.startTimeMinutes, form.endTimeMinutes)
+            DateTimeRangeDetailChip(form.doDate, form.startTimeMinutes, form.endTimeMinutes)
             form.durationMinutes?.let { DetailChip(Icons.Default.Schedule, it.formatDuration()) }
             DetailChip(Icons.Default.CheckCircle, form.status.name)
             if (form.priority != TaskPriority.None) {
@@ -552,7 +551,7 @@ private fun TaskFormContent(
                 lists = availableLists,
                 onListChange = onListChange
             )
-            DatePickerRow(date = form.dueDate, onDateChange = onDueDateChange)
+            DatePickerRow(date = form.doDate, onDateChange = onDueDateChange)
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 TimePickerRow(
                     label = "Start",
@@ -582,7 +581,7 @@ private fun TaskFormContent(
             RepeatDropdown(selected = form.repeatPreset, onSelect = onRepeatChange)
             ReminderPicker(
                 reminderOffsets = form.reminderOffsets,
-                hasDate = form.dueDate != null,
+                hasDate = form.doDate != null,
                 startTimeMinutes = form.startTimeMinutes,
                 onEnabledChange = onRemindersEnabledChange,
                 onReminderToggle = onReminderToggle

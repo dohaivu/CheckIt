@@ -88,7 +88,7 @@ data class MyDayUiState(
                 task.status != TaskStatus.Completed &&
                 task.id !in itemTaskIds
         }
-        .sortedWith(compareBy<TaskItem> { it.dueDate ?: LocalDate.fromEpochDays(Int.MAX_VALUE) }.thenBy { it.sortOrder })
+        .sortedWith(compareBy<TaskItem> { it.doDate ?: LocalDate.fromEpochDays(Int.MAX_VALUE) }.thenBy { it.sortOrder })
 }
 
 data class ReminderSettingsUiState(
@@ -130,7 +130,7 @@ sealed interface TaskEditorState {
         val listId: Long,
         val name: String = "",
         val description: String = "",
-        val dueDate: LocalDate? = null,
+        val doDate: LocalDate? = null,
         val startTimeMinutes: Int? = null,
         val endTimeMinutes: Int? = null,
         val repeatPreset: RepeatPreset = RepeatPreset.None,
@@ -256,7 +256,7 @@ data class CalendarUiState(
     val dailyPlanByDate: Map<kotlinx.datetime.LocalDate, DailyPlan> = dailyPlans.associateBy { it.date }
 
     fun tasksForDate(date: kotlinx.datetime.LocalDate): List<TaskItem> =
-        board.tasks.filter { !it.isTrashed && it.status != TaskStatus.Completed && it.dueDate == date }
+        board.tasks.filter { !it.isTrashed && it.status != TaskStatus.Completed && it.doDate == date }
 
     fun notesForDate(date: kotlinx.datetime.LocalDate): List<NoteItem> =
         board.notes.filter { !it.isTrashed && it.status != TaskStatus.Completed && it.date == date }

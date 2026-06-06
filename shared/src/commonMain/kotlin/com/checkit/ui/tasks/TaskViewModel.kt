@@ -147,7 +147,7 @@ class TaskViewModel(
                 editor = TaskEditorState.TaskForm(
                     mode = EditorMode.Add,
                     listId = listId,
-                    dueDate = date
+                    doDate = date
                 )
             )
         }
@@ -160,7 +160,7 @@ class TaskViewModel(
                 editor = TaskEditorState.TaskForm(
                     mode = EditorMode.Add,
                     listId = listId,
-                    dueDate = today(),
+                    doDate = today(),
                     startTimeMinutes = startTimeMinutes.coerceIn(0, LastTimelineStartMinute),
                     endTimeMinutes = endTimeMinutes.coerceIn(MinimumTimelineDurationMinutes, MinutesPerDay)
                 )
@@ -184,7 +184,7 @@ class TaskViewModel(
                     mode = EditorMode.Add,
                     listId = note.listId,
                     name = note.content,
-                    dueDate = note.date,
+                    doDate = note.date,
                     selectedTagIds = note.selectedTagIds
                 )
             )
@@ -203,7 +203,7 @@ class TaskViewModel(
                     mode = EditorMode.Add,
                     listId = task.listId,
                     content = content,
-                    date = task.dueDate ?: today(),
+                    date = task.doDate ?: today(),
                     selectedTagIds = task.selectedTagIds
                 )
             )
@@ -219,7 +219,7 @@ class TaskViewModel(
                     listId = task.listId,
                     name = task.name,
                     description = task.description,
-                    dueDate = task.dueDate,
+                    doDate = task.doDate,
                     startTimeMinutes = task.startTimeMinutes,
                     endTimeMinutes = task.endTimeMinutes,
                     repeatPreset = RepeatPreset.fromRRule(task.repeatRRule),
@@ -381,10 +381,10 @@ class TaskViewModel(
     fun updateTaskName(name: String) = updateTaskForm { it.copy(name = name) }
     fun updateTaskListId(listId: Long) = updateTaskForm { it.copy(listId = listId) }
     fun updateTaskDescription(description: String) = updateTaskForm { it.copy(description = description) }
-    fun updateTaskDueDate(dueDate: LocalDate?) = updateTaskForm {
+    fun updateTaskDueDate(doDate: LocalDate?) = updateTaskForm {
         it.copy(
-            dueDate = dueDate,
-            reminderOffsets = if (dueDate == null) emptySet() else it.reminderOffsets
+            doDate = doDate,
+            reminderOffsets = if (doDate == null) emptySet() else it.reminderOffsets
         )
     }
     fun updateTaskStartTime(startTimeMinutes: Int?) = updateTaskForm {
@@ -547,7 +547,7 @@ class TaskViewModel(
             description = description.trim(),
             status = status,
             priority = priority,
-            dueDate = dueDate,
+            doDate = doDate,
             startTimeMinutes = startTimeMinutes,
             endTimeMinutes = endTimeMinutes,
             durationMinutes = durationMinutes,
@@ -557,7 +557,7 @@ class TaskViewModel(
                 .filter { it.name.isNotBlank() }
                 .map { SubTaskWriteInput(name = it.name, isCompleted = it.isCompleted) },
             reminders = TaskReminderPlanner.buildReminderInputs(
-                dueDate = dueDate,
+                doDate = doDate,
                 startTimeMinutes = startTimeMinutes,
                 selectedOffsets = reminderOffsets
             ),
@@ -577,14 +577,14 @@ class TaskViewModel(
             description = description,
             status = status,
             priority = priority,
-            dueDate = dueDate,
+            doDate = doDate,
             startTimeMinutes = startTimeMinutes,
             endTimeMinutes = endTimeMinutes,
             durationMinutes = duration,
             repeatRRule = repeatRRule,
             subtasks = subtasks.map { SubTaskWriteInput(name = it.name, isCompleted = it.isCompleted) },
             reminders = TaskReminderPlanner.buildReminderInputs(
-                dueDate = dueDate,
+                doDate = doDate,
                 startTimeMinutes = startTimeMinutes,
                 selectedOffsets = reminderOffsets
             ),
@@ -690,15 +690,15 @@ class TaskViewModel(
 
 private fun List<TaskItem>.sortedTasksFor(sortOption: TaskSortOption): List<TaskItem> =
     when (sortOption) {
-        TaskSortOption.Custom -> sortedWith(compareBy<TaskItem> { it.sortOrder }.thenBy { it.dueDate })
+        TaskSortOption.Custom -> sortedWith(compareBy<TaskItem> { it.sortOrder }.thenBy { it.doDate })
         TaskSortOption.Priority -> sortedWith(
             compareBy<TaskItem> { it.priority.rankForSort() }
-                .thenBy { it.dueDate ?: LocalDate.fromEpochDays(Int.MAX_VALUE) }
+                .thenBy { it.doDate ?: LocalDate.fromEpochDays(Int.MAX_VALUE) }
                 .thenBy { it.sortOrder }
         )
         TaskSortOption.Title -> sortedWith(compareBy<TaskItem> { it.name.lowercase() }.thenBy { it.sortOrder })
         TaskSortOption.Date -> sortedWith(
-            compareBy<TaskItem> { it.dueDate ?: LocalDate.fromEpochDays(Int.MAX_VALUE) }
+            compareBy<TaskItem> { it.doDate ?: LocalDate.fromEpochDays(Int.MAX_VALUE) }
                 .thenBy { it.startTimeMinutes ?: Int.MAX_VALUE }
                 .thenBy { it.sortOrder }
         )

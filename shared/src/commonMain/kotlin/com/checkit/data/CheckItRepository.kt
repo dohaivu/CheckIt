@@ -78,7 +78,7 @@ data class TaskWriteInput(
     val subtasks: List<SubTaskWriteInput>,
     val status: TaskStatus,
     val priority: TaskPriority,
-    val dueDate: LocalDate?,
+    val doDate: LocalDate?,
     val startTimeMinutes: Int?,
     val endTimeMinutes: Int?,
     val durationMinutes: Int?,
@@ -276,7 +276,7 @@ class RoomCheckItRepository(
                 description = input.description,
                 status = input.status.name,
                 priority = input.priority.name,
-                doDateEpochDays = input.dueDate?.toEpochDays()?.toInt(),
+                doDateEpochDays = input.doDate?.toEpochDays()?.toInt(),
                 startTimeMinutes = input.startTimeMinutes,
                 endTimeMinutes = input.endTimeMinutes,
                 durationMinutes = input.durationMinutes,
@@ -303,7 +303,7 @@ class RoomCheckItRepository(
             description = input.description,
             status = input.status.name,
             priority = input.priority.name,
-            doDateEpochDays = input.dueDate?.toEpochDays()?.toInt(),
+            doDateEpochDays = input.doDate?.toEpochDays()?.toInt(),
             startTimeMinutes = input.startTimeMinutes,
             endTimeMinutes = input.endTimeMinutes,
             durationMinutes = input.durationMinutes,
@@ -573,7 +573,7 @@ private fun TaskFilterEntity.toDomain() = TaskFilter(
 )
 
 private fun TaskEntity.hasDifferentScheduleThan(input: TaskWriteInput): Boolean =
-    doDateEpochDays != input.dueDate?.toEpochDays()?.toInt() ||
+    doDateEpochDays != input.doDate?.toEpochDays()?.toInt() ||
         startTimeMinutes != input.startTimeMinutes ||
         endTimeMinutes != input.endTimeMinutes
 
@@ -590,7 +590,7 @@ private fun TaskEntity.toDomain(
     status = enumValueOf(status),
     tags = tags,
     priority = enumValueOf(priority),
-    dueDate = doDateEpochDays?.let { LocalDate.fromEpochDays(it) },
+    doDate = doDateEpochDays?.let { LocalDate.fromEpochDays(it) },
     completedDate = completedDateEpochDays?.let { LocalDate.fromEpochDays(it) },
     startTimeMinutes = startTimeMinutes,
     endTimeMinutes = endTimeMinutes,

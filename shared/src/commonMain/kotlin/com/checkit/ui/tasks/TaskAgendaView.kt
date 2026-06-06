@@ -62,7 +62,7 @@ internal fun TaskAgendaView(
 ) {
     val today = today()
     val listById = remember(lists) { lists.associateBy { it.id } }
-    val tasksByDate = remember(tasks) { tasks.filter { it.dueDate != null }.groupBy { it.dueDate } }
+    val tasksByDate = remember(tasks) { tasks.filter { it.doDate != null }.groupBy { it.doDate } }
     val notesByDate = remember(notes) { notes.groupBy { it.date } }
     val boundedDayCount = dayLimit?.coerceAtLeast(1)
     val initialIndex = if (boundedDayCount == null) TodayIndex else 0

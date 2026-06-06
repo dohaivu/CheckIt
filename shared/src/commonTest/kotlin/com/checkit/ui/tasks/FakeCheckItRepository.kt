@@ -187,7 +187,7 @@ private fun TaskWriteInput.toTaskItem(
     },
     status = status,
     priority = priority,
-    dueDate = dueDate,
+    doDate = doDate,
     startTimeMinutes = startTimeMinutes,
     endTimeMinutes = endTimeMinutes,
     durationMinutes = durationMinutes,

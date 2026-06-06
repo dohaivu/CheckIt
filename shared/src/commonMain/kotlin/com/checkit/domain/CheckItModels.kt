@@ -30,7 +30,7 @@ data class TaskItem(
     val status: TaskStatus = TaskStatus.Open,
     val tags: List<TaskTag> = emptyList(),
     val priority: TaskPriority = TaskPriority.None,
-    val dueDate: LocalDate? = null,
+    val doDate: LocalDate? = null,
     val completedDate: LocalDate? = null,
     val startTimeMinutes: Int? = null,
     val endTimeMinutes: Int? = null,
