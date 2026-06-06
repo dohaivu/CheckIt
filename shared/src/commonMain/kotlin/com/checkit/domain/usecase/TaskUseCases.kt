@@ -1,10 +1,12 @@
 package com.checkit.domain.usecase
 
 import com.checkit.data.CheckItRepository
+import com.checkit.data.DailyPlanItemWriteInput
 import com.checkit.data.NoteWriteInput
 import com.checkit.data.TaskListWriteInput
 import com.checkit.data.TaskTagWriteInput
 import com.checkit.data.TaskWriteInput
+import com.checkit.domain.DailyPlan
 import com.checkit.domain.DueDatePreset
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
@@ -21,6 +23,12 @@ class ObserveTaskBoardUseCase(
     private val repository: CheckItRepository
 ) {
     operator fun invoke(): Flow<TaskBoard> = repository.observeTaskBoard()
+}
+
+class ObserveDailyPlansUseCase(
+    private val repository: CheckItRepository
+) {
+    operator fun invoke(): Flow<List<DailyPlan>> = repository.observeDailyPlans()
 }
 
 class EnsureDefaultTaskDataUseCase(
@@ -86,6 +94,52 @@ class CompleteTaskUseCase(
     suspend operator fun invoke(taskId: Long) = repository.completeTask(taskId)
 }
 
+class OpenTaskUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(taskId: Long) = repository.openTask(taskId)
+}
+
+class AddTaskToDailyPlanUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(date: LocalDate, task: TaskItem): Long =
+        repository.addTaskToDailyPlan(date, task)
+}
+
+class AddManualDoneToDailyPlanUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(
+        date: LocalDate,
+        title: String,
+        note: String?,
+        startTimeMinutes: Int?,
+        endTimeMinutes: Int?
+    ): Long =
+        repository.addManualDoneToDailyPlan(date, title, note, startTimeMinutes, endTimeMinutes)
+}
+
+class UpdateDailyPlanItemTimeUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(itemId: Long, startTimeMinutes: Int?, endTimeMinutes: Int?) =
+        repository.updateDailyPlanItemTime(itemId, startTimeMinutes, endTimeMinutes)
+}
+
+class UpdateDailyPlanItemUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(itemId: Long, input: DailyPlanItemWriteInput) =
+        repository.updateDailyPlanItem(itemId, input)
+}
+
+class DeleteDailyPlanItemUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(itemId: Long) = repository.deleteDailyPlanItem(itemId)
+}
+
 class AddNoteUseCase(
     private val repository: CheckItRepository
 ) {
@@ -96,6 +150,18 @@ class UpdateNoteUseCase(
     private val repository: CheckItRepository
 ) {
     suspend operator fun invoke(noteId: Long, input: NoteWriteInput) = repository.updateNote(noteId, input)
+}
+
+class CompleteNoteUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(noteId: Long) = repository.completeNote(noteId)
+}
+
+class OpenNoteUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(noteId: Long) = repository.openNote(noteId)
 }
 
 class DeleteNoteUseCase(
@@ -158,7 +224,8 @@ private fun NoteItem.matches(filter: TaskFilter, today: LocalDate): Boolean {
     if (filter.includeTrashed) return isTrashed
     if (isTrashed) return false
     if (filter.tagId != null && tags.none { it.id == filter.tagId }) return false
-    if (filter.status != null || filter.priority != null) return false
+    if (filter.status != null && status != filter.status) return false
+    if (filter.priority != null) return false
     if (filter.dueDatePreset != null && !matchesNoteDate(filter.dueDatePreset, date, today)) return false
     return true
 }

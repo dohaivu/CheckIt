@@ -21,11 +21,14 @@ import com.checkit.domain.usecase.AddTaskListUseCase
 import com.checkit.domain.usecase.AddTaskTagUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
+import com.checkit.domain.usecase.CompleteNoteUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.domain.usecase.IsTagNameTakenUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
+import com.checkit.domain.usecase.OpenNoteUseCase
+import com.checkit.domain.usecase.OpenTaskUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.TaskBoardSelection
 import com.checkit.domain.usecase.UpdateNoteUseCase
@@ -39,6 +42,7 @@ import com.checkit.ui.SubTaskEditorState
 import com.checkit.ui.TagEditorState
 import com.checkit.ui.TaskListDisplayType
 import com.checkit.ui.TaskEditorState
+import com.checkit.ui.TaskSortOption
 import com.checkit.ui.TaskUiState
 import com.checkit.ui.TaskWorkspaceView
 import com.checkit.ui.toEditorState
@@ -60,6 +64,9 @@ class TaskViewModel(
     private val updateTask: UpdateTaskUseCase,
     private val deleteTask: DeleteTaskUseCase,
     private val completeTask: CompleteTaskUseCase,
+    private val completeNote: CompleteNoteUseCase,
+    private val openTask: OpenTaskUseCase,
+    private val openNote: OpenNoteUseCase,
     private val addNote: AddNoteUseCase,
     private val updateNote: UpdateNoteUseCase,
     private val deleteNote: DeleteNoteUseCase,
@@ -119,6 +126,14 @@ class TaskViewModel(
 
     fun selectListDisplayType(displayType: TaskListDisplayType) {
         _uiState.update { it.copy(listDisplayType = displayType) }
+    }
+
+    fun setShowCompleted(showCompleted: Boolean) {
+        _uiState.update { it.copy(showCompleted = showCompleted).refreshVisibleItems() }
+    }
+
+    fun selectSortOption(sortOption: TaskSortOption) {
+        _uiState.update { it.copy(sortOption = sortOption).refreshVisibleItems() }
     }
 
     fun openNewTask() {
@@ -226,6 +241,7 @@ class TaskViewModel(
                     noteId = note.id,
                     listId = note.listId,
                     content = note.content,
+                    status = note.status,
                     date = note.date,
                     selectedTagIds = note.tags.map { it.id }.toSet()
                 )
@@ -363,6 +379,7 @@ class TaskViewModel(
     }
 
     fun updateTaskName(name: String) = updateTaskForm { it.copy(name = name) }
+    fun updateTaskListId(listId: Long) = updateTaskForm { it.copy(listId = listId) }
     fun updateTaskDescription(description: String) = updateTaskForm { it.copy(description = description) }
     fun updateTaskDueDate(dueDate: LocalDate?) = updateTaskForm {
         it.copy(
@@ -419,6 +436,7 @@ class TaskViewModel(
         form.copy(selectedTagIds = form.selectedTagIds.toggle(tagId))
     }
     fun updateNoteContent(content: String) = updateNoteForm { it.copy(content = content) }
+    fun updateNoteListId(listId: Long) = updateNoteForm { it.copy(listId = listId) }
     fun updateNoteDate(date: LocalDate) = updateNoteForm { it.copy(date = date) }
     fun toggleNoteTag(tagId: Long) = updateNoteForm { form ->
         form.copy(selectedTagIds = form.selectedTagIds.toggle(tagId))
@@ -443,11 +461,25 @@ class TaskViewModel(
         }
     }
 
-    fun completeCurrentTask() {
-        val taskId = (_uiState.value.editor as? TaskEditorState.TaskForm)?.taskId ?: return
+    fun completeCurrentItem() {
+        val editor = _uiState.value.editor ?: return
         viewModelScope.launch {
-            completeTask(taskId)
-            _uiState.update { it.copy(editor = null, message = "Task completed") }
+            when (editor) {
+                is TaskEditorState.TaskForm -> completeTask(editor.taskId ?: return@launch)
+                is TaskEditorState.NoteForm -> completeNote(editor.noteId ?: return@launch)
+            }
+            _uiState.update { it.copy(editor = null, message = "Completed") }
+        }
+    }
+
+    fun openCurrentItem() {
+        val editor = _uiState.value.editor ?: return
+        viewModelScope.launch {
+            when (editor) {
+                is TaskEditorState.TaskForm -> openTask(editor.taskId ?: return@launch)
+                is TaskEditorState.NoteForm -> openNote(editor.noteId ?: return@launch)
+            }
+            _uiState.update { it.copy(editor = null, message = "Opened") }
         }
     }
 
@@ -491,6 +523,7 @@ class TaskViewModel(
             val input = NoteWriteInput(
                 listId = form.listId,
                 content = form.content.trim(),
+                status = form.status,
                 date = form.date,
                 tagIds = form.selectedTagIds.toList()
             )
@@ -621,18 +654,71 @@ class TaskViewModel(
 
     private fun TaskUiState.refreshVisibleItems(): TaskUiState {
         selectedTagId?.let { tagId ->
-            return copy(
-                visibleTasks = board.tasks.filter { task -> !task.isTrashed && task.tags.any { it.id == tagId } },
-                visibleNotes = board.notes.filter { note -> !note.isTrashed && note.tags.any { it.id == tagId } }
+            return withVisibleItems(
+                tasks = board.tasks.filter { task -> !task.isTrashed && task.tags.any { it.id == tagId } },
+                notes = board.notes.filter { note -> !note.isTrashed && note.tags.any { it.id == tagId } }
             )
         }
         val selection = selectedFilter?.let { TaskBoardSelection.FilterSelection(it) }
             ?: selectedListId?.let { TaskBoardSelection.ListSelection(it) }
             ?: return copy(visibleTasks = emptyList(), visibleNotes = emptyList())
         val items = selectTaskBoardItems(board, selection, today())
-        return copy(visibleTasks = items.tasks, visibleNotes = items.notes)
+        return withVisibleItems(items.tasks, items.notes)
+    }
+
+    private fun TaskUiState.withVisibleItems(
+        tasks: List<TaskItem>,
+        notes: List<NoteItem>
+    ): TaskUiState {
+        val shouldHideCompleted = !showCompleted && selectedFilter?.status != TaskStatus.Completed
+        val completionFilteredTasks = if (shouldHideCompleted) {
+            tasks.filter { it.status != TaskStatus.Completed }
+        } else {
+            tasks
+        }
+        val completionFilteredNotes = if (shouldHideCompleted) {
+            notes.filter { it.status != TaskStatus.Completed }
+        } else {
+            notes
+        }
+        return copy(
+            visibleTasks = completionFilteredTasks.sortedTasksFor(sortOption),
+            visibleNotes = completionFilteredNotes.sortedNotesFor(sortOption)
+        )
     }
 }
+
+private fun List<TaskItem>.sortedTasksFor(sortOption: TaskSortOption): List<TaskItem> =
+    when (sortOption) {
+        TaskSortOption.Custom -> sortedWith(compareBy<TaskItem> { it.sortOrder }.thenBy { it.dueDate })
+        TaskSortOption.Priority -> sortedWith(
+            compareBy<TaskItem> { it.priority.rankForSort() }
+                .thenBy { it.dueDate ?: LocalDate.fromEpochDays(Int.MAX_VALUE) }
+                .thenBy { it.sortOrder }
+        )
+        TaskSortOption.Title -> sortedWith(compareBy<TaskItem> { it.name.lowercase() }.thenBy { it.sortOrder })
+        TaskSortOption.Date -> sortedWith(
+            compareBy<TaskItem> { it.dueDate ?: LocalDate.fromEpochDays(Int.MAX_VALUE) }
+                .thenBy { it.startTimeMinutes ?: Int.MAX_VALUE }
+                .thenBy { it.sortOrder }
+        )
+    }
+
+private fun List<NoteItem>.sortedNotesFor(sortOption: TaskSortOption): List<NoteItem> =
+    when (sortOption) {
+        TaskSortOption.Custom,
+        TaskSortOption.Priority -> sortedBy { it.sortOrder }
+        TaskSortOption.Title -> sortedWith(compareBy<NoteItem> { it.content.lowercase() }.thenBy { it.sortOrder })
+        TaskSortOption.Date -> sortedWith(compareBy<NoteItem> { it.date }.thenBy { it.sortOrder })
+    }
+
+private fun TaskPriority.rankForSort(): Int =
+    when (this) {
+        TaskPriority.High -> 0
+        TaskPriority.Medium -> 1
+        TaskPriority.Low -> 2
+        TaskPriority.None -> 3
+    }
 
 private fun <T> Set<T>.toggle(value: T): Set<T> =
     if (contains(value)) this - value else this + value

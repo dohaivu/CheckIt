@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import com.checkit.ui.TaskUiState
 import com.checkit.ui.components.TinyTopAppBar
+import com.checkit.ui.components.ViewOptionsMenu
 import kotlinx.coroutines.launch
 
 @Composable
@@ -88,19 +89,15 @@ internal fun TaskScreen(
                         )
                     },
                     actions = {
-                        state.availableViews.forEach { view ->
-                            IconButton(onClick = { viewModel.selectView(view) }) {
-                                Icon(
-                                    imageVector = view.icon(),
-                                    contentDescription = view.name,
-                                    tint = if (state.selectedView == view) {
-                                        MaterialTheme.colorScheme.primary
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    }
-                                )
-                            }
-                        }
+                        ViewOptionsMenu(
+                            showCompleted = state.showCompleted,
+                            onShowCompletedChange = viewModel::setShowCompleted,
+                            availableViews = state.availableViews,
+                            selectedView = state.selectedView,
+                            selectView = viewModel::selectView,
+                            sortOption = state.sortOption,
+                            selectSortOption = viewModel::selectSortOption
+                        )
                     }
                 )
             }

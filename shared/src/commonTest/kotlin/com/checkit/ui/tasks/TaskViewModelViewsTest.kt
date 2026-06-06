@@ -9,6 +9,9 @@ import com.checkit.domain.usecase.AddTaskListUseCase
 import com.checkit.domain.usecase.AddTaskTagUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
+import com.checkit.domain.usecase.CompleteNoteUseCase
+import com.checkit.domain.usecase.OpenTaskUseCase
+import com.checkit.domain.usecase.OpenNoteUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
@@ -31,6 +34,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -78,6 +82,9 @@ class TaskViewModelViewsTest {
             updateTask = UpdateTaskUseCase(repository),
             deleteTask = DeleteTaskUseCase(repository),
             completeTask = CompleteTaskUseCase(repository),
+            completeNote = CompleteNoteUseCase(repository),
+            openTask = OpenTaskUseCase(repository),
+            openNote = OpenNoteUseCase(repository),
             addNote = AddNoteUseCase(repository),
             updateNote = UpdateNoteUseCase(repository),
             deleteNote = DeleteNoteUseCase(repository),
@@ -102,7 +109,7 @@ class TaskViewModelViewsTest {
 
         val state = viewModel.uiState.value
         assertEquals(TaskWorkspaceView.Timeline, state.selectedView)
-        assertTrue(state.isTodayFilterSelected)
+        assertEquals(1, state.dayLimit)
         assertTrue(TaskWorkspaceView.Timeline in state.availableViews)
     }
 
@@ -113,7 +120,7 @@ class TaskViewModelViewsTest {
         viewModel.selectFilter(2L)
 
         val state = viewModel.uiState.value
-        assertFalse(state.isTodayFilterSelected)
+        assertNull(state.dayLimit)
         assertEquals(TaskWorkspaceView.List, state.selectedView)
         assertFalse(TaskWorkspaceView.Timeline in state.availableViews)
     }
@@ -133,7 +140,7 @@ class TaskViewModelViewsTest {
         viewModel.selectView(TaskWorkspaceView.Timeline)
 
         val state = viewModel.uiState.value
-        assertFalse(state.isTodayFilterSelected)
+        assertNull(state.dayLimit)
         assertEquals(TaskWorkspaceView.List, state.selectedView)
         assertFalse(TaskWorkspaceView.Timeline in state.availableViews)
     }
@@ -145,7 +152,7 @@ class TaskViewModelViewsTest {
         viewModel.selectList(99L)
 
         val state = viewModel.uiState.value
-        assertFalse(state.isTodayFilterSelected)
+        assertNull(state.dayLimit)
         assertEquals(TaskWorkspaceView.List, state.selectedView)
     }
 
@@ -156,7 +163,7 @@ class TaskViewModelViewsTest {
         viewModel.selectTag(7L)
 
         val state = viewModel.uiState.value
-        assertFalse(state.isTodayFilterSelected)
+        assertNull(state.dayLimit)
         assertEquals(TaskWorkspaceView.List, state.selectedView)
     }
 }

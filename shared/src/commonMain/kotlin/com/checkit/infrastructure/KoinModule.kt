@@ -12,20 +12,30 @@ import com.checkit.data.provideDatabaseBuilder
 import com.checkit.data.SettingsRepository
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.domain.usecase.AddNoteUseCase
+import com.checkit.domain.usecase.AddManualDoneToDailyPlanUseCase
+import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskListUseCase
 import com.checkit.domain.usecase.AddTaskTagUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
+import com.checkit.domain.usecase.CompleteNoteUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
+import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.IsTagNameTakenUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
+import com.checkit.domain.usecase.ObserveDailyPlansUseCase
+import com.checkit.domain.usecase.OpenNoteUseCase
+import com.checkit.domain.usecase.OpenTaskUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.UpdateNoteUseCase
+import com.checkit.domain.usecase.UpdateDailyPlanItemUseCase
+import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.domain.usecase.UpdateTaskListUseCase
 import com.checkit.domain.usecase.UpdateTaskTagUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
 import com.checkit.ui.calendar.CalendarViewModel
+import com.checkit.ui.myday.MyDayViewModel
 import com.checkit.ui.tasks.TaskViewModel
 import com.checkit.ui.reports.ReportViewModel
 import com.checkit.ui.settings.SettingsViewModel
@@ -58,6 +68,7 @@ val provideInteractorModule = module {
     single { HttpClient() }
     single<CheckItRepository> { RoomCheckItRepository(get(), get()) }
     single { ObserveTaskBoardUseCase(get()) }
+    single { ObserveDailyPlansUseCase(get()) }
     single { EnsureDefaultTaskDataUseCase(get()) }
     single { AddTaskListUseCase(get()) }
     single { UpdateTaskListUseCase(get()) }
@@ -68,6 +79,14 @@ val provideInteractorModule = module {
     single { UpdateTaskUseCase(get()) }
     single { DeleteTaskUseCase(get()) }
     single { CompleteTaskUseCase(get()) }
+    single { CompleteNoteUseCase(get()) }
+    single { OpenTaskUseCase(get()) }
+    single { OpenNoteUseCase(get()) }
+    single { AddTaskToDailyPlanUseCase(get()) }
+    single { AddManualDoneToDailyPlanUseCase(get()) }
+    single { UpdateDailyPlanItemTimeUseCase(get()) }
+    single { UpdateDailyPlanItemUseCase(get()) }
+    single { DeleteDailyPlanItemUseCase(get()) }
     single { AddNoteUseCase(get()) }
     single { UpdateNoteUseCase(get()) }
     single { DeleteNoteUseCase(get()) }
@@ -89,10 +108,15 @@ val provideViewModelModule = module {
     viewModel {
         TaskViewModel(
             get(), get(), get(), get(), get(), get(), get(), get(), get(), get(),
-            get(), get(), get(), get(), get()
+            get(), get(), get(), get(), get(), get(), get(), get()
         )
     }
-    viewModel { CalendarViewModel(get(), get()) }
+    viewModel { CalendarViewModel(get(), get(), get(), get(), get(), get()) }
+    viewModel {
+        MyDayViewModel(
+            get(), get(), get(), get(), get(), get(), get(), get(), get()
+        )
+    }
     viewModel { ReportViewModel(get()) }
     viewModel { SettingsViewModel(get(), get(), get()) }
 }

@@ -1,6 +1,10 @@
 package com.checkit.data
 
 import com.checkit.domain.DueDatePreset
+import com.checkit.domain.DailyPlan
+import com.checkit.domain.DailyPlanItem
+import com.checkit.domain.DailyPlanItemSource
+import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.NoteItem
 import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
@@ -17,6 +21,8 @@ import com.checkit.notifications.ScheduledTaskReminder
 import com.checkit.notifications.TaskReminderNotificationScheduler
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -24,6 +30,7 @@ import kotlin.time.Clock
 
 interface CheckItRepository {
     fun observeTaskBoard(): Flow<TaskBoard>
+    fun observeDailyPlans(): Flow<List<DailyPlan>>
     suspend fun ensureDefaultTaskData()
     suspend fun addList(input: TaskListWriteInput): Long
     suspend fun updateList(listId: Long, input: TaskListWriteInput)
@@ -34,8 +41,22 @@ interface CheckItRepository {
     suspend fun updateTask(taskId: Long, input: TaskWriteInput)
     suspend fun trashTask(taskId: Long)
     suspend fun completeTask(taskId: Long)
+    suspend fun openTask(taskId: Long)
+    suspend fun addTaskToDailyPlan(date: LocalDate, task: TaskItem): Long
+    suspend fun addManualDoneToDailyPlan(
+        date: LocalDate,
+        title: String,
+        note: String?,
+        startTimeMinutes: Int?,
+        endTimeMinutes: Int?
+    ): Long
+    suspend fun updateDailyPlanItemTime(itemId: Long, startTimeMinutes: Int?, endTimeMinutes: Int?)
+    suspend fun updateDailyPlanItem(itemId: Long, input: DailyPlanItemWriteInput)
+    suspend fun deleteDailyPlanItem(itemId: Long)
     suspend fun addNote(input: NoteWriteInput): Long
     suspend fun updateNote(noteId: Long, input: NoteWriteInput)
+    suspend fun completeNote(noteId: Long)
+    suspend fun openNote(noteId: Long)
     suspend fun trashNote(noteId: Long)
 }
 
@@ -74,14 +95,25 @@ data class SubTaskWriteInput(
 data class NoteWriteInput(
     val listId: Long,
     val content: String,
+    val status: TaskStatus,
     val date: LocalDate,
     val tagIds: List<Long>
+)
+
+data class DailyPlanItemWriteInput(
+    val title: String,
+    val note: String?,
+    val status: DailyPlanItemStatus,
+    val startTimeMinutes: Int?,
+    val endTimeMinutes: Int?
 )
 
 class RoomCheckItRepository(
     private val dao: CheckItDao,
     private val reminderNotificationScheduler: TaskReminderNotificationScheduler = NoOpTaskReminderNotificationScheduler()
 ) : CheckItRepository {
+    private val seedMutex = Mutex()
+
     override fun observeTaskBoard(): Flow<TaskBoard> =
         combine(
             combine(
@@ -126,8 +158,24 @@ class RoomCheckItRepository(
             )
         }
 
-    override suspend fun ensureDefaultTaskData() {
-        if (dao.listCount() > 0) return
+    override fun observeDailyPlans(): Flow<List<DailyPlan>> =
+        combine(
+            dao.observeDailyPlans(),
+            dao.observeDailyPlanItems()
+        ) { plans, items ->
+            val itemsByPlan = items.groupBy { it.dailyPlanId }
+            plans.map { plan ->
+                plan.toDomain(
+                    items = itemsByPlan[plan.id].orEmpty()
+                        .map { it.toDomain() }
+                        .sortedWith(compareBy<DailyPlanItem> { it.sortOrder }.thenBy { it.addedAtMillis })
+                )
+            }
+        }
+
+    override suspend fun ensureDefaultTaskData() = seedMutex.withLock {
+        cleanupDuplicateSeedData()
+        if (dao.listCount() > 0) return@withLock
 
         val instant = Clock.System.now()
         val now = instant.toEpochMilliseconds()
@@ -149,7 +197,7 @@ class RoomCheckItRepository(
                 description = "Review agenda, timeline, and the next task to start.",
                 status = TaskStatus.InProgress.name,
                 priority = TaskPriority.High.name,
-                dueDateEpochDays = today.toEpochDays().toInt(),
+                doDateEpochDays = today.toEpochDays().toInt(),
                 startTimeMinutes = 9 * 60,
                 endTimeMinutes = 9 * 60 + 30,
                 durationMinutes = 30,
@@ -159,7 +207,7 @@ class RoomCheckItRepository(
                 updatedAtMillis = now
             )
         )
-        dao.insertTaskTag(TaskTagEntity(todayTaskId, workId))
+        dao.insertTaskTagIfParentsExist(todayTaskId, workId)
         dao.insertSubTask(SubTaskEntity(taskId = todayTaskId, name = "Check calendar", sortOrder = 0))
         dao.insertSubTask(SubTaskEntity(taskId = todayTaskId, name = "Pick top priority", sortOrder = 1))
         dao.insertReminder(
@@ -174,13 +222,14 @@ class RoomCheckItRepository(
             NoteEntity(
                 listId = inboxId,
                 content = "Ideas, meeting notes, and loose thoughts live beside tasks in each list.",
+                status = TaskStatus.Open.name,
                 dateEpochDays = today.toEpochDays().toInt(),
                 createdAtMillis = now,
                 editedAtMillis = now,
                 sortOrder = 1
             )
         )
-        dao.insertNoteTag(NoteTagEntity(noteId, homeId))
+        dao.insertNoteTagIfParentsExist(noteId, homeId)
 
         dao.insertFilter(TaskFilterEntity(name = "All", icon = "AllInclusive", color = "#475569", sortOrder = 0))
         dao.insertFilter(TaskFilterEntity(name = "Today", icon = "Today", color = "#2563EB", dueDatePreset = DueDatePreset.Today.name, sortOrder = 1))
@@ -227,7 +276,7 @@ class RoomCheckItRepository(
                 description = input.description,
                 status = input.status.name,
                 priority = input.priority.name,
-                dueDateEpochDays = input.dueDate?.toEpochDays()?.toInt(),
+                doDateEpochDays = input.dueDate?.toEpochDays()?.toInt(),
                 startTimeMinutes = input.startTimeMinutes,
                 endTimeMinutes = input.endTimeMinutes,
                 durationMinutes = input.durationMinutes,
@@ -237,7 +286,7 @@ class RoomCheckItRepository(
                 updatedAtMillis = now
             )
         )
-        input.tagIds.forEach { tagId -> dao.insertTaskTag(TaskTagEntity(taskId, tagId)) }
+        input.tagIds.forEach { tagId -> dao.insertTaskTagIfParentsExist(taskId, tagId) }
         dao.replaceTaskSubTasks(taskId, input.subtasks)
         dao.replaceTaskReminders(taskId, input.reminders)
         scheduleTaskReminders(taskId, input)
@@ -245,13 +294,16 @@ class RoomCheckItRepository(
     }
 
     override suspend fun updateTask(taskId: Long, input: TaskWriteInput) {
+        val existingTask = dao.taskById(taskId)
+        val shouldRemoveOpenDailyPlanItems = existingTask?.hasDifferentScheduleThan(input) == true
         dao.updateTask(
             taskId = taskId,
+            listId = input.listId,
             name = input.name,
             description = input.description,
             status = input.status.name,
             priority = input.priority.name,
-            dueDateEpochDays = input.dueDate?.toEpochDays()?.toInt(),
+            doDateEpochDays = input.dueDate?.toEpochDays()?.toInt(),
             startTimeMinutes = input.startTimeMinutes,
             endTimeMinutes = input.endTimeMinutes,
             durationMinutes = input.durationMinutes,
@@ -259,9 +311,12 @@ class RoomCheckItRepository(
             updatedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
         dao.deleteTaskTags(taskId)
-        input.tagIds.forEach { tagId -> dao.insertTaskTag(TaskTagEntity(taskId, tagId)) }
+        input.tagIds.forEach { tagId -> dao.insertTaskTagIfParentsExist(taskId, tagId) }
         dao.replaceTaskSubTasks(taskId, input.subtasks)
         dao.replaceTaskReminders(taskId, input.reminders)
+        if (shouldRemoveOpenDailyPlanItems) {
+            dao.deleteOpenDailyPlanItemsForTask(taskId)
+        }
         scheduleTaskReminders(taskId, input)
     }
 
@@ -273,13 +328,114 @@ class RoomCheckItRepository(
     override suspend fun completeTask(taskId: Long) {
         val instant = Clock.System.now()
         val today = instant.toLocalDateTime(TimeZone.currentSystemDefault()).date
+        val completedAtMillis = instant.toEpochMilliseconds()
         dao.completeTask(
             taskId = taskId,
             status = TaskStatus.Completed.name,
             completedDateEpochDays = today.toEpochDays().toInt(),
-            updatedAtMillis = instant.toEpochMilliseconds()
+            updatedAtMillis = completedAtMillis
+        )
+        dao.updateDailyPlanItemsForTaskStatus(
+            taskId = taskId,
+            status = DailyPlanItemStatus.Done.name,
+            completedAtMillis = completedAtMillis
         )
         reminderNotificationScheduler.cancelTaskReminders(taskId)
+    }
+
+    override suspend fun openTask(taskId: Long) {
+        val now = Clock.System.now().toEpochMilliseconds()
+        dao.updateTaskStatusOpen(
+            taskId = taskId,
+            status = TaskStatus.Open.name,
+            updatedAtMillis = now
+        )
+        dao.updateDailyPlanItemsForTaskStatus(
+            taskId = taskId,
+            status = DailyPlanItemStatus.Planned.name,
+            completedAtMillis = null
+        )
+    }
+
+    override suspend fun addTaskToDailyPlan(date: LocalDate, task: TaskItem): Long {
+        val planId = ensureDailyPlan(date)
+        if (dao.dailyPlanTaskItemCount(planId, task.id) > 0) return planId
+        val now = Clock.System.now().toEpochMilliseconds()
+        return dao.insertDailyPlanItem(
+            DailyPlanItemEntity(
+                dailyPlanId = planId,
+                taskId = task.id,
+                titleSnapshot = task.name.ifBlank { "Untitled task" },
+                source = DailyPlanItemSource.ExistingTask.name,
+                status = if (task.status == TaskStatus.Completed) {
+                    DailyPlanItemStatus.Done.name
+                } else {
+                    DailyPlanItemStatus.Planned.name
+                },
+                sortOrder = dao.nextDailyPlanItemSortOrder(planId),
+                startTimeMinutes = task.startTimeMinutes,
+                endTimeMinutes = task.endTimeMinutes,
+                addedAtMillis = now,
+                completedAtMillis = if (task.status == TaskStatus.Completed) now else null
+            )
+        )
+    }
+
+    override suspend fun addManualDoneToDailyPlan(
+        date: LocalDate,
+        title: String,
+        note: String?,
+        startTimeMinutes: Int?,
+        endTimeMinutes: Int?
+    ): Long {
+        val planId = ensureDailyPlan(date)
+        val now = Clock.System.now().toEpochMilliseconds()
+        return dao.insertDailyPlanItem(
+            DailyPlanItemEntity(
+                dailyPlanId = planId,
+                titleSnapshot = title.trim(),
+                note = note?.trim()?.takeIf { it.isNotBlank() },
+                source = DailyPlanItemSource.CheckInManualDone.name,
+                status = DailyPlanItemStatus.Done.name,
+                sortOrder = dao.nextDailyPlanItemSortOrder(planId),
+                startTimeMinutes = startTimeMinutes,
+                endTimeMinutes = endTimeMinutes,
+                addedAtMillis = now,
+                completedAtMillis = now
+            )
+        )
+    }
+
+    override suspend fun updateDailyPlanItemTime(
+        itemId: Long,
+        startTimeMinutes: Int?,
+        endTimeMinutes: Int?
+    ) {
+        val item = dao.dailyPlanItemById(itemId)
+        dao.updateDailyPlanItemTime(itemId, startTimeMinutes, endTimeMinutes)
+        item?.taskId?.let { taskId ->
+            dao.clearTaskTime(taskId, Clock.System.now().toEpochMilliseconds())
+        }
+    }
+
+    override suspend fun updateDailyPlanItem(itemId: Long, input: DailyPlanItemWriteInput) {
+        dao.updateDailyPlanItem(
+            itemId = itemId,
+            titleSnapshot = input.title.trim(),
+            note = input.note?.trim()?.takeIf { it.isNotBlank() },
+            status = input.status.name,
+            startTimeMinutes = input.startTimeMinutes,
+            endTimeMinutes = input.endTimeMinutes,
+            completedAtMillis = if (input.status == DailyPlanItemStatus.Done) {
+                Clock.System.now().toEpochMilliseconds()
+            } else {
+                null
+            }
+        )
+    }
+
+    override suspend fun deleteDailyPlanItem(itemId: Long) {
+        dao.deleteDailyPlanItem(itemId)
     }
 
     override suspend fun addNote(input: NoteWriteInput): Long {
@@ -288,29 +444,48 @@ class RoomCheckItRepository(
             NoteEntity(
                 listId = input.listId,
                 content = input.content,
+                status = input.status.name,
                 dateEpochDays = input.date.toEpochDays().toInt(),
                 createdAtMillis = now,
                 editedAtMillis = now,
                 sortOrder = dao.nextNoteSortOrder(input.listId)
             )
         )
-        input.tagIds.forEach { tagId -> dao.insertNoteTag(NoteTagEntity(noteId, tagId)) }
+        input.tagIds.forEach { tagId -> dao.insertNoteTagIfParentsExist(noteId, tagId) }
         return noteId
     }
 
     override suspend fun updateNote(noteId: Long, input: NoteWriteInput) {
         dao.updateNote(
             noteId = noteId,
+            listId = input.listId,
             content = input.content,
+            status = input.status.name,
             dateEpochDays = input.date.toEpochDays().toInt(),
             editedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
         dao.deleteNoteTags(noteId)
-        input.tagIds.forEach { tagId -> dao.insertNoteTag(NoteTagEntity(noteId, tagId)) }
+        input.tagIds.forEach { tagId -> dao.insertNoteTagIfParentsExist(noteId, tagId) }
     }
 
     override suspend fun trashNote(noteId: Long) {
         dao.trashNote(noteId, Clock.System.now().toEpochMilliseconds())
+    }
+
+    override suspend fun completeNote(noteId: Long) {
+        dao.updateNoteStatus(
+            noteId = noteId,
+            status = TaskStatus.Completed.name,
+            editedAtMillis = Clock.System.now().toEpochMilliseconds()
+        )
+    }
+
+    override suspend fun openNote(noteId: Long) {
+        dao.updateNoteStatus(
+            noteId = noteId,
+            status = TaskStatus.Open.name,
+            editedAtMillis = Clock.System.now().toEpochMilliseconds()
+        )
     }
 
     private suspend fun scheduleTaskReminders(taskId: Long, input: TaskWriteInput) {
@@ -329,6 +504,28 @@ class RoomCheckItRepository(
                 )
             }
         )
+    }
+
+    private suspend fun ensureDailyPlan(date: LocalDate): Long {
+        val dateEpochDays = date.toEpochDays().toInt()
+        val existing = dao.dailyPlanForDate(dateEpochDays)
+        if (existing != null) return existing.id
+        val now = Clock.System.now().toEpochMilliseconds()
+        return dao.insertDailyPlan(
+            DailyPlanEntity(
+                dateEpochDays = dateEpochDays,
+                createdAtMillis = now,
+                updatedAtMillis = now
+            )
+        )
+    }
+
+    private suspend fun cleanupDuplicateSeedData() {
+        dao.deleteDuplicateSeedTasks()
+        dao.deleteDuplicateSeedNotes()
+        dao.deleteDuplicateSeedFilters()
+        dao.deleteDuplicateSeedTags()
+        dao.deleteDuplicateEmptySeedLists()
     }
 }
 
@@ -375,6 +572,11 @@ private fun TaskFilterEntity.toDomain() = TaskFilter(
     sortOrder = sortOrder
 )
 
+private fun TaskEntity.hasDifferentScheduleThan(input: TaskWriteInput): Boolean =
+    doDateEpochDays != input.dueDate?.toEpochDays()?.toInt() ||
+        startTimeMinutes != input.startTimeMinutes ||
+        endTimeMinutes != input.endTimeMinutes
+
 private fun TaskEntity.toDomain(
     subtasks: List<SubTaskItem>,
     reminders: List<TaskReminder>,
@@ -388,7 +590,7 @@ private fun TaskEntity.toDomain(
     status = enumValueOf(status),
     tags = tags,
     priority = enumValueOf(priority),
-    dueDate = dueDateEpochDays?.let { LocalDate.fromEpochDays(it) },
+    dueDate = doDateEpochDays?.let { LocalDate.fromEpochDays(it) },
     completedDate = completedDateEpochDays?.let { LocalDate.fromEpochDays(it) },
     startTimeMinutes = startTimeMinutes,
     endTimeMinutes = endTimeMinutes,
@@ -399,6 +601,29 @@ private fun TaskEntity.toDomain(
     createdAtMillis = createdAtMillis,
     updatedAtMillis = updatedAtMillis,
     trashedAtMillis = trashedAtMillis
+)
+
+private fun DailyPlanEntity.toDomain(items: List<DailyPlanItem>) = DailyPlan(
+    id = id,
+    date = LocalDate.fromEpochDays(dateEpochDays),
+    items = items,
+    createdAtMillis = createdAtMillis,
+    updatedAtMillis = updatedAtMillis
+)
+
+private fun DailyPlanItemEntity.toDomain() = DailyPlanItem(
+    id = id,
+    dailyPlanId = dailyPlanId,
+    taskId = taskId,
+    titleSnapshot = titleSnapshot,
+    note = note,
+    source = enumValueOf(source),
+    status = enumValueOf(status),
+    sortOrder = sortOrder,
+    startTimeMinutes = startTimeMinutes,
+    endTimeMinutes = endTimeMinutes,
+    addedAtMillis = addedAtMillis,
+    completedAtMillis = completedAtMillis
 )
 
 private fun SubTaskEntity.toDomain() = SubTaskItem(
@@ -420,6 +645,7 @@ private fun NoteEntity.toDomain(tags: List<TaskTag>) = NoteItem(
     id = id,
     listId = listId,
     content = content,
+    status = enumValueOf(status),
     tags = tags,
     date = LocalDate.fromEpochDays(dateEpochDays),
     createdAtMillis = createdAtMillis,

@@ -20,16 +20,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,8 +45,10 @@ import com.checkit.ui.firstDayOfMonth
 import com.checkit.ui.isSameMonth
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.shortName
-import com.checkit.ui.TaskListDisplayType
-import com.checkit.ui.tasks.TaskListView
+import com.checkit.ui.myday.DailyPlanAgenda
+import com.checkit.ui.myday.DailyPlanItemEditorSheet
+import com.checkit.ui.tasks.TaskAgendaView
+import com.checkit.ui.today
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
@@ -70,8 +68,22 @@ internal fun CalendarScreen(
 ) {
     val tasksForDate = state.tasksForDate(state.selectedDate)
     val notesForDate = state.notesForDate(state.selectedDate)
-    val hasItemsForDate = tasksForDate.isNotEmpty() || notesForDate.isNotEmpty()
-    var listDisplayType by remember { mutableStateOf(TaskListDisplayType.Brief) }
+    val showDailyPlan = state.selectedDate <= today()
+    val dailyPlanItems = state.dailyPlanForDate(state.selectedDate)?.items.orEmpty()
+    val taskById = remember(state.board.tasks) { state.board.tasks.associateBy { it.id } }
+    val hasItemsForDate = if (showDailyPlan) {
+        dailyPlanItems.isNotEmpty()
+    } else {
+        tasksForDate.isNotEmpty()
+    }
+    val handleDateDoubleClick: (LocalDate) -> Unit = { date ->
+        calendarViewModel.selectDate(date)
+        if (date <= today()) {
+            calendarViewModel.openItemEditor(null)
+        } else {
+            onDateDoubleClick(date)
+        }
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -104,7 +116,7 @@ internal fun CalendarScreen(
                 month = state.selectedMonth,
                 selectedDate = state.selectedDate,
                 onDateSelected = calendarViewModel::selectDate,
-                onDateDoubleClick = onDateDoubleClick,
+                onDateDoubleClick = handleDateDoubleClick,
                 state = state
             )
             AppHorizontalDivider(
@@ -112,23 +124,35 @@ internal fun CalendarScreen(
             )
             SelectedDateHeader(
                 date = state.selectedDate,
-                taskCount = tasksForDate.size,
-                noteCount = notesForDate.size
+                taskCount = if (showDailyPlan) dailyPlanItems.size else tasksForDate.size,
+                noteCount = 0
             )
             if (hasItemsForDate) {
-                TaskListView(
-                    tasks = tasksForDate,
-                    notes = notesForDate,
-                    lists = state.board.lists,
-                    showListName = true,
-                    displayType = listDisplayType,
-                    onDisplayTypeChange = { listDisplayType = it },
-                    onTaskClick = onTaskClick,
-                    onNoteClick = onNoteClick,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                )
+                if (showDailyPlan) {
+                    DailyPlanAgenda(
+                        items = dailyPlanItems,
+                        board = state.board,
+                        date = state.selectedDate,
+                        onItemClick = calendarViewModel::openItemEditor,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                    )
+                } else {
+                    TaskAgendaView(
+                        tasks = tasksForDate,
+                        notes = notesForDate,
+                        lists = state.board.lists,
+                        showListName = true,
+                        onTaskClick = onTaskClick,
+                        onNoteClick = onNoteClick,
+                        dayLimit = 1,
+                        focusedDate = state.selectedDate,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                    )
+                }
             } else {
                 Box(
                     modifier = Modifier
@@ -137,13 +161,29 @@ internal fun CalendarScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "No tasks or notes for this day",
+                        text = if (showDailyPlan) "No My Day history for this day" else "No tasks or notes for this day",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
         }
+    }
+
+    state.itemEditor?.let { editor ->
+        val task = editor.taskId?.let { taskId -> taskById[taskId] }
+        DailyPlanItemEditorSheet(
+            state = editor,
+            onDismiss = calendarViewModel::dismissItemEditor,
+            onDoneTitleChange = calendarViewModel::updateEditorTitle,
+            onDoneNoteChange = calendarViewModel::updateEditorNote,
+            onStartTimeChange = calendarViewModel::updateEditorStartTime,
+            onEndTimeChange = calendarViewModel::updateEditorEndTime,
+            onSave = calendarViewModel::saveEditorItem,
+            onDone = calendarViewModel::markEditorDone,
+            onDelete = calendarViewModel::deleteEditorItem,
+            onOpenTask = task?.let { { onTaskClick(it) } }
+        )
     }
 }
 

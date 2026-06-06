@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,7 +26,6 @@ import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -50,6 +50,7 @@ import androidx.compose.ui.zIndex
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskList
+import com.checkit.domain.TaskStatus
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.math.roundToInt
@@ -138,12 +139,13 @@ private fun AllDaySection(
             verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
             visibleTasks.forEach { task ->
+                val list = lists.firstOrNull { it.id == task.listId }
                 AllDayItemRow(
                     label = task.name.ifBlank { "Untitled task" },
                     icon = { Icon(Icons.Default.TaskAlt, contentDescription = null, modifier = Modifier.size(16.dp)) },
-                    color = task.priority.color(),
+                    color = taskCardColor(task, list),
                     onClick = { onTaskClick(task) },
-                    supportingLabel = if (showListName) lists.firstOrNull { it.id == task.listId }?.name else null
+                    supportingLabel = if (showListName) list?.name else null
                 )
             }
             visibleNotes.forEach { note ->
@@ -386,7 +388,7 @@ private fun TimelineTaskCard(
     val cardWidth = (laneWidth - 4.dp).coerceAtLeast(44.dp)
     val x = axisWidth + 6.dp + laneWidth * layout.lane
     val xPx = with(density) { x.roundToPx() }
-    val list = if (showListName) lists.firstOrNull { it.id == task.listId } else null
+    val list = lists.firstOrNull { it.id == task.listId }
     var dragOffsetY by remember(task.id, start, end) { mutableFloatStateOf(0f) }
     var topResizeOffsetY by remember(task.id, start, end) { mutableFloatStateOf(0f) }
     var bottomResizeOffsetY by remember(task.id, start, end) { mutableFloatStateOf(0f) }
@@ -394,7 +396,7 @@ private fun TimelineTaskCard(
     val visualHeight = (height + resizeHeightDelta).coerceAtLeast(36.dp)
     val containerAlpha = if (isSelected) SelectedTaskCardAlpha else DefaultTaskCardAlpha
 
-    Surface(
+    Box(
         modifier = Modifier
             .offset {
                 IntOffset(
@@ -426,75 +428,60 @@ private fun TimelineTaskCard(
                         dragOffsetY += dragAmount.y
                     }
                 )
-            },
-        shape = RoundedCornerShape(8.dp),
-        color = task.priority.color().copy(alpha = containerAlpha),
-        tonalElevation = if (isSelected) 3.dp else 1.dp
+            }
     ) {
-        Box {
-            if (isSelected) {
-                ResizeHandle(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .pointerInput(task.id, start, end, hourHeightPx) {
-                            detectDragGestures(
-                                onDragEnd = {
-                                    val deltaMinutes = topResizeOffsetY.toMinutes(hourHeightPx).snapToQuarterHour()
-                                    val (nextStart, nextEnd) = resizeTimelineStart(start, end, deltaMinutes)
-                                    onTimeChange(nextStart, nextEnd)
-                                    topResizeOffsetY = 0f
-                                },
-                                onDragCancel = { topResizeOffsetY = 0f },
-                                onDrag = { change, dragAmount ->
-                                    change.consume()
-                                    topResizeOffsetY += dragAmount.y
-                                }
-                            )
-                        }
-                )
-            }
-            Column(
+        TaskCard(
+            title = task.name.ifBlank { "Untitled task" },
+            timeLabel = "${start.toClockLabel()} - ${end.toClockLabel()}",
+            supportingText = if (showListName) list?.name else null,
+            color = taskCardColor(task, list),
+            minHeight = 36.dp,
+            titleMaxLines = 1,
+            completed = task.status == TaskStatus.Completed,
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+            containerAlpha = containerAlpha,
+            tonalElevation = if (isSelected) 3.dp else 1.dp,
+            modifier = Modifier.matchParentSize()
+        )
+        if (isSelected) {
+            ResizeHandle(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 10.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                Text(
-                    text = task.name.ifBlank { "Untitled task" },
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = "${start.toClockLabel()} - ${end.toClockLabel()}${list?.let { " · ${it.name}" } ?: ""}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            if (isSelected) {
-                ResizeHandle(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .pointerInput(task.id, start, end, hourHeightPx) {
-                            detectDragGestures(
-                                onDragEnd = {
-                                    val deltaMinutes = bottomResizeOffsetY.toMinutes(hourHeightPx).snapToQuarterHour()
-                                    val (nextStart, nextEnd) = resizeTimelineEnd(start, end, deltaMinutes)
-                                    onTimeChange(nextStart, nextEnd)
-                                    bottomResizeOffsetY = 0f
-                                },
-                                onDragCancel = { bottomResizeOffsetY = 0f },
-                                onDrag = { change, dragAmount ->
-                                    change.consume()
-                                    bottomResizeOffsetY += dragAmount.y
-                                }
-                            )
-                        }
-                )
-            }
+                    .align(Alignment.TopCenter)
+                    .pointerInput(task.id, start, end, hourHeightPx) {
+                        detectDragGestures(
+                            onDragEnd = {
+                                val deltaMinutes = topResizeOffsetY.toMinutes(hourHeightPx).snapToQuarterHour()
+                                val (nextStart, nextEnd) = resizeTimelineStart(start, end, deltaMinutes)
+                                onTimeChange(nextStart, nextEnd)
+                                topResizeOffsetY = 0f
+                            },
+                            onDragCancel = { topResizeOffsetY = 0f },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                topResizeOffsetY += dragAmount.y
+                            }
+                        )
+                    }
+            )
+            ResizeHandle(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .pointerInput(task.id, start, end, hourHeightPx) {
+                        detectDragGestures(
+                            onDragEnd = {
+                                val deltaMinutes = bottomResizeOffsetY.toMinutes(hourHeightPx).snapToQuarterHour()
+                                val (nextStart, nextEnd) = resizeTimelineEnd(start, end, deltaMinutes)
+                                onTimeChange(nextStart, nextEnd)
+                                bottomResizeOffsetY = 0f
+                            },
+                            onDragCancel = { bottomResizeOffsetY = 0f },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                bottomResizeOffsetY += dragAmount.y
+                            }
+                        )
+                    }
+            )
         }
     }
 }

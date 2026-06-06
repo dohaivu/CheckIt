@@ -46,7 +46,7 @@ data class TagEntity(
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("listId"), Index("status"), Index("priority"), Index("dueDateEpochDays")]
+    indices = [Index("listId"), Index("status"), Index("priority"), Index("doDateEpochDays")]
 )
 data class TaskEntity(
     @PrimaryKey(autoGenerate = true)
@@ -56,7 +56,7 @@ data class TaskEntity(
     val description: String = "",
     val status: String,
     val priority: String,
-    val dueDateEpochDays: Int? = null,
+    val doDateEpochDays: Int? = null,
     val completedDateEpochDays: Int? = null,
     val startTimeMinutes: Int? = null,
     val endTimeMinutes: Int? = null,
@@ -106,11 +106,58 @@ data class NoteEntity(
     val id: Long = 0L,
     val listId: Long,
     val content: String,
+    val status: String = "Open",
     val dateEpochDays: Int,
     val createdAtMillis: Long,
     val editedAtMillis: Long,
     val sortOrder: Int,
     val trashedAtMillis: Long? = null
+)
+
+@Entity(
+    tableName = "daily_plans",
+    indices = [Index(value = ["dateEpochDays"], unique = true)]
+)
+data class DailyPlanEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0L,
+    val dateEpochDays: Int,
+    val createdAtMillis: Long,
+    val updatedAtMillis: Long
+)
+
+@Entity(
+    tableName = "daily_plan_items",
+    foreignKeys = [
+        ForeignKey(
+            entity = DailyPlanEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["dailyPlanId"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = TaskEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["taskId"],
+            onDelete = ForeignKey.SET_NULL
+        )
+    ],
+    indices = [Index("dailyPlanId"), Index("taskId"), Index("status")]
+)
+data class DailyPlanItemEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0L,
+    val dailyPlanId: Long,
+    val taskId: Long? = null,
+    val titleSnapshot: String,
+    val note: String? = null,
+    val source: String,
+    val status: String,
+    val sortOrder: Int,
+    val startTimeMinutes: Int? = null,
+    val endTimeMinutes: Int? = null,
+    val addedAtMillis: Long,
+    val completedAtMillis: Long? = null
 )
 
 @Entity(
@@ -213,13 +260,15 @@ data class TaskFilterEntity(
         TaskEntity::class,
         SubTaskEntity::class,
         NoteEntity::class,
+        DailyPlanEntity::class,
+        DailyPlanItemEntity::class,
         TagEntity::class,
         TaskTagEntity::class,
         NoteTagEntity::class,
         TaskReminderEntity::class,
         TaskFilterEntity::class
     ],
-    version = 1,
+    version = 4,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)

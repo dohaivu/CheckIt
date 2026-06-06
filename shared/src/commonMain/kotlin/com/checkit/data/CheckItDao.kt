@@ -26,6 +26,12 @@ interface CheckItDao {
     suspend fun insertNote(note: NoteEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertDailyPlan(plan: DailyPlanEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertDailyPlanItem(item: DailyPlanItemEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertFilter(filter: TaskFilterEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -40,6 +46,26 @@ interface CheckItDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertNoteTag(noteTag: NoteTagEntity)
 
+    @Query(
+        """
+        INSERT OR IGNORE INTO task_tags(taskId, tagId)
+        SELECT :taskId, :tagId
+        WHERE EXISTS(SELECT 1 FROM tasks WHERE id = :taskId)
+          AND EXISTS(SELECT 1 FROM tags WHERE id = :tagId)
+        """
+    )
+    suspend fun insertTaskTagIfParentsExist(taskId: Long, tagId: Long)
+
+    @Query(
+        """
+        INSERT OR IGNORE INTO note_tags(noteId, tagId)
+        SELECT :noteId, :tagId
+        WHERE EXISTS(SELECT 1 FROM notes WHERE id = :noteId)
+          AND EXISTS(SELECT 1 FROM tags WHERE id = :tagId)
+        """
+    )
+    suspend fun insertNoteTagIfParentsExist(noteId: Long, tagId: Long)
+
     @Query("DELETE FROM task_tags WHERE taskId = :taskId")
     suspend fun deleteTaskTags(taskId: Long)
 
@@ -51,6 +77,77 @@ interface CheckItDao {
 
     @Query("DELETE FROM note_tags WHERE noteId = :noteId")
     suspend fun deleteNoteTags(noteId: Long)
+
+    @Query(
+        """
+        DELETE FROM tasks
+        WHERE name = 'Plan the day'
+          AND description = 'Review agenda, timeline, and the next task to start.'
+          AND id NOT IN (
+              SELECT MIN(id)
+              FROM tasks
+              WHERE name = 'Plan the day'
+                AND description = 'Review agenda, timeline, and the next task to start.'
+          )
+        """
+    )
+    suspend fun deleteDuplicateSeedTasks()
+
+    @Query(
+        """
+        DELETE FROM notes
+        WHERE content = 'Ideas, meeting notes, and loose thoughts live beside tasks in each list.'
+          AND id NOT IN (
+              SELECT MIN(id)
+              FROM notes
+              WHERE content = 'Ideas, meeting notes, and loose thoughts live beside tasks in each list.'
+          )
+        """
+    )
+    suspend fun deleteDuplicateSeedNotes()
+
+    @Query(
+        """
+        DELETE FROM task_filters
+        WHERE name IN ('All', 'Today', 'Completed', 'High priority', 'Trashed')
+          AND id NOT IN (
+              SELECT MIN(id)
+              FROM task_filters
+              WHERE name IN ('All', 'Today', 'Completed', 'High priority', 'Trashed')
+              GROUP BY name
+          )
+        """
+    )
+    suspend fun deleteDuplicateSeedFilters()
+
+    @Query(
+        """
+        DELETE FROM tags
+        WHERE name IN ('Work', 'Home')
+          AND id NOT IN (
+              SELECT MIN(id)
+              FROM tags
+              WHERE name IN ('Work', 'Home')
+              GROUP BY name
+          )
+        """
+    )
+    suspend fun deleteDuplicateSeedTags()
+
+    @Query(
+        """
+        DELETE FROM task_lists
+        WHERE name = 'Inbox'
+          AND id NOT IN (
+              SELECT MIN(id)
+              FROM task_lists
+              WHERE name = 'Inbox'
+          )
+          AND id NOT IN (SELECT DISTINCT listId FROM tasks)
+          AND id NOT IN (SELECT DISTINCT listId FROM notes)
+        """
+    )
+    suspend fun deleteDuplicateEmptySeedLists()
 
     @Query("SELECT * FROM task_lists ORDER BY sortOrder ASC, name ASC")
     fun observeLists(): Flow<List<TaskListEntity>>
@@ -64,8 +161,23 @@ interface CheckItDao {
     @Query("SELECT * FROM tasks ORDER BY sortOrder ASC, createdAtMillis DESC")
     fun observeTasks(): Flow<List<TaskEntity>>
 
+    @Query("SELECT * FROM tasks WHERE id = :taskId LIMIT 1")
+    suspend fun taskById(taskId: Long): TaskEntity?
+
     @Query("SELECT * FROM notes ORDER BY sortOrder ASC, editedAtMillis DESC")
     fun observeNotes(): Flow<List<NoteEntity>>
+
+    @Query("SELECT * FROM daily_plans ORDER BY dateEpochDays DESC")
+    fun observeDailyPlans(): Flow<List<DailyPlanEntity>>
+
+    @Query("SELECT * FROM daily_plan_items ORDER BY sortOrder ASC, addedAtMillis ASC")
+    fun observeDailyPlanItems(): Flow<List<DailyPlanItemEntity>>
+
+    @Query("SELECT * FROM daily_plan_items WHERE id = :itemId LIMIT 1")
+    suspend fun dailyPlanItemById(itemId: Long): DailyPlanItemEntity?
+
+    @Query("SELECT * FROM daily_plans WHERE dateEpochDays = :dateEpochDays LIMIT 1")
+    suspend fun dailyPlanForDate(dateEpochDays: Int): DailyPlanEntity?
 
     @Query("SELECT * FROM sub_tasks ORDER BY sortOrder ASC, id ASC")
     fun observeSubTasks(): Flow<List<SubTaskEntity>>
@@ -85,6 +197,12 @@ interface CheckItDao {
     @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM notes WHERE listId = :listId")
     suspend fun nextNoteSortOrder(listId: Long): Int
 
+    @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM daily_plan_items WHERE dailyPlanId = :dailyPlanId")
+    suspend fun nextDailyPlanItemSortOrder(dailyPlanId: Long): Int
+
+    @Query("SELECT COUNT(*) FROM daily_plan_items WHERE dailyPlanId = :dailyPlanId AND taskId = :taskId")
+    suspend fun dailyPlanTaskItemCount(dailyPlanId: Long, taskId: Long): Int
+
     @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM task_lists")
     suspend fun nextListSortOrder(): Int
 
@@ -100,11 +218,12 @@ interface CheckItDao {
     @Query(
         """
         UPDATE tasks
-        SET name = :name,
+        SET listId = :listId,
+            name = :name,
             description = :description,
             status = :status,
             priority = :priority,
-            dueDateEpochDays = :dueDateEpochDays,
+            doDateEpochDays = :doDateEpochDays,
             startTimeMinutes = :startTimeMinutes,
             endTimeMinutes = :endTimeMinutes,
             durationMinutes = :durationMinutes,
@@ -115,11 +234,12 @@ interface CheckItDao {
     )
     suspend fun updateTask(
         taskId: Long,
+        listId: Long,
         name: String,
         description: String,
         status: String,
         priority: String,
-        dueDateEpochDays: Int?,
+        doDateEpochDays: Int?,
         startTimeMinutes: Int?,
         endTimeMinutes: Int?,
         durationMinutes: Int?,
@@ -175,8 +295,101 @@ interface CheckItDao {
         updatedAtMillis: Long
     )
 
-    @Query("UPDATE notes SET content = :content, dateEpochDays = :dateEpochDays, editedAtMillis = :editedAtMillis WHERE id = :noteId")
-    suspend fun updateNote(noteId: Long, content: String, dateEpochDays: Int, editedAtMillis: Long)
+    @Query(
+        """
+        UPDATE tasks
+        SET status = :status,
+            completedDateEpochDays = NULL,
+            updatedAtMillis = :updatedAtMillis
+        WHERE id = :taskId
+        """
+    )
+    suspend fun updateTaskStatusOpen(
+        taskId: Long,
+        status: String,
+        updatedAtMillis: Long
+    )
+
+    @Query(
+        """
+        UPDATE daily_plan_items
+        SET status = :status,
+            completedAtMillis = :completedAtMillis
+        WHERE taskId = :taskId
+          AND status != :status
+        """
+    )
+    suspend fun updateDailyPlanItemsForTaskStatus(
+        taskId: Long,
+        status: String,
+        completedAtMillis: Long?
+    )
+
+    @Query(
+        """
+        DELETE FROM daily_plan_items
+        WHERE taskId = :taskId
+          AND status = 'Planned'
+        """
+    )
+    suspend fun deleteOpenDailyPlanItemsForTask(taskId: Long)
+
+    @Query(
+        """
+        UPDATE daily_plan_items
+        SET startTimeMinutes = :startTimeMinutes,
+            endTimeMinutes = :endTimeMinutes
+        WHERE id = :itemId
+        """
+    )
+    suspend fun updateDailyPlanItemTime(
+        itemId: Long,
+        startTimeMinutes: Int?,
+        endTimeMinutes: Int?
+    )
+
+    @Query(
+        """
+        UPDATE daily_plan_items
+        SET titleSnapshot = :titleSnapshot,
+            note = :note,
+            status = :status,
+            startTimeMinutes = :startTimeMinutes,
+            endTimeMinutes = :endTimeMinutes,
+            completedAtMillis = :completedAtMillis
+        WHERE id = :itemId
+        """
+    )
+    suspend fun updateDailyPlanItem(
+        itemId: Long,
+        titleSnapshot: String,
+        note: String?,
+        status: String,
+        startTimeMinutes: Int?,
+        endTimeMinutes: Int?,
+        completedAtMillis: Long?
+    )
+
+    @Query("DELETE FROM daily_plan_items WHERE id = :itemId")
+    suspend fun deleteDailyPlanItem(itemId: Long)
+
+    @Query(
+        """
+        UPDATE tasks
+        SET startTimeMinutes = NULL,
+            endTimeMinutes = NULL,
+            durationMinutes = NULL,
+            updatedAtMillis = :updatedAtMillis
+        WHERE id = :taskId
+        """
+    )
+    suspend fun clearTaskTime(taskId: Long, updatedAtMillis: Long)
+
+    @Query("UPDATE notes SET listId = :listId, content = :content, status = :status, dateEpochDays = :dateEpochDays, editedAtMillis = :editedAtMillis WHERE id = :noteId")
+    suspend fun updateNote(noteId: Long, listId: Long, content: String, status: String, dateEpochDays: Int, editedAtMillis: Long)
+
+    @Query("UPDATE notes SET status = :status, editedAtMillis = :editedAtMillis WHERE id = :noteId")
+    suspend fun updateNoteStatus(noteId: Long, status: String, editedAtMillis: Long)
 
     @Query("UPDATE notes SET trashedAtMillis = :trashedAtMillis, editedAtMillis = :trashedAtMillis WHERE id = :noteId")
     suspend fun trashNote(noteId: Long, trashedAtMillis: Long)

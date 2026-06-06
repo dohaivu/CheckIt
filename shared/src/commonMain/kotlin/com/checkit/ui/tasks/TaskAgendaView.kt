@@ -1,7 +1,6 @@
 package com.checkit.ui.tasks
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Arrangement
@@ -14,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -28,21 +26,20 @@ import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskList
+import com.checkit.domain.TaskStatus
 import com.checkit.ui.shortName
 import com.checkit.ui.shortMonthName
 import com.checkit.ui.today
@@ -59,14 +56,22 @@ internal fun TaskAgendaView(
     showListName: Boolean,
     onTaskClick: (TaskItem) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
+    dayLimit: Int? = null,
+    focusedDate: LocalDate = today(),
     modifier: Modifier = Modifier
 ) {
     val today = today()
     val listById = remember(lists) { lists.associateBy { it.id } }
     val tasksByDate = remember(tasks) { tasks.filter { it.dueDate != null }.groupBy { it.dueDate } }
     val notesByDate = remember(notes) { notes.groupBy { it.date } }
-    val state = rememberLazyListState(initialFirstVisibleItemIndex = TodayIndex)
+    val boundedDayCount = dayLimit?.coerceAtLeast(1)
+    val initialIndex = if (boundedDayCount == null) TodayIndex else 0
+    val state = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(focusedDate, initialIndex) {
+        state.scrollToItem(initialIndex)
+    }
 
     Box(modifier.fillMaxSize()) {
         LazyColumn(
@@ -76,10 +81,10 @@ internal fun TaskAgendaView(
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             items(
-                count = AgendaDayCount,
-                key = { index -> "agenda-day-${today.plus(index - TodayIndex, DateTimeUnit.DAY)}" }
+                count = boundedDayCount ?: AgendaDayCount,
+                key = { index -> "agenda-day-${focusedDate.plus(index - initialIndex, DateTimeUnit.DAY)}" }
             ) { index ->
-                val date = today.plus(index - TodayIndex, DateTimeUnit.DAY)
+                val date = focusedDate.plus(index - initialIndex, DateTimeUnit.DAY)
                 AgendaDaySection(
                     date = date,
                     today = today,
@@ -87,21 +92,24 @@ internal fun TaskAgendaView(
                     notes = notesByDate[date].orEmpty(),
                     lists = listById,
                     showListName = showListName,
+                    showHeader = boundedDayCount != 1,
                     onTaskClick = onTaskClick,
                     onNoteClick = onNoteClick
                 )
             }
         }
 
-        FilledTonalButton(
-            onClick = { scope.launch { state.animateScrollToItem(TodayIndex) } },
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(16.dp)
-        ) {
-            Icon(Icons.Default.Today, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text("Today")
+        if (boundedDayCount != 1) {
+            FilledTonalButton(
+                onClick = { scope.launch { state.animateScrollToItem(initialIndex) } },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+            ) {
+                Icon(Icons.Default.Today, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Today")
+            }
         }
     }
 }
@@ -114,6 +122,7 @@ private fun AgendaDaySection(
     notes: List<NoteItem>,
     lists: Map<Long, TaskList>,
     showListName: Boolean,
+    showHeader: Boolean,
     onTaskClick: (TaskItem) -> Unit,
     onNoteClick: (NoteItem) -> Unit
 ) {
@@ -128,8 +137,10 @@ private fun AgendaDaySection(
     val hasAllDayItems = allDayTasks.isNotEmpty() || dayNotes.isNotEmpty()
 
     Column {
-        AgendaDayHeader(date = date, today = today)
-        Spacer(Modifier.height(8.dp))
+        if (showHeader) {
+            AgendaDayHeader(date = date, today = today)
+            Spacer(Modifier.height(8.dp))
+        }
         if (allDayTasks.isEmpty() && dayNotes.isEmpty() && timedTasks.isEmpty()) {
             AgendaEmptyDay()
         } else {
@@ -147,7 +158,8 @@ private fun AgendaDaySection(
             timedTasks.forEachIndexed { index, task ->
                 AgendaTimedTaskRow(
                     task = task,
-                    list = if (showListName) lists[task.listId] else null,
+                    list = lists[task.listId],
+                    showListName = showListName,
                     showTopLine = index > 0 || hasAllDayItems,
                     showBottomLine = index < timedTasks.lastIndex,
                     onClick = { onTaskClick(task) }
@@ -159,13 +171,30 @@ private fun AgendaDaySection(
 
 @Composable
 private fun AgendaDayHeader(date: LocalDate, today: LocalDate) {
-    Text(
-        text = if (date == today) "Today, ${date.agendaDateLabel()}" else date.agendaDateLabel(),
+    val isToday = date == today
+    Row(
         modifier = Modifier.fillMaxWidth(),
-        style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.onSurface
-    )
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = if (isToday) "Today, ${date.agendaDateLabel()}" else date.agendaDateLabel(),
+            modifier = if (isToday) {
+                Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+            } else {
+                Modifier
+            },
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = if (isToday) {
+                MaterialTheme.colorScheme.onPrimaryContainer
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            }
+        )
+    }
 }
 
 @Composable
@@ -204,19 +233,21 @@ private fun AgendaAllDayRow(
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             tasks.forEach { task ->
-                AgendaCard(
+                TaskCard(
                     title = task.name.ifBlank { "Untitled task" },
                     supportingText = if (showListName) lists[task.listId]?.name else null,
-                    color = agendaTaskColor(task, lists[task.listId]),
+                    color = taskCardColor(task, lists[task.listId]),
+                    completed = task.status == TaskStatus.Completed,
                     onClick = { onTaskClick(task) }
                 )
             }
             notes.forEach { note ->
-                AgendaCard(
+                TaskCard(
                     title = note.content.ifBlank { "Empty note" },
                     supportingText = if (showListName) lists[note.listId]?.name else null,
                     color = lists[note.listId]?.color?.toColor() ?: MaterialTheme.colorScheme.secondary,
-                    icon = { Icon(Icons.Default.Notes, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                    leadingContent = { Icon(Icons.Default.Notes, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                    completed = note.status == TaskStatus.Completed,
                     onClick = { onNoteClick(note) }
                 )
             }
@@ -228,6 +259,7 @@ private fun AgendaAllDayRow(
 private fun AgendaTimedTaskRow(
     task: TaskItem,
     list: TaskList?,
+    showListName: Boolean,
     showTopLine: Boolean,
     showBottomLine: Boolean,
     onClick: () -> Unit
@@ -237,11 +269,12 @@ private fun AgendaTimedTaskRow(
         showTopLine = showTopLine,
         showBottomLine = showBottomLine
     ) {
-        AgendaCard(
+        TaskCard(
             title = task.name.ifBlank { "Untitled task" },
             timeLabel = task.timeRangeLabel(),
-            supportingText = list?.name,
-            color = agendaTaskColor(task, list),
+            supportingText = if (showListName) list?.name else null,
+            color = taskCardColor(task, list),
+            completed = task.status == TaskStatus.Completed,
             onClick = onClick
         )
     }
@@ -342,87 +375,6 @@ private fun AgendaAxisMarker(
         }
     }
 }
-
-@Composable
-private fun AgendaCard(
-    title: String,
-    color: Color,
-    onClick: () -> Unit,
-    timeLabel: String? = null,
-    supportingText: String? = null,
-    icon: (@Composable () -> Unit)? = null
-) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(8.dp),
-        color = color.copy(alpha = 0.11f),
-        tonalElevation = 0.dp
-    ) {
-        Row(
-            modifier = Modifier
-                .height(IntrinsicSize.Min)
-                .heightIn(min = 64.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .width(4.dp)
-                    .fillMaxHeight()
-                    .background(color)
-            )
-            Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.Top
-            ) {
-                if (icon != null) {
-                    Box(
-                        modifier = Modifier.padding(top = 2.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        icon()
-                    }
-                }
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(3.dp)
-                ) {
-                    if (timeLabel != null) {
-                        Text(
-                            text = timeLabel,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    if (supportingText != null) {
-                        Text(
-                            text = supportingText,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-private fun agendaTaskColor(task: TaskItem, list: TaskList?): Color =
-    list?.color?.toColor() ?: task.priority.color()
 
 private fun LocalDate.agendaDateLabel(): String =
     "${dayOfWeek.shortName()}, ${shortMonthName()} $day"

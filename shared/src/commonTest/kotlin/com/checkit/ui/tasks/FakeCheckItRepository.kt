@@ -1,10 +1,12 @@
 package com.checkit.ui.tasks
 
 import com.checkit.data.CheckItRepository
+import com.checkit.data.DailyPlanItemWriteInput
 import com.checkit.data.NoteWriteInput
 import com.checkit.data.TaskListWriteInput
 import com.checkit.data.TaskTagWriteInput
 import com.checkit.data.TaskWriteInput
+import com.checkit.domain.DailyPlan
 import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
@@ -13,6 +15,7 @@ import com.checkit.domain.TaskReminder
 import com.checkit.domain.TaskTag
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.datetime.LocalDate
 import kotlinx.coroutines.flow.update
 
 internal class FakeCheckItRepository(
@@ -36,6 +39,7 @@ internal class FakeCheckItRepository(
     private var nextTaskId: Long = 1_000L
 
     override fun observeTaskBoard(): Flow<TaskBoard> = boardFlow
+    override fun observeDailyPlans(): Flow<List<DailyPlan>> = MutableStateFlow(emptyList())
 
     override suspend fun ensureDefaultTaskData() = Unit
 
@@ -143,6 +147,20 @@ internal class FakeCheckItRepository(
     }
     override suspend fun trashTask(taskId: Long) = Unit
     override suspend fun completeTask(taskId: Long) = Unit
+    override suspend fun openTask(taskId: Long) = Unit
+    override suspend fun completeNote(noteId: Long) = Unit
+    override suspend fun openNote(noteId: Long) = Unit
+    override suspend fun addTaskToDailyPlan(date: LocalDate, task: TaskItem): Long = 0L
+    override suspend fun addManualDoneToDailyPlan(
+        date: LocalDate,
+        title: String,
+        note: String?,
+        startTimeMinutes: Int?,
+        endTimeMinutes: Int?
+    ): Long = 0L
+    override suspend fun updateDailyPlanItemTime(itemId: Long, startTimeMinutes: Int?, endTimeMinutes: Int?) = Unit
+    override suspend fun updateDailyPlanItem(itemId: Long, input: DailyPlanItemWriteInput) = Unit
+    override suspend fun deleteDailyPlanItem(itemId: Long) = Unit
     override suspend fun addNote(input: NoteWriteInput): Long = 0L
     override suspend fun updateNote(noteId: Long, input: NoteWriteInput) = Unit
     override suspend fun trashNote(noteId: Long) = Unit

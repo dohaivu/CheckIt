@@ -2,6 +2,9 @@ package com.checkit.ui
 
 import androidx.compose.ui.graphics.Color
 import com.checkit.domain.ActiveTagToken
+import com.checkit.domain.DailyPlan
+import com.checkit.domain.DailyPlanItem
+import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DueDatePreset
 import com.checkit.domain.NoteItem
 import com.checkit.domain.SubTaskItem
@@ -23,6 +26,8 @@ data class TaskUiState(
     val selectedTagId: Long? = null,
     val selectedView: TaskWorkspaceView = TaskWorkspaceView.List,
     val listDisplayType: TaskListDisplayType = TaskListDisplayType.Standard,
+    val showCompleted: Boolean = false,
+    val sortOption: TaskSortOption = TaskSortOption.Custom,
     val visibleTasks: List<TaskItem> = emptyList(),
     val visibleNotes: List<NoteItem> = emptyList(),
     val editor: TaskEditorState? = null,
@@ -35,8 +40,8 @@ data class TaskUiState(
     val selectedFilter: TaskFilter? = board.filters.firstOrNull { it.id == selectedFilterId }
     val selectedTag = board.tags.firstOrNull { it.id == selectedTagId }
     val title: String = selectedList?.name ?: selectedFilter?.name ?: selectedTag?.name ?: "Tasks"
-    val isTodayFilterSelected: Boolean = selectedFilter?.dueDatePreset == DueDatePreset.Today
-    val availableViews: List<TaskWorkspaceView> = if (isTodayFilterSelected) {
+    val dayLimit: Int? = if (selectedFilter?.dueDatePreset == DueDatePreset.Today) 1 else null
+    val availableViews: List<TaskWorkspaceView> = if (dayLimit == 1) {
         TaskWorkspaceView.entries
     } else {
         TaskWorkspaceView.entries.filter { it != TaskWorkspaceView.Timeline }
@@ -53,6 +58,57 @@ enum class TaskListDisplayType {
     Brief,
     Standard,
     Detail
+}
+
+enum class TaskSortOption {
+    Custom,
+    Priority,
+    Title,
+    Date
+}
+
+data class MyDayUiState(
+    val board: TaskBoard = TaskBoard(),
+    val dailyPlans: List<DailyPlan> = emptyList(),
+    val selectedView: MyDayView = MyDayView.Agenda,
+    val itemEditor: DailyPlanItemEditorState? = null,
+    val showSuggestions: Boolean = false,
+    val isLoading: Boolean = true,
+    val message: String? = null
+) {
+    val today: LocalDate = com.checkit.ui.today()
+    val plan: DailyPlan? = dailyPlans.firstOrNull { it.date == today }
+    val items: List<DailyPlanItem> = plan?.items.orEmpty()
+    val plannedItems: List<DailyPlanItem> = items.filter { it.status != DailyPlanItemStatus.Done }
+    val doneItems: List<DailyPlanItem> = items.filter { it.status == DailyPlanItemStatus.Done }
+    val itemTaskIds: Set<Long> = items.mapNotNull { it.taskId }.toSet()
+    val suggestedTasks: List<TaskItem> = board.tasks
+        .filter { task ->
+            !task.isTrashed &&
+                task.status != TaskStatus.Completed &&
+                task.id !in itemTaskIds
+        }
+        .sortedWith(compareBy<TaskItem> { it.dueDate ?: LocalDate.fromEpochDays(Int.MAX_VALUE) }.thenBy { it.sortOrder })
+}
+
+enum class MyDayView {
+    Agenda,
+    Timeline,
+    Board
+}
+
+data class DailyPlanItemEditorState(
+    val itemId: Long? = null,
+    val taskId: Long? = null,
+    val title: String = "",
+    val note: String = "",
+    val status: DailyPlanItemStatus = DailyPlanItemStatus.Done,
+    val startTimeMinutes: Int? = null,
+    val endTimeMinutes: Int? = null
+) {
+    val isAddMode: Boolean get() = itemId == null
+    val canDelete: Boolean get() = itemId != null
+    val canOpenTask: Boolean get() = taskId != null
 }
 
 sealed interface TaskEditorState {
@@ -81,6 +137,7 @@ sealed interface TaskEditorState {
         val noteId: Long? = null,
         val listId: Long,
         val content: String = "",
+        val status: TaskStatus = TaskStatus.Open,
         val date: LocalDate,
         val selectedTagIds: Set<Long> = emptySet()
     ) : TaskEditorState
@@ -179,27 +236,43 @@ data class CalendarUiState(
     val selectedPeriod: ReportPeriod = ReportPeriod.Month,
     val selectedMonth: kotlinx.datetime.LocalDate = today().firstDayOfMonth(),
     val selectedDate: kotlinx.datetime.LocalDate = today(),
-    val board: TaskBoard = TaskBoard()
+    val board: TaskBoard = TaskBoard(),
+    val dailyPlans: List<DailyPlan> = emptyList(),
+    val itemEditor: DailyPlanItemEditorState? = null
 ) {
     val listsById: Map<Long, TaskList> = board.lists.associateBy { it.id }
+    val dailyPlanByDate: Map<kotlinx.datetime.LocalDate, DailyPlan> = dailyPlans.associateBy { it.date }
 
     fun tasksForDate(date: kotlinx.datetime.LocalDate): List<TaskItem> =
-        board.tasks.filter { !it.isTrashed && it.dueDate == date }
-            .sortedWith(compareBy<TaskItem> { it.sortOrder }.thenBy { it.dueDate })
+        board.tasks.filter { !it.isTrashed && it.status != TaskStatus.Completed && it.dueDate == date }
 
     fun notesForDate(date: kotlinx.datetime.LocalDate): List<NoteItem> =
-        board.notes.filter { !it.isTrashed && it.date == date }.sortedBy { it.sortOrder }
+        board.notes.filter { !it.isTrashed && it.status != TaskStatus.Completed && it.date == date }
 
     fun markerColorsForDate(date: kotlinx.datetime.LocalDate): List<Color> {
+        if (date <= today()) {
+            val dailyItems = dailyPlanByDate[date]?.items.orEmpty()
+            if (dailyItems.isNotEmpty()) {
+                return dailyItems.map { dailyItemColor(it) }.take(MarkerCap)
+            }
+        }
         val tasks = tasksForDate(date)
         val notes = notesForDate(date)
         val combined = tasks.map { listColorFor(it.listId) } + notes.map { listColorFor(it.listId) }
         return if (combined.size <= MarkerCap) combined else combined.take(MarkerCap)
     }
 
+    fun dailyPlanForDate(date: kotlinx.datetime.LocalDate): DailyPlan? = dailyPlanByDate[date]
+
     private fun listColorFor(listId: Long): Color =
         listsById[listId]?.color?.parseHexColorOrNull()
             ?: ListEditorDefaults.Colors.first().parseHexColorOrNull()
+            ?: Color(0xFF64748B)
+
+    private fun dailyItemColor(item: DailyPlanItem): Color =
+        item.taskId
+            ?.let { taskId -> board.tasks.firstOrNull { it.id == taskId }?.listId }
+            ?.let { listColorFor(it) }
             ?: Color(0xFF64748B)
 
     private companion object {

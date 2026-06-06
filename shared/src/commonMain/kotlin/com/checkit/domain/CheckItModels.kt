@@ -45,6 +45,41 @@ data class TaskItem(
     val isTrashed: Boolean get() = trashedAtMillis != null
 }
 
+data class DailyPlan(
+    val id: Long,
+    val date: LocalDate,
+    val items: List<DailyPlanItem> = emptyList(),
+    val createdAtMillis: Long,
+    val updatedAtMillis: Long
+)
+
+data class DailyPlanItem(
+    val id: Long,
+    val dailyPlanId: Long,
+    val taskId: Long? = null,
+    val titleSnapshot: String,
+    val note: String? = null,
+    val source: DailyPlanItemSource,
+    val status: DailyPlanItemStatus,
+    val sortOrder: Int,
+    val startTimeMinutes: Int? = null,
+    val endTimeMinutes: Int? = null,
+    val addedAtMillis: Long,
+    val completedAtMillis: Long? = null
+)
+
+enum class DailyPlanItemSource {
+    ExistingTask,
+    QuickTask,
+    CheckInManualDone,
+    CheckInNote
+}
+
+enum class DailyPlanItemStatus {
+    Planned,
+    Done
+}
+
 data class SubTaskItem(
     val id: Long,
     val taskId: Long,
@@ -58,6 +93,7 @@ data class NoteItem(
     val listId: Long,
     val content: String,
     val tags: List<TaskTag> = emptyList(),
+    val status: TaskStatus = TaskStatus.Open,
     val date: LocalDate,
     val createdAtMillis: Long,
     val editedAtMillis: Long,
