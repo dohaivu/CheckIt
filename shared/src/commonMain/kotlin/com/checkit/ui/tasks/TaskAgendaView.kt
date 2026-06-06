@@ -28,6 +28,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -67,6 +68,10 @@ internal fun TaskAgendaView(
     val state = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
     val scope = rememberCoroutineScope()
 
+    LaunchedEffect(today, initialIndex) {
+        state.scrollToItem(initialIndex)
+    }
+
     Box(modifier.fillMaxSize()) {
         LazyColumn(
             state = state,
@@ -92,15 +97,17 @@ internal fun TaskAgendaView(
             }
         }
 
-        FilledTonalButton(
-            onClick = { scope.launch { state.animateScrollToItem(initialIndex) } },
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(16.dp)
-        ) {
-            Icon(Icons.Default.Today, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text("Today")
+        if (boundedDayCount != 1) {
+            FilledTonalButton(
+                onClick = { scope.launch { state.animateScrollToItem(initialIndex) } },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+            ) {
+                Icon(Icons.Default.Today, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Today")
+            }
         }
     }
 }
@@ -159,13 +166,30 @@ private fun AgendaDaySection(
 
 @Composable
 private fun AgendaDayHeader(date: LocalDate, today: LocalDate) {
-    Text(
-        text = if (date == today) "Today, ${date.agendaDateLabel()}" else date.agendaDateLabel(),
+    val isToday = date == today
+    Row(
         modifier = Modifier.fillMaxWidth(),
-        style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.onSurface
-    )
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = if (isToday) "Today, ${date.agendaDateLabel()}" else date.agendaDateLabel(),
+            modifier = if (isToday) {
+                Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+            } else {
+                Modifier
+            },
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = if (isToday) {
+                MaterialTheme.colorScheme.onPrimaryContainer
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            }
+        )
+    }
 }
 
 @Composable
