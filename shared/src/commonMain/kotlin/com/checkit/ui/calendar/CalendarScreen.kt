@@ -15,23 +15,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,10 +45,9 @@ import com.checkit.ui.firstDayOfMonth
 import com.checkit.ui.isSameMonth
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.shortName
-import com.checkit.ui.TaskListDisplayType
-import com.checkit.ui.myday.DailyPlanCard
+import com.checkit.ui.myday.DailyPlanAgenda
 import com.checkit.ui.myday.DailyPlanItemEditorSheet
-import com.checkit.ui.tasks.TaskListView
+import com.checkit.ui.tasks.TaskAgendaView
 import com.checkit.ui.today
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
@@ -78,13 +71,19 @@ internal fun CalendarScreen(
     val showDailyPlan = state.selectedDate <= today()
     val dailyPlanItems = state.dailyPlanForDate(state.selectedDate)?.items.orEmpty()
     val taskById = remember(state.board.tasks) { state.board.tasks.associateBy { it.id } }
-    val listById = remember(state.board.lists) { state.board.lists.associateBy { it.id } }
     val hasItemsForDate = if (showDailyPlan) {
         dailyPlanItems.isNotEmpty()
     } else {
-        tasksForDate.isNotEmpty() || notesForDate.isNotEmpty()
+        tasksForDate.isNotEmpty()
     }
-    var listDisplayType by remember { mutableStateOf(TaskListDisplayType.Brief) }
+    val handleDateDoubleClick: (LocalDate) -> Unit = { date ->
+        calendarViewModel.selectDate(date)
+        if (date <= today()) {
+            calendarViewModel.openItemEditor(null)
+        } else {
+            onDateDoubleClick(date)
+        }
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -117,7 +116,7 @@ internal fun CalendarScreen(
                 month = state.selectedMonth,
                 selectedDate = state.selectedDate,
                 onDateSelected = calendarViewModel::selectDate,
-                onDateDoubleClick = onDateDoubleClick,
+                onDateDoubleClick = handleDateDoubleClick,
                 state = state
             )
             AppHorizontalDivider(
@@ -126,34 +125,29 @@ internal fun CalendarScreen(
             SelectedDateHeader(
                 date = state.selectedDate,
                 taskCount = if (showDailyPlan) dailyPlanItems.size else tasksForDate.size,
-                noteCount = if (showDailyPlan) 0 else notesForDate.size
+                noteCount = 0
             )
             if (hasItemsForDate) {
                 if (showDailyPlan) {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxWidth().weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        items(dailyPlanItems, key = { it.id }) { item ->
-                            val task = item.taskId?.let { taskById[it] }
-                            DailyPlanCard(
-                                item = item,
-                                task = task,
-                                list = task?.let { listById[it.listId] },
-                                onClick = { calendarViewModel.openItemEditor(item) }
-                            )
-                        }
-                    }
+                    DailyPlanAgenda(
+                        items = dailyPlanItems,
+                        board = state.board,
+                        date = state.selectedDate,
+                        onItemClick = calendarViewModel::openItemEditor,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                    )
                 } else {
-                    TaskListView(
+                    TaskAgendaView(
                         tasks = tasksForDate,
                         notes = notesForDate,
                         lists = state.board.lists,
                         showListName = true,
-                        displayType = listDisplayType,
-                        onDisplayTypeChange = { listDisplayType = it },
                         onTaskClick = onTaskClick,
                         onNoteClick = onNoteClick,
+                        dayLimit = 1,
+                        focusedDate = state.selectedDate,
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f)

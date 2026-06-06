@@ -57,6 +57,7 @@ internal fun TaskAgendaView(
     onTaskClick: (TaskItem) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
     dayLimit: Int? = null,
+    focusedDate: LocalDate = today(),
     modifier: Modifier = Modifier
 ) {
     val today = today()
@@ -68,7 +69,7 @@ internal fun TaskAgendaView(
     val state = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(today, initialIndex) {
+    LaunchedEffect(focusedDate, initialIndex) {
         state.scrollToItem(initialIndex)
     }
 
@@ -81,9 +82,9 @@ internal fun TaskAgendaView(
         ) {
             items(
                 count = boundedDayCount ?: AgendaDayCount,
-                key = { index -> "agenda-day-${today.plus(index - initialIndex, DateTimeUnit.DAY)}" }
+                key = { index -> "agenda-day-${focusedDate.plus(index - initialIndex, DateTimeUnit.DAY)}" }
             ) { index ->
-                val date = today.plus(index - initialIndex, DateTimeUnit.DAY)
+                val date = focusedDate.plus(index - initialIndex, DateTimeUnit.DAY)
                 AgendaDaySection(
                     date = date,
                     today = today,
@@ -91,6 +92,7 @@ internal fun TaskAgendaView(
                     notes = notesByDate[date].orEmpty(),
                     lists = listById,
                     showListName = showListName,
+                    showHeader = boundedDayCount != 1,
                     onTaskClick = onTaskClick,
                     onNoteClick = onNoteClick
                 )
@@ -120,6 +122,7 @@ private fun AgendaDaySection(
     notes: List<NoteItem>,
     lists: Map<Long, TaskList>,
     showListName: Boolean,
+    showHeader: Boolean,
     onTaskClick: (TaskItem) -> Unit,
     onNoteClick: (NoteItem) -> Unit
 ) {
@@ -134,8 +137,10 @@ private fun AgendaDaySection(
     val hasAllDayItems = allDayTasks.isNotEmpty() || dayNotes.isNotEmpty()
 
     Column {
-        AgendaDayHeader(date = date, today = today)
-        Spacer(Modifier.height(8.dp))
+        if (showHeader) {
+            AgendaDayHeader(date = date, today = today)
+            Spacer(Modifier.height(8.dp))
+        }
         if (allDayTasks.isEmpty() && dayNotes.isEmpty() && timedTasks.isEmpty()) {
             AgendaEmptyDay()
         } else {

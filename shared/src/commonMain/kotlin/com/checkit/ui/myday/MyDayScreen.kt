@@ -62,6 +62,7 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.NoteItem
+import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskList
 import com.checkit.domain.TaskPriority
@@ -203,7 +204,24 @@ private fun MyDayAgenda(
     onItemClick: (DailyPlanItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val projection = remember(state.items, state.board, state.today) { state.toTaskViewProjection() }
+    DailyPlanAgenda(
+        items = state.items,
+        board = state.board,
+        date = state.today,
+        onItemClick = onItemClick,
+        modifier = modifier
+    )
+}
+
+@Composable
+internal fun DailyPlanAgenda(
+    items: List<DailyPlanItem>,
+    board: TaskBoard,
+    date: LocalDate,
+    onItemClick: (DailyPlanItem) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val projection = remember(items, board, date) { items.toTaskViewProjection(board = board, date = date) }
     TaskAgendaView(
         tasks = projection.tasks,
         notes = projection.notes,
@@ -212,6 +230,7 @@ private fun MyDayAgenda(
         onTaskClick = { task -> projection.dailyItemFor(task)?.let(onItemClick) },
         onNoteClick = { note -> projection.dailyItemFor(note)?.let(onItemClick) },
         dayLimit = 1,
+        focusedDate = date,
         modifier = modifier
     )
 }
@@ -223,7 +242,9 @@ private fun MyDayTimeline(
     onTaskTimeChange: (DailyPlanItem, Int, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val projection = remember(state.items, state.board, state.today) { state.toTaskViewProjection() }
+    val projection = remember(state.items, state.board, state.today) {
+        state.items.toTaskViewProjection(board = state.board, date = state.today)
+    }
     TaskTimelineView(
         tasks = projection.tasks,
         notes = projection.notes,
@@ -447,7 +468,7 @@ internal fun DailyPlanItemEditorSheet(
             modifier = Modifier.fillMaxWidth()
         ) {
             DailyPlanItemSheetHeader(
-                title = if (state.isAddMode) "Log today" else "My Day item",
+                title = "My Day item",
                 onDismiss = onDismiss,
                 onSave = onSave
             )
@@ -630,7 +651,10 @@ private data class MyDayTaskViewProjection(
     fun dailyItemFor(note: NoteItem): DailyPlanItem? = dailyItemBySyntheticNoteId[note.id]
 }
 
-private fun MyDayUiState.toTaskViewProjection(): MyDayTaskViewProjection {
+private fun List<DailyPlanItem>.toTaskViewProjection(
+    board: TaskBoard,
+    date: LocalDate
+): MyDayTaskViewProjection {
     val fallbackList = TaskList(
         id = MyDayListId,
         name = "My Day",
@@ -646,7 +670,7 @@ private fun MyDayUiState.toTaskViewProjection(): MyDayTaskViewProjection {
     val projectedTasks = mutableListOf<TaskItem>()
     val projectedNotes = mutableListOf<NoteItem>()
 
-    items.forEach { item ->
+    forEach { item ->
         when (item.source) {
             DailyPlanItemSource.CheckInNote -> {
                 projectedNotes += NoteItem(
@@ -654,7 +678,7 @@ private fun MyDayUiState.toTaskViewProjection(): MyDayTaskViewProjection {
                     listId = listId,
                     content = item.note.orEmpty(),
                     status = item.status.toTaskStatus(),
-                    date = today,
+                    date = date,
                     createdAtMillis = item.addedAtMillis,
                     editedAtMillis = item.completedAtMillis ?: item.addedAtMillis,
                     sortOrder = item.sortOrder
@@ -665,7 +689,7 @@ private fun MyDayUiState.toTaskViewProjection(): MyDayTaskViewProjection {
                 val realTask = item.taskId?.let { realTasksById[it] }
                 val projectedTask = realTask?.copy(
                     id = item.id,
-                    dueDate = today,
+                    dueDate = date,
                     startTimeMinutes = item.startTimeMinutes,
                     endTimeMinutes = item.endTimeMinutes,
                     status = item.status.toTaskStatus(),
@@ -677,8 +701,8 @@ private fun MyDayUiState.toTaskViewProjection(): MyDayTaskViewProjection {
                     description = item.note.orEmpty(),
                     status = item.status.toTaskStatus(),
                     priority = TaskPriority.None,
-                    dueDate = today,
-                    completedDate = today.takeIf { item.status == DailyPlanItemStatus.Done },
+                    dueDate = date,
+                    completedDate = date.takeIf { item.status == DailyPlanItemStatus.Done },
                     startTimeMinutes = item.startTimeMinutes,
                     endTimeMinutes = item.endTimeMinutes,
                     durationMinutes = item.durationMinutes(),

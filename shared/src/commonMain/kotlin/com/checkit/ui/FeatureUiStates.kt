@@ -244,11 +244,10 @@ data class CalendarUiState(
     val dailyPlanByDate: Map<kotlinx.datetime.LocalDate, DailyPlan> = dailyPlans.associateBy { it.date }
 
     fun tasksForDate(date: kotlinx.datetime.LocalDate): List<TaskItem> =
-        board.tasks.filter { !it.isTrashed && it.dueDate == date }
-            .sortedWith(compareBy<TaskItem> { it.sortOrder }.thenBy { it.dueDate })
+        board.tasks.filter { !it.isTrashed && it.status != TaskStatus.Completed && it.dueDate == date }
 
     fun notesForDate(date: kotlinx.datetime.LocalDate): List<NoteItem> =
-        board.notes.filter { !it.isTrashed && it.date == date }.sortedBy { it.sortOrder }
+        board.notes.filter { !it.isTrashed && it.status != TaskStatus.Completed && it.date == date }
 
     fun markerColorsForDate(date: kotlinx.datetime.LocalDate): List<Color> {
         if (date <= today()) {

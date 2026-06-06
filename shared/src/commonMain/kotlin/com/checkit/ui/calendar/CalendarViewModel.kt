@@ -82,19 +82,23 @@ class CalendarViewModel(
         }
     }
 
-    fun openItemEditor(item: DailyPlanItem) {
-        _uiState.update {
-            it.copy(
-                itemEditor = DailyPlanItemEditorState(
-                    itemId = item.id,
-                    taskId = item.taskId,
-                    title = if (item.source == DailyPlanItemSource.CheckInNote) item.note.orEmpty() else item.titleSnapshot,
-                    note = if (item.source == DailyPlanItemSource.CheckInNote) "" else item.note.orEmpty(),
-                    status = item.status,
-                    startTimeMinutes = item.startTimeMinutes,
-                    endTimeMinutes = item.endTimeMinutes
+    fun openItemEditor(item: DailyPlanItem?) {
+        if (item != null) {
+            _uiState.update {
+                it.copy(
+                    itemEditor = DailyPlanItemEditorState(
+                        itemId = item.id,
+                        taskId = item.taskId,
+                        title = if (item.source == DailyPlanItemSource.CheckInNote) item.note.orEmpty() else item.titleSnapshot,
+                        note = if (item.source == DailyPlanItemSource.CheckInNote) "" else item.note.orEmpty(),
+                        status = item.status,
+                        startTimeMinutes = item.startTimeMinutes,
+                        endTimeMinutes = item.endTimeMinutes
+                    )
                 )
-            )
+            }
+        } else {
+            _uiState.update { it.copy(itemEditor = DailyPlanItemEditorState()) }
         }
     }
 
