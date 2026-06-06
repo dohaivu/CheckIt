@@ -673,8 +673,8 @@ private fun MyDayUiState.toTaskViewProjection(): MyDayTaskViewProjection {
                 val projectedTask = realTask?.copy(
                     id = item.id,
                     dueDate = today,
-                    startTimeMinutes = item.plannedStartTimeMinutes,
-                    endTimeMinutes = item.plannedEndTimeMinutes,
+                    startTimeMinutes = item.startTimeMinutes,
+                    endTimeMinutes = item.endTimeMinutes,
                     status = item.status.toTaskStatus(),
                     sortOrder = item.sortOrder
                 ) ?: TaskItem(
@@ -686,8 +686,8 @@ private fun MyDayUiState.toTaskViewProjection(): MyDayTaskViewProjection {
                     priority = TaskPriority.None,
                     dueDate = today,
                     completedDate = today.takeIf { item.status == DailyPlanItemStatus.Done },
-                    startTimeMinutes = item.plannedStartTimeMinutes,
-                    endTimeMinutes = item.plannedEndTimeMinutes,
+                    startTimeMinutes = item.startTimeMinutes,
+                    endTimeMinutes = item.endTimeMinutes,
                     durationMinutes = item.durationMinutes(),
                     sortOrder = item.sortOrder,
                     createdAtMillis = item.addedAtMillis,
@@ -718,8 +718,8 @@ private fun DailyPlanItemStatus.toTaskStatus(): TaskStatus = when (this) {
 }
 
 private fun DailyPlanItem.durationMinutes(): Int? {
-    val start = plannedStartTimeMinutes ?: return null
-    val end = plannedEndTimeMinutes ?: return null
+    val start = startTimeMinutes ?: return null
+    val end = endTimeMinutes ?: return null
     return (end - start).takeIf { it >= 0 }
 }
 
@@ -738,8 +738,8 @@ private fun MyDayView.label(): String = when (this) {
 }
 
 private fun DailyPlanItem.timeLabel(): String? {
-    val start = plannedStartTimeMinutes ?: return null
-    val end = plannedEndTimeMinutes
+    val start = startTimeMinutes ?: return null
+    val end = endTimeMinutes
     return if (end == null) start.toClockLabel() else "${start.toClockLabel()} - ${end.toClockLabel()}"
 }
 

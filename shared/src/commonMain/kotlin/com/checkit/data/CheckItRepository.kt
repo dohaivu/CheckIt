@@ -189,7 +189,7 @@ class RoomCheckItRepository(
                 description = "Review agenda, timeline, and the next task to start.",
                 status = TaskStatus.InProgress.name,
                 priority = TaskPriority.High.name,
-                dueDateEpochDays = today.toEpochDays().toInt(),
+                doDateEpochDays = today.toEpochDays().toInt(),
                 startTimeMinutes = 9 * 60,
                 endTimeMinutes = 9 * 60 + 30,
                 durationMinutes = 30,
@@ -268,7 +268,7 @@ class RoomCheckItRepository(
                 description = input.description,
                 status = input.status.name,
                 priority = input.priority.name,
-                dueDateEpochDays = input.dueDate?.toEpochDays()?.toInt(),
+                doDateEpochDays = input.dueDate?.toEpochDays()?.toInt(),
                 startTimeMinutes = input.startTimeMinutes,
                 endTimeMinutes = input.endTimeMinutes,
                 durationMinutes = input.durationMinutes,
@@ -286,6 +286,8 @@ class RoomCheckItRepository(
     }
 
     override suspend fun updateTask(taskId: Long, input: TaskWriteInput) {
+        val existingTask = dao.taskById(taskId)
+        val shouldRemoveOpenDailyPlanItems = existingTask?.hasDifferentScheduleThan(input) == true
         dao.updateTask(
             taskId = taskId,
             listId = input.listId,
@@ -293,7 +295,7 @@ class RoomCheckItRepository(
             description = input.description,
             status = input.status.name,
             priority = input.priority.name,
-            dueDateEpochDays = input.dueDate?.toEpochDays()?.toInt(),
+            doDateEpochDays = input.dueDate?.toEpochDays()?.toInt(),
             startTimeMinutes = input.startTimeMinutes,
             endTimeMinutes = input.endTimeMinutes,
             durationMinutes = input.durationMinutes,
@@ -304,6 +306,9 @@ class RoomCheckItRepository(
         input.tagIds.forEach { tagId -> dao.insertTaskTagIfParentsExist(taskId, tagId) }
         dao.replaceTaskSubTasks(taskId, input.subtasks)
         dao.replaceTaskReminders(taskId, input.reminders)
+        if (shouldRemoveOpenDailyPlanItems) {
+            dao.deleteOpenDailyPlanItemsForTask(taskId)
+        }
         scheduleTaskReminders(taskId, input)
     }
 
@@ -360,8 +365,8 @@ class RoomCheckItRepository(
                     DailyPlanItemStatus.Planned.name
                 },
                 sortOrder = dao.nextDailyPlanItemSortOrder(planId),
-                plannedStartTimeMinutes = task.startTimeMinutes,
-                plannedEndTimeMinutes = task.endTimeMinutes,
+                startTimeMinutes = task.startTimeMinutes,
+                endTimeMinutes = task.endTimeMinutes,
                 addedAtMillis = now,
                 completedAtMillis = if (task.status == TaskStatus.Completed) now else null
             )
@@ -385,10 +390,8 @@ class RoomCheckItRepository(
                 source = DailyPlanItemSource.CheckInManualDone.name,
                 status = DailyPlanItemStatus.Done.name,
                 sortOrder = dao.nextDailyPlanItemSortOrder(planId),
-                plannedStartTimeMinutes = startTimeMinutes,
-                plannedEndTimeMinutes = endTimeMinutes,
-                actualStartTimeMinutes = startTimeMinutes,
-                actualEndTimeMinutes = endTimeMinutes,
+                startTimeMinutes = startTimeMinutes,
+                endTimeMinutes = endTimeMinutes,
                 addedAtMillis = now,
                 completedAtMillis = now
             )
@@ -425,7 +428,11 @@ class RoomCheckItRepository(
         startTimeMinutes: Int?,
         endTimeMinutes: Int?
     ) {
+        val item = dao.dailyPlanItemById(itemId)
         dao.updateDailyPlanItemTime(itemId, startTimeMinutes, endTimeMinutes)
+        item?.taskId?.let { taskId ->
+            dao.clearTaskTime(taskId, Clock.System.now().toEpochMilliseconds())
+        }
     }
 
     override suspend fun addNote(input: NoteWriteInput): Long {
@@ -562,6 +569,11 @@ private fun TaskFilterEntity.toDomain() = TaskFilter(
     sortOrder = sortOrder
 )
 
+private fun TaskEntity.hasDifferentScheduleThan(input: TaskWriteInput): Boolean =
+    doDateEpochDays != input.dueDate?.toEpochDays()?.toInt() ||
+        startTimeMinutes != input.startTimeMinutes ||
+        endTimeMinutes != input.endTimeMinutes
+
 private fun TaskEntity.toDomain(
     subtasks: List<SubTaskItem>,
     reminders: List<TaskReminder>,
@@ -575,7 +587,7 @@ private fun TaskEntity.toDomain(
     status = enumValueOf(status),
     tags = tags,
     priority = enumValueOf(priority),
-    dueDate = dueDateEpochDays?.let { LocalDate.fromEpochDays(it) },
+    dueDate = doDateEpochDays?.let { LocalDate.fromEpochDays(it) },
     completedDate = completedDateEpochDays?.let { LocalDate.fromEpochDays(it) },
     startTimeMinutes = startTimeMinutes,
     endTimeMinutes = endTimeMinutes,
@@ -605,10 +617,8 @@ private fun DailyPlanItemEntity.toDomain() = DailyPlanItem(
     source = enumValueOf(source),
     status = enumValueOf(status),
     sortOrder = sortOrder,
-    plannedStartTimeMinutes = plannedStartTimeMinutes,
-    plannedEndTimeMinutes = plannedEndTimeMinutes,
-    actualStartTimeMinutes = actualStartTimeMinutes,
-    actualEndTimeMinutes = actualEndTimeMinutes,
+    startTimeMinutes = startTimeMinutes,
+    endTimeMinutes = endTimeMinutes,
     addedAtMillis = addedAtMillis,
     completedAtMillis = completedAtMillis
 )

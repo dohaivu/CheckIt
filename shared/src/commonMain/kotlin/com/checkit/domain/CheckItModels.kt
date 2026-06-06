@@ -62,10 +62,8 @@ data class DailyPlanItem(
     val source: DailyPlanItemSource,
     val status: DailyPlanItemStatus,
     val sortOrder: Int,
-    val plannedStartTimeMinutes: Int? = null,
-    val plannedEndTimeMinutes: Int? = null,
-    val actualStartTimeMinutes: Int? = null,
-    val actualEndTimeMinutes: Int? = null,
+    val startTimeMinutes: Int? = null,
+    val endTimeMinutes: Int? = null,
     val addedAtMillis: Long,
     val completedAtMillis: Long? = null
 )

@@ -46,7 +46,7 @@ data class TagEntity(
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("listId"), Index("status"), Index("priority"), Index("dueDateEpochDays")]
+    indices = [Index("listId"), Index("status"), Index("priority"), Index("doDateEpochDays")]
 )
 data class TaskEntity(
     @PrimaryKey(autoGenerate = true)
@@ -56,7 +56,7 @@ data class TaskEntity(
     val description: String = "",
     val status: String,
     val priority: String,
-    val dueDateEpochDays: Int? = null,
+    val doDateEpochDays: Int? = null,
     val completedDateEpochDays: Int? = null,
     val startTimeMinutes: Int? = null,
     val endTimeMinutes: Int? = null,
@@ -154,10 +154,8 @@ data class DailyPlanItemEntity(
     val source: String,
     val status: String,
     val sortOrder: Int,
-    val plannedStartTimeMinutes: Int? = null,
-    val plannedEndTimeMinutes: Int? = null,
-    val actualStartTimeMinutes: Int? = null,
-    val actualEndTimeMinutes: Int? = null,
+    val startTimeMinutes: Int? = null,
+    val endTimeMinutes: Int? = null,
     val addedAtMillis: Long,
     val completedAtMillis: Long? = null
 )
@@ -270,7 +268,7 @@ data class TaskFilterEntity(
         TaskReminderEntity::class,
         TaskFilterEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)

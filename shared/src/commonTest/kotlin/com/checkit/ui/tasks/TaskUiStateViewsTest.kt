@@ -9,6 +9,7 @@ import com.checkit.ui.TaskWorkspaceView
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class TaskUiStateViewsTest {
@@ -43,7 +44,7 @@ class TaskUiStateViewsTest {
     fun availableViewsExcludesTimelineWhenNoFilterSelected() {
         val state = TaskUiState()
 
-        assertFalse(state.isTodayFilterSelected)
+        assertNull(state.dayLimit)
         assertEquals(
             listOf(TaskWorkspaceView.List, TaskWorkspaceView.Agenda),
             state.availableViews
@@ -55,7 +56,7 @@ class TaskUiStateViewsTest {
         val board = TaskBoard(filters = listOf(highPriorityFilter()))
         val state = TaskUiState(board = board, selectedFilterId = 2L)
 
-        assertFalse(state.isTodayFilterSelected)
+        assertNull(state.dayLimit)
         assertFalse(TaskWorkspaceView.Timeline in state.availableViews)
     }
 
@@ -64,7 +65,7 @@ class TaskUiStateViewsTest {
         val board = TaskBoard(filters = listOf(todayFilter(), highPriorityFilter()))
         val state = TaskUiState(board = board, selectedFilterId = 1L)
 
-        assertTrue(state.isTodayFilterSelected)
+        assertEquals(1, state.dayLimit)
         assertEquals(TaskWorkspaceView.entries, state.availableViews)
     }
 
@@ -73,7 +74,7 @@ class TaskUiStateViewsTest {
         val board = TaskBoard(filters = listOf(allFilter(), todayFilter(), highPriorityFilter()))
         val state = TaskUiState(board = board, selectedFilterId = 0L)
 
-        assertFalse(state.isTodayFilterSelected)
+        assertNull(state.dayLimit)
         assertEquals(
             listOf(TaskWorkspaceView.List, TaskWorkspaceView.Agenda),
             state.availableViews
@@ -85,7 +86,7 @@ class TaskUiStateViewsTest {
         val board = TaskBoard(filters = listOf(todayFilter(), highPriorityFilter()))
         val state = TaskUiState(board = board, selectedFilterId = null, selectedListId = 99L)
 
-        assertFalse(state.isTodayFilterSelected)
+        assertNull(state.dayLimit)
         assertFalse(TaskWorkspaceView.Timeline in state.availableViews)
     }
 }

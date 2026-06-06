@@ -161,6 +161,9 @@ interface CheckItDao {
     @Query("SELECT * FROM tasks ORDER BY sortOrder ASC, createdAtMillis DESC")
     fun observeTasks(): Flow<List<TaskEntity>>
 
+    @Query("SELECT * FROM tasks WHERE id = :taskId LIMIT 1")
+    suspend fun taskById(taskId: Long): TaskEntity?
+
     @Query("SELECT * FROM notes ORDER BY sortOrder ASC, editedAtMillis DESC")
     fun observeNotes(): Flow<List<NoteEntity>>
 
@@ -169,6 +172,9 @@ interface CheckItDao {
 
     @Query("SELECT * FROM daily_plan_items ORDER BY sortOrder ASC, addedAtMillis ASC")
     fun observeDailyPlanItems(): Flow<List<DailyPlanItemEntity>>
+
+    @Query("SELECT * FROM daily_plan_items WHERE id = :itemId LIMIT 1")
+    suspend fun dailyPlanItemById(itemId: Long): DailyPlanItemEntity?
 
     @Query("SELECT * FROM daily_plans WHERE dateEpochDays = :dateEpochDays LIMIT 1")
     suspend fun dailyPlanForDate(dateEpochDays: Int): DailyPlanEntity?
@@ -217,7 +223,7 @@ interface CheckItDao {
             description = :description,
             status = :status,
             priority = :priority,
-            dueDateEpochDays = :dueDateEpochDays,
+            doDateEpochDays = :doDateEpochDays,
             startTimeMinutes = :startTimeMinutes,
             endTimeMinutes = :endTimeMinutes,
             durationMinutes = :durationMinutes,
@@ -233,7 +239,7 @@ interface CheckItDao {
         description: String,
         status: String,
         priority: String,
-        dueDateEpochDays: Int?,
+        doDateEpochDays: Int?,
         startTimeMinutes: Int?,
         endTimeMinutes: Int?,
         durationMinutes: Int?,
@@ -335,9 +341,18 @@ interface CheckItDao {
 
     @Query(
         """
+        DELETE FROM daily_plan_items
+        WHERE taskId = :taskId
+          AND status IN ('Planned', 'InProgress')
+        """
+    )
+    suspend fun deleteOpenDailyPlanItemsForTask(taskId: Long)
+
+    @Query(
+        """
         UPDATE daily_plan_items
-        SET plannedStartTimeMinutes = :startTimeMinutes,
-            plannedEndTimeMinutes = :endTimeMinutes
+        SET startTimeMinutes = :startTimeMinutes,
+            endTimeMinutes = :endTimeMinutes
         WHERE id = :itemId
         """
     )
@@ -346,6 +361,18 @@ interface CheckItDao {
         startTimeMinutes: Int?,
         endTimeMinutes: Int?
     )
+
+    @Query(
+        """
+        UPDATE tasks
+        SET startTimeMinutes = NULL,
+            endTimeMinutes = NULL,
+            durationMinutes = NULL,
+            updatedAtMillis = :updatedAtMillis
+        WHERE id = :taskId
+        """
+    )
+    suspend fun clearTaskTime(taskId: Long, updatedAtMillis: Long)
 
     @Query("UPDATE notes SET listId = :listId, content = :content, status = :status, dateEpochDays = :dateEpochDays, editedAtMillis = :editedAtMillis WHERE id = :noteId")
     suspend fun updateNote(noteId: Long, listId: Long, content: String, status: String, dateEpochDays: Int, editedAtMillis: Long)
