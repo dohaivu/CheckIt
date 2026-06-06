@@ -7,23 +7,31 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -58,10 +66,14 @@ import checkit.shared.generated.resources.version
 import com.checkit.ui.AppColorSchemeMode
 import com.checkit.ui.AppLanguage
 import com.checkit.ui.AppThemeMode
+import com.checkit.ui.ReminderSettingsUiState
 import com.checkit.ui.SettingsUiState
 import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.TinyTopAppBar
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
+import kotlin.time.Instant
 
 @Composable
 internal fun SettingsScreen(
@@ -104,10 +116,17 @@ internal fun SettingsScreen(
                         SettingsHomeScreen(
                             state = currentState,
                             viewModel = settingsViewModel,
+                            onOpenReminders = { push(SettingsRoute.Reminders) }
                         )
                     }
-
-
+                    SettingsRoute.Reminders -> {
+                        val currentState by settingsViewModel.uiState.collectAsState()
+                        ReminderSettingsScreen(
+                            state = currentState.reminders,
+                            viewModel = settingsViewModel,
+                            onBack = { pop() }
+                        )
+                    }
                 }
             }
         }
@@ -143,7 +162,8 @@ internal fun SettingsScaffold(
 @Composable
 private fun SettingsHomeScreen(
     state: SettingsUiState,
-    viewModel: SettingsViewModel
+    viewModel: SettingsViewModel,
+    onOpenReminders: () -> Unit
 ) {
     SettingsScaffold(title = stringResource(Res.string.settings_title)) { contentModifier ->
         Column(
@@ -155,6 +175,13 @@ private fun SettingsHomeScreen(
                 item { LanguageSettings(state, viewModel) }
                 item { ThemeSettings(state, viewModel) }
                 item { ColorSchemeSettings(state, viewModel) }
+                item {
+                    SettingsRow(
+                        title = "Reminders",
+                        subtitle = reminderSummary(state.reminders),
+                        onClick = onOpenReminders
+                    )
+                }
             }
             Text(
                 text = stringResource(Res.string.version, viewModel.versionName),
@@ -165,6 +192,167 @@ private fun SettingsHomeScreen(
             )
         }
     }
+}
+
+@Composable
+private fun ReminderSettingsScreen(
+    state: ReminderSettingsUiState,
+    viewModel: SettingsViewModel,
+    onBack: () -> Unit
+) {
+    SettingsScaffold(
+        title = "Reminders",
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+            }
+        }
+    ) { contentModifier ->
+        LazyColumn(
+            modifier = contentModifier.fillMaxSize().padding(horizontal = 16.dp),
+        ) {
+            item {
+                ReminderRow(
+                    title = "Plan reminder",
+                    subtitle = "Start the day by planning My Day",
+                    enabled = state.planEnabled,
+                    timeMinutes = state.planTimeMinutes,
+                    onEnabledChange = viewModel::setPlanReminderEnabled,
+                    onTimeChange = viewModel::setPlanReminderTimeMinutes
+                )
+            }
+            item {
+                ReminderRow(
+                    title = "Review reminder",
+                    subtitle = "Close the day with a quick review",
+                    enabled = state.reviewEnabled,
+                    timeMinutes = state.reviewTimeMinutes,
+                    onEnabledChange = viewModel::setReviewReminderEnabled,
+                    onTimeChange = viewModel::setReviewReminderTimeMinutes
+                )
+            }
+            item {
+                CheckInReminderRow(
+                    enabled = state.checkInEnabled,
+                    lastShownAtMillis = state.checkInLastShownAtMillis,
+                    onEnabledChange = viewModel::setCheckInReminderEnabled
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReminderRow(
+    title: String,
+    subtitle: String,
+    enabled: Boolean,
+    timeMinutes: Int,
+    onEnabledChange: (Boolean) -> Unit,
+    onTimeChange: (Int) -> Unit
+) {
+    var showTimePicker by remember { mutableStateOf(false) }
+
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.Notifications, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.size(12.dp))
+            Column(
+                modifier = Modifier.weight(1f).clickable(enabled = enabled) { showTimePicker = true }
+            ) {
+                Text(title, fontWeight = FontWeight.SemiBold)
+                Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                Text(
+                    text = formatTime(timeMinutes),
+                    modifier = Modifier.padding(top = 4.dp),
+                    color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+            Switch(checked = enabled, onCheckedChange = onEnabledChange)
+        }
+        AppHorizontalDivider()
+    }
+
+    if (showTimePicker) {
+        ReminderTimePickerDialog(
+            title = title,
+            initialMinutes = timeMinutes,
+            onDismiss = { showTimePicker = false },
+            onConfirm = { minutes ->
+                onTimeChange(minutes)
+                showTimePicker = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun CheckInReminderRow(
+    enabled: Boolean,
+    lastShownAtMillis: Long?,
+    onEnabledChange: (Boolean) -> Unit
+) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.Notifications, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.size(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text("CheckIn reminder", fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Checks every 30 minutes when My Day has nothing near now",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Text(
+                    text = lastShownAtMillis?.let { "Last shown ${formatLastShown(it)}" } ?: "Last shown never",
+                    modifier = Modifier.padding(top = 4.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            Switch(checked = enabled, onCheckedChange = onEnabledChange)
+        }
+        AppHorizontalDivider()
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ReminderTimePickerDialog(
+    title: String,
+    initialMinutes: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit
+) {
+    val timePickerState = rememberTimePickerState(
+        initialHour = initialMinutes / 60,
+        initialMinute = initialMinutes % 60,
+        is24Hour = false
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = { TimePicker(state = timePickerState) },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(timePickerState.hour * 60 + timePickerState.minute) }) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(Res.string.cancel))
+            }
+        }
+    )
 }
 
 @Composable
@@ -368,6 +556,32 @@ private fun AppColorSchemeMode.label(): String = when (this) {
     AppColorSchemeMode.SystemDefault -> stringResource(Res.string.color_scheme_system_default)
 }
 
+private fun reminderSummary(state: ReminderSettingsUiState): String {
+    val enabledCount = listOf(state.planEnabled, state.reviewEnabled, state.checkInEnabled).count { it }
+    return when (enabledCount) {
+        0 -> "All reminders off"
+        3 -> "Plan ${formatTime(state.planTimeMinutes)}, Review ${formatTime(state.reviewTimeMinutes)}, CheckIn on"
+        else -> "$enabledCount reminders on"
+    }
+}
+
+private fun formatTime(minutes: Int): String {
+    val normalized = minutes.coerceIn(0, 24 * 60 - 1)
+    val hour = normalized / 60
+    val minute = normalized % 60
+    val displayHour = when (val hour12 = hour % 12) {
+        0 -> 12
+        else -> hour12
+    }
+    val suffix = if (hour < 12) "AM" else "PM"
+    return "$displayHour:${minute.toString().padStart(2, '0')} $suffix"
+}
+
+private fun formatLastShown(millis: Long): String {
+    val dateTime = Instant.fromEpochMilliseconds(millis).toLocalDateTime(TimeZone.currentSystemDefault())
+    return "${dateTime.month.name.lowercase().replaceFirstChar { it.uppercase() }.take(3)} " +
+        "${dateTime.day}, ${dateTime.year} at ${formatTime(dateTime.hour * 60 + dateTime.minute)}"
+}
 
 @Composable
 private fun SelectionRow(

@@ -6,6 +6,7 @@ import com.checkit.data.DailyPlanItemWriteInput
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
+import com.checkit.domain.usecase.AddManualDoneToDailyPlanUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
@@ -14,6 +15,7 @@ import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemUseCase
 import com.checkit.ui.DailyPlanItemEditorState
 import com.checkit.ui.CalendarUiState
+import com.checkit.ui.EditorMode
 import com.checkit.ui.components.ReportPeriod
 import com.checkit.ui.firstDayOfMonth
 import com.checkit.ui.isSameMonth
@@ -34,6 +36,7 @@ class CalendarViewModel(
     private val observeTaskBoard: ObserveTaskBoardUseCase,
     private val observeDailyPlans: ObserveDailyPlansUseCase,
     private val ensureDefaultTaskData: EnsureDefaultTaskDataUseCase,
+    private val addManualDoneToDailyPlan: AddManualDoneToDailyPlanUseCase,
     private val updateDailyPlanItem: UpdateDailyPlanItemUseCase,
     private val deleteDailyPlanItem: DeleteDailyPlanItemUseCase,
     private val completeTask: CompleteTaskUseCase
@@ -87,6 +90,7 @@ class CalendarViewModel(
             _uiState.update {
                 it.copy(
                     itemEditor = DailyPlanItemEditorState(
+                        mode = EditorMode.View,
                         itemId = item.id,
                         taskId = item.taskId,
                         title = if (item.source == DailyPlanItemSource.CheckInNote) item.note.orEmpty() else item.titleSnapshot,
@@ -106,6 +110,7 @@ class CalendarViewModel(
         _uiState.update { it.copy(itemEditor = null) }
     }
 
+    fun editItemEditor() = updateItemEditor { it.copy(mode = EditorMode.Edit) }
     fun updateEditorTitle(title: String) = updateItemEditor { it.copy(title = title) }
     fun updateEditorNote(note: String) = updateItemEditor { it.copy(note = note) }
     fun updateEditorStartTime(timeMinutes: Int?) = updateItemEditor { it.copy(startTimeMinutes = timeMinutes) }
@@ -113,9 +118,21 @@ class CalendarViewModel(
 
     fun saveEditorItem() {
         val editor = _uiState.value.itemEditor ?: return
-        val itemId = editor.itemId ?: return
+        val title = editor.title.trim()
+        val note = editor.note.trim()
+        if (title.isBlank()) return
         viewModelScope.launch {
-            updateDailyPlanItem(itemId, editor.toWriteInput(editor.status))
+            if (editor.itemId == null) {
+                addManualDoneToDailyPlan(
+                    _uiState.value.selectedDate,
+                    title,
+                    note.takeIf { it.isNotBlank() },
+                    editor.startTimeMinutes,
+                    editor.endTimeMinutes
+                )
+            } else {
+                updateDailyPlanItem(editor.itemId, editor.toWriteInput(editor.status))
+            }
             _uiState.update { it.copy(itemEditor = null) }
         }
     }

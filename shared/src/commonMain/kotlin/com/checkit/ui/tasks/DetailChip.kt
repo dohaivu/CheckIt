@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -47,4 +49,28 @@ internal fun DetailChip(
             )
         }
     }
+}
+
+@Composable
+internal fun TimeRangeDetailChip(
+    startTimeMinutes: Int?,
+    endTimeMinutes: Int?
+) {
+    if (startTimeMinutes == null && endTimeMinutes == null) return
+    DetailChip(
+        icon = Icons.Default.Schedule,
+        label = timeRangeDetailLabel(startTimeMinutes, endTimeMinutes)
+    )
+}
+
+private fun timeRangeDetailLabel(
+    startTimeMinutes: Int?,
+    endTimeMinutes: Int?
+): String = when {
+    startTimeMinutes != null && endTimeMinutes != null -> {
+        "${startTimeMinutes.toClockLabel()} - ${endTimeMinutes.toClockLabel()}"
+    }
+    startTimeMinutes != null -> startTimeMinutes.toClockLabel()
+    endTimeMinutes != null -> "Until ${endTimeMinutes.toClockLabel()}"
+    else -> ""
 }

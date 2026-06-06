@@ -16,6 +16,7 @@ import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.ui.DailyPlanItemEditorState
+import com.checkit.ui.EditorMode
 import com.checkit.ui.MyDayUiState
 import com.checkit.ui.MyDayView
 import com.checkit.ui.today
@@ -83,6 +84,7 @@ class MyDayViewModel(
         _uiState.update {
             it.copy(
                 itemEditor = DailyPlanItemEditorState(
+                    mode = EditorMode.View,
                     itemId = item.id,
                     taskId = item.taskId,
                     title = if (item.source == com.checkit.domain.DailyPlanItemSource.CheckInNote) {
@@ -111,6 +113,7 @@ class MyDayViewModel(
         _uiState.update { it.copy(itemEditor = null) }
     }
 
+    fun editItemEditor() = updateItemEditor { it.copy(mode = EditorMode.Edit) }
     fun updateDoneTitle(title: String) = updateItemEditor { it.copy(title = title) }
     fun updateDoneNote(note: String) = updateItemEditor { it.copy(note = note) }
     fun updateStartTime(timeMinutes: Int?) = updateItemEditor { it.copy(startTimeMinutes = timeMinutes) }

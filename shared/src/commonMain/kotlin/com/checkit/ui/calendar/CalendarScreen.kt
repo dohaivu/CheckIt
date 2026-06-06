@@ -179,6 +179,7 @@ internal fun CalendarScreen(
             onDoneNoteChange = calendarViewModel::updateEditorNote,
             onStartTimeChange = calendarViewModel::updateEditorStartTime,
             onEndTimeChange = calendarViewModel::updateEditorEndTime,
+            onEdit = calendarViewModel::editItemEditor,
             onSave = calendarViewModel::saveEditorItem,
             onDone = calendarViewModel::markEditorDone,
             onDelete = calendarViewModel::deleteEditorItem,

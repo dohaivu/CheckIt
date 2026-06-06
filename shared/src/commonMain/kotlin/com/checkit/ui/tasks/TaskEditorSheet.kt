@@ -338,8 +338,7 @@ private fun TaskViewContent(
                 DetailChip(materialIcon(list.icon), list.name, iconTint = list.color.toColor())
             }
             DetailChip(Icons.Default.Event, form.dueDate?.compact() ?: "No date")
-            form.startTimeMinutes?.let { DetailChip(Icons.Default.Schedule, it.toClockLabel()) }
-            form.endTimeMinutes?.let { DetailChip(Icons.Default.Schedule, it.toClockLabel()) }
+            TimeRangeDetailChip(form.startTimeMinutes, form.endTimeMinutes)
             form.durationMinutes?.let { DetailChip(Icons.Default.Schedule, it.formatDuration()) }
             DetailChip(Icons.Default.CheckCircle, form.status.name)
             if (form.priority != TaskPriority.None) {
@@ -657,7 +656,7 @@ private fun DatePickerRow(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TimePickerRow(
+internal fun TimePickerRow(
     label: String,
     timeMinutes: Int?,
     initialTimeMinutes: Int,
@@ -705,7 +704,7 @@ private fun TimePickerRow(
 }
 
 @Composable
-private fun DurationText(
+internal fun DurationText(
     duration: Int,
     modifier: Modifier = Modifier
 ) {
