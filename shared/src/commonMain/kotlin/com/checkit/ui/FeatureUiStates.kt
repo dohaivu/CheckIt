@@ -107,6 +107,7 @@ enum class MyDayView {
 }
 
 data class DailyPlanItemEditorState(
+    val mode: EditorMode = EditorMode.Add,
     val itemId: Long? = null,
     val taskId: Long? = null,
     val title: String = "",
@@ -115,7 +116,9 @@ data class DailyPlanItemEditorState(
     val startTimeMinutes: Int? = null,
     val endTimeMinutes: Int? = null
 ) {
-    val isAddMode: Boolean get() = itemId == null
+    val isAddMode: Boolean get() = mode == EditorMode.Add
+    val isViewMode: Boolean get() = mode == EditorMode.View
+    val isEditMode: Boolean get() = mode == EditorMode.Edit
     val canDelete: Boolean get() = itemId != null
     val canOpenTask: Boolean get() = taskId != null
 }
