@@ -111,7 +111,8 @@ internal fun TaskEditorSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = sheetState
+        sheetState = sheetState,
+        sheetGesturesEnabled = false
     ) {
         LazyColumn(
             modifier = Modifier

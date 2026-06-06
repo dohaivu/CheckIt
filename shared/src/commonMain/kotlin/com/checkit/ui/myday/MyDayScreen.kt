@@ -120,7 +120,8 @@ internal fun MyDayScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             MyDayViewSelector(
                 selectedView = state.selectedView,
@@ -143,6 +144,7 @@ internal fun MyDayScreen(
                     onToggleDone = { item ->
                         if (item.status == DailyPlanItemStatus.Done) viewModel.markPlanned(item) else viewModel.markDone(item)
                     },
+                    onTaskClick = onTaskClick,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -236,8 +238,10 @@ private fun MyDayTimeline(
 private fun MyDayBoard(
     state: MyDayUiState,
     onToggleDone: (DailyPlanItem) -> Unit,
+    onTaskClick: (TaskItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val taskById = remember(state.board.tasks) { state.board.tasks.associateBy { it.id } }
     LazyColumn(
         modifier = modifier.fillMaxWidth(),
         contentPadding = PaddingValues(bottom = 24.dp),
@@ -248,7 +252,11 @@ private fun MyDayBoard(
             item { EmptyStateText("Nothing planned") }
         } else {
             items(state.plannedItems, key = { "planned-${it.id}" }) { item ->
-                DailyPlanCard(item = item, onToggleDone = { onToggleDone(item) })
+                DailyPlanCard(
+                    item = item,
+                    onToggleDone = { onToggleDone(item) },
+                    onClick = item.taskId?.let { taskId -> { taskById[taskId]?.let(onTaskClick) } }
+                )
             }
         }
         item { SectionLabel("Done") }
@@ -256,7 +264,11 @@ private fun MyDayBoard(
             item { EmptyStateText("Nothing done yet") }
         } else {
             items(state.doneItems, key = { "done-${it.id}" }) { item ->
-                DailyPlanCard(item = item, onToggleDone = { onToggleDone(item) })
+                DailyPlanCard(
+                    item = item,
+                    onToggleDone = { onToggleDone(item) },
+                    onClick = item.taskId?.let { taskId -> { taskById[taskId]?.let(onTaskClick) } }
+                )
             }
         }
     }
@@ -266,11 +278,14 @@ private fun MyDayBoard(
 internal fun DailyPlanCard(
     item: DailyPlanItem,
     onToggleDone: () -> Unit,
+    onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val isDone = item.status == DailyPlanItemStatus.Done
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         shape = RoundedCornerShape(8.dp),
         color = dailyItemColor(item).copy(alpha = 0.11f)
     ) {
@@ -356,7 +371,11 @@ private fun SuggestionsSheet(
     onAddTask: (TaskItem) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss, 
+        sheetState = sheetState,
+        sheetGesturesEnabled = false
+    ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)

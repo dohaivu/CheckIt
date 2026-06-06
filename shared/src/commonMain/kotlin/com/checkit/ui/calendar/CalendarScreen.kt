@@ -76,6 +76,7 @@ internal fun CalendarScreen(
     val notesForDate = state.notesForDate(state.selectedDate)
     val showDailyPlan = state.selectedDate <= today()
     val dailyPlanItems = state.dailyPlanForDate(state.selectedDate)?.items.orEmpty()
+    val taskById = remember(state.board.tasks) { state.board.tasks.associateBy { it.id } }
     val hasItemsForDate = if (showDailyPlan) {
         dailyPlanItems.isNotEmpty()
     } else {
@@ -132,7 +133,11 @@ internal fun CalendarScreen(
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         items(dailyPlanItems, key = { it.id }) { item ->
-                            DailyPlanCard(item = item, onToggleDone = { })
+                            DailyPlanCard(
+                                item = item,
+                                onToggleDone = { },
+                                onClick = item.taskId?.let { taskId -> { taskById[taskId]?.let(onTaskClick) } }
+                            )
                         }
                     }
                 } else {
