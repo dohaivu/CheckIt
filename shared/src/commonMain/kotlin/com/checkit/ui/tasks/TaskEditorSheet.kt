@@ -339,7 +339,7 @@ private fun TaskViewContent(
             }
             DateTimeRangeDetailChip(form.doDate, form.startTimeMinutes, form.endTimeMinutes)
             form.durationMinutes?.let { DetailChip(Icons.Default.Schedule, it.formatDuration()) }
-            DetailChip(Icons.Default.CheckCircle, form.status.name)
+//            DetailChip(Icons.Default.CheckCircle, form.status.name)
             if (form.priority != TaskPriority.None) {
                 PriorityPill(priority = form.priority, selected = true)
             }

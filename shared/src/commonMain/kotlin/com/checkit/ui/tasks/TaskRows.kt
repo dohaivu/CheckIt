@@ -2,6 +2,7 @@ package com.checkit.ui.tasks
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +22,8 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.TaskAlt
+import androidx.compose.material.icons.rounded.CheckBox
+import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -28,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -104,7 +108,7 @@ private fun BriefTaskRowContent(task: TaskItem) {
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        TaskStatusIcon(task.status)
+        TaskStatusIcon(task.status, task.priority)
         Text(
             text = task.name,
             modifier = Modifier.weight(1f),
@@ -113,7 +117,8 @@ private fun BriefTaskRowContent(task: TaskItem) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
-        DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes)
+
+        task.doDate?.let { DetailChip(Icons.Default.Event, it.compact()) }
         if (task.priority != TaskPriority.None) PriorityPill(priority = task.priority)
     }
 }
@@ -121,12 +126,10 @@ private fun BriefTaskRowContent(task: TaskItem) {
 @Composable
 private fun StandardTaskRowContent(task: TaskItem, list: TaskList?) {
     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        TaskTitleRow(task, descriptionMaxLines = 1, showStatusText = false)
+        TaskTitleRow(task, descriptionMaxLines = 1)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes)
             task.durationMinutes?.let { DetailChip(Icons.Default.Schedule, it.formatDuration()) }
-            RepeatPill(task.repeatRRule)
-            if (task.priority != TaskPriority.None) PriorityPill(priority = task.priority)
         }
         task.subtasks.takeIf { it.isNotEmpty() }?.let { SubtaskProgressText(task) }
         SupportingPills(list = list, tags = task.tags.take(2), overflowCount = (task.tags.size - 2).coerceAtLeast(0))
@@ -136,13 +139,12 @@ private fun StandardTaskRowContent(task: TaskItem, list: TaskList?) {
 @Composable
 private fun DetailTaskRowContent(task: TaskItem, list: TaskList?) {
     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        TaskTitleRow(task, descriptionMaxLines = 3, showStatusText = true)
+        TaskTitleRow(task, descriptionMaxLines = 3)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes)
             task.durationMinutes?.let { DetailChip(Icons.Default.Schedule, it.formatDuration()) }
             RepeatPill(task.repeatRRule)
             if (task.reminders.isNotEmpty()) DetailChip(Icons.Default.Notifications, "${task.reminders.size} reminders")
-            if (task.priority != TaskPriority.None) PriorityPill(priority = task.priority)
         }
         task.subtasks.takeIf { it.isNotEmpty() }?.let { SubtaskProgressText(task) }
         SupportingPills(list = list, tags = task.tags)
@@ -182,10 +184,12 @@ private fun DetailNoteRowContent(note: NoteItem, list: TaskList?) {
 private fun TaskTitleRow(
     task: TaskItem,
     descriptionMaxLines: Int,
-    showStatusText: Boolean
 ) {
-    Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        TaskStatusIcon(task.status)
+    Row(
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        TaskStatusIcon(task.status, task.priority)
         Column(Modifier.weight(1f)) {
             Text(task.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             if (task.description.isNotBlank()) {
@@ -194,22 +198,20 @@ private fun TaskTitleRow(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = descriptionMaxLines,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
-        }
-        if (showStatusText) {
-            Text(task.status.name, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
 
 @Composable
-private fun TaskStatusIcon(status: TaskStatus) {
+private fun TaskStatusIcon(status: TaskStatus, priority: TaskPriority) {
     Icon(
-        imageVector = if (status == TaskStatus.Completed) Icons.Default.CheckBox else Icons.Default.CheckBoxOutlineBlank,
+        imageVector = if (status == TaskStatus.Completed) Icons.Rounded.CheckBox else Icons.Rounded.CheckBoxOutlineBlank,
         contentDescription = null,
-        tint = if (status == TaskStatus.Completed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        tint = if (status == TaskStatus.Completed) MaterialTheme.colorScheme.onSurfaceVariant else priority.priorityColor(),
         modifier = Modifier.size(22.dp)
     )
 }

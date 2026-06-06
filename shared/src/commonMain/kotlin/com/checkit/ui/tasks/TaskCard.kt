@@ -124,4 +124,4 @@ internal fun TaskCard(
 }
 
 internal fun taskCardColor(task: TaskItem, list: TaskList?): Color =
-    list?.color?.toColor() ?: task.priority.color()
+    list?.color?.toColor() ?: task.priority.priorityColor()
