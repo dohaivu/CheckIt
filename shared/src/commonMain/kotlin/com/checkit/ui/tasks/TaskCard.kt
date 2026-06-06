@@ -55,7 +55,7 @@ internal fun TaskCard(
     ) {
         Box {
             Row(
-                modifier = Modifier
+                modifier = modifier
                     .height(IntrinsicSize.Min)
                     .heightIn(min = minHeight)
             ) {
