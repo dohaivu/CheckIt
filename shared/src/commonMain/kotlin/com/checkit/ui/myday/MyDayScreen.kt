@@ -76,6 +76,7 @@ import com.checkit.ui.MyDayView
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.tasks.TaskAgendaView
+import com.checkit.ui.tasks.TaskCard
 import com.checkit.ui.tasks.TaskTimelineView
 import kotlinx.datetime.LocalDate
 
@@ -287,6 +288,27 @@ internal fun DailyPlanCard(
     modifier: Modifier = Modifier
 ) {
     val isDone = item.status == DailyPlanItemStatus.Done
+    if (item.taskId != null) {
+        TaskCard(
+            title = item.titleSnapshot.ifBlank { "Untitled task" },
+            timeLabel = item.timeLabel(),
+            supportingText = item.note?.takeIf { it.isNotBlank() },
+            color = dailyItemColor(item),
+            leadingContent = {
+                IconButton(onClick = onToggleDone, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        imageVector = if (isDone) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                        contentDescription = null,
+                        tint = if (isDone) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            onClick = onClick,
+            modifier = modifier
+        )
+        return
+    }
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
