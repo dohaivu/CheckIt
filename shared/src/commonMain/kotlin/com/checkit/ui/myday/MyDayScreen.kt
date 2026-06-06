@@ -303,6 +303,7 @@ internal fun DailyPlanCard(
                     )
                 }
             },
+            completed = isDone,
             onClick = onClick,
             modifier = modifier
         )

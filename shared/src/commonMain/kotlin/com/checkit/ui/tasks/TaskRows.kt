@@ -263,7 +263,7 @@ private fun NoteStatusIcon(status: TaskStatus) {
 }
 
 private const val DefaultNoteRowBackgroundAlpha = 0.55f
-private const val CompletedRowCoverAlpha = 0.62f
+internal const val CompletedRowCoverAlpha = 0.62f
 
 @Composable
 private fun SupportingPills(

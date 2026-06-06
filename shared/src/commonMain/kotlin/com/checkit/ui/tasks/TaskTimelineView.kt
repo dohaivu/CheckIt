@@ -50,6 +50,7 @@ import androidx.compose.ui.zIndex
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskList
+import com.checkit.domain.TaskStatus
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.math.roundToInt
@@ -435,6 +436,7 @@ private fun TimelineTaskCard(
             color = taskCardColor(task, list),
             minHeight = 36.dp,
             titleMaxLines = 1,
+            completed = task.status == TaskStatus.Completed,
             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
             containerAlpha = containerAlpha,
             tonalElevation = if (isSelected) 3.dp else 1.dp,

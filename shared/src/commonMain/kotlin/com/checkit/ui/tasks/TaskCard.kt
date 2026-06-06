@@ -41,6 +41,7 @@ internal fun TaskCard(
     minHeight: Dp = 64.dp,
     contentPadding: PaddingValues = PaddingValues(horizontal = 10.dp, vertical = 10.dp),
     titleMaxLines: Int = 2,
+    completed: Boolean = false,
     containerAlpha: Float = 0.11f,
     tonalElevation: Dp = 0.dp
 ) {
@@ -52,62 +53,71 @@ internal fun TaskCard(
         color = color.copy(alpha = containerAlpha),
         tonalElevation = tonalElevation
     ) {
-        Row(
-            modifier = Modifier
-                .height(IntrinsicSize.Min)
-                .heightIn(min = minHeight)
-        ) {
-            Box(
-                modifier = Modifier
-                    .width(4.dp)
-                    .fillMaxHeight()
-                    .background(color)
-            )
+        Box {
             Row(
                 modifier = Modifier
-                    .weight(1f)
-                    .padding(contentPadding),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.Top
+                    .height(IntrinsicSize.Min)
+                    .heightIn(min = minHeight)
             ) {
-                if (leadingContent != null) {
-                    Box(
-                        modifier = Modifier.padding(top = 2.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        leadingContent()
-                    }
-                }
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                Box(
+                    modifier = Modifier
+                        .width(4.dp)
+                        .fillMaxHeight()
+                        .background(color)
+                )
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(contentPadding),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.Top
                 ) {
-                    if (timeLabel != null) {
-                        Text(
-                            text = timeLabel,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                    if (leadingContent != null) {
+                        Box(
+                            modifier = Modifier.padding(top = 2.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            leadingContent()
+                        }
                     }
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = titleMaxLines,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    if (supportingText != null) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                        if (timeLabel != null) {
+                            Text(
+                                text = timeLabel,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                         Text(
-                            text = supportingText,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
+                            text = title,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = titleMaxLines,
                             overflow = TextOverflow.Ellipsis
                         )
+                        if (supportingText != null) {
+                            Text(
+                                text = supportingText,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
+            }
+            if (completed) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = CompletedRowCoverAlpha))
+                )
             }
         }
     }

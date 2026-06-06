@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskList
+import com.checkit.domain.TaskStatus
 import com.checkit.ui.shortName
 import com.checkit.ui.shortMonthName
 import com.checkit.ui.today
@@ -206,6 +207,7 @@ private fun AgendaAllDayRow(
                     title = task.name.ifBlank { "Untitled task" },
                     supportingText = if (showListName) lists[task.listId]?.name else null,
                     color = taskCardColor(task, lists[task.listId]),
+                    completed = task.status == TaskStatus.Completed,
                     onClick = { onTaskClick(task) }
                 )
             }
@@ -215,6 +217,7 @@ private fun AgendaAllDayRow(
                     supportingText = if (showListName) lists[note.listId]?.name else null,
                     color = lists[note.listId]?.color?.toColor() ?: MaterialTheme.colorScheme.secondary,
                     leadingContent = { Icon(Icons.Default.Notes, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                    completed = note.status == TaskStatus.Completed,
                     onClick = { onNoteClick(note) }
                 )
             }
@@ -240,6 +243,7 @@ private fun AgendaTimedTaskRow(
             timeLabel = task.timeRangeLabel(),
             supportingText = list?.name,
             color = taskCardColor(task, list),
+            completed = task.status == TaskStatus.Completed,
             onClick = onClick
         )
     }
