@@ -89,17 +89,13 @@ import com.checkit.ui.tasks.TaskAgendaView
 import com.checkit.ui.tasks.TaskCard
 import com.checkit.ui.tasks.TaskTimelineView
 import com.checkit.ui.tasks.DetailChip
-import com.checkit.ui.tasks.DurationText
 import com.checkit.ui.tasks.TimeRangeDetailChip
-import com.checkit.ui.tasks.TimePickerRow
+import com.checkit.ui.tasks.TimeRangePicker
 import com.checkit.ui.tasks.editorTextFieldColors
 import com.checkit.ui.tasks.taskCardColor
 import com.checkit.ui.tasks.timeRangeLabel
 import com.checkit.ui.tasks.toClockLabel
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
-import kotlin.time.Clock
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -679,17 +675,17 @@ private fun DailyPlanItemViewContent(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            DetailChip(Icons.Default.Event, "My Day")
+//        FlowRow(
+//            horizontalArrangement = Arrangement.spacedBy(8.dp),
+//            verticalArrangement = Arrangement.spacedBy(8.dp)
+//        ) {
+//            DetailChip(Icons.Default.Event, "My Day")
             TimeRangeDetailChip(state.startTimeMinutes, state.endTimeMinutes)
-            DetailChip(Icons.Default.CheckCircle, if (state.status == DailyPlanItemStatus.Done) "Done" else "Planned")
-            if (hasTask) {
-                DetailChip(Icons.Default.TaskAlt, "Task")
-            }
-        }
+//            DetailChip(Icons.Default.CheckCircle, if (state.status == DailyPlanItemStatus.Done) "Done" else "Planned")
+//            if (hasTask) {
+//                DetailChip(Icons.Default.TaskAlt, "Task")
+//            }
+//        }
     }
 }
 
@@ -724,30 +720,13 @@ private fun DailyPlanItemFormContent(
             shape = MaterialTheme.shapes.medium,
             colors = editorTextFieldColors()
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            TimePickerRow(
-                label = "Start",
-                timeMinutes = state.startTimeMinutes,
-                initialTimeMinutes = currentMyDayTimeMinutes(),
-                onTimeChange = onStartTimeChange,
-                modifier = Modifier.weight(1f)
-            )
-            state.durationMinutes()?.let { duration ->
-                DurationText(
-                    duration = duration,
-                    modifier = Modifier.align(Alignment.CenterVertically)
-                )
-            }
-            TimePickerRow(
-                label = "End",
-                timeMinutes = state.endTimeMinutes,
-                initialTimeMinutes = ((state.startTimeMinutes ?: currentMyDayTimeMinutes()) + 60)
-                    .coerceAtMost(MyDayMinutesPerDay - 1),
-                enabled = state.startTimeMinutes != null,
-                onTimeChange = onEndTimeChange,
-                modifier = Modifier.weight(1f)
-            )
-        }
+        TimeRangePicker(
+            startTimeMinutes = state.startTimeMinutes,
+            endTimeMinutes = state.endTimeMinutes,
+            durationMinutes = state.durationMinutes(),
+            onStartTimeChange = onStartTimeChange,
+            onEndTimeChange = onEndTimeChange
+        )
     }
 }
 
@@ -909,18 +888,12 @@ private fun Int.toDurationLabel(): String {
     }
 }
 
-private fun currentMyDayTimeMinutes(): Int {
-    val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).time
-    return now.hour * 60 + now.minute
-}
-
 private fun MyDayView.icon(): ImageVector = when (this) {
     MyDayView.Agenda -> Icons.Default.ViewAgenda
     MyDayView.Timeline -> Icons.Default.Schedule
     MyDayView.Board -> Icons.Default.Dashboard
 }
 
-private const val MyDayMinutesPerDay = 24 * 60
 private const val MyDayListId = -10_000L
 private const val DayTimelineStartMinutes = 6 * 60
 private const val DayTimelineEndMinutes = 22 * 60

@@ -74,10 +74,13 @@ import com.checkit.domain.TaskTag
 import com.checkit.ui.EditorMode
 import com.checkit.ui.RepeatPreset
 import com.checkit.ui.TaskEditorState
+import com.checkit.ui.today
 import com.checkit.ui.toUtcLocalDate
 import com.checkit.ui.toUtcStartMillis
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 
@@ -550,30 +553,18 @@ private fun TaskFormContent(
                 lists = availableLists,
                 onListChange = onListChange
             )
-            DatePickerRow(date = form.doDate, onDateChange = onDueDateChange)
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                TimePickerRow(
-                    label = "Start",
-                    timeMinutes = form.startTimeMinutes,
-                    initialTimeMinutes = currentTimeMinutes(),
-                    onTimeChange = onStartTimeChange,
-                    modifier = Modifier.weight(1f)
-                )
-                form.durationMinutes?.let { duration ->
-                    DurationText(
-                        duration = duration,
-                        modifier = Modifier.align(Alignment.CenterVertically)
-                    )
-                }
-                TimePickerRow(
-                    label = "End",
-                    timeMinutes = form.endTimeMinutes,
-                    initialTimeMinutes = ((form.startTimeMinutes ?: currentTimeMinutes()) + 60).coerceAtMost(MinutesPerDay - 1),
-                    enabled = form.startTimeMinutes != null,
-                    onTimeChange = onEndTimeChange,
-                    modifier = Modifier.weight(1f)
-                )
-            }
+            DatePickerRow(
+                date = form.doDate,
+                onDateChange = onDueDateChange,
+                showShortcuts = true
+            )
+            TimeRangePicker(
+                startTimeMinutes = form.startTimeMinutes,
+                endTimeMinutes = form.endTimeMinutes,
+                durationMinutes = form.durationMinutes,
+                onStartTimeChange = onStartTimeChange,
+                onEndTimeChange = onEndTimeChange
+            )
         }
         EditorSection {
             PriorityPickerRow(selected = form.priority, onSelect = onPriorityChange)
@@ -617,16 +608,25 @@ fun editorTextFieldColors() = TextFieldDefaults.colors(
 @Composable
 private fun DatePickerRow(
     date: LocalDate?,
-    onDateChange: (LocalDate?) -> Unit
+    onDateChange: (LocalDate?) -> Unit,
+    showShortcuts: Boolean = false
 ) {
     var showPicker by remember { mutableStateOf(false) }
-    SelectableInfoRow(
-        icon = Icons.Default.Event,
-        label = "Date",
-        value = date?.compact() ?: "No date",
-        onClick = { showPicker = true },
-        onClear = if (date == null) null else ({ onDateChange(null) })
-    )
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SelectableInfoRow(
+            icon = Icons.Default.Event,
+            label = "Date",
+            value = date?.compact() ?: "No date",
+            onClick = { showPicker = true },
+            onClear = if (date == null) null else ({ onDateChange(null) })
+        )
+        if (showShortcuts) {
+            PickerShortcutRow {
+                PickerShortcut("Today", onClick = { onDateChange(today()) })
+                PickerShortcut("Tomorrow", onClick = { onDateChange(today().plus(1, DateTimeUnit.DAY)) })
+            }
+        }
+    }
     if (showPicker) {
         val datePickerState = rememberDatePickerState(initialSelectedDateMillis = date?.toUtcStartMillis())
         DatePickerDialog(
@@ -698,6 +698,102 @@ internal fun TimePickerRow(
             },
             text = { TimePicker(state = timePickerState) }
         )
+    }
+}
+
+@Composable
+internal fun TimeRangePicker(
+    startTimeMinutes: Int?,
+    endTimeMinutes: Int?,
+    durationMinutes: Int?,
+    onStartTimeChange: (Int?) -> Unit,
+    onEndTimeChange: (Int?) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            TimePickerRow(
+                label = "Start",
+                timeMinutes = startTimeMinutes,
+                initialTimeMinutes = currentTimeMinutes(),
+                onTimeChange = {value ->
+                    onStartTimeChange.invoke(value)
+                    if (value == null && endTimeMinutes != null) onEndTimeChange.invoke(null)
+                },
+                modifier = Modifier.weight(1f)
+            )
+            durationMinutes?.let { duration ->
+                DurationText(
+                    duration = duration,
+                    modifier = Modifier.align(Alignment.CenterVertically)
+                )
+            }
+            TimePickerRow(
+                label = "End",
+                timeMinutes = endTimeMinutes,
+                initialTimeMinutes = ((startTimeMinutes ?: currentTimeMinutes()) + 60).coerceAtMost(MinutesPerDay - 1),
+                enabled = startTimeMinutes != null,
+                onTimeChange = onEndTimeChange,
+                modifier = Modifier.weight(1f)
+            )
+        }
+        PickerShortcutRow {
+            TimeRangeShortcutDurations.forEach { duration ->
+                PickerShortcut(
+                    text = duration.shortcutDurationLabel(),
+                    onClick = {
+                        val start = startTimeMinutes ?: currentTimeMinutes()
+                        onStartTimeChange(start)
+                        onEndTimeChange((start + duration).coerceAtMost(MinutesPerDay - 1))
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PickerShortcutRow(content: @Composable () -> Unit) {
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        content()
+    }
+}
+
+@Composable
+private fun PickerShortcut(
+    text: String,
+    enabled: Boolean = true,
+    onClick: () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = if (enabled) {
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.26f)
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.12f)
+        },
+        contentColor = if (enabled) {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
+        },
+        modifier = Modifier
+            .height(30.dp)
+            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
+    ) {
+        Box(
+            modifier = Modifier.padding(horizontal = 10.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(text = text, style = MaterialTheme.typography.labelMedium)
+        }
     }
 }
 
@@ -909,29 +1005,40 @@ private fun SelectableInfoRow(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f)
+        shape = RoundedCornerShape(10.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.22f)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+                .padding(horizontal = 12.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.size(28.dp)
+            )
             Column(Modifier.weight(1f)) {
-                Text(text = value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                Text(text = value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(
                     text = label,
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             onClear?.let {
-                IconButton(onClick = it, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Delete, contentDescription = "Clear")
+                IconButton(onClick = it, modifier = Modifier.size(28.dp)) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Clear",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.58f),
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
             }
         }
@@ -1042,4 +1149,12 @@ private fun currentTimeMinutes(): Int {
     return now.hour * 60 + now.minute
 }
 
+private fun Int.shortcutDurationLabel(): String =
+    when {
+        this < 60 -> "${this}m"
+        this % 60 == 0 -> "${this / 60}h"
+        else -> "${this / 60}h ${this % 60}m"
+    }
+
 private const val MinutesPerDay = 24 * 60
+private val TimeRangeShortcutDurations = listOf(30, 60, 120)
