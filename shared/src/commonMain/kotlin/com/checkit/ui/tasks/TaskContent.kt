@@ -1,11 +1,14 @@
 package com.checkit.ui.tasks
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,13 +34,15 @@ internal fun TaskContent(
 ) {
     val showListName = state.selectedList == null
     Column(modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 4.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = state.title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.weight(1f)
-            )
+        Row(modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.End
+        ) {
+            if (state.selectedView == TaskWorkspaceView.List) {
+                ListDisplayTypeMenu(selected = state.listDisplayType, onSelect = onListDisplayTypeChange)
+                Spacer(modifier = Modifier.width(4.dp))
+            }
+
             Text(
                 text = "${state.visibleTasks.size} tasks · ${state.visibleNotes.size} notes",
                 style = MaterialTheme.typography.bodySmall,
@@ -52,7 +57,6 @@ internal fun TaskContent(
                 lists = state.board.lists,
                 showListName = showListName,
                 displayType = state.listDisplayType,
-                onDisplayTypeChange = onListDisplayTypeChange,
                 onTaskClick = onTaskClick,
                 onNoteClick = onNoteClick,
                 modifier = Modifier.weight(1f)

@@ -82,13 +82,6 @@ internal fun materialIcon(name: String): ImageVector = when (name) {
     else -> Icons.Default.LocalOffer
 }
 
-internal fun TaskPriority.color(): Color = when (this) {
-    TaskPriority.None,
-    TaskPriority.Low,
-    TaskPriority.Medium,
-    TaskPriority.High -> priorityColor()
-}
-
 internal fun String.toColor(): Color =
     removePrefix("#")
         .toIntOrNull(16)

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -18,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.datetime.LocalDate
 
 @Composable
 internal fun DetailChip(
@@ -61,6 +63,34 @@ internal fun TimeRangeDetailChip(
         icon = Icons.Default.Schedule,
         label = timeRangeDetailLabel(startTimeMinutes, endTimeMinutes)
     )
+}
+
+@Composable
+internal fun DateTimeRangeDetailChip(
+    date: LocalDate?,
+    startTimeMinutes: Int?,
+    endTimeMinutes: Int?
+) {
+    if (date == null && startTimeMinutes == null && endTimeMinutes == null) return
+    DetailChip(
+        icon = if (date == null) Icons.Default.Schedule else Icons.Default.Event,
+        label = dateTimeRangeDetailLabel(date, startTimeMinutes, endTimeMinutes)
+    )
+}
+
+private fun dateTimeRangeDetailLabel(
+    date: LocalDate?,
+    startTimeMinutes: Int?,
+    endTimeMinutes: Int?
+): String {
+    val timeLabel = timeRangeDetailLabel(startTimeMinutes, endTimeMinutes).takeIf { it.isNotBlank() }
+    val dateLabel = date?.compact()
+    return when {
+        dateLabel != null && timeLabel != null -> "$dateLabel $timeLabel"
+        dateLabel != null -> dateLabel
+        timeLabel != null -> timeLabel
+        else -> ""
+    }
 }
 
 private fun timeRangeDetailLabel(

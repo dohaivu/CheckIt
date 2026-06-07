@@ -81,21 +81,19 @@ import com.checkit.ui.MyDayUiState
 import com.checkit.ui.MyDayView
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.localizedCompactDateWithDayName
+import com.checkit.ui.parseHexColorOrNull
 import com.checkit.ui.tasks.TaskAgendaView
 import com.checkit.ui.tasks.TaskCard
 import com.checkit.ui.tasks.TaskTimelineView
 import com.checkit.ui.tasks.DetailChip
-import com.checkit.ui.tasks.DurationText
 import com.checkit.ui.tasks.TimeRangeDetailChip
-import com.checkit.ui.tasks.TimePickerRow
+import com.checkit.ui.tasks.TimeRangePicker
 import com.checkit.ui.tasks.editorTextFieldColors
+import com.checkit.ui.tasks.priorityColor
 import com.checkit.ui.tasks.taskCardColor
 import com.checkit.ui.tasks.timeRangeLabel
 import com.checkit.ui.tasks.toClockLabel
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
-import kotlin.time.Clock
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -146,6 +144,11 @@ internal fun MyDayScreen(
                 selectedView = state.selectedView,
                 onSelect = viewModel::selectView
             )
+            DayLinearTimeline(
+                items = state.items,
+                board = state.board,
+                modifier = Modifier.fillMaxWidth()
+            )
             when (state.selectedView) {
                 MyDayView.Agenda -> MyDayAgenda(
                     state = state,
@@ -155,6 +158,7 @@ internal fun MyDayScreen(
                 MyDayView.Timeline -> MyDayTimeline(
                     state = state,
                     onItemClick = viewModel::openItemEditor,
+                    onCreateTask = viewModel::createFromTimelineRange,
                     onTaskTimeChange = viewModel::updateItemTime,
                     modifier = Modifier.weight(1f)
                 )
@@ -258,6 +262,7 @@ internal fun DailyPlanAgenda(
 private fun MyDayTimeline(
     state: MyDayUiState,
     onItemClick: (DailyPlanItem) -> Unit,
+    onCreateTask: (Int, Int) -> Unit,
     onTaskTimeChange: (DailyPlanItem, Int, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -271,7 +276,7 @@ private fun MyDayTimeline(
         showListName = false,
         onTaskClick = { task -> projection.dailyItemFor(task)?.let(onItemClick) },
         onNoteClick = { note -> projection.dailyItemFor(note)?.let(onItemClick) },
-        onCreateTask = { _, _ -> },
+        onCreateTask = onCreateTask,
         onTaskTimeChange = { task, start, end ->
             projection.dailyItemFor(task)?.let { onTaskTimeChange(it, start, end) }
         },
@@ -370,7 +375,7 @@ private fun SuggestionCard(
         TaskCard(
             title = task.name.ifBlank { "Untitled task" },
             timeLabel = task.timeRangeLabel(),
-            supportingText = task.dueDate?.localizedCompactDateWithDayName() ?: list?.name,
+            supportingText = task.doDate?.localizedCompactDateWithDayName() ?: list?.name,
             color = taskCardColor(task, list),
             onClick = onClick,
             modifier = Modifier.fillMaxWidth()
@@ -622,17 +627,17 @@ private fun DailyPlanItemViewContent(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            DetailChip(Icons.Default.Event, "My Day")
+//        FlowRow(
+//            horizontalArrangement = Arrangement.spacedBy(8.dp),
+//            verticalArrangement = Arrangement.spacedBy(8.dp)
+//        ) {
+//            DetailChip(Icons.Default.Event, "My Day")
             TimeRangeDetailChip(state.startTimeMinutes, state.endTimeMinutes)
-            DetailChip(Icons.Default.CheckCircle, if (state.status == DailyPlanItemStatus.Done) "Done" else "Planned")
-            if (hasTask) {
-                DetailChip(Icons.Default.TaskAlt, "Task")
-            }
-        }
+//            DetailChip(Icons.Default.CheckCircle, if (state.status == DailyPlanItemStatus.Done) "Done" else "Planned")
+//            if (hasTask) {
+//                DetailChip(Icons.Default.TaskAlt, "Task")
+//            }
+//        }
     }
 }
 
@@ -667,30 +672,13 @@ private fun DailyPlanItemFormContent(
             shape = MaterialTheme.shapes.medium,
             colors = editorTextFieldColors()
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            TimePickerRow(
-                label = "Start",
-                timeMinutes = state.startTimeMinutes,
-                initialTimeMinutes = currentMyDayTimeMinutes(),
-                onTimeChange = onStartTimeChange,
-                modifier = Modifier.weight(1f)
-            )
-            state.durationMinutes()?.let { duration ->
-                DurationText(
-                    duration = duration,
-                    modifier = Modifier.align(Alignment.CenterVertically)
-                )
-            }
-            TimePickerRow(
-                label = "End",
-                timeMinutes = state.endTimeMinutes,
-                initialTimeMinutes = ((state.startTimeMinutes ?: currentMyDayTimeMinutes()) + 60)
-                    .coerceAtMost(MyDayMinutesPerDay - 1),
-                enabled = state.startTimeMinutes != null,
-                onTimeChange = onEndTimeChange,
-                modifier = Modifier.weight(1f)
-            )
-        }
+        TimeRangePicker(
+            startTimeMinutes = state.startTimeMinutes,
+            endTimeMinutes = state.endTimeMinutes,
+            durationMinutes = state.durationMinutes(),
+            onStartTimeChange = onStartTimeChange,
+            onEndTimeChange = onEndTimeChange
+        )
     }
 }
 
@@ -743,7 +731,7 @@ private fun List<DailyPlanItem>.toTaskViewProjection(
                 val realTask = item.taskId?.let { realTasksById[it] }
                 val projectedTask = realTask?.copy(
                     id = item.id,
-                    dueDate = date,
+                    doDate = date,
                     startTimeMinutes = item.startTimeMinutes,
                     endTimeMinutes = item.endTimeMinutes,
                     status = item.status.toTaskStatus(),
@@ -755,7 +743,7 @@ private fun List<DailyPlanItem>.toTaskViewProjection(
                     description = item.note.orEmpty(),
                     status = item.status.toTaskStatus(),
                     priority = TaskPriority.None,
-                    dueDate = date,
+                    doDate = date,
                     completedDate = date.takeIf { item.status == DailyPlanItemStatus.Done },
                     startTimeMinutes = item.startTimeMinutes,
                     endTimeMinutes = item.endTimeMinutes,
@@ -796,18 +784,12 @@ private fun DailyPlanItemEditorState.durationMinutes(): Int? {
     return (end - start).takeIf { it >= 0 }
 }
 
-private fun currentMyDayTimeMinutes(): Int {
-    val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).time
-    return now.hour * 60 + now.minute
-}
-
 private fun MyDayView.icon(): ImageVector = when (this) {
     MyDayView.Agenda -> Icons.Default.ViewAgenda
     MyDayView.Timeline -> Icons.Default.Schedule
     MyDayView.Board -> Icons.Default.Dashboard
 }
 
-private const val MyDayMinutesPerDay = 24 * 60
 private const val MyDayListId = -10_000L
 
 private fun MyDayView.label(): String = when (this) {
@@ -840,38 +822,4 @@ private fun DailyPlanItemSource.label(): String = when (this) {
     DailyPlanItemSource.QuickTask -> "Quick task"
     DailyPlanItemSource.CheckInManualDone -> "CheckIn done"
     DailyPlanItemSource.CheckInNote -> "CheckIn note"
-}
-
-private fun dailyItemColor(task: TaskItem?, list: TaskList?): Color =
-    list?.color?.parseHexColorOrNull()
-        ?: task?.priorityColor()
-        ?: Color(0xFF64748B)
-
-private fun TaskItem.priorityColor(): Color = when (priority.name) {
-    "High" -> Color(0xFFDC2626)
-    "Medium" -> Color(0xFFCA8A04)
-    "Low" -> Color(0xFF2563EB)
-    else -> Color(0xFF64748B)
-}
-
-private fun String.parseHexColorOrNull(): Color? =
-    removePrefix("#")
-        .toIntOrNull(16)
-        ?.let { rgb ->
-            Color(
-                red = ((rgb shr 16) and 0xFF) / 255f,
-                green = ((rgb shr 8) and 0xFF) / 255f,
-                blue = (rgb and 0xFF) / 255f
-            )
-        }
-
-private fun Int.toClockLabel(): String {
-    val hour = this / 60
-    val minute = this % 60
-    val suffix = if (hour >= 12) "PM" else "AM"
-    val displayHour = when (val normalized = hour % 12) {
-        0 -> 12
-        else -> normalized
-    }
-    return "$displayHour:${minute.toString().padStart(2, '0')} $suffix"
 }

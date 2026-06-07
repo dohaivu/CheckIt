@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.Flow
 data class UserSettings(
     val languageCode: String = "en",
     val themeModeCode: String = "system",
-    val colorSchemeModeCode: String = "sunset",
+    val colorSchemeModeCode: String = "sky_blue",
     val planReminderEnabled: Boolean = true,
     val planReminderTimeMinutes: Int = 7 * 60,
     val reviewReminderEnabled: Boolean = true,

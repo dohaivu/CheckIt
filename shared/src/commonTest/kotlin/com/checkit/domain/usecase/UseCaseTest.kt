@@ -20,9 +20,9 @@ class UseCaseTest {
     fun todayFilterReturnsTasksDueTodayOnly() {
         val board = TaskBoard(
             tasks = listOf(
-                task(id = 1, dueDate = today),
-                task(id = 2, dueDate = LocalDate(2026, 6, 5)),
-                task(id = 3, dueDate = null)
+                task(id = 1, doDate = today),
+                task(id = 2, doDate = LocalDate(2026, 6, 5)),
+                task(id = 3, doDate = null)
             )
         )
         val filter = TaskFilter(
@@ -118,8 +118,8 @@ class UseCaseTest {
     fun allFilterReturnsAllNonTrashedTasks() {
         val board = TaskBoard(
             tasks = listOf(
-                task(id = 1, dueDate = today),
-                task(id = 2, dueDate = LocalDate(2026, 6, 5), status = TaskStatus.Completed),
+                task(id = 1, doDate = today),
+                task(id = 2, doDate = LocalDate(2026, 6, 5), status = TaskStatus.Completed),
                 task(id = 3, trashedAtMillis = 1000L),
                 task(id = 4, priority = TaskPriority.High)
             )
@@ -227,7 +227,7 @@ class UseCaseTest {
 
     private fun task(
         id: Long,
-        dueDate: LocalDate? = null,
+        doDate: LocalDate? = null,
         tags: List<TaskTag> = emptyList(),
         priority: TaskPriority = TaskPriority.None,
         status: TaskStatus = TaskStatus.Open,
@@ -239,7 +239,7 @@ class UseCaseTest {
         tags = tags,
         priority = priority,
         status = status,
-        dueDate = dueDate,
+        doDate = doDate,
         sortOrder = id.toInt(),
         createdAtMillis = 0L,
         updatedAtMillis = 0L,

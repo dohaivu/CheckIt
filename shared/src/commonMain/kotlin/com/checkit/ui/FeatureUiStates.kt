@@ -73,6 +73,8 @@ data class MyDayUiState(
     val selectedView: MyDayView = MyDayView.Agenda,
     val itemEditor: DailyPlanItemEditorState? = null,
     val showSuggestions: Boolean = false,
+    val suggestionStartTimeMinutes: Int? = null,
+    val suggestionEndTimeMinutes: Int? = null,
     val isLoading: Boolean = true,
     val message: String? = null
 ) {
@@ -88,7 +90,7 @@ data class MyDayUiState(
                 task.status != TaskStatus.Completed &&
                 task.id !in itemTaskIds
         }
-        .sortedWith(compareBy<TaskItem> { it.dueDate ?: LocalDate.fromEpochDays(Int.MAX_VALUE) }.thenBy { it.sortOrder })
+        .sortedWith(compareBy<TaskItem> { it.doDate ?: LocalDate.fromEpochDays(Int.MAX_VALUE) }.thenBy { it.sortOrder })
 }
 
 data class ReminderSettingsUiState(
@@ -130,7 +132,7 @@ sealed interface TaskEditorState {
         val listId: Long,
         val name: String = "",
         val description: String = "",
-        val dueDate: LocalDate? = null,
+        val doDate: LocalDate? = null,
         val startTimeMinutes: Int? = null,
         val endTimeMinutes: Int? = null,
         val repeatPreset: RepeatPreset = RepeatPreset.None,
@@ -256,7 +258,7 @@ data class CalendarUiState(
     val dailyPlanByDate: Map<kotlinx.datetime.LocalDate, DailyPlan> = dailyPlans.associateBy { it.date }
 
     fun tasksForDate(date: kotlinx.datetime.LocalDate): List<TaskItem> =
-        board.tasks.filter { !it.isTrashed && it.status != TaskStatus.Completed && it.dueDate == date }
+        board.tasks.filter { !it.isTrashed && it.status != TaskStatus.Completed && it.doDate == date }
 
     fun notesForDate(date: kotlinx.datetime.LocalDate): List<NoteItem> =
         board.notes.filter { !it.isTrashed && it.status != TaskStatus.Completed && it.date == date }
@@ -292,7 +294,7 @@ data class CalendarUiState(
     }
 }
 
-private fun String.parseHexColorOrNull(): Color? {
+internal fun String.parseHexColorOrNull(): Color? {
     val hex = removePrefix("#")
     val rgb = hex.toIntOrNull(16) ?: return null
     return Color(

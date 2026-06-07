@@ -12,15 +12,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckBox
-import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.TaskAlt
+import androidx.compose.material.icons.rounded.CheckBox
+import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -104,7 +102,7 @@ private fun BriefTaskRowContent(task: TaskItem) {
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        TaskStatusIcon(task.status)
+        TaskStatusIcon(task.status, task.priority)
         Text(
             text = task.name,
             modifier = Modifier.weight(1f),
@@ -113,8 +111,8 @@ private fun BriefTaskRowContent(task: TaskItem) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
-        task.startTimeMinutes?.let { DetailChip(Icons.Default.Schedule, it.toClockLabel()) }
-            ?: task.dueDate?.let { DetailChip(Icons.Default.Event, it.compact()) }
+
+        task.doDate?.let { DetailChip(Icons.Default.Event, it.compact()) }
         if (task.priority != TaskPriority.None) PriorityPill(priority = task.priority)
     }
 }
@@ -122,12 +120,10 @@ private fun BriefTaskRowContent(task: TaskItem) {
 @Composable
 private fun StandardTaskRowContent(task: TaskItem, list: TaskList?) {
     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        TaskTitleRow(task, descriptionMaxLines = 1, showStatusText = false)
+        TaskTitleRow(task, descriptionMaxLines = 1)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            task.dueDate?.let { DetailChip(Icons.Default.Event, it.compact()) }
+            DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes)
             task.durationMinutes?.let { DetailChip(Icons.Default.Schedule, it.formatDuration()) }
-            RepeatPill(task.repeatRRule)
-            if (task.priority != TaskPriority.None) PriorityPill(priority = task.priority)
         }
         task.subtasks.takeIf { it.isNotEmpty() }?.let { SubtaskProgressText(task) }
         SupportingPills(list = list, tags = task.tags.take(2), overflowCount = (task.tags.size - 2).coerceAtLeast(0))
@@ -137,15 +133,12 @@ private fun StandardTaskRowContent(task: TaskItem, list: TaskList?) {
 @Composable
 private fun DetailTaskRowContent(task: TaskItem, list: TaskList?) {
     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        TaskTitleRow(task, descriptionMaxLines = 3, showStatusText = true)
+        TaskTitleRow(task, descriptionMaxLines = 3)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            task.dueDate?.let { DetailChip(Icons.Default.Event, it.compact()) }
-            task.startTimeMinutes?.let { DetailChip(Icons.Default.Schedule, it.toClockLabel()) }
-            task.endTimeMinutes?.let { DetailChip(Icons.Default.Schedule, it.toClockLabel()) }
+            DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes)
             task.durationMinutes?.let { DetailChip(Icons.Default.Schedule, it.formatDuration()) }
             RepeatPill(task.repeatRRule)
             if (task.reminders.isNotEmpty()) DetailChip(Icons.Default.Notifications, "${task.reminders.size} reminders")
-            if (task.priority != TaskPriority.None) PriorityPill(priority = task.priority)
         }
         task.subtasks.takeIf { it.isNotEmpty() }?.let { SubtaskProgressText(task) }
         SupportingPills(list = list, tags = task.tags)
@@ -185,10 +178,12 @@ private fun DetailNoteRowContent(note: NoteItem, list: TaskList?) {
 private fun TaskTitleRow(
     task: TaskItem,
     descriptionMaxLines: Int,
-    showStatusText: Boolean
 ) {
-    Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        TaskStatusIcon(task.status)
+    Row(
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        TaskStatusIcon(task.status, task.priority)
         Column(Modifier.weight(1f)) {
             Text(task.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             if (task.description.isNotBlank()) {
@@ -197,22 +192,20 @@ private fun TaskTitleRow(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = descriptionMaxLines,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
-        }
-        if (showStatusText) {
-            Text(task.status.name, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
 
 @Composable
-private fun TaskStatusIcon(status: TaskStatus) {
+private fun TaskStatusIcon(status: TaskStatus, priority: TaskPriority) {
     Icon(
-        imageVector = if (status == TaskStatus.Completed) Icons.Default.CheckBox else Icons.Default.CheckBoxOutlineBlank,
+        imageVector = if (status == TaskStatus.Completed) Icons.Rounded.CheckBox else Icons.Rounded.CheckBoxOutlineBlank,
         contentDescription = null,
-        tint = if (status == TaskStatus.Completed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        tint = if (status == TaskStatus.Completed) MaterialTheme.colorScheme.onSurfaceVariant else priority.priorityColor(),
         modifier = Modifier.size(22.dp)
     )
 }
@@ -265,33 +258,3 @@ private fun NoteStatusIcon(status: TaskStatus) {
 private const val DefaultNoteRowBackgroundAlpha = 0.55f
 internal const val CompletedRowCoverAlpha = 0.62f
 
-@Composable
-private fun SupportingPills(
-    list: TaskList?,
-    tags: List<com.checkit.domain.TaskTag>,
-    overflowCount: Int = 0
-) {
-    if (list == null && tags.isEmpty() && overflowCount == 0) return
-    FlowRow(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        list?.let {
-            DetailChip(
-                icon = materialIcon(it.icon),
-                label = it.name,
-                iconTint = it.color.toColor()
-            )
-        }
-        tags.forEach { tag -> TaskTagPill(tag = tag) }
-        if (overflowCount > 0) {
-            Text(
-                text = "+$overflowCount",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp)
-            )
-        }
-    }
-}

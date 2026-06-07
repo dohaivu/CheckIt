@@ -186,7 +186,7 @@ class SelectTaskBoardItemsUseCase {
         }
 
         return TaskBoardItems(
-            tasks = listFilteredTasks.sortedWith(compareBy<TaskItem> { it.sortOrder }.thenBy { it.dueDate }),
+            tasks = listFilteredTasks.sortedWith(compareBy<TaskItem> { it.sortOrder }.thenBy { it.doDate }),
             notes = listFilteredNotes.sortedBy { it.sortOrder }
         )
     }
@@ -214,10 +214,10 @@ private fun TaskItem.matches(filter: TaskFilter, today: LocalDate): Boolean {
 
 private fun TaskItem.matchesDueDate(preset: DueDatePreset, today: LocalDate): Boolean =
     when (preset) {
-        DueDatePreset.Today -> dueDate == today
-        DueDatePreset.Upcoming -> dueDate != null && dueDate >= today && dueDate <= today.plus(7, DateTimeUnit.DAY)
-        DueDatePreset.Overdue -> dueDate != null && dueDate < today && status != TaskStatus.Completed
-        DueDatePreset.Someday -> dueDate == null && priority == TaskPriority.None
+        DueDatePreset.Today -> doDate == today
+        DueDatePreset.Upcoming -> doDate != null && doDate >= today && doDate <= today.plus(7, DateTimeUnit.DAY)
+        DueDatePreset.Overdue -> doDate != null && doDate < today && status != TaskStatus.Completed
+        DueDatePreset.Someday -> doDate == null && priority == TaskPriority.None
     }
 
 private fun NoteItem.matches(filter: TaskFilter, today: LocalDate): Boolean {

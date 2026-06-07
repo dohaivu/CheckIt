@@ -86,6 +86,26 @@ class TaskTimelineMathTest {
     }
 
     @Test
+    fun resizeTimelineStartSnapsResultToNearestQuarterHour() {
+        assertEquals(
+            9 * 60 to 10 * 60,
+            resizeTimelineStart(
+                startTimeMinutes = 9 * 60 + 7,
+                endTimeMinutes = 10 * 60,
+                deltaMinutes = 0
+            )
+        )
+        assertEquals(
+            9 * 60 + 15 to 10 * 60,
+            resizeTimelineStart(
+                startTimeMinutes = 9 * 60 + 8,
+                endTimeMinutes = 10 * 60,
+                deltaMinutes = 0
+            )
+        )
+    }
+
+    @Test
     fun resizeTimelineEndKeepsStartAndMinimumDuration() {
         assertEquals(
             9 * 60 to 10 * 60 + 15,
@@ -99,6 +119,46 @@ class TaskTimelineMathTest {
             9 * 60 to 9 * 60 + 15,
             resizeTimelineEnd(
                 startTimeMinutes = 9 * 60,
+                endTimeMinutes = 10 * 60,
+                deltaMinutes = -90
+            )
+        )
+    }
+
+    @Test
+    fun resizeTimelineEndSnapsResultToNearestQuarterHour() {
+        assertEquals(
+            9 * 60 to 10 * 60,
+            resizeTimelineEnd(
+                startTimeMinutes = 9 * 60,
+                endTimeMinutes = 10 * 60 + 7,
+                deltaMinutes = 0
+            )
+        )
+        assertEquals(
+            9 * 60 to 10 * 60 + 15,
+            resizeTimelineEnd(
+                startTimeMinutes = 9 * 60,
+                endTimeMinutes = 10 * 60 + 8,
+                deltaMinutes = 0
+            )
+        )
+    }
+
+    @Test
+    fun resizeTimelineBoundsStayOnQuarterHoursForOffGridOppositeEdges() {
+        assertEquals(
+            9 * 60 + 45 to 10 * 60 + 7,
+            resizeTimelineStart(
+                startTimeMinutes = 9 * 60,
+                endTimeMinutes = 10 * 60 + 7,
+                deltaMinutes = 90
+            )
+        )
+        assertEquals(
+            9 * 60 + 7 to 9 * 60 + 30,
+            resizeTimelineEnd(
+                startTimeMinutes = 9 * 60 + 7,
                 endTimeMinutes = 10 * 60,
                 deltaMinutes = -90
             )

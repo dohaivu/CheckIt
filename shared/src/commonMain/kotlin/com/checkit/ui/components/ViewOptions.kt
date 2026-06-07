@@ -177,7 +177,7 @@ private fun OptionSectionLabel(text: String) {
 }
 
 @Composable
-private fun ViewOptionChip(
+internal fun ViewOptionChip(
     icon: ImageVector,
     label: String,
     selected: Boolean,

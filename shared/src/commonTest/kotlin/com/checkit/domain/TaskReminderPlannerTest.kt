@@ -11,7 +11,7 @@ class TaskReminderPlannerTest {
     @Test
     fun buildReminderInputsUsesTaskStartTimeAndOffsets() {
         val reminders = TaskReminderPlanner.buildReminderInputs(
-            dueDate = LocalDate(2026, 6, 5),
+            doDate = LocalDate(2026, 6, 5),
             startTimeMinutes = 8 * 60 + 30,
             selectedOffsets = setOf(60, 0, 10),
             timeZone = utc
@@ -42,7 +42,7 @@ class TaskReminderPlannerTest {
             id = 1L,
             listId = 1L,
             name = "Review",
-            dueDate = LocalDate(2026, 6, 5),
+            doDate = LocalDate(2026, 6, 5),
             startTimeMinutes = 8 * 60 + 30,
             reminders = listOf(
                 TaskReminder(id = 1L, taskId = 1L, remindAtMillis = 1_780_647_600_000L),
@@ -59,7 +59,7 @@ class TaskReminderPlannerTest {
     @Test
     fun buildReminderInputsUsesAllDayLabelsWhenTaskHasNoStartTime() {
         val reminders = TaskReminderPlanner.buildReminderInputs(
-            dueDate = LocalDate(2026, 6, 5),
+            doDate = LocalDate(2026, 6, 5),
             startTimeMinutes = null,
             selectedOffsets = setOf(0, 24 * 60, 2 * 24 * 60, 7 * 24 * 60),
             timeZone = utc
