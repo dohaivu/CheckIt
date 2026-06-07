@@ -38,6 +38,7 @@ internal fun DayLinearTimeline(
 ) {
     val blocks = remember(items, board) { items.toDayTimelineBlocks(board) }
     val workMinutes = remember(blocks) { blocks.totalOccupiedMinutes() }
+    val trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.75f)
 
     Column(
         modifier = modifier,
@@ -51,7 +52,7 @@ internal fun DayLinearTimeline(
         ) {
             val corner = size.height / 2f
             drawRoundRect(
-                color = DayTimelineTrackColor,
+                color = trackColor,
                 cornerRadius = CornerRadius(corner, corner),
                 size = size
             )
@@ -174,7 +175,6 @@ internal fun dailyItemColor(task: TaskItem?, list: TaskList?): Color =
 private const val DayTimelineStartMinutes = 6 * 60
 private const val DayTimelineEndMinutes = 22 * 60
 private const val DayTimelineTotalMinutes = DayTimelineEndMinutes - DayTimelineStartMinutes
-private val DayTimelineTrackColor = Color(0xFFE5E7EB)
 private val DayTimelineTicks = listOf(
     DayTimelineTick(label = "6am", minutes = 6 * 60),
     DayTimelineTick(label = "12pm", minutes = 12 * 60),

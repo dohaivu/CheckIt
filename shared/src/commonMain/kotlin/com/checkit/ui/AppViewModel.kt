@@ -65,8 +65,8 @@ enum class AppColorSchemeMode {
     companion object {
         fun fromCode(code: String): AppColorSchemeMode = when (code) {
             "sky_blue" -> SkyBlue
-            "system_default" -> SystemDefault
-            else -> Sunset
+            "sunset" -> Sunset
+            else -> SystemDefault
         }
     }
 }
