@@ -589,10 +589,12 @@ internal fun resizeTimelineStart(
     endTimeMinutes: Int,
     deltaMinutes: Int
 ): Pair<Int, Int> {
-    val nextStart = (startTimeMinutes + deltaMinutes).coerceIn(
-        0,
-        endTimeMinutes - MinimumDurationMinutes
-    )
+    val maxStart = (endTimeMinutes - MinimumDurationMinutes)
+        .floorToQuarterHour()
+        .coerceAtLeast(0)
+    val nextStart = (startTimeMinutes + deltaMinutes)
+        .snapToQuarterHour()
+        .coerceIn(0, maxStart)
     return nextStart to endTimeMinutes
 }
 
@@ -601,12 +603,24 @@ internal fun resizeTimelineEnd(
     endTimeMinutes: Int,
     deltaMinutes: Int
 ): Pair<Int, Int> {
-    val nextEnd = (endTimeMinutes + deltaMinutes).coerceIn(
-        startTimeMinutes + MinimumDurationMinutes,
-        MinutesPerDay
-    )
+    val minEnd = (startTimeMinutes + MinimumDurationMinutes)
+        .ceilToQuarterHour()
+        .coerceAtMost(MinutesPerDay)
+    val nextEnd = (endTimeMinutes + deltaMinutes)
+        .snapToQuarterHour()
+        .coerceIn(minEnd, MinutesPerDay)
     return startTimeMinutes to nextEnd
 }
+
+private fun Int.floorToQuarterHour(): Int =
+    (this / TimelineStepMinutes) * TimelineStepMinutes
+
+private fun Int.ceilToQuarterHour(): Int =
+    if (this % TimelineStepMinutes == 0) {
+        this
+    } else {
+        floorToQuarterHour() + TimelineStepMinutes
+    }
 
 private fun Int.hourLabel(): String =
     when {
