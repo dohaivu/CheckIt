@@ -81,6 +81,7 @@ import com.checkit.ui.MyDayUiState
 import com.checkit.ui.MyDayView
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.localizedCompactDateWithDayName
+import com.checkit.ui.parseHexColorOrNull
 import com.checkit.ui.tasks.TaskAgendaView
 import com.checkit.ui.tasks.TaskCard
 import com.checkit.ui.tasks.TaskTimelineView
@@ -88,6 +89,7 @@ import com.checkit.ui.tasks.DetailChip
 import com.checkit.ui.tasks.TimeRangeDetailChip
 import com.checkit.ui.tasks.TimeRangePicker
 import com.checkit.ui.tasks.editorTextFieldColors
+import com.checkit.ui.tasks.priorityColor
 import com.checkit.ui.tasks.taskCardColor
 import com.checkit.ui.tasks.timeRangeLabel
 import com.checkit.ui.tasks.toClockLabel
@@ -820,38 +822,4 @@ private fun DailyPlanItemSource.label(): String = when (this) {
     DailyPlanItemSource.QuickTask -> "Quick task"
     DailyPlanItemSource.CheckInManualDone -> "CheckIn done"
     DailyPlanItemSource.CheckInNote -> "CheckIn note"
-}
-
-private fun dailyItemColor(task: TaskItem?, list: TaskList?): Color =
-    list?.color?.parseHexColorOrNull()
-        ?: task?.priorityColor()
-        ?: Color(0xFF64748B)
-
-private fun TaskItem.priorityColor(): Color = when (priority.name) {
-    "High" -> Color(0xFFDC2626)
-    "Medium" -> Color(0xFFCA8A04)
-    "Low" -> Color(0xFF2563EB)
-    else -> Color(0xFF64748B)
-}
-
-private fun String.parseHexColorOrNull(): Color? =
-    removePrefix("#")
-        .toIntOrNull(16)
-        ?.let { rgb ->
-            Color(
-                red = ((rgb shr 16) and 0xFF) / 255f,
-                green = ((rgb shr 8) and 0xFF) / 255f,
-                blue = (rgb and 0xFF) / 255f
-            )
-        }
-
-private fun Int.toClockLabel(): String {
-    val hour = this / 60
-    val minute = this % 60
-    val suffix = if (hour >= 12) "PM" else "AM"
-    val displayHour = when (val normalized = hour % 12) {
-        0 -> 12
-        else -> normalized
-    }
-    return "$displayHour:${minute.toString().padStart(2, '0')} $suffix"
 }

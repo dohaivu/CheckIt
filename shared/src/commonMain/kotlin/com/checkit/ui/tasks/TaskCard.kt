@@ -50,7 +50,7 @@ internal fun TaskCard(
             .fillMaxWidth()
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         shape = RoundedCornerShape(8.dp),
-        color = color.copy(alpha = containerAlpha),
+//        color = color.copy(alpha = containerAlpha),
         tonalElevation = tonalElevation
     ) {
         Box {
@@ -58,6 +58,7 @@ internal fun TaskCard(
                 modifier = modifier
                     .height(IntrinsicSize.Min)
                     .heightIn(min = minHeight)
+                    .background(color.copy(alpha = containerAlpha))
             ) {
                 Box(
                     modifier = Modifier

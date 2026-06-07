@@ -26,6 +26,8 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskList
+import com.checkit.ui.parseHexColorOrNull
+import com.checkit.ui.tasks.priorityColor
 import kotlin.math.roundToInt
 
 @Composable
@@ -164,28 +166,10 @@ private fun Int.toDurationLabel(): String {
     }
 }
 
-private fun dailyItemColor(task: TaskItem?, list: TaskList?): Color =
+internal fun dailyItemColor(task: TaskItem?, list: TaskList?): Color =
     list?.color?.parseHexColorOrNull()
-        ?: task?.priorityColor()
+        ?: task?.priority?.priorityColor()
         ?: Color(0xFF64748B)
-
-private fun TaskItem.priorityColor(): Color = when (priority.name) {
-    "High" -> Color(0xFFDC2626)
-    "Medium" -> Color(0xFFCA8A04)
-    "Low" -> Color(0xFF2563EB)
-    else -> Color(0xFF64748B)
-}
-
-private fun String.parseHexColorOrNull(): Color? =
-    removePrefix("#")
-        .toIntOrNull(16)
-        ?.let { rgb ->
-            Color(
-                red = ((rgb shr 16) and 0xFF) / 255f,
-                green = ((rgb shr 8) and 0xFF) / 255f,
-                blue = (rgb and 0xFF) / 255f
-            )
-        }
 
 private const val DayTimelineStartMinutes = 6 * 60
 private const val DayTimelineEndMinutes = 22 * 60

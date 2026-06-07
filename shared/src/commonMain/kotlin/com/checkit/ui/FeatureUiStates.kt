@@ -294,7 +294,7 @@ data class CalendarUiState(
     }
 }
 
-private fun String.parseHexColorOrNull(): Color? {
+internal fun String.parseHexColorOrNull(): Color? {
     val hex = removePrefix("#")
     val rgb = hex.toIntOrNull(16) ?: return null
     return Color(
