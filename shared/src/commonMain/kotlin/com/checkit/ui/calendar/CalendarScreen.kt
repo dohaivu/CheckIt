@@ -45,6 +45,7 @@ import com.checkit.ui.firstDayOfMonth
 import com.checkit.ui.isSameMonth
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.shortName
+import com.checkit.ui.myday.DayLinearTimeline
 import com.checkit.ui.myday.DailyPlanAgenda
 import com.checkit.ui.myday.DailyPlanItemEditorSheet
 import com.checkit.ui.tasks.TaskAgendaView
@@ -127,6 +128,16 @@ internal fun CalendarScreen(
                 taskCount = if (showDailyPlan) dailyPlanItems.size else tasksForDate.size,
                 noteCount = 0
             )
+            if (showDailyPlan) {
+                DayLinearTimeline(
+                    items = dailyPlanItems,
+                    board = state.board,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp)
+                        .padding(bottom = 4.dp)
+                )
+            }
             if (hasItemsForDate) {
                 if (showDailyPlan) {
                     DailyPlanAgenda(

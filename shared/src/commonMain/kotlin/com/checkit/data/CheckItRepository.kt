@@ -168,7 +168,7 @@ class RoomCheckItRepository(
                 plan.toDomain(
                     items = itemsByPlan[plan.id].orEmpty()
                         .map { it.toDomain() }
-                        .sortedWith(compareBy<DailyPlanItem> { it.sortOrder }.thenBy { it.addedAtMillis })
+                        .sortedWith(compareBy<DailyPlanItem> { it.startTimeMinutes }.thenBy { it.sortOrder })
                 )
             }
         }
