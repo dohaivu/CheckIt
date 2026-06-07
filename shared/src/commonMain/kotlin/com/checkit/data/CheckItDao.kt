@@ -363,6 +363,7 @@ interface CheckItDao {
         UPDATE daily_plan_items
         SET titleSnapshot = :titleSnapshot,
             note = :note,
+            source = :source,
             status = :status,
             startTimeMinutes = :startTimeMinutes,
             endTimeMinutes = :endTimeMinutes,
@@ -374,6 +375,7 @@ interface CheckItDao {
         itemId: Long,
         titleSnapshot: String,
         note: String?,
+        source: String,
         status: String,
         startTimeMinutes: Int?,
         endTimeMinutes: Int?,

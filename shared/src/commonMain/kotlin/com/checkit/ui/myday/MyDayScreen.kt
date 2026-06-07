@@ -196,6 +196,7 @@ internal fun MyDayScreen(
             onDismiss = viewModel::dismissCheckIn,
             onDoneTitleChange = viewModel::updateDoneTitle,
             onDoneNoteChange = viewModel::updateDoneNote,
+            onSourceChange = viewModel::updateEditorSource,
             onStartTimeChange = viewModel::updateStartTime,
             onEndTimeChange = viewModel::updateEndTime,
             onEdit = viewModel::editItemEditor,
@@ -258,7 +259,7 @@ internal fun DailyPlanAgenda(
         lists = projection.lists,
         showListName = false,
         onTaskClick = { task -> projection.dailyItemFor(task)?.let(onItemClick) },
-        onNoteClick = onNoteClick,
+        onNoteClick = { note -> projection.dailyItemFor(note)?.let(onItemClick) ?: onNoteClick(note) },
         dayLimit = 1,
         focusedDate = date,
         modifier = modifier
@@ -283,7 +284,7 @@ private fun MyDayTimeline(
         lists = projection.lists,
         showListName = false,
         onTaskClick = { task -> projection.dailyItemFor(task)?.let(onItemClick) },
-        onNoteClick = onNoteClick,
+        onNoteClick = { note -> projection.dailyItemFor(note)?.let(onItemClick) ?: onNoteClick(note) },
         onCreateTask = onCreateTask,
         onTaskTimeChange = { task, start, end ->
             projection.dailyItemFor(task)?.let { onTaskTimeChange(it, start, end) }
@@ -476,220 +477,6 @@ private fun EmptyStateText(text: String) {
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-internal fun DailyPlanItemEditorSheet(
-    state: DailyPlanItemEditorState,
-    onDismiss: () -> Unit,
-    onDoneTitleChange: (String) -> Unit,
-    onDoneNoteChange: (String) -> Unit,
-    onStartTimeChange: (Int?) -> Unit,
-    onEndTimeChange: (Int?) -> Unit,
-    onEdit: () -> Unit,
-    onSave: () -> Unit,
-    onDone: () -> Unit,
-    onDelete: () -> Unit,
-    onOpenTask: (() -> Unit)?
-) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        sheetGesturesEnabled = false
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.ime)
-        ) {
-            DailyPlanItemSheetHeader(
-                state = state,
-                onDismiss = onDismiss,
-                onEdit = onEdit,
-                onSave = onSave,
-                onDelete = onDelete
-            )
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f, fill = false)
-                    .padding(horizontal = 20.dp),
-                contentPadding = PaddingValues(top = 6.dp, bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                item {
-                    if (state.isViewMode) {
-                        DailyPlanItemViewContent(state = state, hasTask = onOpenTask != null)
-                    } else {
-                        DailyPlanItemFormContent(
-                            state = state,
-                            onDoneTitleChange = onDoneTitleChange,
-                            onDoneNoteChange = onDoneNoteChange,
-                            onStartTimeChange = onStartTimeChange,
-                            onEndTimeChange = onEndTimeChange
-                        )
-                    }
-                }
-                if (state.isViewMode) {
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            if (onOpenTask != null) {
-                                TextButton(onClick = onOpenTask) {
-                                    Text("Open Task")
-                                }
-                            }
-                            if (state.status != DailyPlanItemStatus.Done) {
-                                Button(onClick = onDone) {
-                                    Text("Done")
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun DailyPlanItemSheetHeader(
-    state: DailyPlanItemEditorState,
-    onDismiss: () -> Unit,
-    onEdit: () -> Unit,
-    onSave: () -> Unit,
-    onDelete: () -> Unit
-) {
-    var menuExpanded by remember { mutableStateOf(false) }
-    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)) {
-        IconButton(onClick = onDismiss) {
-            Icon(Icons.Default.Close, contentDescription = "Close")
-        }
-
-        Text(
-            text = when (state.mode) {
-                EditorMode.Add -> "Add done"
-                EditorMode.View -> "My Day item"
-                EditorMode.Edit -> "Edit item"
-            },
-            modifier = Modifier.align(Alignment.Center),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center
-        )
-
-        Row(modifier = Modifier.align(Alignment.CenterEnd), verticalAlignment = Alignment.CenterVertically) {
-            if (state.isViewMode) {
-                IconButton(onClick = onEdit) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit")
-                }
-            }
-            if (state.canDelete && state.isViewMode) {
-                Box {
-                    IconButton(onClick = { menuExpanded = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "Options")
-                    }
-                    DropdownMenu(
-                        expanded = menuExpanded,
-                        onDismissRequest = { menuExpanded = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Delete") },
-                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
-                            onClick = {
-                                menuExpanded = false
-                                onDelete()
-                            }
-                        )
-                    }
-                }
-            }
-            if (!state.isViewMode) {
-                Button(onClick = onSave) {
-                    Text("Save")
-                }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun DailyPlanItemViewContent(
-    state: DailyPlanItemEditorState,
-    hasTask: Boolean
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        Text(
-            text = state.title.ifBlank { "Untitled item" },
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.SemiBold
-        )
-        state.note.takeIf { it.isNotBlank() }?.let { note ->
-            Text(
-                text = note,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-//        FlowRow(
-//            horizontalArrangement = Arrangement.spacedBy(8.dp),
-//            verticalArrangement = Arrangement.spacedBy(8.dp)
-//        ) {
-//            DetailChip(Icons.Default.Event, "My Day")
-            TimeRangeDetailChip(state.startTimeMinutes, state.endTimeMinutes)
-//            DetailChip(Icons.Default.CheckCircle, if (state.status == DailyPlanItemStatus.Done) "Done" else "Planned")
-//            if (hasTask) {
-//                DetailChip(Icons.Default.TaskAlt, "Task")
-//            }
-//        }
-    }
-}
-
-@Composable
-private fun DailyPlanItemFormContent(
-    state: DailyPlanItemEditorState,
-    onDoneTitleChange: (String) -> Unit,
-    onDoneNoteChange: (String) -> Unit,
-    onStartTimeChange: (Int?) -> Unit,
-    onEndTimeChange: (Int?) -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        OutlinedTextField(
-            value = state.title,
-            onValueChange = onDoneTitleChange,
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Done outside the app") },
-            singleLine = true,
-            textStyle = MaterialTheme.typography.headlineSmall.copy(
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.SemiBold
-            ),
-            shape = MaterialTheme.shapes.medium,
-            colors = editorTextFieldColors()
-        )
-        OutlinedTextField(
-            value = state.note,
-            onValueChange = onDoneNoteChange,
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Add details") },
-            minLines = 2,
-            shape = MaterialTheme.shapes.medium,
-            colors = editorTextFieldColors()
-        )
-        TimeRangePicker(
-            startTimeMinutes = state.startTimeMinutes,
-            endTimeMinutes = state.endTimeMinutes,
-            durationMinutes = state.durationMinutes(),
-            onStartTimeChange = onStartTimeChange,
-            onEndTimeChange = onEndTimeChange
-        )
-    }
-}
-
 private data class MyDayTaskViewProjection(
     val tasks: List<TaskItem>,
     val notes: List<NoteItem>,
@@ -828,7 +615,6 @@ private fun DailyPlanItem.displaySupportingText(): String =
 
 private fun DailyPlanItemSource.label(): String = when (this) {
     DailyPlanItemSource.ExistingTask -> "Task"
-    DailyPlanItemSource.QuickTask -> "Quick task"
     DailyPlanItemSource.CheckInManualDone -> "CheckIn done"
     DailyPlanItemSource.CheckInNote -> "CheckIn note"
 }

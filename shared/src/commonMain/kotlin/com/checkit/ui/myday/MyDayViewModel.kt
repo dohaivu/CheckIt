@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.checkit.data.DailyPlanItemWriteInput
 import com.checkit.domain.DailyPlanItem
+import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.TaskItem
 import com.checkit.domain.usecase.AddManualDoneToDailyPlanUseCase
@@ -111,6 +112,7 @@ class MyDayViewModel(
                     mode = EditorMode.View,
                     itemId = item.id,
                     taskId = item.taskId,
+                    source = item.source,
                     title = if (item.source == com.checkit.domain.DailyPlanItemSource.CheckInNote) {
                         item.note.orEmpty()
                     } else {
@@ -163,6 +165,13 @@ class MyDayViewModel(
     fun editItemEditor() = updateItemEditor { it.copy(mode = EditorMode.Edit) }
     fun updateDoneTitle(title: String) = updateItemEditor { it.copy(title = title) }
     fun updateDoneNote(note: String) = updateItemEditor { it.copy(note = note) }
+    fun updateEditorSource(source: DailyPlanItemSource) = updateItemEditor {
+        it.copy(
+            source = source,
+            status = DailyPlanItemStatus.Done,
+            endTimeMinutes = if (source == DailyPlanItemSource.CheckInNote) null else it.endTimeMinutes
+        )
+    }
     fun updateStartTime(timeMinutes: Int?) = updateItemEditor { it.copy(startTimeMinutes = timeMinutes) }
     fun updateEndTime(timeMinutes: Int?) = updateItemEditor { it.copy(endTimeMinutes = timeMinutes) }
 
@@ -171,7 +180,7 @@ class MyDayViewModel(
         val title = editor.title.trim()
         val note = editor.note.trim()
         if (title.isBlank()) {
-            _uiState.update { it.copy(message = "Add a done item") }
+            _uiState.update { it.copy(message = if (editor.source == DailyPlanItemSource.CheckInNote) "Add a note" else "Add a done item") }
             return
         }
         viewModelScope.launch {
@@ -181,7 +190,8 @@ class MyDayViewModel(
                     title,
                     note.takeIf { it.isNotBlank() },
                     editor.startTimeMinutes,
-                    editor.endTimeMinutes
+                    editor.endTimeMinutes,
+                    editor.source
                 )
             } else {
                 updateDailyPlanItem(
@@ -197,7 +207,7 @@ class MyDayViewModel(
         val editor = _uiState.value.itemEditor ?: return
         val title = editor.title.trim()
         if (title.isBlank()) {
-            _uiState.update { it.copy(message = "Add a done item") }
+            _uiState.update { it.copy(message = if (editor.source == DailyPlanItemSource.CheckInNote) "Add a note" else "Add a done item") }
             return
         }
         viewModelScope.launch {
@@ -207,10 +217,14 @@ class MyDayViewModel(
                     title,
                     editor.note.trim().takeIf { it.isNotBlank() },
                     editor.startTimeMinutes,
-                    editor.endTimeMinutes
+                    editor.endTimeMinutes,
+                    DailyPlanItemSource.CheckInManualDone
                 )
             } else {
-                updateDailyPlanItem(editor.itemId, editor.toWriteInput(DailyPlanItemStatus.Done))
+                updateDailyPlanItem(
+                    editor.itemId,
+                    editor.toWriteInput(status = DailyPlanItemStatus.Done)
+                )
             }
             editor.taskId?.let { completeTask(it) }
             _uiState.update { it.copy(itemEditor = null, message = "Done") }
@@ -255,9 +269,13 @@ private fun MyDayUiState.selectedSuggestionTimeRangeFor(task: TaskItem): Pair<In
     }
 }
 
-private fun DailyPlanItemEditorState.toWriteInput(status: DailyPlanItemStatus) = DailyPlanItemWriteInput(
+private fun DailyPlanItemEditorState.toWriteInput(
+    status: DailyPlanItemStatus,
+    source: DailyPlanItemSource = this.source
+) = DailyPlanItemWriteInput(
     title = title,
     note = note,
+    source = source,
     status = status,
     startTimeMinutes = startTimeMinutes,
     endTimeMinutes = endTimeMinutes

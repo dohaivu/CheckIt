@@ -70,7 +70,6 @@ data class DailyPlanItem(
 
 enum class DailyPlanItemSource {
     ExistingTask,
-    QuickTask,
     CheckInManualDone,
     CheckInNote
 }
