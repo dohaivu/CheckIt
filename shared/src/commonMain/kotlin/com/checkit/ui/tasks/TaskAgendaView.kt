@@ -114,6 +114,21 @@ internal fun TaskAgendaView(
     }
 }
 
+private sealed class TimedAgendaItem {
+    abstract val startTimeMinutes: Int
+    abstract val sortOrder: Int
+
+    data class Task(val task: TaskItem) : TimedAgendaItem() {
+        override val startTimeMinutes: Int = task.startTimeMinutes!!
+        override val sortOrder: Int = task.sortOrder
+    }
+
+    data class Note(val note: NoteItem) : TimedAgendaItem() {
+        override val startTimeMinutes: Int = note.startTimeMinutes!!
+        override val sortOrder: Int = note.sortOrder
+    }
+}
+
 @Composable
 private fun AgendaDaySection(
     date: LocalDate,
@@ -131,39 +146,59 @@ private fun AgendaDaySection(
         .sortedBy { it.sortOrder }
     val timedTasks = tasks
         .filter { it.startTimeMinutes != null }
-        .sortedWith(compareBy<TaskItem> { it.startTimeMinutes ?: Int.MAX_VALUE }.thenBy { it.sortOrder })
-    val dayNotes = notes.sortedBy { it.sortOrder }
+    val allDayNotes = notes
+        .filter { it.startTimeMinutes == null }
+        .sortedBy { it.sortOrder }
+    val timedNotes = notes
+        .filter { it.startTimeMinutes != null }
 
-    val hasAllDayItems = allDayTasks.isNotEmpty() || dayNotes.isNotEmpty()
+    val timedItems = (timedTasks.map { TimedAgendaItem.Task(it) } + timedNotes.map { TimedAgendaItem.Note(it) })
+        .sortedWith(compareBy<TimedAgendaItem> { it.startTimeMinutes }.thenBy { it.sortOrder })
+
+    val hasAllDayItems = allDayTasks.isNotEmpty() || allDayNotes.isNotEmpty()
 
     Column {
         if (showHeader) {
             AgendaDayHeader(date = date, today = today)
             Spacer(Modifier.height(8.dp))
         }
-        if (allDayTasks.isEmpty() && dayNotes.isEmpty() && timedTasks.isEmpty()) {
+        if (allDayTasks.isEmpty() && allDayNotes.isEmpty() && timedItems.isEmpty()) {
             AgendaEmptyDay()
         } else {
             if (hasAllDayItems) {
                 AgendaAllDayRow(
                     tasks = allDayTasks,
-                    notes = dayNotes,
+                    notes = allDayNotes,
                     lists = lists,
                     showListName = showListName,
-                    showBottomLine = timedTasks.isNotEmpty(),
+                    showBottomLine = timedItems.isNotEmpty(),
                     onTaskClick = onTaskClick,
                     onNoteClick = onNoteClick
                 )
             }
-            timedTasks.forEachIndexed { index, task ->
-                AgendaTimedTaskRow(
-                    task = task,
-                    list = lists[task.listId],
-                    showListName = showListName,
-                    showTopLine = index > 0 || hasAllDayItems,
-                    showBottomLine = index < timedTasks.lastIndex,
-                    onClick = { onTaskClick(task) }
-                )
+            timedItems.forEachIndexed { index, item ->
+                when (item) {
+                    is TimedAgendaItem.Task -> {
+                        AgendaTimedTaskRow(
+                            task = item.task,
+                            list = lists[item.task.listId],
+                            showListName = showListName,
+                            showTopLine = index > 0 || hasAllDayItems,
+                            showBottomLine = index < timedItems.lastIndex,
+                            onClick = { onTaskClick(item.task) }
+                        )
+                    }
+                    is TimedAgendaItem.Note -> {
+                        AgendaTimedNoteRow(
+                            note = item.note,
+                            list = lists[item.note.listId],
+                            showListName = showListName,
+                            showTopLine = index > 0 || hasAllDayItems,
+                            showBottomLine = index < timedItems.lastIndex,
+                            onClick = { onNoteClick(item.note) }
+                        )
+                    }
+                }
             }
         }
     }
@@ -275,6 +310,32 @@ private fun AgendaTimedTaskRow(
             supportingText = if (showListName) list?.name else null,
             color = taskCardColor(task, list),
             completed = task.status == TaskStatus.Completed,
+            onClick = onClick
+        )
+    }
+}
+
+@Composable
+private fun AgendaTimedNoteRow(
+    note: NoteItem,
+    list: TaskList?,
+    showListName: Boolean,
+    showTopLine: Boolean,
+    showBottomLine: Boolean,
+    onClick: () -> Unit
+) {
+    AgendaAxisRow(
+        label = note.startTimeMinutes?.toClockLabel() ?: "",
+        showTopLine = showTopLine,
+        showBottomLine = showBottomLine
+    ) {
+        TaskCard(
+            title = note.content.ifBlank { "Empty note" },
+            timeLabel = note.startTimeMinutes?.toClockLabel(),
+            supportingText = if (showListName) list?.name else null,
+            color = list?.color?.toColor() ?: MaterialTheme.colorScheme.secondary,
+            leadingContent = { Icon(Icons.Default.Notes, contentDescription = null, modifier = Modifier.size(16.dp)) },
+            completed = note.status == TaskStatus.Completed,
             onClick = onClick
         )
     }
