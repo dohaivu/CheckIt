@@ -145,6 +145,7 @@ internal fun CalendarScreen(
                         board = state.board,
                         date = state.selectedDate,
                         onItemClick = calendarViewModel::openItemEditor,
+                        onNoteClick = onNoteClick,
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f)

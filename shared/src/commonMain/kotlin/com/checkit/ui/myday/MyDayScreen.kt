@@ -93,6 +93,7 @@ import com.checkit.ui.tasks.priorityColor
 import com.checkit.ui.tasks.taskCardColor
 import com.checkit.ui.tasks.timeRangeLabel
 import com.checkit.ui.tasks.toClockLabel
+import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -100,6 +101,7 @@ import kotlinx.datetime.LocalDate
 internal fun MyDayScreen(
     viewModel: MyDayViewModel,
     onTaskClick: (TaskItem) -> Unit,
+    onNoteClick: (NoteItem) -> Unit,
     onCreateTask: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -153,11 +155,13 @@ internal fun MyDayScreen(
                 MyDayView.Agenda -> MyDayAgenda(
                     state = state,
                     onItemClick = viewModel::openItemEditor,
+                    onNoteClick = onNoteClick,
                     modifier = Modifier.weight(1f)
                 )
                 MyDayView.Timeline -> MyDayTimeline(
                     state = state,
                     onItemClick = viewModel::openItemEditor,
+                    onNoteClick = onNoteClick,
                     onCreateTask = viewModel::createFromTimelineRange,
                     onTaskTimeChange = viewModel::updateItemTime,
                     modifier = Modifier.weight(1f)
@@ -225,6 +229,7 @@ private fun MyDayViewSelector(
 private fun MyDayAgenda(
     state: MyDayUiState,
     onItemClick: (DailyPlanItem) -> Unit,
+    onNoteClick: (NoteItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
     DailyPlanAgenda(
@@ -232,6 +237,7 @@ private fun MyDayAgenda(
         board = state.board,
         date = state.today,
         onItemClick = onItemClick,
+        onNoteClick = onNoteClick,
         modifier = modifier
     )
 }
@@ -242,6 +248,7 @@ internal fun DailyPlanAgenda(
     board: TaskBoard,
     date: LocalDate,
     onItemClick: (DailyPlanItem) -> Unit,
+    onNoteClick: (NoteItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val projection = remember(items, board, date) { items.toTaskViewProjection(board = board, date = date) }
@@ -251,7 +258,7 @@ internal fun DailyPlanAgenda(
         lists = projection.lists,
         showListName = false,
         onTaskClick = { task -> projection.dailyItemFor(task)?.let(onItemClick) },
-        onNoteClick = { note -> projection.dailyItemFor(note)?.let(onItemClick) },
+        onNoteClick = onNoteClick,
         dayLimit = 1,
         focusedDate = date,
         modifier = modifier
@@ -262,6 +269,7 @@ internal fun DailyPlanAgenda(
 private fun MyDayTimeline(
     state: MyDayUiState,
     onItemClick: (DailyPlanItem) -> Unit,
+    onNoteClick: (NoteItem) -> Unit,
     onCreateTask: (Int, Int) -> Unit,
     onTaskTimeChange: (DailyPlanItem, Int, Int) -> Unit,
     modifier: Modifier = Modifier
@@ -275,7 +283,7 @@ private fun MyDayTimeline(
         lists = projection.lists,
         showListName = false,
         onTaskClick = { task -> projection.dailyItemFor(task)?.let(onItemClick) },
-        onNoteClick = { note -> projection.dailyItemFor(note)?.let(onItemClick) },
+        onNoteClick = onNoteClick,
         onCreateTask = onCreateTask,
         onTaskTimeChange = { task, start, end ->
             projection.dailyItemFor(task)?.let { onTaskTimeChange(it, start, end) }
@@ -711,6 +719,7 @@ private fun List<DailyPlanItem>.toTaskViewProjection(
     val dailyItemBySyntheticNoteId = mutableMapOf<Long, DailyPlanItem>()
     val projectedTasks = mutableListOf<TaskItem>()
     val projectedNotes = mutableListOf<NoteItem>()
+    projectedNotes += board.notes.filter { !it.isTrashed && it.date == today() }
 
     forEach { item ->
         when (item.source) {

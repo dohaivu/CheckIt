@@ -41,6 +41,7 @@ import checkit.shared.generated.resources.tab_my_day
 import checkit.shared.generated.resources.tab_tasks
 import checkit.shared.generated.resources.tab_report
 import checkit.shared.generated.resources.tab_settings
+import com.checkit.domain.NoteItem
 import com.checkit.ui.calendar.CalendarScreen
 import com.checkit.ui.calendar.CalendarViewModel
 import com.checkit.ui.myday.MyDayScreen
@@ -196,6 +197,7 @@ fun CheckItApp(
                                     MyDayScreen(
                                         viewModel = myDayViewModel,
                                         onTaskClick = taskViewModel::openTask,
+                                        onNoteClick = taskViewModel::openNote,
                                         onCreateTask = taskViewModel::openNewTask
                                     )
                                 }
