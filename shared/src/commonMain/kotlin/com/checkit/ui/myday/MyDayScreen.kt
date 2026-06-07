@@ -1,7 +1,6 @@
 package com.checkit.ui.myday
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -62,9 +61,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -201,52 +197,6 @@ internal fun MyDayScreen(
             onDone = viewModel::markEditorDone,
             onDelete = viewModel::deleteEditorItem,
             onOpenTask = task?.let { { onTaskClick(it) } }
-        )
-    }
-}
-
-@Composable
-internal fun DayLinearTimeline(
-    items: List<DailyPlanItem>,
-    board: TaskBoard,
-    modifier: Modifier = Modifier
-) {
-    val blocks = remember(items, board) { items.toDayTimelineBlocks(board) }
-    val workMinutes = remember(blocks) { blocks.totalOccupiedMinutes() }
-
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Canvas(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(18.dp)
-        ) {
-            val corner = size.height / 2f
-            drawRoundRect(
-                color = DayTimelineTrackColor,
-                cornerRadius = CornerRadius(corner, corner),
-                size = size
-            )
-            blocks.forEach { block ->
-                val startFraction = (block.startMinutes - DayTimelineStartMinutes).toFloat() / DayTimelineTotalMinutes
-                val widthFraction = (block.endMinutes - block.startMinutes).toFloat() / DayTimelineTotalMinutes
-                drawRoundRect(
-                    color = block.color,
-                    topLeft = Offset(x = size.width * startFraction, y = 0f),
-                    size = Size(width = size.width * widthFraction, height = size.height),
-                    cornerRadius = CornerRadius(corner, corner)
-                )
-            }
-        }
-        Text(
-            text = "Total work: ${workMinutes.toDurationLabel()}",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Start
         )
     }
 }
@@ -832,62 +782,6 @@ private fun DailyPlanItemEditorState.durationMinutes(): Int? {
     return (end - start).takeIf { it >= 0 }
 }
 
-private data class DayTimelineBlock(
-    val startMinutes: Int,
-    val endMinutes: Int,
-    val color: Color
-)
-
-private fun List<DailyPlanItem>.toDayTimelineBlocks(board: TaskBoard): List<DayTimelineBlock> {
-    val tasksById = board.tasks.associateBy { it.id }
-    val listsById = board.lists.associateBy { it.id }
-    return mapNotNull { item ->
-        val start = item.startTimeMinutes ?: return@mapNotNull null
-        val end = item.endTimeMinutes ?: return@mapNotNull null
-        val clippedStart = start.coerceIn(DayTimelineStartMinutes, DayTimelineEndMinutes)
-        val clippedEnd = end.coerceIn(DayTimelineStartMinutes, DayTimelineEndMinutes)
-        if (clippedEnd <= clippedStart) {
-            null
-        } else {
-            val task = item.taskId?.let { tasksById[it] }
-            val list = task?.let { listsById[it.listId] }
-            DayTimelineBlock(
-                startMinutes = clippedStart,
-                endMinutes = clippedEnd,
-                color = dailyItemColor(task, list)
-            )
-        }
-    }
-}
-
-private fun List<DayTimelineBlock>.totalOccupiedMinutes(): Int {
-    if (isEmpty()) return 0
-    val sorted = sortedBy { it.startMinutes }
-    var total = 0
-    var currentStart = sorted.first().startMinutes
-    var currentEnd = sorted.first().endMinutes
-    sorted.drop(1).forEach { block ->
-        if (block.startMinutes <= currentEnd) {
-            currentEnd = maxOf(currentEnd, block.endMinutes)
-        } else {
-            total += currentEnd - currentStart
-            currentStart = block.startMinutes
-            currentEnd = block.endMinutes
-        }
-    }
-    return total + currentEnd - currentStart
-}
-
-private fun Int.toDurationLabel(): String {
-    val hours = this / 60
-    val minutes = this % 60
-    return when {
-        hours == 0 -> "${minutes}m"
-        minutes == 0 -> "${hours}h"
-        else -> "${hours}h ${minutes}m"
-    }
-}
-
 private fun MyDayView.icon(): ImageVector = when (this) {
     MyDayView.Agenda -> Icons.Default.ViewAgenda
     MyDayView.Timeline -> Icons.Default.Schedule
@@ -895,10 +789,6 @@ private fun MyDayView.icon(): ImageVector = when (this) {
 }
 
 private const val MyDayListId = -10_000L
-private const val DayTimelineStartMinutes = 6 * 60
-private const val DayTimelineEndMinutes = 22 * 60
-private const val DayTimelineTotalMinutes = DayTimelineEndMinutes - DayTimelineStartMinutes
-private val DayTimelineTrackColor = Color(0xFFE5E7EB)
 
 private fun MyDayView.label(): String = when (this) {
     MyDayView.Agenda -> "Agenda"
