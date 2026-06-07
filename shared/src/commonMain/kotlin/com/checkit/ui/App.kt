@@ -255,6 +255,7 @@ fun CheckItApp(
                         onNoteContentChange = taskViewModel::updateNoteContent,
                         onNoteListChange = taskViewModel::updateNoteListId,
                         onNoteDateChange = taskViewModel::updateNoteDate,
+                        onNoteStartTimeChange = taskViewModel::updateNoteStartTime,
                         onNoteTagToggle = taskViewModel::toggleNoteTag,
                         onSwitchAddModeToTask = taskViewModel::switchAddEditorToTask,
                         onSwitchAddModeToNote = taskViewModel::switchAddEditorToNote

@@ -155,6 +155,7 @@ sealed interface TaskEditorState {
         val content: String = "",
         val status: TaskStatus = TaskStatus.Open,
         val date: LocalDate,
+        val startTimeMinutes: Int? = null,
         val selectedTagIds: Set<Long> = emptySet()
     ) : TaskEditorState
 }

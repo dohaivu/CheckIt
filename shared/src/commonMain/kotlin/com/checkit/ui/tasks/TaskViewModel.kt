@@ -204,6 +204,7 @@ class TaskViewModel(
                     listId = task.listId,
                     content = content,
                     date = task.doDate ?: today(),
+                    startTimeMinutes = task.startTimeMinutes,
                     selectedTagIds = task.selectedTagIds
                 )
             )
@@ -243,6 +244,7 @@ class TaskViewModel(
                     content = note.content,
                     status = note.status,
                     date = note.date,
+                    startTimeMinutes = note.startTimeMinutes,
                     selectedTagIds = note.tags.map { it.id }.toSet()
                 )
             )
@@ -438,6 +440,7 @@ class TaskViewModel(
     fun updateNoteContent(content: String) = updateNoteForm { it.copy(content = content) }
     fun updateNoteListId(listId: Long) = updateNoteForm { it.copy(listId = listId) }
     fun updateNoteDate(date: LocalDate) = updateNoteForm { it.copy(date = date) }
+    fun updateNoteStartTime(timeMinutes: Int?) = updateNoteForm { it.copy(startTimeMinutes = timeMinutes) }
     fun toggleNoteTag(tagId: Long) = updateNoteForm { form ->
         form.copy(selectedTagIds = form.selectedTagIds.toggle(tagId))
     }
@@ -525,6 +528,7 @@ class TaskViewModel(
                 content = form.content.trim(),
                 status = form.status,
                 date = form.date,
+                startTimeMinutes = form.startTimeMinutes,
                 tagIds = form.selectedTagIds.toList()
             )
             if (form.mode == EditorMode.Add) {

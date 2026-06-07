@@ -114,6 +114,7 @@ internal fun TaskEditorSheet(
     onNoteContentChange: (String) -> Unit,
     onNoteListChange: (Long) -> Unit,
     onNoteDateChange: (LocalDate) -> Unit,
+    onNoteStartTimeChange: (Int?) -> Unit,
     onNoteTagToggle: (Long) -> Unit,
     onSwitchAddModeToTask: () -> Unit,
     onSwitchAddModeToNote: () -> Unit
@@ -194,6 +195,7 @@ internal fun TaskEditorSheet(
                                 onContentChange = onNoteContentChange,
                                 onListChange = onNoteListChange,
                                 onDateChange = onNoteDateChange,
+                                onStartTimeChange = onNoteStartTimeChange,
                                 onTagToggle = onNoteTagToggle
                             )
                         }
@@ -397,6 +399,9 @@ private fun NoteViewContent(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             DetailChip(Icons.Default.Event, form.date.compact())
+            form.startTimeMinutes?.let { start ->
+                DetailChip(Icons.Default.Schedule, start.toClockLabel())
+            }
         }
         SupportingPills(list = selectedList, tags = availableTags.filter { it.id in form.selectedTagIds })
     }
@@ -1023,6 +1028,7 @@ private fun NoteFormContent(
     onContentChange: (String) -> Unit,
     onListChange: (Long) -> Unit,
     onDateChange: (LocalDate) -> Unit,
+    onStartTimeChange: (Int?) -> Unit,
     onTagToggle: (Long) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
@@ -1042,6 +1048,12 @@ private fun NoteFormContent(
                 onListChange = onListChange
             )
             RequiredDatePickerRow(date = form.date, onDateChange = onDateChange)
+            TimePickerRow(
+                label = "Start",
+                timeMinutes = form.startTimeMinutes,
+                initialTimeMinutes = currentTimeMinutes(),
+                onTimeChange = onStartTimeChange
+            )
         }
         TagPickerRow(
             availableTags = availableTags,

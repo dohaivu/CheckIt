@@ -94,6 +94,7 @@ data class NoteItem(
     val tags: List<TaskTag> = emptyList(),
     val status: TaskStatus = TaskStatus.Open,
     val date: LocalDate,
+    val startTimeMinutes: Int? = null,
     val createdAtMillis: Long,
     val editedAtMillis: Long,
     val sortOrder: Int,

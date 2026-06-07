@@ -517,6 +517,7 @@ private fun List<DailyPlanItem>.toTaskViewProjection(
                     content = item.note.orEmpty(),
                     status = item.status.toTaskStatus(),
                     date = date,
+                    startTimeMinutes = item.startTimeMinutes,
                     createdAtMillis = item.addedAtMillis,
                     editedAtMillis = item.completedAtMillis ?: item.addedAtMillis,
                     sortOrder = item.sortOrder

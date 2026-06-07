@@ -98,6 +98,7 @@ data class NoteWriteInput(
     val content: String,
     val status: TaskStatus,
     val date: LocalDate,
+    val startTimeMinutes: Int?,
     val tagIds: List<Long>
 )
 
@@ -455,6 +456,7 @@ class RoomCheckItRepository(
                 content = input.content,
                 status = input.status.name,
                 dateEpochDays = input.date.toEpochDays().toInt(),
+                startTimeMinutes = input.startTimeMinutes,
                 createdAtMillis = now,
                 editedAtMillis = now,
                 sortOrder = dao.nextNoteSortOrder(input.listId)
@@ -471,6 +473,7 @@ class RoomCheckItRepository(
             content = input.content,
             status = input.status.name,
             dateEpochDays = input.date.toEpochDays().toInt(),
+            startTimeMinutes = input.startTimeMinutes,
             editedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
         dao.deleteNoteTags(noteId)
@@ -657,6 +660,7 @@ private fun NoteEntity.toDomain(tags: List<TaskTag>) = NoteItem(
     status = enumValueOf(status),
     tags = tags,
     date = LocalDate.fromEpochDays(dateEpochDays),
+    startTimeMinutes = startTimeMinutes,
     createdAtMillis = createdAtMillis,
     editedAtMillis = editedAtMillis,
     sortOrder = sortOrder,

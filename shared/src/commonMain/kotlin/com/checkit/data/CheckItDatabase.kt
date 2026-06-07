@@ -8,7 +8,10 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.RoomDatabase
 import androidx.room.RoomDatabaseConstructor
+import androidx.room.migration.Migration
+import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import androidx.sqlite.execSQL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 
@@ -108,6 +111,7 @@ data class NoteEntity(
     val content: String,
     val status: String = "Open",
     val dateEpochDays: Int,
+    val startTimeMinutes: Int? = null,
     val createdAtMillis: Long,
     val editedAtMillis: Long,
     val sortOrder: Int,
@@ -268,7 +272,7 @@ data class TaskFilterEntity(
         TaskReminderEntity::class,
         TaskFilterEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)
@@ -287,7 +291,14 @@ fun buildCheckItDatabase(
     return builder
         .fallbackToDestructiveMigration(false)
         .fallbackToDestructiveMigrationOnDowngrade(false)
+        .addMigrations(Migration4To5)
         .setQueryCoroutineContext(Dispatchers.IO)
         .setDriver(BundledSQLiteDriver())
         .build()
+}
+
+private val Migration4To5 = object : Migration(4, 5) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE notes ADD COLUMN startTimeMinutes INTEGER")
+    }
 }
