@@ -337,9 +337,6 @@ private fun TaskViewContent(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            selectedList?.let { list ->
-                DetailChip(materialIcon(list.icon), list.name, iconTint = list.color.toColor())
-            }
             DateTimeRangeDetailChip(form.doDate, form.startTimeMinutes, form.endTimeMinutes)
             form.durationMinutes?.let { DetailChip(Icons.Default.Schedule, it.formatDuration()) }
             if (form.priority != TaskPriority.None) {
@@ -361,10 +358,8 @@ private fun TaskViewContent(
             onNameChange = { _, _ -> },
             onRemove = {}
         )
-        TagDisplayRow(
-            selectedTagIds = form.selectedTagIds,
-            availableTags = availableTags
-        )
+
+        SupportingPills(list = selectedList, tags = availableTags.filter { it.id in form.selectedTagIds })
     }
 }
 
@@ -394,23 +389,16 @@ private fun NoteViewContent(
     Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
         Text(
             text = form.content.ifBlank { "Empty note" },
-            style = MaterialTheme.typography.headlineSmall,
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold
         )
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            selectedList?.let { list ->
-                DetailChip(materialIcon(list.icon), list.name, iconTint = list.color.toColor())
-            }
             DetailChip(Icons.Default.Event, form.date.compact())
-            DetailChip(Icons.Default.CheckCircle, form.status.name)
         }
-        TagDisplayRow(
-            selectedTagIds = form.selectedTagIds,
-            availableTags = availableTags
-        )
+        SupportingPills(list = selectedList, tags = availableTags.filter { it.id in form.selectedTagIds })
     }
 }
 
@@ -454,26 +442,6 @@ private fun DetailRow(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-            }
-        }
-    }
-}
-
-@Composable
-private fun TagDisplayRow(
-    selectedTagIds: Set<Long>,
-    availableTags: List<TaskTag>
-) {
-    val selectedTags = availableTags.filter { it.id in selectedTagIds }
-    if (selectedTags.isEmpty()) return
-    QuietSection {
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            selectedTags.forEach { tag ->
-                TaskTagPill(tag = tag, selected = true)
             }
         }
     }
@@ -725,12 +693,6 @@ internal fun TimeRangePicker(
                 },
                 modifier = Modifier.weight(1f)
             )
-            durationMinutes?.let { duration ->
-                DurationText(
-                    duration = duration,
-                    modifier = Modifier.align(Alignment.CenterVertically)
-                )
-            }
             TimePickerRow(
                 label = "End",
                 timeMinutes = endTimeMinutes,
@@ -740,15 +702,23 @@ internal fun TimeRangePicker(
                 modifier = Modifier.weight(1f)
             )
         }
-        PickerShortcutRow {
-            TimeRangeShortcutDurations.forEach { duration ->
-                PickerShortcut(
-                    text = duration.shortcutDurationLabel(),
-                    onClick = {
-                        val start = startTimeMinutes ?: currentTimeMinutes()
-                        onStartTimeChange(start)
-                        onEndTimeChange((start + duration).coerceAtMost(MinutesPerDay - 1))
-                    }
+        Row {
+            PickerShortcutRow(modifier = Modifier.weight(1f)) {
+                TimeRangeShortcutDurations.forEach { duration ->
+                    PickerShortcut(
+                        text = duration.shortcutDurationLabel(),
+                        onClick = {
+                            val start = startTimeMinutes ?: currentTimeMinutes()
+                            onStartTimeChange(start)
+                            onEndTimeChange((start + duration).coerceAtMost(MinutesPerDay - 1))
+                        }
+                    )
+                }
+            }
+            durationMinutes?.let { duration ->
+                DurationText(
+                    duration = duration,
+                    modifier = Modifier.align(Alignment.CenterVertically)
                 )
             }
         }
@@ -756,9 +726,9 @@ internal fun TimeRangePicker(
 }
 
 @Composable
-private fun PickerShortcutRow(content: @Composable () -> Unit) {
+private fun PickerShortcutRow(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     FlowRow(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
@@ -1014,13 +984,13 @@ private fun SelectableInfoRow(
                 .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
                 .padding(horizontal = 12.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Icon(
                 icon,
                 contentDescription = null,
                 tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                modifier = Modifier.size(28.dp)
+                modifier = Modifier.size(24.dp)
             )
             Column(Modifier.weight(1f)) {
                 Text(text = value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
@@ -1032,14 +1002,14 @@ private fun SelectableInfoRow(
                 )
             }
             onClear?.let {
-                IconButton(onClick = it, modifier = Modifier.size(28.dp)) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "Clear",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.58f),
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "Clear",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.58f),
+                    modifier = Modifier.size(18.dp).clickable {
+                        it.invoke()
+                    }
+                )
             }
         }
     }

@@ -1,5 +1,6 @@
 package com.checkit.ui.tasks
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -109,9 +110,14 @@ private fun SubtaskRow(
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                 keyboardActions = KeyboardActions(onNext = { }),
             )
-            IconButton(onClick = onRemove, modifier = Modifier.size(40.dp)) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete subtask")
-            }
+            Icon(
+                Icons.Default.Delete,
+                contentDescription = "Clear",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.58f),
+                modifier = Modifier.size(18.dp).clickable {
+                    onRemove.invoke()
+                }
+            )
         }
     }
 }

@@ -180,7 +180,7 @@ fun CheckItApp(
                 }
             ) { padding ->
                 NavDisplay(
-                    modifier = Modifier.fillMaxSize().padding(padding),
+                    modifier = Modifier.fillMaxSize().padding(top = padding.calculateTopPadding()),
                     backStack = backStack,
                     onBack = { onBack() },
                     transitionSpec = { EnterTransition.None togetherWith ExitTransition.None },

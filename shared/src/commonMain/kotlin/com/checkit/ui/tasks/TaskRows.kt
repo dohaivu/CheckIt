@@ -2,7 +2,6 @@ package com.checkit.ui.tasks
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,15 +12,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckBox
-import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material.icons.rounded.CheckBox
 import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
 import androidx.compose.material3.Icon
@@ -31,7 +26,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -264,33 +258,3 @@ private fun NoteStatusIcon(status: TaskStatus) {
 private const val DefaultNoteRowBackgroundAlpha = 0.55f
 internal const val CompletedRowCoverAlpha = 0.62f
 
-@Composable
-private fun SupportingPills(
-    list: TaskList?,
-    tags: List<com.checkit.domain.TaskTag>,
-    overflowCount: Int = 0
-) {
-    if (list == null && tags.isEmpty() && overflowCount == 0) return
-    FlowRow(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        list?.let {
-            DetailChip(
-                icon = materialIcon(it.icon),
-                label = it.name,
-                iconTint = it.color.toColor()
-            )
-        }
-        tags.forEach { tag -> TaskTagPill(tag = tag) }
-        if (overflowCount > 0) {
-            Text(
-                text = "+$overflowCount",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp)
-            )
-        }
-    }
-}
