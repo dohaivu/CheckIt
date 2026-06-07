@@ -27,6 +27,9 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
 
 class MyDayViewModel(
     private val observeTaskBoard: ObserveTaskBoardUseCase,
@@ -65,8 +68,19 @@ class MyDayViewModel(
 
     fun addTask(task: TaskItem) {
         viewModelScope.launch {
-            addTaskToDailyPlan(today(), task)
-            _uiState.update { it.copy(showSuggestions = false) }
+            val state = _uiState.value
+            val (startTimeMinutes, endTimeMinutes) = state.selectedSuggestionTimeRangeFor(task)
+            val itemId = addTaskToDailyPlan(today(), task)
+            if (startTimeMinutes != task.startTimeMinutes || endTimeMinutes != task.endTimeMinutes) {
+                updateDailyPlanItemTime(itemId, startTimeMinutes, endTimeMinutes)
+            }
+            _uiState.update {
+                it.copy(
+                    showSuggestions = false,
+                    suggestionStartTimeMinutes = null,
+                    suggestionEndTimeMinutes = null
+                )
+            }
         }
     }
 
@@ -76,8 +90,18 @@ class MyDayViewModel(
         }
     }
 
-    fun openCheckIn() {
-        _uiState.update { it.copy(itemEditor = DailyPlanItemEditorState()) }
+    fun openCheckIn(
+        startTimeMinutes: Int? = null,
+        endTimeMinutes: Int? = null
+    ) {
+        _uiState.update {
+            it.copy(
+                itemEditor = DailyPlanItemEditorState(
+                    startTimeMinutes = startTimeMinutes,
+                    endTimeMinutes = endTimeMinutes
+                )
+            )
+        }
     }
 
     fun openItemEditor(item: DailyPlanItem) {
@@ -101,12 +125,35 @@ class MyDayViewModel(
         }
     }
 
-    fun openSuggestions() {
-        _uiState.update { it.copy(showSuggestions = true) }
+    fun openSuggestions(
+        startTimeMinutes: Int? = null,
+        endTimeMinutes: Int? = null
+    ) {
+        _uiState.update {
+            it.copy(
+                showSuggestions = true,
+                suggestionStartTimeMinutes = startTimeMinutes,
+                suggestionEndTimeMinutes = endTimeMinutes
+            )
+        }
+    }
+
+    fun createFromTimelineRange(startTimeMinutes: Int, endTimeMinutes: Int) {
+        if (startTimeMinutes < currentMyDayTimeMinutes()) {
+            openCheckIn(startTimeMinutes, endTimeMinutes)
+        } else {
+            openSuggestions(startTimeMinutes, endTimeMinutes)
+        }
     }
 
     fun dismissSuggestions() {
-        _uiState.update { it.copy(showSuggestions = false) }
+        _uiState.update {
+            it.copy(
+                showSuggestions = false,
+                suggestionStartTimeMinutes = null,
+                suggestionEndTimeMinutes = null
+            )
+        }
     }
 
     fun dismissCheckIn() {
@@ -189,6 +236,25 @@ class MyDayViewModel(
     }
 }
 
+private fun MyDayUiState.selectedSuggestionTimeRangeFor(task: TaskItem): Pair<Int?, Int?> {
+    val selectedStart = suggestionStartTimeMinutes
+    if (selectedStart != null) {
+        return selectedStart to suggestionEndTimeMinutes
+    }
+
+    val start = task.startTimeMinutes
+        ?: return currentMyDayTimeMinutes().let { now ->
+            now to (now + DefaultTaskDurationMinutes).coerceAtMost(MyDayMinutesPerDay)
+        }
+    val end = task.endTimeMinutes
+    val now = currentMyDayTimeMinutes()
+    return if (start < now) {
+        now to (now + DefaultTaskDurationMinutes).coerceAtMost(MyDayMinutesPerDay)
+    } else {
+        start to end
+    }
+}
+
 private fun DailyPlanItemEditorState.toWriteInput(status: DailyPlanItemStatus) = DailyPlanItemWriteInput(
     title = title,
     note = note,
@@ -196,3 +262,11 @@ private fun DailyPlanItemEditorState.toWriteInput(status: DailyPlanItemStatus) =
     startTimeMinutes = startTimeMinutes,
     endTimeMinutes = endTimeMinutes
 )
+
+private fun currentMyDayTimeMinutes(): Int {
+    val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).time
+    return now.hour * 60 + now.minute
+}
+
+private const val DefaultTaskDurationMinutes = 60
+private const val MyDayMinutesPerDay = 24 * 60

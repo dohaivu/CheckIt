@@ -164,6 +164,7 @@ internal fun MyDayScreen(
                 MyDayView.Timeline -> MyDayTimeline(
                     state = state,
                     onItemClick = viewModel::openItemEditor,
+                    onCreateTask = viewModel::createFromTimelineRange,
                     onTaskTimeChange = viewModel::updateItemTime,
                     modifier = Modifier.weight(1f)
                 )
@@ -313,6 +314,7 @@ internal fun DailyPlanAgenda(
 private fun MyDayTimeline(
     state: MyDayUiState,
     onItemClick: (DailyPlanItem) -> Unit,
+    onCreateTask: (Int, Int) -> Unit,
     onTaskTimeChange: (DailyPlanItem, Int, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -326,7 +328,7 @@ private fun MyDayTimeline(
         showListName = false,
         onTaskClick = { task -> projection.dailyItemFor(task)?.let(onItemClick) },
         onNoteClick = { note -> projection.dailyItemFor(note)?.let(onItemClick) },
-        onCreateTask = { _, _ -> },
+        onCreateTask = onCreateTask,
         onTaskTimeChange = { task, start, end ->
             projection.dailyItemFor(task)?.let { onTaskTimeChange(it, start, end) }
         },

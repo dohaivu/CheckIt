@@ -73,6 +73,8 @@ data class MyDayUiState(
     val selectedView: MyDayView = MyDayView.Agenda,
     val itemEditor: DailyPlanItemEditorState? = null,
     val showSuggestions: Boolean = false,
+    val suggestionStartTimeMinutes: Int? = null,
+    val suggestionEndTimeMinutes: Int? = null,
     val isLoading: Boolean = true,
     val message: String? = null
 ) {
