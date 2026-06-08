@@ -30,6 +30,7 @@ internal fun TaskContent(
     onListDisplayTypeChange: (TaskListDisplayType) -> Unit,
     onTimelineCreateTask: (Int, Int) -> Unit,
     onTimelineTaskTimeChange: (TaskItem, Int, Int) -> Unit,
+    onTimelineNoteTimeChange: (NoteItem, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val showListName = state.selectedList == null
@@ -80,6 +81,7 @@ internal fun TaskContent(
                 onNoteClick = onNoteClick,
                 onCreateTask = onTimelineCreateTask,
                 onTaskTimeChange = onTimelineTaskTimeChange,
+                onNoteTimeChange = onTimelineNoteTimeChange,
                 modifier = Modifier.weight(1f)
             )
         }

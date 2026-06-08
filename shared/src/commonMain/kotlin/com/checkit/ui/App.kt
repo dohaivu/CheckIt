@@ -198,6 +198,7 @@ fun CheckItApp(
                                         viewModel = myDayViewModel,
                                         onTaskClick = taskViewModel::openTask,
                                         onNoteClick = taskViewModel::openNote,
+                                        onNoteTimeChange = taskViewModel::updateNoteTime,
                                         onCreateTask = taskViewModel::openNewTask
                                     )
                                 }

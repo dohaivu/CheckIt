@@ -505,6 +505,23 @@ class TaskViewModel(
         }
     }
 
+    fun updateNoteTime(note: NoteItem, startTimeMinutes: Int) {
+        val normalizedStart = startTimeMinutes.coerceIn(0, MinutesPerDay - 30)
+        viewModelScope.launch {
+            updateNote(
+                note.id,
+                NoteWriteInput(
+                    listId = note.listId,
+                    content = note.content,
+                    status = note.status,
+                    date = note.date,
+                    startTimeMinutes = normalizedStart,
+                    tagIds = note.tags.map { it.id }
+                )
+            )
+        }
+    }
+
     private fun saveTask(form: TaskEditorState.TaskForm) {
         val input = form.toWriteInput() ?: return
         viewModelScope.launch {

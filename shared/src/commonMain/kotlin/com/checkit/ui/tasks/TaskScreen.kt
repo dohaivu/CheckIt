@@ -114,6 +114,7 @@ internal fun TaskScreen(
                     onListDisplayTypeChange = viewModel::selectListDisplayType,
                     onTimelineCreateTask = viewModel::openNewTaskAt,
                     onTimelineTaskTimeChange = viewModel::updateTaskTime,
+                    onTimelineNoteTimeChange = viewModel::updateNoteTime,
                     modifier = Modifier.fillMaxSize().padding(top = padding.calculateTopPadding())
                 )
             }
