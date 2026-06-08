@@ -16,11 +16,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.ViewAgenda
+import androidx.compose.material.icons.rounded.CheckBox
+import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -51,13 +56,17 @@ import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskList
+import com.checkit.domain.TaskPriority
+import com.checkit.domain.TaskStatus
 import com.checkit.ui.MyDayUiState
 import com.checkit.ui.MyDayView
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.tasks.TaskAgendaView
 import com.checkit.ui.tasks.TaskCard
+import com.checkit.ui.tasks.TaskStatusIcon
 import com.checkit.ui.tasks.TaskTimelineView
+import com.checkit.ui.tasks.priorityColor
 import com.checkit.ui.tasks.taskCardColor
 import com.checkit.ui.tasks.timeRangeLabel
 import kotlinx.datetime.LocalDate
@@ -316,11 +325,12 @@ internal fun DailyPlanCard(
     modifier: Modifier = Modifier
 ) {
     val isDone = item.status == DailyPlanItemStatus.Done
-    if (item.taskId != null) {
+    if (item.taskId != null && task != null) {
         TaskCard(
             title = item.titleSnapshot.ifBlank { "Untitled task" },
             timeLabel = item.timeLabel(),
             supportingText = item.note?.takeIf { it.isNotBlank() },
+            leadingContent = { TaskStatusIcon(task.status, task.priority) },
             color = dailyItemColor(task, list),
             completed = isDone,
             onClick = onClick,
@@ -335,9 +345,9 @@ internal fun DailyPlanCard(
         supportingText = item.displaySupportingText(),
         color = dailyItemColor(task, list),
         leadingContent = if (item.source == DailyPlanItemSource.CheckInNote) {
-            { Icon(Icons.Default.Notes, contentDescription = null, modifier = Modifier.size(16.dp)) }
+            { Icon(Icons.Default.EventAvailable, contentDescription = null, modifier = Modifier.size(16.dp)) }
         } else {
-            null
+            { DailyPlanStatusIcon(item.status) }
         },
         completed = isDone,
         onClick = onClick,
@@ -446,6 +456,16 @@ private fun EmptyStateText(text: String) {
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(vertical = 8.dp)
+    )
+}
+
+@Composable
+internal fun DailyPlanStatusIcon(status: DailyPlanItemStatus) {
+    Icon(
+        imageVector = if (status == DailyPlanItemStatus.Done) Icons.Rounded.CheckBox else Icons.Rounded.CheckBoxOutlineBlank,
+        contentDescription = null,
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.size(20.dp)
     )
 }
 

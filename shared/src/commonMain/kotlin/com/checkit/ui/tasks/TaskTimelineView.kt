@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.Icon
@@ -147,7 +148,7 @@ private fun AllDaySection(
                 val list = lists.firstOrNull { it.id == task.listId }
                 AllDayItemRow(
                     label = task.name.ifBlank { "Untitled task" },
-                    icon = { Icon(Icons.Default.TaskAlt, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                    icon = { Icon(Icons.Default.TaskAlt, contentDescription = null, modifier = Modifier.size(20.dp)) },
                     color = taskCardColor(task, list),
                     onClick = { onTaskClick(task) },
                     supportingLabel = if (showListName) list?.name else null
@@ -156,7 +157,7 @@ private fun AllDaySection(
             visibleNotes.forEach { note ->
                 AllDayItemRow(
                     label = note.content.ifBlank { "Empty note" },
-                    icon = { Icon(Icons.Default.Notes, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                    icon = { Icon(Icons.Default.Notes, contentDescription = null, modifier = Modifier.size(20.dp)) },
                     color = MaterialTheme.colorScheme.secondary,
                     onClick = { onNoteClick(note) },
                     supportingLabel = if (showListName) lists.firstOrNull { it.id == note.listId }?.name else null
@@ -462,6 +463,7 @@ private fun TimelineTaskCard(
             title = task.name.ifBlank { "Untitled task" },
             timeLabel = "${start.toClockLabel()} - ${end.toClockLabel()}",
             supportingText = if (showListName) list?.name else null,
+            leadingContent = { TaskStatusIcon(task.status, task.priority) },
             color = taskCardColor(task, list),
             minHeight = 36.dp,
             titleMaxLines = 1,
@@ -577,7 +579,7 @@ private fun TimelineNoteCard(
             timeLabel = start.toClockLabel(),
             supportingText = if (showListName) list?.name else null,
             color = list?.color?.toColor() ?: MaterialTheme.colorScheme.secondary,
-            leadingContent = { Icon(Icons.Default.Notes, contentDescription = null, modifier = Modifier.size(16.dp)) },
+            leadingContent = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null, modifier = Modifier.size(20.dp)) },
             minHeight = 36.dp,
             titleMaxLines = 1,
             completed = note.status == TaskStatus.Completed,

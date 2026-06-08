@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.FilledTonalButton
@@ -280,6 +281,7 @@ private fun AgendaAllDayRow(
                 TaskCard(
                     title = task.name.ifBlank { "Untitled task" },
                     supportingText = if (showListName) lists[task.listId]?.name else null,
+                    leadingContent = { TaskStatusIcon(task.status, task.priority) },
                     color = taskCardColor(task, lists[task.listId]),
                     completed = task.status == TaskStatus.Completed,
                     onClick = { onTaskClick(task) }
@@ -290,7 +292,7 @@ private fun AgendaAllDayRow(
                     title = note.content.ifBlank { "Empty note" },
                     supportingText = if (showListName) lists[note.listId]?.name else null,
                     color = lists[note.listId]?.color?.toColor() ?: MaterialTheme.colorScheme.secondary,
-                    leadingContent = { Icon(Icons.Default.Notes, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                    leadingContent = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null, modifier = Modifier.size(20.dp)) },
                     completed = note.status == TaskStatus.Completed,
                     onClick = { onNoteClick(note) }
                 )
@@ -320,6 +322,7 @@ private fun AgendaTimedTaskRow(
             timeLabel = task.timeRangeLabel(),
             supportingText = if (showListName) list?.name else null,
             color = taskCardColor(task, list),
+            leadingContent = { TaskStatusIcon(task.status, task.priority) },
             completed = task.status == TaskStatus.Completed,
             onClick = onClick
         )
@@ -347,7 +350,7 @@ private fun AgendaTimedNoteRow(
             timeLabel = note.startTimeMinutes?.toClockLabel(),
             supportingText = if (showListName) list?.name else null,
             color = list?.color?.toColor() ?: MaterialTheme.colorScheme.secondary,
-            leadingContent = { Icon(Icons.Default.Notes, contentDescription = null, modifier = Modifier.size(16.dp)) },
+            leadingContent = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null, modifier = Modifier.size(20.dp)) },
             completed = note.status == TaskStatus.Completed,
             onClick = onClick
         )

@@ -85,6 +85,13 @@ internal fun TaskCard(
                         modifier = Modifier.weight(1f),
                         verticalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = titleMaxLines,
+                            overflow = TextOverflow.Ellipsis
+                        )
                         if (timeLabel != null) {
                             Text(
                                 text = timeLabel,
@@ -94,13 +101,6 @@ internal fun TaskCard(
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
-                        Text(
-                            text = title,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = titleMaxLines,
-                            overflow = TextOverflow.Ellipsis
-                        )
                         if (supportingText != null) {
                             Text(
                                 text = supportingText,

@@ -201,12 +201,12 @@ private fun TaskTitleRow(
 }
 
 @Composable
-private fun TaskStatusIcon(status: TaskStatus, priority: TaskPriority) {
+internal fun TaskStatusIcon(status: TaskStatus, priority: TaskPriority) {
     Icon(
         imageVector = if (status == TaskStatus.Completed) Icons.Rounded.CheckBox else Icons.Rounded.CheckBoxOutlineBlank,
         contentDescription = null,
         tint = if (status == TaskStatus.Completed) MaterialTheme.colorScheme.onSurfaceVariant else priority.priorityColor(),
-        modifier = Modifier.size(22.dp)
+        modifier = Modifier.size(20.dp)
     )
 }
 
