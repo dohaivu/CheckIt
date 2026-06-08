@@ -7,6 +7,7 @@ import com.checkit.data.TaskListWriteInput
 import com.checkit.data.TaskTagWriteInput
 import com.checkit.data.TaskWriteInput
 import com.checkit.domain.DailyPlan
+import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DueDatePreset
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
@@ -115,9 +116,10 @@ class AddManualDoneToDailyPlanUseCase(
         title: String,
         note: String?,
         startTimeMinutes: Int?,
-        endTimeMinutes: Int?
+        endTimeMinutes: Int?,
+        source: DailyPlanItemSource = DailyPlanItemSource.CheckInManualDone
     ): Long =
-        repository.addManualDoneToDailyPlan(date, title, note, startTimeMinutes, endTimeMinutes)
+        repository.addManualDoneToDailyPlan(date, title, note, startTimeMinutes, endTimeMinutes, source)
 }
 
 class UpdateDailyPlanItemTimeUseCase(

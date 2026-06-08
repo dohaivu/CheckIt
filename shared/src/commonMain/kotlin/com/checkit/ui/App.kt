@@ -41,6 +41,7 @@ import checkit.shared.generated.resources.tab_my_day
 import checkit.shared.generated.resources.tab_tasks
 import checkit.shared.generated.resources.tab_report
 import checkit.shared.generated.resources.tab_settings
+import com.checkit.domain.NoteItem
 import com.checkit.ui.calendar.CalendarScreen
 import com.checkit.ui.calendar.CalendarViewModel
 import com.checkit.ui.myday.MyDayScreen
@@ -180,7 +181,7 @@ fun CheckItApp(
                 }
             ) { padding ->
                 NavDisplay(
-                    modifier = Modifier.fillMaxSize().padding(top = padding.calculateTopPadding()),
+                    modifier = Modifier.fillMaxSize().padding(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding()),
                     backStack = backStack,
                     onBack = { onBack() },
                     transitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
@@ -196,6 +197,8 @@ fun CheckItApp(
                                     MyDayScreen(
                                         viewModel = myDayViewModel,
                                         onTaskClick = taskViewModel::openTask,
+                                        onNoteClick = taskViewModel::openNote,
+                                        onNoteTimeChange = taskViewModel::updateNoteTime,
                                         onCreateTask = taskViewModel::openNewTask
                                     )
                                 }
@@ -253,6 +256,7 @@ fun CheckItApp(
                         onNoteContentChange = taskViewModel::updateNoteContent,
                         onNoteListChange = taskViewModel::updateNoteListId,
                         onNoteDateChange = taskViewModel::updateNoteDate,
+                        onNoteStartTimeChange = taskViewModel::updateNoteStartTime,
                         onNoteTagToggle = taskViewModel::toggleNoteTag,
                         onSwitchAddModeToTask = taskViewModel::switchAddEditorToTask,
                         onSwitchAddModeToNote = taskViewModel::switchAddEditorToNote

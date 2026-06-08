@@ -7,6 +7,7 @@ import com.checkit.data.TaskListWriteInput
 import com.checkit.data.TaskTagWriteInput
 import com.checkit.data.TaskWriteInput
 import com.checkit.domain.DailyPlan
+import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
@@ -156,7 +157,8 @@ internal class FakeCheckItRepository(
         title: String,
         note: String?,
         startTimeMinutes: Int?,
-        endTimeMinutes: Int?
+        endTimeMinutes: Int?,
+        source: DailyPlanItemSource
     ): Long = 0L
     override suspend fun updateDailyPlanItemTime(itemId: Long, startTimeMinutes: Int?, endTimeMinutes: Int?) = Unit
     override suspend fun updateDailyPlanItem(itemId: Long, input: DailyPlanItemWriteInput) = Unit

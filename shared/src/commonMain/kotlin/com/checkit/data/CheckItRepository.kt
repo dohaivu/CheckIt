@@ -48,7 +48,8 @@ interface CheckItRepository {
         title: String,
         note: String?,
         startTimeMinutes: Int?,
-        endTimeMinutes: Int?
+        endTimeMinutes: Int?,
+        source: DailyPlanItemSource = DailyPlanItemSource.CheckInManualDone
     ): Long
     suspend fun updateDailyPlanItemTime(itemId: Long, startTimeMinutes: Int?, endTimeMinutes: Int?)
     suspend fun updateDailyPlanItem(itemId: Long, input: DailyPlanItemWriteInput)
@@ -97,12 +98,14 @@ data class NoteWriteInput(
     val content: String,
     val status: TaskStatus,
     val date: LocalDate,
+    val startTimeMinutes: Int?,
     val tagIds: List<Long>
 )
 
 data class DailyPlanItemWriteInput(
     val title: String,
     val note: String?,
+    val source: DailyPlanItemSource,
     val status: DailyPlanItemStatus,
     val startTimeMinutes: Int?,
     val endTimeMinutes: Int?
@@ -386,20 +389,22 @@ class RoomCheckItRepository(
         title: String,
         note: String?,
         startTimeMinutes: Int?,
-        endTimeMinutes: Int?
+        endTimeMinutes: Int?,
+        source: DailyPlanItemSource
     ): Long {
         val planId = ensureDailyPlan(date)
         val now = Clock.System.now().toEpochMilliseconds()
+        val isNote = source == DailyPlanItemSource.CheckInNote
         return dao.insertDailyPlanItem(
             DailyPlanItemEntity(
                 dailyPlanId = planId,
-                titleSnapshot = title.trim(),
-                note = note?.trim()?.takeIf { it.isNotBlank() },
-                source = DailyPlanItemSource.CheckInManualDone.name,
+                titleSnapshot = if (isNote) "Note" else title.trim(),
+                note = if (isNote) title.trim() else note?.trim()?.takeIf { it.isNotBlank() },
+                source = source.name,
                 status = DailyPlanItemStatus.Done.name,
                 sortOrder = dao.nextDailyPlanItemSortOrder(planId),
                 startTimeMinutes = startTimeMinutes,
-                endTimeMinutes = endTimeMinutes,
+                endTimeMinutes = if (isNote) null else endTimeMinutes,
                 addedAtMillis = now,
                 completedAtMillis = now
             )
@@ -421,11 +426,16 @@ class RoomCheckItRepository(
     override suspend fun updateDailyPlanItem(itemId: Long, input: DailyPlanItemWriteInput) {
         dao.updateDailyPlanItem(
             itemId = itemId,
-            titleSnapshot = input.title.trim(),
-            note = input.note?.trim()?.takeIf { it.isNotBlank() },
+            titleSnapshot = if (input.source == DailyPlanItemSource.CheckInNote) "Note" else input.title.trim(),
+            note = if (input.source == DailyPlanItemSource.CheckInNote) {
+                input.title.trim()
+            } else {
+                input.note?.trim()?.takeIf { it.isNotBlank() }
+            },
+            source = input.source.name,
             status = input.status.name,
             startTimeMinutes = input.startTimeMinutes,
-            endTimeMinutes = input.endTimeMinutes,
+            endTimeMinutes = if (input.source == DailyPlanItemSource.CheckInNote) null else input.endTimeMinutes,
             completedAtMillis = if (input.status == DailyPlanItemStatus.Done) {
                 Clock.System.now().toEpochMilliseconds()
             } else {
@@ -446,6 +456,7 @@ class RoomCheckItRepository(
                 content = input.content,
                 status = input.status.name,
                 dateEpochDays = input.date.toEpochDays().toInt(),
+                startTimeMinutes = input.startTimeMinutes,
                 createdAtMillis = now,
                 editedAtMillis = now,
                 sortOrder = dao.nextNoteSortOrder(input.listId)
@@ -462,6 +473,7 @@ class RoomCheckItRepository(
             content = input.content,
             status = input.status.name,
             dateEpochDays = input.date.toEpochDays().toInt(),
+            startTimeMinutes = input.startTimeMinutes,
             editedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
         dao.deleteNoteTags(noteId)
@@ -648,6 +660,7 @@ private fun NoteEntity.toDomain(tags: List<TaskTag>) = NoteItem(
     status = enumValueOf(status),
     tags = tags,
     date = LocalDate.fromEpochDays(dateEpochDays),
+    startTimeMinutes = startTimeMinutes,
     createdAtMillis = createdAtMillis,
     editedAtMillis = editedAtMillis,
     sortOrder = sortOrder,

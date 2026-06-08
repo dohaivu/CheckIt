@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.Color
 import com.checkit.domain.ActiveTagToken
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
+import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DueDatePreset
 import com.checkit.domain.NoteItem
@@ -112,6 +113,7 @@ data class DailyPlanItemEditorState(
     val mode: EditorMode = EditorMode.Add,
     val itemId: Long? = null,
     val taskId: Long? = null,
+    val source: DailyPlanItemSource = DailyPlanItemSource.CheckInManualDone,
     val title: String = "",
     val note: String = "",
     val status: DailyPlanItemStatus = DailyPlanItemStatus.Done,
@@ -153,6 +155,7 @@ sealed interface TaskEditorState {
         val content: String = "",
         val status: TaskStatus = TaskStatus.Open,
         val date: LocalDate,
+        val startTimeMinutes: Int? = null,
         val selectedTagIds: Set<Long> = emptySet()
     ) : TaskEditorState
 }

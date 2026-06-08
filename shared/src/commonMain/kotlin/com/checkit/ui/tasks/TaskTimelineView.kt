@@ -66,16 +66,18 @@ internal fun TaskTimelineView(
     onNoteClick: (NoteItem) -> Unit,
     onCreateTask: (startTimeMinutes: Int, endTimeMinutes: Int) -> Unit,
     onTaskTimeChange: (TaskItem, startTimeMinutes: Int, endTimeMinutes: Int) -> Unit,
+    onNoteTimeChange: (NoteItem, startTimeMinutes: Int) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     val allDayTasks = tasks.filter { it.startTimeMinutes == null }
-    val timedTasks = tasks
-        .filter { it.startTimeMinutes != null }
-        .sortedWith(compareBy<TaskItem> { it.startTimeMinutes ?: Int.MAX_VALUE }.thenBy { it.sortOrder })
+    val timedTasks = tasks.filter { it.startTimeMinutes != null }
+    val allDayNotes = notes.filter { it.startTimeMinutes == null }
+    val timedNotes = notes.filter { it.startTimeMinutes != null }
+
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         AllDaySection(
             tasks = allDayTasks,
-            notes = notes,
+            notes = allDayNotes,
             lists = lists,
             showListName = showListName,
             onTaskClick = onTaskClick,
@@ -83,11 +85,14 @@ internal fun TaskTimelineView(
         )
         TimelineGrid(
             tasks = timedTasks,
+            notes = timedNotes,
             lists = lists,
             showListName = showListName,
             onTaskClick = onTaskClick,
+            onNoteClick = onNoteClick,
             onCreateTask = onCreateTask,
             onTaskTimeChange = onTaskTimeChange,
+            onNoteTimeChange = onNoteTimeChange,
             modifier = Modifier.weight(1f)
         )
     }
@@ -206,11 +211,14 @@ private fun AllDayItemRow(
 @Composable
 private fun TimelineGrid(
     tasks: List<TaskItem>,
+    notes: List<NoteItem>,
     lists: List<TaskList>,
     showListName: Boolean,
     onTaskClick: (TaskItem) -> Unit,
+    onNoteClick: (NoteItem) -> Unit,
     onCreateTask: (startTimeMinutes: Int, endTimeMinutes: Int) -> Unit,
     onTaskTimeChange: (TaskItem, startTimeMinutes: Int, endTimeMinutes: Int) -> Unit,
+    onNoteTimeChange: (NoteItem, startTimeMinutes: Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val density = LocalDensity.current
@@ -220,9 +228,9 @@ private fun TimelineGrid(
     val totalHeight = hourHeight * HoursPerDay
     val hourHeightPx = with(density) { hourHeight.toPx() }
     val axisWidthPx = with(density) { axisWidth.toPx() }
-    val taskLayouts = remember(tasks) { buildTaskLayouts(tasks) }
+    val layouts = remember(tasks, notes) { buildTimelineLayouts(tasks, notes) }
     val currentTimeMinutes = remember { currentTimeMinutes() }
-    var selectedTaskId by remember { mutableStateOf<Long?>(null) }
+    var selectedTaskId by remember { mutableStateOf<String?>(null) }
 
     BoxWithConstraints(
         modifier = modifier
@@ -244,7 +252,8 @@ private fun TimelineGrid(
                         onTap = { selectedTaskId = null },
                         onLongPress = { offset ->
                             if (offset.x >= axisWidthPx) {
-                                val start = offset.y.toMinutes(hourHeightPx).snapToQuarterHour()
+                                val start = offset.y.toMinutes(hourHeightPx)
+                                    .snapToQuarterHour()
                                     .coerceIn(0, LastStartMinute)
                                 onCreateTask(start, start + DefaultDurationMinutes)
                             }
@@ -261,20 +270,39 @@ private fun TimelineGrid(
                 hourHeight = hourHeight,
                 axisWidth = axisWidth
             )
-            taskLayouts.forEach { layout ->
-                TimelineTaskCard(
-                    layout = layout,
-                    lists = lists,
-                    axisWidth = axisWidth,
-                    taskAreaWidth = taskAreaWidth,
-                    hourHeight = hourHeight,
-                    hourHeightPx = hourHeightPx,
-                    showListName = showListName,
-                    isSelected = selectedTaskId == layout.task.id,
-                    onClick = { onTaskClick(layout.task) },
-                    onSelect = { selectedTaskId = layout.task.id },
-                    onTimeChange = { start, end -> onTaskTimeChange(layout.task, start, end) }
-                )
+            layouts.forEach { layout ->
+                when (val entry = layout.entry) {
+                    is TimelineEntry.Task -> {
+                        TimelineTaskCard(
+                            layout = layout,
+                            task = entry.task,
+                            lists = lists,
+                            axisWidth = axisWidth,
+                            taskAreaWidth = taskAreaWidth,
+                            hourHeight = hourHeight,
+                            hourHeightPx = hourHeightPx,
+                            showListName = showListName,
+                            isSelected = selectedTaskId == entry.id,
+                            onClick = { onTaskClick(entry.task) },
+                            onSelect = { selectedTaskId = entry.id },
+                            onTimeChange = onTaskTimeChange
+                        )
+                    }
+                    is TimelineEntry.Note -> {
+                        TimelineNoteCard(
+                            layout = layout,
+                            note = entry.note,
+                            lists = lists,
+                            axisWidth = axisWidth,
+                            taskAreaWidth = taskAreaWidth,
+                            hourHeight = hourHeight,
+                            hourHeightPx = hourHeightPx,
+                            showListName = showListName,
+                            onClick = { onNoteClick(entry.note) },
+                            onTimeChange = onNoteTimeChange
+                        )
+                    }
+                }
             }
         }
     }
@@ -364,7 +392,8 @@ private fun CurrentTimeLine(
 
 @Composable
 private fun TimelineTaskCard(
-    layout: TimelineTaskLayout,
+    layout: TimelineItemLayout,
+    task: TaskItem,
     lists: List<TaskList>,
     axisWidth: Dp,
     taskAreaWidth: Dp,
@@ -374,11 +403,10 @@ private fun TimelineTaskCard(
     isSelected: Boolean,
     onClick: () -> Unit,
     onSelect: () -> Unit,
-    onTimeChange: (startTimeMinutes: Int, endTimeMinutes: Int) -> Unit
+    onTimeChange: (TaskItem, startTimeMinutes: Int, endTimeMinutes: Int) -> Unit
 ) {
-    val task = layout.task
     val start = task.startTimeMinutes ?: return
-    val end = task.endTimeMinutes ?: (start + DefaultDurationMinutes).coerceAtMost(MinutesPerDay)
+    val end = task.endTimeMinutes ?: (start + DefaultDurationMinutes)
     val duration = (end - start).coerceAtLeast(MinimumDurationMinutes)
     val y = hourHeight * (start / 60f)
     val height = (hourHeight * (duration / 60f)).coerceAtLeast(36.dp)
@@ -417,9 +445,9 @@ private fun TimelineTaskCard(
                 detectDragGesturesAfterLongPress(
                     onDragStart = { onSelect() },
                     onDragEnd = {
-                        val deltaMinutes = dragOffsetY.toMinutes(hourHeightPx).snapToQuarterHour()
+                        val deltaMinutes = dragOffsetY.toMinutes(hourHeightPx)
                         val (nextStart, nextEnd) = moveTimelineRange(start, end, deltaMinutes)
-                        onTimeChange(nextStart, nextEnd)
+                        onTimeChange(task, nextStart, nextEnd)
                         dragOffsetY = 0f
                     },
                     onDragCancel = { dragOffsetY = 0f },
@@ -450,9 +478,9 @@ private fun TimelineTaskCard(
                     .pointerInput(task.id, start, end, hourHeightPx) {
                         detectDragGestures(
                             onDragEnd = {
-                                val deltaMinutes = topResizeOffsetY.toMinutes(hourHeightPx).snapToQuarterHour()
+                                val deltaMinutes = topResizeOffsetY.toMinutes(hourHeightPx)
                                 val (nextStart, nextEnd) = resizeTimelineStart(start, end, deltaMinutes)
-                                onTimeChange(nextStart, nextEnd)
+                                onTimeChange(task, nextStart, nextEnd)
                                 topResizeOffsetY = 0f
                             },
                             onDragCancel = { topResizeOffsetY = 0f },
@@ -469,9 +497,9 @@ private fun TimelineTaskCard(
                     .pointerInput(task.id, start, end, hourHeightPx) {
                         detectDragGestures(
                             onDragEnd = {
-                                val deltaMinutes = bottomResizeOffsetY.toMinutes(hourHeightPx).snapToQuarterHour()
+                                val deltaMinutes = bottomResizeOffsetY.toMinutes(hourHeightPx)
                                 val (nextStart, nextEnd) = resizeTimelineEnd(start, end, deltaMinutes)
-                                onTimeChange(nextStart, nextEnd)
+                                onTimeChange(task, nextStart, nextEnd)
                                 bottomResizeOffsetY = 0f
                             },
                             onDragCancel = { bottomResizeOffsetY = 0f },
@@ -483,6 +511,81 @@ private fun TimelineTaskCard(
                     }
             )
         }
+    }
+}
+
+@Composable
+private fun TimelineNoteCard(
+    layout: TimelineItemLayout,
+    note: NoteItem,
+    lists: List<TaskList>,
+    axisWidth: Dp,
+    taskAreaWidth: Dp,
+    hourHeight: Dp,
+    hourHeightPx: Float,
+    showListName: Boolean,
+    onClick: () -> Unit,
+    onTimeChange: (NoteItem, startTimeMinutes: Int) -> Unit
+) {
+    val start = note.startTimeMinutes ?: return
+    val end = start + NoteDurationMinutes
+    val y = hourHeight * (start / 60f)
+    val height = (hourHeight * (NoteDurationMinutes / 60f)).coerceAtLeast(36.dp)
+    val density = LocalDensity.current
+    val yPx = with(density) { y.roundToPx() }
+    val laneWidth = taskAreaWidth / layout.laneCount
+    val cardWidth = (laneWidth - 4.dp).coerceAtLeast(44.dp)
+    val x = axisWidth + 6.dp + laneWidth * layout.lane
+    val xPx = with(density) { x.roundToPx() }
+    val list = lists.firstOrNull { it.id == note.listId }
+    var dragOffsetY by remember(note.id, start) { mutableFloatStateOf(0f) }
+
+    Box(
+        modifier = Modifier
+            .offset {
+                IntOffset(
+                    x = xPx,
+                    y = yPx + dragOffsetY.roundToInt()
+                )
+            }
+            .width(cardWidth)
+            .height(height)
+            .zIndex(1f + layout.lane)
+            .pointerInput(note.id) {
+                detectTapGestures(onTap = { onClick() })
+            }
+            .pointerInput(note.id, start, hourHeightPx) {
+                detectDragGesturesAfterLongPress(
+                    onDragEnd = {
+                        val deltaMinutes = dragOffsetY.toMinutes(hourHeightPx)
+                        val nextStart = (start + deltaMinutes)
+                            .snapToQuarterHour()
+                            .coerceIn(0, MinutesPerDay - NoteDurationMinutes)
+                        onTimeChange(note, nextStart)
+                        dragOffsetY = 0f
+                    },
+                    onDragCancel = { dragOffsetY = 0f },
+                    onDrag = { change, dragAmount ->
+                        change.consume()
+                        dragOffsetY += dragAmount.y
+                    }
+                )
+            }
+    ) {
+        TaskCard(
+            title = note.content.ifBlank { "Empty note" },
+            timeLabel = start.toClockLabel(),
+            supportingText = if (showListName) list?.name else null,
+            color = list?.color?.toColor() ?: MaterialTheme.colorScheme.secondary,
+            leadingContent = { Icon(Icons.Default.Notes, contentDescription = null, modifier = Modifier.size(16.dp)) },
+            minHeight = 36.dp,
+            titleMaxLines = 1,
+            completed = note.status == TaskStatus.Completed,
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+            containerAlpha = DefaultTaskCardAlpha,
+            tonalElevation = 1.dp,
+            modifier = Modifier.matchParentSize()
+        )
     }
 }
 
@@ -505,25 +608,58 @@ private fun ResizeHandle(modifier: Modifier = Modifier) {
     }
 }
 
-internal data class TimelineTaskLayout(
-    val task: TaskItem,
+internal sealed class TimelineEntry {
+    abstract val id: String
+    abstract val startTimeMinutes: Int
+    abstract val endTimeMinutes: Int
+    abstract val sortOrder: Int
+    abstract val listId: Long
+    abstract val name: String
+
+    data class Task(val task: TaskItem) : TimelineEntry() {
+        override val id: String = "task-${task.id}"
+        override val startTimeMinutes: Int = task.startTimeMinutes!!
+        override val endTimeMinutes: Int = task.endTimeMinutes ?: (startTimeMinutes + DefaultDurationMinutes)
+        override val sortOrder: Int = task.sortOrder
+        override val listId: Long = task.listId
+        override val name: String = task.name
+    }
+
+    data class Note(val note: NoteItem) : TimelineEntry() {
+        override val id: String = "note-${note.id}"
+        override val startTimeMinutes: Int = note.startTimeMinutes!!
+        override val endTimeMinutes: Int = startTimeMinutes + NoteDurationMinutes
+        override val sortOrder: Int = note.sortOrder
+        override val listId: Long = note.listId
+        override val name: String = note.content
+    }
+}
+
+internal data class TimelineItemLayout(
+    val entry: TimelineEntry,
     val lane: Int,
     val laneCount: Int
 )
 
-internal fun buildTaskLayouts(tasks: List<TaskItem>): List<TimelineTaskLayout> {
-    val clusters = mutableListOf<List<TaskItem>>()
-    var currentCluster = mutableListOf<TaskItem>()
+internal fun buildTimelineLayouts(
+    tasks: List<TaskItem>,
+    notes: List<NoteItem>
+): List<TimelineItemLayout> {
+    val entries = (tasks.map { TimelineEntry.Task(it) } + notes.map { TimelineEntry.Note(it) })
+        .sortedWith(compareBy<TimelineEntry> { it.startTimeMinutes }.thenBy { it.sortOrder })
+
+    val clusters = mutableListOf<List<TimelineEntry>>()
+    var currentCluster = mutableListOf<TimelineEntry>()
     var currentClusterEnd = -1
-    tasks.forEach { task ->
-        val start = task.startTimeMinutes ?: 0
-        val end = task.endTimeMinutes ?: (start + DefaultDurationMinutes)
+    entries.forEach { entry ->
+        val start = entry.startTimeMinutes
+        val end = entry.endTimeMinutes
         if (currentCluster.isNotEmpty() && start >= currentClusterEnd) {
             clusters += currentCluster
             currentCluster = mutableListOf()
             currentClusterEnd = -1
         }
-        currentCluster += task
+        currentCluster += entry
         currentClusterEnd = maxOf(currentClusterEnd, end)
     }
     if (currentCluster.isNotEmpty()) clusters += currentCluster
@@ -531,19 +667,19 @@ internal fun buildTaskLayouts(tasks: List<TaskItem>): List<TimelineTaskLayout> {
     return clusters.flatMap { cluster -> buildClusterLayouts(cluster) }
 }
 
-private fun buildClusterLayouts(tasks: List<TaskItem>): List<TimelineTaskLayout> {
+private fun buildClusterLayouts(entries: List<TimelineEntry>): List<TimelineItemLayout> {
     val active = mutableListOf<Pair<Int, Int>>()
-    val assigned = tasks.map { task ->
-        val start = task.startTimeMinutes ?: 0
+    val assigned = entries.map { entry ->
+        val start = entry.startTimeMinutes
         active.removeAll { (_, end) -> end <= start }
         val usedLanes = active.map { it.first }.toSet()
         val lane = generateSequence(0) { it + 1 }.first { it !in usedLanes }
-        active.add(lane to (task.endTimeMinutes ?: (start + DefaultDurationMinutes)))
-        task to lane
+        active.add(lane to entry.endTimeMinutes)
+        entry to lane
     }
     val laneCount = assigned.maxOfOrNull { (_, lane) -> lane + 1 } ?: 1
-    return assigned.map { (task, lane) ->
-        TimelineTaskLayout(task = task, lane = lane, laneCount = laneCount)
+    return assigned.map { (entry, lane) ->
+        TimelineItemLayout(entry = entry, lane = lane, laneCount = laneCount)
     }
 }
 
@@ -580,7 +716,9 @@ internal fun moveTimelineRange(
     deltaMinutes: Int
 ): Pair<Int, Int> {
     val duration = (endTimeMinutes - startTimeMinutes).coerceAtLeast(MinimumDurationMinutes)
-    val nextStart = (startTimeMinutes + deltaMinutes).coerceIn(0, MinutesPerDay - duration)
+    val nextStart = (startTimeMinutes + deltaMinutes)
+        .snapToQuarterHour()
+        .coerceIn(0, MinutesPerDay - duration)
     return nextStart to nextStart + duration
 }
 
@@ -634,6 +772,7 @@ private const val HoursPerDay = 24
 private const val MinutesPerDay = 24 * 60
 private const val TimelineStepMinutes = 15
 private const val DefaultDurationMinutes = 60
+private const val NoteDurationMinutes = 30
 private const val MinimumDurationMinutes = 15
 private const val LastStartMinute = MinutesPerDay - MinimumDurationMinutes
 private const val CurrentTimeVisibleHoursBefore = 2f

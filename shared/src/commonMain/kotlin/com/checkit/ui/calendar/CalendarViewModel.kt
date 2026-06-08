@@ -93,6 +93,7 @@ class CalendarViewModel(
                         mode = EditorMode.View,
                         itemId = item.id,
                         taskId = item.taskId,
+                        source = item.source,
                         title = if (item.source == DailyPlanItemSource.CheckInNote) item.note.orEmpty() else item.titleSnapshot,
                         note = if (item.source == DailyPlanItemSource.CheckInNote) "" else item.note.orEmpty(),
                         status = item.status,
@@ -113,6 +114,13 @@ class CalendarViewModel(
     fun editItemEditor() = updateItemEditor { it.copy(mode = EditorMode.Edit) }
     fun updateEditorTitle(title: String) = updateItemEditor { it.copy(title = title) }
     fun updateEditorNote(note: String) = updateItemEditor { it.copy(note = note) }
+    fun updateEditorSource(source: DailyPlanItemSource) = updateItemEditor {
+        it.copy(
+            source = source,
+            status = DailyPlanItemStatus.Done,
+            endTimeMinutes = if (source == DailyPlanItemSource.CheckInNote) null else it.endTimeMinutes
+        )
+    }
     fun updateEditorStartTime(timeMinutes: Int?) = updateItemEditor { it.copy(startTimeMinutes = timeMinutes) }
     fun updateEditorEndTime(timeMinutes: Int?) = updateItemEditor { it.copy(endTimeMinutes = timeMinutes) }
 
@@ -128,7 +136,8 @@ class CalendarViewModel(
                     title,
                     note.takeIf { it.isNotBlank() },
                     editor.startTimeMinutes,
-                    editor.endTimeMinutes
+                    editor.endTimeMinutes,
+                    editor.source
                 )
             } else {
                 updateDailyPlanItem(editor.itemId, editor.toWriteInput(editor.status))
@@ -141,7 +150,12 @@ class CalendarViewModel(
         val editor = _uiState.value.itemEditor ?: return
         val itemId = editor.itemId ?: return
         viewModelScope.launch {
-            updateDailyPlanItem(itemId, editor.toWriteInput(DailyPlanItemStatus.Done))
+            updateDailyPlanItem(
+                itemId,
+                editor.toWriteInput(
+                    status = DailyPlanItemStatus.Done,
+                )
+            )
             editor.taskId?.let { completeTask(it) }
             _uiState.update { it.copy(itemEditor = null) }
         }
@@ -162,9 +176,13 @@ class CalendarViewModel(
     }
 }
 
-private fun DailyPlanItemEditorState.toWriteInput(status: DailyPlanItemStatus) = DailyPlanItemWriteInput(
+private fun DailyPlanItemEditorState.toWriteInput(
+    status: DailyPlanItemStatus,
+    source: DailyPlanItemSource = this.source
+) = DailyPlanItemWriteInput(
     title = title,
     note = note,
+    source = source,
     status = status,
     startTimeMinutes = startTimeMinutes,
     endTimeMinutes = endTimeMinutes

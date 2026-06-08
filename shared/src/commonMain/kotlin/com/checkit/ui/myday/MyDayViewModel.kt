@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.checkit.data.DailyPlanItemWriteInput
 import com.checkit.domain.DailyPlanItem
+import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.TaskItem
 import com.checkit.domain.usecase.AddManualDoneToDailyPlanUseCase
@@ -66,7 +67,80 @@ class MyDayViewModel(
         _uiState.update { it.copy(selectedView = view) }
     }
 
-    fun addTask(task: TaskItem) {
+
+
+    fun updateItemTime(item: DailyPlanItem, startTimeMinutes: Int, endTimeMinutes: Int) {
+        viewModelScope.launch {
+            updateDailyPlanItemTime(item.id, startTimeMinutes, if (item.source == DailyPlanItemSource.CheckInNote) null else endTimeMinutes)
+        }
+    }
+
+    fun openCheckIn(
+        startTimeMinutes: Int? = null,
+        endTimeMinutes: Int? = null
+    ) {
+        _uiState.update {
+            it.copy(
+                itemEditor = DailyPlanItemEditorState(
+                    startTimeMinutes = startTimeMinutes,
+                    endTimeMinutes = endTimeMinutes
+                )
+            )
+        }
+    }
+    fun dismissCheckIn() {
+        _uiState.update { it.copy(itemEditor = null) }
+    }
+    fun saveCheckIn() {
+        val editor = _uiState.value.itemEditor ?: return
+        val title = editor.title.trim()
+        val note = editor.note.trim()
+        if (title.isBlank()) {
+            _uiState.update { it.copy(message = if (editor.source == DailyPlanItemSource.CheckInNote) "Add a note" else "Add a done item") }
+            return
+        }
+        viewModelScope.launch {
+            if (editor.itemId == null) {
+                addManualDoneToDailyPlan(
+                    today(),
+                    title,
+                    note.takeIf { it.isNotBlank() },
+                    editor.startTimeMinutes,
+                    editor.endTimeMinutes,
+                    editor.source
+                )
+            } else {
+                updateDailyPlanItem(
+                    editor.itemId,
+                    editor.toWriteInput(editor.status)
+                )
+            }
+            _uiState.update { it.copy(itemEditor = null, message = "Saved") }
+        }
+    }
+
+    fun openSuggestions(
+        startTimeMinutes: Int? = null,
+        endTimeMinutes: Int? = null
+    ) {
+        _uiState.update {
+            it.copy(
+                showSuggestions = true,
+                suggestionStartTimeMinutes = startTimeMinutes,
+                suggestionEndTimeMinutes = endTimeMinutes
+            )
+        }
+    }
+    fun dismissSuggestions() {
+        _uiState.update {
+            it.copy(
+                showSuggestions = false,
+                suggestionStartTimeMinutes = null,
+                suggestionEndTimeMinutes = null
+            )
+        }
+    }
+    fun addTaskFromSuggestion(task: TaskItem) {
         viewModelScope.launch {
             val state = _uiState.value
             val (startTimeMinutes, endTimeMinutes) = state.selectedSuggestionTimeRangeFor(task)
@@ -84,23 +158,11 @@ class MyDayViewModel(
         }
     }
 
-    fun updateItemTime(item: DailyPlanItem, startTimeMinutes: Int, endTimeMinutes: Int) {
-        viewModelScope.launch {
-            updateDailyPlanItemTime(item.id, startTimeMinutes, endTimeMinutes)
-        }
-    }
-
-    fun openCheckIn(
-        startTimeMinutes: Int? = null,
-        endTimeMinutes: Int? = null
-    ) {
-        _uiState.update {
-            it.copy(
-                itemEditor = DailyPlanItemEditorState(
-                    startTimeMinutes = startTimeMinutes,
-                    endTimeMinutes = endTimeMinutes
-                )
-            )
+    fun createFromTimelineRange(startTimeMinutes: Int, endTimeMinutes: Int) {
+        if (startTimeMinutes < currentMyDayTimeMinutes()) {
+            openCheckIn(startTimeMinutes, endTimeMinutes)
+        } else {
+            openSuggestions(startTimeMinutes, endTimeMinutes)
         }
     }
 
@@ -111,6 +173,7 @@ class MyDayViewModel(
                     mode = EditorMode.View,
                     itemId = item.id,
                     taskId = item.taskId,
+                    source = item.source,
                     title = if (item.source == com.checkit.domain.DailyPlanItemSource.CheckInNote) {
                         item.note.orEmpty()
                     } else {
@@ -124,80 +187,25 @@ class MyDayViewModel(
             )
         }
     }
-
-    fun openSuggestions(
-        startTimeMinutes: Int? = null,
-        endTimeMinutes: Int? = null
-    ) {
-        _uiState.update {
-            it.copy(
-                showSuggestions = true,
-                suggestionStartTimeMinutes = startTimeMinutes,
-                suggestionEndTimeMinutes = endTimeMinutes
-            )
-        }
-    }
-
-    fun createFromTimelineRange(startTimeMinutes: Int, endTimeMinutes: Int) {
-        if (startTimeMinutes < currentMyDayTimeMinutes()) {
-            openCheckIn(startTimeMinutes, endTimeMinutes)
-        } else {
-            openSuggestions(startTimeMinutes, endTimeMinutes)
-        }
-    }
-
-    fun dismissSuggestions() {
-        _uiState.update {
-            it.copy(
-                showSuggestions = false,
-                suggestionStartTimeMinutes = null,
-                suggestionEndTimeMinutes = null
-            )
-        }
-    }
-
-    fun dismissCheckIn() {
-        _uiState.update { it.copy(itemEditor = null) }
-    }
-
     fun editItemEditor() = updateItemEditor { it.copy(mode = EditorMode.Edit) }
     fun updateDoneTitle(title: String) = updateItemEditor { it.copy(title = title) }
     fun updateDoneNote(note: String) = updateItemEditor { it.copy(note = note) }
+    fun updateEditorSource(source: DailyPlanItemSource) = updateItemEditor {
+        it.copy(
+            source = source,
+            status = DailyPlanItemStatus.Done,
+            endTimeMinutes = if (source == DailyPlanItemSource.CheckInNote) null else it.endTimeMinutes
+        )
+    }
     fun updateStartTime(timeMinutes: Int?) = updateItemEditor { it.copy(startTimeMinutes = timeMinutes) }
     fun updateEndTime(timeMinutes: Int?) = updateItemEditor { it.copy(endTimeMinutes = timeMinutes) }
 
-    fun saveCheckIn() {
-        val editor = _uiState.value.itemEditor ?: return
-        val title = editor.title.trim()
-        val note = editor.note.trim()
-        if (title.isBlank()) {
-            _uiState.update { it.copy(message = "Add a done item") }
-            return
-        }
-        viewModelScope.launch {
-            if (editor.itemId == null) {
-                addManualDoneToDailyPlan(
-                    today(),
-                    title,
-                    note.takeIf { it.isNotBlank() },
-                    editor.startTimeMinutes,
-                    editor.endTimeMinutes
-                )
-            } else {
-                updateDailyPlanItem(
-                    editor.itemId,
-                    editor.toWriteInput(editor.status)
-                )
-            }
-            _uiState.update { it.copy(itemEditor = null, message = "Saved") }
-        }
-    }
 
     fun markEditorDone() {
         val editor = _uiState.value.itemEditor ?: return
         val title = editor.title.trim()
         if (title.isBlank()) {
-            _uiState.update { it.copy(message = "Add a done item") }
+            _uiState.update { it.copy(message = if (editor.source == DailyPlanItemSource.CheckInNote) "Add a note" else "Add a done item") }
             return
         }
         viewModelScope.launch {
@@ -207,10 +215,14 @@ class MyDayViewModel(
                     title,
                     editor.note.trim().takeIf { it.isNotBlank() },
                     editor.startTimeMinutes,
-                    editor.endTimeMinutes
+                    editor.endTimeMinutes,
+                    DailyPlanItemSource.CheckInManualDone
                 )
             } else {
-                updateDailyPlanItem(editor.itemId, editor.toWriteInput(DailyPlanItemStatus.Done))
+                updateDailyPlanItem(
+                    editor.itemId,
+                    editor.toWriteInput(status = DailyPlanItemStatus.Done)
+                )
             }
             editor.taskId?.let { completeTask(it) }
             _uiState.update { it.copy(itemEditor = null, message = "Done") }
@@ -255,9 +267,13 @@ private fun MyDayUiState.selectedSuggestionTimeRangeFor(task: TaskItem): Pair<In
     }
 }
 
-private fun DailyPlanItemEditorState.toWriteInput(status: DailyPlanItemStatus) = DailyPlanItemWriteInput(
+private fun DailyPlanItemEditorState.toWriteInput(
+    status: DailyPlanItemStatus,
+    source: DailyPlanItemSource = this.source
+) = DailyPlanItemWriteInput(
     title = title,
     note = note,
+    source = source,
     status = status,
     startTimeMinutes = startTimeMinutes,
     endTimeMinutes = endTimeMinutes

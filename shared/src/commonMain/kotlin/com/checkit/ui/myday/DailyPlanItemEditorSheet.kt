@@ -1,0 +1,352 @@
+package com.checkit.ui.myday
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Notes
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.TaskAlt
+import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import com.checkit.domain.DailyPlanItemSource
+import com.checkit.domain.DailyPlanItemStatus
+import com.checkit.ui.DailyPlanItemEditorState
+import com.checkit.ui.EditorMode
+import com.checkit.ui.tasks.DetailChip
+import com.checkit.ui.tasks.TimePickerRow
+import com.checkit.ui.tasks.TimeRangeDetailChip
+import com.checkit.ui.tasks.TimeRangePicker
+import com.checkit.ui.tasks.editorTextFieldColors
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun DailyPlanItemEditorSheet(
+    state: DailyPlanItemEditorState,
+    onDismiss: () -> Unit,
+    onDoneTitleChange: (String) -> Unit,
+    onDoneNoteChange: (String) -> Unit,
+    onSourceChange: (DailyPlanItemSource) -> Unit,
+    onStartTimeChange: (Int?) -> Unit,
+    onEndTimeChange: (Int?) -> Unit,
+    onEdit: () -> Unit,
+    onSave: () -> Unit,
+    onDone: () -> Unit,
+    onDelete: () -> Unit,
+    onOpenTask: (() -> Unit)?
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        sheetGesturesEnabled = false
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.ime)
+        ) {
+            DailyPlanItemSheetHeader(
+                state = state,
+                onSourceChange = onSourceChange,
+                onDismiss = onDismiss,
+                onEdit = onEdit,
+                onSave = onSave,
+                onDelete = onDelete
+            )
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false)
+                    .padding(horizontal = 20.dp),
+                contentPadding = PaddingValues(top = 6.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                item {
+                    if (state.isViewMode) {
+                        DailyPlanItemViewContent(state = state, hasTask = onOpenTask != null)
+                    } else {
+                        DailyPlanItemFormContent(
+                            state = state,
+                            onDoneTitleChange = onDoneTitleChange,
+                            onDoneNoteChange = onDoneNoteChange,
+                            onStartTimeChange = onStartTimeChange,
+                            onEndTimeChange = onEndTimeChange
+                        )
+                    }
+                }
+                if (state.isViewMode) {
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (onOpenTask != null) {
+                                TextButton(onClick = onOpenTask) {
+                                    Text("Open Task")
+                                }
+                            }
+                            if (state.source == DailyPlanItemSource.ExistingTask && state.status != DailyPlanItemStatus.Done) {
+                                Button(onClick = onDone) {
+                                    Text("Done")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DailyPlanItemSheetHeader(
+    state: DailyPlanItemEditorState,
+    onSourceChange: (DailyPlanItemSource) -> Unit,
+    onDismiss: () -> Unit,
+    onEdit: () -> Unit,
+    onSave: () -> Unit,
+    onDelete: () -> Unit
+) {
+    var menuExpanded by remember { mutableStateOf(false) }
+    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)) {
+        IconButton(onClick = onDismiss) {
+            Icon(Icons.Default.Close, contentDescription = "Close")
+        }
+
+        if (state.isAddMode || state.isEditMode && state.taskId == null) {
+            DailyPlanSourceSwitch(
+                selected = state.source,
+                onSelect = onSourceChange,
+                modifier = Modifier.align(Alignment.Center)
+            )
+        } else {
+            Text(
+                text = when (state.mode) {
+                    EditorMode.Add -> "Add item"
+                    EditorMode.View -> if (state.source == DailyPlanItemSource.CheckInNote) "Note" else "My Day item"
+                    EditorMode.Edit -> "Edit item"
+                },
+                modifier = Modifier.align(Alignment.Center),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center
+            )
+        }
+
+        Row(modifier = Modifier.align(Alignment.CenterEnd), verticalAlignment = Alignment.CenterVertically) {
+            if (state.isViewMode) {
+                IconButton(onClick = onEdit) {
+                    Icon(Icons.Default.Edit, contentDescription = "Edit")
+                }
+            }
+            if (state.canDelete && state.isViewMode) {
+                Box {
+                    IconButton(onClick = { menuExpanded = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "Options")
+                    }
+                    DropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Delete") },
+                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
+                            onClick = {
+                                menuExpanded = false
+                                onDelete()
+                            }
+                        )
+                    }
+                }
+            }
+            if (!state.isViewMode) {
+                Button(onClick = onSave) {
+                    Text("Save")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DailyPlanSourceSwitch(
+    selected: DailyPlanItemSource,
+    onSelect: (DailyPlanItemSource) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val options = listOf(
+        DailyPlanItemSource.CheckInNote to "Status",
+        DailyPlanItemSource.CheckInManualDone to "Done"
+    )
+    SingleChoiceSegmentedButtonRow(modifier = modifier) {
+        options.forEachIndexed { index, (source, label) ->
+            SegmentedButton(
+                selected = selected == source,
+                onClick = { onSelect(source) },
+                shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+                icon = {
+                    Icon(
+                        imageVector = if (source == DailyPlanItemSource.CheckInNote) Icons.Default.Notes else Icons.Default.TaskAlt,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                },
+                label = { Text(label) }
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun DailyPlanItemViewContent(
+    state: DailyPlanItemEditorState,
+    hasTask: Boolean
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+        Text(
+            text = state.title.ifBlank {
+                if (state.source == DailyPlanItemSource.CheckInNote) "Empty note" else "Untitled item"
+            },
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.SemiBold
+        )
+        state.note.takeIf { state.source != DailyPlanItemSource.CheckInNote && it.isNotBlank() }?.let { note ->
+            Text(
+                text = note,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            DetailChip(Icons.Default.Event, "My Day")
+            TimeRangeDetailChip(state.startTimeMinutes, state.endTimeMinutes)
+            if (state.source == DailyPlanItemSource.CheckInNote) {
+                DetailChip(Icons.Default.Notes, "Note")
+            } else {
+                DetailChip(Icons.Default.CheckCircle, if (state.status == DailyPlanItemStatus.Done) "Done" else "Planned")
+                if (hasTask) {
+                    DetailChip(Icons.Default.TaskAlt, "Task")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DailyPlanItemFormContent(
+    state: DailyPlanItemEditorState,
+    onDoneTitleChange: (String) -> Unit,
+    onDoneNoteChange: (String) -> Unit,
+    onStartTimeChange: (Int?) -> Unit,
+    onEndTimeChange: (Int?) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+        if (state.source == DailyPlanItemSource.CheckInNote) {
+            OutlinedTextField(
+                value = state.title,
+                onValueChange = onDoneTitleChange,
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Add note") },
+                minLines = 3,
+                shape = MaterialTheme.shapes.medium,
+                colors = editorTextFieldColors()
+            )
+            TimePickerRow(
+                label = "Start",
+                timeMinutes = state.startTimeMinutes,
+                initialTimeMinutes = currentTimeMinutes(),
+                onTimeChange = onStartTimeChange
+            )
+        } else {
+            OutlinedTextField(
+                value = state.title,
+                onValueChange = onDoneTitleChange,
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Done outside the app") },
+                singleLine = true,
+                textStyle = MaterialTheme.typography.headlineSmall.copy(
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.SemiBold
+                ),
+                shape = MaterialTheme.shapes.medium,
+                colors = editorTextFieldColors()
+            )
+            OutlinedTextField(
+                value = state.note,
+                onValueChange = onDoneNoteChange,
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Add details") },
+                minLines = 2,
+                shape = MaterialTheme.shapes.medium,
+                colors = editorTextFieldColors()
+            )
+            TimeRangePicker(
+                startTimeMinutes = state.startTimeMinutes,
+                endTimeMinutes = state.endTimeMinutes,
+                durationMinutes = state.durationMinutes(),
+                onStartTimeChange = onStartTimeChange,
+                onEndTimeChange = onEndTimeChange
+            )
+        }
+    }
+}
+
+private fun DailyPlanItemEditorState.durationMinutes(): Int? {
+    val start = startTimeMinutes ?: return null
+    val end = endTimeMinutes ?: return null
+    return (end - start).takeIf { it >= 0 }
+}
+
+private fun currentTimeMinutes(): Int {
+    val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).time
+    return now.hour * 60 + now.minute
+}
