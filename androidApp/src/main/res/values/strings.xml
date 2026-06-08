@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">CheckIt!</string>
+    <string name="widget_agenda_description">Shows Agenda</string>
 </resources>
