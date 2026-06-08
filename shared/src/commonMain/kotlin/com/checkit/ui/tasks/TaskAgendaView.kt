@@ -46,7 +46,9 @@ import com.checkit.ui.today
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus
+import kotlinx.datetime.toLocalDateTime
 
 @Composable
 internal fun TaskAgendaView(
@@ -77,7 +79,6 @@ internal fun TaskAgendaView(
         LazyColumn(
             state = state,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 80.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             items(
@@ -156,6 +157,11 @@ private fun AgendaDaySection(
         .sortedWith(compareBy<TimedAgendaItem> { it.startTimeMinutes }.thenBy { it.sortOrder })
 
     val hasAllDayItems = allDayTasks.isNotEmpty() || allDayNotes.isNotEmpty()
+    val now = kotlin.time.Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+    val nowMinutes = now.hour * 60 + now.minute
+    val nextTimedItemIndex = remember(timedItems, nowMinutes) {
+        timedItems.indexOfFirst { (it.startTimeMinutes) > nowMinutes }
+    }
 
     Column {
         if (showHeader) {
@@ -185,6 +191,7 @@ private fun AgendaDaySection(
                             showListName = showListName,
                             showTopLine = index > 0 || hasAllDayItems,
                             showBottomLine = index < timedItems.lastIndex,
+                            isHighlighted = index == nextTimedItemIndex,
                             onClick = { onTaskClick(item.task) }
                         )
                     }
@@ -195,6 +202,7 @@ private fun AgendaDaySection(
                             showListName = showListName,
                             showTopLine = index > 0 || hasAllDayItems,
                             showBottomLine = index < timedItems.lastIndex,
+                            isHighlighted = index == nextTimedItemIndex,
                             onClick = { onNoteClick(item.note) }
                         )
                     }
@@ -241,7 +249,7 @@ private fun AgendaEmptyDay() {
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        AgendaAxisLabel(text = "")
+        AgendaAxisLabel(text = "", isHighlighted = false)
         Spacer(Modifier.width(14.dp))
         Text(
             text = "No items",
@@ -264,7 +272,8 @@ private fun AgendaAllDayRow(
     AgendaAxisRow(
         label = "All Day",
         showTopLine = false,
-        showBottomLine = showBottomLine
+        showBottomLine = showBottomLine,
+        isHighlighted = false
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             tasks.forEach { task ->
@@ -297,12 +306,14 @@ private fun AgendaTimedTaskRow(
     showListName: Boolean,
     showTopLine: Boolean,
     showBottomLine: Boolean,
+    isHighlighted: Boolean,
     onClick: () -> Unit
 ) {
     AgendaAxisRow(
         label = task.startTimeMinutes?.toClockLabel() ?: "",
         showTopLine = showTopLine,
-        showBottomLine = showBottomLine
+        showBottomLine = showBottomLine,
+        isHighlighted = isHighlighted
     ) {
         TaskCard(
             title = task.name.ifBlank { "Untitled task" },
@@ -322,12 +333,14 @@ private fun AgendaTimedNoteRow(
     showListName: Boolean,
     showTopLine: Boolean,
     showBottomLine: Boolean,
+    isHighlighted: Boolean,
     onClick: () -> Unit
 ) {
     AgendaAxisRow(
         label = note.startTimeMinutes?.toClockLabel() ?: "",
         showTopLine = showTopLine,
-        showBottomLine = showBottomLine
+        showBottomLine = showBottomLine,
+        isHighlighted = isHighlighted
     ) {
         TaskCard(
             title = note.content.ifBlank { "Empty note" },
@@ -346,6 +359,7 @@ private fun AgendaAxisRow(
     label: String,
     showTopLine: Boolean,
     showBottomLine: Boolean,
+    isHighlighted: Boolean,
     content: @Composable () -> Unit
 ) {
     Row(
@@ -355,12 +369,12 @@ private fun AgendaAxisRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.Top
     ) {
-        AgendaAxisLabel(text = label)
-        AgendaAxisMarker(showTopLine = showTopLine, showBottomLine = showBottomLine)
+        AgendaAxisLabel(text = label, isHighlighted)
+        AgendaAxisMarker(showTopLine = showTopLine, showBottomLine = showBottomLine, isHighlighted = isHighlighted)
         Box(
             Modifier
                 .weight(1f)
-                .padding(bottom = 12.dp)
+                .padding(bottom = 8.dp)
         ) {
             content()
         }
@@ -368,7 +382,7 @@ private fun AgendaAxisRow(
 }
 
 @Composable
-private fun AgendaAxisLabel(text: String) {
+private fun AgendaAxisLabel(text: String, isHighlighted: Boolean) {
     Box(
         modifier = Modifier
             .width(56.dp)
@@ -377,8 +391,9 @@ private fun AgendaAxisLabel(text: String) {
     ) {
         Text(
             text = text,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = if (isHighlighted) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelSmall,
+            color = if (isHighlighted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = if (isHighlighted) FontWeight.SemiBold else FontWeight.Normal,
             maxLines = 1
         )
     }
@@ -387,7 +402,8 @@ private fun AgendaAxisLabel(text: String) {
 @Composable
 private fun AgendaAxisMarker(
     showTopLine: Boolean,
-    showBottomLine: Boolean
+    showBottomLine: Boolean,
+    isHighlighted: Boolean,
 ) {
     Box(
         modifier = Modifier
@@ -416,7 +432,7 @@ private fun AgendaAxisMarker(
                 .padding(top = 12.dp)
                 .size(10.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.outline)
+                .background(if (isHighlighted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)
         )
         Box(
             modifier = Modifier
