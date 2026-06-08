@@ -159,7 +159,10 @@ internal fun TaskEditorSheet(
                                 form = editor,
                                 availableLists = availableLists,
                                 availableTags = availableTags,
-                                onSubTaskToggle = onSubTaskToggle
+                                onSubTaskToggle = onSubTaskToggle,
+                                onSubTaskAdd = onSubTaskAdd,
+                                onSubTaskNameChange = onSubTaskNameChange,
+                                onSubTaskRemove = onSubTaskRemove,
                             )
                         } else {
                             TaskFormContent(
@@ -319,7 +322,10 @@ private fun TaskViewContent(
     form: TaskEditorState.TaskForm,
     availableLists: List<TaskList>,
     availableTags: List<TaskTag>,
-    onSubTaskToggle: (Int) -> Unit
+    onSubTaskToggle: (Int) -> Unit,
+    onSubTaskAdd: () -> Unit,
+    onSubTaskNameChange: (Int, String) -> Unit,
+    onSubTaskRemove: (Int) -> Unit,
 ) {
     val selectedList = availableLists.firstOrNull { it.id == form.listId }
     Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
@@ -354,11 +360,11 @@ private fun TaskViewContent(
         )
         SubtaskChecklist(
             subtasks = form.subtasks,
-            mode = form.mode,
+            mode = EditorMode.Edit,
             onToggle = onSubTaskToggle,
-            onAdd = {},
-            onNameChange = { _, _ -> },
-            onRemove = {}
+            onAdd = onSubTaskAdd,
+            onNameChange = onSubTaskNameChange,
+            onRemove = onSubTaskRemove
         )
 
         SupportingPills(list = selectedList, tags = availableTags.filter { it.id in form.selectedTagIds })
