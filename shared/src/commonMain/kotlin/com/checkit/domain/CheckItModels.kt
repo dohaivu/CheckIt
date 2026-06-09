@@ -90,6 +90,7 @@ data class SubTaskItem(
 data class NoteItem(
     val id: Long,
     val listId: Long,
+    val title: String = "",
     val content: String,
     val tags: List<TaskTag> = emptyList(),
     val status: TaskStatus = TaskStatus.Open,

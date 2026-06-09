@@ -152,6 +152,7 @@ sealed interface TaskEditorState {
         val mode: EditorMode,
         val noteId: Long? = null,
         val listId: Long,
+        val title: String = "",
         val content: String = "",
         val status: TaskStatus = TaskStatus.Open,
         val date: LocalDate,

@@ -154,9 +154,10 @@ private fun BriefNoteRowContent(note: NoteItem) {
     ) {
         NoteStatusIcon(note.status)
         Text(
-            text = note.content,
+            text = note.title.ifBlank { note.content },
             modifier = Modifier.weight(1f),
             style = MaterialTheme.typography.bodyMedium,
+            fontWeight = if (note.title.isNotBlank()) FontWeight.SemiBold else FontWeight.Normal,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -232,7 +233,19 @@ private fun NoteRowScaffold(
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
             NoteStatusIcon(note.status)
-            Text(note.content, style = MaterialTheme.typography.bodyMedium, maxLines = contentMaxLines, overflow = TextOverflow.Ellipsis)
+            Column(Modifier.weight(1f)) {
+                if (note.title.isNotBlank()) {
+                    Text(note.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                }
+                if (note.content.isNotBlank()) {
+                    Text(
+                        note.content,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = contentMaxLines,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
         }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             DetailChip(Icons.Default.Event, note.date.compact())

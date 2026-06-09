@@ -54,6 +54,7 @@ fun List<DailyPlanItem>.toTaskViewProjection(
                 projectedNotes += NoteItem(
                     id = item.id,
                     listId = listId,
+                    title = item.titleSnapshot,
                     content = item.note.orEmpty(),
                     status = item.status.toTaskStatus(),
                     date = date,

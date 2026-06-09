@@ -108,6 +108,7 @@ data class NoteEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0L,
     val listId: Long,
+    val title: String = "",
     val content: String,
     val status: String = "Open",
     val dateEpochDays: Int,
@@ -272,7 +273,7 @@ data class TaskFilterEntity(
         TaskReminderEntity::class,
         TaskFilterEntity::class
     ],
-    version = 5,
+    version = 1,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)
@@ -291,14 +292,8 @@ fun buildCheckItDatabase(
     return builder
         .fallbackToDestructiveMigration(false)
         .fallbackToDestructiveMigrationOnDowngrade(false)
-        .addMigrations(Migration4To5)
+        .addMigrations()
         .setQueryCoroutineContext(Dispatchers.IO)
         .setDriver(BundledSQLiteDriver())
         .build()
-}
-
-private val Migration4To5 = object : Migration(4, 5) {
-    override fun migrate(connection: SQLiteConnection) {
-        connection.execSQL("ALTER TABLE notes ADD COLUMN startTimeMinutes INTEGER")
-    }
 }

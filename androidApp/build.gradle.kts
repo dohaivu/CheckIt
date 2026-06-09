@@ -102,6 +102,7 @@ dependencies {
     implementation(libs.koin.compose.viewmodel)
     implementation(libs.koin.core.coroutines)
     implementation(libs.koin.android)
+    implementation(libs.koin.android.workmanager)
 
     // Android instrumented UI tests
 //    androidTestImplementation(platform(libs.androidx.compose.bom))

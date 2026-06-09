@@ -18,11 +18,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddReaction
+import androidx.compose.material.icons.filled.AddTask
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.EventAvailable
+import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.SettingsSuggest
 import androidx.compose.material.icons.filled.ViewAgenda
 import androidx.compose.material.icons.rounded.CheckBox
 import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
@@ -99,12 +103,10 @@ internal fun MyDayScreen(
                 },
                 actions = {
                     IconButton(onClick = viewModel::openSuggestions) {
-                        Icon(Icons.Default.Add, contentDescription = "Add to My Day")
+                        Icon(Icons.Default.Lightbulb, contentDescription = "Add to My Day")
                     }
-                    TextButton(onClick = viewModel::openCheckIn) {
-                        Icon(Icons.Default.Notes, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("CheckIn")
+                    IconButton(onClick = viewModel::openCheckIn) {
+                        Icon(Icons.Default.AddTask, contentDescription = null)
                     }
                 }
             )

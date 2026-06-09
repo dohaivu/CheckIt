@@ -183,7 +183,8 @@ class TaskViewModel(
                 editor = TaskEditorState.TaskForm(
                     mode = EditorMode.Add,
                     listId = note.listId,
-                    name = note.content,
+                    name = note.title,
+                    description = note.content,
                     doDate = note.date,
                     selectedTagIds = note.selectedTagIds
                 )
@@ -195,14 +196,12 @@ class TaskViewModel(
         _uiState.update { state ->
             val task = state.editor as? TaskEditorState.TaskForm ?: return@update state
             if (task.mode != EditorMode.Add) return@update state
-            val content = listOf(task.name, task.description)
-                .filter { it.isNotBlank() }
-                .joinToString("\n\n")
             state.copy(
                 editor = TaskEditorState.NoteForm(
                     mode = EditorMode.Add,
                     listId = task.listId,
-                    content = content,
+                    title = task.name,
+                    content = task.description,
                     date = task.doDate ?: today(),
                     startTimeMinutes = task.startTimeMinutes,
                     selectedTagIds = task.selectedTagIds
@@ -241,6 +240,7 @@ class TaskViewModel(
                     mode = EditorMode.View,
                     noteId = note.id,
                     listId = note.listId,
+                    title = note.title,
                     content = note.content,
                     status = note.status,
                     date = note.date,
@@ -437,6 +437,7 @@ class TaskViewModel(
     fun toggleTaskTag(tagId: Long) = updateTaskForm { form ->
         form.copy(selectedTagIds = form.selectedTagIds.toggle(tagId))
     }
+    fun updateNoteTitle(title: String) = updateNoteForm { it.copy(title = title) }
     fun updateNoteContent(content: String) = updateNoteForm { it.copy(content = content) }
     fun updateNoteListId(listId: Long) = updateNoteForm { it.copy(listId = listId) }
     fun updateNoteDate(date: LocalDate) = updateNoteForm { it.copy(date = date) }
@@ -512,6 +513,7 @@ class TaskViewModel(
                 note.id,
                 NoteWriteInput(
                     listId = note.listId,
+                    title = note.title,
                     content = note.content,
                     status = note.status,
                     date = note.date,
@@ -535,13 +537,14 @@ class TaskViewModel(
     }
 
     private fun saveNote(form: TaskEditorState.NoteForm) {
-        if (form.content.isBlank()) {
-            showMessage("Add note content")
+        if (form.title.isBlank() && form.content.isBlank()) {
+            showMessage("Add a note title or content")
             return
         }
         viewModelScope.launch {
             val input = NoteWriteInput(
                 listId = form.listId,
+                title = form.title.trim(),
                 content = form.content.trim(),
                 status = form.status,
                 date = form.date,
@@ -729,7 +732,10 @@ private fun List<NoteItem>.sortedNotesFor(sortOption: TaskSortOption): List<Note
     when (sortOption) {
         TaskSortOption.Custom,
         TaskSortOption.Priority -> sortedBy { it.sortOrder }
-        TaskSortOption.Title -> sortedWith(compareBy<NoteItem> { it.content.lowercase() }.thenBy { it.sortOrder })
+        TaskSortOption.Title -> sortedWith(
+            compareBy<NoteItem> { it.title.ifBlank { it.content }.lowercase() }
+                .thenBy { it.sortOrder }
+        )
         TaskSortOption.Date -> sortedWith(compareBy<NoteItem> { it.date }.thenBy { it.sortOrder })
     }
 

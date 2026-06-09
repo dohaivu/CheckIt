@@ -95,6 +95,7 @@ data class SubTaskWriteInput(
 
 data class NoteWriteInput(
     val listId: Long,
+    val title: String,
     val content: String,
     val status: TaskStatus,
     val date: LocalDate,
@@ -224,6 +225,7 @@ class RoomCheckItRepository(
         val noteId = dao.insertNote(
             NoteEntity(
                 listId = inboxId,
+                title = "Note basics",
                 content = "Ideas, meeting notes, and loose thoughts live beside tasks in each list.",
                 status = TaskStatus.Open.name,
                 dateEpochDays = today.toEpochDays().toInt(),
@@ -453,6 +455,7 @@ class RoomCheckItRepository(
         val noteId = dao.insertNote(
             NoteEntity(
                 listId = input.listId,
+                title = input.title,
                 content = input.content,
                 status = input.status.name,
                 dateEpochDays = input.date.toEpochDays().toInt(),
@@ -470,6 +473,7 @@ class RoomCheckItRepository(
         dao.updateNote(
             noteId = noteId,
             listId = input.listId,
+            title = input.title,
             content = input.content,
             status = input.status.name,
             dateEpochDays = input.date.toEpochDays().toInt(),
@@ -656,6 +660,7 @@ private fun TaskReminderEntity.toDomain() = TaskReminder(
 private fun NoteEntity.toDomain(tags: List<TaskTag>) = NoteItem(
     id = id,
     listId = listId,
+    title = title,
     content = content,
     status = enumValueOf(status),
     tags = tags,

@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -29,6 +30,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.AlertDialog
@@ -111,6 +113,7 @@ internal fun TaskEditorSheet(
     onSubTaskNameChange: (Int, String) -> Unit,
     onSubTaskRemove: (Int) -> Unit,
     onTaskTagToggle: (Long) -> Unit,
+    onNoteTitleChange: (String) -> Unit,
     onNoteContentChange: (String) -> Unit,
     onNoteListChange: (Long) -> Unit,
     onNoteDateChange: (LocalDate) -> Unit,
@@ -195,6 +198,7 @@ internal fun TaskEditorSheet(
                                 form = editor,
                                 availableLists = availableLists,
                                 availableTags = availableTags,
+                                onTitleChange = onNoteTitleChange,
                                 onContentChange = onNoteContentChange,
                                 onListChange = onNoteListChange,
                                 onDateChange = onNoteDateChange,
@@ -395,10 +399,16 @@ private fun NoteViewContent(
 ) {
     val selectedList = availableLists.firstOrNull { it.id == form.listId }
     Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+        if (form.title.isNotBlank()) {
+            Text(
+                text = form.title,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
         Text(
             text = form.content.ifBlank { "Empty note" },
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
+            style = MaterialTheme.typography.bodyLarge,
         )
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -839,7 +849,7 @@ private fun RepeatDropdown(
     var expanded by remember { mutableStateOf(false) }
     Box {
         SelectableInfoRow(
-            icon = Icons.Default.MoreTime,
+            icon = Icons.Default.Repeat,
             label = "Repeat",
             value = selected.label,
             onClick = { expanded = true }
@@ -1031,6 +1041,7 @@ private fun NoteFormContent(
     form: TaskEditorState.NoteForm,
     availableLists: List<TaskList>,
     availableTags: List<TaskTag>,
+    onTitleChange: (String) -> Unit,
     onContentChange: (String) -> Unit,
     onListChange: (Long) -> Unit,
     onDateChange: (LocalDate) -> Unit,
@@ -1039,11 +1050,24 @@ private fun NoteFormContent(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
         OutlinedTextField(
+            value = form.title,
+            onValueChange = onTitleChange,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("Note title") },
+            singleLine = true,
+            textStyle = MaterialTheme.typography.headlineSmall.copy(
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.SemiBold
+            ),
+            shape = MaterialTheme.shapes.medium,
+            colors = editorTextFieldColors()
+        )
+        OutlinedTextField(
             value = form.content,
             onValueChange = onContentChange,
             modifier = Modifier.fillMaxWidth(),
             placeholder = { Text("Write a note") },
-            minLines = 6,
+            minLines = 4,
             shape = MaterialTheme.shapes.medium,
             colors = editorTextFieldColors()
         )

@@ -126,7 +126,7 @@ internal fun CalendarScreen(
             SelectedDateHeader(
                 date = state.selectedDate,
                 taskCount = if (showDailyPlan) dailyPlanItems.size else tasksForDate.size,
-                noteCount = 0
+                noteCount = notesForDate.size
             )
             if (showDailyPlan) {
                 DayLinearTimeline(

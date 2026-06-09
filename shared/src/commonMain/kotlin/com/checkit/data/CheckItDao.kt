@@ -397,10 +397,11 @@ interface CheckItDao {
     )
     suspend fun clearTaskTime(taskId: Long, updatedAtMillis: Long)
 
-    @Query("UPDATE notes SET listId = :listId, content = :content, status = :status, dateEpochDays = :dateEpochDays, startTimeMinutes = :startTimeMinutes, editedAtMillis = :editedAtMillis WHERE id = :noteId")
+    @Query("UPDATE notes SET listId = :listId, title = :title, content = :content, status = :status, dateEpochDays = :dateEpochDays, startTimeMinutes = :startTimeMinutes, editedAtMillis = :editedAtMillis WHERE id = :noteId")
     suspend fun updateNote(
         noteId: Long,
         listId: Long,
+        title: String,
         content: String,
         status: String,
         dateEpochDays: Int,
