@@ -45,7 +45,6 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
@@ -75,6 +74,7 @@ import com.checkit.ui.TaskEditorState
 import com.checkit.ui.components.ListPicker
 import com.checkit.ui.components.PriorityPicker
 import com.checkit.ui.components.PriorityPill
+import com.checkit.ui.components.ReminderPicker
 import com.checkit.ui.components.RepeatPicker
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.toUtcLocalDate
@@ -809,118 +809,7 @@ internal fun DurationText(
     )
 }
 
-@Composable
-private fun ReminderPicker(
-    reminderOffsets: Set<Int>,
-    hasDate: Boolean,
-    startTimeMinutes: Int?,
-    onEnabledChange: (Boolean) -> Unit,
-    onReminderToggle: (Int) -> Unit
-) {
-    val enabled = reminderOffsets.isNotEmpty()
-    val presets = TaskReminderPreset.availableFor(startTimeMinutes)
-    var showOptions by remember { mutableStateOf(false) }
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.medium,
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .then(
-                        if (hasDate) {
-                            Modifier.clickable {
-                                if (!enabled) onEnabledChange(true)
-                                showOptions = true
-                            }
-                        } else {
-                            Modifier
-                        }
-                    )
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Icon(Icons.Default.Notifications, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Column(Modifier.weight(1f)) {
-                    Text("Reminders", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-                    Text(
-                        text = when {
-                            !hasDate -> "Set a date first"
-                            !enabled -> "Off"
-                            else -> reminderOffsets
-                                .sorted()
-                                .joinToString { TaskReminderPreset.labelFor(it, startTimeMinutes) }
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Switch(
-                    checked = enabled,
-                    onCheckedChange = { checked ->
-                        if (hasDate || !checked) {
-                            onEnabledChange(checked)
-                            showOptions = checked
-                        }
-                    },
-                    enabled = hasDate || enabled
-                )
-            }
-        }
-        if (showOptions && hasDate) {
-            AlertDialog(
-                onDismissRequest = { showOptions = false },
-                title = { Text("Reminders") },
-                text = {
-                    Column {
-                        presets.forEach { preset ->
-                            ReminderOptionRow(
-                                label = TaskReminderPreset.labelFor(preset.offsetMinutes, startTimeMinutes),
-                                selected = preset.offsetMinutes in reminderOffsets,
-                                onClick = { onReminderToggle(preset.offsetMinutes) }
-                            )
-                        }
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = { showOptions = false }) {
-                        Text("Done")
-                    }
-                }
-            )
-        }
-    }
-}
 
-@Composable
-private fun ReminderOptionRow(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        Icon(
-            imageVector = if (selected) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
-            contentDescription = null,
-            tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f)
-        )
-    }
-}
 
 @Composable
 internal fun SelectableInfoRow(
