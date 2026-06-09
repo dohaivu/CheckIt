@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -19,16 +18,14 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Event
-import androidx.compose.material.icons.filled.MoreTime
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Notes
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Schedule
@@ -68,17 +65,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskList
+import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskReminderPreset
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskTag
 import com.checkit.ui.EditorMode
 import com.checkit.ui.RepeatPreset
 import com.checkit.ui.TaskEditorState
-import com.checkit.ui.today
+import com.checkit.ui.components.RepeatPicker
+import com.checkit.ui.components.TagPicker
 import com.checkit.ui.toUtcLocalDate
 import com.checkit.ui.toUtcStartMillis
+import com.checkit.ui.today
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -469,30 +468,6 @@ private fun DetailRow(
 }
 
 @Composable
-private fun TagPickerRow(
-    availableTags: List<TaskTag>,
-    selectedTagIds: Set<Long>,
-    onTagToggle: (Long) -> Unit
-) {
-    if (availableTags.isEmpty()) return
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            availableTags.forEach { tag ->
-                TaskTagPill(
-                    tag = tag,
-                    selected = tag.id in selectedTagIds,
-                    onClick = { onTagToggle(tag.id) }
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun TaskFormContent(
     form: TaskEditorState.TaskForm,
     availableLists: List<TaskList>,
@@ -557,13 +532,18 @@ private fun TaskFormContent(
         }
         EditorSection {
             PriorityPickerRow(selected = form.priority, onSelect = onPriorityChange)
-            RepeatDropdown(selected = form.repeatPreset, onSelect = onRepeatChange)
+            RepeatPicker(selected = form.repeatPreset, onSelect = onRepeatChange)
             ReminderPicker(
                 reminderOffsets = form.reminderOffsets,
                 hasDate = form.doDate != null,
                 startTimeMinutes = form.startTimeMinutes,
                 onEnabledChange = onRemindersEnabledChange,
                 onReminderToggle = onReminderToggle
+            )
+            TagPicker(
+                availableTags = availableTags,
+                selectedTagIds = form.selectedTagIds,
+                onTagToggle = onTagToggle
             )
         }
         SubtaskChecklist(
@@ -574,11 +554,7 @@ private fun TaskFormContent(
             onNameChange = onSubTaskNameChange,
             onRemove = onSubTaskRemove
         )
-        TagPickerRow(
-            availableTags = availableTags,
-            selectedTagIds = form.selectedTagIds,
-            onTagToggle = onTagToggle
-        )
+
     }
 }
 
@@ -842,36 +818,6 @@ private fun ListPickerRow(
 }
 
 @Composable
-private fun RepeatDropdown(
-    selected: RepeatPreset,
-    onSelect: (RepeatPreset) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        SelectableInfoRow(
-            icon = Icons.Default.Repeat,
-            label = "Repeat",
-            value = selected.label,
-            onClick = { expanded = true }
-        )
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
-            RepeatPreset.entries.forEach { preset ->
-                DropdownMenuItem(
-                    text = { Text(preset.label) },
-                    onClick = {
-                        onSelect(preset)
-                        expanded = false
-                    }
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun ReminderPicker(
     reminderOffsets: Set<Int>,
     hasDate: Boolean,
@@ -985,7 +931,7 @@ private fun ReminderOptionRow(
 }
 
 @Composable
-private fun SelectableInfoRow(
+internal fun SelectableInfoRow(
     icon: ImageVector,
     label: String,
     value: String,
@@ -1085,7 +1031,7 @@ private fun NoteFormContent(
                 onTimeChange = onStartTimeChange
             )
         }
-        TagPickerRow(
+        TagPicker(
             availableTags = availableTags,
             selectedTagIds = form.selectedTagIds,
             onTagToggle = onTagToggle

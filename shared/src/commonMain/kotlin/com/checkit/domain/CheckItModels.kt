@@ -108,7 +108,11 @@ data class TaskTag(
     val id: Long,
     val name: String,
     val color: String
-)
+) {
+    companion object {
+        val None = TaskTag(id = -1, name = "None", color = "#FFFFFF")
+    }
+}
 
 data class TaskReminder(
     val id: Long,
