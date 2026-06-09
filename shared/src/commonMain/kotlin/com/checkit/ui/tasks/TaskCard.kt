@@ -47,11 +47,11 @@ internal fun TaskCard(
 ) {
     Surface(
         modifier = modifier
-            .fillMaxWidth()
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+            .fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
 //        color = color.copy(alpha = containerAlpha),
-        tonalElevation = tonalElevation
+        tonalElevation = tonalElevation,
+        onClick = { onClick?.invoke() }
     ) {
         Box {
             Row(

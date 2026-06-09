@@ -31,7 +31,7 @@ internal fun PriorityPill(
 ) {
     val priorityColor = priority.priorityColor()
     Surface(
-        modifier = modifier.then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+        modifier = modifier,
         shape = RoundedCornerShape(999.dp),
         color = if (selected) {
             priorityColor.copy(alpha = 0.14f)
@@ -41,7 +41,10 @@ internal fun PriorityPill(
         border = BorderStroke(
             width = 1.dp,
             color = if (selected) priorityColor.copy(alpha = 0.62f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.48f)
-        )
+        ),
+        onClick = {
+            onClick?.invoke()
+        }
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),

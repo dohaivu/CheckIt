@@ -25,11 +25,13 @@ import kotlinx.datetime.LocalDate
 internal fun DetailChip(
     icon: ImageVector,
     label: String,
-    iconTint: Color = MaterialTheme.colorScheme.primary
+    iconTint: Color = MaterialTheme.colorScheme.primary,
+    onClick: (() -> Unit)? = null
 ) {
     Surface(
         shape = RoundedCornerShape(999.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+        onClick = { onClick?.invoke() }
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),

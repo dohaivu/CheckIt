@@ -6,11 +6,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -36,36 +39,28 @@ fun RepeatPicker(
         isExpanded = expanded,
         onDismissRequest = { expanded = false },
         anchor = {
-            Row(
-                modifier = Modifier
-                    .clickable { expanded = true },
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (selectedPreset == RepeatPreset.None) {
-                    DetailChip(icon = Icons.Default.Repeat, label = "None", iconTint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.58f))
-                } else {
-                    DetailChip(icon = Icons.Default.Repeat, label = selectedPreset.label)
-                }
+            if (selectedPreset == RepeatPreset.None) {
+                DetailChip(icon = Icons.Default.Repeat, label = "None", iconTint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.58f), onClick = { expanded = true })
+            } else {
+                DetailChip(icon = Icons.Default.Repeat, label = selectedPreset.label, onClick = { expanded = true })
             }
         }
     ) {
         Column(
             modifier = Modifier
-                .widthIn(min = 150.dp, max = 280.dp)
-                .padding(vertical = 4.dp)
+                .width(150.dp)
+                .padding(vertical = 0.dp)
         ) {
             RepeatPreset.entries.forEachIndexed { index, preset ->
                 Row(
                     modifier = Modifier
-                        .fillMaxWidth()
                         .clickable(onClick = {
                             selectedPreset = preset
                             onSelect(preset)
                             expanded = false
                         })
                         .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = preset.label,
