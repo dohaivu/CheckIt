@@ -35,6 +35,9 @@ import com.checkit.domain.TaskList
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.ui.TaskListDisplayType
+import com.checkit.ui.components.PriorityPill
+import com.checkit.ui.components.RepeatPill
+import com.checkit.ui.components.priorityColor
 
 @Composable
 internal fun TaskRow(

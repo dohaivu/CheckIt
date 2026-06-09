@@ -27,7 +27,6 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
-import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.AlertDialog
@@ -73,6 +72,9 @@ import com.checkit.domain.TaskTag
 import com.checkit.ui.EditorMode
 import com.checkit.ui.RepeatPreset
 import com.checkit.ui.TaskEditorState
+import com.checkit.ui.components.PriorityPicker
+import com.checkit.ui.components.PriorityPickerRow
+import com.checkit.ui.components.PriorityPill
 import com.checkit.ui.components.RepeatPicker
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.toUtcLocalDate
@@ -161,10 +163,21 @@ internal fun TaskEditorSheet(
                                 form = editor,
                                 availableLists = availableLists,
                                 availableTags = availableTags,
+                                onNameChange = onTaskNameChange,
+                                onListChange = onTaskListChange,
+                                onDescriptionChange = onTaskDescriptionChange,
+                                onDueDateChange = onTaskDueDateChange,
+                                onStartTimeChange = onTaskStartTimeChange,
+                                onEndTimeChange = onTaskEndTimeChange,
+                                onRepeatChange = onTaskRepeatChange,
+                                onPriorityChange = onTaskPriorityChange,
+                                onRemindersEnabledChange = onTaskRemindersEnabledChange,
+                                onReminderToggle = onTaskReminderToggle,
                                 onSubTaskToggle = onSubTaskToggle,
                                 onSubTaskAdd = onSubTaskAdd,
                                 onSubTaskNameChange = onSubTaskNameChange,
                                 onSubTaskRemove = onSubTaskRemove,
+                                onTagToggle = onTaskTagToggle
                             )
                         } else {
                             TaskFormContent(
@@ -325,10 +338,21 @@ private fun TaskViewContent(
     form: TaskEditorState.TaskForm,
     availableLists: List<TaskList>,
     availableTags: List<TaskTag>,
+    onNameChange: (String) -> Unit,
+    onListChange: (Long) -> Unit,
+    onDescriptionChange: (String) -> Unit,
+    onDueDateChange: (LocalDate?) -> Unit,
+    onStartTimeChange: (Int?) -> Unit,
+    onEndTimeChange: (Int?) -> Unit,
+    onRepeatChange: (RepeatPreset) -> Unit,
+    onPriorityChange: (TaskPriority) -> Unit,
+    onRemindersEnabledChange: (Boolean) -> Unit,
+    onReminderToggle: (Int) -> Unit,
     onSubTaskToggle: (Int) -> Unit,
     onSubTaskAdd: () -> Unit,
     onSubTaskNameChange: (Int, String) -> Unit,
     onSubTaskRemove: (Int) -> Unit,
+    onTagToggle: (Long) -> Unit
 ) {
     val selectedList = availableLists.firstOrNull { it.id == form.listId }
     Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
@@ -354,9 +378,9 @@ private fun TaskViewContent(
                 PriorityPill(priority = form.priority, selected = true)
             }
         }
-        if (form.repeatPreset != RepeatPreset.None) {
-            RepeatPill(form.repeatPreset.rrule)
-        }
+
+        RepeatPicker(selected = form.repeatPreset, onSelect = onRepeatChange)
+
         ReminderDisplayRow(
             reminderOffsets = form.reminderOffsets,
             startTimeMinutes = form.startTimeMinutes
@@ -531,7 +555,7 @@ private fun TaskFormContent(
             )
         }
         EditorSection {
-            PriorityPickerRow(selected = form.priority, onSelect = onPriorityChange)
+            PriorityPicker(selected = form.priority, onSelect = onPriorityChange)
             RepeatPicker(selected = form.repeatPreset, onSelect = onRepeatChange)
             ReminderPicker(
                 reminderOffsets = form.reminderOffsets,

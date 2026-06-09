@@ -1,7 +1,6 @@
-package com.checkit.ui.tasks
+package com.checkit.ui.components
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -15,6 +14,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -85,6 +88,45 @@ internal fun PriorityPickerRow(
                     onSelect(if (selected == priority) TaskPriority.None else priority)
                 }
             )
+        }
+    }
+}
+
+@Composable
+internal fun PriorityPicker(
+    selected: TaskPriority,
+    onSelect: (TaskPriority) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    AppleStylePopup(
+        isExpanded = expanded,
+        onDismissRequest = { expanded = false },
+        anchor = {
+            PriorityPill(
+                priority = selected,
+                selected = false,
+                onClick = {
+                    expanded = true
+                }
+            )
+        }
+    ) {
+        FlowRow(
+            modifier = Modifier.padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            EditablePriorities.forEach { priority ->
+                PriorityPill(
+                    priority = priority,
+                    selected = selected == priority,
+                    onClick = {
+                        onSelect(if (selected == priority) TaskPriority.None else priority)
+                        expanded = false
+                    }
+                )
+            }
         }
     }
 }

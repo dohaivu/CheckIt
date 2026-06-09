@@ -1,32 +1,24 @@
 package com.checkit.ui.myday
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.AddReaction
 import androidx.compose.material.icons.filled.AddTask
-import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.Lightbulb
-import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.SettingsSuggest
 import androidx.compose.material.icons.filled.ViewAgenda
 import androidx.compose.material.icons.rounded.CheckBox
 import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
@@ -41,7 +33,6 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -49,7 +40,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -60,8 +50,6 @@ import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskList
-import com.checkit.domain.TaskPriority
-import com.checkit.domain.TaskStatus
 import com.checkit.ui.MyDayUiState
 import com.checkit.ui.MyDayView
 import com.checkit.ui.components.TinyTopAppBar
@@ -70,7 +58,6 @@ import com.checkit.ui.tasks.TaskAgendaView
 import com.checkit.ui.tasks.TaskCard
 import com.checkit.ui.tasks.TaskStatusIcon
 import com.checkit.ui.tasks.TaskTimelineView
-import com.checkit.ui.tasks.priorityColor
 import com.checkit.ui.tasks.taskCardColor
 import com.checkit.ui.tasks.timeRangeLabel
 import kotlinx.datetime.LocalDate

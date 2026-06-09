@@ -27,7 +27,7 @@ import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskList
 import com.checkit.ui.parseHexColorOrNull
-import com.checkit.ui.tasks.priorityColor
+import com.checkit.ui.components.priorityColor
 import kotlin.math.roundToInt
 
 @Composable

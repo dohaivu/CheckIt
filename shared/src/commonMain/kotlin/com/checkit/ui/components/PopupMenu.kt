@@ -79,7 +79,7 @@ private class CenteredMenuPositionProvider : PopupPositionProvider {
         val maxAllowedX = windowSize.width - popupContentSize.width
 
         val finalX = idealX.coerceIn(40, (maxAllowedX-40).coerceAtLeast(40))
-        val finalY = anchorBounds.bottom + 8
+        val finalY = anchorBounds.bottom
         return IntOffset(finalX, finalY)
     }
 }
