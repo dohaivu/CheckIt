@@ -45,6 +45,7 @@ import com.checkit.ui.TaskEditorState
 import com.checkit.ui.TaskSortOption
 import com.checkit.ui.TaskUiState
 import com.checkit.ui.TaskWorkspaceView
+import com.checkit.ui.components.MinutesPerDay
 import com.checkit.ui.toEditorState
 import com.checkit.ui.today
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -750,7 +751,6 @@ private fun TaskPriority.rankForSort(): Int =
 private fun <T> Set<T>.toggle(value: T): Set<T> =
     if (contains(value)) this - value else this + value
 
-private const val MinutesPerDay = 24 * 60
 private const val MinimumTimelineDurationMinutes = 15
 private const val LastTimelineStartMinute = MinutesPerDay - MinimumTimelineDurationMinutes
 

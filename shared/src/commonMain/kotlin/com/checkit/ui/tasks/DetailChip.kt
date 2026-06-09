@@ -80,7 +80,7 @@ internal fun DateTimeRangeDetailChip(
     )
 }
 
-private fun dateTimeRangeDetailLabel(
+internal fun dateTimeRangeDetailLabel(
     date: LocalDate?,
     startTimeMinutes: Int?,
     endTimeMinutes: Int?

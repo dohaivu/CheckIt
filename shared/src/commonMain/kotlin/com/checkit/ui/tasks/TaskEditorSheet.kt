@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -18,7 +17,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -26,10 +24,8 @@ import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.TaskAlt
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -48,10 +44,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -71,19 +65,19 @@ import com.checkit.domain.TaskTag
 import com.checkit.ui.EditorMode
 import com.checkit.ui.RepeatPreset
 import com.checkit.ui.TaskEditorState
+import com.checkit.ui.components.DatePickerRow
 import com.checkit.ui.components.ListPicker
 import com.checkit.ui.components.PriorityPicker
 import com.checkit.ui.components.PriorityPill
 import com.checkit.ui.components.ReminderPicker
 import com.checkit.ui.components.RepeatPicker
 import com.checkit.ui.components.TagPicker
+import com.checkit.ui.components.TimePickerRow
+import com.checkit.ui.components.TimeRangePicker
 import com.checkit.ui.toUtcLocalDate
 import com.checkit.ui.toUtcStartMillis
-import com.checkit.ui.today
-import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 
@@ -171,7 +165,6 @@ internal fun TaskEditorSheet(
                                 onEndTimeChange = onTaskEndTimeChange,
                                 onRepeatChange = onTaskRepeatChange,
                                 onPriorityChange = onTaskPriorityChange,
-                                onRemindersEnabledChange = onTaskRemindersEnabledChange,
                                 onReminderToggle = onTaskReminderToggle,
                                 onSubTaskToggle = onSubTaskToggle,
                                 onSubTaskAdd = onSubTaskAdd,
@@ -192,7 +185,6 @@ internal fun TaskEditorSheet(
                                 onEndTimeChange = onTaskEndTimeChange,
                                 onRepeatChange = onTaskRepeatChange,
                                 onPriorityChange = onTaskPriorityChange,
-                                onRemindersEnabledChange = onTaskRemindersEnabledChange,
                                 onReminderToggle = onTaskReminderToggle,
                                 onSubTaskToggle = onSubTaskToggle,
                                 onSubTaskAdd = onSubTaskAdd,
@@ -346,7 +338,6 @@ private fun TaskViewContent(
     onEndTimeChange: (Int?) -> Unit,
     onRepeatChange: (RepeatPreset) -> Unit,
     onPriorityChange: (TaskPriority) -> Unit,
-    onRemindersEnabledChange: (Boolean) -> Unit,
     onReminderToggle: (Int) -> Unit,
     onSubTaskToggle: (Int) -> Unit,
     onSubTaskAdd: () -> Unit,
@@ -504,7 +495,6 @@ private fun TaskFormContent(
     onEndTimeChange: (Int?) -> Unit,
     onRepeatChange: (RepeatPreset) -> Unit,
     onPriorityChange: (TaskPriority) -> Unit,
-    onRemindersEnabledChange: (Boolean) -> Unit,
     onReminderToggle: (Int) -> Unit,
     onSubTaskToggle: (Int) -> Unit,
     onSubTaskAdd: () -> Unit,
@@ -540,9 +530,6 @@ private fun TaskFormContent(
             DatePickerRow(
                 date = form.doDate,
                 onDateChange = onDueDateChange,
-                showShortcuts = true
-            )
-            TimeRangePicker(
                 startTimeMinutes = form.startTimeMinutes,
                 endTimeMinutes = form.endTimeMinutes,
                 durationMinutes = form.durationMinutes,
@@ -557,7 +544,6 @@ private fun TaskFormContent(
                 reminderOffsets = form.reminderOffsets,
                 hasDate = form.doDate != null,
                 startTimeMinutes = form.startTimeMinutes,
-                onEnabledChange = onRemindersEnabledChange,
                 onReminderToggle = onReminderToggle
             )
         }
@@ -600,215 +586,6 @@ fun editorTextFieldColors() = TextFieldDefaults.colors(
     disabledIndicatorColor = Color.Transparent,
     cursorColor = MaterialTheme.colorScheme.primary
 )
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun DatePickerRow(
-    date: LocalDate?,
-    onDateChange: (LocalDate?) -> Unit,
-    showShortcuts: Boolean = false
-) {
-    var showPicker by remember { mutableStateOf(false) }
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        SelectableInfoRow(
-            icon = Icons.Default.Event,
-            label = "Date",
-            value = date?.compact() ?: "No date",
-            onClick = { showPicker = true },
-            onClear = if (date == null) null else ({ onDateChange(null) })
-        )
-        if (showShortcuts) {
-            PickerShortcutRow {
-                PickerShortcut("Today", onClick = { onDateChange(today()) })
-                PickerShortcut("Tomorrow", onClick = { onDateChange(today().plus(1, DateTimeUnit.DAY)) })
-            }
-        }
-    }
-    if (showPicker) {
-        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = date?.toUtcStartMillis())
-        DatePickerDialog(
-            onDismissRequest = { showPicker = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        onDateChange(datePickerState.selectedDateMillis?.toUtcLocalDate())
-                        showPicker = false
-                    }
-                ) {
-                    Text("OK")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showPicker = false }) {
-                    Text("Cancel")
-                }
-            }
-        ) {
-            DatePicker(state = datePickerState)
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-internal fun TimePickerRow(
-    label: String,
-    timeMinutes: Int?,
-    initialTimeMinutes: Int,
-    onTimeChange: (Int?) -> Unit,
-    enabled: Boolean = true,
-    modifier: Modifier = Modifier
-) {
-    var showPicker by remember { mutableStateOf(false) }
-    SelectableInfoRow(
-        icon = Icons.Default.Schedule,
-        label = label,
-        value = timeMinutes?.toClockLabel() ?: "No time",
-        onClick = { showPicker = true },
-        onClear = if (timeMinutes == null || !enabled) null else ({ onTimeChange(null) }),
-        enabled = enabled,
-        modifier = modifier
-    )
-    if (showPicker && enabled) {
-        val initial = timeMinutes ?: initialTimeMinutes.coerceIn(0, MinutesPerDay - 1)
-        val timePickerState = rememberTimePickerState(
-            initialHour = initial / 60,
-            initialMinute = initial % 60,
-            is24Hour = false
-        )
-        AlertDialog(
-            onDismissRequest = { showPicker = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        onTimeChange(timePickerState.hour * 60 + timePickerState.minute)
-                        showPicker = false
-                    }
-                ) {
-                    Text("OK")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showPicker = false }) {
-                    Text("Cancel")
-                }
-            },
-            text = { TimePicker(state = timePickerState) }
-        )
-    }
-}
-
-@Composable
-internal fun TimeRangePicker(
-    startTimeMinutes: Int?,
-    endTimeMinutes: Int?,
-    durationMinutes: Int?,
-    onStartTimeChange: (Int?) -> Unit,
-    onEndTimeChange: (Int?) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            TimePickerRow(
-                label = "Start",
-                timeMinutes = startTimeMinutes,
-                initialTimeMinutes = currentTimeMinutes(),
-                onTimeChange = {value ->
-                    onStartTimeChange.invoke(value)
-                    if (value == null && endTimeMinutes != null) onEndTimeChange.invoke(null)
-                },
-                modifier = Modifier.weight(1f)
-            )
-            TimePickerRow(
-                label = "End",
-                timeMinutes = endTimeMinutes,
-                initialTimeMinutes = ((startTimeMinutes ?: currentTimeMinutes()) + 60).coerceAtMost(MinutesPerDay - 1),
-                enabled = startTimeMinutes != null,
-                onTimeChange = onEndTimeChange,
-                modifier = Modifier.weight(1f)
-            )
-        }
-        Row {
-            PickerShortcutRow(modifier = Modifier.weight(1f)) {
-                TimeRangeShortcutDurations.forEach { duration ->
-                    PickerShortcut(
-                        text = duration.shortcutDurationLabel(),
-                        onClick = {
-                            val start = startTimeMinutes ?: currentTimeMinutes()
-                            onStartTimeChange(start)
-                            onEndTimeChange((start + duration).coerceAtMost(MinutesPerDay - 1))
-                        }
-                    )
-                }
-            }
-            durationMinutes?.let { duration ->
-                DurationText(
-                    duration = duration,
-                    modifier = Modifier.align(Alignment.CenterVertically)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun PickerShortcutRow(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    FlowRow(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        content()
-    }
-}
-
-@Composable
-private fun PickerShortcut(
-    text: String,
-    enabled: Boolean = true,
-    onClick: () -> Unit
-) {
-    Surface(
-        shape = RoundedCornerShape(8.dp),
-        color = if (enabled) {
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.26f)
-        } else {
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.12f)
-        },
-        contentColor = if (enabled) {
-            MaterialTheme.colorScheme.onSurfaceVariant
-        } else {
-            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
-        },
-        modifier = Modifier
-            .height(30.dp)
-            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
-    ) {
-        Box(
-            modifier = Modifier.padding(horizontal = 10.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(text = text, style = MaterialTheme.typography.labelMedium)
-        }
-    }
-}
-
-@Composable
-internal fun DurationText(
-    duration: Int,
-    modifier: Modifier = Modifier
-) {
-    Text(
-        text = duration.formatDuration(),
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier
-    )
-}
-
 
 
 @Composable
@@ -904,13 +681,24 @@ private fun NoteFormContent(
                 lists = availableLists,
                 onListChange = onListChange
             )
-            RequiredDatePickerRow(date = form.date, onDateChange = onDateChange)
-            TimePickerRow(
-                label = "Start",
-                timeMinutes = form.startTimeMinutes,
-                initialTimeMinutes = currentTimeMinutes(),
-                onTimeChange = onStartTimeChange
+            DatePickerRow(
+                date = form.date,
+                onDateChange = {
+                    it?.let {onDateChange.invoke(it)  }
+                },
+                startTimeMinutes = form.startTimeMinutes,
+                endTimeMinutes = null,
+                durationMinutes = null,
+                onStartTimeChange = onStartTimeChange,
+                onEndTimeChange = null
             )
+//            RequiredDatePickerRow(date = form.date, onDateChange = onDateChange)
+//            TimePickerRow(
+//                label = "Start",
+//                timeMinutes = form.startTimeMinutes,
+//                initialTimeMinutes = currentTimeMinutes(),
+//                onTimeChange = onStartTimeChange
+//            )
         }
         TagPicker(
             availableTags = availableTags,
@@ -983,17 +771,4 @@ private fun TaskEditorState.isOpenableView(): Boolean = when (this) {
     is TaskEditorState.NoteForm -> mode == EditorMode.View && status == TaskStatus.Completed
 }
 
-private fun currentTimeMinutes(): Int {
-    val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).time
-    return now.hour * 60 + now.minute
-}
 
-private fun Int.shortcutDurationLabel(): String =
-    when {
-        this < 60 -> "${this}m"
-        this % 60 == 0 -> "${this / 60}h"
-        else -> "${this / 60}h ${this % 60}m"
-    }
-
-private const val MinutesPerDay = 24 * 60
-private val TimeRangeShortcutDurations = listOf(30, 60, 120)

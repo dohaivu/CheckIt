@@ -52,6 +52,8 @@ import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskList
 import com.checkit.domain.TaskStatus
+import com.checkit.ui.components.HoursPerDay
+import com.checkit.ui.components.MinutesPerDay
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.math.roundToInt
@@ -694,12 +696,12 @@ private fun Float.toMinutes(hourHeightPx: Float): Int =
 private fun minutesToY(minutes: Int, hourHeightPx: Float): Float =
     (minutes / 60f) * hourHeightPx
 
-private fun currentTimeMinutes(): Int {
+internal fun currentTimeMinutes(): Int {
     val time = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).time
     return time.hour * 60 + time.minute
 }
 
-private fun compactAllDayLabel(label: String, supportingLabel: String?): String {
+internal fun compactAllDayLabel(label: String, supportingLabel: String?): String {
     val primary = label
         .lineSequence()
         .map { it.trim() }
@@ -752,17 +754,17 @@ internal fun resizeTimelineEnd(
     return startTimeMinutes to nextEnd
 }
 
-private fun Int.floorToQuarterHour(): Int =
+internal fun Int.floorToQuarterHour(): Int =
     (this / TimelineStepMinutes) * TimelineStepMinutes
 
-private fun Int.ceilToQuarterHour(): Int =
+internal fun Int.ceilToQuarterHour(): Int =
     if (this % TimelineStepMinutes == 0) {
         this
     } else {
         floorToQuarterHour() + TimelineStepMinutes
     }
 
-private fun Int.hourLabel(): String =
+internal fun Int.hourLabel(): String =
     when {
         this == 0 -> "12 AM"
         this < 12 -> "$this AM"
@@ -770,14 +772,13 @@ private fun Int.hourLabel(): String =
         else -> "${this - 12} PM"
     }
 
-private const val HoursPerDay = 24
-private const val MinutesPerDay = 24 * 60
-private const val TimelineStepMinutes = 15
-private const val DefaultDurationMinutes = 60
-private const val NoteDurationMinutes = 30
-private const val MinimumDurationMinutes = 15
-private const val LastStartMinute = MinutesPerDay - MinimumDurationMinutes
-private const val CurrentTimeVisibleHoursBefore = 2f
-private const val CollapsedAllDayItemCount = 2
-private const val DefaultTaskCardAlpha = 0.17f
-private const val SelectedTaskCardAlpha = 0.28f
+
+internal const val TimelineStepMinutes = 15
+internal const val DefaultDurationMinutes = 60
+internal const val NoteDurationMinutes = 30
+internal const val MinimumDurationMinutes = 15
+internal const val LastStartMinute = MinutesPerDay - MinimumDurationMinutes
+internal const val CurrentTimeVisibleHoursBefore = 2f
+internal const val CollapsedAllDayItemCount = 2
+internal const val DefaultTaskCardAlpha = 0.17f
+internal const val SelectedTaskCardAlpha = 0.28f

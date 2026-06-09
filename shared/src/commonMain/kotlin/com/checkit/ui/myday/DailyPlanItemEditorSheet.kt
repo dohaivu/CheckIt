@@ -22,7 +22,6 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Notes
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -54,9 +53,10 @@ import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.ui.DailyPlanItemEditorState
 import com.checkit.ui.EditorMode
 import com.checkit.ui.tasks.DetailChip
-import com.checkit.ui.tasks.TimePickerRow
+import com.checkit.ui.components.TimePickerRow
 import com.checkit.ui.tasks.TimeRangeDetailChip
-import com.checkit.ui.tasks.TimeRangePicker
+import com.checkit.ui.components.TimeRangePicker
+import com.checkit.ui.tasks.currentTimeMinutes
 import com.checkit.ui.tasks.editorTextFieldColors
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -344,9 +344,4 @@ private fun DailyPlanItemEditorState.durationMinutes(): Int? {
     val start = startTimeMinutes ?: return null
     val end = endTimeMinutes ?: return null
     return (end - start).takeIf { it >= 0 }
-}
-
-private fun currentTimeMinutes(): Int {
-    val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).time
-    return now.hour * 60 + now.minute
 }

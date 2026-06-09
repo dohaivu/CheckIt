@@ -41,10 +41,8 @@ internal fun ReminderPicker(
     reminderOffsets: Set<Int>,
     hasDate: Boolean,
     startTimeMinutes: Int?,
-    onEnabledChange: (Boolean) -> Unit,
     onReminderToggle: (Int) -> Unit
 ) {
-
     var expanded by remember { mutableStateOf(false) }
     val presets = TaskReminderPreset.availableFor(startTimeMinutes)
 
@@ -56,7 +54,7 @@ internal fun ReminderPicker(
                 .sorted()
                 .joinToString { TaskReminderPreset.labelFor(it, startTimeMinutes) }
             if (reminderOffsets.isEmpty()) {
-                DetailChip(icon = Icons.Default.Notifications, label = "Off", iconTint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.58f),  onClick = { expanded = true })
+                DetailChip(icon = Icons.Default.Notifications, label = "Off", iconTint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.58f),  onClick = { if (hasDate) expanded = true })
             } else {
                 DetailChip(icon = Icons.Default.NotificationsActive, label = labels, onClick = { expanded = true })
             }
