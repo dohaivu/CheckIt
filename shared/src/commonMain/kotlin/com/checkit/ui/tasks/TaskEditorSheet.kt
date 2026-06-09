@@ -72,8 +72,8 @@ import com.checkit.domain.TaskTag
 import com.checkit.ui.EditorMode
 import com.checkit.ui.RepeatPreset
 import com.checkit.ui.TaskEditorState
+import com.checkit.ui.components.ListPicker
 import com.checkit.ui.components.PriorityPicker
-import com.checkit.ui.components.PriorityPickerRow
 import com.checkit.ui.components.PriorityPill
 import com.checkit.ui.components.RepeatPicker
 import com.checkit.ui.components.TagPicker
@@ -536,11 +536,7 @@ private fun TaskFormContent(
             colors = editorTextFieldColors()
         )
         EditorSection {
-            ListPickerRow(
-                selectedListId = form.listId,
-                lists = availableLists,
-                onListChange = onListChange
-            )
+
             DatePickerRow(
                 date = form.doDate,
                 onDateChange = onDueDateChange,
@@ -564,12 +560,24 @@ private fun TaskFormContent(
                 onEnabledChange = onRemindersEnabledChange,
                 onReminderToggle = onReminderToggle
             )
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            ListPicker(
+                selectedListId = form.listId,
+                lists = availableLists,
+                onListChange = onListChange
+            )
             TagPicker(
                 availableTags = availableTags,
                 selectedTagIds = form.selectedTagIds,
                 onTagToggle = onTagToggle
             )
         }
+
         SubtaskChecklist(
             subtasks = form.subtasks,
             mode = form.mode,
@@ -802,46 +810,6 @@ internal fun DurationText(
 }
 
 @Composable
-private fun ListPickerRow(
-    selectedListId: Long,
-    lists: List<TaskList>,
-    onListChange: (Long) -> Unit
-) {
-    if (lists.isEmpty()) return
-    var expanded by remember { mutableStateOf(false) }
-    val selectedList = lists.firstOrNull { it.id == selectedListId } ?: lists.first()
-    Box {
-        SelectableInfoRow(
-            icon = materialIcon(selectedList.icon),
-            label = "List",
-            value = selectedList.name,
-            onClick = { expanded = true }
-        )
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
-            lists.forEach { list ->
-                DropdownMenuItem(
-                    text = { Text(list.name) },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = materialIcon(list.icon),
-                            contentDescription = null,
-                            tint = list.color.toColor()
-                        )
-                    },
-                    onClick = {
-                        onListChange(list.id)
-                        expanded = false
-                    }
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun ReminderPicker(
     reminderOffsets: Set<Int>,
     hasDate: Boolean,
@@ -1042,7 +1010,7 @@ private fun NoteFormContent(
             colors = editorTextFieldColors()
         )
         EditorSection {
-            ListPickerRow(
+            ListPicker(
                 selectedListId = form.listId,
                 lists = availableLists,
                 onListChange = onListChange
