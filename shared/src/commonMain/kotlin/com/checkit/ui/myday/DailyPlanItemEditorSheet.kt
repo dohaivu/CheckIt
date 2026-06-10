@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
@@ -53,6 +54,7 @@ import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.TaskTag
 import com.checkit.ui.DailyPlanItemEditorState
 import com.checkit.ui.EditorMode
+import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DetailChip
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.components.TaskTagPill
@@ -60,7 +62,6 @@ import com.checkit.ui.components.TimePicker
 import com.checkit.ui.components.TimeRangeDetailChip
 import com.checkit.ui.components.TimeRangePicker
 import com.checkit.ui.tasks.currentTimeMinutes
-import com.checkit.ui.tasks.editorTextFieldColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -84,11 +85,12 @@ internal fun DailyPlanItemEditorSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        sheetGesturesEnabled = false
+        sheetGesturesEnabled = true
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .fillMaxHeight(0.7f)
                 .windowInsetsPadding(WindowInsets.ime)
         ) {
             DailyPlanItemSheetHeader(
@@ -317,20 +319,25 @@ private fun DailyPlanItemFormContent(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
         if (state.source == DailyPlanItemSource.CheckInNote) {
-            OutlinedTextField(
+            AppOutlinedTextField(
                 value = state.title,
                 onValueChange = onDoneTitleChange,
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Add note") },
-                minLines = 3,
-                shape = MaterialTheme.shapes.medium,
-                colors = editorTextFieldColors()
+                textStyle = MaterialTheme.typography.headlineSmall.copy(
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.SemiBold
+                ),
+                maxLines = 1,
+                placeholder = "What have you done?"
             )
 
-            TagPicker(
-                availableTags = availableTags,
-                selectedTagIds = state.selectedTagIds,
-                onTagToggle = onTagToggle
+            AppOutlinedTextField(
+                value = state.note,
+                onValueChange = onDoneNoteChange,
+                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Normal
+                ),
+                maxLines = 5
             )
 
             TimePicker(
@@ -339,42 +346,46 @@ private fun DailyPlanItemFormContent(
                 initialTimeMinutes = currentTimeMinutes(),
                 onTimeChange = onStartTimeChange
             )
-        } else {
-            OutlinedTextField(
-                value = state.title,
-                onValueChange = onDoneTitleChange,
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Done outside the app") },
-                singleLine = true,
-                textStyle = MaterialTheme.typography.headlineSmall.copy(
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.SemiBold
-                ),
-                shape = MaterialTheme.shapes.medium,
-                colors = editorTextFieldColors()
-            )
 
             TagPicker(
                 availableTags = availableTags,
                 selectedTagIds = state.selectedTagIds,
                 onTagToggle = onTagToggle
             )
+        } else {
+            AppOutlinedTextField(
+                value = state.title,
+                onValueChange = onDoneTitleChange,
+                textStyle = MaterialTheme.typography.headlineSmall.copy(
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.SemiBold
+                ),
+                maxLines = 1,
+                placeholder = "What have you done?"
+            )
 
-            OutlinedTextField(
+            AppOutlinedTextField(
                 value = state.note,
                 onValueChange = onDoneNoteChange,
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Add details") },
-                minLines = 2,
-                shape = MaterialTheme.shapes.medium,
-                colors = editorTextFieldColors()
+                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Normal
+                ),
+                maxLines = 5
             )
+
             TimeRangePicker(
                 startTimeMinutes = state.startTimeMinutes,
                 endTimeMinutes = state.endTimeMinutes,
                 durationMinutes = state.durationMinutes(),
                 onStartTimeChange = onStartTimeChange,
                 onEndTimeChange = onEndTimeChange
+            )
+
+            TagPicker(
+                availableTags = availableTags,
+                selectedTagIds = state.selectedTagIds,
+                onTagToggle = onTagToggle
             )
         }
     }

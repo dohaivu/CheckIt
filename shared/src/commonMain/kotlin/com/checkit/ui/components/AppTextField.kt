@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color.Companion
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.stringResource
 import checkit.shared.generated.resources.Res
@@ -65,7 +66,13 @@ fun AppOutlinedTextField(
                 singleLine = false,
                 placeholder = if (placeholder != null) {
                         {
-                            Text(placeholder)
+                            Text(
+                                text = placeholder,
+                                fontStyle = textStyle.fontStyle,
+                                fontWeight = textStyle.fontWeight,
+                                fontSize = textStyle.fontSize,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = ContentContainerAlpha),
+                            )
                         }
                     } else null,
                 visualTransformation = VisualTransformation.None,
