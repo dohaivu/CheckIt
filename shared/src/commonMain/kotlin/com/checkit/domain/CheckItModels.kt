@@ -61,6 +61,7 @@ data class DailyPlanItem(
     val note: String? = null,
     val source: DailyPlanItemSource,
     val status: DailyPlanItemStatus,
+    val tags: List<TaskTag> = emptyList(),
     val sortOrder: Int,
     val startTimeMinutes: Int? = null,
     val endTimeMinutes: Int? = null,

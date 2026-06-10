@@ -132,7 +132,7 @@ internal fun DatePickerRow(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun TimePickerRow(
+internal fun TimePicker(
     label: String,
     timeMinutes: Int?,
     initialTimeMinutes: Int,
@@ -143,7 +143,7 @@ internal fun TimePickerRow(
     var showPicker by remember { mutableStateOf(false) }
     DetailChip(
         icon = Icons.Default.Schedule,
-        label = timeMinutes?.toClockLabel() ?: "No time",
+        label = timeMinutes?.toClockLabel() ?: "No $label time",
         onClick = {
             showPicker = true
         }
@@ -191,7 +191,7 @@ internal fun TimeRangePicker(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            TimePickerRow(
+            TimePicker(
                 label = "Start",
                 timeMinutes = startTimeMinutes,
                 initialTimeMinutes = currentTimeMinutes(),
@@ -208,7 +208,7 @@ internal fun TimeRangePicker(
                         modifier = Modifier.align(Alignment.CenterVertically)
                     )
                 }
-                TimePickerRow(
+                TimePicker(
                     label = "End",
                     timeMinutes = endTimeMinutes,
                     initialTimeMinutes = ((startTimeMinutes ?: currentTimeMinutes()) + 60).coerceAtMost(MinutesPerDay - 1),

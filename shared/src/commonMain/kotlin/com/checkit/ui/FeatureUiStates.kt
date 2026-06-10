@@ -118,7 +118,8 @@ data class DailyPlanItemEditorState(
     val note: String = "",
     val status: DailyPlanItemStatus = DailyPlanItemStatus.Done,
     val startTimeMinutes: Int? = null,
-    val endTimeMinutes: Int? = null
+    val endTimeMinutes: Int? = null,
+    val selectedTagIds: Set<Long> = emptySet()
 ) {
     val isAddMode: Boolean get() = mode == EditorMode.Add
     val isViewMode: Boolean get() = mode == EditorMode.View

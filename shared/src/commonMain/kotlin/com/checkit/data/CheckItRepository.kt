@@ -49,7 +49,8 @@ interface CheckItRepository {
         note: String?,
         startTimeMinutes: Int?,
         endTimeMinutes: Int?,
-        source: DailyPlanItemSource = DailyPlanItemSource.CheckInManualDone
+        source: DailyPlanItemSource = DailyPlanItemSource.CheckInManualDone,
+        tagIds: List<Long> = emptyList()
     ): Long
     suspend fun updateDailyPlanItemTime(itemId: Long, startTimeMinutes: Int?, endTimeMinutes: Int?)
     suspend fun updateDailyPlanItem(itemId: Long, input: DailyPlanItemWriteInput)
@@ -109,7 +110,8 @@ data class DailyPlanItemWriteInput(
     val source: DailyPlanItemSource,
     val status: DailyPlanItemStatus,
     val startTimeMinutes: Int?,
-    val endTimeMinutes: Int?
+    val endTimeMinutes: Int?,
+    val tagIds: List<Long>
 )
 
 class RoomCheckItRepository(
@@ -165,13 +167,23 @@ class RoomCheckItRepository(
     override fun observeDailyPlans(): Flow<List<DailyPlan>> =
         combine(
             dao.observeDailyPlans(),
-            dao.observeDailyPlanItems()
-        ) { plans, items ->
+            dao.observeDailyPlanItems(),
+            dao.observeDailyPlanItemTags(),
+            dao.observeTags()
+        ) { plans, items, itemTags, tags ->
+            val domainTags = tags.map { it.toDomain() }
+            val tagsById = domainTags.associateBy { it.id }
+            val itemTagIds = itemTags.groupBy { it.itemId }.mapValues { it.value.map { it.tagId } }
+
             val itemsByPlan = items.groupBy { it.dailyPlanId }
             plans.map { plan ->
                 plan.toDomain(
                     items = itemsByPlan[plan.id].orEmpty()
-                        .map { it.toDomain() }
+                        .map { item ->
+                            item.toDomain(
+                                tags = itemTagIds[item.id].orEmpty().mapNotNull { tagsById[it] }
+                            )
+                        }
                         .sortedWith(compareBy<DailyPlanItem> { it.startTimeMinutes }.thenBy { it.sortOrder })
                 )
             }
@@ -366,7 +378,7 @@ class RoomCheckItRepository(
         val planId = ensureDailyPlan(date)
         if (dao.dailyPlanTaskItemCount(planId, task.id) > 0) return planId
         val now = Clock.System.now().toEpochMilliseconds()
-        return dao.insertDailyPlanItem(
+        val itemId = dao.insertDailyPlanItem(
             DailyPlanItemEntity(
                 dailyPlanId = planId,
                 taskId = task.id,
@@ -384,6 +396,8 @@ class RoomCheckItRepository(
                 completedAtMillis = if (task.status == TaskStatus.Completed) now else null
             )
         )
+        task.tags.forEach { tag -> dao.insertDailyPlanItemTagIfParentsExist(itemId, tag.id) }
+        return itemId
     }
 
     override suspend fun addManualDoneToDailyPlan(
@@ -392,12 +406,13 @@ class RoomCheckItRepository(
         note: String?,
         startTimeMinutes: Int?,
         endTimeMinutes: Int?,
-        source: DailyPlanItemSource
+        source: DailyPlanItemSource,
+        tagIds: List<Long>
     ): Long {
         val planId = ensureDailyPlan(date)
         val now = Clock.System.now().toEpochMilliseconds()
         val isNote = source == DailyPlanItemSource.CheckInNote
-        return dao.insertDailyPlanItem(
+        val itemId = dao.insertDailyPlanItem(
             DailyPlanItemEntity(
                 dailyPlanId = planId,
                 titleSnapshot = if (isNote) "Note" else title.trim(),
@@ -411,6 +426,8 @@ class RoomCheckItRepository(
                 completedAtMillis = now
             )
         )
+        tagIds.forEach { tagId -> dao.insertDailyPlanItemTagIfParentsExist(itemId, tagId) }
+        return itemId
     }
 
     override suspend fun updateDailyPlanItemTime(
@@ -444,6 +461,8 @@ class RoomCheckItRepository(
                 null
             }
         )
+        dao.deleteDailyPlanItemTags(itemId)
+        input.tagIds.forEach { tagId -> dao.insertDailyPlanItemTagIfParentsExist(itemId, tagId) }
     }
 
     override suspend fun deleteDailyPlanItem(itemId: Long) {
@@ -627,7 +646,7 @@ private fun DailyPlanEntity.toDomain(items: List<DailyPlanItem>) = DailyPlan(
     updatedAtMillis = updatedAtMillis
 )
 
-private fun DailyPlanItemEntity.toDomain() = DailyPlanItem(
+private fun DailyPlanItemEntity.toDomain(tags: List<TaskTag> = emptyList()) = DailyPlanItem(
     id = id,
     dailyPlanId = dailyPlanId,
     taskId = taskId,
@@ -635,6 +654,7 @@ private fun DailyPlanItemEntity.toDomain() = DailyPlanItem(
     note = note,
     source = enumValueOf(source),
     status = enumValueOf(status),
+    tags = tags,
     sortOrder = sortOrder,
     startTimeMinutes = startTimeMinutes,
     endTimeMinutes = endTimeMinutes,

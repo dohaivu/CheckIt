@@ -50,10 +50,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
+import com.checkit.domain.TaskTag
 import com.checkit.ui.DailyPlanItemEditorState
 import com.checkit.ui.EditorMode
 import com.checkit.ui.components.DetailChip
-import com.checkit.ui.components.TimePickerRow
+import com.checkit.ui.components.TagPicker
+import com.checkit.ui.components.TaskTagPill
+import com.checkit.ui.components.TimePicker
 import com.checkit.ui.components.TimeRangeDetailChip
 import com.checkit.ui.components.TimeRangePicker
 import com.checkit.ui.tasks.currentTimeMinutes
@@ -63,12 +66,14 @@ import com.checkit.ui.tasks.editorTextFieldColors
 @Composable
 internal fun DailyPlanItemEditorSheet(
     state: DailyPlanItemEditorState,
+    availableTags: List<TaskTag>,
     onDismiss: () -> Unit,
     onDoneTitleChange: (String) -> Unit,
     onDoneNoteChange: (String) -> Unit,
     onSourceChange: (DailyPlanItemSource) -> Unit,
     onStartTimeChange: (Int?) -> Unit,
     onEndTimeChange: (Int?) -> Unit,
+    onTagToggle: (Long) -> Unit,
     onEdit: () -> Unit,
     onSave: () -> Unit,
     onDone: () -> Unit,
@@ -104,14 +109,20 @@ internal fun DailyPlanItemEditorSheet(
             ) {
                 item {
                     if (state.isViewMode) {
-                        DailyPlanItemViewContent(state = state, hasTask = onOpenTask != null)
+                        DailyPlanItemViewContent(
+                            state = state,
+                            availableTags = availableTags,
+                            hasTask = onOpenTask != null
+                        )
                     } else {
                         DailyPlanItemFormContent(
                             state = state,
+                            availableTags = availableTags,
                             onDoneTitleChange = onDoneTitleChange,
                             onDoneNoteChange = onDoneNoteChange,
                             onStartTimeChange = onStartTimeChange,
-                            onEndTimeChange = onEndTimeChange
+                            onEndTimeChange = onEndTimeChange,
+                            onTagToggle = onTagToggle
                         )
                     }
                 }
@@ -243,6 +254,7 @@ private fun DailyPlanSourceSwitch(
 @Composable
 private fun DailyPlanItemViewContent(
     state: DailyPlanItemEditorState,
+    availableTags: List<TaskTag>,
     hasTask: Boolean
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
@@ -260,6 +272,21 @@ private fun DailyPlanItemViewContent(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+
+        val selectedTags = remember(state.selectedTagIds, availableTags) {
+            availableTags.filter { it.id in state.selectedTagIds }
+        }
+        if (selectedTags.isNotEmpty()) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                selectedTags.forEach { tag ->
+                    TaskTagPill(tag = tag, selected = false, onClick = {})
+                }
+            }
+        }
+
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -281,10 +308,12 @@ private fun DailyPlanItemViewContent(
 @Composable
 private fun DailyPlanItemFormContent(
     state: DailyPlanItemEditorState,
+    availableTags: List<TaskTag>,
     onDoneTitleChange: (String) -> Unit,
     onDoneNoteChange: (String) -> Unit,
     onStartTimeChange: (Int?) -> Unit,
-    onEndTimeChange: (Int?) -> Unit
+    onEndTimeChange: (Int?) -> Unit,
+    onTagToggle: (Long) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
         if (state.source == DailyPlanItemSource.CheckInNote) {
@@ -297,7 +326,14 @@ private fun DailyPlanItemFormContent(
                 shape = MaterialTheme.shapes.medium,
                 colors = editorTextFieldColors()
             )
-            TimePickerRow(
+
+            TagPicker(
+                availableTags = availableTags,
+                selectedTagIds = state.selectedTagIds,
+                onTagToggle = onTagToggle
+            )
+
+            TimePicker(
                 label = "Start",
                 timeMinutes = state.startTimeMinutes,
                 initialTimeMinutes = currentTimeMinutes(),
@@ -317,6 +353,13 @@ private fun DailyPlanItemFormContent(
                 shape = MaterialTheme.shapes.medium,
                 colors = editorTextFieldColors()
             )
+
+            TagPicker(
+                availableTags = availableTags,
+                selectedTagIds = state.selectedTagIds,
+                onTagToggle = onTagToggle
+            )
+
             OutlinedTextField(
                 value = state.note,
                 onValueChange = onDoneNoteChange,

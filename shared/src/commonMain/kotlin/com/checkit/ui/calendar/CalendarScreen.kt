@@ -186,12 +186,14 @@ internal fun CalendarScreen(
         val task = editor.taskId?.let { taskId -> taskById[taskId] }
         DailyPlanItemEditorSheet(
             state = editor,
+            availableTags = state.board.tags,
             onDismiss = calendarViewModel::dismissItemEditor,
             onDoneTitleChange = calendarViewModel::updateEditorTitle,
             onDoneNoteChange = calendarViewModel::updateEditorNote,
             onSourceChange = calendarViewModel::updateEditorSource,
             onStartTimeChange = calendarViewModel::updateEditorStartTime,
             onEndTimeChange = calendarViewModel::updateEditorEndTime,
+            onTagToggle = calendarViewModel::toggleTag,
             onEdit = calendarViewModel::editItemEditor,
             onSave = calendarViewModel::saveEditorItem,
             onDone = calendarViewModel::markEditorDone,

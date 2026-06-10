@@ -46,6 +46,9 @@ interface CheckItDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertNoteTag(noteTag: NoteTagEntity)
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertDailyPlanItemTag(dailyPlanItemTag: DailyPlanItemTagEntity)
+
     @Query(
         """
         INSERT OR IGNORE INTO task_tags(taskId, tagId)
@@ -66,6 +69,16 @@ interface CheckItDao {
     )
     suspend fun insertNoteTagIfParentsExist(noteId: Long, tagId: Long)
 
+    @Query(
+        """
+        INSERT OR IGNORE INTO daily_plan_item_tags(itemId, tagId)
+        SELECT :itemId, :tagId
+        WHERE EXISTS(SELECT 1 FROM daily_plan_items WHERE id = :itemId)
+          AND EXISTS(SELECT 1 FROM tags WHERE id = :tagId)
+        """
+    )
+    suspend fun insertDailyPlanItemTagIfParentsExist(itemId: Long, tagId: Long)
+
     @Query("DELETE FROM task_tags WHERE taskId = :taskId")
     suspend fun deleteTaskTags(taskId: Long)
 
@@ -77,6 +90,9 @@ interface CheckItDao {
 
     @Query("DELETE FROM note_tags WHERE noteId = :noteId")
     suspend fun deleteNoteTags(noteId: Long)
+
+    @Query("DELETE FROM daily_plan_item_tags WHERE itemId = :itemId")
+    suspend fun deleteDailyPlanItemTags(itemId: Long)
 
     @Query(
         """
@@ -200,6 +216,9 @@ interface CheckItDao {
 
     @Query("SELECT * FROM note_tags")
     fun observeNoteTags(): Flow<List<NoteTagEntity>>
+
+    @Query("SELECT * FROM daily_plan_item_tags")
+    fun observeDailyPlanItemTags(): Flow<List<DailyPlanItemTagEntity>>
 
     @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM tasks WHERE listId = :listId")
     suspend fun nextTaskSortOrder(listId: Long): Int

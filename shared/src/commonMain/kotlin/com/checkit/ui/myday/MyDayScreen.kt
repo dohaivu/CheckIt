@@ -159,12 +159,14 @@ internal fun MyDayScreen(
         val task = editor.taskId?.let { taskId -> state.board.tasks.firstOrNull { it.id == taskId } }
         DailyPlanItemEditorSheet(
             state = editor,
+            availableTags = state.board.tags,
             onDismiss = viewModel::dismissCheckIn,
             onDoneTitleChange = viewModel::updateDoneTitle,
             onDoneNoteChange = viewModel::updateDoneNote,
             onSourceChange = viewModel::updateEditorSource,
             onStartTimeChange = viewModel::updateStartTime,
             onEndTimeChange = viewModel::updateEndTime,
+            onTagToggle = viewModel::toggleTag,
             onEdit = viewModel::editItemEditor,
             onSave = viewModel::saveCheckIn,
             onDone = viewModel::markEditorDone,

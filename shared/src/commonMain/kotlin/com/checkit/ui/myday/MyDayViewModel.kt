@@ -107,7 +107,8 @@ class MyDayViewModel(
                     note.takeIf { it.isNotBlank() },
                     editor.startTimeMinutes,
                     editor.endTimeMinutes,
-                    editor.source
+                    editor.source,
+                    tagIds = editor.selectedTagIds.toList()
                 )
             } else {
                 updateDailyPlanItem(
@@ -182,7 +183,8 @@ class MyDayViewModel(
                     note = if (item.source == com.checkit.domain.DailyPlanItemSource.CheckInNote) "" else item.note.orEmpty(),
                     status = item.status,
                     startTimeMinutes = item.startTimeMinutes,
-                    endTimeMinutes = item.endTimeMinutes
+                    endTimeMinutes = item.endTimeMinutes,
+                    selectedTagIds = item.tags.map { it.id }.toSet()
                 )
             )
         }
@@ -200,6 +202,15 @@ class MyDayViewModel(
     fun updateStartTime(timeMinutes: Int?) = updateItemEditor { it.copy(startTimeMinutes = timeMinutes) }
     fun updateEndTime(timeMinutes: Int?) = updateItemEditor { it.copy(endTimeMinutes = timeMinutes) }
 
+    fun updateTags(tagIds: Set<Long>) = updateItemEditor { it.copy(selectedTagIds = tagIds) }
+    fun toggleTag(tagId: Long) = updateItemEditor {
+        val newTagIds = if (it.selectedTagIds.contains(tagId)) {
+            it.selectedTagIds - tagId
+        } else {
+            it.selectedTagIds + tagId
+        }
+        it.copy(selectedTagIds = newTagIds)
+    }
 
     fun markEditorDone() {
         val editor = _uiState.value.itemEditor ?: return
@@ -216,7 +227,8 @@ class MyDayViewModel(
                     editor.note.trim().takeIf { it.isNotBlank() },
                     editor.startTimeMinutes,
                     editor.endTimeMinutes,
-                    DailyPlanItemSource.CheckInManualDone
+                    DailyPlanItemSource.CheckInManualDone,
+                    tagIds = editor.selectedTagIds.toList()
                 )
             } else {
                 updateDailyPlanItem(
@@ -276,7 +288,8 @@ private fun DailyPlanItemEditorState.toWriteInput(
     source = source,
     status = status,
     startTimeMinutes = startTimeMinutes,
-    endTimeMinutes = endTimeMinutes
+    endTimeMinutes = endTimeMinutes,
+    tagIds = selectedTagIds.toList()
 )
 
 private fun currentMyDayTimeMinutes(): Int {

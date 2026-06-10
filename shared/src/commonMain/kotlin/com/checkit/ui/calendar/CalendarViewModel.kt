@@ -124,6 +124,16 @@ class CalendarViewModel(
     fun updateEditorStartTime(timeMinutes: Int?) = updateItemEditor { it.copy(startTimeMinutes = timeMinutes) }
     fun updateEditorEndTime(timeMinutes: Int?) = updateItemEditor { it.copy(endTimeMinutes = timeMinutes) }
 
+    fun updateTags(tagIds: Set<Long>) = updateItemEditor { it.copy(selectedTagIds = tagIds) }
+    fun toggleTag(tagId: Long) = updateItemEditor {
+        val newTagIds = if (it.selectedTagIds.contains(tagId)) {
+            it.selectedTagIds - tagId
+        } else {
+            it.selectedTagIds + tagId
+        }
+        it.copy(selectedTagIds = newTagIds)
+    }
+
     fun saveEditorItem() {
         val editor = _uiState.value.itemEditor ?: return
         val title = editor.title.trim()
@@ -185,7 +195,8 @@ private fun DailyPlanItemEditorState.toWriteInput(
     source = source,
     status = status,
     startTimeMinutes = startTimeMinutes,
-    endTimeMinutes = endTimeMinutes
+    endTimeMinutes = endTimeMinutes,
+    tagIds = selectedTagIds.toList()
 )
 
 private fun LocalDate.matchesPeriod(period: ReportPeriod, month: LocalDate): Boolean =

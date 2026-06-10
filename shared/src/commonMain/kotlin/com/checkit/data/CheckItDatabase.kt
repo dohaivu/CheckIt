@@ -214,6 +214,30 @@ data class NoteTagEntity(
 )
 
 @Entity(
+    tableName = "daily_plan_item_tags",
+    primaryKeys = ["itemId", "tagId"],
+    foreignKeys = [
+        ForeignKey(
+            entity = DailyPlanItemEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["itemId"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = TagEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["tagId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("itemId"), Index("tagId")]
+)
+data class DailyPlanItemTagEntity(
+    val itemId: Long,
+    val tagId: Long
+)
+
+@Entity(
     tableName = "task_reminders",
     foreignKeys = [
         ForeignKey(
@@ -270,6 +294,7 @@ data class TaskFilterEntity(
         TagEntity::class,
         TaskTagEntity::class,
         NoteTagEntity::class,
+        DailyPlanItemTagEntity::class,
         TaskReminderEntity::class,
         TaskFilterEntity::class
     ],
