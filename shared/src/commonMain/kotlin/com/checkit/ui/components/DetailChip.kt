@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.checkit.ui.tasks.ContentContainerAlpha
 import com.checkit.ui.tasks.compact
 import com.checkit.ui.tasks.toClockLabel
 import kotlinx.datetime.LocalDate
@@ -36,9 +37,9 @@ internal fun DetailChip(
     iconTint: Color = MaterialTheme.colorScheme.primary,
     onClick: (() -> Unit)? = null
 ) {
-    val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
+    val surfaceVariant = MaterialTheme.colorScheme.surfaceContainerHigh
     val backgroundColor = remember(surfaceVariant) {
-        surfaceVariant.copy(alpha = 0.45f)
+        surfaceVariant.copy(alpha = ContentContainerAlpha)
     }
 
     Row(
@@ -51,7 +52,7 @@ internal fun DetailChip(
                     Modifier
                 }
             )
-            .background(backgroundColor)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .padding(horizontal = 10.dp, vertical = 7.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -67,7 +68,7 @@ internal fun DetailChip(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurface
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

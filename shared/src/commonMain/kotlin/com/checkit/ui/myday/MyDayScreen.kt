@@ -188,7 +188,8 @@ private fun MyDayViewSelector(
                 onClick = { onSelect(view) },
                 shape = SegmentedButtonDefaults.itemShape(index = index, count = MyDayView.entries.size),
                 icon = { Icon(view.icon(), contentDescription = null, modifier = Modifier.size(18.dp)) },
-                label = { Text(view.label()) }
+                label = { Text(view.label()) },
+                colors = SegmentedButtonDefaults.colors(activeContainerColor = MaterialTheme.colorScheme.primaryContainer, activeContentColor = MaterialTheme.colorScheme.primary)
             )
         }
     }

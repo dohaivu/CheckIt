@@ -607,7 +607,7 @@ private fun ResizeHandle(modifier: Modifier = Modifier) {
                 .width(34.dp)
                 .height(3.dp)
                 .clip(RoundedCornerShape(50))
-                .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f))
+                .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = ContentContainerAlpha))
         )
     }
 }

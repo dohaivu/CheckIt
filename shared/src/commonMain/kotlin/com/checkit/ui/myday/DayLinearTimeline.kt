@@ -38,7 +38,7 @@ internal fun DayLinearTimeline(
 ) {
     val blocks = remember(items, board) { items.toDayTimelineBlocks(board) }
     val workMinutes = remember(blocks) { blocks.totalOccupiedMinutes() }
-    val trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.75f)
+    val trackColor = MaterialTheme.colorScheme.surfaceContainerHigh//.copy(alpha = 0.75f)
 
     Column(
         modifier = modifier,

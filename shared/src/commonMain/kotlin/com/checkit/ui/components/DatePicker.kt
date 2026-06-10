@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -36,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.unit.dp
+import com.checkit.ui.tasks.ContentContainerAlpha
 import com.checkit.ui.tasks.currentTimeMinutes
 import com.checkit.ui.tasks.formatDuration
 import com.checkit.ui.tasks.toClockLabel
@@ -46,6 +48,7 @@ import kotlinx.datetime.LocalDate
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun DatePickerRow(
+    modifier: Modifier = Modifier,
     date: LocalDate?,
     startTimeMinutes: Int?,
     endTimeMinutes: Int?,
@@ -55,7 +58,10 @@ internal fun DatePickerRow(
     onEndTimeChange: ((Int?) -> Unit)?,
 ) {
     var showPicker by remember { mutableStateOf(false) }
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
         DetailChip(
             icon = Icons.Default.Event,
             label = if (date == null) "No date" else dateTimeRangeDetailLabel(date, startTimeMinutes, endTimeMinutes),
@@ -101,6 +107,7 @@ internal fun DatePickerRow(
 
             },
             dismissButton = null,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             text = {
                 Column(
                     modifier = Modifier
@@ -112,7 +119,8 @@ internal fun DatePickerRow(
                         state = datePickerState,
                         title = null,
                         headline = null,
-                        showModeToggle = false
+                        showModeToggle = false,
+                        colors = DatePickerDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
                     )
                     if (onStartTimeChange != null) {
                         TimeRangePicker(
@@ -265,7 +273,7 @@ private fun PickerShortcut(
         contentColor = if (enabled) {
             MaterialTheme.colorScheme.onSurfaceVariant
         } else {
-            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
+            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = ContentContainerAlpha)
         },
         modifier = Modifier
             .height(30.dp)

@@ -105,7 +105,7 @@ internal fun LocalDate.compact(): String {
         today.plus(3, DateTimeUnit.DAY),
         today.plus(4, DateTimeUnit.DAY),
         today.plus(5, DateTimeUnit.DAY),
-        today.plus(6, DateTimeUnit.DAY) -> dayOfWeek.shortName()
+        today.plus(6, DateTimeUnit.DAY) -> "${dayOfWeek.shortName()}, $monthDay"
         else -> {
             if (year == today.year) monthDay else "$monthDay, $year"
         }

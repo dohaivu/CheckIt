@@ -65,6 +65,7 @@ import com.checkit.domain.TaskTag
 import com.checkit.ui.EditorMode
 import com.checkit.ui.RepeatPreset
 import com.checkit.ui.TaskEditorState
+import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DatePickerRow
 import com.checkit.ui.components.DateTimeRangeDetailChip
 import com.checkit.ui.components.DetailChip
@@ -98,7 +99,6 @@ internal fun TaskEditorSheet(
     onTaskEndTimeChange: (Int?) -> Unit,
     onTaskRepeatChange: (RepeatPreset) -> Unit,
     onTaskPriorityChange: (TaskPriority) -> Unit,
-    onTaskRemindersEnabledChange: (Boolean) -> Unit,
     onTaskReminderToggle: (Int) -> Unit,
     onSubTaskToggle: (Int) -> Unit,
     onSubTaskAdd: () -> Unit,
@@ -313,7 +313,7 @@ private fun SheetHeader(
                     }
                 }
             }
-            if (!isViewMode) {
+            if (isAddMode) {
                 Button(onClick = onSave) {
                     Text("Save")
                 }
@@ -499,32 +499,14 @@ private fun TaskFormContent(
     onSubTaskRemove: (Int) -> Unit,
     onTagToggle: (Long) -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        OutlinedTextField(
-            value = form.name,
-            onValueChange = onNameChange,
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Task title") },
-            singleLine = true,
-            textStyle = MaterialTheme.typography.headlineSmall.copy(
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.SemiBold
-            ),
-            shape = MaterialTheme.shapes.medium,
-            colors = editorTextFieldColors()
-        )
-        OutlinedTextField(
-            value = form.description,
-            onValueChange = onDescriptionChange,
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Add details") },
-            minLines = 2,
-            shape = MaterialTheme.shapes.medium,
-            colors = editorTextFieldColors()
-        )
-        EditorSection {
-
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            TaskStatusIcon(form.status, form.priority)
             DatePickerRow(
+                modifier = Modifier.weight(1f),
                 date = form.doDate,
                 onDateChange = onDoDateChange,
                 startTimeMinutes = form.startTimeMinutes,
@@ -534,7 +516,40 @@ private fun TaskFormContent(
                 onEndTimeChange = onEndTimeChange
             )
         }
-        EditorSection {
+
+        AppOutlinedTextField(
+            value = form.name,
+            onValueChange = onNameChange,
+            textStyle = MaterialTheme.typography.headlineSmall.copy(
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.SemiBold
+            ),
+            maxLines = 1,
+            placeholder = "What would you like to do?"
+        )
+        AppOutlinedTextField(
+            value = form.description,
+            onValueChange = onDescriptionChange,
+            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Normal
+            ),
+            maxLines = 5
+        )
+
+        SubtaskChecklist(
+            subtasks = form.subtasks,
+            mode = form.mode,
+            onToggle = onSubTaskToggle,
+            onAdd = onSubTaskAdd,
+            onNameChange = onSubTaskNameChange,
+            onRemove = onSubTaskRemove
+        )
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
             PriorityPicker(selected = form.priority, onSelect = onPriorityChange)
             RepeatPicker(selected = form.repeatPreset, onSelect = onRepeatChange)
             ReminderPicker(
@@ -560,24 +575,14 @@ private fun TaskFormContent(
                 onTagToggle = onTagToggle
             )
         }
-
-        SubtaskChecklist(
-            subtasks = form.subtasks,
-            mode = form.mode,
-            onToggle = onSubTaskToggle,
-            onAdd = onSubTaskAdd,
-            onNameChange = onSubTaskNameChange,
-            onRemove = onSubTaskRemove
-        )
-
     }
 }
 
 @Composable
 fun editorTextFieldColors() = TextFieldDefaults.colors(
-    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f),
-    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f),
-    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f),
+    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = ContentContainerAlpha),
+    unfocusedContainerColor = Color.Transparent,
+    disabledContainerColor = Color.Transparent,
     focusedIndicatorColor = Color.Transparent,
     unfocusedIndicatorColor = Color.Transparent,
     disabledIndicatorColor = Color.Transparent,

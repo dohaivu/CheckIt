@@ -1,6 +1,5 @@
 package com.checkit.ui.components
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -11,12 +10,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -26,9 +23,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.TaskTag
+import com.checkit.ui.tasks.ContentAlpha
+import com.checkit.ui.tasks.ContentContainerAlpha
 import com.checkit.ui.tasks.toColor
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -91,14 +91,14 @@ internal fun TaskTagPill(
     modifier: Modifier = Modifier
 ) {
     val tagColor = tag.color.toColor()
-    val backgroundColor = if (selected) tagColor.copy(alpha = 0.14f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.24f)
+    val backgroundColor = if (selected) tagColor.copy(alpha = 0.14f) else MaterialTheme.colorScheme.surfaceContainerHigh
 
     Row(
         modifier = modifier
             .clip(CircleShape)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .background(backgroundColor)
-            .border(1.dp, if (selected) tagColor.copy(alpha = 0.62f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.48f), CircleShape)
+            .border(1.dp, if (selected) tagColor.copy(alpha = ContentAlpha) else Color.Unspecified, CircleShape)
             .padding(horizontal = 9.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically

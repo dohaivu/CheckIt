@@ -1,14 +1,11 @@
 package com.checkit.ui.tasks
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -23,16 +20,12 @@ import androidx.compose.material.icons.rounded.CheckBox
 import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CardElevation
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -41,7 +34,6 @@ import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskList
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
-import com.checkit.ui.EditorMode
 import com.checkit.ui.TaskListDisplayType
 import com.checkit.ui.components.DateTimeRangeDetailChip
 import com.checkit.ui.components.DetailChip
@@ -59,7 +51,7 @@ internal fun TaskRow(
     Card(
         onClick = onClick,
         shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         elevation = CardDefaults.cardElevation(
             defaultElevation = if (task.status == TaskStatus.Completed) 0.dp else 2.dp,
             pressedElevation = 8.dp,
@@ -93,7 +85,7 @@ internal fun NoteRow(
     Card(
         onClick = onClick,
         shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         elevation = CardDefaults.cardElevation(
             defaultElevation = 2.dp,
             pressedElevation = 8.dp,
@@ -135,18 +127,14 @@ private fun BriefTaskRowContent(task: TaskItem) {
         )
 
         task.doDate?.let { DetailChip(Icons.Default.Event, it.compact()) }
-        if (task.priority != TaskPriority.None) PriorityPill(priority = task.priority)
     }
 }
 
 @Composable
 private fun StandardTaskRowContent(task: TaskItem, list: TaskList?) {
     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        TaskTitleRow(task, descriptionMaxLines = 1)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes)
-            task.durationMinutes?.let { DetailChip(Icons.Default.Schedule, it.formatDuration()) }
-        }
+        TaskTitleRow(task, descriptionMaxLines = 0)
+        DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes)
         task.subtasks.takeIf { it.isNotEmpty() }?.let { SubtaskProgressText(task) }
         SupportingPills(list = list, tags = task.tags.take(2), overflowCount = (task.tags.size - 2).coerceAtLeast(0))
     }
@@ -209,7 +197,7 @@ private fun TaskTitleRow(
         TaskStatusIcon(task.status, task.priority)
         Column(Modifier.weight(1f)) {
             Text(task.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            if (task.description.isNotBlank()) {
+            if (descriptionMaxLines > 0 && task.description.isNotBlank()) {
                 Text(
                     task.description,
                     style = MaterialTheme.typography.bodySmall,
@@ -292,4 +280,6 @@ private fun NoteStatusIcon(status: TaskStatus) {
 
 private const val DefaultNoteRowBackgroundAlpha = 0.55f
 internal const val CompletedRowCoverAlpha = 0.62f
+internal const val ContentContainerAlpha = 0.45f
+internal const val ContentAlpha = 0.62f
 

@@ -49,7 +49,7 @@ internal fun SubtaskChecklist(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        color = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -118,7 +118,7 @@ private fun SubtaskRow(
         
         val textStyle = MaterialTheme.typography.bodyMedium.copy(
             color = if (subtask.isCompleted) {
-                MaterialTheme.colorScheme.onSurfaceVariant
+                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
             } else {
                 MaterialTheme.colorScheme.onSurface
             },
@@ -150,7 +150,7 @@ private fun SubtaskRow(
                         if (subtask.name.isEmpty()) {
                             Text(
                                 "Subtask",
-                                style = textStyle.copy(color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
+                                style = textStyle.copy(color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = ContentAlpha))
                             )
                         }
                         innerTextField()
@@ -159,7 +159,7 @@ private fun SubtaskRow(
                 Icon(
                     Icons.Default.Delete,
                     contentDescription = "Clear",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.58f),
+                    tint = MaterialTheme.colorScheme.outlineVariant.copy(alpha = ContentAlpha),
                     modifier = Modifier
                         .size(18.dp)
                         .clickable { onRemove() }

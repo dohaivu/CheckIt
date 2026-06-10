@@ -48,6 +48,7 @@ import com.checkit.ui.shortName
 import com.checkit.ui.myday.DayLinearTimeline
 import com.checkit.ui.myday.DailyPlanAgenda
 import com.checkit.ui.myday.DailyPlanItemEditorSheet
+import com.checkit.ui.tasks.ContentContainerAlpha
 import com.checkit.ui.tasks.TaskAgendaView
 import com.checkit.ui.today
 import kotlinx.datetime.DateTimeUnit
@@ -265,7 +266,7 @@ private fun MonthCalendar(
     val colors = remember(colorScheme) {
         CalendarCellColors(
             outline = colorScheme.outline.copy(alpha = 0.22f),
-            selectedBackground = colorScheme.primaryContainer.copy(alpha = 0.45f),
+            selectedBackground = colorScheme.primaryContainer.copy(alpha = ContentContainerAlpha),
             defaultBackground = colorScheme.surface,
             heatmapHighBackground = colorScheme.primaryContainer,
             headerBackground = colorScheme.surfaceVariant,

@@ -51,6 +51,7 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import com.checkit.ui.TaskSortOption
 import com.checkit.ui.TaskWorkspaceView
+import com.checkit.ui.tasks.ContentContainerAlpha
 import com.checkit.ui.tasks.icon
 
 
@@ -196,7 +197,7 @@ internal fun ViewOptionChip(
     val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
 
     val backgroundColor = remember(selected, primaryContainer, surfaceVariant) {
-        if (selected) primaryContainer else surfaceVariant.copy(alpha = 0.45f)
+        if (selected) primaryContainer else surfaceVariant.copy(alpha = ContentContainerAlpha)
     }
 
     val contentColor = remember(selected, onPrimaryContainer, onSurface) {

@@ -29,6 +29,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.TaskPriority
+import com.checkit.ui.tasks.ContentAlpha
+import com.checkit.ui.tasks.ContentContainerAlpha
 
 @Composable
 internal fun PriorityPill(
@@ -38,17 +40,13 @@ internal fun PriorityPill(
     modifier: Modifier = Modifier
 ) {
     val priorityColor = priority.priorityColor()
-    val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
-    val backgroundColor = remember(selected, priorityColor, surfaceVariant) {
-        if (selected) priorityColor.copy(alpha = 0.14f) else surfaceVariant.copy(alpha = 0.24f)
-    }
-
+    val backgroundColor = if (selected) priorityColor.copy(alpha = 0.14f) else MaterialTheme.colorScheme.surfaceContainerHigh
     Row(
         modifier = modifier
             .clip(CircleShape)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .background(backgroundColor)
-            .border(1.dp, if (selected) priorityColor.copy(alpha = 0.62f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.48f), CircleShape)
+            .border(1.dp, if (selected) priorityColor.copy(alpha = ContentAlpha) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = ContentContainerAlpha), CircleShape)
             .padding(horizontal = 9.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -111,7 +109,7 @@ internal fun PriorityPicker(
         }
     ) {
         FlowRow(
-            modifier = Modifier.padding(horizontal = 8.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {

@@ -117,7 +117,6 @@ class TaskSubtaskViewModelTest {
         viewModel.openNewTask()
         viewModel.updateTaskName("Remind me")
         viewModel.updateTaskStartTime(8 * 60 + 30)
-        viewModel.setTaskRemindersEnabled(true)
         viewModel.toggleTaskReminder(60)
 
         viewModel.saveEditor()
@@ -133,7 +132,6 @@ class TaskSubtaskViewModelTest {
         createViewModel(TaskBoard(lists = listOf(inboxList())))
         viewModel.openNewTask()
         viewModel.updateTaskName("All day reminder")
-        viewModel.setTaskRemindersEnabled(true)
 
         viewModel.saveEditor()
         dispatcher.scheduler.advanceUntilIdle()

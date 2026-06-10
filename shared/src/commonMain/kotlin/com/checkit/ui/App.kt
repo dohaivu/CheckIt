@@ -6,9 +6,12 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.ListAlt
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.Icon
@@ -245,7 +248,6 @@ fun CheckItApp(
                         onTaskEndTimeChange = taskViewModel::updateTaskEndTime,
                         onTaskRepeatChange = taskViewModel::updateTaskRepeat,
                         onTaskPriorityChange = taskViewModel::updateTaskPriority,
-                        onTaskRemindersEnabledChange = taskViewModel::setTaskRemindersEnabled,
                         onTaskReminderToggle = taskViewModel::toggleTaskReminder,
                         onSubTaskToggle = taskViewModel::toggleSubTask,
                         onSubTaskAdd = taskViewModel::addSubTask,
@@ -286,7 +288,7 @@ private fun CheckItTab.route(): NavKey = when (this) {
 }
 
 private fun CheckItTab.icon() = when (this) {
-    CheckItTab.Task -> Icons.Default.Add
+    CheckItTab.Task -> Icons.AutoMirrored.Filled.ListAlt
     CheckItTab.MyDay -> Icons.Default.Today
     CheckItTab.Calendar -> Icons.Default.CalendarMonth
     CheckItTab.Report -> Icons.Default.BarChart

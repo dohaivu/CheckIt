@@ -214,7 +214,7 @@ class TaskViewModel(
         _uiState.update {
             it.copy(
                 editor = TaskEditorState.TaskForm(
-                    mode = EditorMode.View,
+                    mode = EditorMode.Edit,
                     taskId = task.id,
                     listId = task.listId,
                     name = task.name,
@@ -237,7 +237,7 @@ class TaskViewModel(
         _uiState.update {
             it.copy(
                 editor = TaskEditorState.NoteForm(
-                    mode = EditorMode.View,
+                    mode = EditorMode.Edit,
                     noteId = note.id,
                     listId = note.listId,
                     title = note.title,
@@ -398,15 +398,6 @@ class TaskViewModel(
     fun updateTaskEndTime(endTimeMinutes: Int?) = updateTaskForm { it.copy(endTimeMinutes = endTimeMinutes) }
     fun updateTaskRepeat(repeatPreset: RepeatPreset) = updateTaskForm { it.copy(repeatPreset = repeatPreset) }
     fun updateTaskPriority(priority: TaskPriority) = updateTaskForm { it.copy(priority = priority) }
-    fun setTaskRemindersEnabled(enabled: Boolean) = updateTaskForm { form ->
-        form.copy(
-            reminderOffsets = if (enabled) {
-                form.reminderOffsets.ifEmpty { setOf(TaskReminderPreset.defaultFor(form.startTimeMinutes).offsetMinutes) }
-            } else {
-                emptySet()
-            }
-        )
-    }
     fun toggleTaskReminder(offsetMinutes: Int) = updateTaskForm { form ->
         form.copy(reminderOffsets = form.reminderOffsets.toggle(offsetMinutes))
     }
@@ -430,7 +421,7 @@ class TaskViewModel(
         }
         val nextForm = current.copy(subtasks = nextSubtasks)
         _uiState.update { it.copy(editor = nextForm) }
-        if (current.mode == EditorMode.View) {
+        if (current.mode == EditorMode.View || current.mode == EditorMode.Edit) {
             persistTaskInPlace(nextForm)
         }
     }
@@ -452,6 +443,8 @@ class TaskViewModel(
             is TaskEditorState.TaskForm -> if (editor.mode != EditorMode.View) saveTask(editor)
             is TaskEditorState.NoteForm -> if (editor.mode != EditorMode.View) saveNote(editor)
         }
+
+        _uiState.update { it.copy(editor = null) }
     }
 
     fun deleteEditorItem() {
@@ -532,7 +525,6 @@ class TaskViewModel(
             } else {
                 updateTask(form.taskId ?: return@launch, input)
             }
-            _uiState.update { it.copy(editor = null) }
         }
     }
 
@@ -556,7 +548,6 @@ class TaskViewModel(
             } else {
                 updateNote(form.noteId ?: return@launch, input)
             }
-            _uiState.update { it.copy(editor = null) }
         }
     }
 
@@ -627,14 +618,18 @@ class TaskViewModel(
     private fun updateTaskForm(transform: (TaskEditorState.TaskForm) -> TaskEditorState.TaskForm) {
         _uiState.update { state ->
             val form = state.editor as? TaskEditorState.TaskForm ?: return@update state
-            state.copy(editor = transform(form))
+            val updatedForm = transform(form)
+            if (form.mode == EditorMode.Edit) saveTask(updatedForm)
+            state.copy(editor = updatedForm)
         }
     }
 
     private fun updateNoteForm(transform: (TaskEditorState.NoteForm) -> TaskEditorState.NoteForm) {
         _uiState.update { state ->
             val form = state.editor as? TaskEditorState.NoteForm ?: return@update state
-            state.copy(editor = transform(form))
+            val updatedForm = transform(form)
+            if (form.mode == EditorMode.Edit) saveNote(updatedForm)
+            state.copy(editor = updatedForm)
         }
     }
 

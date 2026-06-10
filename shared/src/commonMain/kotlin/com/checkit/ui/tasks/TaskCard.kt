@@ -82,7 +82,7 @@ internal fun TaskCard(
                     }
                     Column(
                         modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(3.dp)
+                        verticalArrangement = Arrangement.spacedBy(0.dp)
                     ) {
                         Text(
                             text = title,
