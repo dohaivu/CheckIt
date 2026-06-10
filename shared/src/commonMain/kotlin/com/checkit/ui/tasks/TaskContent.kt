@@ -34,7 +34,7 @@ internal fun TaskContent(
     modifier: Modifier = Modifier
 ) {
     val showListName = state.selectedList == null
-    Column(modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 4.dp)) {
+    Column(modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 0.dp)) {
         Row(modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.End
