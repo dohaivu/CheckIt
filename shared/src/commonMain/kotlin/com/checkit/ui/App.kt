@@ -41,7 +41,6 @@ import checkit.shared.generated.resources.tab_my_day
 import checkit.shared.generated.resources.tab_tasks
 import checkit.shared.generated.resources.tab_report
 import checkit.shared.generated.resources.tab_settings
-import com.checkit.domain.NoteItem
 import com.checkit.ui.calendar.CalendarScreen
 import com.checkit.ui.calendar.CalendarViewModel
 import com.checkit.ui.myday.MyDayScreen
@@ -241,7 +240,7 @@ fun CheckItApp(
                         onTaskNameChange = taskViewModel::updateTaskName,
                         onTaskListChange = taskViewModel::updateTaskListId,
                         onTaskDescriptionChange = taskViewModel::updateTaskDescription,
-                        onTaskDueDateChange = taskViewModel::updateTaskDueDate,
+                        onTaskDoDateChange = taskViewModel::updateTaskDoDate,
                         onTaskStartTimeChange = taskViewModel::updateTaskStartTime,
                         onTaskEndTimeChange = taskViewModel::updateTaskEndTime,
                         onTaskRepeatChange = taskViewModel::updateTaskRepeat,

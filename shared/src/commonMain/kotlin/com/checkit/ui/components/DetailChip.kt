@@ -1,4 +1,4 @@
-package com.checkit.ui.tasks
+package com.checkit.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -19,6 +19,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.checkit.ui.tasks.compact
+import com.checkit.ui.tasks.toClockLabel
 import kotlinx.datetime.LocalDate
 
 @Composable

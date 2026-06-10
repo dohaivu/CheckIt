@@ -52,15 +52,12 @@ import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.ui.DailyPlanItemEditorState
 import com.checkit.ui.EditorMode
-import com.checkit.ui.tasks.DetailChip
+import com.checkit.ui.components.DetailChip
 import com.checkit.ui.components.TimePickerRow
-import com.checkit.ui.tasks.TimeRangeDetailChip
+import com.checkit.ui.components.TimeRangeDetailChip
 import com.checkit.ui.components.TimeRangePicker
 import com.checkit.ui.tasks.currentTimeMinutes
 import com.checkit.ui.tasks.editorTextFieldColors
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
-import kotlin.time.Clock
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

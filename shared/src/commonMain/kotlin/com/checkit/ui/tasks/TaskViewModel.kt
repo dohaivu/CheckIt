@@ -55,7 +55,6 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.number
 
 class TaskViewModel(
     private val observeTaskBoard: ObserveTaskBoardUseCase,
@@ -384,7 +383,7 @@ class TaskViewModel(
     fun updateTaskName(name: String) = updateTaskForm { it.copy(name = name) }
     fun updateTaskListId(listId: Long) = updateTaskForm { it.copy(listId = listId) }
     fun updateTaskDescription(description: String) = updateTaskForm { it.copy(description = description) }
-    fun updateTaskDueDate(doDate: LocalDate?) = updateTaskForm {
+    fun updateTaskDoDate(doDate: LocalDate?) = updateTaskForm {
         it.copy(
             doDate = doDate,
             reminderOffsets = if (doDate == null) emptySet() else it.reminderOffsets

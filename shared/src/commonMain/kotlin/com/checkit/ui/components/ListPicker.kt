@@ -22,7 +22,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.TaskList
 import com.checkit.ui.RepeatPreset
-import com.checkit.ui.tasks.DetailChip
 import com.checkit.ui.tasks.materialIcon
 import com.checkit.ui.tasks.toColor
 

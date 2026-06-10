@@ -66,20 +66,17 @@ import com.checkit.ui.EditorMode
 import com.checkit.ui.RepeatPreset
 import com.checkit.ui.TaskEditorState
 import com.checkit.ui.components.DatePickerRow
+import com.checkit.ui.components.DateTimeRangeDetailChip
+import com.checkit.ui.components.DetailChip
 import com.checkit.ui.components.ListPicker
 import com.checkit.ui.components.PriorityPicker
 import com.checkit.ui.components.PriorityPill
 import com.checkit.ui.components.ReminderPicker
 import com.checkit.ui.components.RepeatPicker
 import com.checkit.ui.components.TagPicker
-import com.checkit.ui.components.TimePickerRow
-import com.checkit.ui.components.TimeRangePicker
 import com.checkit.ui.toUtcLocalDate
 import com.checkit.ui.toUtcStartMillis
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
-import kotlin.time.Clock
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -96,7 +93,7 @@ internal fun TaskEditorSheet(
     onTaskNameChange: (String) -> Unit,
     onTaskListChange: (Long) -> Unit,
     onTaskDescriptionChange: (String) -> Unit,
-    onTaskDueDateChange: (LocalDate?) -> Unit,
+    onTaskDoDateChange: (LocalDate?) -> Unit,
     onTaskStartTimeChange: (Int?) -> Unit,
     onTaskEndTimeChange: (Int?) -> Unit,
     onTaskRepeatChange: (RepeatPreset) -> Unit,
@@ -160,7 +157,7 @@ internal fun TaskEditorSheet(
                                 onNameChange = onTaskNameChange,
                                 onListChange = onTaskListChange,
                                 onDescriptionChange = onTaskDescriptionChange,
-                                onDueDateChange = onTaskDueDateChange,
+                                onDoDateChange = onTaskDoDateChange,
                                 onStartTimeChange = onTaskStartTimeChange,
                                 onEndTimeChange = onTaskEndTimeChange,
                                 onRepeatChange = onTaskRepeatChange,
@@ -180,7 +177,7 @@ internal fun TaskEditorSheet(
                                 onNameChange = onTaskNameChange,
                                 onListChange = onTaskListChange,
                                 onDescriptionChange = onTaskDescriptionChange,
-                                onDueDateChange = onTaskDueDateChange,
+                                onDoDateChange = onTaskDoDateChange,
                                 onStartTimeChange = onTaskStartTimeChange,
                                 onEndTimeChange = onTaskEndTimeChange,
                                 onRepeatChange = onTaskRepeatChange,
@@ -333,7 +330,7 @@ private fun TaskViewContent(
     onNameChange: (String) -> Unit,
     onListChange: (Long) -> Unit,
     onDescriptionChange: (String) -> Unit,
-    onDueDateChange: (LocalDate?) -> Unit,
+    onDoDateChange: (LocalDate?) -> Unit,
     onStartTimeChange: (Int?) -> Unit,
     onEndTimeChange: (Int?) -> Unit,
     onRepeatChange: (RepeatPreset) -> Unit,
@@ -490,7 +487,7 @@ private fun TaskFormContent(
     onNameChange: (String) -> Unit,
     onListChange: (Long) -> Unit,
     onDescriptionChange: (String) -> Unit,
-    onDueDateChange: (LocalDate?) -> Unit,
+    onDoDateChange: (LocalDate?) -> Unit,
     onStartTimeChange: (Int?) -> Unit,
     onEndTimeChange: (Int?) -> Unit,
     onRepeatChange: (RepeatPreset) -> Unit,
@@ -529,7 +526,7 @@ private fun TaskFormContent(
 
             DatePickerRow(
                 date = form.doDate,
-                onDateChange = onDueDateChange,
+                onDateChange = onDoDateChange,
                 startTimeMinutes = form.startTimeMinutes,
                 endTimeMinutes = form.endTimeMinutes,
                 durationMinutes = form.durationMinutes,

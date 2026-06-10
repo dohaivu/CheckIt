@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.TaskList
 import com.checkit.domain.TaskTag
+import com.checkit.ui.components.DetailChip
 import com.checkit.ui.components.TaskTagPill
 
 @Composable

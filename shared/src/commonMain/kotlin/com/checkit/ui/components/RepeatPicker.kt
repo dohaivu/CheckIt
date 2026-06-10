@@ -21,7 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.checkit.ui.RepeatPreset
-import com.checkit.ui.tasks.DetailChip
 
 @Composable
 fun RepeatPicker(
