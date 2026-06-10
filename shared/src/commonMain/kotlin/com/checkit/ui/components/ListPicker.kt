@@ -80,37 +80,4 @@ internal fun ListPicker(
             }
         }
     }
-
-//    if (lists.isEmpty()) return
-//    var expanded by remember { mutableStateOf(false) }
-//    val selectedList = lists.firstOrNull { it.id == selectedListId } ?: lists.first()
-//    Box {
-//        SelectableInfoRow(
-//            icon = materialIcon(selectedList.icon),
-//            label = "List",
-//            value = selectedList.name,
-//            onClick = { expanded = true }
-//        )
-//        DropdownMenu(
-//            expanded = expanded,
-//            onDismissRequest = { expanded = false }
-//        ) {
-//            lists.forEach { list ->
-//                DropdownMenuItem(
-//                    text = { Text(list.name) },
-//                    leadingIcon = {
-//                        Icon(
-//                            imageVector = materialIcon(list.icon),
-//                            contentDescription = null,
-//                            tint = list.color.toColor()
-//                        )
-//                    },
-//                    onClick = {
-//                        onListChange(list.id)
-//                        expanded = false
-//                    }
-//                )
-//            }
-//        }
-//    }
 }

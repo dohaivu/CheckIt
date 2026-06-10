@@ -49,7 +49,6 @@ internal fun TaskCard(
         modifier = modifier
             .fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
-//        color = color.copy(alpha = containerAlpha),
         tonalElevation = tonalElevation,
         onClick = { onClick?.invoke() }
     ) {

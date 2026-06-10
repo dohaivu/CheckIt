@@ -115,7 +115,6 @@ internal fun DatePickerRow(
                         showModeToggle = false
                     )
                     if (onStartTimeChange != null) {
-                        AppHorizontalDivider()
                         TimeRangePicker(
                             startTimeMinutes = startTimeMinutes,
                             endTimeMinutes = endTimeMinutes,
