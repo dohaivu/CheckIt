@@ -13,6 +13,8 @@ class TaskReminderWorker(
         val taskName = inputData.getString(InputTaskName).orEmpty()
         val label = inputData.getString(InputLabel).orEmpty()
 
+        println("TaskReminderWorker: Running for taskId=$taskId, name=$taskName")
+
         CheckItNotificationCenter(applicationContext).showTaskReminder(
             taskId = taskId,
             taskName = taskName,
