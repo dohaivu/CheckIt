@@ -119,7 +119,7 @@ private data class DayTimelineTick(
 }
 
 private fun List<DailyPlanItem>.toDayTimelineBlocks(board: TaskBoard): List<DayTimelineBlock> {
-    val tasksById = board.tasks.associateBy { it.id }
+    val tasksById = board.tasksById
     val listsById = board.lists.associateBy { it.id }
     return mapNotNull { item ->
         val start = item.startTimeMinutes ?: return@mapNotNull null

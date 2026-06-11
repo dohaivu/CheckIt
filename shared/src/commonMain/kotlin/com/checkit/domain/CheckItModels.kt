@@ -10,7 +10,28 @@ data class TaskBoard(
     val tasks: List<TaskItem> = emptyList(),
     val notes: List<NoteItem> = emptyList(),
     val tags: List<TaskTag> = emptyList()
-)
+) {
+    val tasksById: Map<Long, TaskItem> by lazy { tasks.associateBy { it.id } }
+    val notesById: Map<Long, NoteItem> by lazy { notes.associateBy { it.id } }
+    val tasksByDate: Map<kotlinx.datetime.LocalDate, List<TaskItem>> by lazy {
+        val map = mutableMapOf<kotlinx.datetime.LocalDate, MutableList<TaskItem>>()
+        for (task in tasks) {
+            if (!task.isTrashed && task.status != TaskStatus.Completed) {
+                task.doDate?.let { date -> map.getOrPut(date) { mutableListOf() }.add(task) }
+            }
+        }
+        map
+    }
+    val notesByDate: Map<kotlinx.datetime.LocalDate, List<NoteItem>> by lazy {
+        val map = mutableMapOf<kotlinx.datetime.LocalDate, MutableList<NoteItem>>()
+        for (note in notes) {
+            if (!note.isTrashed && note.status != TaskStatus.Completed) {
+                map.getOrPut(note.date) { mutableListOf() }.add(note)
+            }
+        }
+        map
+    }
+}
 
 data class TaskList(
     val id: Long,

@@ -263,39 +263,57 @@ data class CalendarUiState(
     val listsById: Map<Long, TaskList> = board.lists.associateBy { it.id }
     val dailyPlanByDate: Map<kotlinx.datetime.LocalDate, DailyPlan> = dailyPlans.associateBy { it.date }
 
+    private val listColors: Map<Long, Color> = board.lists.associateWith { list ->
+        list.color.parseHexColorOrNull()
+            ?: ListEditorDefaults.Colors.first().parseHexColorOrNull()
+            ?: DefaultMarkerColor
+    }.mapKeys { it.key.id }
+
     fun tasksForDate(date: kotlinx.datetime.LocalDate): List<TaskItem> =
-        board.tasks.filter { !it.isTrashed && it.status != TaskStatus.Completed && it.doDate == date }
+        board.tasksByDate[date].orEmpty()
 
     fun notesForDate(date: kotlinx.datetime.LocalDate): List<NoteItem> =
-        board.notes.filter { !it.isTrashed && it.status != TaskStatus.Completed && it.date == date }
+        board.notesByDate[date].orEmpty()
 
     fun markerColorsForDate(date: kotlinx.datetime.LocalDate): List<Color> {
         if (date <= today()) {
             val dailyItems = dailyPlanByDate[date]?.items.orEmpty()
             if (dailyItems.isNotEmpty()) {
-                return dailyItems.map { dailyItemColor(it) }.take(MarkerCap)
+                return buildList {
+                    for (item in dailyItems) {
+                        add(dailyItemColor(item))
+                        if (size >= MarkerCap) break
+                    }
+                }
             }
         }
         val tasks = tasksForDate(date)
         val notes = notesForDate(date)
-        val combined = tasks.map { it.list.color.parseHexColorOrNull() ?: ListEditorDefaults.Colors.first().parseHexColorOrNull() ?: Color(0xFF64748B) } + notes.map { it.list.color.parseHexColorOrNull() ?: ListEditorDefaults.Colors.first().parseHexColorOrNull() ?: Color(0xFF64748B) }
-        return if (combined.size <= MarkerCap) combined else combined.take(MarkerCap)
+        val totalSize = tasks.size + notes.size
+        return buildList {
+            var i = 0
+            while (i < totalSize && size < MarkerCap) {
+                val color = if (i < tasks.size) {
+                    listColors[tasks[i].list.id]
+                } else {
+                    listColors[notes[i - tasks.size].list.id]
+                }
+                add(color ?: DefaultMarkerColor)
+                i++
+            }
+        }
     }
 
     fun dailyPlanForDate(date: kotlinx.datetime.LocalDate): DailyPlan? = dailyPlanByDate[date]
 
-    private fun listColorFor(listId: Long): Color =
-        listsById[listId]?.color?.parseHexColorOrNull()
-            ?: ListEditorDefaults.Colors.first().parseHexColorOrNull()
-            ?: Color(0xFF64748B)
-
     private fun dailyItemColor(item: DailyPlanItem): Color =
         item.taskId
-            ?.let { taskId -> board.tasks.firstOrNull { it.id == taskId }?.list?.color?.parseHexColorOrNull() }
-            ?: Color(0xFF64748B)
+            ?.let { taskId -> listColors[board.tasksById[taskId]?.list?.id] }
+            ?: DefaultMarkerColor
 
     private companion object {
-        const val MarkerCap: Int = 6
+        const val MarkerCap: Int = 12
+        val DefaultMarkerColor: Color = Color(0xFF64748B)
     }
 }
 

@@ -94,8 +94,16 @@ class MyDayViewModel(
     fun dismissCheckIn() {
         _uiState.update { it.copy(itemEditor = null) }
     }
-    fun saveCheckIn() {
+
+    fun addCheckIn() {
         val editor = _uiState.value.itemEditor ?: return
+
+        saveCheckIn(editor)
+
+        _uiState.update { it.copy(itemEditor = null, message = "Saved") }
+    }
+
+    fun saveCheckIn(editor: DailyPlanItemEditorState) {
         val title = editor.title.trim()
         val note = editor.note.trim()
         if (title.isBlank()) {
@@ -119,7 +127,6 @@ class MyDayViewModel(
                     editor.toWriteInput(editor.status)
                 )
             }
-            _uiState.update { it.copy(itemEditor = null, message = "Saved") }
         }
     }
 
@@ -174,17 +181,17 @@ class MyDayViewModel(
         _uiState.update {
             it.copy(
                 itemEditor = DailyPlanItemEditorState(
-                    mode = EditorMode.View,
+                    mode = EditorMode.Edit,
                     itemId = item.id,
                     taskId = item.taskId,
                     date = date,
                     source = item.source,
-                    title = if (item.source == com.checkit.domain.DailyPlanItemSource.CheckInNote) {
+                    title = if (item.source == DailyPlanItemSource.CheckInNote) {
                         item.note.orEmpty()
                     } else {
                         item.titleSnapshot
                     },
-                    note = if (item.source == com.checkit.domain.DailyPlanItemSource.CheckInNote) "" else item.note.orEmpty(),
+                    note = if (item.source == DailyPlanItemSource.CheckInNote) "" else item.note.orEmpty(),
                     status = item.status,
                     startTimeMinutes = item.startTimeMinutes,
                     endTimeMinutes = item.endTimeMinutes,
@@ -194,6 +201,7 @@ class MyDayViewModel(
         }
     }
     fun editItemEditor() = updateItemEditor { it.copy(mode = EditorMode.Edit) }
+
     fun updateDoneTitle(title: String) = updateItemEditor { it.copy(title = title) }
     fun updateDoneNote(note: String) = updateItemEditor { it.copy(note = note) }
     fun updateEditorSource(source: DailyPlanItemSource) = updateItemEditor {
@@ -205,8 +213,6 @@ class MyDayViewModel(
     }
     fun updateStartTime(timeMinutes: Int?) = updateItemEditor { it.copy(startTimeMinutes = timeMinutes) }
     fun updateEndTime(timeMinutes: Int?) = updateItemEditor { it.copy(endTimeMinutes = timeMinutes) }
-
-    fun updateTags(tagIds: Set<Long>) = updateItemEditor { it.copy(selectedTagIds = tagIds) }
     fun toggleTag(tagId: Long) = updateItemEditor {
         val newTagIds = if (it.selectedTagIds.contains(tagId)) {
             it.selectedTagIds - tagId
@@ -259,7 +265,11 @@ class MyDayViewModel(
 
     private fun updateItemEditor(transform: (DailyPlanItemEditorState) -> DailyPlanItemEditorState) {
         _uiState.update { state ->
-            state.itemEditor?.let { state.copy(itemEditor = transform(it)) } ?: state
+            state.itemEditor?.let {
+                val updatedEditor = transform(it)
+                if (updatedEditor.isEditMode) saveCheckIn(updatedEditor)
+                state.copy(itemEditor = updatedEditor)
+            } ?: state
         }
     }
 }

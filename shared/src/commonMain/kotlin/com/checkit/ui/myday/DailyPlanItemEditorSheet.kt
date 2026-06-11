@@ -32,7 +32,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -76,7 +75,7 @@ internal fun DailyPlanItemEditorSheet(
     onEndTimeChange: (Int?) -> Unit,
     onTagToggle: (Long) -> Unit,
     onEdit: () -> Unit,
-    onSave: () -> Unit,
+    onAdd: () -> Unit,
     onDone: () -> Unit,
     onDelete: () -> Unit,
     onOpenTask: (() -> Unit)?
@@ -98,7 +97,6 @@ internal fun DailyPlanItemEditorSheet(
                 onSourceChange = onSourceChange,
                 onDismiss = onDismiss,
                 onEdit = onEdit,
-                onSave = onSave,
                 onDelete = onDelete
             )
             LazyColumn(
@@ -148,6 +146,19 @@ internal fun DailyPlanItemEditorSheet(
                         }
                     }
                 }
+                if(state.isAddMode) {
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Button(onClick = onAdd) {
+                                Text("Add CheckIn")
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -159,7 +170,6 @@ private fun DailyPlanItemSheetHeader(
     onSourceChange: (DailyPlanItemSource) -> Unit,
     onDismiss: () -> Unit,
     onEdit: () -> Unit,
-    onSave: () -> Unit,
     onDelete: () -> Unit
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
@@ -179,7 +189,7 @@ private fun DailyPlanItemSheetHeader(
                 text = when (state.mode) {
                     EditorMode.Add -> "Add item"
                     EditorMode.View -> if (state.source == DailyPlanItemSource.CheckInNote) "Note" else "My Day item"
-                    EditorMode.Edit -> "Edit item"
+                    EditorMode.Edit -> "CheckIn"
                 },
                 modifier = Modifier.align(Alignment.Center),
                 style = MaterialTheme.typography.titleLarge,
@@ -194,7 +204,7 @@ private fun DailyPlanItemSheetHeader(
                     Icon(Icons.Default.Edit, contentDescription = "Edit")
                 }
             }
-            if (state.canDelete && state.isViewMode) {
+            if (state.canDelete) {
                 Box {
                     IconButton(onClick = { menuExpanded = true }) {
                         Icon(Icons.Default.MoreVert, contentDescription = "Options")
@@ -212,11 +222,6 @@ private fun DailyPlanItemSheetHeader(
                             }
                         )
                     }
-                }
-            }
-            if (!state.isViewMode) {
-                Button(onClick = onSave) {
-                    Text("Save")
                 }
             }
         }

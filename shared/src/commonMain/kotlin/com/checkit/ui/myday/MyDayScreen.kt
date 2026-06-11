@@ -71,7 +71,7 @@ import kotlinx.datetime.LocalDate
 @Composable
 internal fun MyDayScreen(
     viewModel: MyDayViewModel,
-    onTaskClick: (TaskItem) -> Unit,
+    onTaskClick: (TaskItem, DailyPlanItem?) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
     onNoteTimeChange: (NoteItem, Int) -> Unit,
     onCreateTask: () -> Unit,
@@ -123,14 +123,20 @@ internal fun MyDayScreen(
             )
             when (state.selectedView) {
                 MyDayView.Agenda -> MyDayAgenda(
-                    state = state,
+                    items = state.items,
+                    board = state.board,
+                    date = state.today,
                     onItemClick = { viewModel.openItemEditor(it, state.today) },
+                    onTaskClick = onTaskClick,
                     onNoteClick = onNoteClick,
                     modifier = Modifier.weight(1f)
                 )
                 MyDayView.Timeline -> MyDayTimeline(
-                    state = state,
+                    items = state.items,
+                    board = state.board,
+                    date = state.today,
                     onItemClick = { viewModel.openItemEditor(it, state.today) },
+                    onTaskClick = onTaskClick,
                     onNoteClick = onNoteClick,
                     onCreateTask = viewModel::createFromTimelineRange,
                     onItemTimeChange = viewModel::updateItemTime,
@@ -151,7 +157,9 @@ internal fun MyDayScreen(
             tasks = state.suggestedTasks,
             lists = state.board.lists,
             onDismiss = viewModel::dismissSuggestions,
-            onTaskClick = onTaskClick,
+            onTaskClick = {
+                onTaskClick.invoke(it, null)
+            },
             onAddTask = viewModel::addTaskFromSuggestion,
             onCreateTask = {
                 viewModel.dismissSuggestions()
@@ -181,28 +189,12 @@ private fun MyDayViewSelector(
 }
 
 @Composable
-private fun MyDayAgenda(
-    state: MyDayUiState,
-    onItemClick: (DailyPlanItem) -> Unit,
-    onNoteClick: (NoteItem) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    DailyPlanAgenda(
-        items = state.items,
-        board = state.board,
-        date = state.today,
-        onItemClick = onItemClick,
-        onNoteClick = onNoteClick,
-        modifier = modifier
-    )
-}
-
-@Composable
-internal fun DailyPlanAgenda(
+internal fun MyDayAgenda(
     items: List<DailyPlanItem>,
     board: TaskBoard,
     date: LocalDate,
     onItemClick: (DailyPlanItem) -> Unit,
+    onTaskClick: (TaskItem, DailyPlanItem?) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -251,9 +243,9 @@ internal fun DailyPlanAgenda(
                 is DailyPlanItem -> onItemClick(tag)
                 is NoteItem -> onNoteClick(tag)
                 is TaskItem -> {
-                    // Find the DailyPlanItem for this task
+                    val task = board.tasksById[tag.id]
                     val dailyItem = items.find { it.taskId == tag.id }
-                    if (dailyItem != null) onItemClick(dailyItem)
+                    if (task != null && dailyItem != null) onTaskClick(task, dailyItem)
                 }
             }
         },
@@ -291,16 +283,19 @@ internal fun DailyPlanAgenda(
 
 @Composable
 private fun MyDayTimeline(
-    state: MyDayUiState,
+    items: List<DailyPlanItem>,
+    board: TaskBoard,
+    date: LocalDate,
     onItemClick: (DailyPlanItem) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
+    onTaskClick: (TaskItem, DailyPlanItem?) -> Unit,
     onCreateTask: (Int, Int) -> Unit,
     onItemTimeChange: (DailyPlanItem, Int, Int) -> Unit,
     onNoteTimeChange: (NoteItem, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val projection = remember(state.items, state.board, state.today) {
-        state.items.toTaskViewProjection(board = state.board, date = state.today)
+    val projection = remember(items, board, date) {
+        items.toTaskViewProjection(board = board, date = date)
     }
     val timelineItems = remember(projection) {
         val tasks = projection.tasks.map { task ->
@@ -346,8 +341,9 @@ private fun MyDayTimeline(
                 is DailyPlanItem -> onItemClick(tag)
                 is NoteItem -> onNoteClick(tag)
                 is TaskItem -> {
-                    val dailyItem = state.items.find { it.taskId == tag.id }
-                    if (dailyItem != null) onItemClick(dailyItem)
+                    val task = board.tasksById[tag.id]
+                    val dailyItem = items.find { it.taskId == tag.id }
+                    if (task != null && dailyItem != null) onTaskClick(task, dailyItem)
                 }
             }
         },
@@ -357,7 +353,7 @@ private fun MyDayTimeline(
                 is DailyPlanItem -> onItemTimeChange(tag, start, end)
                 is NoteItem -> onNoteTimeChange(tag, start)
                 is TaskItem -> {
-                    val dailyItem = state.items.find { it.taskId == tag.id }
+                    val dailyItem = items.find { it.taskId == tag.id }
                     if (dailyItem != null) onItemTimeChange(dailyItem, start, end)
                 }
             }
@@ -367,7 +363,7 @@ private fun MyDayTimeline(
                 is DailyPlanItem -> DailyPlanCard(item = tag, onClick = { onItemClick(tag) })
                 is NoteItem -> { /* handle if needed */ }
                 is TaskItem -> {
-                    val dailyItem = state.items.find { it.taskId == tag.id }
+                    val dailyItem = items.find { it.taskId == tag.id }
                     if (dailyItem != null) {
                         DailyPlanCard(item = dailyItem, onClick = { onItemClick(dailyItem) })
                     }
@@ -414,8 +410,7 @@ private fun MyDayBoard(
     onItemClick: (DailyPlanItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val taskById = remember(state.board.tasks) { state.board.tasks.associateBy { it.id } }
-    val listById = remember(state.board.lists) { state.board.lists.associateBy { it.id } }
+    val taskById = remember(state.board.tasks) { state.board.tasksById }
     LazyColumn(
         modifier = modifier.fillMaxWidth(),
         contentPadding = PaddingValues(bottom = 24.dp),

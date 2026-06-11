@@ -7,6 +7,7 @@ import com.checkit.data.SubTaskWriteInput
 import com.checkit.data.TaskListWriteInput
 import com.checkit.data.TaskTagWriteInput
 import com.checkit.data.TaskWriteInput
+import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
@@ -210,7 +211,7 @@ class TaskViewModel(
         }
     }
 
-    fun openTask(task: TaskItem) {
+    fun openTask(task: TaskItem, dailyPlan: DailyPlanItem? = null) {
         _uiState.update {
             it.copy(
                 editor = TaskEditorState.TaskForm(

@@ -47,7 +47,7 @@ import com.checkit.ui.isSameMonth
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.shortName
 import com.checkit.ui.myday.DayLinearTimeline
-import com.checkit.ui.myday.DailyPlanAgenda
+import com.checkit.ui.myday.MyDayAgenda
 import com.checkit.ui.tasks.ContentContainerAlpha
 import com.checkit.ui.tasks.TaskAgendaView
 import com.checkit.ui.today
@@ -66,7 +66,7 @@ internal fun CalendarScreen(
     onDateDoubleClick: (LocalDate) -> Unit,
     onDailyPlanItemClick: (DailyPlanItem, LocalDate) -> Unit,
     onAddDailyPlanItem: (LocalDate) -> Unit,
-    onTaskClick: (TaskItem) -> Unit,
+    onTaskClick: (TaskItem, DailyPlanItem?) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -142,11 +142,12 @@ internal fun CalendarScreen(
             }
             if (hasItemsForDate) {
                 if (showDailyPlan) {
-                    DailyPlanAgenda(
+                    MyDayAgenda(
                         items = dailyPlanItems,
                         board = state.board,
                         date = state.selectedDate,
                         onItemClick = { onDailyPlanItemClick(it, state.selectedDate) },
+                        onTaskClick = onTaskClick,
                         onNoteClick = onNoteClick,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -158,7 +159,9 @@ internal fun CalendarScreen(
                         notes = notesForDate,
                         lists = state.board.lists,
                         showListName = true,
-                        onTaskClick = onTaskClick,
+                        onTaskClick = {
+                            onTaskClick(it, null)
+                        },
                         onNoteClick = onNoteClick,
                         dayLimit = 1,
                         focusedDate = state.selectedDate,

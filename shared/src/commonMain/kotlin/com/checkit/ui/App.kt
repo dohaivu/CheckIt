@@ -7,11 +7,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ListAlt
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.ListAlt
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.Icon
@@ -283,7 +280,7 @@ fun CheckItApp(
                         onEndTimeChange = myDayViewModel::updateEndTime,
                         onTagToggle = myDayViewModel::toggleTag,
                         onEdit = myDayViewModel::editItemEditor,
-                        onSave = myDayViewModel::saveCheckIn,
+                        onAdd = myDayViewModel::addCheckIn,
                         onDone = myDayViewModel::markEditorDone,
                         onDelete = myDayViewModel::deleteEditorItem,
                         onOpenTask = task?.let { { taskViewModel.openTask(it) } }

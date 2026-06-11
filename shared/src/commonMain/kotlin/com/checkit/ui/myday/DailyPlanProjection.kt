@@ -23,7 +23,7 @@ fun List<DailyPlanItem>.toTaskViewProjection(
     date: LocalDate
 ): MyDayTaskViewProjection {
     val lists = board.lists
-    val realTasksById = board.tasks.associateBy { it.id }
+    val realTasksById = board.tasksById
     val projectedTasks = mutableListOf<TaskItem>()
     val projectedNotes = board.notes.filter { !it.isTrashed && it.date == date }
     val projectedCheckIns = mutableListOf<DailyPlanItem>()
