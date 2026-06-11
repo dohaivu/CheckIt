@@ -45,16 +45,11 @@ internal fun TaskCard(
     containerAlpha: Float = 0.11f,
     tonalElevation: Dp = 0.dp
 ) {
-    Surface(
-        modifier = modifier
-            .fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        tonalElevation = tonalElevation,
-        onClick = { onClick?.invoke() }
-    ) {
+    val cardContent = @Composable {
         Box {
             Row(
                 modifier = modifier
+                    .fillMaxWidth()
                     .height(IntrinsicSize.Min)
                     .heightIn(min = minHeight)
                     .background(color.copy(alpha = containerAlpha))
@@ -120,6 +115,23 @@ internal fun TaskCard(
                 )
             }
         }
+    }
+
+    if (onClick != null) {
+        Surface(
+            modifier = modifier,
+            shape = RoundedCornerShape(8.dp),
+            tonalElevation = tonalElevation,
+            onClick = onClick,
+            content = cardContent
+        )
+    } else {
+        Surface(
+            modifier = modifier,
+            shape = RoundedCornerShape(8.dp),
+            tonalElevation = tonalElevation,
+            content = cardContent
+        )
     }
 }
 
