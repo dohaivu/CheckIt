@@ -278,7 +278,7 @@ data class CalendarUiState(
         }
         val tasks = tasksForDate(date)
         val notes = notesForDate(date)
-        val combined = tasks.map { it.list.color.parseHexColorOrNull() ?: ListEditorDefaults.Colors.first().parseHexColorOrNull() ?: Color(0xFF64748B) } + notes.map { listColorFor(it.listId) }
+        val combined = tasks.map { it.list.color.parseHexColorOrNull() ?: ListEditorDefaults.Colors.first().parseHexColorOrNull() ?: Color(0xFF64748B) } + notes.map { it.list.color.parseHexColorOrNull() ?: ListEditorDefaults.Colors.first().parseHexColorOrNull() ?: Color(0xFF64748B) }
         return if (combined.size <= MarkerCap) combined else combined.take(MarkerCap)
     }
 

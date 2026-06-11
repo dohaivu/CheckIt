@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material.icons.filled.Work
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
 import com.checkit.ui.TaskWorkspaceView
 import com.checkit.ui.components.priorityColor
@@ -111,17 +112,21 @@ internal fun LocalDate.compact(): String {
     }
 }
 
-internal fun TaskItem.cardColor(): Color {
+fun NoteItem.cardColor(): Color {
+    return list.color.toColor()
+}
+
+fun TaskItem.cardColor(): Color {
     return list.color.toColor() ?: priority.priorityColor()
 }
 
-internal fun TaskItem.timeRangeLabel(): String {
+fun TaskItem.timeRangeLabel(): String {
     val start = startTimeMinutes?.toClockLabel() ?: "Any time"
     val end = endTimeMinutes?.toClockLabel()
     return if (end == null) start else "$start - $end"
 }
 
-internal fun Int.formatDuration(): String {
+fun Int.formatDuration(): String {
     val hours = this / 60
     val minutes = this % 60
     return when {
@@ -131,7 +136,7 @@ internal fun Int.formatDuration(): String {
     }
 }
 
-internal fun Int.toClockLabel(): String {
+fun Int.toClockLabel(): String {
     val hour = this / 60
     val minute = this % 60
     val suffix = if (hour >= 12) "PM" else "AM"
@@ -142,9 +147,9 @@ internal fun Int.toClockLabel(): String {
     return "$displayHour:${minute.toString().padStart(2, '0')} $suffix"
 }
 
-internal enum class TimelineItemType { Task, Note, CheckIn }
+enum class TimelineItemType { Task, Note, CheckIn }
 
-internal data class TimelineItem(
+data class TimelineItem(
     val id: String,
     val type: TimelineItemType,
     val date: LocalDate? = null,

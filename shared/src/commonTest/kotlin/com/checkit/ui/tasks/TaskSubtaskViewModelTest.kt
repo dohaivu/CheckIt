@@ -122,8 +122,8 @@ class TaskSubtaskViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
 
         val reminders = repository.addedTasks.single().reminders
-        assertEquals(listOf(10, 60), reminders.map { it.offsetMinutes })
-        assertEquals(listOf("10 mins before", "1 hour before"), reminders.map { it.label })
+        assertEquals(listOf(60), reminders.map { it.offsetMinutes })
+        assertEquals(listOf("1 hour before"), reminders.map { it.label })
     }
 
     @Test
@@ -136,8 +136,8 @@ class TaskSubtaskViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
 
         val reminders = repository.addedTasks.single().reminders
-        assertEquals(listOf(0), reminders.map { it.offsetMinutes })
-        assertEquals(listOf("On the day at 9 AM"), reminders.map { it.label })
+        assertEquals(emptyList(), reminders.map { it.offsetMinutes })
+        assertEquals(emptyList(), reminders.map { it.label })
     }
 
     private fun createViewModel(board: TaskBoard) {

@@ -267,11 +267,10 @@ internal fun DailyPlanAgenda(
                     )
                 }
                 is NoteItem -> {
-                    val list = projection.lists.find { it.id == tag.listId }
                     TaskCard(
                         title = tag.content.ifBlank { "Empty note" },
-                        supportingText = list?.name,
-                        color = list?.color?.toColor() ?: MaterialTheme.colorScheme.secondary,
+                        supportingText = tag.list.name,
+                        color = tag.cardColor(),
                         leadingContent = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null, modifier = Modifier.size(20.dp)) },
                         completed = tag.status == TaskStatus.Completed
                     )
@@ -384,11 +383,10 @@ private fun MyDayTimeline(
                     )
                 }
                 is NoteItem -> {
-                    val list = projection.lists.find { it.id == tag.listId }
                     TaskCard(
                         title = tag.content.ifBlank { "Empty note" },
-                        supportingText = list?.name,
-                        color = list?.color?.toColor() ?: MaterialTheme.colorScheme.secondary,
+                        supportingText = tag.list.name,
+                        color = tag.cardColor(),
                         leadingContent = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null, modifier = Modifier.size(20.dp)) },
                         completed = tag.status == TaskStatus.Completed,
                         modifier = Modifier.matchParentSize(),

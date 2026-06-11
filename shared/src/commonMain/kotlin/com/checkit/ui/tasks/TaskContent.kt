@@ -149,22 +149,18 @@ internal fun TaskAgendaView(
         dayLimit = dayLimit,
         focusedDate = focusedDate,
         itemContent = { item ->
-            val task = (item.tag as? TaskItem)
-            val noteItem = (item.tag as? NoteItem)
-            val list = task?.list ?: noteItem?.let { lists.find { l -> l.id == it.listId } }
-
             when (val tag = item.tag) {
                 is TaskItem -> TaskCard(
                     title = tag.name.ifBlank { "Untitled task" },
-                    supportingText = if (showListName) list?.name else null,
+                    supportingText = if (showListName) tag.list.name else null,
                     leadingContent = { TaskStatusIcon(tag.status, tag.priority) },
                     color = tag.cardColor(),
                     completed = tag.status == TaskStatus.Completed
                 )
                 is NoteItem -> TaskCard(
                     title = tag.content.ifBlank { "Empty note" },
-                    supportingText = if (showListName) list?.name else null,
-                    color = list?.color?.toColor() ?: MaterialTheme.colorScheme.secondary,
+                    supportingText = if (showListName) tag.list.name else null,
+                    color = tag.cardColor(),
                     leadingContent = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null, modifier = Modifier.size(20.dp)) },
                     completed = tag.status == TaskStatus.Completed
                 )
@@ -230,21 +226,19 @@ internal fun TaskTimelineView(
         allDayItemContent = { item ->
             when (val tag = item.tag) {
                 is TaskItem -> {
-                    val list = tag.list
                     AllDayItemRow(
                         label = tag.name.ifBlank { "Untitled task" },
                         icon = { Icon(Icons.Default.TaskAlt, contentDescription = null, modifier = Modifier.size(20.dp)) },
                         color = tag.cardColor(),
-                        supportingLabel = if (showListName) list.name else null
+                        supportingLabel = if (showListName) tag.list.name else null
                     )
                 }
                 is NoteItem -> {
-                    val list = lists.find { it.id == tag.listId }
                     AllDayItemRow(
                         label = tag.content.ifBlank { "Empty note" },
-                        icon = { Icon(Icons.Default.Notes, contentDescription = null, modifier = Modifier.size(20.dp)) },
-                        color = list?.color?.toColor() ?: MaterialTheme.colorScheme.secondary,
-                        supportingLabel = if (showListName) list?.name else null
+                        icon = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                        color = tag.cardColor(),
+                        supportingLabel = if (showListName) tag.list.name else null
                     )
                 }
             }
@@ -252,13 +246,12 @@ internal fun TaskTimelineView(
         timedItemContent = { item, isSelected ->
             when (val tag = item.tag) {
                 is TaskItem -> {
-                    val list = tag.list
                     val start = tag.startTimeMinutes ?: 0
                     val end = tag.endTimeMinutes ?: (start + 60)
                     TaskCard(
                         title = tag.name.ifBlank { "Untitled task" },
                         timeLabel = "${start.toClockLabel()} - ${end.toClockLabel()}",
-                        supportingText = if (showListName) list?.name else null,
+                        supportingText = if (showListName) tag.list.name else null,
                         leadingContent = { TaskStatusIcon(tag.status, tag.priority) },
                         color = tag.cardColor(),
                         minHeight = 36.dp,
@@ -271,13 +264,12 @@ internal fun TaskTimelineView(
                     )
                 }
                 is NoteItem -> {
-                    val list = lists.find { it.id == tag.listId }
                     val start = tag.startTimeMinutes ?: 0
                     TaskCard(
                         title = tag.content.ifBlank { "Empty note" },
                         timeLabel = start.toClockLabel(),
-                        supportingText = if (showListName) list?.name else null,
-                        color = list?.color?.toColor() ?: MaterialTheme.colorScheme.secondary,
+                        supportingText = if (showListName) tag.list.name else null,
+                        color = tag.cardColor(),
                         leadingContent = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null, modifier = Modifier.size(20.dp)) },
                         minHeight = 36.dp,
                         titleMaxLines = 1,

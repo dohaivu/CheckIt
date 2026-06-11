@@ -160,7 +160,10 @@ class RoomCheckItRepository(
                     )
                 },
                 notes = rows.notes.map { note ->
-                    note.toDomain(tags = noteTagIds[note.id].orEmpty().mapNotNull { tagsById[it] })
+                    note.toDomain(
+                        list = listsById[note.listId] ?: TaskList.None,
+                        tags = noteTagIds[note.id].orEmpty().mapNotNull { tagsById[it] }
+                    )
                 },
                 tags = domainTags
             )
@@ -680,9 +683,9 @@ private fun TaskReminderEntity.toDomain() = TaskReminder(
     label = label
 )
 
-private fun NoteEntity.toDomain(tags: List<TaskTag>) = NoteItem(
+private fun NoteEntity.toDomain(list: TaskList, tags: List<TaskTag>) = NoteItem(
     id = id,
-    listId = listId,
+    list = list,
     title = title,
     content = content,
     status = enumValueOf(status),

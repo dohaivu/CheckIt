@@ -95,7 +95,7 @@ data class SubTaskItem(
 
 data class NoteItem(
     val id: Long,
-    val listId: Long,
+    val list: TaskList,
     val title: String = "",
     val content: String,
     val tags: List<TaskTag> = emptyList(),

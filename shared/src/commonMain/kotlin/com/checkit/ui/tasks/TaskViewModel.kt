@@ -239,7 +239,7 @@ class TaskViewModel(
                 editor = TaskEditorState.NoteForm(
                     mode = EditorMode.Edit,
                     noteId = note.id,
-                    listId = note.listId,
+                    listId = note.list.id,
                     title = note.title,
                     content = note.content,
                     status = note.status,
@@ -505,7 +505,7 @@ class TaskViewModel(
             updateNote(
                 note.id,
                 NoteWriteInput(
-                    listId = note.listId,
+                    listId = note.list.id,
                     title = note.title,
                     content = note.content,
                     status = note.status,

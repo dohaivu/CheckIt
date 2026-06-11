@@ -49,6 +49,7 @@ import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.shared.R
 import com.checkit.ui.myday.dailyItemColor
 import com.checkit.ui.myday.toTaskViewProjection
+import com.checkit.ui.tasks.cardColor
 import com.checkit.ui.tasks.toClockLabel
 import com.checkit.ui.today
 import kotlinx.coroutines.flow.first
@@ -286,8 +287,7 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
 
     @Composable
     private fun GlanceTaskCard(task: TaskItem, board: TaskBoard) {
-        val list = task.list
-        val baseColor = dailyItemColor(task, list)
+        val baseColor = task.cardColor()
         
         GlanceItemCard(
             title = task.name.ifBlank { "Untitled task" },
@@ -299,8 +299,7 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
 
     @Composable
     private fun GlanceNoteCard(note: NoteItem, board: TaskBoard) {
-        val list = board.lists.find { it.id == note.listId }
-        val baseColor = dailyItemColor(null, list)
+        val baseColor = note.cardColor()
 
         GlanceItemCard(
             title = note.content.ifBlank { "Empty note" },

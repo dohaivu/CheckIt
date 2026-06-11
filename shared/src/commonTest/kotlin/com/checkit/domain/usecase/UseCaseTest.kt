@@ -254,7 +254,7 @@ class UseCaseTest {
         trashedAtMillis: Long? = null
     ) = NoteItem(
         id = id,
-        listId = 1,
+        list = TaskList.None,
         content = "Note $id",
         tags = tags,
         date = date,

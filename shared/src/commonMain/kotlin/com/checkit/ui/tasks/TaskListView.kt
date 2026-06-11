@@ -79,7 +79,7 @@ internal fun TaskListView(
             NoteRow(
                 note = note,
                 onClick = { onNoteClick(note) },
-                list = if (showListName) lists.firstOrNull { it.id == note.listId } else null,
+                list = if (showListName) note.list else null,
                 displayType = displayType
             )
         }
