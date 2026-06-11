@@ -121,13 +121,13 @@ internal fun MyDayScreen(
             when (state.selectedView) {
                 MyDayView.Agenda -> MyDayAgenda(
                     state = state,
-                    onItemClick = viewModel::openItemEditor,
+                    onItemClick = { viewModel.openItemEditor(it, state.today) },
                     onNoteClick = onNoteClick,
                     modifier = Modifier.weight(1f)
                 )
                 MyDayView.Timeline -> MyDayTimeline(
                     state = state,
-                    onItemClick = viewModel::openItemEditor,
+                    onItemClick = { viewModel.openItemEditor(it, state.today) },
                     onNoteClick = onNoteClick,
                     onCreateTask = viewModel::createFromTimelineRange,
                     onItemTimeChange = viewModel::updateItemTime,
@@ -136,7 +136,7 @@ internal fun MyDayScreen(
                 )
                 MyDayView.Board -> MyDayBoard(
                     state = state,
-                    onItemClick = viewModel::openItemEditor,
+                    onItemClick = { viewModel.openItemEditor(it, state.today) },
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -154,26 +154,6 @@ internal fun MyDayScreen(
                 viewModel.dismissSuggestions()
                 onCreateTask()
             }
-        )
-    }
-
-    state.itemEditor?.let { editor ->
-        val task = editor.taskId?.let { taskId -> state.board.tasks.firstOrNull { it.id == taskId } }
-        DailyPlanItemEditorSheet(
-            state = editor,
-            availableTags = state.board.tags,
-            onDismiss = viewModel::dismissCheckIn,
-            onDoneTitleChange = viewModel::updateDoneTitle,
-            onDoneNoteChange = viewModel::updateDoneNote,
-            onSourceChange = viewModel::updateEditorSource,
-            onStartTimeChange = viewModel::updateStartTime,
-            onEndTimeChange = viewModel::updateEndTime,
-            onTagToggle = viewModel::toggleTag,
-            onEdit = viewModel::editItemEditor,
-            onSave = viewModel::saveCheckIn,
-            onDone = viewModel::markEditorDone,
-            onDelete = viewModel::deleteEditorItem,
-            onOpenTask = task?.let { { onTaskClick(it) } }
         )
     }
 }

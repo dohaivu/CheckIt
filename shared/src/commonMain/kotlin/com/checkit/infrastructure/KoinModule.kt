@@ -114,7 +114,7 @@ val provideViewModelModule = module {
             get(), get(), get(), get(), get(), get(), get(), get()
         )
     }
-    viewModel { CalendarViewModel(get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { CalendarViewModel(get(), get(), get()) }
     viewModel {
         MyDayViewModel(
             get(), get(), get(), get(), get(), get(), get(), get(), get()

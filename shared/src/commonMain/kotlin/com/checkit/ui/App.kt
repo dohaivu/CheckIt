@@ -55,6 +55,7 @@ import com.checkit.ui.reports.ReportScreen
 import com.checkit.ui.reports.ReportViewModel
 import com.checkit.ui.settings.SettingsScreen
 import com.checkit.ui.settings.SettingsViewModel
+import com.checkit.ui.myday.DailyPlanItemEditorSheet
 import com.checkit.ui.tasks.TaskEditorSheet
 import com.checkit.ui.theme.AppTheme
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -108,10 +109,14 @@ fun CheckItApp(
         settingsViewModel.uiState.map { it.colorSchemeMode }.distinctUntilChanged()
     }.collectAsState(AppColorSchemeMode.Sunset)
     val snackbarHostState = remember { SnackbarHostState() }
+
     val backState = rememberNavigationEventState(NavigationEventInfo.None)
     val currentRoute = backStack.lastOrNull() ?: Routes.Task
     val selectedTab = currentRoute.asTab()
+
     val taskUiState by taskViewModel.uiState.collectAsState()
+    val myDayUiState by myDayViewModel.uiState.collectAsState()
+    val calendarUiState by calendarViewModel.uiState.collectAsState()
 
     LaunchedEffect(taskMessage, myDayMessage, settingsMessage) {
         val message = taskMessage ?: myDayMessage ?: settingsMessage ?: return@LaunchedEffect
@@ -205,12 +210,12 @@ fun CheckItApp(
                                     )
                                 }
                                 Routes.Calendar -> {
-                                    val calendarState by calendarViewModel.uiState.collectAsState()
                                     CalendarScreen(
-                                        state = calendarState,
+                                        state = calendarUiState,
                                         calendarViewModel = calendarViewModel,
                                         onDateDoubleClick = taskViewModel::openNewTaskOnDate,
-                                        onTaskClick = taskViewModel::openTask,
+                                        onDailyPlanItemClick = myDayViewModel::openItemEditor,
+                                        onAddDailyPlanItem = { date -> myDayViewModel.openCheckIn(date = date) },
                                         onNoteClick = taskViewModel::openNote
                                     )
                                 }
@@ -262,6 +267,25 @@ fun CheckItApp(
                         onNoteTagToggle = taskViewModel::toggleNoteTag,
                         onSwitchAddModeToTask = taskViewModel::switchAddEditorToTask,
                         onSwitchAddModeToNote = taskViewModel::switchAddEditorToNote
+                    )
+                }
+                myDayUiState.itemEditor?.let { editor ->
+                    val task = editor.taskId?.let { taskId -> myDayUiState.board.tasks.firstOrNull { it.id == taskId } }
+                    DailyPlanItemEditorSheet(
+                        state = editor,
+                        availableTags = myDayUiState.board.tags,
+                        onDismiss = myDayViewModel::dismissCheckIn,
+                        onDoneTitleChange = myDayViewModel::updateDoneTitle,
+                        onDoneNoteChange = myDayViewModel::updateDoneNote,
+                        onSourceChange = myDayViewModel::updateEditorSource,
+                        onStartTimeChange = myDayViewModel::updateStartTime,
+                        onEndTimeChange = myDayViewModel::updateEndTime,
+                        onTagToggle = myDayViewModel::toggleTag,
+                        onEdit = myDayViewModel::editItemEditor,
+                        onSave = myDayViewModel::saveCheckIn,
+                        onDone = myDayViewModel::markEditorDone,
+                        onDelete = myDayViewModel::deleteEditorItem,
+                        onOpenTask = task?.let { { taskViewModel.openTask(it) } }
                     )
                 }
             }

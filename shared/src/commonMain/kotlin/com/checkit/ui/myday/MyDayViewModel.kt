@@ -21,6 +21,7 @@ import com.checkit.ui.EditorMode
 import com.checkit.ui.MyDayUiState
 import com.checkit.ui.MyDayView
 import com.checkit.ui.today
+import kotlinx.datetime.LocalDate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -77,11 +78,13 @@ class MyDayViewModel(
 
     fun openCheckIn(
         startTimeMinutes: Int? = null,
-        endTimeMinutes: Int? = null
+        endTimeMinutes: Int? = null,
+        date: LocalDate = today()
     ) {
         _uiState.update {
             it.copy(
                 itemEditor = DailyPlanItemEditorState(
+                    date = date,
                     startTimeMinutes = startTimeMinutes,
                     endTimeMinutes = endTimeMinutes
                 )
@@ -102,7 +105,7 @@ class MyDayViewModel(
         viewModelScope.launch {
             if (editor.itemId == null) {
                 addManualDoneToDailyPlan(
-                    today(),
+                    editor.date,
                     title,
                     note.takeIf { it.isNotBlank() },
                     editor.startTimeMinutes,
@@ -167,13 +170,14 @@ class MyDayViewModel(
         }
     }
 
-    fun openItemEditor(item: DailyPlanItem) {
+    fun openItemEditor(item: DailyPlanItem, date: LocalDate) {
         _uiState.update {
             it.copy(
                 itemEditor = DailyPlanItemEditorState(
                     mode = EditorMode.View,
                     itemId = item.id,
                     taskId = item.taskId,
+                    date = date,
                     source = item.source,
                     title = if (item.source == com.checkit.domain.DailyPlanItemSource.CheckInNote) {
                         item.note.orEmpty()
@@ -222,7 +226,7 @@ class MyDayViewModel(
         viewModelScope.launch {
             if (editor.itemId == null) {
                 addManualDoneToDailyPlan(
-                    today(),
+                    editor.date,
                     title,
                     editor.note.trim().takeIf { it.isNotBlank() },
                     editor.startTimeMinutes,

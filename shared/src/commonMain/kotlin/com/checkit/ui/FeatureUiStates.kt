@@ -113,6 +113,7 @@ data class DailyPlanItemEditorState(
     val mode: EditorMode = EditorMode.Add,
     val itemId: Long? = null,
     val taskId: Long? = null,
+    val date: LocalDate = today(),
     val source: DailyPlanItemSource = DailyPlanItemSource.CheckInManualDone,
     val title: String = "",
     val note: String = "",
@@ -256,8 +257,7 @@ data class CalendarUiState(
     val selectedMonth: kotlinx.datetime.LocalDate = today().firstDayOfMonth(),
     val selectedDate: kotlinx.datetime.LocalDate = today(),
     val board: TaskBoard = TaskBoard(),
-    val dailyPlans: List<DailyPlan> = emptyList(),
-    val itemEditor: DailyPlanItemEditorState? = null
+    val dailyPlans: List<DailyPlan> = emptyList()
 ) {
     val listsById: Map<Long, TaskList> = board.lists.associateBy { it.id }
     val dailyPlanByDate: Map<kotlinx.datetime.LocalDate, DailyPlan> = dailyPlans.associateBy { it.date }

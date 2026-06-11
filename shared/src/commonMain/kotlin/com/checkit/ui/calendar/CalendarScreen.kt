@@ -35,8 +35,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.calendar_title
+import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.NoteItem
-import com.checkit.domain.TaskItem
 import com.checkit.ui.CalendarUiState
 import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.MonthHeader
@@ -47,7 +47,6 @@ import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.shortName
 import com.checkit.ui.myday.DayLinearTimeline
 import com.checkit.ui.myday.DailyPlanAgenda
-import com.checkit.ui.myday.DailyPlanItemEditorSheet
 import com.checkit.ui.tasks.ContentContainerAlpha
 import com.checkit.ui.tasks.TaskAgendaView
 import com.checkit.ui.today
@@ -64,7 +63,8 @@ internal fun CalendarScreen(
     state: CalendarUiState,
     calendarViewModel: CalendarViewModel,
     onDateDoubleClick: (LocalDate) -> Unit,
-    onTaskClick: (TaskItem) -> Unit,
+    onDailyPlanItemClick: (DailyPlanItem, LocalDate) -> Unit,
+    onAddDailyPlanItem: (LocalDate) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -72,7 +72,6 @@ internal fun CalendarScreen(
     val notesForDate = state.notesForDate(state.selectedDate)
     val showDailyPlan = state.selectedDate <= today()
     val dailyPlanItems = state.dailyPlanForDate(state.selectedDate)?.items.orEmpty()
-    val taskById = remember(state.board.tasks) { state.board.tasks.associateBy { it.id } }
     val hasItemsForDate = if (showDailyPlan) {
         dailyPlanItems.isNotEmpty()
     } else {
@@ -81,7 +80,7 @@ internal fun CalendarScreen(
     val handleDateDoubleClick: (LocalDate) -> Unit = { date ->
         calendarViewModel.selectDate(date)
         if (date <= today()) {
-            calendarViewModel.openItemEditor(null)
+            onAddDailyPlanItem(date)
         } else {
             onDateDoubleClick(date)
         }
@@ -145,7 +144,7 @@ internal fun CalendarScreen(
                         items = dailyPlanItems,
                         board = state.board,
                         date = state.selectedDate,
-                        onItemClick = calendarViewModel::openItemEditor,
+                        onItemClick = { onDailyPlanItemClick(it, state.selectedDate) },
                         onNoteClick = onNoteClick,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -181,26 +180,6 @@ internal fun CalendarScreen(
                 }
             }
         }
-    }
-
-    state.itemEditor?.let { editor ->
-        val task = editor.taskId?.let { taskId -> taskById[taskId] }
-        DailyPlanItemEditorSheet(
-            state = editor,
-            availableTags = state.board.tags,
-            onDismiss = calendarViewModel::dismissItemEditor,
-            onDoneTitleChange = calendarViewModel::updateEditorTitle,
-            onDoneNoteChange = calendarViewModel::updateEditorNote,
-            onSourceChange = calendarViewModel::updateEditorSource,
-            onStartTimeChange = calendarViewModel::updateEditorStartTime,
-            onEndTimeChange = calendarViewModel::updateEditorEndTime,
-            onTagToggle = calendarViewModel::toggleTag,
-            onEdit = calendarViewModel::editItemEditor,
-            onSave = calendarViewModel::saveEditorItem,
-            onDone = calendarViewModel::markEditorDone,
-            onDelete = calendarViewModel::deleteEditorItem,
-            onOpenTask = task?.let { { onTaskClick(it) } }
-        )
     }
 }
 
