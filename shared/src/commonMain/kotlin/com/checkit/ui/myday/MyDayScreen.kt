@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddTask
 import androidx.compose.material.icons.filled.Dashboard
@@ -50,6 +51,7 @@ import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskList
+import com.checkit.domain.TaskStatus
 import com.checkit.ui.MyDayUiState
 import com.checkit.ui.MyDayView
 import com.checkit.ui.components.TinyTopAppBar
@@ -62,6 +64,7 @@ import com.checkit.ui.tasks.TimelineItem
 import com.checkit.ui.tasks.TimelineItemType
 import com.checkit.ui.tasks.taskCardColor
 import com.checkit.ui.tasks.timeRangeLabel
+import com.checkit.ui.tasks.toColor
 import kotlinx.datetime.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -261,25 +264,17 @@ internal fun DailyPlanAgenda(
                 is DailyPlanItem -> {
                     val list = projection.lists.find { it.id == tag.taskId?.let { tid -> board.tasks.find { t -> t.id == tid }?.listId } }
                     DailyPlanCard(
-                        item = tag,
-                        list = list
+                        item = tag
                     )
                 }
                 is NoteItem -> {
                     val list = projection.lists.find { it.id == tag.listId }
-                    DailyPlanCard(
-                        item = DailyPlanItem(
-                            id = 0,
-                            dailyPlanId = 0,
-                            titleSnapshot = tag.content,
-                            source = DailyPlanItemSource.CheckInNote,
-                            status = DailyPlanItemStatus.Planned,
-                            sortOrder = tag.sortOrder,
-                            startTimeMinutes = tag.startTimeMinutes,
-                            endTimeMinutes = tag.startTimeMinutes?.let { it + 30 },
-                            addedAtMillis = 0
-                        ),
-                        list = list
+                    TaskCard(
+                        title = tag.content.ifBlank { "Empty note" },
+                        supportingText = list?.name,
+                        color = list?.color?.toColor() ?: MaterialTheme.colorScheme.secondary,
+                        leadingContent = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                        completed = tag.status == TaskStatus.Completed
                     )
                 }
                 is TaskItem -> {
@@ -389,50 +384,30 @@ private fun MyDayTimeline(
                     val list = projection.lists.find { it.id == task?.listId }
                     DailyPlanCard(
                         item = tag,
-                        task = task,
-                        list = list,
                         modifier = Modifier.matchParentSize()
                     )
                 }
                 is NoteItem -> {
                     val list = projection.lists.find { it.id == tag.listId }
-                    DailyPlanCard(
-                        item = DailyPlanItem(
-                            id = 0,
-                            dailyPlanId = 0,
-                            titleSnapshot = tag.content,
-                            note = null,
-                            source = DailyPlanItemSource.CheckInNote,
-                            status = DailyPlanItemStatus.Planned,
-                            sortOrder = tag.sortOrder,
-                            startTimeMinutes = tag.startTimeMinutes,
-                            endTimeMinutes = tag.startTimeMinutes?.let { it + 30 },
-                            addedAtMillis = 0
-                        ),
-                        list = list,
-                        modifier = Modifier.matchParentSize()
+                    TaskCard(
+                        title = tag.content.ifBlank { "Empty note" },
+                        supportingText = list?.name,
+                        color = list?.color?.toColor() ?: MaterialTheme.colorScheme.secondary,
+                        leadingContent = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                        completed = tag.status == TaskStatus.Completed,
+                        modifier = Modifier.matchParentSize(),
                     )
                 }
                 is TaskItem -> {
                     val list = projection.lists.find { it.id == tag.listId }
-                    val dailyItem = state.items.find { it.taskId == tag.id }
-                    if (dailyItem != null) {
-                        DailyPlanCard(
-                            item = dailyItem,
-                            task = tag,
-                            list = list,
-                            modifier = Modifier.matchParentSize()
-                        )
-                    } else {
-                        TaskCard(
-                            title = tag.name,
-                            color = taskCardColor(tag, list),
-                            timeLabel = tag.timeRangeLabel(),
-                            leadingContent = { TaskStatusIcon(tag.status, tag.priority) },
-                            modifier = Modifier.matchParentSize(),
-                            containerAlpha = if (isSelected) 0.28f else 0.17f
-                        )
-                    }
+                    TaskCard(
+                        title = tag.name,
+                        color = taskCardColor(tag, list),
+                        timeLabel = tag.timeRangeLabel(),
+                        leadingContent = { TaskStatusIcon(tag.status, tag.priority) },
+                        modifier = Modifier.matchParentSize(),
+                        containerAlpha = if (isSelected) 0.28f else 0.17f
+                    )
                 }
             }
         },
@@ -458,12 +433,24 @@ private fun MyDayBoard(
             item { EmptyStateText("Nothing planned") }
         } else {
             items(state.plannedItems, key = { "planned-${it.id}" }) { item ->
-                DailyPlanCard(
-                    item = item,
-                    task = item.taskId?.let { taskById[it] },
-                    list = item.taskId?.let { taskById[it] }?.let { task -> listById[task.listId] },
-                    onClick = { onItemClick(item) }
-                )
+                if (item.taskId != null) {
+                    val task = item.taskId?.let { taskById[it] }
+                    val list = item.taskId?.let { taskById[it] }?.let { task -> listById[task.listId] }
+                    if (task != null) {
+                        TaskCard(
+                            title = task.name,
+                            color = taskCardColor(task, list),
+                            timeLabel = task.timeRangeLabel(),
+                            leadingContent = { TaskStatusIcon(task.status, task.priority) }
+                        )
+                    }
+                } else {
+                    DailyPlanCard(
+                        item = item,
+                        onClick = { onItemClick(item) }
+                    )
+                }
+
             }
         }
         item { SectionLabel("Done") }
@@ -471,12 +458,24 @@ private fun MyDayBoard(
             item { EmptyStateText("Nothing done yet") }
         } else {
             items(state.doneItems, key = { "done-${it.id}" }) { item ->
-                DailyPlanCard(
-                    item = item,
-                    task = item.taskId?.let { taskById[it] },
-                    list = item.taskId?.let { taskById[it] }?.let { task -> listById[task.listId] },
-                    onClick = { onItemClick(item) }
-                )
+                if (item.taskId != null) {
+                    val task = item.taskId?.let { taskById[it] }
+                    val list = item.taskId?.let { taskById[it] }?.let { task -> listById[task.listId] }
+                    if (task != null) {
+                        TaskCard(
+                            title = task.name,
+                            color = taskCardColor(task, list),
+                            timeLabel = task.timeRangeLabel(),
+                            leadingContent = { TaskStatusIcon(task.status, task.priority) },
+                            completed = true
+                        )
+                    }
+                } else {
+                    DailyPlanCard(
+                        item = item,
+                        onClick = { onItemClick(item) }
+                    )
+                }
             }
         }
     }
@@ -485,31 +484,16 @@ private fun MyDayBoard(
 @Composable
 internal fun DailyPlanCard(
     item: DailyPlanItem,
-    task: TaskItem? = null,
-    list: TaskList? = null,
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val isDone = item.status == DailyPlanItemStatus.Done
-    if (item.taskId != null && task != null) {
-        TaskCard(
-            title = item.titleSnapshot.ifBlank { "Untitled task" },
-            timeLabel = item.timeLabel(),
-            supportingText = item.note?.takeIf { it.isNotBlank() },
-            leadingContent = { TaskStatusIcon(task.status, task.priority) },
-            color = dailyItemColor(task, list),
-            completed = isDone,
-            onClick = onClick,
-            modifier = modifier
-        )
-        return
-    }
 
     TaskCard(
         title = item.displayTitle(),
         timeLabel = item.timeLabel(),
         supportingText = item.displaySupportingText(),
-        color = dailyItemColor(task, list),
+        color = MyDayListColor,
         leadingContent = if (item.source == DailyPlanItemSource.CheckInNote) {
             { Icon(Icons.Default.EventAvailable, contentDescription = null, modifier = Modifier.size(16.dp)) }
         } else {
@@ -646,3 +630,5 @@ private fun MyDayView.label(): String = when (this) {
     MyDayView.Timeline -> "Timeline"
     MyDayView.Board -> "Board"
 }
+
+internal val MyDayListColor = "#64748B".toColor()
