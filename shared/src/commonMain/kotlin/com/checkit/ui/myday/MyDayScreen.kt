@@ -54,10 +54,10 @@ import com.checkit.ui.MyDayUiState
 import com.checkit.ui.MyDayView
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.localizedCompactDateWithDayName
-import com.checkit.ui.tasks.TaskAgendaView
+import com.checkit.ui.tasks.AgendaView
 import com.checkit.ui.tasks.TaskCard
 import com.checkit.ui.tasks.TaskStatusIcon
-import com.checkit.ui.tasks.TaskTimelineView
+import com.checkit.ui.tasks.TimelineView
 import com.checkit.ui.tasks.TimelineItem
 import com.checkit.ui.tasks.TimelineItemType
 import com.checkit.ui.tasks.taskCardColor
@@ -232,7 +232,7 @@ internal fun DailyPlanAgenda(
         (tasks + notes).sortedWith(compareBy<TimelineItem> { it.startTimeMinutes ?: -1 }.thenBy { it.sortOrder })
     }
 
-    TaskAgendaView(
+    AgendaView(
         items = timelineItems,
         onItemClick = { item ->
             when (val tag = item.tag) {
@@ -329,7 +329,7 @@ private fun MyDayTimeline(
         (tasks + notes).sortedWith(compareBy<TimelineItem> { it.startTimeMinutes ?: -1 }.thenBy { it.sortOrder })
     }
 
-    TaskTimelineView(
+    TimelineView(
         items = timelineItems,
         onItemClick = { item ->
             when (val tag = item.tag) {

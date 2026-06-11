@@ -1,7 +1,6 @@
 package com.checkit.ui.tasks
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -26,10 +25,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
+import com.checkit.domain.TaskList
 import com.checkit.domain.TaskStatus
 import com.checkit.ui.TaskListDisplayType
 import com.checkit.ui.TaskUiState
 import com.checkit.ui.TaskWorkspaceView
+import com.checkit.ui.today
+import kotlinx.datetime.LocalDate
 
 @Composable
 internal fun TaskContent(
@@ -71,179 +73,226 @@ internal fun TaskContent(
                 onNoteClick = onNoteClick,
                 modifier = Modifier.weight(1f)
             )
-            TaskWorkspaceView.Agenda -> {
-                val agendaItems = remember(state.visibleTasks, state.visibleNotes) {
-                    val tasks = state.visibleTasks.map { task ->
-                        TimelineItem(
-                            id = "task-${task.id}",
-                            type = TimelineItemType.Task,
-                            name = task.name,
-                            date = task.doDate,
-                            startTimeMinutes = task.startTimeMinutes,
-                            endTimeMinutes = task.endTimeMinutes,
-                            sortOrder = task.sortOrder,
-                            tag = task
-                        )
-                    }
-                    val notes = state.visibleNotes.map { note ->
-                        TimelineItem(
-                            id = "note-${note.id}",
-                            type = TimelineItemType.Note,
-                            name = note.content,
-                            date = note.date,
-                            startTimeMinutes = note.startTimeMinutes,
-                            endTimeMinutes = note.startTimeMinutes?.let { it + 30 },
-                            sortOrder = note.sortOrder,
-                            tag = note
-                        )
-                    }
-                    (tasks + notes).sortedWith(compareBy<TimelineItem> { it.date }.thenBy { it.startTimeMinutes ?: -1 })
-                }
-                TaskAgendaView(
-                    items = agendaItems,
-                    onItemClick = { item ->
-                        when (val tag = item.tag) {
-                            is TaskItem -> onTaskClick(tag)
-                            is NoteItem -> onNoteClick(tag)
-                        }
-                    },
-                    dayLimit = state.dayLimit,
-                    itemContent = { item ->
-                        when (val tag = item.tag) {
-                            is TaskItem -> {
-                                val list = state.board.lists.find { it.id == tag.listId }
-                                TaskCard(
-                                    title = tag.name.ifBlank { "Untitled task" },
-                                    supportingText = if (showListName) list?.name else null,
-                                    leadingContent = { TaskStatusIcon(tag.status, tag.priority) },
-                                    color = taskCardColor(tag, list),
-                                    completed = tag.status == TaskStatus.Completed
-                                )
-                            }
-                            is NoteItem -> {
-                                val list = state.board.lists.find { it.id == tag.listId }
-                                TaskCard(
-                                    title = tag.content.ifBlank { "Empty note" },
-                                    supportingText = if (showListName) list?.name else null,
-                                    color = list?.color?.toColor() ?: MaterialTheme.colorScheme.secondary,
-                                    leadingContent = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null, modifier = Modifier.size(20.dp)) },
-                                    completed = tag.status == TaskStatus.Completed
-                                )
-                            }
-                        }
-                    },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            TaskWorkspaceView.Timeline -> {
-                val timelineItems = remember(state.visibleTasks, state.visibleNotes) {
-                    val tasks = state.visibleTasks.map { task ->
-                        TimelineItem(
-                            id = "task-${task.id}",
-                            type = TimelineItemType.Task,
-                            name = task.name,
-                            startTimeMinutes = task.startTimeMinutes,
-                            endTimeMinutes = task.endTimeMinutes,
-                            sortOrder = task.sortOrder,
-                            isResizable = true,
-                            tag = task
-                        )
-                    }
-                    val notes = state.visibleNotes.map { note ->
-                        TimelineItem(
-                            id = "note-${note.id}",
-                            type = TimelineItemType.Note,
-                            name = note.content,
-                            startTimeMinutes = note.startTimeMinutes,
-                            endTimeMinutes = note.startTimeMinutes?.let { it + 30 },
-                            sortOrder = note.sortOrder,
-                            isResizable = false,
-                            tag = note
-                        )
-                    }
-                    (tasks + notes).sortedBy { it.startTimeMinutes ?: -1 }
-                }
-                TaskTimelineView(
-                    items = timelineItems,
-                    onItemClick = { item ->
-                        when (val tag = item.tag) {
-                            is TaskItem -> onTaskClick(tag)
-                            is NoteItem -> onNoteClick(tag)
-                        }
-                    },
-                    onCreateRequest = onTimelineCreateTask,
-                    onTimeChange = { item, start, end ->
-                        when (val tag = item.tag) {
-                            is TaskItem -> onTimelineTaskTimeChange(tag, start, end)
-                            is NoteItem -> onTimelineNoteTimeChange(tag, start)
-                        }
-                    },
-                    allDayItemContent = { item ->
-                        when (val tag = item.tag) {
-                            is TaskItem -> {
-                                val list = state.board.lists.find { it.id == tag.listId }
-                                AllDayItemRow(
-                                    label = tag.name.ifBlank { "Untitled task" },
-                                    icon = { Icon(Icons.Default.TaskAlt, contentDescription = null, modifier = Modifier.size(20.dp)) },
-                                    color = taskCardColor(tag, list),
-                                    supportingLabel = if (showListName) list?.name else null
-                                )
-                            }
-                            is NoteItem -> {
-                                val list = state.board.lists.find { it.id == tag.listId }
-                                AllDayItemRow(
-                                    label = tag.content.ifBlank { "Empty note" },
-                                    icon = { Icon(Icons.Default.Notes, contentDescription = null, modifier = Modifier.size(20.dp)) },
-                                    color = list?.color?.toColor() ?: MaterialTheme.colorScheme.secondary,
-                                    supportingLabel = if (showListName) list?.name else null
-                                )
-                            }
-                        }
-                    },
-                    timedItemContent = { item, isSelected ->
-                        when (val tag = item.tag) {
-                            is TaskItem -> {
-                                val list = state.board.lists.find { it.id == tag.listId }
-                                val start = tag.startTimeMinutes ?: 0
-                                val end = tag.endTimeMinutes ?: (start + 60)
-                                TaskCard(
-                                    title = tag.name.ifBlank { "Untitled task" },
-                                    timeLabel = "${start.toClockLabel()} - ${end.toClockLabel()}",
-                                    supportingText = if (showListName) list?.name else null,
-                                    leadingContent = { TaskStatusIcon(tag.status, tag.priority) },
-                                    color = taskCardColor(tag, list),
-                                    minHeight = 36.dp,
-                                    titleMaxLines = 1,
-                                    completed = tag.status == TaskStatus.Completed,
-                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
-                                    containerAlpha = if (isSelected) SelectedTaskCardAlpha else DefaultTaskCardAlpha,
-                                    tonalElevation = if (isSelected) 3.dp else 1.dp,
-                                    modifier = Modifier.matchParentSize()
-                                )
-                            }
-                            is NoteItem -> {
-                                val list = state.board.lists.find { it.id == tag.listId }
-                                val start = tag.startTimeMinutes ?: 0
-                                TaskCard(
-                                    title = tag.content.ifBlank { "Empty note" },
-                                    timeLabel = start.toClockLabel(),
-                                    supportingText = if (showListName) list?.name else null,
-                                    color = list?.color?.toColor() ?: MaterialTheme.colorScheme.secondary,
-                                    leadingContent = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null, modifier = Modifier.size(20.dp)) },
-                                    minHeight = 36.dp,
-                                    titleMaxLines = 1,
-                                    completed = tag.status == TaskStatus.Completed,
-                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
-                                    containerAlpha = DefaultTaskCardAlpha,
-                                    tonalElevation = 1.dp,
-                                    modifier = Modifier.matchParentSize()
-                                )
-                            }
-                        }
-                    },
-                    modifier = Modifier.weight(1f)
-                )
-            }
+            TaskWorkspaceView.Agenda -> TaskAgendaView(
+                tasks = state.visibleTasks,
+                notes = state.visibleNotes,
+                lists = state.board.lists,
+                dayLimit = state.dayLimit,
+                focusedDate = today(),
+                showListName = showListName,
+                onTaskClick = onTaskClick,
+                onNoteClick = onNoteClick,
+                modifier = Modifier.weight(1f)
+            )
+            TaskWorkspaceView.Timeline -> TaskTimelineView(
+                tasks = state.visibleTasks,
+                notes = state.visibleNotes,
+                lists = state.board.lists,
+                showListName = showListName,
+                onTaskClick = onTaskClick,
+                onNoteClick = onNoteClick,
+                onTimelineCreateTask = onTimelineCreateTask,
+                onTimelineTaskTimeChange = onTimelineTaskTimeChange,
+                onTimelineNoteTimeChange = onTimelineNoteTimeChange,
+                modifier = Modifier.weight(1f)
+            )
         }
     }
+}
+
+@Composable
+internal fun TaskAgendaView(
+    tasks: List<TaskItem>,
+    notes: List<NoteItem>,
+    lists: List<TaskList>,
+    dayLimit: Int?,
+    focusedDate: LocalDate,
+    showListName: Boolean,
+    onTaskClick: (TaskItem) -> Unit,
+    onNoteClick: (NoteItem) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val agendaItems = remember(tasks, notes) {
+        val taskItems = tasks.map { task ->
+            TimelineItem(
+                id = "task-${task.id}",
+                type = TimelineItemType.Task,
+                name = task.name,
+                date = task.doDate,
+                startTimeMinutes = task.startTimeMinutes,
+                endTimeMinutes = task.endTimeMinutes,
+                sortOrder = task.sortOrder,
+                tag = task
+            )
+        }
+        val noteItems = notes.map { note ->
+            TimelineItem(
+                id = "note-${note.id}",
+                type = TimelineItemType.Note,
+                name = note.content,
+                date = note.date,
+                startTimeMinutes = note.startTimeMinutes,
+                endTimeMinutes = note.startTimeMinutes?.let { it + 30 },
+                sortOrder = note.sortOrder,
+                tag = note
+            )
+        }
+        (taskItems + noteItems).sortedWith(compareBy<TimelineItem> { it.date }.thenBy { it.startTimeMinutes ?: -1 })
+    }
+
+    AgendaView(
+        items = agendaItems,
+        onItemClick = { item ->
+            when (val tag = item.tag) {
+                is TaskItem -> onTaskClick(tag)
+                is NoteItem -> onNoteClick(tag)
+            }
+        },
+        dayLimit = dayLimit,
+        focusedDate = focusedDate,
+        itemContent = { item ->
+            val listId = (item.tag as? TaskItem)?.listId ?: (item.tag as? NoteItem)?.listId
+            val list = lists.find { it.id == listId }
+
+            when (val tag = item.tag) {
+                is TaskItem -> TaskCard(
+                    title = tag.name.ifBlank { "Untitled task" },
+                    supportingText = if (showListName) list?.name else null,
+                    leadingContent = { TaskStatusIcon(tag.status, tag.priority) },
+                    color = taskCardColor(tag, list),
+                    completed = tag.status == TaskStatus.Completed
+                )
+                is NoteItem -> TaskCard(
+                    title = tag.content.ifBlank { "Empty note" },
+                    supportingText = if (showListName) list?.name else null,
+                    color = list?.color?.toColor() ?: MaterialTheme.colorScheme.secondary,
+                    leadingContent = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                    completed = tag.status == TaskStatus.Completed
+                )
+            }
+        },
+        modifier = modifier
+    )
+}
+
+@Composable
+internal fun TaskTimelineView(
+    tasks: List<TaskItem>,
+    notes: List<NoteItem>,
+    lists: List<TaskList>,
+    showListName: Boolean,
+    onTaskClick: (TaskItem) -> Unit,
+    onNoteClick: (NoteItem) -> Unit,
+    onTimelineCreateTask: (Int, Int) -> Unit,
+    onTimelineTaskTimeChange: (TaskItem, Int, Int) -> Unit,
+    onTimelineNoteTimeChange: (NoteItem, Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val timelineItems = remember(tasks, notes) {
+        val taskItems = tasks.map { task ->
+            TimelineItem(
+                id = "task-${task.id}",
+                type = TimelineItemType.Task,
+                name = task.name,
+                startTimeMinutes = task.startTimeMinutes,
+                endTimeMinutes = task.endTimeMinutes,
+                sortOrder = task.sortOrder,
+                isResizable = true,
+                tag = task
+            )
+        }
+        val noteItems = notes.map { note ->
+            TimelineItem(
+                id = "note-${note.id}",
+                type = TimelineItemType.Note,
+                name = note.content,
+                startTimeMinutes = note.startTimeMinutes,
+                endTimeMinutes = note.startTimeMinutes?.let { it + 30 },
+                sortOrder = note.sortOrder,
+                isResizable = false,
+                tag = note
+            )
+        }
+        (taskItems + noteItems).sortedBy { it.startTimeMinutes ?: -1 }
+    }
+    TimelineView(
+        items = timelineItems,
+        onItemClick = { item ->
+            when (val tag = item.tag) {
+                is TaskItem -> onTaskClick(tag)
+                is NoteItem -> onNoteClick(tag)
+            }
+        },
+        onCreateRequest = onTimelineCreateTask,
+        onTimeChange = { item, start, end ->
+            when (val tag = item.tag) {
+                is TaskItem -> onTimelineTaskTimeChange(tag, start, end)
+                is NoteItem -> onTimelineNoteTimeChange(tag, start)
+            }
+        },
+        allDayItemContent = { item ->
+            when (val tag = item.tag) {
+                is TaskItem -> {
+                    val list = lists.find { it.id == tag.listId }
+                    AllDayItemRow(
+                        label = tag.name.ifBlank { "Untitled task" },
+                        icon = { Icon(Icons.Default.TaskAlt, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                        color = taskCardColor(tag, list),
+                        supportingLabel = if (showListName) list?.name else null
+                    )
+                }
+                is NoteItem -> {
+                    val list = lists.find { it.id == tag.listId }
+                    AllDayItemRow(
+                        label = tag.content.ifBlank { "Empty note" },
+                        icon = { Icon(Icons.Default.Notes, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                        color = list?.color?.toColor() ?: MaterialTheme.colorScheme.secondary,
+                        supportingLabel = if (showListName) list?.name else null
+                    )
+                }
+            }
+        },
+        timedItemContent = { item, isSelected ->
+            when (val tag = item.tag) {
+                is TaskItem -> {
+                    val list = lists.find { it.id == tag.listId }
+                    val start = tag.startTimeMinutes ?: 0
+                    val end = tag.endTimeMinutes ?: (start + 60)
+                    TaskCard(
+                        title = tag.name.ifBlank { "Untitled task" },
+                        timeLabel = "${start.toClockLabel()} - ${end.toClockLabel()}",
+                        supportingText = if (showListName) list?.name else null,
+                        leadingContent = { TaskStatusIcon(tag.status, tag.priority) },
+                        color = taskCardColor(tag, list),
+                        minHeight = 36.dp,
+                        titleMaxLines = 1,
+                        completed = tag.status == TaskStatus.Completed,
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+                        containerAlpha = if (isSelected) SelectedTaskCardAlpha else DefaultTaskCardAlpha,
+                        tonalElevation = if (isSelected) 3.dp else 1.dp,
+                        modifier = Modifier.matchParentSize()
+                    )
+                }
+                is NoteItem -> {
+                    val list = lists.find { it.id == tag.listId }
+                    val start = tag.startTimeMinutes ?: 0
+                    TaskCard(
+                        title = tag.content.ifBlank { "Empty note" },
+                        timeLabel = start.toClockLabel(),
+                        supportingText = if (showListName) list?.name else null,
+                        color = list?.color?.toColor() ?: MaterialTheme.colorScheme.secondary,
+                        leadingContent = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                        minHeight = 36.dp,
+                        titleMaxLines = 1,
+                        completed = tag.status == TaskStatus.Completed,
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+                        containerAlpha = DefaultTaskCardAlpha,
+                        tonalElevation = 1.dp,
+                        modifier = Modifier.matchParentSize()
+                    )
+                }
+            }
+        },
+        modifier = modifier
+    )
 }

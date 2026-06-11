@@ -37,6 +37,7 @@ import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.calendar_title
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.NoteItem
+import com.checkit.domain.TaskItem
 import com.checkit.ui.CalendarUiState
 import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.MonthHeader
@@ -65,6 +66,7 @@ internal fun CalendarScreen(
     onDateDoubleClick: (LocalDate) -> Unit,
     onDailyPlanItemClick: (DailyPlanItem, LocalDate) -> Unit,
     onAddDailyPlanItem: (LocalDate) -> Unit,
+    onTaskClick: (TaskItem) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -151,19 +153,19 @@ internal fun CalendarScreen(
                             .weight(1f)
                     )
                 } else {
-//                    TaskAgendaView(
-//                        tasks = tasksForDate,
-//                        notes = notesForDate,
-//                        lists = state.board.lists,
-//                        showListName = true,
-//                        onTaskClick = onTaskClick,
-//                        onNoteClick = onNoteClick,
-//                        dayLimit = 1,
-//                        focusedDate = state.selectedDate,
-//                        modifier = Modifier
-//                            .fillMaxWidth()
-//                            .weight(1f)
-//                    )
+                    TaskAgendaView(
+                        tasks = tasksForDate,
+                        notes = notesForDate,
+                        lists = state.board.lists,
+                        showListName = true,
+                        onTaskClick = onTaskClick,
+                        onNoteClick = onNoteClick,
+                        dayLimit = 1,
+                        focusedDate = state.selectedDate,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                    )
                 }
             } else {
                 Box(

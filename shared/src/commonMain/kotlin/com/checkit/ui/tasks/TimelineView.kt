@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,11 +21,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Notes
-import androidx.compose.material.icons.filled.Notes
-import androidx.compose.material.icons.filled.TaskAlt
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -49,10 +43,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import com.checkit.domain.NoteItem
-import com.checkit.domain.TaskItem
-import com.checkit.domain.TaskList
-import com.checkit.domain.TaskStatus
 import com.checkit.ui.components.HoursPerDay
 import com.checkit.ui.components.MinutesPerDay
 import kotlinx.datetime.TimeZone
@@ -61,7 +51,7 @@ import kotlin.math.roundToInt
 import kotlin.time.Clock
 
 @Composable
-internal fun TaskTimelineView(
+internal fun TimelineView(
     items: List<TimelineItem>,
     onItemClick: (TimelineItem) -> Unit,
     onCreateRequest: (startTimeMinutes: Int, endTimeMinutes: Int) -> Unit,

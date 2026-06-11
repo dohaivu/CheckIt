@@ -216,6 +216,7 @@ fun CheckItApp(
                                         onDateDoubleClick = taskViewModel::openNewTaskOnDate,
                                         onDailyPlanItemClick = myDayViewModel::openItemEditor,
                                         onAddDailyPlanItem = { date -> myDayViewModel.openCheckIn(date = date) },
+                                        onTaskClick = taskViewModel::openTask,
                                         onNoteClick = taskViewModel::openNote
                                     )
                                 }
