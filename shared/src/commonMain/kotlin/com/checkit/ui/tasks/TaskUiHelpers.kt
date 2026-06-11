@@ -138,3 +138,17 @@ internal fun Int.toClockLabel(): String {
     }
     return "$displayHour:${minute.toString().padStart(2, '0')} $suffix"
 }
+
+internal enum class TimelineItemType { Task, Note, DailyPlan }
+
+internal data class TimelineItem(
+    val id: String,
+    val type: TimelineItemType,
+    val name: String,
+    val date: LocalDate? = null,
+    val startTimeMinutes: Int? = null,
+    val endTimeMinutes: Int? = null,
+    val sortOrder: Int = 0,
+    val isResizable: Boolean = false,
+    val tag: Any? = null
+)

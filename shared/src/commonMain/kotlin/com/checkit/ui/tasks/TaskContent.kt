@@ -71,16 +71,70 @@ internal fun TaskContent(
                 onNoteClick = onNoteClick,
                 modifier = Modifier.weight(1f)
             )
-            TaskWorkspaceView.Agenda -> TaskAgendaView(
-                tasks = state.visibleTasks,
-                notes = state.visibleNotes,
-                lists = state.board.lists,
-                showListName = showListName,
-                onTaskClick = onTaskClick,
-                onNoteClick = onNoteClick,
-                dayLimit = state.dayLimit,
-                modifier = Modifier.weight(1f)
-            )
+            TaskWorkspaceView.Agenda -> {
+                val agendaItems = remember(state.visibleTasks, state.visibleNotes) {
+                    val tasks = state.visibleTasks.map { task ->
+                        TimelineItem(
+                            id = "task-${task.id}",
+                            type = TimelineItemType.Task,
+                            name = task.name,
+                            date = task.doDate,
+                            startTimeMinutes = task.startTimeMinutes,
+                            endTimeMinutes = task.endTimeMinutes,
+                            sortOrder = task.sortOrder,
+                            tag = task
+                        )
+                    }
+                    val notes = state.visibleNotes.map { note ->
+                        TimelineItem(
+                            id = "note-${note.id}",
+                            type = TimelineItemType.Note,
+                            name = note.content,
+                            date = note.date,
+                            startTimeMinutes = note.startTimeMinutes,
+                            endTimeMinutes = note.startTimeMinutes?.let { it + 30 },
+                            sortOrder = note.sortOrder,
+                            tag = note
+                        )
+                    }
+                    (tasks + notes).sortedWith(compareBy<TimelineItem> { it.date }.thenBy { it.startTimeMinutes ?: -1 })
+                }
+                TaskAgendaView(
+                    items = agendaItems,
+                    onItemClick = { item ->
+                        when (val tag = item.tag) {
+                            is TaskItem -> onTaskClick(tag)
+                            is NoteItem -> onNoteClick(tag)
+                        }
+                    },
+                    dayLimit = state.dayLimit,
+                    itemContent = { item ->
+                        when (val tag = item.tag) {
+                            is TaskItem -> {
+                                val list = state.board.lists.find { it.id == tag.listId }
+                                TaskCard(
+                                    title = tag.name.ifBlank { "Untitled task" },
+                                    supportingText = if (showListName) list?.name else null,
+                                    leadingContent = { TaskStatusIcon(tag.status, tag.priority) },
+                                    color = taskCardColor(tag, list),
+                                    completed = tag.status == TaskStatus.Completed
+                                )
+                            }
+                            is NoteItem -> {
+                                val list = state.board.lists.find { it.id == tag.listId }
+                                TaskCard(
+                                    title = tag.content.ifBlank { "Empty note" },
+                                    supportingText = if (showListName) list?.name else null,
+                                    color = list?.color?.toColor() ?: MaterialTheme.colorScheme.secondary,
+                                    leadingContent = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                                    completed = tag.status == TaskStatus.Completed
+                                )
+                            }
+                        }
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+            }
             TaskWorkspaceView.Timeline -> {
                 val timelineItems = remember(state.visibleTasks, state.visibleNotes) {
                     val tasks = state.visibleTasks.map { task ->

@@ -224,15 +224,84 @@ internal fun DailyPlanAgenda(
     modifier: Modifier = Modifier
 ) {
     val projection = remember(items, board, date) { items.toTaskViewProjection(board = board, date = date) }
+    val timelineItems = remember(projection, date) {
+        val tasks = projection.tasks.map { task ->
+            TimelineItem(
+                id = "task-${task.id}",
+                type = TimelineItemType.DailyPlan,
+                name = task.name,
+                date = date,
+                startTimeMinutes = task.startTimeMinutes,
+                endTimeMinutes = task.endTimeMinutes,
+                sortOrder = task.sortOrder,
+                tag = projection.dailyItemFor(task) ?: task
+            )
+        }
+        val notes = projection.notes.map { note ->
+            TimelineItem(
+                id = "note-${note.id}",
+                type = TimelineItemType.DailyPlan,
+                name = note.content,
+                date = date,
+                startTimeMinutes = note.startTimeMinutes,
+                endTimeMinutes = note.startTimeMinutes?.let { it + 30 },
+                sortOrder = note.sortOrder,
+                tag = projection.dailyItemFor(note) ?: note
+            )
+        }
+        (tasks + notes).sortedWith(compareBy<TimelineItem> { it.startTimeMinutes ?: -1 }.thenBy { it.sortOrder })
+    }
+
     TaskAgendaView(
-        tasks = projection.tasks,
-        notes = projection.notes,
-        lists = projection.lists,
-        showListName = false,
-        onTaskClick = { task -> projection.dailyItemFor(task)?.let(onItemClick) },
-        onNoteClick = { note -> projection.dailyItemFor(note)?.let(onItemClick) ?: onNoteClick(note) },
+        items = timelineItems,
+        onItemClick = { item ->
+            when (val tag = item.tag) {
+                is DailyPlanItem -> onItemClick(tag)
+                is NoteItem -> onNoteClick(tag)
+                is TaskItem -> { /* handle if needed */ }
+            }
+        },
         dayLimit = 1,
         focusedDate = date,
+        itemContent = { item ->
+            when (val tag = item.tag) {
+                is DailyPlanItem -> {
+                    val task = projection.tasks.find { it.id == tag.taskId }
+                    val list = projection.lists.find { it.id == task?.listId }
+                    DailyPlanCard(
+                        item = tag,
+                        task = task,
+                        list = list
+                    )
+                }
+                is NoteItem -> {
+                    val list = projection.lists.find { it.id == tag.listId }
+                    DailyPlanCard(
+                        item = DailyPlanItem(
+                            id = 0,
+                            dailyPlanId = 0,
+                            titleSnapshot = tag.content,
+                            source = DailyPlanItemSource.CheckInNote,
+                            status = DailyPlanItemStatus.Planned,
+                            sortOrder = tag.sortOrder,
+                            startTimeMinutes = tag.startTimeMinutes,
+                            endTimeMinutes = tag.startTimeMinutes?.let { it + 30 },
+                            addedAtMillis = 0
+                        ),
+                        list = list
+                    )
+                }
+                is TaskItem -> {
+                    val list = projection.lists.find { it.id == tag.listId }
+                    TaskCard(
+                        title = tag.name,
+                        color = taskCardColor(tag, list),
+                        timeLabel = tag.timeRangeLabel(),
+                        leadingContent = { TaskStatusIcon(tag.status, tag.priority) }
+                    )
+                }
+            }
+        },
         modifier = modifier
     )
 }

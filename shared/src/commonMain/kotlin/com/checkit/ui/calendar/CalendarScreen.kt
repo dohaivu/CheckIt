@@ -152,19 +152,19 @@ internal fun CalendarScreen(
                             .weight(1f)
                     )
                 } else {
-                    TaskAgendaView(
-                        tasks = tasksForDate,
-                        notes = notesForDate,
-                        lists = state.board.lists,
-                        showListName = true,
-                        onTaskClick = onTaskClick,
-                        onNoteClick = onNoteClick,
-                        dayLimit = 1,
-                        focusedDate = state.selectedDate,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                    )
+//                    TaskAgendaView(
+//                        tasks = tasksForDate,
+//                        notes = notesForDate,
+//                        lists = state.board.lists,
+//                        showListName = true,
+//                        onTaskClick = onTaskClick,
+//                        onNoteClick = onNoteClick,
+//                        dayLimit = 1,
+//                        focusedDate = state.selectedDate,
+//                        modifier = Modifier
+//                            .fillMaxWidth()
+//                            .weight(1f)
+//                    )
                 }
             } else {
                 Box(

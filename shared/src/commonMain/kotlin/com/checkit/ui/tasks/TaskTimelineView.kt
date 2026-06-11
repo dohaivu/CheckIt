@@ -467,19 +467,6 @@ private fun ResizeHandle(modifier: Modifier = Modifier) {
     }
 }
 
-internal enum class TimelineItemType { Task, Note, DailyPlan }
-
-internal data class TimelineItem(
-    val id: String,
-    val type: TimelineItemType,
-    val name: String,
-    val startTimeMinutes: Int? = null,
-    val endTimeMinutes: Int? = null,
-    val sortOrder: Int = 0,
-    val isResizable: Boolean = false,
-    val tag: Any? = null
-)
-
 internal data class TimelineItemLayout(
     val item: TimelineItem,
     val lane: Int,
