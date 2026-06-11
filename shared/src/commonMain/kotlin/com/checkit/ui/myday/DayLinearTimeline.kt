@@ -129,7 +129,7 @@ private fun List<DailyPlanItem>.toDayTimelineBlocks(board: TaskBoard): List<DayT
             null
         } else {
             val task = item.taskId?.let { tasksById[it] }
-            val list = task?.let { listsById[it.listId] }
+            val list = task?.list
             DayTimelineBlock(
                 startMinutes = clippedStart,
                 endMinutes = clippedEnd,

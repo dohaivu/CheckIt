@@ -19,11 +19,16 @@ data class TaskList(
     val icon: String,
     val sortOrder: Int,
     val isArchived: Boolean = false
-)
+) {
+    companion object {
+        val None = TaskList(id = -1L, name = "", color = "", icon = "", sortOrder = -1)
+        val MyDay = TaskList(id = -2L, name = "MyDay", color = "0xFF64748B", icon = "Today", sortOrder = -2)
+    }
+}
 
 data class TaskItem(
     val id: Long,
-    val listId: Long,
+    val list: TaskList,
     val name: String,
     val description: String = "",
     val subtasks: List<SubTaskItem> = emptyList(),

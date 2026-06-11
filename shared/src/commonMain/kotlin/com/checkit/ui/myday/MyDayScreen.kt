@@ -62,7 +62,7 @@ import com.checkit.ui.tasks.TaskStatusIcon
 import com.checkit.ui.tasks.TimelineView
 import com.checkit.ui.tasks.TimelineItem
 import com.checkit.ui.tasks.TimelineItemType
-import com.checkit.ui.tasks.taskCardColor
+import com.checkit.ui.tasks.cardColor
 import com.checkit.ui.tasks.timeRangeLabel
 import com.checkit.ui.tasks.toColor
 import kotlinx.datetime.LocalDate
@@ -262,7 +262,6 @@ internal fun DailyPlanAgenda(
         itemContent = { item ->
             when (val tag = item.tag) {
                 is DailyPlanItem -> {
-                    val list = projection.lists.find { it.id == tag.taskId?.let { tid -> board.tasks.find { t -> t.id == tid }?.listId } }
                     DailyPlanCard(
                         item = tag
                     )
@@ -278,10 +277,9 @@ internal fun DailyPlanAgenda(
                     )
                 }
                 is TaskItem -> {
-                    val list = projection.lists.find { it.id == tag.listId }
                     TaskCard(
                         title = tag.name,
-                        color = taskCardColor(tag, list),
+                        color = tag.cardColor(),
                         timeLabel = tag.timeRangeLabel(),
                         leadingContent = { TaskStatusIcon(tag.status, tag.priority) }
                     )
@@ -380,8 +378,6 @@ private fun MyDayTimeline(
         timedItemContent = { item, isSelected ->
             when (val tag = item.tag) {
                 is DailyPlanItem -> {
-                    val task = projection.tasks.find { it.id == tag.taskId }
-                    val list = projection.lists.find { it.id == task?.listId }
                     DailyPlanCard(
                         item = tag,
                         modifier = Modifier.matchParentSize()
@@ -399,10 +395,9 @@ private fun MyDayTimeline(
                     )
                 }
                 is TaskItem -> {
-                    val list = projection.lists.find { it.id == tag.listId }
                     TaskCard(
                         title = tag.name,
-                        color = taskCardColor(tag, list),
+                        color = tag.cardColor(),
                         timeLabel = tag.timeRangeLabel(),
                         leadingContent = { TaskStatusIcon(tag.status, tag.priority) },
                         modifier = Modifier.matchParentSize(),
@@ -434,12 +429,11 @@ private fun MyDayBoard(
         } else {
             items(state.plannedItems, key = { "planned-${it.id}" }) { item ->
                 if (item.taskId != null) {
-                    val task = item.taskId?.let { taskById[it] }
-                    val list = item.taskId?.let { taskById[it] }?.let { task -> listById[task.listId] }
+                    val task = item.taskId.let { taskById[it] }
                     if (task != null) {
                         TaskCard(
                             title = task.name,
-                            color = taskCardColor(task, list),
+                            color = task.cardColor(),
                             timeLabel = task.timeRangeLabel(),
                             leadingContent = { TaskStatusIcon(task.status, task.priority) }
                         )
@@ -459,12 +453,11 @@ private fun MyDayBoard(
         } else {
             items(state.doneItems, key = { "done-${it.id}" }) { item ->
                 if (item.taskId != null) {
-                    val task = item.taskId?.let { taskById[it] }
-                    val list = item.taskId?.let { taskById[it] }?.let { task -> listById[task.listId] }
+                    val task = item.taskId.let { taskById[it] }
                     if (task != null) {
                         TaskCard(
                             title = task.name,
-                            color = taskCardColor(task, list),
+                            color = task.cardColor(),
                             timeLabel = task.timeRangeLabel(),
                             leadingContent = { TaskStatusIcon(task.status, task.priority) },
                             completed = true
@@ -517,7 +510,7 @@ private fun SuggestionCard(
             title = task.name.ifBlank { "Untitled task" },
             timeLabel = task.timeRangeLabel(),
             supportingText = task.doDate?.localizedCompactDateWithDayName() ?: list?.name,
-            color = taskCardColor(task, list),
+            color = task.cardColor(),
             onClick = onClick,
             modifier = Modifier.fillMaxWidth()
         )
@@ -577,7 +570,7 @@ private fun SuggestionsSheet(
                     items(tasks, key = { it.id }) { task ->
                         SuggestionCard(
                             task = task,
-                            list = listById[task.listId],
+                            list = task.list,
                             onClick = { onTaskClick(task) },
                             onAdd = { onAddTask(task) }
                         )

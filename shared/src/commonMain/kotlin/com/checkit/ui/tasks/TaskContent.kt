@@ -149,15 +149,16 @@ internal fun TaskAgendaView(
         dayLimit = dayLimit,
         focusedDate = focusedDate,
         itemContent = { item ->
-            val listId = (item.tag as? TaskItem)?.listId ?: (item.tag as? NoteItem)?.listId
-            val list = lists.find { it.id == listId }
+            val task = (item.tag as? TaskItem)
+            val noteItem = (item.tag as? NoteItem)
+            val list = task?.list ?: noteItem?.let { lists.find { l -> l.id == it.listId } }
 
             when (val tag = item.tag) {
                 is TaskItem -> TaskCard(
                     title = tag.name.ifBlank { "Untitled task" },
                     supportingText = if (showListName) list?.name else null,
                     leadingContent = { TaskStatusIcon(tag.status, tag.priority) },
-                    color = taskCardColor(tag, list),
+                    color = tag.cardColor(),
                     completed = tag.status == TaskStatus.Completed
                 )
                 is NoteItem -> TaskCard(
@@ -229,12 +230,12 @@ internal fun TaskTimelineView(
         allDayItemContent = { item ->
             when (val tag = item.tag) {
                 is TaskItem -> {
-                    val list = lists.find { it.id == tag.listId }
+                    val list = tag.list
                     AllDayItemRow(
                         label = tag.name.ifBlank { "Untitled task" },
                         icon = { Icon(Icons.Default.TaskAlt, contentDescription = null, modifier = Modifier.size(20.dp)) },
-                        color = taskCardColor(tag, list),
-                        supportingLabel = if (showListName) list?.name else null
+                        color = tag.cardColor(),
+                        supportingLabel = if (showListName) list.name else null
                     )
                 }
                 is NoteItem -> {
@@ -251,7 +252,7 @@ internal fun TaskTimelineView(
         timedItemContent = { item, isSelected ->
             when (val tag = item.tag) {
                 is TaskItem -> {
-                    val list = lists.find { it.id == tag.listId }
+                    val list = tag.list
                     val start = tag.startTimeMinutes ?: 0
                     val end = tag.endTimeMinutes ?: (start + 60)
                     TaskCard(
@@ -259,7 +260,7 @@ internal fun TaskTimelineView(
                         timeLabel = "${start.toClockLabel()} - ${end.toClockLabel()}",
                         supportingText = if (showListName) list?.name else null,
                         leadingContent = { TaskStatusIcon(tag.status, tag.priority) },
-                        color = taskCardColor(tag, list),
+                        color = tag.cardColor(),
                         minHeight = 36.dp,
                         titleMaxLines = 1,
                         completed = tag.status == TaskStatus.Completed,

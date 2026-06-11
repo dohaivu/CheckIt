@@ -216,7 +216,7 @@ class TaskViewModel(
                 editor = TaskEditorState.TaskForm(
                     mode = EditorMode.Edit,
                     taskId = task.id,
-                    listId = task.listId,
+                    listId = task.list.id,
                     name = task.name,
                     description = task.description,
                     doDate = task.doDate,
@@ -587,7 +587,7 @@ class TaskViewModel(
     ): TaskWriteInput {
         val duration = calculateDurationMinutes(startTimeMinutes, endTimeMinutes)
         return TaskWriteInput(
-            listId = listId,
+            listId = list.id,
             name = name,
             description = description,
             status = status,

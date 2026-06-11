@@ -146,12 +146,14 @@ class RoomCheckItRepository(
             val noteTagIds = joins.noteTags.groupBy { it.noteId }.mapValues { entry -> entry.value.map { it.tagId } }
             val subTasksByTask = joins.subTasks.groupBy { it.taskId }
             val remindersByTask = joins.reminders.groupBy { it.taskId }
+            val listsById = rows.lists.associateBy { it.id }.mapValues { (_, entity) -> entity.toDomain() }
 
             TaskBoard(
-                lists = rows.lists.map { it.toDomain() },
+                lists = listsById.values.toList(),
                 filters = rows.filters.map { it.toDomain() },
                 tasks = rows.tasks.map { task ->
                     task.toDomain(
+                        list = listsById[task.listId] ?: TaskList.None,
                         subtasks = subTasksByTask[task.id].orEmpty().map { it.toDomain() },
                         reminders = remindersByTask[task.id].orEmpty().map { it.toDomain() },
                         tags = taskTagIds[task.id].orEmpty().mapNotNull { tagsById[it] }
@@ -613,12 +615,13 @@ private fun TaskEntity.hasDifferentScheduleThan(input: TaskWriteInput): Boolean 
         endTimeMinutes != input.endTimeMinutes
 
 private fun TaskEntity.toDomain(
+    list: TaskList,
     subtasks: List<SubTaskItem>,
     reminders: List<TaskReminder>,
     tags: List<TaskTag>
 ) = TaskItem(
     id = id,
-    listId = listId,
+    list = list,
     name = name,
     description = description,
     subtasks = subtasks,

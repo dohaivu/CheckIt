@@ -16,6 +16,7 @@ import com.checkit.domain.TaskList
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.ui.components.ReportPeriod
+import com.checkit.ui.tasks.toColor
 import kotlinx.datetime.LocalDate
 
 data class TaskUiState(
@@ -277,7 +278,7 @@ data class CalendarUiState(
         }
         val tasks = tasksForDate(date)
         val notes = notesForDate(date)
-        val combined = tasks.map { listColorFor(it.listId) } + notes.map { listColorFor(it.listId) }
+        val combined = tasks.map { it.list.color.parseHexColorOrNull() ?: ListEditorDefaults.Colors.first().parseHexColorOrNull() ?: Color(0xFF64748B) } + notes.map { listColorFor(it.listId) }
         return if (combined.size <= MarkerCap) combined else combined.take(MarkerCap)
     }
 
@@ -290,8 +291,7 @@ data class CalendarUiState(
 
     private fun dailyItemColor(item: DailyPlanItem): Color =
         item.taskId
-            ?.let { taskId -> board.tasks.firstOrNull { it.id == taskId }?.listId }
-            ?.let { listColorFor(it) }
+            ?.let { taskId -> board.tasks.firstOrNull { it.id == taskId }?.list?.color?.parseHexColorOrNull() }
             ?: Color(0xFF64748B)
 
     private companion object {

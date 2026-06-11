@@ -286,7 +286,7 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
 
     @Composable
     private fun GlanceTaskCard(task: TaskItem, board: TaskBoard) {
-        val list = board.lists.find { it.id == task.listId }
+        val list = task.list
         val baseColor = dailyItemColor(task, list)
         
         GlanceItemCard(

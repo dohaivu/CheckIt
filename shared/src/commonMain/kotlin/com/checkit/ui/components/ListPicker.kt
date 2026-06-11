@@ -71,7 +71,7 @@ internal fun ListPicker(
                 }
 
                 // Draw standard iOS dividers between rows (excluding last element)
-                if (index < RepeatPreset.entries.size - 1) {
+                if (index < lists.size - 1) {
                     HorizontalDivider(
                         color = Color.LightGray.copy(alpha = 0.4f),
                         thickness = 0.5.dp

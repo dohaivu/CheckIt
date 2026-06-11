@@ -158,7 +158,8 @@ internal class FakeCheckItRepository(
         note: String?,
         startTimeMinutes: Int?,
         endTimeMinutes: Int?,
-        source: DailyPlanItemSource
+        source: DailyPlanItemSource,
+        tagIds: List<Long>
     ): Long = 0L
     override suspend fun updateDailyPlanItemTime(itemId: Long, startTimeMinutes: Int?, endTimeMinutes: Int?) = Unit
     override suspend fun updateDailyPlanItem(itemId: Long, input: DailyPlanItemWriteInput) = Unit
@@ -175,7 +176,7 @@ private fun TaskWriteInput.toTaskItem(
     updatedAtMillis: Long = 0L
 ) = TaskItem(
     id = taskId,
-    listId = listId,
+    list = TaskList.None,
     name = name,
     description = description,
     subtasks = subtasks.mapIndexed { index, subtask ->

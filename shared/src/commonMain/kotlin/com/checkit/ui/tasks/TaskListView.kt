@@ -71,7 +71,7 @@ internal fun TaskListView(
             TaskRow(
                 task = task,
                 onClick = { onTaskClick(task) },
-                list = if (showListName) lists.firstOrNull { it.id == task.listId } else null,
+                list = if (showListName) task.list else null,
                 displayType = displayType
             )
         }

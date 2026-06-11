@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.checkit.domain.TaskItem
 import com.checkit.ui.TaskWorkspaceView
+import com.checkit.ui.components.priorityColor
 import com.checkit.ui.shortName
 import com.checkit.ui.shortMonthName
 import com.checkit.ui.today
@@ -108,6 +109,10 @@ internal fun LocalDate.compact(): String {
             if (year == today.year) monthDay else "$monthDay, $year"
         }
     }
+}
+
+internal fun TaskItem.cardColor(): Color {
+    return list.color.toColor() ?: priority.priorityColor()
 }
 
 internal fun TaskItem.timeRangeLabel(): String {
