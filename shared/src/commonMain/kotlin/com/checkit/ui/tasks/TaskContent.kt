@@ -117,7 +117,6 @@ internal fun TaskAgendaView(
             TimelineItem(
                 id = "task-${task.id}",
                 type = TimelineItemType.Task,
-                name = task.name,
                 date = task.doDate,
                 startTimeMinutes = task.startTimeMinutes,
                 endTimeMinutes = task.endTimeMinutes,
@@ -129,7 +128,6 @@ internal fun TaskAgendaView(
             TimelineItem(
                 id = "note-${note.id}",
                 type = TimelineItemType.Note,
-                name = note.content,
                 date = note.date,
                 startTimeMinutes = note.startTimeMinutes,
                 endTimeMinutes = note.startTimeMinutes?.let { it + 30 },
@@ -193,7 +191,6 @@ internal fun TaskTimelineView(
             TimelineItem(
                 id = "task-${task.id}",
                 type = TimelineItemType.Task,
-                name = task.name,
                 startTimeMinutes = task.startTimeMinutes,
                 endTimeMinutes = task.endTimeMinutes,
                 sortOrder = task.sortOrder,
@@ -205,7 +202,6 @@ internal fun TaskTimelineView(
             TimelineItem(
                 id = "note-${note.id}",
                 type = TimelineItemType.Note,
-                name = note.content,
                 startTimeMinutes = note.startTimeMinutes,
                 endTimeMinutes = note.startTimeMinutes?.let { it + 30 },
                 sortOrder = note.sortOrder,

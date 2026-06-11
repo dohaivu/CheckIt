@@ -208,28 +208,37 @@ internal fun DailyPlanAgenda(
         val tasks = projection.tasks.map { task ->
             TimelineItem(
                 id = "task-${task.id}",
-                type = TimelineItemType.DailyPlan,
-                name = task.name,
+                type = TimelineItemType.Task,
                 date = date,
                 startTimeMinutes = task.startTimeMinutes,
                 endTimeMinutes = task.endTimeMinutes,
                 sortOrder = task.sortOrder,
-                tag = projection.dailyItemFor(task) ?: task
+                tag = task
             )
         }
         val notes = projection.notes.map { note ->
             TimelineItem(
                 id = "note-${note.id}",
-                type = TimelineItemType.DailyPlan,
-                name = note.content,
+                type = TimelineItemType.Note,
                 date = date,
                 startTimeMinutes = note.startTimeMinutes,
                 endTimeMinutes = note.startTimeMinutes?.let { it + 30 },
                 sortOrder = note.sortOrder,
-                tag = projection.dailyItemFor(note) ?: note
+                tag = note
             )
         }
-        (tasks + notes).sortedWith(compareBy<TimelineItem> { it.startTimeMinutes ?: -1 }.thenBy { it.sortOrder })
+        val checkIns = projection.checkIns.map { checkIn ->
+            TimelineItem(
+                id = "checkin-${checkIn.id}",
+                type = TimelineItemType.CheckIn,
+                date = date,
+                startTimeMinutes = checkIn.startTimeMinutes,
+                endTimeMinutes = checkIn.endTimeMinutes,
+                sortOrder = checkIn.sortOrder,
+                tag = checkIn
+            )
+        }
+        (tasks + notes + checkIns).sortedWith(compareBy<TimelineItem> { it.startTimeMinutes ?: -1 }.thenBy { it.sortOrder })
     }
 
     AgendaView(
@@ -238,7 +247,11 @@ internal fun DailyPlanAgenda(
             when (val tag = item.tag) {
                 is DailyPlanItem -> onItemClick(tag)
                 is NoteItem -> onNoteClick(tag)
-                is TaskItem -> { /* handle if needed */ }
+                is TaskItem -> {
+                    // Find the DailyPlanItem for this task
+                    val dailyItem = items.find { it.taskId == tag.id }
+                    if (dailyItem != null) onItemClick(dailyItem)
+                }
             }
         },
         dayLimit = 1,
@@ -246,11 +259,9 @@ internal fun DailyPlanAgenda(
         itemContent = { item ->
             when (val tag = item.tag) {
                 is DailyPlanItem -> {
-                    val task = projection.tasks.find { it.id == tag.taskId }
-                    val list = projection.lists.find { it.id == task?.listId }
+                    val list = projection.lists.find { it.id == tag.taskId?.let { tid -> board.tasks.find { t -> t.id == tid }?.listId } }
                     DailyPlanCard(
                         item = tag,
-                        task = task,
                         list = list
                     )
                 }
@@ -301,32 +312,39 @@ private fun MyDayTimeline(
     }
     val timelineItems = remember(projection) {
         val tasks = projection.tasks.map { task ->
-            val item = projection.dailyItemFor(task)
             TimelineItem(
                 id = "task-${task.id}",
-                type = TimelineItemType.DailyPlan,
-                name = task.name,
+                type = TimelineItemType.Task,
                 startTimeMinutes = task.startTimeMinutes,
                 endTimeMinutes = task.endTimeMinutes,
                 sortOrder = task.sortOrder,
                 isResizable = true,
-                tag = item ?: task
+                tag = task
             )
         }
         val notes = projection.notes.map { note ->
-            val item = projection.dailyItemFor(note)
             TimelineItem(
                 id = "note-${note.id}",
-                type = TimelineItemType.DailyPlan,
-                name = note.content,
+                type = TimelineItemType.Note,
                 startTimeMinutes = note.startTimeMinutes,
                 endTimeMinutes = note.startTimeMinutes?.let { it + 30 },
                 sortOrder = note.sortOrder,
                 isResizable = false,
-                tag = item ?: note
+                tag = note
             )
         }
-        (tasks + notes).sortedWith(compareBy<TimelineItem> { it.startTimeMinutes ?: -1 }.thenBy { it.sortOrder })
+        val checkIns = projection.checkIns.map { checkIn ->
+            TimelineItem(
+                id = "checkin-${checkIn.id}",
+                type = TimelineItemType.CheckIn,
+                startTimeMinutes = checkIn.startTimeMinutes,
+                endTimeMinutes = checkIn.endTimeMinutes,
+                sortOrder = checkIn.sortOrder,
+                isResizable = checkIn.source != DailyPlanItemSource.CheckInNote,
+                tag = checkIn
+            )
+        }
+        (tasks + notes + checkIns).sortedWith(compareBy<TimelineItem> { it.startTimeMinutes ?: -1 }.thenBy { it.sortOrder })
     }
 
     TimelineView(
@@ -334,22 +352,34 @@ private fun MyDayTimeline(
         onItemClick = { item ->
             when (val tag = item.tag) {
                 is DailyPlanItem -> onItemClick(tag)
-                is TaskItem -> { /* handle if needed, though projection should cover it */ }
                 is NoteItem -> onNoteClick(tag)
+                is TaskItem -> {
+                    val dailyItem = state.items.find { it.taskId == tag.id }
+                    if (dailyItem != null) onItemClick(dailyItem)
+                }
             }
         },
         onCreateRequest = onCreateTask,
         onTimeChange = { item, start, end ->
             when (val tag = item.tag) {
                 is DailyPlanItem -> onItemTimeChange(tag, start, end)
-                is TaskItem -> { /* handle if needed */ }
                 is NoteItem -> onNoteTimeChange(tag, start)
+                is TaskItem -> {
+                    val dailyItem = state.items.find { it.taskId == tag.id }
+                    if (dailyItem != null) onItemTimeChange(dailyItem, start, end)
+                }
             }
         },
         allDayItemContent = { item ->
             when (val tag = item.tag) {
                 is DailyPlanItem -> DailyPlanCard(item = tag, onClick = { onItemClick(tag) })
                 is NoteItem -> { /* handle if needed */ }
+                is TaskItem -> {
+                    val dailyItem = state.items.find { it.taskId == tag.id }
+                    if (dailyItem != null) {
+                        DailyPlanCard(item = dailyItem, onClick = { onItemClick(dailyItem) })
+                    }
+                }
             }
         },
         timedItemContent = { item, isSelected ->
@@ -385,14 +415,24 @@ private fun MyDayTimeline(
                 }
                 is TaskItem -> {
                     val list = projection.lists.find { it.id == tag.listId }
-                    TaskCard(
-                        title = tag.name,
-                        color = taskCardColor(tag, list),
-                        timeLabel = tag.timeRangeLabel(),
-                        leadingContent = { TaskStatusIcon(tag.status, tag.priority) },
-                        modifier = Modifier.matchParentSize(),
-                        containerAlpha = if (isSelected) 0.28f else 0.17f
-                    )
+                    val dailyItem = state.items.find { it.taskId == tag.id }
+                    if (dailyItem != null) {
+                        DailyPlanCard(
+                            item = dailyItem,
+                            task = tag,
+                            list = list,
+                            modifier = Modifier.matchParentSize()
+                        )
+                    } else {
+                        TaskCard(
+                            title = tag.name,
+                            color = taskCardColor(tag, list),
+                            timeLabel = tag.timeRangeLabel(),
+                            leadingContent = { TaskStatusIcon(tag.status, tag.priority) },
+                            modifier = Modifier.matchParentSize(),
+                            containerAlpha = if (isSelected) 0.28f else 0.17f
+                        )
+                    }
                 }
             }
         },

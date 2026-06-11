@@ -34,14 +34,12 @@ import androidx.compose.material.icons.filled.Work
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.checkit.domain.TaskItem
-import com.checkit.domain.TaskPriority
 import com.checkit.ui.TaskWorkspaceView
 import com.checkit.ui.shortName
 import com.checkit.ui.shortMonthName
 import com.checkit.ui.today
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.number
 import kotlinx.datetime.plus
 
 internal fun TaskWorkspaceView.icon(): ImageVector = when (this) {
@@ -139,12 +137,11 @@ internal fun Int.toClockLabel(): String {
     return "$displayHour:${minute.toString().padStart(2, '0')} $suffix"
 }
 
-internal enum class TimelineItemType { Task, Note, DailyPlan }
+internal enum class TimelineItemType { Task, Note, CheckIn }
 
 internal data class TimelineItem(
     val id: String,
     val type: TimelineItemType,
-    val name: String,
     val date: LocalDate? = null,
     val startTimeMinutes: Int? = null,
     val endTimeMinutes: Int? = null,
