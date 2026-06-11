@@ -31,14 +31,21 @@ import androidx.compose.material.icons.filled.Today
 import androidx.compose.material.icons.filled.ViewAgenda
 import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material.icons.filled.Work
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
 import com.checkit.ui.TaskWorkspaceView
 import com.checkit.ui.components.priorityColor
-import com.checkit.ui.shortName
 import com.checkit.ui.shortMonthName
+import com.checkit.ui.shortName
 import com.checkit.ui.today
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
@@ -159,3 +166,41 @@ data class TimelineItem(
     val isResizable: Boolean = false,
     val tag: Any? = null
 )
+
+fun Modifier.dashedBorder(
+    width: Dp = 2.dp,
+    color: Color = Color.Black,
+    dashLength: Dp = 10.dp,
+    gapLength: Dp = 10.dp,
+    cornerRadius: Dp = 0.dp
+): Modifier = this.drawBehind {
+    // Convert Dp dimensions to target device pixel size
+    val strokeWidthPx = width.toPx()
+    val dashLengthPx = dashLength.toPx()
+    val gapLengthPx = gapLength.toPx()
+    val cornerRadiusPx = cornerRadius.toPx()
+
+    val stroke = Stroke(
+        width = strokeWidthPx,
+        pathEffect = PathEffect.dashPathEffect(
+            intervals = floatArrayOf(dashLengthPx, gapLengthPx),
+            phase = 0f
+        )
+    )
+
+    // Adjust boundaries to ensure the line width is fully inside the component
+    val halfWidth = strokeWidthPx / 2
+    val sizeWithStroke = this.size.copy(
+        width = this.size.width - strokeWidthPx,
+        height = this.size.height - strokeWidthPx
+    )
+
+    // Draw the actual border shape
+    drawRoundRect(
+        color = color,
+        topLeft = androidx.compose.ui.geometry.Offset(halfWidth, halfWidth),
+        size = sizeWithStroke,
+        cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx),
+        style = stroke
+    )
+}

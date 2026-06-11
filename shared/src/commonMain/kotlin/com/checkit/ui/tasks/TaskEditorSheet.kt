@@ -1,5 +1,7 @@
 package com.checkit.ui.tasks
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -7,15 +9,19 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Event
@@ -45,9 +51,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.checkit.domain.DailyPlanItem
+import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.TaskList
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
@@ -65,6 +75,7 @@ import com.checkit.ui.components.PriorityPill
 import com.checkit.ui.components.ReminderPicker
 import com.checkit.ui.components.RepeatPicker
 import com.checkit.ui.components.TagPicker
+import com.checkit.ui.components.TimeRangePicker
 import kotlinx.datetime.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -85,6 +96,9 @@ internal fun TaskEditorSheet(
     onTaskDoDateChange: (LocalDate?) -> Unit,
     onTaskStartTimeChange: (Int?) -> Unit,
     onTaskEndTimeChange: (Int?) -> Unit,
+    onDailyPlanStartTimeChange: (Int?) -> Unit,
+    onDailyPlanEndTimeChange: (Int?) -> Unit,
+    onDailyPlanStatus: () -> Unit,
     onTaskRepeatChange: (RepeatPreset) -> Unit,
     onTaskPriorityChange: (TaskPriority) -> Unit,
     onTaskReminderToggle: (Int) -> Unit,
@@ -149,6 +163,9 @@ internal fun TaskEditorSheet(
                                 onDoDateChange = onTaskDoDateChange,
                                 onStartTimeChange = onTaskStartTimeChange,
                                 onEndTimeChange = onTaskEndTimeChange,
+                                onDailyPlanStartTimeChange = onDailyPlanStartTimeChange,
+                                onDailyPlanEndTimeChange = onDailyPlanEndTimeChange,
+                                onDailyPlanStatus = onDailyPlanStatus,
                                 onRepeatChange = onTaskRepeatChange,
                                 onPriorityChange = onTaskPriorityChange,
                                 onReminderToggle = onTaskReminderToggle,
@@ -169,6 +186,9 @@ internal fun TaskEditorSheet(
                                 onDoDateChange = onTaskDoDateChange,
                                 onStartTimeChange = onTaskStartTimeChange,
                                 onEndTimeChange = onTaskEndTimeChange,
+                                onDailyPlanStartTimeChange = onDailyPlanStartTimeChange,
+                                onDailyPlanEndTimeChange = onDailyPlanEndTimeChange,
+                                onDailyPlanStatus = onDailyPlanStatus,
                                 onRepeatChange = onTaskRepeatChange,
                                 onPriorityChange = onTaskPriorityChange,
                                 onReminderToggle = onTaskReminderToggle,
@@ -322,6 +342,9 @@ private fun TaskViewContent(
     onDoDateChange: (LocalDate?) -> Unit,
     onStartTimeChange: (Int?) -> Unit,
     onEndTimeChange: (Int?) -> Unit,
+    onDailyPlanStartTimeChange: (Int?) -> Unit,
+    onDailyPlanEndTimeChange: (Int?) -> Unit,
+    onDailyPlanStatus: () -> Unit,
     onRepeatChange: (RepeatPreset) -> Unit,
     onPriorityChange: (TaskPriority) -> Unit,
     onReminderToggle: (Int) -> Unit,
@@ -333,6 +356,14 @@ private fun TaskViewContent(
 ) {
     val selectedList = availableLists.firstOrNull { it.id == form.listId }
     Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+        form.dailyPlanItem?.let { dailyPlanItem ->
+            DailyPlanSection(
+                item = dailyPlanItem,
+                onStartTimeChange = onDailyPlanStartTimeChange,
+                onEndTimeChange = onDailyPlanEndTimeChange,
+                onStatusChange = onDailyPlanStatus
+            )
+        }
         Text(
             text = form.name.ifBlank { "Untitled task" },
             style = MaterialTheme.typography.headlineMedium,
@@ -428,6 +459,9 @@ private fun TaskFormContent(
     onDoDateChange: (LocalDate?) -> Unit,
     onStartTimeChange: (Int?) -> Unit,
     onEndTimeChange: (Int?) -> Unit,
+    onDailyPlanStartTimeChange: (Int?) -> Unit,
+    onDailyPlanEndTimeChange: (Int?) -> Unit,
+    onDailyPlanStatus: () -> Unit,
     onRepeatChange: (RepeatPreset) -> Unit,
     onPriorityChange: (TaskPriority) -> Unit,
     onReminderToggle: (Int) -> Unit,
@@ -438,6 +472,15 @@ private fun TaskFormContent(
     onTagToggle: (Long) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        form.dailyPlanItem?.let { dailyPlanItem ->
+            DailyPlanSection(
+                item = dailyPlanItem,
+                onStartTimeChange = onDailyPlanStartTimeChange,
+                onEndTimeChange = onDailyPlanEndTimeChange,
+                onStatusChange = onDailyPlanStatus
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -512,6 +555,44 @@ private fun TaskFormContent(
                 selectedTagIds = form.selectedTagIds,
                 onTagToggle = onTagToggle
             )
+        }
+    }
+}
+
+@Composable
+private fun DailyPlanSection(
+    item: DailyPlanItem,
+    onStartTimeChange: (Int?) -> Unit,
+    onEndTimeChange: (Int?) -> Unit,
+    onStatusChange: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
+            .padding(top = 8.dp, bottom = 8.dp, end = 8.dp)
+        ,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TimeRangePicker(
+                startTimeMinutes = item.startTimeMinutes,
+                endTimeMinutes = item.endTimeMinutes,
+                durationMinutes = item.durationMinutes(),
+                onStartTimeChange = onStartTimeChange,
+                onEndTimeChange = onEndTimeChange,
+                isSmall = true,
+                modifier = Modifier
+            )
+
+            Button(onClick = onStatusChange) {
+                Text(if (item.status == DailyPlanItemStatus.Done) "Open" else "Done")
+            }
         }
     }
 }
@@ -605,4 +686,8 @@ private fun TaskEditorState.isOpenableView(): Boolean = when (this) {
     is TaskEditorState.NoteForm -> mode == EditorMode.View && status == TaskStatus.Completed
 }
 
-
+private fun DailyPlanItem.durationMinutes(): Int? {
+    val start = startTimeMinutes ?: return null
+    val end = endTimeMinutes ?: return null
+    return (end - start).takeIf { it >= 0 }
+}

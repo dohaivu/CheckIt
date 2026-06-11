@@ -2,12 +2,14 @@ package com.checkit.ui.tasks
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.checkit.data.DailyPlanItemWriteInput
 import com.checkit.data.NoteWriteInput
 import com.checkit.data.SubTaskWriteInput
 import com.checkit.data.TaskListWriteInput
 import com.checkit.data.TaskTagWriteInput
 import com.checkit.data.TaskWriteInput
 import com.checkit.domain.DailyPlanItem
+import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
@@ -33,6 +35,8 @@ import com.checkit.domain.usecase.OpenTaskUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.TaskBoardSelection
 import com.checkit.domain.usecase.UpdateNoteUseCase
+import com.checkit.domain.usecase.UpdateDailyPlanItemUseCase
+import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.domain.usecase.UpdateTaskListUseCase
 import com.checkit.domain.usecase.UpdateTaskTagUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
@@ -71,6 +75,8 @@ class TaskViewModel(
     private val addNote: AddNoteUseCase,
     private val updateNote: UpdateNoteUseCase,
     private val deleteNote: DeleteNoteUseCase,
+    private val updateDailyPlanItemTime: UpdateDailyPlanItemTimeUseCase,
+    private val updateDailyPlanItem: UpdateDailyPlanItemUseCase,
     private val addTaskList: AddTaskListUseCase,
     private val updateTaskList: UpdateTaskListUseCase,
     private val addTaskTag: AddTaskTagUseCase,
@@ -228,7 +234,8 @@ class TaskViewModel(
                     reminderOffsets = TaskReminderPlanner.selectedOffsetsFor(task),
                     status = task.status,
                     priority = task.priority,
-                    selectedTagIds = task.tags.map { it.id }.toSet()
+                    selectedTagIds = task.tags.map { it.id }.toSet(),
+                    dailyPlanItem = dailyPlan
                 )
             )
         }
@@ -397,6 +404,13 @@ class TaskViewModel(
         )
     }
     fun updateTaskEndTime(endTimeMinutes: Int?) = updateTaskForm { it.copy(endTimeMinutes = endTimeMinutes) }
+    fun updateDailyPlanStartTime(startTimeMinutes: Int?) = updateTaskDailyPlanItem { item ->
+        item.copy(
+            startTimeMinutes = startTimeMinutes,
+            endTimeMinutes = if (startTimeMinutes == null) null else item.endTimeMinutes
+        )
+    }
+    fun updateDailyPlanEndTime(endTimeMinutes: Int?) = updateTaskDailyPlanItem { it.copy(endTimeMinutes = endTimeMinutes) }
     fun updateTaskRepeat(repeatPreset: RepeatPreset) = updateTaskForm { it.copy(repeatPreset = repeatPreset) }
     fun updateTaskPriority(priority: TaskPriority) = updateTaskForm { it.copy(priority = priority) }
     fun toggleTaskReminder(offsetMinutes: Int) = updateTaskForm { form ->
@@ -478,6 +492,23 @@ class TaskViewModel(
                 is TaskEditorState.NoteForm -> openNote(editor.noteId ?: return@launch)
             }
             _uiState.update { it.copy(editor = null, message = "Opened") }
+        }
+    }
+
+    fun updateDailyPlanStatus() {
+        val form = _uiState.value.editor as? TaskEditorState.TaskForm ?: return
+        val item = form.dailyPlanItem ?: return
+        val nextStatus = when (item.status) {
+            DailyPlanItemStatus.Planned -> DailyPlanItemStatus.Done
+            DailyPlanItemStatus.Done -> DailyPlanItemStatus.Planned
+        }
+        val updatedItem = item.copy(status = nextStatus)
+        _uiState.update { state ->
+            val currentForm = state.editor as? TaskEditorState.TaskForm ?: return@update state
+            state.copy(editor = currentForm.copy(dailyPlanItem = updatedItem))
+        }
+        viewModelScope.launch {
+            updateDailyPlanItem(item.id, updatedItem.toWriteInput())
         }
     }
 
@@ -634,6 +665,20 @@ class TaskViewModel(
         }
     }
 
+    private fun updateTaskDailyPlanItem(transform: (DailyPlanItem) -> DailyPlanItem) {
+        val updatedItem = (_uiState.value.editor as? TaskEditorState.TaskForm)
+            ?.dailyPlanItem
+            ?.let(transform)
+            ?: return
+        _uiState.update { state ->
+            val form = state.editor as? TaskEditorState.TaskForm ?: return@update state
+            state.copy(editor = form.copy(dailyPlanItem = updatedItem))
+        }
+        viewModelScope.launch {
+            updateDailyPlanItemTime(updatedItem.id, updatedItem.startTimeMinutes, updatedItem.endTimeMinutes)
+        }
+    }
+
     private fun updateListEditor(transform: (ListEditorState) -> ListEditorState) {
         _uiState.update { state ->
             val form = state.listEditor ?: return@update state
@@ -745,6 +790,16 @@ private fun TaskPriority.rankForSort(): Int =
 
 private fun <T> Set<T>.toggle(value: T): Set<T> =
     if (contains(value)) this - value else this + value
+
+private fun DailyPlanItem.toWriteInput() = DailyPlanItemWriteInput(
+    title = titleSnapshot,
+    note = note,
+    source = source,
+    status = status,
+    startTimeMinutes = startTimeMinutes,
+    endTimeMinutes = endTimeMinutes,
+    tagIds = tags.map { it.id }
+)
 
 private const val MinimumTimelineDurationMinutes = 15
 private const val LastTimelineStartMinute = MinutesPerDay - MinimumTimelineDurationMinutes

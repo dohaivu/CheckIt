@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -191,13 +192,17 @@ internal fun TimeRangePicker(
     durationMinutes: Int?,
     onStartTimeChange: ((Int?) -> Unit)?,
     onEndTimeChange: ((Int?) -> Unit)?,
-    modifier: Modifier = Modifier.Companion
+    isSmall: Boolean = false,
+    modifier: Modifier = Modifier.fillMaxWidth()
 ) {
     Column(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             TimePicker(
                 label = "Start",
                 timeMinutes = startTimeMinutes,
@@ -206,14 +211,22 @@ internal fun TimeRangePicker(
                     onStartTimeChange?.invoke(value)
                     if (value == null && endTimeMinutes != null) onEndTimeChange?.invoke(null)
                 },
-                modifier = Modifier.weight(1f)
             )
             if (onEndTimeChange != null) {
-                durationMinutes?.let { duration ->
-                    DurationText(
-                        duration = duration,
-                        modifier = Modifier.align(Alignment.CenterVertically)
+                if (isSmall) {
+                    Text(
+                        text = "\u2014",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = modifier
                     )
+                } else {
+                    durationMinutes?.let { duration ->
+                        DurationText(
+                            duration = duration,
+                            modifier = Modifier.align(Alignment.CenterVertically)
+                        )
+                    }
                 }
                 TimePicker(
                     label = "End",
@@ -223,13 +236,12 @@ internal fun TimeRangePicker(
                     onTimeChange = {
                         onEndTimeChange.invoke(it)
                     },
-                    modifier = Modifier.weight(1f)
                 )
             }
         }
-        if (onEndTimeChange != null) {
+        if (onEndTimeChange != null && !isSmall) {
             Row {
-                PickerShortcutRow(modifier = Modifier.weight(1f)) {
+                PickerShortcutRow {
                     TimeRangeShortcutDurations.forEach { duration ->
                         PickerShortcut(
                             text = duration.shortcutDurationLabel(),

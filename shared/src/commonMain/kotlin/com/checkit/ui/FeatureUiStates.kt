@@ -145,7 +145,8 @@ sealed interface TaskEditorState {
         val reminderOffsets: Set<Int> = emptySet(),
         val status: TaskStatus = TaskStatus.Open,
         val priority: TaskPriority = TaskPriority.None,
-        val selectedTagIds: Set<Long> = emptySet()
+        val selectedTagIds: Set<Long> = emptySet(),
+        val dailyPlanItem: DailyPlanItem? = null
     ) : TaskEditorState {
         val durationMinutes: Int?
             get() = calculateDurationMinutes(startTimeMinutes, endTimeMinutes)
