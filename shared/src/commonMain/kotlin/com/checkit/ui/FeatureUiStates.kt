@@ -53,26 +53,41 @@ data class TaskUiState(
 enum class TaskWorkspaceView {
     List,
     Agenda,
-    Timeline
+    Timeline;
+
+    companion object {
+        fun fromCode(code: String): TaskWorkspaceView =
+            entries.firstOrNull { it.name == code } ?: List
+    }
 }
 
 enum class TaskListDisplayType {
     Brief,
     Standard,
-    Detail
+    Detail;
+
+    companion object {
+        fun fromCode(code: String): TaskListDisplayType =
+            entries.firstOrNull { it.name == code } ?: Standard
+    }
 }
 
 enum class TaskSortOption {
     Custom,
     Priority,
     Title,
-    Date
+    Date;
+
+    companion object {
+        fun fromCode(code: String): TaskSortOption =
+            entries.firstOrNull { it.name == code } ?: Custom
+    }
 }
 
 data class MyDayUiState(
     val board: TaskBoard = TaskBoard(),
     val dailyPlans: List<DailyPlan> = emptyList(),
-    val selectedView: MyDayView = MyDayView.Agenda,
+    val selectedView: MyDayView = MyDayView.Timeline,
     val itemEditor: DailyPlanItemEditorState? = null,
     val showSuggestions: Boolean = false,
     val suggestionStartTimeMinutes: Int? = null,

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.checkit.data.DailyPlanItemWriteInput
 import com.checkit.data.NoteWriteInput
+import com.checkit.data.SettingsRepository
 import com.checkit.data.SubTaskWriteInput
 import com.checkit.data.TaskListWriteInput
 import com.checkit.data.TaskTagWriteInput
@@ -81,7 +82,8 @@ class TaskViewModel(
     private val updateTaskList: UpdateTaskListUseCase,
     private val addTaskTag: AddTaskTagUseCase,
     private val updateTaskTag: UpdateTaskTagUseCase,
-    private val isTagNameTaken: IsTagNameTakenUseCase
+    private val isTagNameTaken: IsTagNameTakenUseCase,
+    private val settingsRepository: SettingsRepository
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(TaskUiState())
     val uiState: StateFlow<TaskUiState> = _uiState.asStateFlow()
@@ -98,6 +100,18 @@ class TaskViewModel(
                 .collect { board ->
                     _uiState.update { current -> current.withBoard(board) }
                 }
+        }
+        viewModelScope.launch {
+            settingsRepository.settings.collect { settings ->
+                _uiState.update { state ->
+                    state.copy(
+                        selectedView = TaskWorkspaceView.fromCode(settings.taskWorkspaceViewCode),
+                        listDisplayType = TaskListDisplayType.fromCode(settings.taskListDisplayTypeCode),
+                        showCompleted = settings.taskShowCompleted,
+                        sortOption = TaskSortOption.fromCode(settings.taskSortOptionCode)
+                    ).refreshVisibleItems().coerceViewToAvailable()
+                }
+            }
         }
     }
 
@@ -129,18 +143,30 @@ class TaskViewModel(
         _uiState.update {
             if (view in it.availableViews) it.copy(selectedView = view) else it
         }
+        viewModelScope.launch {
+            settingsRepository.setTaskWorkspaceViewCode(view.name)
+        }
     }
 
     fun selectListDisplayType(displayType: TaskListDisplayType) {
         _uiState.update { it.copy(listDisplayType = displayType) }
+        viewModelScope.launch {
+            settingsRepository.setTaskListDisplayTypeCode(displayType.name)
+        }
     }
 
     fun setShowCompleted(showCompleted: Boolean) {
         _uiState.update { it.copy(showCompleted = showCompleted).refreshVisibleItems() }
+        viewModelScope.launch {
+            settingsRepository.setTaskShowCompleted(showCompleted)
+        }
     }
 
     fun selectSortOption(sortOption: TaskSortOption) {
         _uiState.update { it.copy(sortOption = sortOption).refreshVisibleItems() }
+        viewModelScope.launch {
+            settingsRepository.setTaskSortOptionCode(sortOption.name)
+        }
     }
 
     fun openNewTask() {

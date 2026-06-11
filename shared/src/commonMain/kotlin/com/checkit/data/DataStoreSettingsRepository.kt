@@ -20,6 +20,22 @@ class DataStoreSettingsRepository(
         dataStore.setColorSchemeModeCode(code)
     }
 
+    override suspend fun setTaskWorkspaceViewCode(code: String) {
+        dataStore.setTaskWorkspaceViewCode(code)
+    }
+
+    override suspend fun setTaskListDisplayTypeCode(code: String) {
+        dataStore.setTaskListDisplayTypeCode(code)
+    }
+
+    override suspend fun setTaskShowCompleted(showCompleted: Boolean) {
+        dataStore.setTaskShowCompleted(showCompleted)
+    }
+
+    override suspend fun setTaskSortOptionCode(code: String) {
+        dataStore.setTaskSortOptionCode(code)
+    }
+
     override suspend fun setPlanReminderEnabled(enabled: Boolean) {
         dataStore.setPlanReminderEnabled(enabled)
     }

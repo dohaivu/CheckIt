@@ -23,6 +23,10 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
                 languageCode = prefs[KEY_LANGUAGE] ?: UserSettings().languageCode,
                 themeModeCode = prefs[KEY_THEME_MODE] ?: UserSettings().themeModeCode,
                 colorSchemeModeCode = prefs[KEY_COLOR_SCHEME] ?: UserSettings().colorSchemeModeCode,
+                taskWorkspaceViewCode = prefs[KEY_TASK_WORKSPACE_VIEW] ?: UserSettings().taskWorkspaceViewCode,
+                taskListDisplayTypeCode = prefs[KEY_TASK_LIST_DISPLAY_TYPE] ?: UserSettings().taskListDisplayTypeCode,
+                taskShowCompleted = prefs[KEY_TASK_SHOW_COMPLETED] ?: UserSettings().taskShowCompleted,
+                taskSortOptionCode = prefs[KEY_TASK_SORT_OPTION] ?: UserSettings().taskSortOptionCode,
                 planReminderEnabled = prefs[KEY_PLAN_REMINDER_ENABLED] ?: UserSettings().planReminderEnabled,
                 planReminderTimeMinutes = prefs[KEY_PLAN_REMINDER_TIME] ?: UserSettings().planReminderTimeMinutes,
                 reviewReminderEnabled = prefs[KEY_REVIEW_REMINDER_ENABLED] ?: UserSettings().reviewReminderEnabled,
@@ -42,6 +46,22 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setColorSchemeModeCode(code: String) {
         dataStore.edit { it[KEY_COLOR_SCHEME] = code }
+    }
+
+    suspend fun setTaskWorkspaceViewCode(code: String) {
+        dataStore.edit { it[KEY_TASK_WORKSPACE_VIEW] = code }
+    }
+
+    suspend fun setTaskListDisplayTypeCode(code: String) {
+        dataStore.edit { it[KEY_TASK_LIST_DISPLAY_TYPE] = code }
+    }
+
+    suspend fun setTaskShowCompleted(showCompleted: Boolean) {
+        dataStore.edit { it[KEY_TASK_SHOW_COMPLETED] = showCompleted }
+    }
+
+    suspend fun setTaskSortOptionCode(code: String) {
+        dataStore.edit { it[KEY_TASK_SORT_OPTION] = code }
     }
 
     suspend fun setPlanReminderEnabled(enabled: Boolean) {
@@ -73,6 +93,10 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
         val KEY_LANGUAGE = stringPreferencesKey("language")
         val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
         val KEY_COLOR_SCHEME = stringPreferencesKey("color_scheme_mode")
+        val KEY_TASK_WORKSPACE_VIEW = stringPreferencesKey("task_workspace_view")
+        val KEY_TASK_LIST_DISPLAY_TYPE = stringPreferencesKey("task_list_display_type")
+        val KEY_TASK_SHOW_COMPLETED = booleanPreferencesKey("task_show_completed")
+        val KEY_TASK_SORT_OPTION = stringPreferencesKey("task_sort_option")
         val KEY_PLAN_REMINDER_ENABLED = booleanPreferencesKey("plan_reminder_enabled")
         val KEY_PLAN_REMINDER_TIME = intPreferencesKey("plan_reminder_time_minutes")
         val KEY_REVIEW_REMINDER_ENABLED = booleanPreferencesKey("review_reminder_enabled")

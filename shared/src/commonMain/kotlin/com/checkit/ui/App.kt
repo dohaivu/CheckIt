@@ -86,7 +86,7 @@ fun CheckItApp(
     reportViewModel: ReportViewModel = koinViewModel(),
     settingsViewModel: SettingsViewModel = koinViewModel()
 ) {
-    val backStack = remember { mutableStateListOf<NavKey>(Routes.Task) }
+    val backStack = remember { mutableStateListOf<NavKey>(Routes.MyDay) }
     val taskMessage by remember(taskViewModel) {
         taskViewModel.uiState.map { it.message }.distinctUntilChanged()
     }.collectAsState(null)
@@ -108,7 +108,7 @@ fun CheckItApp(
     val snackbarHostState = remember { SnackbarHostState() }
 
     val backState = rememberNavigationEventState(NavigationEventInfo.None)
-    val currentRoute = backStack.lastOrNull() ?: Routes.Task
+    val currentRoute = backStack.lastOrNull() ?: Routes.MyDay
     val selectedTab = currentRoute.asTab()
 
     val taskUiState by taskViewModel.uiState.collectAsState()
@@ -141,14 +141,14 @@ fun CheckItApp(
     fun onBack() {
         if (backStack.size > 1) {
             backStack.removeAt(backStack.lastIndex)
-        } else if (backStack.lastOrNull() != Routes.Task) {
-            resetTo(Routes.Task)
+        } else if (backStack.lastOrNull() != Routes.MyDay) {
+            resetTo(Routes.MyDay)
         }
     }
 
     NavigationBackHandler(
         state = backState,
-        isBackEnabled = backStack.size > 1 || currentRoute != Routes.Task,
+        isBackEnabled = backStack.size > 1 || currentRoute != Routes.MyDay,
         onBackCompleted = { onBack() }
     )
 
