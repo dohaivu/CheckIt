@@ -156,7 +156,7 @@ private fun List<DayTimelineBlock>.totalOccupiedMinutes(): Int {
     return total + currentEnd - currentStart
 }
 
-private fun Int.toDurationLabel(): String {
+internal fun Int.toDurationLabel(): String {
     val hours = this / 60
     val minutes = this % 60
     return when {
