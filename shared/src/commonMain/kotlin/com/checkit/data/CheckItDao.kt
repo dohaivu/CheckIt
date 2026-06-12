@@ -46,6 +46,9 @@ interface CheckItDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertNoteTag(noteTag: NoteTagEntity)
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertDailyPlanItemTag(dailyPlanItemTag: DailyPlanItemTagEntity)
+
     @Query(
         """
         INSERT OR IGNORE INTO task_tags(taskId, tagId)
@@ -66,6 +69,16 @@ interface CheckItDao {
     )
     suspend fun insertNoteTagIfParentsExist(noteId: Long, tagId: Long)
 
+    @Query(
+        """
+        INSERT OR IGNORE INTO daily_plan_item_tags(itemId, tagId)
+        SELECT :itemId, :tagId
+        WHERE EXISTS(SELECT 1 FROM daily_plan_items WHERE id = :itemId)
+          AND EXISTS(SELECT 1 FROM tags WHERE id = :tagId)
+        """
+    )
+    suspend fun insertDailyPlanItemTagIfParentsExist(itemId: Long, tagId: Long)
+
     @Query("DELETE FROM task_tags WHERE taskId = :taskId")
     suspend fun deleteTaskTags(taskId: Long)
 
@@ -77,6 +90,9 @@ interface CheckItDao {
 
     @Query("DELETE FROM note_tags WHERE noteId = :noteId")
     suspend fun deleteNoteTags(noteId: Long)
+
+    @Query("DELETE FROM daily_plan_item_tags WHERE itemId = :itemId")
+    suspend fun deleteDailyPlanItemTags(itemId: Long)
 
     @Query(
         """
@@ -201,6 +217,9 @@ interface CheckItDao {
     @Query("SELECT * FROM note_tags")
     fun observeNoteTags(): Flow<List<NoteTagEntity>>
 
+    @Query("SELECT * FROM daily_plan_item_tags")
+    fun observeDailyPlanItemTags(): Flow<List<DailyPlanItemTagEntity>>
+
     @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM tasks WHERE listId = :listId")
     suspend fun nextTaskSortOrder(listId: Long): Int
 
@@ -209,9 +228,6 @@ interface CheckItDao {
 
     @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM daily_plan_items WHERE dailyPlanId = :dailyPlanId")
     suspend fun nextDailyPlanItemSortOrder(dailyPlanId: Long): Int
-
-    @Query("SELECT COUNT(*) FROM daily_plan_items WHERE dailyPlanId = :dailyPlanId AND taskId = :taskId")
-    suspend fun dailyPlanTaskItemCount(dailyPlanId: Long, taskId: Long): Int
 
     @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM task_lists")
     suspend fun nextListSortOrder(): Int
@@ -259,6 +275,9 @@ interface CheckItDao {
 
     @Query("UPDATE tasks SET trashedAtMillis = :trashedAtMillis, updatedAtMillis = :trashedAtMillis WHERE id = :taskId")
     suspend fun trashTask(taskId: Long, trashedAtMillis: Long)
+
+    @Query("UPDATE tasks SET trashedAtMillis = NULL, updatedAtMillis = :updatedAtMillis WHERE id = :taskId")
+    suspend fun restoreTask(taskId: Long, updatedAtMillis: Long)
 
     @Transaction
     suspend fun replaceTaskSubTasks(taskId: Long, subtasks: List<SubTaskWriteInput>) {
@@ -397,10 +416,11 @@ interface CheckItDao {
     )
     suspend fun clearTaskTime(taskId: Long, updatedAtMillis: Long)
 
-    @Query("UPDATE notes SET listId = :listId, content = :content, status = :status, dateEpochDays = :dateEpochDays, startTimeMinutes = :startTimeMinutes, editedAtMillis = :editedAtMillis WHERE id = :noteId")
+    @Query("UPDATE notes SET listId = :listId, title = :title, content = :content, status = :status, dateEpochDays = :dateEpochDays, startTimeMinutes = :startTimeMinutes, editedAtMillis = :editedAtMillis WHERE id = :noteId")
     suspend fun updateNote(
         noteId: Long,
         listId: Long,
+        title: String,
         content: String,
         status: String,
         dateEpochDays: Int,
@@ -413,4 +433,7 @@ interface CheckItDao {
 
     @Query("UPDATE notes SET trashedAtMillis = :trashedAtMillis, editedAtMillis = :trashedAtMillis WHERE id = :noteId")
     suspend fun trashNote(noteId: Long, trashedAtMillis: Long)
+
+    @Query("UPDATE notes SET trashedAtMillis = NULL, editedAtMillis = :editedAtMillis WHERE id = :noteId")
+    suspend fun restoreNote(noteId: Long, editedAtMillis: Long)
 }

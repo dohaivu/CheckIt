@@ -1,15 +1,17 @@
 package com.checkit.ui.tasks
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
@@ -19,22 +21,12 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Event
-import androidx.compose.material.icons.filled.MoreTime
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Notes
-import androidx.compose.material.icons.filled.RadioButtonUnchecked
-import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.RestoreFromTrash
 import androidx.compose.material.icons.filled.TaskAlt
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -42,19 +34,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.TimePicker
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -62,27 +48,27 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.checkit.domain.TaskPriority
+import com.checkit.domain.DailyPlanItem
+import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.TaskList
-import com.checkit.domain.TaskReminderPreset
+import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskTag
 import com.checkit.ui.EditorMode
 import com.checkit.ui.RepeatPreset
 import com.checkit.ui.TaskEditorState
-import com.checkit.ui.today
-import com.checkit.ui.toUtcLocalDate
-import com.checkit.ui.toUtcStartMillis
-import kotlinx.datetime.DateTimeUnit
+import com.checkit.ui.components.AppOutlinedTextField
+import com.checkit.ui.components.DatePickerRow
+import com.checkit.ui.components.ListPicker
+import com.checkit.ui.components.PriorityPicker
+import com.checkit.ui.components.ReminderPicker
+import com.checkit.ui.components.RepeatPicker
+import com.checkit.ui.components.TagPicker
+import com.checkit.ui.components.TimeRangePicker
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.plus
-import kotlinx.datetime.toLocalDateTime
-import kotlin.time.Clock
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -91,26 +77,31 @@ internal fun TaskEditorSheet(
     availableLists: List<TaskList>,
     availableTags: List<TaskTag>,
     onDismiss: () -> Unit,
-    onEdit: () -> Unit,
     onSave: () -> Unit,
     onDelete: () -> Unit,
+    onRestore: () -> Unit,
     onComplete: () -> Unit,
     onOpen: () -> Unit,
+    onAddToMyDay: () -> Unit,
     onTaskNameChange: (String) -> Unit,
     onTaskListChange: (Long) -> Unit,
     onTaskDescriptionChange: (String) -> Unit,
-    onTaskDueDateChange: (LocalDate?) -> Unit,
+    onTaskDoDateChange: (LocalDate?) -> Unit,
     onTaskStartTimeChange: (Int?) -> Unit,
     onTaskEndTimeChange: (Int?) -> Unit,
+    onDailyPlanStartTimeChange: (Int?) -> Unit,
+    onDailyPlanEndTimeChange: (Int?) -> Unit,
+    onDailyPlanStatus: () -> Unit,
+    onDailyPlanDelete: (DailyPlanItem) -> Unit,
     onTaskRepeatChange: (RepeatPreset) -> Unit,
     onTaskPriorityChange: (TaskPriority) -> Unit,
-    onTaskRemindersEnabledChange: (Boolean) -> Unit,
     onTaskReminderToggle: (Int) -> Unit,
     onSubTaskToggle: (Int) -> Unit,
     onSubTaskAdd: () -> Unit,
     onSubTaskNameChange: (Int, String) -> Unit,
     onSubTaskRemove: (Int) -> Unit,
     onTaskTagToggle: (Long) -> Unit,
+    onNoteTitleChange: (String) -> Unit,
     onNoteContentChange: (String) -> Unit,
     onNoteListChange: (Long) -> Unit,
     onNoteDateChange: (LocalDate) -> Unit,
@@ -124,25 +115,25 @@ internal fun TaskEditorSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        sheetGesturesEnabled = false
+        sheetGesturesEnabled = true
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .fillMaxHeight(0.7f)
                 .windowInsetsPadding(WindowInsets.ime)
         ) {
             SheetHeader(
-                isViewMode = editor.isViewMode(),
                 isAddMode = editor.isAddMode(),
                 isTaskSelected = editor is TaskEditorState.TaskForm,
-                canDelete = editor.canDelete(),
-                onDismiss = onDismiss,
-                onEdit = onEdit,
-                onSave = onSave,
-                onDelete = onDelete,
                 onSwitchAddModeToTask = onSwitchAddModeToTask,
                 onSwitchAddModeToNote = onSwitchAddModeToNote,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+            )
+            TrashedStatusSection(
+                isTrashed = editor.isTrashed(),
+                onRestore = onRestore,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
             )
             LazyColumn(
                 modifier = Modifier
@@ -154,75 +145,61 @@ internal fun TaskEditorSheet(
             ) {
                 when (editor) {
                     is TaskEditorState.TaskForm -> item {
-                        if (editor.mode == EditorMode.View) {
-                            TaskViewContent(
-                                form = editor,
-                                availableLists = availableLists,
-                                availableTags = availableTags,
-                                onSubTaskToggle = onSubTaskToggle,
-                                onSubTaskAdd = onSubTaskAdd,
-                                onSubTaskNameChange = onSubTaskNameChange,
-                                onSubTaskRemove = onSubTaskRemove,
-                            )
-                        } else {
-                            TaskFormContent(
-                                form = editor,
-                                availableLists = availableLists,
-                                availableTags = availableTags,
-                                onNameChange = onTaskNameChange,
-                                onListChange = onTaskListChange,
-                                onDescriptionChange = onTaskDescriptionChange,
-                                onDueDateChange = onTaskDueDateChange,
-                                onStartTimeChange = onTaskStartTimeChange,
-                                onEndTimeChange = onTaskEndTimeChange,
-                                onRepeatChange = onTaskRepeatChange,
-                                onPriorityChange = onTaskPriorityChange,
-                                onRemindersEnabledChange = onTaskRemindersEnabledChange,
-                                onReminderToggle = onTaskReminderToggle,
-                                onSubTaskToggle = onSubTaskToggle,
-                                onSubTaskAdd = onSubTaskAdd,
-                                onSubTaskNameChange = onSubTaskNameChange,
-                                onSubTaskRemove = onSubTaskRemove,
-                                onTagToggle = onTaskTagToggle
-                            )
-                        }
+                        TaskFormContent(
+                            form = editor,
+                            availableLists = availableLists,
+                            availableTags = availableTags,
+                            onNameChange = onTaskNameChange,
+                            onListChange = onTaskListChange,
+                            onDescriptionChange = onTaskDescriptionChange,
+                            onDoDateChange = onTaskDoDateChange,
+                            onStartTimeChange = onTaskStartTimeChange,
+                            onEndTimeChange = onTaskEndTimeChange,
+                            onDailyPlanStartTimeChange = onDailyPlanStartTimeChange,
+                            onDailyPlanEndTimeChange = onDailyPlanEndTimeChange,
+                            onDailyPlanStatus = onDailyPlanStatus,
+                            onDailyPlanDelete = onDailyPlanDelete,
+                            onRepeatChange = onTaskRepeatChange,
+                            onPriorityChange = onTaskPriorityChange,
+                            onReminderToggle = onTaskReminderToggle,
+                            onSubTaskToggle = onSubTaskToggle,
+                            onSubTaskAdd = onSubTaskAdd,
+                            onSubTaskNameChange = onSubTaskNameChange,
+                            onSubTaskRemove = onSubTaskRemove,
+                            onTagToggle = onTaskTagToggle,
+                            enabled = editor.isFormEditable()
+                        )
                     }
                     is TaskEditorState.NoteForm -> item {
-                        if (editor.mode == EditorMode.View) {
-                            NoteViewContent(editor, availableLists, availableTags)
-                        } else {
-                            NoteFormContent(
-                                form = editor,
-                                availableLists = availableLists,
-                                availableTags = availableTags,
-                                onContentChange = onNoteContentChange,
-                                onListChange = onNoteListChange,
-                                onDateChange = onNoteDateChange,
-                                onStartTimeChange = onNoteStartTimeChange,
-                                onTagToggle = onNoteTagToggle
-                            )
-                        }
-                    }
-                }
-                if (editor.isCompletableView()) {
-                    item {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                            Button(onClick = onComplete) {
-                                Text("Complete")
-                            }
-                        }
-                    }
-                }
-                if (editor.isOpenableView()) {
-                    item {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                            Button(onClick = onOpen) {
-                                Text("Open")
-                            }
-                        }
+                        NoteFormContent(
+                            form = editor,
+                            availableLists = availableLists,
+                            availableTags = availableTags,
+                            onTitleChange = onNoteTitleChange,
+                            onContentChange = onNoteContentChange,
+                            onListChange = onNoteListChange,
+                            onDateChange = onNoteDateChange,
+                            onStartTimeChange = onNoteStartTimeChange,
+                            onTagToggle = onNoteTagToggle,
+                            enabled = editor.isFormEditable()
+                        )
                     }
                 }
             }
+            SheetFooter(
+                canDelete = editor.canDelete(),
+                isTrashed = editor.isTrashed(),
+                isAddMode = editor.isAddMode(),
+                showAddToMyDay = editor.shouldShowAddToMyDay(),
+                isCompletable = editor.isCompletableView(),
+                isOpenable = editor.isOpenableView(),
+                onSave = onSave,
+                onAddToMyDay = onAddToMyDay,
+                onDelete = onDelete,
+                onComplete = onComplete,
+                onOpen = onOpen,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+            )
         }
     }
 }
@@ -240,38 +217,29 @@ private fun AddModeSwitch(
             onClick = onTaskClick,
             shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
             icon = { Icon(Icons.Default.TaskAlt, contentDescription = null) },
-            label = { Text("Task") }
+            label = { Text("Task") },
+            colors = SegmentedButtonDefaults.colors(activeContainerColor = MaterialTheme.colorScheme.primaryContainer, activeContentColor = MaterialTheme.colorScheme.primary)
         )
         SegmentedButton(
             selected = !isTaskSelected,
             onClick = onNoteClick,
             shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
             icon = { Icon(Icons.Default.Notes, contentDescription = null) },
-            label = { Text("Note") }
+            label = { Text("Note") },
+            colors = SegmentedButtonDefaults.colors(activeContainerColor = MaterialTheme.colorScheme.primaryContainer, activeContentColor = MaterialTheme.colorScheme.primary)
         )
     }
 }
 
 @Composable
 private fun SheetHeader(
-    isViewMode: Boolean,
     isAddMode: Boolean,
     isTaskSelected: Boolean,
-    canDelete: Boolean,
-    onDismiss: () -> Unit,
-    onEdit: () -> Unit,
-    onSave: () -> Unit,
-    onDelete: () -> Unit,
     onSwitchAddModeToTask: () -> Unit,
     onSwitchAddModeToNote: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var menuExpanded by remember { mutableStateOf(false) }
     Box(modifier = modifier.fillMaxWidth()) {
-        IconButton(onClick = onDismiss) {
-            Icon(Icons.Default.Close, contentDescription = "Close")
-        }
-
         if (isAddMode) {
             Box(modifier = Modifier.align(Alignment.Center)) {
                 AddModeSwitch(
@@ -281,202 +249,106 @@ private fun SheetHeader(
                 )
             }
         }
+    }
+}
 
-        Row(modifier = Modifier.align(Alignment.CenterEnd), verticalAlignment = Alignment.CenterVertically) {
-            if (isViewMode) {
-                IconButton(onClick = onEdit) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit")
+@Composable
+private fun TrashedStatusSection(
+    isTrashed: Boolean,
+    onRestore: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (!isTrashed) return
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.RestoreFromTrash, contentDescription = null, modifier = Modifier.size(20.dp))
+            Text(
+                text = "This item is in trash",
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            OutlinedButton(onClick = onRestore) {
+                Text("Restore")
+            }
+        }
+    }
+}
+
+@Composable
+private fun SheetFooter(
+    canDelete: Boolean,
+    isTrashed: Boolean,
+    isAddMode: Boolean,
+    showAddToMyDay: Boolean,
+    isCompletable: Boolean,
+    isOpenable: Boolean,
+    onSave: () -> Unit,
+    onAddToMyDay: () -> Unit,
+    onDelete: () -> Unit,
+    onComplete: () -> Unit,
+    onOpen: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val showOptionsMenu = canDelete && !isTrashed
+    if (!showOptionsMenu && !isAddMode && !showAddToMyDay && !isCompletable && !isOpenable) return
+
+    var menuExpanded by remember { mutableStateOf(false) }
+
+    Row(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (showAddToMyDay) {
+                OutlinedButton(onClick = onAddToMyDay) {
+                    Text("Add to MyDay")
                 }
             }
-            if (canDelete && isViewMode) {
-                Box {
-                    IconButton(onClick = { menuExpanded = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "Options")
-                    }
-                    DropdownMenu(
-                        expanded = menuExpanded,
-                        onDismissRequest = { menuExpanded = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Delete") },
-                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
-                            onClick = {
-                                menuExpanded = false
-                                onDelete()
-                            }
-                        )
-                    }
-                }
-            }
-            if (!isViewMode) {
+            if (isAddMode) {
                 Button(onClick = onSave) {
                     Text("Save")
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun TaskViewContent(
-    form: TaskEditorState.TaskForm,
-    availableLists: List<TaskList>,
-    availableTags: List<TaskTag>,
-    onSubTaskToggle: (Int) -> Unit,
-    onSubTaskAdd: () -> Unit,
-    onSubTaskNameChange: (Int, String) -> Unit,
-    onSubTaskRemove: (Int) -> Unit,
-) {
-    val selectedList = availableLists.firstOrNull { it.id == form.listId }
-    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        Text(
-            text = form.name.ifBlank { "Untitled task" },
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.SemiBold
-        )
-        form.description.takeIf { it.isNotBlank() }?.let {
-            Text(
-                text = it,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            DateTimeRangeDetailChip(form.doDate, form.startTimeMinutes, form.endTimeMinutes)
-            form.durationMinutes?.let { DetailChip(Icons.Default.Schedule, it.formatDuration()) }
-            if (form.priority != TaskPriority.None) {
-                PriorityPill(priority = form.priority, selected = true)
+            if (isCompletable) {
+                Button(onClick = onComplete) {
+                    Text("Complete")
+                }
+            }
+            if (isOpenable) {
+                Button(onClick = onOpen) {
+                    Text("Open")
+                }
             }
         }
-        if (form.repeatPreset != RepeatPreset.None) {
-            RepeatPill(form.repeatPreset.rrule)
-        }
-        ReminderDisplayRow(
-            reminderOffsets = form.reminderOffsets,
-            startTimeMinutes = form.startTimeMinutes
-        )
-        SubtaskChecklist(
-            subtasks = form.subtasks,
-            mode = EditorMode.Edit,
-            onToggle = onSubTaskToggle,
-            onAdd = onSubTaskAdd,
-            onNameChange = onSubTaskNameChange,
-            onRemove = onSubTaskRemove
-        )
-
-        SupportingPills(list = selectedList, tags = availableTags.filter { it.id in form.selectedTagIds })
-    }
-}
-
-@Composable
-private fun ReminderDisplayRow(
-    reminderOffsets: Set<Int>,
-    startTimeMinutes: Int?
-) {
-    if (reminderOffsets.isEmpty()) return
-    QuietSection {
-        DetailRow(
-            icon = Icons.Default.Notifications,
-            primary = reminderOffsets
-                .sorted()
-                .joinToString { TaskReminderPreset.labelFor(it, startTimeMinutes) }
-        )
-    }
-}
-
-@Composable
-private fun NoteViewContent(
-    form: TaskEditorState.NoteForm,
-    availableLists: List<TaskList>,
-    availableTags: List<TaskTag>
-) {
-    val selectedList = availableLists.firstOrNull { it.id == form.listId }
-    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        Text(
-            text = form.content.ifBlank { "Empty note" },
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
-        )
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            DetailChip(Icons.Default.Event, form.date.compact())
-            form.startTimeMinutes?.let { start ->
-                DetailChip(Icons.Default.Schedule, start.toClockLabel())
-            }
-        }
-        SupportingPills(list = selectedList, tags = availableTags.filter { it.id in form.selectedTagIds })
-    }
-}
-
-@Composable
-private fun EditorSection(content: @Composable ColumnScope.() -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-        content = content
-    )
-}
-
-@Composable
-private fun QuietSection(content: @Composable ColumnScope.() -> Unit) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.22f)
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            content = content
-        )
-    }
-}
-
-@Composable
-private fun DetailRow(
-    icon: ImageVector,
-    primary: String,
-    secondary: String? = null
-) {
-    Row(horizontalArrangement = Arrangement.spacedBy(18.dp), verticalAlignment = Alignment.Top) {
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        Column {
-            Text(primary, style = MaterialTheme.typography.bodyLarge)
-            secondary?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun TagPickerRow(
-    availableTags: List<TaskTag>,
-    selectedTagIds: Set<Long>,
-    onTagToggle: (Long) -> Unit
-) {
-    if (availableTags.isEmpty()) return
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            availableTags.forEach { tag ->
-                TaskTagPill(
-                    tag = tag,
-                    selected = tag.id in selectedTagIds,
-                    onClick = { onTagToggle(tag.id) }
-                )
+        if (showOptionsMenu) {
+            Box(modifier = Modifier) {
+                IconButton(onClick = { menuExpanded = true }) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "Options")
+                }
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Delete") },
+                        leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
+                        onClick = {
+                            menuExpanded = false
+                            onDelete()
+                        }
+                    )
+                }
             }
         }
     }
@@ -490,537 +362,170 @@ private fun TaskFormContent(
     onNameChange: (String) -> Unit,
     onListChange: (Long) -> Unit,
     onDescriptionChange: (String) -> Unit,
-    onDueDateChange: (LocalDate?) -> Unit,
+    onDoDateChange: (LocalDate?) -> Unit,
     onStartTimeChange: (Int?) -> Unit,
     onEndTimeChange: (Int?) -> Unit,
+    onDailyPlanStartTimeChange: (Int?) -> Unit,
+    onDailyPlanEndTimeChange: (Int?) -> Unit,
+    onDailyPlanStatus: () -> Unit,
+    onDailyPlanDelete: (DailyPlanItem) -> Unit,
     onRepeatChange: (RepeatPreset) -> Unit,
     onPriorityChange: (TaskPriority) -> Unit,
-    onRemindersEnabledChange: (Boolean) -> Unit,
     onReminderToggle: (Int) -> Unit,
     onSubTaskToggle: (Int) -> Unit,
     onSubTaskAdd: () -> Unit,
     onSubTaskNameChange: (Int, String) -> Unit,
     onSubTaskRemove: (Int) -> Unit,
-    onTagToggle: (Long) -> Unit
+    onTagToggle: (Long) -> Unit,
+    enabled: Boolean = true
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        OutlinedTextField(
-            value = form.name,
-            onValueChange = onNameChange,
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Task title") },
-            singleLine = true,
-            textStyle = MaterialTheme.typography.headlineSmall.copy(
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.SemiBold
-            ),
-            shape = MaterialTheme.shapes.medium,
-            colors = editorTextFieldColors()
-        )
-        OutlinedTextField(
-            value = form.description,
-            onValueChange = onDescriptionChange,
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Add details") },
-            minLines = 2,
-            shape = MaterialTheme.shapes.medium,
-            colors = editorTextFieldColors()
-        )
-        EditorSection {
-            ListPickerRow(
-                selectedListId = form.listId,
-                lists = availableLists,
-                onListChange = onListChange
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        form.dailyPlanItem?.let { dailyPlanItem ->
+            DailyPlanSection(
+                item = dailyPlanItem,
+                onStartTimeChange = onDailyPlanStartTimeChange,
+                onEndTimeChange = onDailyPlanEndTimeChange,
+                onStatusChange = onDailyPlanStatus,
+                onDelete = { onDailyPlanDelete(dailyPlanItem) },
+                enabled = enabled
             )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            TaskStatusIcon(form.status, form.priority)
             DatePickerRow(
+                modifier = Modifier.weight(1f),
                 date = form.doDate,
-                onDateChange = onDueDateChange,
-                showShortcuts = true
-            )
-            TimeRangePicker(
+                onDateChange = onDoDateChange,
                 startTimeMinutes = form.startTimeMinutes,
                 endTimeMinutes = form.endTimeMinutes,
                 durationMinutes = form.durationMinutes,
                 onStartTimeChange = onStartTimeChange,
-                onEndTimeChange = onEndTimeChange
+                onEndTimeChange = onEndTimeChange,
+                enabled = enabled
             )
         }
-        EditorSection {
-            PriorityPickerRow(selected = form.priority, onSelect = onPriorityChange)
-            RepeatDropdown(selected = form.repeatPreset, onSelect = onRepeatChange)
+
+        AppOutlinedTextField(
+            value = form.name,
+            onValueChange = onNameChange,
+            textStyle = MaterialTheme.typography.headlineSmall.copy(
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.SemiBold
+            ),
+            maxLines = 1,
+            placeholder = "What would you like to do?",
+            enabled = enabled
+        )
+        AppOutlinedTextField(
+            value = form.description,
+            onValueChange = onDescriptionChange,
+            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Normal
+            ),
+            maxLines = 5,
+            enabled = enabled
+        )
+
+        SubtaskChecklist(
+            subtasks = form.subtasks,
+            onToggle = onSubTaskToggle,
+            onAdd = onSubTaskAdd,
+            onNameChange = onSubTaskNameChange,
+            onRemove = onSubTaskRemove,
+            enabled = enabled
+        )
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            PriorityPicker(selected = form.priority, onSelect = onPriorityChange, enabled = enabled)
+            RepeatPicker(selected = form.repeatPreset, onSelect = onRepeatChange, enabled = enabled)
             ReminderPicker(
                 reminderOffsets = form.reminderOffsets,
                 hasDate = form.doDate != null,
                 startTimeMinutes = form.startTimeMinutes,
-                onEnabledChange = onRemindersEnabledChange,
-                onReminderToggle = onReminderToggle
+                onReminderToggle = onReminderToggle,
+                enabled = enabled
             )
         }
-        SubtaskChecklist(
-            subtasks = form.subtasks,
-            mode = form.mode,
-            onToggle = onSubTaskToggle,
-            onAdd = onSubTaskAdd,
-            onNameChange = onSubTaskNameChange,
-            onRemove = onSubTaskRemove
-        )
-        TagPickerRow(
-            availableTags = availableTags,
-            selectedTagIds = form.selectedTagIds,
-            onTagToggle = onTagToggle
-        )
-    }
-}
 
-@Composable
-fun editorTextFieldColors() = TextFieldDefaults.colors(
-    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f),
-    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f),
-    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f),
-    focusedIndicatorColor = Color.Transparent,
-    unfocusedIndicatorColor = Color.Transparent,
-    disabledIndicatorColor = Color.Transparent,
-    cursorColor = MaterialTheme.colorScheme.primary
-)
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun DatePickerRow(
-    date: LocalDate?,
-    onDateChange: (LocalDate?) -> Unit,
-    showShortcuts: Boolean = false
-) {
-    var showPicker by remember { mutableStateOf(false) }
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        SelectableInfoRow(
-            icon = Icons.Default.Event,
-            label = "Date",
-            value = date?.compact() ?: "No date",
-            onClick = { showPicker = true },
-            onClear = if (date == null) null else ({ onDateChange(null) })
-        )
-        if (showShortcuts) {
-            PickerShortcutRow {
-                PickerShortcut("Today", onClick = { onDateChange(today()) })
-                PickerShortcut("Tomorrow", onClick = { onDateChange(today().plus(1, DateTimeUnit.DAY)) })
-            }
-        }
-    }
-    if (showPicker) {
-        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = date?.toUtcStartMillis())
-        DatePickerDialog(
-            onDismissRequest = { showPicker = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        onDateChange(datePickerState.selectedDateMillis?.toUtcLocalDate())
-                        showPicker = false
-                    }
-                ) {
-                    Text("OK")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showPicker = false }) {
-                    Text("Cancel")
-                }
-            }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            DatePicker(state = datePickerState)
+            ListPicker(
+                selectedListId = form.listId,
+                lists = availableLists,
+                onListChange = onListChange,
+                enabled = enabled
+            )
+            TagPicker(
+                availableTags = availableTags,
+                selectedTagIds = form.selectedTagIds,
+                onTagToggle = onTagToggle,
+                enabled = enabled
+            )
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun TimePickerRow(
-    label: String,
-    timeMinutes: Int?,
-    initialTimeMinutes: Int,
-    onTimeChange: (Int?) -> Unit,
-    enabled: Boolean = true,
-    modifier: Modifier = Modifier
-) {
-    var showPicker by remember { mutableStateOf(false) }
-    SelectableInfoRow(
-        icon = Icons.Default.Schedule,
-        label = label,
-        value = timeMinutes?.toClockLabel() ?: "No time",
-        onClick = { showPicker = true },
-        onClear = if (timeMinutes == null || !enabled) null else ({ onTimeChange(null) }),
-        enabled = enabled,
-        modifier = modifier
-    )
-    if (showPicker && enabled) {
-        val initial = timeMinutes ?: initialTimeMinutes.coerceIn(0, MinutesPerDay - 1)
-        val timePickerState = rememberTimePickerState(
-            initialHour = initial / 60,
-            initialMinute = initial % 60,
-            is24Hour = false
-        )
-        AlertDialog(
-            onDismissRequest = { showPicker = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        onTimeChange(timePickerState.hour * 60 + timePickerState.minute)
-                        showPicker = false
-                    }
-                ) {
-                    Text("OK")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showPicker = false }) {
-                    Text("Cancel")
-                }
-            },
-            text = { TimePicker(state = timePickerState) }
-        )
-    }
-}
-
-@Composable
-internal fun TimeRangePicker(
-    startTimeMinutes: Int?,
-    endTimeMinutes: Int?,
-    durationMinutes: Int?,
+private fun DailyPlanSection(
+    item: DailyPlanItem,
     onStartTimeChange: (Int?) -> Unit,
     onEndTimeChange: (Int?) -> Unit,
-    modifier: Modifier = Modifier
+    onStatusChange: () -> Unit,
+    onDelete: () -> Unit,
+    enabled: Boolean = true
 ) {
     Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            TimePickerRow(
-                label = "Start",
-                timeMinutes = startTimeMinutes,
-                initialTimeMinutes = currentTimeMinutes(),
-                onTimeChange = {value ->
-                    onStartTimeChange.invoke(value)
-                    if (value == null && endTimeMinutes != null) onEndTimeChange.invoke(null)
-                },
-                modifier = Modifier.weight(1f)
-            )
-            TimePickerRow(
-                label = "End",
-                timeMinutes = endTimeMinutes,
-                initialTimeMinutes = ((startTimeMinutes ?: currentTimeMinutes()) + 60).coerceAtMost(MinutesPerDay - 1),
-                enabled = startTimeMinutes != null,
-                onTimeChange = onEndTimeChange,
-                modifier = Modifier.weight(1f)
-            )
-        }
-        Row {
-            PickerShortcutRow(modifier = Modifier.weight(1f)) {
-                TimeRangeShortcutDurations.forEach { duration ->
-                    PickerShortcut(
-                        text = duration.shortcutDurationLabel(),
-                        onClick = {
-                            val start = startTimeMinutes ?: currentTimeMinutes()
-                            onStartTimeChange(start)
-                            onEndTimeChange((start + duration).coerceAtMost(MinutesPerDay - 1))
-                        }
-                    )
-                }
-            }
-            durationMinutes?.let { duration ->
-                DurationText(
-                    duration = duration,
-                    modifier = Modifier.align(Alignment.CenterVertically)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun PickerShortcutRow(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    FlowRow(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        content()
-    }
-}
-
-@Composable
-private fun PickerShortcut(
-    text: String,
-    enabled: Boolean = true,
-    onClick: () -> Unit
-) {
-    Surface(
-        shape = RoundedCornerShape(8.dp),
-        color = if (enabled) {
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.26f)
-        } else {
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.12f)
-        },
-        contentColor = if (enabled) {
-            MaterialTheme.colorScheme.onSurfaceVariant
-        } else {
-            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
-        },
         modifier = Modifier
-            .height(30.dp)
-            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
-    ) {
-        Box(
-            modifier = Modifier.padding(horizontal = 10.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(text = text, style = MaterialTheme.typography.labelMedium)
-        }
-    }
-}
-
-@Composable
-internal fun DurationText(
-    duration: Int,
-    modifier: Modifier = Modifier
-) {
-    Text(
-        text = duration.formatDuration(),
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier
-    )
-}
-
-@Composable
-private fun ListPickerRow(
-    selectedListId: Long,
-    lists: List<TaskList>,
-    onListChange: (Long) -> Unit
-) {
-    if (lists.isEmpty()) return
-    var expanded by remember { mutableStateOf(false) }
-    val selectedList = lists.firstOrNull { it.id == selectedListId } ?: lists.first()
-    Box {
-        SelectableInfoRow(
-            icon = materialIcon(selectedList.icon),
-            label = "List",
-            value = selectedList.name,
-            onClick = { expanded = true }
-        )
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
-            lists.forEach { list ->
-                DropdownMenuItem(
-                    text = { Text(list.name) },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = materialIcon(list.icon),
-                            contentDescription = null,
-                            tint = list.color.toColor()
-                        )
-                    },
-                    onClick = {
-                        onListChange(list.id)
-                        expanded = false
-                    }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun RepeatDropdown(
-    selected: RepeatPreset,
-    onSelect: (RepeatPreset) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        SelectableInfoRow(
-            icon = Icons.Default.MoreTime,
-            label = "Repeat",
-            value = selected.label,
-            onClick = { expanded = true }
-        )
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
-            RepeatPreset.entries.forEach { preset ->
-                DropdownMenuItem(
-                    text = { Text(preset.label) },
-                    onClick = {
-                        onSelect(preset)
-                        expanded = false
-                    }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ReminderPicker(
-    reminderOffsets: Set<Int>,
-    hasDate: Boolean,
-    startTimeMinutes: Int?,
-    onEnabledChange: (Boolean) -> Unit,
-    onReminderToggle: (Int) -> Unit
-) {
-    val enabled = reminderOffsets.isNotEmpty()
-    val presets = TaskReminderPreset.availableFor(startTimeMinutes)
-    var showOptions by remember { mutableStateOf(false) }
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.medium,
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .then(
-                        if (hasDate) {
-                            Modifier.clickable {
-                                if (!enabled) onEnabledChange(true)
-                                showOptions = true
-                            }
-                        } else {
-                            Modifier
-                        }
-                    )
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Icon(Icons.Default.Notifications, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Column(Modifier.weight(1f)) {
-                    Text("Reminders", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-                    Text(
-                        text = when {
-                            !hasDate -> "Set a date first"
-                            !enabled -> "Off"
-                            else -> reminderOffsets
-                                .sorted()
-                                .joinToString { TaskReminderPreset.labelFor(it, startTimeMinutes) }
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Switch(
-                    checked = enabled,
-                    onCheckedChange = { checked ->
-                        if (hasDate || !checked) {
-                            onEnabledChange(checked)
-                            showOptions = checked
-                        }
-                    },
-                    enabled = hasDate || enabled
-                )
-            }
-        }
-        if (showOptions && hasDate) {
-            AlertDialog(
-                onDismissRequest = { showOptions = false },
-                title = { Text("Reminders") },
-                text = {
-                    Column {
-                        presets.forEach { preset ->
-                            ReminderOptionRow(
-                                label = TaskReminderPreset.labelFor(preset.offsetMinutes, startTimeMinutes),
-                                selected = preset.offsetMinutes in reminderOffsets,
-                                onClick = { onReminderToggle(preset.offsetMinutes) }
-                            )
-                        }
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = { showOptions = false }) {
-                        Text("Done")
-                    }
-                }
-            )
-        }
-    }
-}
-
-@Composable
-private fun ReminderOptionRow(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        Icon(
-            imageVector = if (selected) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
-            contentDescription = null,
-            tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f)
-        )
-    }
-}
-
-@Composable
-private fun SelectableInfoRow(
-    icon: ImageVector,
-    label: String,
-    value: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    onClear: (() -> Unit)? = null
-) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(10.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.22f)
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = ContentAlpha), RoundedCornerShape(16.dp))
+            .padding(top = 8.dp, bottom = 8.dp, end = 8.dp)
+        ,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
-                .padding(horizontal = 12.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                modifier = Modifier.size(24.dp)
+            TimeRangePicker(
+                startTimeMinutes = item.startTimeMinutes,
+                endTimeMinutes = item.endTimeMinutes,
+                durationMinutes = item.durationMinutes(),
+                onStartTimeChange = onStartTimeChange,
+                onEndTimeChange = onEndTimeChange,
+                isSmall = true,
+                modifier = Modifier,
+                enabled = enabled
             )
-            Column(Modifier.weight(1f)) {
-                Text(text = value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            onClear?.let {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = "Clear",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.58f),
-                    modifier = Modifier.size(18.dp).clickable {
-                        it.invoke()
+
+            if (enabled) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Delete from My Day",
+                        modifier = Modifier.size(18.dp).clickable { onDelete() },
+                        tint = MaterialTheme.colorScheme.outlineVariant.copy(alpha = ContentAlpha)
+                    )
+
+                    OutlinedButton(onClick = onStatusChange) {
+                        Text(if (item.status == DailyPlanItemStatus.Done) "Open" else "Done")
                     }
-                )
+                }
             }
         }
     }
@@ -1031,85 +536,69 @@ private fun NoteFormContent(
     form: TaskEditorState.NoteForm,
     availableLists: List<TaskList>,
     availableTags: List<TaskTag>,
+    onTitleChange: (String) -> Unit,
     onContentChange: (String) -> Unit,
     onListChange: (Long) -> Unit,
     onDateChange: (LocalDate) -> Unit,
     onStartTimeChange: (Int?) -> Unit,
-    onTagToggle: (Long) -> Unit
+    onTagToggle: (Long) -> Unit,
+    enabled: Boolean = true
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        OutlinedTextField(
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        AppOutlinedTextField(
+            value = form.title,
+            onValueChange = onTitleChange,
+            textStyle = MaterialTheme.typography.headlineSmall.copy(
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.SemiBold
+            ),
+            maxLines = 1,
+            placeholder = "Note title",
+            enabled = enabled
+        )
+        AppOutlinedTextField(
             value = form.content,
             onValueChange = onContentChange,
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Write a note") },
-            minLines = 6,
-            shape = MaterialTheme.shapes.medium,
-            colors = editorTextFieldColors()
+            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Normal
+            ),
+            maxLines = 10,
+            placeholder = "Write something",
+            enabled = enabled
         )
-        EditorSection {
-            ListPickerRow(
+
+        DatePickerRow(
+            date = form.date,
+            onDateChange = {
+                it?.let {onDateChange.invoke(it)  }
+            },
+            startTimeMinutes = form.startTimeMinutes,
+            endTimeMinutes = null,
+            durationMinutes = null,
+            onStartTimeChange = onStartTimeChange,
+            onEndTimeChange = null,
+            enabled = enabled
+        )
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            ListPicker(
                 selectedListId = form.listId,
                 lists = availableLists,
-                onListChange = onListChange
+                onListChange = onListChange,
+                enabled = enabled
             )
-            RequiredDatePickerRow(date = form.date, onDateChange = onDateChange)
-            TimePickerRow(
-                label = "Start",
-                timeMinutes = form.startTimeMinutes,
-                initialTimeMinutes = currentTimeMinutes(),
-                onTimeChange = onStartTimeChange
+            TagPicker(
+                availableTags = availableTags,
+                selectedTagIds = form.selectedTagIds,
+                onTagToggle = onTagToggle,
+                enabled = enabled
             )
         }
-        TagPickerRow(
-            availableTags = availableTags,
-            selectedTagIds = form.selectedTagIds,
-            onTagToggle = onTagToggle
-        )
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun RequiredDatePickerRow(
-    date: LocalDate,
-    onDateChange: (LocalDate) -> Unit
-) {
-    var showPicker by remember { mutableStateOf(false) }
-    SelectableInfoRow(
-        icon = Icons.Default.Event,
-        label = "Date",
-        value = date.compact(),
-        onClick = { showPicker = true }
-    )
-    if (showPicker) {
-        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = date.toUtcStartMillis())
-        DatePickerDialog(
-            onDismissRequest = { showPicker = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        onDateChange(datePickerState.selectedDateMillis?.toUtcLocalDate() ?: date)
-                        showPicker = false
-                    }
-                ) {
-                    Text("OK")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showPicker = false }) {
-                    Text("Cancel")
-                }
-            }
-        ) {
-            DatePicker(state = datePickerState)
-        }
-    }
-}
-
-private fun TaskEditorState.isViewMode(): Boolean = when (this) {
-    is TaskEditorState.TaskForm -> mode == EditorMode.View
-    is TaskEditorState.NoteForm -> mode == EditorMode.View
 }
 
 private fun TaskEditorState.isAddMode(): Boolean = when (this) {
@@ -1117,32 +606,38 @@ private fun TaskEditorState.isAddMode(): Boolean = when (this) {
     is TaskEditorState.NoteForm -> mode == EditorMode.Add
 }
 
+private fun TaskEditorState.isTrashed(): Boolean = when (this) {
+    is TaskEditorState.TaskForm -> trashedAtMillis != null
+    is TaskEditorState.NoteForm -> trashedAtMillis != null
+}
+
+private fun TaskEditorState.isFormEditable(): Boolean = when (this) {
+    is TaskEditorState.TaskForm -> mode == EditorMode.Add || (mode == EditorMode.Edit && status == TaskStatus.Open && trashedAtMillis == null)
+    is TaskEditorState.NoteForm -> mode == EditorMode.Add || (mode == EditorMode.Edit && status == TaskStatus.Open && trashedAtMillis == null)
+}
+
 private fun TaskEditorState.canDelete(): Boolean = when (this) {
     is TaskEditorState.TaskForm -> mode != EditorMode.Add
     is TaskEditorState.NoteForm -> mode != EditorMode.Add
 }
 
+private fun TaskEditorState.shouldShowAddToMyDay(): Boolean = when (this) {
+    is TaskEditorState.TaskForm -> taskId != null && mode != EditorMode.Add && isFormEditable()
+    is TaskEditorState.NoteForm -> false
+}
+
 private fun TaskEditorState.isCompletableView(): Boolean = when (this) {
-    is TaskEditorState.TaskForm -> mode == EditorMode.View && status != TaskStatus.Completed
-    is TaskEditorState.NoteForm -> mode == EditorMode.View && status != TaskStatus.Completed
+    is TaskEditorState.TaskForm -> mode == EditorMode.Edit && status == TaskStatus.Open && trashedAtMillis == null
+    is TaskEditorState.NoteForm -> mode == EditorMode.Edit && status == TaskStatus.Open && trashedAtMillis == null
 }
 
 private fun TaskEditorState.isOpenableView(): Boolean = when (this) {
-    is TaskEditorState.TaskForm -> mode == EditorMode.View && status == TaskStatus.Completed
-    is TaskEditorState.NoteForm -> mode == EditorMode.View && status == TaskStatus.Completed
+    is TaskEditorState.TaskForm -> mode == EditorMode.Edit && status == TaskStatus.Completed && trashedAtMillis == null
+    is TaskEditorState.NoteForm -> mode == EditorMode.Edit && status == TaskStatus.Completed && trashedAtMillis == null
 }
 
-private fun currentTimeMinutes(): Int {
-    val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).time
-    return now.hour * 60 + now.minute
+private fun DailyPlanItem.durationMinutes(): Int? {
+    val start = startTimeMinutes ?: return null
+    val end = endTimeMinutes ?: return null
+    return (end - start).takeIf { it >= 0 }
 }
-
-private fun Int.shortcutDurationLabel(): String =
-    when {
-        this < 60 -> "${this}m"
-        this % 60 == 0 -> "${this / 60}h"
-        else -> "${this / 60}h ${this % 60}m"
-    }
-
-private const val MinutesPerDay = 24 * 60
-private val TimeRangeShortcutDurations = listOf(30, 60, 120)

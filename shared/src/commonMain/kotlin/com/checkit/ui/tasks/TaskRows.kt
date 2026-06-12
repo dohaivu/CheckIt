@@ -1,6 +1,5 @@
 package com.checkit.ui.tasks
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,9 +18,10 @@ import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.rounded.CheckBox
 import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -35,6 +35,11 @@ import com.checkit.domain.TaskList
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.ui.TaskListDisplayType
+import com.checkit.ui.components.DateTimeRangeDetailChip
+import com.checkit.ui.components.DetailChip
+import com.checkit.ui.components.PriorityPill
+import com.checkit.ui.components.RepeatPill
+import com.checkit.ui.components.priorityColor
 
 @Composable
 internal fun TaskRow(
@@ -43,11 +48,15 @@ internal fun TaskRow(
     list: TaskList? = null,
     displayType: TaskListDisplayType = TaskListDisplayType.Standard
 ) {
-    Surface(
-        modifier = Modifier.clickable(onClick = onClick),
+    Card(
+        onClick = onClick,
         shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (task.status == TaskStatus.Completed) 0.dp else 2.dp,
+            pressedElevation = 8.dp,
+            focusedElevation = 4.dp
+        )
     ) {
         Box {
             when (displayType) {
@@ -73,10 +82,15 @@ internal fun NoteRow(
     list: TaskList? = null,
     displayType: TaskListDisplayType = TaskListDisplayType.Standard
 ) {
-    Surface(
-        modifier = Modifier.clickable(onClick = onClick),
+    Card(
+        onClick = onClick,
         shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = DefaultNoteRowBackgroundAlpha)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp,
+            pressedElevation = 8.dp,
+            focusedElevation = 4.dp
+        )
     ) {
         Box {
             when (displayType) {
@@ -113,18 +127,14 @@ private fun BriefTaskRowContent(task: TaskItem) {
         )
 
         task.doDate?.let { DetailChip(Icons.Default.Event, it.compact()) }
-        if (task.priority != TaskPriority.None) PriorityPill(priority = task.priority)
     }
 }
 
 @Composable
 private fun StandardTaskRowContent(task: TaskItem, list: TaskList?) {
     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        TaskTitleRow(task, descriptionMaxLines = 1)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes)
-            task.durationMinutes?.let { DetailChip(Icons.Default.Schedule, it.formatDuration()) }
-        }
+        TaskTitleRow(task, descriptionMaxLines = 0)
+        DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes)
         task.subtasks.takeIf { it.isNotEmpty() }?.let { SubtaskProgressText(task) }
         SupportingPills(list = list, tags = task.tags.take(2), overflowCount = (task.tags.size - 2).coerceAtLeast(0))
     }
@@ -154,9 +164,10 @@ private fun BriefNoteRowContent(note: NoteItem) {
     ) {
         NoteStatusIcon(note.status)
         Text(
-            text = note.content,
+            text = note.title.ifBlank { note.content },
             modifier = Modifier.weight(1f),
             style = MaterialTheme.typography.bodyMedium,
+            fontWeight = if (note.title.isNotBlank()) FontWeight.SemiBold else FontWeight.Normal,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -186,7 +197,7 @@ private fun TaskTitleRow(
         TaskStatusIcon(task.status, task.priority)
         Column(Modifier.weight(1f)) {
             Text(task.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            if (task.description.isNotBlank()) {
+            if (descriptionMaxLines > 0 && task.description.isNotBlank()) {
                 Text(
                     task.description,
                     style = MaterialTheme.typography.bodySmall,
@@ -201,12 +212,12 @@ private fun TaskTitleRow(
 }
 
 @Composable
-private fun TaskStatusIcon(status: TaskStatus, priority: TaskPriority) {
+internal fun TaskStatusIcon(status: TaskStatus, priority: TaskPriority) {
     Icon(
         imageVector = if (status == TaskStatus.Completed) Icons.Rounded.CheckBox else Icons.Rounded.CheckBoxOutlineBlank,
         contentDescription = null,
         tint = if (status == TaskStatus.Completed) MaterialTheme.colorScheme.onSurfaceVariant else priority.priorityColor(),
-        modifier = Modifier.size(22.dp)
+        modifier = Modifier.size(20.dp)
     )
 }
 
@@ -232,7 +243,19 @@ private fun NoteRowScaffold(
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
             NoteStatusIcon(note.status)
-            Text(note.content, style = MaterialTheme.typography.bodyMedium, maxLines = contentMaxLines, overflow = TextOverflow.Ellipsis)
+            Column(Modifier.weight(1f)) {
+                if (note.title.isNotBlank()) {
+                    Text(note.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                }
+                if (note.content.isNotBlank()) {
+                    Text(
+                        note.content,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = contentMaxLines,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
         }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             DetailChip(Icons.Default.Event, note.date.compact())
@@ -257,4 +280,6 @@ private fun NoteStatusIcon(status: TaskStatus) {
 
 private const val DefaultNoteRowBackgroundAlpha = 0.55f
 internal const val CompletedRowCoverAlpha = 0.62f
+internal const val ContentContainerAlpha = 0.45f
+internal const val ContentAlpha = 0.62f
 

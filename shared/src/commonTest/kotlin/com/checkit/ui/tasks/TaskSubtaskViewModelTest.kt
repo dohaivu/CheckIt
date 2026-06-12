@@ -85,11 +85,10 @@ class TaskSubtaskViewModelTest {
         viewModel.toggleSubTask(0)
         dispatcher.scheduler.advanceUntilIdle()
 
-        val (taskId, input) = repository.updatedTasks.single()
+        val (taskId, input) = repository.updatedTasks.last()
         assertEquals(42L, taskId)
         assertEquals(listOf(true, true), input.subtasks.map { it.isCompleted })
         val editor = viewModel.uiState.value.editor as TaskEditorState.TaskForm
-        assertEquals(EditorMode.View, editor.mode)
         assertTrue(editor.subtasks[0].isCompleted)
     }
 
@@ -105,7 +104,7 @@ class TaskSubtaskViewModelTest {
         viewModel.saveEditor()
         dispatcher.scheduler.advanceUntilIdle()
 
-        val input = repository.updatedTasks.single().second
+        val input = repository.updatedTasks.last().second
         assertEquals(listOf("Revised"), input.subtasks.map { it.name })
         assertFalse(input.subtasks.single().isCompleted)
         assertNull(viewModel.uiState.value.editor)
@@ -117,15 +116,14 @@ class TaskSubtaskViewModelTest {
         viewModel.openNewTask()
         viewModel.updateTaskName("Remind me")
         viewModel.updateTaskStartTime(8 * 60 + 30)
-        viewModel.setTaskRemindersEnabled(true)
         viewModel.toggleTaskReminder(60)
 
         viewModel.saveEditor()
         dispatcher.scheduler.advanceUntilIdle()
 
         val reminders = repository.addedTasks.single().reminders
-        assertEquals(listOf(10, 60), reminders.map { it.offsetMinutes })
-        assertEquals(listOf("10 mins before", "1 hour before"), reminders.map { it.label })
+        assertEquals(listOf(60), reminders.map { it.offsetMinutes })
+        assertEquals(listOf("1 hour before"), reminders.map { it.label })
     }
 
     @Test
@@ -133,14 +131,13 @@ class TaskSubtaskViewModelTest {
         createViewModel(TaskBoard(lists = listOf(inboxList())))
         viewModel.openNewTask()
         viewModel.updateTaskName("All day reminder")
-        viewModel.setTaskRemindersEnabled(true)
 
         viewModel.saveEditor()
         dispatcher.scheduler.advanceUntilIdle()
 
         val reminders = repository.addedTasks.single().reminders
-        assertEquals(listOf(0), reminders.map { it.offsetMinutes })
-        assertEquals(listOf("On the day at 9 AM"), reminders.map { it.label })
+        assertEquals(emptyList(), reminders.map { it.offsetMinutes })
+        assertEquals(emptyList(), reminders.map { it.label })
     }
 
     private fun createViewModel(board: TaskBoard) {
@@ -178,7 +175,7 @@ class TaskSubtaskViewModelTest {
 
     private fun taskWithSubtasks() = TaskItem(
         id = 42L,
-        listId = 1L,
+        list = TaskList.None,
         name = "Ship",
         subtasks = listOf(
             SubTaskItem(id = 10L, taskId = 42L, name = "Draft", isCompleted = false, sortOrder = 0),

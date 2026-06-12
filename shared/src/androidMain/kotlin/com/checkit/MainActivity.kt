@@ -42,8 +42,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.cancelAll()
+        // Removed notificationManager.cancelAll() to prevent clearing reminders automatically
     }
 
     fun isPackageInstalled(context: Context, packageName: String): Boolean {

@@ -27,7 +27,8 @@ import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskList
 import com.checkit.ui.parseHexColorOrNull
-import com.checkit.ui.tasks.priorityColor
+import com.checkit.ui.components.priorityColor
+import com.checkit.ui.tasks.cardColor
 import kotlin.math.roundToInt
 
 @Composable
@@ -38,7 +39,7 @@ internal fun DayLinearTimeline(
 ) {
     val blocks = remember(items, board) { items.toDayTimelineBlocks(board) }
     val workMinutes = remember(blocks) { blocks.totalOccupiedMinutes() }
-    val trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.75f)
+    val trackColor = MaterialTheme.colorScheme.surfaceContainerHigh//.copy(alpha = 0.75f)
 
     Column(
         modifier = modifier,
@@ -118,7 +119,7 @@ private data class DayTimelineTick(
 }
 
 private fun List<DailyPlanItem>.toDayTimelineBlocks(board: TaskBoard): List<DayTimelineBlock> {
-    val tasksById = board.tasks.associateBy { it.id }
+    val tasksById = board.tasksById
     val listsById = board.lists.associateBy { it.id }
     return mapNotNull { item ->
         val start = item.startTimeMinutes ?: return@mapNotNull null
@@ -129,7 +130,7 @@ private fun List<DailyPlanItem>.toDayTimelineBlocks(board: TaskBoard): List<DayT
             null
         } else {
             val task = item.taskId?.let { tasksById[it] }
-            val list = task?.let { listsById[it.listId] }
+            val list = task?.list
             DayTimelineBlock(
                 startMinutes = clippedStart,
                 endMinutes = clippedEnd,

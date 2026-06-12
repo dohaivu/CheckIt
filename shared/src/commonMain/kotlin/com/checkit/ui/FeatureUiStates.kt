@@ -16,6 +16,7 @@ import com.checkit.domain.TaskList
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.ui.components.ReportPeriod
+import com.checkit.ui.tasks.toColor
 import kotlinx.datetime.LocalDate
 
 data class TaskUiState(
@@ -52,26 +53,41 @@ data class TaskUiState(
 enum class TaskWorkspaceView {
     List,
     Agenda,
-    Timeline
+    Timeline;
+
+    companion object {
+        fun fromCode(code: String): TaskWorkspaceView =
+            entries.firstOrNull { it.name == code } ?: List
+    }
 }
 
 enum class TaskListDisplayType {
     Brief,
     Standard,
-    Detail
+    Detail;
+
+    companion object {
+        fun fromCode(code: String): TaskListDisplayType =
+            entries.firstOrNull { it.name == code } ?: Standard
+    }
 }
 
 enum class TaskSortOption {
     Custom,
     Priority,
     Title,
-    Date
+    Date;
+
+    companion object {
+        fun fromCode(code: String): TaskSortOption =
+            entries.firstOrNull { it.name == code } ?: Custom
+    }
 }
 
 data class MyDayUiState(
     val board: TaskBoard = TaskBoard(),
     val dailyPlans: List<DailyPlan> = emptyList(),
-    val selectedView: MyDayView = MyDayView.Agenda,
+    val selectedView: MyDayView = MyDayView.Timeline,
     val itemEditor: DailyPlanItemEditorState? = null,
     val showSuggestions: Boolean = false,
     val suggestionStartTimeMinutes: Int? = null,
@@ -84,12 +100,10 @@ data class MyDayUiState(
     val items: List<DailyPlanItem> = plan?.items.orEmpty()
     val plannedItems: List<DailyPlanItem> = items.filter { it.status != DailyPlanItemStatus.Done }
     val doneItems: List<DailyPlanItem> = items.filter { it.status == DailyPlanItemStatus.Done }
-    val itemTaskIds: Set<Long> = items.mapNotNull { it.taskId }.toSet()
     val suggestedTasks: List<TaskItem> = board.tasks
         .filter { task ->
             !task.isTrashed &&
-                task.status != TaskStatus.Completed &&
-                task.id !in itemTaskIds
+                task.status != TaskStatus.Completed
         }
         .sortedWith(compareBy<TaskItem> { it.doDate ?: LocalDate.fromEpochDays(Int.MAX_VALUE) }.thenBy { it.sortOrder })
 }
@@ -113,12 +127,14 @@ data class DailyPlanItemEditorState(
     val mode: EditorMode = EditorMode.Add,
     val itemId: Long? = null,
     val taskId: Long? = null,
+    val date: LocalDate = today(),
     val source: DailyPlanItemSource = DailyPlanItemSource.CheckInManualDone,
     val title: String = "",
     val note: String = "",
     val status: DailyPlanItemStatus = DailyPlanItemStatus.Done,
     val startTimeMinutes: Int? = null,
-    val endTimeMinutes: Int? = null
+    val endTimeMinutes: Int? = null,
+    val selectedTagIds: Set<Long> = emptySet()
 ) {
     val isAddMode: Boolean get() = mode == EditorMode.Add
     val isViewMode: Boolean get() = mode == EditorMode.View
@@ -142,7 +158,9 @@ sealed interface TaskEditorState {
         val reminderOffsets: Set<Int> = emptySet(),
         val status: TaskStatus = TaskStatus.Open,
         val priority: TaskPriority = TaskPriority.None,
-        val selectedTagIds: Set<Long> = emptySet()
+        val selectedTagIds: Set<Long> = emptySet(),
+        val dailyPlanItem: DailyPlanItem? = null,
+        val trashedAtMillis: Long? = null
     ) : TaskEditorState {
         val durationMinutes: Int?
             get() = calculateDurationMinutes(startTimeMinutes, endTimeMinutes)
@@ -152,11 +170,13 @@ sealed interface TaskEditorState {
         val mode: EditorMode,
         val noteId: Long? = null,
         val listId: Long,
+        val title: String = "",
         val content: String = "",
         val status: TaskStatus = TaskStatus.Open,
         val date: LocalDate,
         val startTimeMinutes: Int? = null,
-        val selectedTagIds: Set<Long> = emptySet()
+        val selectedTagIds: Set<Long> = emptySet(),
+        val trashedAtMillis: Long? = null
     ) : TaskEditorState
 }
 
@@ -254,46 +274,62 @@ data class CalendarUiState(
     val selectedMonth: kotlinx.datetime.LocalDate = today().firstDayOfMonth(),
     val selectedDate: kotlinx.datetime.LocalDate = today(),
     val board: TaskBoard = TaskBoard(),
-    val dailyPlans: List<DailyPlan> = emptyList(),
-    val itemEditor: DailyPlanItemEditorState? = null
+    val dailyPlans: List<DailyPlan> = emptyList()
 ) {
     val listsById: Map<Long, TaskList> = board.lists.associateBy { it.id }
     val dailyPlanByDate: Map<kotlinx.datetime.LocalDate, DailyPlan> = dailyPlans.associateBy { it.date }
 
+    private val listColors: Map<Long, Color> = board.lists.associateWith { list ->
+        list.color.parseHexColorOrNull()
+            ?: ListEditorDefaults.Colors.first().parseHexColorOrNull()
+            ?: DefaultMarkerColor
+    }.mapKeys { it.key.id }
+
     fun tasksForDate(date: kotlinx.datetime.LocalDate): List<TaskItem> =
-        board.tasks.filter { !it.isTrashed && it.status != TaskStatus.Completed && it.doDate == date }
+        board.tasksByDate[date].orEmpty()
 
     fun notesForDate(date: kotlinx.datetime.LocalDate): List<NoteItem> =
-        board.notes.filter { !it.isTrashed && it.status != TaskStatus.Completed && it.date == date }
+        board.notesByDate[date].orEmpty()
 
     fun markerColorsForDate(date: kotlinx.datetime.LocalDate): List<Color> {
         if (date <= today()) {
             val dailyItems = dailyPlanByDate[date]?.items.orEmpty()
             if (dailyItems.isNotEmpty()) {
-                return dailyItems.map { dailyItemColor(it) }.take(MarkerCap)
+                return buildList {
+                    for (item in dailyItems) {
+                        add(dailyItemColor(item))
+                        if (size >= MarkerCap) break
+                    }
+                }
             }
         }
         val tasks = tasksForDate(date)
         val notes = notesForDate(date)
-        val combined = tasks.map { listColorFor(it.listId) } + notes.map { listColorFor(it.listId) }
-        return if (combined.size <= MarkerCap) combined else combined.take(MarkerCap)
+        val totalSize = tasks.size + notes.size
+        return buildList {
+            var i = 0
+            while (i < totalSize && size < MarkerCap) {
+                val color = if (i < tasks.size) {
+                    listColors[tasks[i].list.id]
+                } else {
+                    listColors[notes[i - tasks.size].list.id]
+                }
+                add(color ?: DefaultMarkerColor)
+                i++
+            }
+        }
     }
 
     fun dailyPlanForDate(date: kotlinx.datetime.LocalDate): DailyPlan? = dailyPlanByDate[date]
 
-    private fun listColorFor(listId: Long): Color =
-        listsById[listId]?.color?.parseHexColorOrNull()
-            ?: ListEditorDefaults.Colors.first().parseHexColorOrNull()
-            ?: Color(0xFF64748B)
-
     private fun dailyItemColor(item: DailyPlanItem): Color =
         item.taskId
-            ?.let { taskId -> board.tasks.firstOrNull { it.id == taskId }?.listId }
-            ?.let { listColorFor(it) }
-            ?: Color(0xFF64748B)
+            ?.let { taskId -> listColors[board.tasksById[taskId]?.list?.id] }
+            ?: DefaultMarkerColor
 
     private companion object {
-        const val MarkerCap: Int = 6
+        const val MarkerCap: Int = 12
+        val DefaultMarkerColor: Color = Color(0xFF64748B)
     }
 }
 

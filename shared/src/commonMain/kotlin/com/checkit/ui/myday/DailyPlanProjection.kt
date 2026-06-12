@@ -7,100 +7,57 @@ import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskList
-import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
-import com.checkit.ui.parseHexColorOrNull
 import com.checkit.ui.tasks.toClockLabel
-import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
 
-val MyDayListId = -10_000L
-
 data class MyDayTaskViewProjection(
-    val tasks: List<TaskItem>,
+    val plannedTasks: List<PlannedTaskProjection>,
     val notes: List<NoteItem>,
-    val lists: List<TaskList>,
-    val dailyItemBySyntheticTaskId: Map<Long, DailyPlanItem>,
-    val dailyItemBySyntheticNoteId: Map<Long, DailyPlanItem>
+    val checkIns: List<DailyPlanItem>,
 ) {
-    fun dailyItemFor(task: TaskItem): DailyPlanItem? = dailyItemBySyntheticTaskId[task.id]
-    fun dailyItemFor(note: NoteItem): DailyPlanItem? = dailyItemBySyntheticNoteId[note.id]
+    val tasks: List<TaskItem> = plannedTasks.map { it.task }
 }
+
+data class PlannedTaskProjection(
+    val task: TaskItem,
+    val dailyPlanItem: DailyPlanItem
+)
 
 fun List<DailyPlanItem>.toTaskViewProjection(
     board: TaskBoard,
     date: LocalDate
 ): MyDayTaskViewProjection {
-    val fallbackList = TaskList(
-        id = MyDayListId,
-        name = "My Day",
-        color = "#64748B",
-        icon = "Today",
-        sortOrder = 0
-    )
-    val lists = board.lists + fallbackList
-    val listId = fallbackList.id
-    val realTasksById = board.tasks.associateBy { it.id }
-    val dailyItemBySyntheticTaskId = mutableMapOf<Long, DailyPlanItem>()
-    val dailyItemBySyntheticNoteId = mutableMapOf<Long, DailyPlanItem>()
-    val projectedTasks = mutableListOf<TaskItem>()
-    val projectedNotes = mutableListOf<NoteItem>()
-    // For My Day projection, we include global notes for today too
-    projectedNotes += board.notes.filter { !it.isTrashed && it.date == today() }
+    val realTasksById = board.tasksById
+    val projectedTasks = mutableListOf<PlannedTaskProjection>()
+    val projectedNotes = board.notes.filter { !it.isTrashed && it.date == date }
+    val projectedCheckIns = mutableListOf<DailyPlanItem>()
 
     forEach { item ->
-        when (item.source) {
-            DailyPlanItemSource.CheckInNote -> {
-                projectedNotes += NoteItem(
-                    id = item.id,
-                    listId = listId,
-                    content = item.note.orEmpty(),
-                    status = item.status.toTaskStatus(),
-                    date = date,
-                    startTimeMinutes = item.startTimeMinutes,
-                    createdAtMillis = item.addedAtMillis,
-                    editedAtMillis = item.completedAtMillis ?: item.addedAtMillis,
-                    sortOrder = item.sortOrder
+        val taskId = item.taskId
+        if (taskId != null) {
+            val realTask = realTasksById[taskId]
+            if (realTask != null) {
+                projectedTasks += PlannedTaskProjection(
+                    task = realTask.copy(
+                        status = item.status.toTaskStatus(),
+                        startTimeMinutes = item.startTimeMinutes,
+                        endTimeMinutes = item.endTimeMinutes,
+                        sortOrder = item.sortOrder,
+                        doDate = date
+                    ),
+                    dailyPlanItem = item
                 )
-                dailyItemBySyntheticNoteId[item.id] = item
             }
-            else -> {
-                val realTask = item.taskId?.let { realTasksById[it] }
-                val projectedTask = realTask?.copy(
-                    id = item.id,
-                    doDate = date,
-                    startTimeMinutes = item.startTimeMinutes,
-                    endTimeMinutes = item.endTimeMinutes,
-                    status = item.status.toTaskStatus(),
-                    sortOrder = item.sortOrder
-                ) ?: TaskItem(
-                    id = item.id,
-                    listId = listId,
-                    name = item.titleSnapshot,
-                    description = item.note.orEmpty(),
-                    status = item.status.toTaskStatus(),
-                    priority = TaskPriority.None,
-                    doDate = date,
-                    completedDate = date.takeIf { item.status == DailyPlanItemStatus.Done },
-                    startTimeMinutes = item.startTimeMinutes,
-                    endTimeMinutes = item.endTimeMinutes,
-                    durationMinutes = item.durationMinutes(),
-                    sortOrder = item.sortOrder,
-                    createdAtMillis = item.addedAtMillis,
-                    updatedAtMillis = item.completedAtMillis ?: item.addedAtMillis
-                )
-                projectedTasks += projectedTask
-                dailyItemBySyntheticTaskId[projectedTask.id] = item
-            }
+        } else {
+            projectedCheckIns += item
         }
     }
 
     return MyDayTaskViewProjection(
-        tasks = projectedTasks,
+        plannedTasks = projectedTasks,
         notes = projectedNotes,
-        lists = lists,
-        dailyItemBySyntheticTaskId = dailyItemBySyntheticTaskId,
-        dailyItemBySyntheticNoteId = dailyItemBySyntheticNoteId
+        checkIns = projectedCheckIns
     )
 }
 

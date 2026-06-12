@@ -1,7 +1,6 @@
 package com.checkit.ui.tasks
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,6 +27,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskList
+import com.checkit.ui.components.priorityColor
 
 @Composable
 internal fun TaskCard(
@@ -45,17 +45,11 @@ internal fun TaskCard(
     containerAlpha: Float = 0.11f,
     tonalElevation: Dp = 0.dp
 ) {
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
-        shape = RoundedCornerShape(8.dp),
-//        color = color.copy(alpha = containerAlpha),
-        tonalElevation = tonalElevation
-    ) {
+    val cardContent = @Composable {
         Box {
             Row(
                 modifier = modifier
+                    .fillMaxWidth()
                     .height(IntrinsicSize.Min)
                     .heightIn(min = minHeight)
                     .background(color.copy(alpha = containerAlpha))
@@ -83,8 +77,15 @@ internal fun TaskCard(
                     }
                     Column(
                         modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(3.dp)
+                        verticalArrangement = Arrangement.spacedBy(0.dp)
                     ) {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = titleMaxLines,
+                            overflow = TextOverflow.Ellipsis
+                        )
                         if (timeLabel != null) {
                             Text(
                                 text = timeLabel,
@@ -94,13 +95,6 @@ internal fun TaskCard(
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
-                        Text(
-                            text = title,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = titleMaxLines,
-                            overflow = TextOverflow.Ellipsis
-                        )
                         if (supportingText != null) {
                             Text(
                                 text = supportingText,
@@ -122,7 +116,21 @@ internal fun TaskCard(
             }
         }
     }
-}
 
-internal fun taskCardColor(task: TaskItem, list: TaskList?): Color =
-    list?.color?.toColor() ?: task.priority.priorityColor()
+    if (onClick != null) {
+        Surface(
+            modifier = modifier,
+            shape = RoundedCornerShape(8.dp),
+            tonalElevation = tonalElevation,
+            onClick = onClick,
+            content = cardContent
+        )
+    } else {
+        Surface(
+            modifier = modifier,
+            shape = RoundedCornerShape(8.dp),
+            tonalElevation = tonalElevation,
+            content = cardContent
+        )
+    }
+}

@@ -6,7 +6,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.MoreHoriz
@@ -41,7 +41,6 @@ import checkit.shared.generated.resources.tab_my_day
 import checkit.shared.generated.resources.tab_tasks
 import checkit.shared.generated.resources.tab_report
 import checkit.shared.generated.resources.tab_settings
-import com.checkit.domain.NoteItem
 import com.checkit.ui.calendar.CalendarScreen
 import com.checkit.ui.calendar.CalendarViewModel
 import com.checkit.ui.myday.MyDayScreen
@@ -53,6 +52,7 @@ import com.checkit.ui.reports.ReportScreen
 import com.checkit.ui.reports.ReportViewModel
 import com.checkit.ui.settings.SettingsScreen
 import com.checkit.ui.settings.SettingsViewModel
+import com.checkit.ui.myday.DailyPlanItemEditorSheet
 import com.checkit.ui.tasks.TaskEditorSheet
 import com.checkit.ui.theme.AppTheme
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -86,7 +86,7 @@ fun CheckItApp(
     reportViewModel: ReportViewModel = koinViewModel(),
     settingsViewModel: SettingsViewModel = koinViewModel()
 ) {
-    val backStack = remember { mutableStateListOf<NavKey>(Routes.Task) }
+    val backStack = remember { mutableStateListOf<NavKey>(Routes.MyDay) }
     val taskMessage by remember(taskViewModel) {
         taskViewModel.uiState.map { it.message }.distinctUntilChanged()
     }.collectAsState(null)
@@ -106,10 +106,14 @@ fun CheckItApp(
         settingsViewModel.uiState.map { it.colorSchemeMode }.distinctUntilChanged()
     }.collectAsState(AppColorSchemeMode.Sunset)
     val snackbarHostState = remember { SnackbarHostState() }
+
     val backState = rememberNavigationEventState(NavigationEventInfo.None)
-    val currentRoute = backStack.lastOrNull() ?: Routes.Task
+    val currentRoute = backStack.lastOrNull() ?: Routes.MyDay
     val selectedTab = currentRoute.asTab()
+
     val taskUiState by taskViewModel.uiState.collectAsState()
+    val myDayUiState by myDayViewModel.uiState.collectAsState()
+    val calendarUiState by calendarViewModel.uiState.collectAsState()
 
     LaunchedEffect(taskMessage, myDayMessage, settingsMessage) {
         val message = taskMessage ?: myDayMessage ?: settingsMessage ?: return@LaunchedEffect
@@ -137,14 +141,14 @@ fun CheckItApp(
     fun onBack() {
         if (backStack.size > 1) {
             backStack.removeAt(backStack.lastIndex)
-        } else if (backStack.lastOrNull() != Routes.Task) {
-            resetTo(Routes.Task)
+        } else if (backStack.lastOrNull() != Routes.MyDay) {
+            resetTo(Routes.MyDay)
         }
     }
 
     NavigationBackHandler(
         state = backState,
-        isBackEnabled = backStack.size > 1 || currentRoute != Routes.Task,
+        isBackEnabled = backStack.size > 1 || currentRoute != Routes.MyDay,
         onBackCompleted = { onBack() }
     )
 
@@ -203,11 +207,12 @@ fun CheckItApp(
                                     )
                                 }
                                 Routes.Calendar -> {
-                                    val calendarState by calendarViewModel.uiState.collectAsState()
                                     CalendarScreen(
-                                        state = calendarState,
+                                        state = calendarUiState,
                                         calendarViewModel = calendarViewModel,
                                         onDateDoubleClick = taskViewModel::openNewTaskOnDate,
+                                        onDailyPlanItemClick = myDayViewModel::openItemEditor,
+                                        onAddDailyPlanItem = { date -> myDayViewModel.openCheckIn(date = date) },
                                         onTaskClick = taskViewModel::openTask,
                                         onNoteClick = taskViewModel::openNote
                                     )
@@ -233,26 +238,41 @@ fun CheckItApp(
                         availableLists = taskUiState.board.lists,
                         availableTags = taskUiState.board.tags,
                         onDismiss = taskViewModel::dismissEditor,
-                        onEdit = taskViewModel::editCurrentItem,
                         onSave = taskViewModel::saveEditor,
                         onDelete = taskViewModel::deleteEditorItem,
+                        onRestore = taskViewModel::restoreCurrentItem,
                         onComplete = taskViewModel::completeCurrentItem,
                         onOpen = taskViewModel::openCurrentItem,
+                        onAddToMyDay = {
+                            val taskId = (editor as? TaskEditorState.TaskForm)?.taskId
+                            val task = taskUiState.board.tasks.firstOrNull { it.id == taskId }
+                            task?.let { selectedTask ->
+                                myDayViewModel.addTaskToMyDay(selectedTask)
+                                taskViewModel.dismissEditor()
+                            }
+                        },
                         onTaskNameChange = taskViewModel::updateTaskName,
                         onTaskListChange = taskViewModel::updateTaskListId,
                         onTaskDescriptionChange = taskViewModel::updateTaskDescription,
-                        onTaskDueDateChange = taskViewModel::updateTaskDueDate,
+                        onTaskDoDateChange = taskViewModel::updateTaskDoDate,
                         onTaskStartTimeChange = taskViewModel::updateTaskStartTime,
                         onTaskEndTimeChange = taskViewModel::updateTaskEndTime,
+                        onDailyPlanStartTimeChange = taskViewModel::updateDailyPlanStartTime,
+                        onDailyPlanEndTimeChange = taskViewModel::updateDailyPlanEndTime,
+                        onDailyPlanStatus = taskViewModel::updateDailyPlanStatus,
+                        onDailyPlanDelete = { dailyPlanItem ->
+                            myDayViewModel.deleteDailyPlanItem(dailyPlanItem)
+                            taskViewModel.removeDailyPlanItemFromEditor(dailyPlanItem.id)
+                        },
                         onTaskRepeatChange = taskViewModel::updateTaskRepeat,
                         onTaskPriorityChange = taskViewModel::updateTaskPriority,
-                        onTaskRemindersEnabledChange = taskViewModel::setTaskRemindersEnabled,
                         onTaskReminderToggle = taskViewModel::toggleTaskReminder,
                         onSubTaskToggle = taskViewModel::toggleSubTask,
                         onSubTaskAdd = taskViewModel::addSubTask,
                         onSubTaskNameChange = taskViewModel::updateSubTaskName,
                         onSubTaskRemove = taskViewModel::removeSubTask,
                         onTaskTagToggle = taskViewModel::toggleTaskTag,
+                        onNoteTitleChange = taskViewModel::updateNoteTitle,
                         onNoteContentChange = taskViewModel::updateNoteContent,
                         onNoteListChange = taskViewModel::updateNoteListId,
                         onNoteDateChange = taskViewModel::updateNoteDate,
@@ -260,6 +280,25 @@ fun CheckItApp(
                         onNoteTagToggle = taskViewModel::toggleNoteTag,
                         onSwitchAddModeToTask = taskViewModel::switchAddEditorToTask,
                         onSwitchAddModeToNote = taskViewModel::switchAddEditorToNote
+                    )
+                }
+                myDayUiState.itemEditor?.let { editor ->
+                    val task = editor.taskId?.let { taskId -> myDayUiState.board.tasks.firstOrNull { it.id == taskId } }
+                    DailyPlanItemEditorSheet(
+                        state = editor,
+                        availableTags = myDayUiState.board.tags,
+                        onDismiss = myDayViewModel::dismissCheckIn,
+                        onDoneTitleChange = myDayViewModel::updateDoneTitle,
+                        onDoneNoteChange = myDayViewModel::updateDoneNote,
+                        onSourceChange = myDayViewModel::updateEditorSource,
+                        onStartTimeChange = myDayViewModel::updateStartTime,
+                        onEndTimeChange = myDayViewModel::updateEndTime,
+                        onTagToggle = myDayViewModel::toggleTag,
+                        onEdit = myDayViewModel::editItemEditor,
+                        onAdd = myDayViewModel::addCheckIn,
+                        onDone = myDayViewModel::markEditorDone,
+                        onDelete = myDayViewModel::deleteEditorItem,
+                        onOpenTask = task?.let { { taskViewModel.openTask(it) } }
                     )
                 }
             }
@@ -286,7 +325,7 @@ private fun CheckItTab.route(): NavKey = when (this) {
 }
 
 private fun CheckItTab.icon() = when (this) {
-    CheckItTab.Task -> Icons.Default.Add
+    CheckItTab.Task -> Icons.AutoMirrored.Filled.ListAlt
     CheckItTab.MyDay -> Icons.Default.Today
     CheckItTab.Calendar -> Icons.Default.CalendarMonth
     CheckItTab.Report -> Icons.Default.BarChart

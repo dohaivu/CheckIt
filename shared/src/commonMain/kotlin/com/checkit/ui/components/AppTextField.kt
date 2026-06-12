@@ -17,71 +17,70 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Color.Companion
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.stringResource
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.clear_text
+import com.checkit.ui.tasks.ContentContainerAlpha
 
 @Composable
 fun AppOutlinedTextField(
     value: String,
     onValueChange: (String) -> Unit,
-    label: String,
-    modifier: Modifier = Modifier.fillMaxWidth().height(36.dp),
-    contentPadding: PaddingValues = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+    textStyle: TextStyle = TextStyle.Default,
+    placeholder: String? = null,
+    maxLines: Int = Int.MAX_VALUE,
+    modifier: Modifier = Modifier.fillMaxWidth(),
+    enabled: Boolean = true,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 0.dp, vertical = 0.dp)
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val colors = OutlinedTextFieldDefaults.colors(
-        focusedBorderColor = MaterialTheme.colorScheme.primary,
-        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-        focusedLabelColor = MaterialTheme.colorScheme.primary,
-        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        focusedContainerColor = Color.Transparent,
+        unfocusedContainerColor = Color.Transparent,
+        disabledContainerColor = Color.Transparent,
+        focusedBorderColor = Color.Transparent,
+        unfocusedBorderColor = Color.Transparent,
+        disabledBorderColor = Color.Transparent,
+        errorBorderColor = MaterialTheme.colorScheme.surfaceVariant,
         cursorColor = MaterialTheme.colorScheme.primary
     )
     BasicTextField(
         value = value,
         onValueChange = onValueChange,
         modifier = modifier,
+        enabled = enabled,
         interactionSource = interactionSource,
-        singleLine = true,
-        textStyle = MaterialTheme.typography.bodySmall.copy(
-            color = MaterialTheme.colorScheme.onSurface
-        ),
+        textStyle = textStyle,
+        maxLines = maxLines,
+        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
         decorationBox = { innerTextField ->
             OutlinedTextFieldDefaults.DecorationBox(
                 value = value,
                 innerTextField = innerTextField,
                 enabled = true,
-                singleLine = true,
-                visualTransformation = VisualTransformation.None,
-                interactionSource = interactionSource,
-                label = { Text(label) },
-                trailingIcon = {
-                    if (value.isNotEmpty()) {
-                        IconButton(
-                            onClick = { onValueChange("") },
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Clear,
-                                contentDescription = stringResource(Res.string.clear_text),
-                                modifier = Modifier.size(16.dp)
+                singleLine = false,
+                placeholder = if (placeholder != null) {
+                        {
+                            Text(
+                                text = placeholder,
+                                fontStyle = textStyle.fontStyle,
+                                fontWeight = textStyle.fontWeight,
+                                fontSize = textStyle.fontSize,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = ContentContainerAlpha),
                             )
                         }
-                    }
-                },
+                    } else null,
+                visualTransformation = VisualTransformation.None,
+                interactionSource = interactionSource,
                 contentPadding = contentPadding,
                 colors = colors,
-                container = {
-                    OutlinedTextFieldDefaults.Container(
-                        enabled = true,
-                        isError = false,
-                        interactionSource = interactionSource,
-                        colors = colors,
-                        shape = RoundedCornerShape(14.dp),
-                    )
-                }
             )
         }
     )

@@ -13,6 +13,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.checkit.MainActivity
 import com.checkit.domain.NotificationDoNotDisturbPolicy
+import com.checkit.shared.R
 import java.time.LocalTime
 
 class CheckItNotificationCenter(
@@ -25,7 +26,8 @@ class CheckItNotificationCenter(
             notificationId = notificationId(taskId),
             requestCode = taskId.hashCode(),
             title = taskName.ifBlank { "Task reminder" },
-            body = label
+            body = label,
+            bypassDnd = true // User specifically set this reminder, show it regardless of DND
         )
     }
 
@@ -34,13 +36,14 @@ class CheckItNotificationCenter(
             notificationId = notificationId,
             requestCode = notificationId,
             title = title,
-            body = body
+            body = body,
+            bypassDnd = false // App reminders respect DND
         )
     }
 
-    private fun showReminder(notificationId: Int, requestCode: Int, title: String, body: String) {
+    private fun showReminder(notificationId: Int, requestCode: Int, title: String, body: String, bypassDnd: Boolean) {
         if (!canPostNotifications()) return
-        if (!canNotifyNow()) return
+        if (!bypassDnd && !canNotifyNow()) return
 
         ensureChannels()
         val intent = Intent(context, MainActivity::class.java).apply {
@@ -52,14 +55,16 @@ class CheckItNotificationCenter(
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+        val iconRes = context.applicationInfo.icon
         val notification = NotificationCompat.Builder(context, ReminderChannelId)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(if (iconRes != 0) iconRes else R.mipmap.ic_launcher_round)
             .setContentTitle(title)
             .setContentText(body)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .build()
 
         notificationManager.notify(notificationId, notification)

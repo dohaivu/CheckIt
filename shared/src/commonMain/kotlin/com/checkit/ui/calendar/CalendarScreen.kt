@@ -35,6 +35,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.calendar_title
+import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
 import com.checkit.ui.CalendarUiState
@@ -46,8 +47,8 @@ import com.checkit.ui.isSameMonth
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.shortName
 import com.checkit.ui.myday.DayLinearTimeline
-import com.checkit.ui.myday.DailyPlanAgenda
-import com.checkit.ui.myday.DailyPlanItemEditorSheet
+import com.checkit.ui.myday.MyDayAgenda
+import com.checkit.ui.tasks.ContentContainerAlpha
 import com.checkit.ui.tasks.TaskAgendaView
 import com.checkit.ui.today
 import kotlinx.datetime.DateTimeUnit
@@ -63,7 +64,9 @@ internal fun CalendarScreen(
     state: CalendarUiState,
     calendarViewModel: CalendarViewModel,
     onDateDoubleClick: (LocalDate) -> Unit,
-    onTaskClick: (TaskItem) -> Unit,
+    onDailyPlanItemClick: (DailyPlanItem, LocalDate) -> Unit,
+    onAddDailyPlanItem: (LocalDate) -> Unit,
+    onTaskClick: (TaskItem, DailyPlanItem?) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -71,7 +74,6 @@ internal fun CalendarScreen(
     val notesForDate = state.notesForDate(state.selectedDate)
     val showDailyPlan = state.selectedDate <= today()
     val dailyPlanItems = state.dailyPlanForDate(state.selectedDate)?.items.orEmpty()
-    val taskById = remember(state.board.tasks) { state.board.tasks.associateBy { it.id } }
     val hasItemsForDate = if (showDailyPlan) {
         dailyPlanItems.isNotEmpty()
     } else {
@@ -80,7 +82,7 @@ internal fun CalendarScreen(
     val handleDateDoubleClick: (LocalDate) -> Unit = { date ->
         calendarViewModel.selectDate(date)
         if (date <= today()) {
-            calendarViewModel.openItemEditor(null)
+            onAddDailyPlanItem(date)
         } else {
             onDateDoubleClick(date)
         }
@@ -126,7 +128,7 @@ internal fun CalendarScreen(
             SelectedDateHeader(
                 date = state.selectedDate,
                 taskCount = if (showDailyPlan) dailyPlanItems.size else tasksForDate.size,
-                noteCount = 0
+                noteCount = notesForDate.size
             )
             if (showDailyPlan) {
                 DayLinearTimeline(
@@ -140,11 +142,12 @@ internal fun CalendarScreen(
             }
             if (hasItemsForDate) {
                 if (showDailyPlan) {
-                    DailyPlanAgenda(
+                    MyDayAgenda(
                         items = dailyPlanItems,
                         board = state.board,
                         date = state.selectedDate,
-                        onItemClick = calendarViewModel::openItemEditor,
+                        onItemClick = { onDailyPlanItemClick(it, state.selectedDate) },
+                        onTaskClick = onTaskClick,
                         onNoteClick = onNoteClick,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -156,7 +159,9 @@ internal fun CalendarScreen(
                         notes = notesForDate,
                         lists = state.board.lists,
                         showListName = true,
-                        onTaskClick = onTaskClick,
+                        onTaskClick = {
+                            onTaskClick(it, null)
+                        },
                         onNoteClick = onNoteClick,
                         dayLimit = 1,
                         focusedDate = state.selectedDate,
@@ -180,24 +185,6 @@ internal fun CalendarScreen(
                 }
             }
         }
-    }
-
-    state.itemEditor?.let { editor ->
-        val task = editor.taskId?.let { taskId -> taskById[taskId] }
-        DailyPlanItemEditorSheet(
-            state = editor,
-            onDismiss = calendarViewModel::dismissItemEditor,
-            onDoneTitleChange = calendarViewModel::updateEditorTitle,
-            onDoneNoteChange = calendarViewModel::updateEditorNote,
-            onSourceChange = calendarViewModel::updateEditorSource,
-            onStartTimeChange = calendarViewModel::updateEditorStartTime,
-            onEndTimeChange = calendarViewModel::updateEditorEndTime,
-            onEdit = calendarViewModel::editItemEditor,
-            onSave = calendarViewModel::saveEditorItem,
-            onDone = calendarViewModel::markEditorDone,
-            onDelete = calendarViewModel::deleteEditorItem,
-            onOpenTask = task?.let { { onTaskClick(it) } }
-        )
     }
 }
 
@@ -263,7 +250,7 @@ private fun MonthCalendar(
     val colors = remember(colorScheme) {
         CalendarCellColors(
             outline = colorScheme.outline.copy(alpha = 0.22f),
-            selectedBackground = colorScheme.primaryContainer.copy(alpha = 0.45f),
+            selectedBackground = colorScheme.primaryContainer.copy(alpha = ContentContainerAlpha),
             defaultBackground = colorScheme.surface,
             heatmapHighBackground = colorScheme.primaryContainer,
             headerBackground = colorScheme.surfaceVariant,

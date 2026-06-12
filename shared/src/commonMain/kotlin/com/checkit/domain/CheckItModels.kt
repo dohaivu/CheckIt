@@ -10,7 +10,28 @@ data class TaskBoard(
     val tasks: List<TaskItem> = emptyList(),
     val notes: List<NoteItem> = emptyList(),
     val tags: List<TaskTag> = emptyList()
-)
+) {
+    val tasksById: Map<Long, TaskItem> by lazy { tasks.associateBy { it.id } }
+    val notesById: Map<Long, NoteItem> by lazy { notes.associateBy { it.id } }
+    val tasksByDate: Map<kotlinx.datetime.LocalDate, List<TaskItem>> by lazy {
+        val map = mutableMapOf<kotlinx.datetime.LocalDate, MutableList<TaskItem>>()
+        for (task in tasks) {
+            if (!task.isTrashed && task.status != TaskStatus.Completed) {
+                task.doDate?.let { date -> map.getOrPut(date) { mutableListOf() }.add(task) }
+            }
+        }
+        map
+    }
+    val notesByDate: Map<kotlinx.datetime.LocalDate, List<NoteItem>> by lazy {
+        val map = mutableMapOf<kotlinx.datetime.LocalDate, MutableList<NoteItem>>()
+        for (note in notes) {
+            if (!note.isTrashed && note.status != TaskStatus.Completed) {
+                map.getOrPut(note.date) { mutableListOf() }.add(note)
+            }
+        }
+        map
+    }
+}
 
 data class TaskList(
     val id: Long,
@@ -19,11 +40,16 @@ data class TaskList(
     val icon: String,
     val sortOrder: Int,
     val isArchived: Boolean = false
-)
+) {
+    companion object {
+        val None = TaskList(id = -1L, name = "", color = "", icon = "", sortOrder = -1)
+        val MyDay = TaskList(id = -2L, name = "MyDay", color = "0xFF64748B", icon = "Today", sortOrder = -2)
+    }
+}
 
 data class TaskItem(
     val id: Long,
-    val listId: Long,
+    val list: TaskList,
     val name: String,
     val description: String = "",
     val subtasks: List<SubTaskItem> = emptyList(),
@@ -61,6 +87,7 @@ data class DailyPlanItem(
     val note: String? = null,
     val source: DailyPlanItemSource,
     val status: DailyPlanItemStatus,
+    val tags: List<TaskTag> = emptyList(),
     val sortOrder: Int,
     val startTimeMinutes: Int? = null,
     val endTimeMinutes: Int? = null,
@@ -89,7 +116,8 @@ data class SubTaskItem(
 
 data class NoteItem(
     val id: Long,
-    val listId: Long,
+    val list: TaskList,
+    val title: String = "",
     val content: String,
     val tags: List<TaskTag> = emptyList(),
     val status: TaskStatus = TaskStatus.Open,
@@ -107,7 +135,11 @@ data class TaskTag(
     val id: Long,
     val name: String,
     val color: String
-)
+) {
+    companion object {
+        val None = TaskTag(id = -1, name = "None", color = "#FFFFFF")
+    }
+}
 
 data class TaskReminder(
     val id: Long,

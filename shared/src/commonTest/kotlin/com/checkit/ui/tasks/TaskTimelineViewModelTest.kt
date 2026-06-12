@@ -111,7 +111,7 @@ class TaskTimelineViewModelTest {
 
     private fun timedTask() = TaskItem(
         id = 7L,
-        listId = 1L,
+        list = TaskList.None,
         name = "Focus",
         startTimeMinutes = 9 * 60,
         endTimeMinutes = 10 * 60,

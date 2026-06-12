@@ -23,6 +23,8 @@ class DailyAppReminderWorker(
         val title = inputData.getString(InputTitle).orEmpty()
         val body = inputData.getString(InputBody).orEmpty()
 
+        println("DailyAppReminderWorker: Running for type=$type at time=$timeMinutes")
+
         CheckItNotificationCenter(applicationContext).showAppReminder(
             notificationId = notificationId(type),
             title = title,

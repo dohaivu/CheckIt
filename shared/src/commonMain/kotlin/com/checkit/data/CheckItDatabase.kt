@@ -108,6 +108,7 @@ data class NoteEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0L,
     val listId: Long,
+    val title: String = "",
     val content: String,
     val status: String = "Open",
     val dateEpochDays: Int,
@@ -213,6 +214,30 @@ data class NoteTagEntity(
 )
 
 @Entity(
+    tableName = "daily_plan_item_tags",
+    primaryKeys = ["itemId", "tagId"],
+    foreignKeys = [
+        ForeignKey(
+            entity = DailyPlanItemEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["itemId"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = TagEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["tagId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("itemId"), Index("tagId")]
+)
+data class DailyPlanItemTagEntity(
+    val itemId: Long,
+    val tagId: Long
+)
+
+@Entity(
     tableName = "task_reminders",
     foreignKeys = [
         ForeignKey(
@@ -269,10 +294,11 @@ data class TaskFilterEntity(
         TagEntity::class,
         TaskTagEntity::class,
         NoteTagEntity::class,
+        DailyPlanItemTagEntity::class,
         TaskReminderEntity::class,
         TaskFilterEntity::class
     ],
-    version = 5,
+    version = 1,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)
@@ -291,14 +317,8 @@ fun buildCheckItDatabase(
     return builder
         .fallbackToDestructiveMigration(false)
         .fallbackToDestructiveMigrationOnDowngrade(false)
-        .addMigrations(Migration4To5)
+        .addMigrations()
         .setQueryCoroutineContext(Dispatchers.IO)
         .setDriver(BundledSQLiteDriver())
         .build()
-}
-
-private val Migration4To5 = object : Migration(4, 5) {
-    override fun migrate(connection: SQLiteConnection) {
-        connection.execSQL("ALTER TABLE notes ADD COLUMN startTimeMinutes INTEGER")
-    }
 }

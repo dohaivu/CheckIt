@@ -28,6 +28,9 @@ import androidx.compose.ui.unit.dp
 import com.checkit.ui.EditorMode
 import com.checkit.ui.ListEditorDefaults
 import com.checkit.ui.ListEditorState
+import com.checkit.ui.components.ColorPicker
+import com.checkit.ui.components.IconPicker
+import com.checkit.ui.components.SectionLabel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

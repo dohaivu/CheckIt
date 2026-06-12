@@ -89,6 +89,12 @@ class DeleteTaskUseCase(
     suspend operator fun invoke(taskId: Long) = repository.trashTask(taskId)
 }
 
+class RestoreTaskUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(taskId: Long) = repository.restoreTask(taskId)
+}
+
 class CompleteTaskUseCase(
     private val repository: CheckItRepository
 ) {
@@ -117,9 +123,10 @@ class AddManualDoneToDailyPlanUseCase(
         note: String?,
         startTimeMinutes: Int?,
         endTimeMinutes: Int?,
-        source: DailyPlanItemSource = DailyPlanItemSource.CheckInManualDone
+        source: DailyPlanItemSource = DailyPlanItemSource.CheckInManualDone,
+        tagIds: List<Long> = emptyList()
     ): Long =
-        repository.addManualDoneToDailyPlan(date, title, note, startTimeMinutes, endTimeMinutes, source)
+        repository.addManualDoneToDailyPlan(date, title, note, startTimeMinutes, endTimeMinutes, source, tagIds)
 }
 
 class UpdateDailyPlanItemTimeUseCase(
@@ -172,6 +179,12 @@ class DeleteNoteUseCase(
     suspend operator fun invoke(noteId: Long) = repository.trashNote(noteId)
 }
 
+class RestoreNoteUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(noteId: Long) = repository.restoreNote(noteId)
+}
+
 class SelectTaskBoardItemsUseCase {
     operator fun invoke(
         board: TaskBoard,
@@ -179,11 +192,11 @@ class SelectTaskBoardItemsUseCase {
         today: LocalDate
     ): TaskBoardItems {
         val listFilteredTasks = when (selection) {
-            is TaskBoardSelection.ListSelection -> board.tasks.filter { it.listId == selection.listId && !it.isTrashed }
+            is TaskBoardSelection.ListSelection -> board.tasks.filter { it.list.id == selection.listId && !it.isTrashed }
             is TaskBoardSelection.FilterSelection -> board.tasks.filter { it.matches(selection.filter, today) }
         }
         val listFilteredNotes = when (selection) {
-            is TaskBoardSelection.ListSelection -> board.notes.filter { it.listId == selection.listId && !it.isTrashed }
+            is TaskBoardSelection.ListSelection -> board.notes.filter { it.list.id == selection.listId && !it.isTrashed }
             is TaskBoardSelection.FilterSelection -> board.notes.filter { it.matches(selection.filter, today) }
         }
 
