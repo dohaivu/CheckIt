@@ -40,6 +40,7 @@ interface CheckItRepository {
     suspend fun addTask(input: TaskWriteInput): Long
     suspend fun updateTask(taskId: Long, input: TaskWriteInput)
     suspend fun trashTask(taskId: Long)
+    suspend fun restoreTask(taskId: Long)
     suspend fun completeTask(taskId: Long)
     suspend fun openTask(taskId: Long)
     suspend fun addTaskToDailyPlan(date: LocalDate, task: TaskItem): Long
@@ -60,6 +61,7 @@ interface CheckItRepository {
     suspend fun completeNote(noteId: Long)
     suspend fun openNote(noteId: Long)
     suspend fun trashNote(noteId: Long)
+    suspend fun restoreNote(noteId: Long)
 }
 
 data class TaskListWriteInput(
@@ -348,6 +350,10 @@ class RoomCheckItRepository(
         reminderNotificationScheduler.cancelTaskReminders(taskId)
     }
 
+    override suspend fun restoreTask(taskId: Long) {
+        dao.restoreTask(taskId, Clock.System.now().toEpochMilliseconds())
+    }
+
     override suspend fun completeTask(taskId: Long) {
         val instant = Clock.System.now()
         val today = instant.toLocalDateTime(TimeZone.currentSystemDefault()).date
@@ -510,6 +516,10 @@ class RoomCheckItRepository(
 
     override suspend fun trashNote(noteId: Long) {
         dao.trashNote(noteId, Clock.System.now().toEpochMilliseconds())
+    }
+
+    override suspend fun restoreNote(noteId: Long) {
+        dao.restoreNote(noteId, Clock.System.now().toEpochMilliseconds())
     }
 
     override suspend fun completeNote(noteId: Long) {

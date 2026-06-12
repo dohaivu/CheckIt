@@ -55,8 +55,6 @@ import com.checkit.ui.settings.SettingsViewModel
 import com.checkit.ui.myday.DailyPlanItemEditorSheet
 import com.checkit.ui.tasks.TaskEditorSheet
 import com.checkit.ui.theme.AppTheme
-import com.checkit.domain.TaskStatus
-import com.checkit.domain.TaskItem
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
@@ -235,21 +233,21 @@ fun CheckItApp(
                     }
                 )
                 taskUiState.editor?.let { editor ->
-                    val addToMyDayTask = editor.taskForMyDayAction(taskUiState.board.tasks)
                     TaskEditorSheet(
                         editor = editor,
                         availableLists = taskUiState.board.lists,
                         availableTags = taskUiState.board.tags,
                         onDismiss = taskViewModel::dismissEditor,
-                        onEdit = taskViewModel::editCurrentItem,
                         onSave = taskViewModel::saveEditor,
                         onDelete = taskViewModel::deleteEditorItem,
+                        onRestore = taskViewModel::restoreCurrentItem,
                         onComplete = taskViewModel::completeCurrentItem,
                         onOpen = taskViewModel::openCurrentItem,
-                        canAddToMyDay = addToMyDayTask != null,
                         onAddToMyDay = {
-                            addToMyDayTask?.let { task ->
-                                myDayViewModel.addTaskToMyDay(task)
+                            val taskId = (editor as? TaskEditorState.TaskForm)?.taskId
+                            val task = taskUiState.board.tasks.firstOrNull { it.id == taskId }
+                            task?.let { selectedTask ->
+                                myDayViewModel.addTaskToMyDay(selectedTask)
                                 taskViewModel.dismissEditor()
                             }
                         },
@@ -307,13 +305,6 @@ fun CheckItApp(
         }
     }
     }
-}
-
-private fun TaskEditorState.taskForMyDayAction(tasks: List<TaskItem>): TaskItem? {
-    val form = this as? TaskEditorState.TaskForm ?: return null
-    val taskId = form.taskId ?: return null
-    if (form.mode == EditorMode.Add || form.status == TaskStatus.Completed) return null
-    return tasks.firstOrNull { it.id == taskId }
 }
 
 private fun NavKey.asTab(): CheckItTab? = when (this) {

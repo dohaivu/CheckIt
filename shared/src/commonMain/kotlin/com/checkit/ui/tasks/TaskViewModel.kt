@@ -33,6 +33,8 @@ import com.checkit.domain.usecase.IsTagNameTakenUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.OpenNoteUseCase
 import com.checkit.domain.usecase.OpenTaskUseCase
+import com.checkit.domain.usecase.RestoreNoteUseCase
+import com.checkit.domain.usecase.RestoreTaskUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.TaskBoardSelection
 import com.checkit.domain.usecase.UpdateNoteUseCase
@@ -69,6 +71,7 @@ class TaskViewModel(
     private val addTask: AddTaskUseCase,
     private val updateTask: UpdateTaskUseCase,
     private val deleteTask: DeleteTaskUseCase,
+    private val restoreTask: RestoreTaskUseCase,
     private val completeTask: CompleteTaskUseCase,
     private val completeNote: CompleteNoteUseCase,
     private val openTask: OpenTaskUseCase,
@@ -76,6 +79,7 @@ class TaskViewModel(
     private val addNote: AddNoteUseCase,
     private val updateNote: UpdateNoteUseCase,
     private val deleteNote: DeleteNoteUseCase,
+    private val restoreNote: RestoreNoteUseCase,
     private val updateDailyPlanItemTime: UpdateDailyPlanItemTimeUseCase,
     private val updateDailyPlanItem: UpdateDailyPlanItemUseCase,
     private val addTaskList: AddTaskListUseCase,
@@ -261,7 +265,8 @@ class TaskViewModel(
                     status = task.status,
                     priority = task.priority,
                     selectedTagIds = task.tags.map { it.id }.toSet(),
-                    dailyPlanItem = dailyPlan
+                    dailyPlanItem = dailyPlan,
+                    trashedAtMillis = task.trashedAtMillis
                 )
             )
         }
@@ -279,7 +284,8 @@ class TaskViewModel(
                     status = note.status,
                     date = note.date,
                     startTimeMinutes = note.startTimeMinutes,
-                    selectedTagIds = note.tags.map { it.id }.toSet()
+                    selectedTagIds = note.tags.map { it.id }.toSet(),
+                    trashedAtMillis = note.trashedAtMillis
                 )
             )
         }
@@ -518,6 +524,23 @@ class TaskViewModel(
                 is TaskEditorState.NoteForm -> openNote(editor.noteId ?: return@launch)
             }
             _uiState.update { it.copy(editor = null, message = "Opened") }
+        }
+    }
+
+    fun restoreCurrentItem() {
+        val editor = _uiState.value.editor ?: return
+        viewModelScope.launch {
+            when (editor) {
+                is TaskEditorState.TaskForm -> restoreTask(editor.taskId ?: return@launch)
+                is TaskEditorState.NoteForm -> restoreNote(editor.noteId ?: return@launch)
+            }
+            _uiState.update { state ->
+                when (val current = state.editor) {
+                    is TaskEditorState.TaskForm -> state.copy(editor = current.copy(trashedAtMillis = null))
+                    is TaskEditorState.NoteForm -> state.copy(editor = current.copy(trashedAtMillis = null))
+                    null -> state
+                }.copy(editor = null, message = "Restored")
+            }
         }
     }
 

@@ -245,7 +245,8 @@ private fun DailyPlanSourceSwitch(
                         modifier = Modifier.size(18.dp)
                     )
                 },
-                label = { Text(label) }
+                label = { Text(label) },
+                colors = SegmentedButtonDefaults.colors(activeContainerColor = MaterialTheme.colorScheme.primaryContainer, activeContentColor = MaterialTheme.colorScheme.primary)
             )
         }
     }

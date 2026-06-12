@@ -89,6 +89,12 @@ class DeleteTaskUseCase(
     suspend operator fun invoke(taskId: Long) = repository.trashTask(taskId)
 }
 
+class RestoreTaskUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(taskId: Long) = repository.restoreTask(taskId)
+}
+
 class CompleteTaskUseCase(
     private val repository: CheckItRepository
 ) {
@@ -171,6 +177,12 @@ class DeleteNoteUseCase(
     private val repository: CheckItRepository
 ) {
     suspend operator fun invoke(noteId: Long) = repository.trashNote(noteId)
+}
+
+class RestoreNoteUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(noteId: Long) = repository.restoreNote(noteId)
 }
 
 class SelectTaskBoardItemsUseCase {

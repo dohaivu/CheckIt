@@ -159,7 +159,8 @@ sealed interface TaskEditorState {
         val status: TaskStatus = TaskStatus.Open,
         val priority: TaskPriority = TaskPriority.None,
         val selectedTagIds: Set<Long> = emptySet(),
-        val dailyPlanItem: DailyPlanItem? = null
+        val dailyPlanItem: DailyPlanItem? = null,
+        val trashedAtMillis: Long? = null
     ) : TaskEditorState {
         val durationMinutes: Int?
             get() = calculateDurationMinutes(startTimeMinutes, endTimeMinutes)
@@ -174,7 +175,8 @@ sealed interface TaskEditorState {
         val status: TaskStatus = TaskStatus.Open,
         val date: LocalDate,
         val startTimeMinutes: Int? = null,
-        val selectedTagIds: Set<Long> = emptySet()
+        val selectedTagIds: Set<Long> = emptySet(),
+        val trashedAtMillis: Long? = null
     ) : TaskEditorState
 }
 

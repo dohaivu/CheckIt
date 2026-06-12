@@ -6,7 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -23,11 +22,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Notes
-import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.RestoreFromTrash
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -65,11 +62,8 @@ import com.checkit.ui.RepeatPreset
 import com.checkit.ui.TaskEditorState
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DatePickerRow
-import com.checkit.ui.components.DateTimeRangeDetailChip
-import com.checkit.ui.components.DetailChip
 import com.checkit.ui.components.ListPicker
 import com.checkit.ui.components.PriorityPicker
-import com.checkit.ui.components.PriorityPill
 import com.checkit.ui.components.ReminderPicker
 import com.checkit.ui.components.RepeatPicker
 import com.checkit.ui.components.TagPicker
@@ -83,12 +77,11 @@ internal fun TaskEditorSheet(
     availableLists: List<TaskList>,
     availableTags: List<TaskTag>,
     onDismiss: () -> Unit,
-    onEdit: () -> Unit,
     onSave: () -> Unit,
     onDelete: () -> Unit,
+    onRestore: () -> Unit,
     onComplete: () -> Unit,
     onOpen: () -> Unit,
-    canAddToMyDay: Boolean,
     onAddToMyDay: () -> Unit,
     onTaskNameChange: (String) -> Unit,
     onTaskListChange: (Long) -> Unit,
@@ -131,13 +124,16 @@ internal fun TaskEditorSheet(
                 .windowInsetsPadding(WindowInsets.ime)
         ) {
             SheetHeader(
-                isViewMode = editor.isViewMode(),
                 isAddMode = editor.isAddMode(),
                 isTaskSelected = editor is TaskEditorState.TaskForm,
-                onEdit = onEdit,
                 onSwitchAddModeToTask = onSwitchAddModeToTask,
                 onSwitchAddModeToNote = onSwitchAddModeToNote,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+            )
+            TrashedStatusSection(
+                isTrashed = editor.isTrashed(),
+                onRestore = onRestore,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
             )
             LazyColumn(
                 modifier = Modifier
@@ -149,80 +145,52 @@ internal fun TaskEditorSheet(
             ) {
                 when (editor) {
                     is TaskEditorState.TaskForm -> item {
-                        if (editor.mode == EditorMode.View) {
-                            TaskViewContent(
-                                form = editor,
-                                availableLists = availableLists,
-                                availableTags = availableTags,
-                                onNameChange = onTaskNameChange,
-                                onListChange = onTaskListChange,
-                                onDescriptionChange = onTaskDescriptionChange,
-                                onDoDateChange = onTaskDoDateChange,
-                                onStartTimeChange = onTaskStartTimeChange,
-                                onEndTimeChange = onTaskEndTimeChange,
-                                onDailyPlanStartTimeChange = onDailyPlanStartTimeChange,
-                                onDailyPlanEndTimeChange = onDailyPlanEndTimeChange,
-                                onDailyPlanStatus = onDailyPlanStatus,
-                                onDailyPlanDelete = onDailyPlanDelete,
-                                onRepeatChange = onTaskRepeatChange,
-                                onPriorityChange = onTaskPriorityChange,
-                                onReminderToggle = onTaskReminderToggle,
-                                onSubTaskToggle = onSubTaskToggle,
-                                onSubTaskAdd = onSubTaskAdd,
-                                onSubTaskNameChange = onSubTaskNameChange,
-                                onSubTaskRemove = onSubTaskRemove,
-                                onTagToggle = onTaskTagToggle
-                            )
-                        } else {
-                            TaskFormContent(
-                                form = editor,
-                                availableLists = availableLists,
-                                availableTags = availableTags,
-                                onNameChange = onTaskNameChange,
-                                onListChange = onTaskListChange,
-                                onDescriptionChange = onTaskDescriptionChange,
-                                onDoDateChange = onTaskDoDateChange,
-                                onStartTimeChange = onTaskStartTimeChange,
-                                onEndTimeChange = onTaskEndTimeChange,
-                                onDailyPlanStartTimeChange = onDailyPlanStartTimeChange,
-                                onDailyPlanEndTimeChange = onDailyPlanEndTimeChange,
-                                onDailyPlanStatus = onDailyPlanStatus,
-                                onDailyPlanDelete = onDailyPlanDelete,
-                                onRepeatChange = onTaskRepeatChange,
-                                onPriorityChange = onTaskPriorityChange,
-                                onReminderToggle = onTaskReminderToggle,
-                                onSubTaskToggle = onSubTaskToggle,
-                                onSubTaskAdd = onSubTaskAdd,
-                                onSubTaskNameChange = onSubTaskNameChange,
-                                onSubTaskRemove = onSubTaskRemove,
-                                onTagToggle = onTaskTagToggle,
-                                enabled = true
-                            )
-                        }
+                        TaskFormContent(
+                            form = editor,
+                            availableLists = availableLists,
+                            availableTags = availableTags,
+                            onNameChange = onTaskNameChange,
+                            onListChange = onTaskListChange,
+                            onDescriptionChange = onTaskDescriptionChange,
+                            onDoDateChange = onTaskDoDateChange,
+                            onStartTimeChange = onTaskStartTimeChange,
+                            onEndTimeChange = onTaskEndTimeChange,
+                            onDailyPlanStartTimeChange = onDailyPlanStartTimeChange,
+                            onDailyPlanEndTimeChange = onDailyPlanEndTimeChange,
+                            onDailyPlanStatus = onDailyPlanStatus,
+                            onDailyPlanDelete = onDailyPlanDelete,
+                            onRepeatChange = onTaskRepeatChange,
+                            onPriorityChange = onTaskPriorityChange,
+                            onReminderToggle = onTaskReminderToggle,
+                            onSubTaskToggle = onSubTaskToggle,
+                            onSubTaskAdd = onSubTaskAdd,
+                            onSubTaskNameChange = onSubTaskNameChange,
+                            onSubTaskRemove = onSubTaskRemove,
+                            onTagToggle = onTaskTagToggle,
+                            enabled = editor.isFormEditable()
+                        )
                     }
                     is TaskEditorState.NoteForm -> item {
-                        if (editor.mode == EditorMode.View) {
-                            NoteViewContent(editor, availableLists, availableTags)
-                        } else {
-                            NoteFormContent(
-                                form = editor,
-                                availableLists = availableLists,
-                                availableTags = availableTags,
-                                onTitleChange = onNoteTitleChange,
-                                onContentChange = onNoteContentChange,
-                                onListChange = onNoteListChange,
-                                onDateChange = onNoteDateChange,
-                                onStartTimeChange = onNoteStartTimeChange,
-                                onTagToggle = onNoteTagToggle
-                            )
-                        }
+                        NoteFormContent(
+                            form = editor,
+                            availableLists = availableLists,
+                            availableTags = availableTags,
+                            onTitleChange = onNoteTitleChange,
+                            onContentChange = onNoteContentChange,
+                            onListChange = onNoteListChange,
+                            onDateChange = onNoteDateChange,
+                            onStartTimeChange = onNoteStartTimeChange,
+                            onTagToggle = onNoteTagToggle,
+                            enabled = editor.isFormEditable()
+                        )
                     }
                 }
             }
             SheetFooter(
                 canDelete = editor.canDelete(),
+                isTrashed = editor.isTrashed(),
                 isAddMode = editor.isAddMode(),
-                canAddToMyDay = canAddToMyDay,
+                showAddToMyDay = editor.shouldShowAddToMyDay(),
                 isCompletable = editor.isCompletableView(),
                 isOpenable = editor.isOpenableView(),
                 onSave = onSave,
@@ -249,24 +217,24 @@ private fun AddModeSwitch(
             onClick = onTaskClick,
             shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
             icon = { Icon(Icons.Default.TaskAlt, contentDescription = null) },
-            label = { Text("Task") }
+            label = { Text("Task") },
+            colors = SegmentedButtonDefaults.colors(activeContainerColor = MaterialTheme.colorScheme.primaryContainer, activeContentColor = MaterialTheme.colorScheme.primary)
         )
         SegmentedButton(
             selected = !isTaskSelected,
             onClick = onNoteClick,
             shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
             icon = { Icon(Icons.Default.Notes, contentDescription = null) },
-            label = { Text("Note") }
+            label = { Text("Note") },
+            colors = SegmentedButtonDefaults.colors(activeContainerColor = MaterialTheme.colorScheme.primaryContainer, activeContentColor = MaterialTheme.colorScheme.primary)
         )
     }
 }
 
 @Composable
 private fun SheetHeader(
-    isViewMode: Boolean,
     isAddMode: Boolean,
     isTaskSelected: Boolean,
-    onEdit: () -> Unit,
     onSwitchAddModeToTask: () -> Unit,
     onSwitchAddModeToNote: () -> Unit,
     modifier: Modifier = Modifier
@@ -281,12 +249,36 @@ private fun SheetHeader(
                 )
             }
         }
+    }
+}
 
-        Row(modifier = Modifier.align(Alignment.CenterEnd), verticalAlignment = Alignment.CenterVertically) {
-            if (isViewMode) {
-                IconButton(onClick = onEdit) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit")
-                }
+@Composable
+private fun TrashedStatusSection(
+    isTrashed: Boolean,
+    onRestore: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (!isTrashed) return
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.RestoreFromTrash, contentDescription = null, modifier = Modifier.size(20.dp))
+            Text(
+                text = "This item is in trash",
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            OutlinedButton(onClick = onRestore) {
+                Text("Restore")
             }
         }
     }
@@ -295,8 +287,9 @@ private fun SheetHeader(
 @Composable
 private fun SheetFooter(
     canDelete: Boolean,
+    isTrashed: Boolean,
     isAddMode: Boolean,
-    canAddToMyDay: Boolean,
+    showAddToMyDay: Boolean,
     isCompletable: Boolean,
     isOpenable: Boolean,
     onSave: () -> Unit,
@@ -306,17 +299,18 @@ private fun SheetFooter(
     onOpen: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    if (!canDelete && !isAddMode && !canAddToMyDay && !isCompletable && !isOpenable) return
+    val showOptionsMenu = canDelete && !isTrashed
+    if (!showOptionsMenu && !isAddMode && !showAddToMyDay && !isCompletable && !isOpenable) return
 
     var menuExpanded by remember { mutableStateOf(false) }
 
-    Box(modifier = modifier.fillMaxWidth()) {
+    Row(modifier = modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier.align(Alignment.Center),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (canAddToMyDay) {
+            if (showAddToMyDay) {
                 OutlinedButton(onClick = onAddToMyDay) {
                     Text("Add to MyDay")
                 }
@@ -337,8 +331,8 @@ private fun SheetFooter(
                 }
             }
         }
-        if (canDelete) {
-            Box(modifier = Modifier.align(Alignment.CenterEnd)) {
+        if (showOptionsMenu) {
+            Box(modifier = Modifier) {
                 IconButton(onClick = { menuExpanded = true }) {
                     Icon(Icons.Default.MoreVert, contentDescription = "Options")
                 }
@@ -357,125 +351,6 @@ private fun SheetFooter(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun TaskViewContent(
-    form: TaskEditorState.TaskForm,
-    availableLists: List<TaskList>,
-    availableTags: List<TaskTag>,
-    onNameChange: (String) -> Unit,
-    onListChange: (Long) -> Unit,
-    onDescriptionChange: (String) -> Unit,
-    onDoDateChange: (LocalDate?) -> Unit,
-    onStartTimeChange: (Int?) -> Unit,
-    onEndTimeChange: (Int?) -> Unit,
-    onDailyPlanStartTimeChange: (Int?) -> Unit,
-    onDailyPlanEndTimeChange: (Int?) -> Unit,
-    onDailyPlanStatus: () -> Unit,
-    onDailyPlanDelete: (DailyPlanItem) -> Unit,
-    onRepeatChange: (RepeatPreset) -> Unit,
-    onPriorityChange: (TaskPriority) -> Unit,
-    onReminderToggle: (Int) -> Unit,
-    onSubTaskToggle: (Int) -> Unit,
-    onSubTaskAdd: () -> Unit,
-    onSubTaskNameChange: (Int, String) -> Unit,
-    onSubTaskRemove: (Int) -> Unit,
-    onTagToggle: (Long) -> Unit
-) {
-    val selectedList = availableLists.firstOrNull { it.id == form.listId }
-    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        form.dailyPlanItem?.let { dailyPlanItem ->
-            DailyPlanSection(
-                item = dailyPlanItem,
-                onStartTimeChange = onDailyPlanStartTimeChange,
-                onEndTimeChange = onDailyPlanEndTimeChange,
-                onStatusChange = onDailyPlanStatus,
-                onDelete = { onDailyPlanDelete(dailyPlanItem) }
-            )
-        }
-        Text(
-            text = form.name.ifBlank { "Untitled task" },
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.SemiBold
-        )
-        form.description.takeIf { it.isNotBlank() }?.let {
-            Text(
-                text = it,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            DateTimeRangeDetailChip(form.doDate, form.startTimeMinutes, form.endTimeMinutes)
-            form.durationMinutes?.let { DetailChip(Icons.Default.Schedule, it.formatDuration()) }
-            if (form.priority != TaskPriority.None) {
-                PriorityPill(priority = form.priority, selected = true)
-            }
-        }
-
-        RepeatPicker(selected = form.repeatPreset, onSelect = onRepeatChange)
-        SubtaskChecklist(
-            subtasks = form.subtasks,
-            onToggle = onSubTaskToggle,
-            onAdd = onSubTaskAdd,
-            onNameChange = onSubTaskNameChange,
-            onRemove = onSubTaskRemove,
-            enabled = false
-        )
-
-        SupportingPills(list = selectedList, tags = availableTags.filter { it.id in form.selectedTagIds })
-    }
-}
-
-@Composable
-private fun NoteViewContent(
-    form: TaskEditorState.NoteForm,
-    availableLists: List<TaskList>,
-    availableTags: List<TaskTag>
-) {
-    val selectedList = availableLists.firstOrNull { it.id == form.listId }
-    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        if (form.title.isNotBlank()) {
-            Text(
-                text = form.title,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
-        Text(
-            text = form.content.ifBlank { "Empty note" },
-            style = MaterialTheme.typography.bodyLarge,
-        )
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            DetailChip(Icons.Default.Event, form.date.compact())
-            form.startTimeMinutes?.let { start ->
-                DetailChip(Icons.Default.Schedule, start.toClockLabel())
-            }
-        }
-        SupportingPills(list = selectedList, tags = availableTags.filter { it.id in form.selectedTagIds })
-    }
-}
-
-@Composable
-private fun QuietSection(content: @Composable ColumnScope.() -> Unit) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.22f)
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            content = content
-        )
     }
 }
 
@@ -726,14 +601,19 @@ private fun NoteFormContent(
     }
 }
 
-private fun TaskEditorState.isViewMode(): Boolean = when (this) {
-    is TaskEditorState.TaskForm -> mode == EditorMode.View
-    is TaskEditorState.NoteForm -> mode == EditorMode.View
-}
-
 private fun TaskEditorState.isAddMode(): Boolean = when (this) {
     is TaskEditorState.TaskForm -> mode == EditorMode.Add
     is TaskEditorState.NoteForm -> mode == EditorMode.Add
+}
+
+private fun TaskEditorState.isTrashed(): Boolean = when (this) {
+    is TaskEditorState.TaskForm -> trashedAtMillis != null
+    is TaskEditorState.NoteForm -> trashedAtMillis != null
+}
+
+private fun TaskEditorState.isFormEditable(): Boolean = when (this) {
+    is TaskEditorState.TaskForm -> mode == EditorMode.Add || (mode == EditorMode.Edit && status == TaskStatus.Open && trashedAtMillis == null)
+    is TaskEditorState.NoteForm -> mode == EditorMode.Add || (mode == EditorMode.Edit && status == TaskStatus.Open && trashedAtMillis == null)
 }
 
 private fun TaskEditorState.canDelete(): Boolean = when (this) {
@@ -741,14 +621,19 @@ private fun TaskEditorState.canDelete(): Boolean = when (this) {
     is TaskEditorState.NoteForm -> mode != EditorMode.Add
 }
 
+private fun TaskEditorState.shouldShowAddToMyDay(): Boolean = when (this) {
+    is TaskEditorState.TaskForm -> taskId != null && mode != EditorMode.Add && isFormEditable()
+    is TaskEditorState.NoteForm -> false
+}
+
 private fun TaskEditorState.isCompletableView(): Boolean = when (this) {
-    is TaskEditorState.TaskForm -> mode == EditorMode.Edit && status != TaskStatus.Completed
-    is TaskEditorState.NoteForm -> mode == EditorMode.Edit && status != TaskStatus.Completed
+    is TaskEditorState.TaskForm -> mode == EditorMode.Edit && status == TaskStatus.Open && trashedAtMillis == null
+    is TaskEditorState.NoteForm -> mode == EditorMode.Edit && status == TaskStatus.Open && trashedAtMillis == null
 }
 
 private fun TaskEditorState.isOpenableView(): Boolean = when (this) {
-    is TaskEditorState.TaskForm -> mode == EditorMode.Edit && status == TaskStatus.Completed
-    is TaskEditorState.NoteForm -> mode == EditorMode.Edit && status == TaskStatus.Completed
+    is TaskEditorState.TaskForm -> mode == EditorMode.Edit && status == TaskStatus.Completed && trashedAtMillis == null
+    is TaskEditorState.NoteForm -> mode == EditorMode.Edit && status == TaskStatus.Completed && trashedAtMillis == null
 }
 
 private fun DailyPlanItem.durationMinutes(): Int? {

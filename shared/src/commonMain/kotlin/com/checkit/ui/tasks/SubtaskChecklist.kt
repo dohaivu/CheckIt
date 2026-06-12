@@ -113,7 +113,7 @@ private fun SubtaskRow(
             },
             modifier = Modifier
                 .size(20.dp)
-                .clickable { onToggle() }
+                .then(if (enabled) Modifier.clickable { onToggle() } else Modifier)
         )
         
         val textStyle = MaterialTheme.typography.bodyMedium.copy(

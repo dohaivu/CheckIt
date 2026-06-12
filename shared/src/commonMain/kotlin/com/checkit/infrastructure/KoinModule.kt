@@ -29,6 +29,8 @@ import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.OpenNoteUseCase
 import com.checkit.domain.usecase.OpenTaskUseCase
+import com.checkit.domain.usecase.RestoreNoteUseCase
+import com.checkit.domain.usecase.RestoreTaskUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.UpdateNoteUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemUseCase
@@ -80,6 +82,7 @@ val provideInteractorModule = module {
     single { AddTaskUseCase(get()) }
     single { UpdateTaskUseCase(get()) }
     single { DeleteTaskUseCase(get()) }
+    single { RestoreTaskUseCase(get()) }
     single { CompleteTaskUseCase(get()) }
     single { CompleteNoteUseCase(get()) }
     single { OpenTaskUseCase(get()) }
@@ -92,6 +95,7 @@ val provideInteractorModule = module {
     single { AddNoteUseCase(get()) }
     single { UpdateNoteUseCase(get()) }
     single { DeleteNoteUseCase(get()) }
+    single { RestoreNoteUseCase(get()) }
     single { SelectTaskBoardItemsUseCase() }
     single { CheckInReminderPolicy(get(), get()) }
 }
@@ -110,27 +114,29 @@ val provideLocalServiceModule = module {
 val provideViewModelModule = module {
     viewModel {
         TaskViewModel(
-            get(),
-            get(),
-            get(),
-            get(),
-            get(),
-            get(),
-            get(),
-            get(),
-            get(),
-            get(),
-            get(),
-            get(),
-            get(),
-            get(),
-            get(),
-            get(),
-            get(),
-            get(),
-            get(),
-            get(),
-            get()
+            observeTaskBoard = get(),
+            ensureDefaultTaskData = get(),
+            selectTaskBoardItems = get(),
+            addTask = get(),
+            updateTask = get(),
+            deleteTask = get(),
+            restoreTask = get(),
+            completeTask = get(),
+            completeNote = get(),
+            openTask = get(),
+            openNote = get(),
+            addNote = get(),
+            updateNote = get(),
+            deleteNote = get(),
+            restoreNote = get(),
+            updateDailyPlanItemTime = get(),
+            updateDailyPlanItem = get(),
+            addTaskList = get(),
+            updateTaskList = get(),
+            addTaskTag = get(),
+            updateTaskTag = get(),
+            isTagNameTaken = get(),
+            settingsRepository = get()
         )
     }
     viewModel { CalendarViewModel(get(), get(), get()) }

@@ -276,6 +276,9 @@ interface CheckItDao {
     @Query("UPDATE tasks SET trashedAtMillis = :trashedAtMillis, updatedAtMillis = :trashedAtMillis WHERE id = :taskId")
     suspend fun trashTask(taskId: Long, trashedAtMillis: Long)
 
+    @Query("UPDATE tasks SET trashedAtMillis = NULL, updatedAtMillis = :updatedAtMillis WHERE id = :taskId")
+    suspend fun restoreTask(taskId: Long, updatedAtMillis: Long)
+
     @Transaction
     suspend fun replaceTaskSubTasks(taskId: Long, subtasks: List<SubTaskWriteInput>) {
         deleteSubTasks(taskId)
@@ -430,4 +433,7 @@ interface CheckItDao {
 
     @Query("UPDATE notes SET trashedAtMillis = :trashedAtMillis, editedAtMillis = :trashedAtMillis WHERE id = :noteId")
     suspend fun trashNote(noteId: Long, trashedAtMillis: Long)
+
+    @Query("UPDATE notes SET trashedAtMillis = NULL, editedAtMillis = :editedAtMillis WHERE id = :noteId")
+    suspend fun restoreNote(noteId: Long, editedAtMillis: Long)
 }
