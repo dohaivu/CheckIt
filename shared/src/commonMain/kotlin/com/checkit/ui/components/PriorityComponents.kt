@@ -1,6 +1,5 @@
 package com.checkit.ui.components
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,12 +9,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -31,6 +28,47 @@ import androidx.compose.ui.unit.dp
 import com.checkit.domain.TaskPriority
 import com.checkit.ui.tasks.ContentAlpha
 import com.checkit.ui.tasks.ContentContainerAlpha
+
+@Composable
+internal fun PriorityPicker(
+    selected: TaskPriority,
+    onSelect: (TaskPriority) -> Unit,
+    enabled: Boolean = true
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    AppleStylePopup(
+        isExpanded = expanded,
+        onDismissRequest = { expanded = false },
+        anchor = {
+            PriorityPill(
+                priority = selected,
+                selected = false,
+                onClick = {
+                    if (enabled) expanded = true
+                }
+            )
+        }
+    ) {
+        FlowRow(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            EditablePriorities.forEach { priority ->
+                PriorityPill(
+                    priority = priority,
+                    selected = selected == priority,
+                    onClick = {
+                        onSelect(if (selected == priority) TaskPriority.None else priority)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+}
+
 
 @Composable
 internal fun PriorityPill(
@@ -64,66 +102,6 @@ internal fun PriorityPill(
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurface
         )
-    }
-}
-
-@Composable
-internal fun PriorityPickerRow(
-    selected: TaskPriority,
-    onSelect: (TaskPriority) -> Unit
-) {
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        EditablePriorities.forEach { priority ->
-            PriorityPill(
-                priority = priority,
-                selected = selected == priority,
-                onClick = {
-                    onSelect(if (selected == priority) TaskPriority.None else priority)
-                }
-            )
-        }
-    }
-}
-
-@Composable
-internal fun PriorityPicker(
-    selected: TaskPriority,
-    onSelect: (TaskPriority) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-
-    AppleStylePopup(
-        isExpanded = expanded,
-        onDismissRequest = { expanded = false },
-        anchor = {
-            PriorityPill(
-                priority = selected,
-                selected = false,
-                onClick = {
-                    expanded = true
-                }
-            )
-        }
-    ) {
-        FlowRow(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            EditablePriorities.forEach { priority ->
-                PriorityPill(
-                    priority = priority,
-                    selected = selected == priority,
-                    onClick = {
-                        onSelect(if (selected == priority) TaskPriority.None else priority)
-                        expanded = false
-                    }
-                )
-            }
-        }
     }
 }
 

@@ -37,6 +37,7 @@ fun AppOutlinedTextField(
     placeholder: String? = null,
     maxLines: Int = Int.MAX_VALUE,
     modifier: Modifier = Modifier.fillMaxWidth(),
+    enabled: Boolean = true,
     contentPadding: PaddingValues = PaddingValues(horizontal = 0.dp, vertical = 0.dp)
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -54,6 +55,7 @@ fun AppOutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         modifier = modifier,
+        enabled = enabled,
         interactionSource = interactionSource,
         textStyle = textStyle,
         maxLines = maxLines,

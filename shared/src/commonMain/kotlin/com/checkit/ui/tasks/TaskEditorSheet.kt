@@ -195,7 +195,8 @@ internal fun TaskEditorSheet(
                                 onSubTaskAdd = onSubTaskAdd,
                                 onSubTaskNameChange = onSubTaskNameChange,
                                 onSubTaskRemove = onSubTaskRemove,
-                                onTagToggle = onTaskTagToggle
+                                onTagToggle = onTaskTagToggle,
+                                enabled = true
                             )
                         }
                     }
@@ -420,11 +421,11 @@ private fun TaskViewContent(
         RepeatPicker(selected = form.repeatPreset, onSelect = onRepeatChange)
         SubtaskChecklist(
             subtasks = form.subtasks,
-            mode = EditorMode.Edit,
             onToggle = onSubTaskToggle,
             onAdd = onSubTaskAdd,
             onNameChange = onSubTaskNameChange,
-            onRemove = onSubTaskRemove
+            onRemove = onSubTaskRemove,
+            enabled = false
         )
 
         SupportingPills(list = selectedList, tags = availableTags.filter { it.id in form.selectedTagIds })
@@ -500,7 +501,8 @@ private fun TaskFormContent(
     onSubTaskAdd: () -> Unit,
     onSubTaskNameChange: (Int, String) -> Unit,
     onSubTaskRemove: (Int) -> Unit,
-    onTagToggle: (Long) -> Unit
+    onTagToggle: (Long) -> Unit,
+    enabled: Boolean = true
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         form.dailyPlanItem?.let { dailyPlanItem ->
@@ -509,7 +511,8 @@ private fun TaskFormContent(
                 onStartTimeChange = onDailyPlanStartTimeChange,
                 onEndTimeChange = onDailyPlanEndTimeChange,
                 onStatusChange = onDailyPlanStatus,
-                onDelete = { onDailyPlanDelete(dailyPlanItem) }
+                onDelete = { onDailyPlanDelete(dailyPlanItem) },
+                enabled = enabled
             )
             Spacer(modifier = Modifier.height(16.dp))
         }
@@ -526,7 +529,8 @@ private fun TaskFormContent(
                 endTimeMinutes = form.endTimeMinutes,
                 durationMinutes = form.durationMinutes,
                 onStartTimeChange = onStartTimeChange,
-                onEndTimeChange = onEndTimeChange
+                onEndTimeChange = onEndTimeChange,
+                enabled = enabled
             )
         }
 
@@ -538,7 +542,8 @@ private fun TaskFormContent(
                 fontWeight = FontWeight.SemiBold
             ),
             maxLines = 1,
-            placeholder = "What would you like to do?"
+            placeholder = "What would you like to do?",
+            enabled = enabled
         )
         AppOutlinedTextField(
             value = form.description,
@@ -547,29 +552,31 @@ private fun TaskFormContent(
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Normal
             ),
-            maxLines = 5
+            maxLines = 5,
+            enabled = enabled
         )
 
         SubtaskChecklist(
             subtasks = form.subtasks,
-            mode = form.mode,
             onToggle = onSubTaskToggle,
             onAdd = onSubTaskAdd,
             onNameChange = onSubTaskNameChange,
-            onRemove = onSubTaskRemove
+            onRemove = onSubTaskRemove,
+            enabled = enabled
         )
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            PriorityPicker(selected = form.priority, onSelect = onPriorityChange)
-            RepeatPicker(selected = form.repeatPreset, onSelect = onRepeatChange)
+            PriorityPicker(selected = form.priority, onSelect = onPriorityChange, enabled = enabled)
+            RepeatPicker(selected = form.repeatPreset, onSelect = onRepeatChange, enabled = enabled)
             ReminderPicker(
                 reminderOffsets = form.reminderOffsets,
                 hasDate = form.doDate != null,
                 startTimeMinutes = form.startTimeMinutes,
-                onReminderToggle = onReminderToggle
+                onReminderToggle = onReminderToggle,
+                enabled = enabled
             )
         }
 
@@ -580,12 +587,14 @@ private fun TaskFormContent(
             ListPicker(
                 selectedListId = form.listId,
                 lists = availableLists,
-                onListChange = onListChange
+                onListChange = onListChange,
+                enabled = enabled
             )
             TagPicker(
                 availableTags = availableTags,
                 selectedTagIds = form.selectedTagIds,
-                onTagToggle = onTagToggle
+                onTagToggle = onTagToggle,
+                enabled = enabled
             )
         }
     }
@@ -597,7 +606,8 @@ private fun DailyPlanSection(
     onStartTimeChange: (Int?) -> Unit,
     onEndTimeChange: (Int?) -> Unit,
     onStatusChange: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    enabled: Boolean = true
 ) {
     Column(
         modifier = Modifier
@@ -620,21 +630,26 @@ private fun DailyPlanSection(
                 onStartTimeChange = onStartTimeChange,
                 onEndTimeChange = onEndTimeChange,
                 isSmall = true,
-                modifier = Modifier
+                modifier = Modifier,
+                enabled = enabled
             )
 
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            if (enabled) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
 
-                Icon(Icons.Default.Delete,
-                    contentDescription = "Delete from My Day",
-                    modifier = Modifier.size(18.dp).clickable{onDelete()},
-                    tint = MaterialTheme.colorScheme.outlineVariant.copy(alpha = ContentAlpha))
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Delete from My Day",
+                        modifier = Modifier.size(18.dp).clickable { onDelete() },
+                        tint = MaterialTheme.colorScheme.outlineVariant.copy(alpha = ContentAlpha)
+                    )
 
-                OutlinedButton(onClick = onStatusChange) {
-                    Text(if (item.status == DailyPlanItemStatus.Done) "Open" else "Done")
+                    OutlinedButton(onClick = onStatusChange) {
+                        Text(if (item.status == DailyPlanItemStatus.Done) "Open" else "Done")
+                    }
                 }
             }
         }
@@ -651,7 +666,8 @@ private fun NoteFormContent(
     onListChange: (Long) -> Unit,
     onDateChange: (LocalDate) -> Unit,
     onStartTimeChange: (Int?) -> Unit,
-    onTagToggle: (Long) -> Unit
+    onTagToggle: (Long) -> Unit,
+    enabled: Boolean = true
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         AppOutlinedTextField(
@@ -662,7 +678,8 @@ private fun NoteFormContent(
                 fontWeight = FontWeight.SemiBold
             ),
             maxLines = 1,
-            placeholder = "Note title"
+            placeholder = "Note title",
+            enabled = enabled
         )
         AppOutlinedTextField(
             value = form.content,
@@ -672,7 +689,8 @@ private fun NoteFormContent(
                 fontWeight = FontWeight.Normal
             ),
             maxLines = 10,
-            placeholder = "Write something"
+            placeholder = "Write something",
+            enabled = enabled
         )
 
         DatePickerRow(
@@ -684,7 +702,8 @@ private fun NoteFormContent(
             endTimeMinutes = null,
             durationMinutes = null,
             onStartTimeChange = onStartTimeChange,
-            onEndTimeChange = null
+            onEndTimeChange = null,
+            enabled = enabled
         )
 
         Row(
@@ -694,12 +713,14 @@ private fun NoteFormContent(
             ListPicker(
                 selectedListId = form.listId,
                 lists = availableLists,
-                onListChange = onListChange
+                onListChange = onListChange,
+                enabled = enabled
             )
             TagPicker(
                 availableTags = availableTags,
                 selectedTagIds = form.selectedTagIds,
-                onTagToggle = onTagToggle
+                onTagToggle = onTagToggle,
+                enabled = enabled
             )
         }
     }

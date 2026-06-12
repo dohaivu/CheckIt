@@ -37,14 +37,14 @@ import com.checkit.ui.SubTaskEditorState
 @Composable
 internal fun SubtaskChecklist(
     subtasks: List<SubTaskEditorState>,
-    mode: EditorMode,
     onToggle: (Int) -> Unit,
     onAdd: () -> Unit,
     onNameChange: (Int, String) -> Unit,
     onRemove: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
 ) {
-    if (subtasks.isEmpty() && mode == EditorMode.View) return
+    if (subtasks.isEmpty() && !enabled) return
 
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -58,13 +58,13 @@ internal fun SubtaskChecklist(
             subtasks.forEachIndexed { index, subtask ->
                 SubtaskRow(
                     subtask = subtask,
-                    mode = mode,
                     onToggle = { onToggle(index) },
                     onNameChange = { onNameChange(index, it) },
-                    onRemove = { onRemove(index) }
+                    onRemove = { onRemove(index) },
+                    enabled = enabled
                 )
             }
-            if (mode != EditorMode.View) {
+            if (enabled) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -93,10 +93,10 @@ internal fun SubtaskChecklist(
 @Composable
 private fun SubtaskRow(
     subtask: SubTaskEditorState,
-    mode: EditorMode,
     onToggle: () -> Unit,
     onNameChange: (String) -> Unit,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
+    enabled: Boolean = true
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -125,7 +125,7 @@ private fun SubtaskRow(
             textDecoration = if (subtask.isCompleted) TextDecoration.LineThrough else TextDecoration.None
         )
 
-        if (mode == EditorMode.View) {
+        if (!enabled) {
             Text(
                 text = subtask.name,
                 modifier = Modifier.weight(1f),

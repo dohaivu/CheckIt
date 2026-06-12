@@ -29,7 +29,8 @@ import com.checkit.ui.tasks.toColor
 internal fun ListPicker(
     selectedListId: Long,
     lists: List<TaskList>,
-    onListChange: (Long) -> Unit
+    onListChange: (Long) -> Unit,
+    enabled: Boolean = true
 ) {
     if (lists.isEmpty()) return
     var expanded by remember { mutableStateOf(false) }
@@ -39,7 +40,7 @@ internal fun ListPicker(
         isExpanded = expanded,
         onDismissRequest = { expanded = false },
         anchor = {
-            DetailChip(icon = materialIcon(selectedList.icon), label = selectedList.name, onClick = { expanded = true }, iconTint = selectedList.color.toColor(),)
+            DetailChip(icon = materialIcon(selectedList.icon), label = selectedList.name, onClick = { if (enabled) expanded = true }, iconTint = selectedList.color.toColor(),)
         }
     ) {
         Column(

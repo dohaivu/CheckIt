@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -57,6 +56,7 @@ internal fun DatePickerRow(
     onDateChange: (LocalDate?) -> Unit,
     onStartTimeChange: ((Int?) -> Unit)?,
     onEndTimeChange: ((Int?) -> Unit)?,
+    enabled: Boolean = true
 ) {
     var showPicker by remember { mutableStateOf(false) }
     Column(
@@ -67,12 +67,12 @@ internal fun DatePickerRow(
             icon = Icons.Default.Event,
             label = if (date == null) "No date" else dateTimeRangeDetailLabel(date, startTimeMinutes, endTimeMinutes),
             onClick = {
-                showPicker = true
+                if (enabled) showPicker = true
             }
         )
     }
 
-    if (showPicker) {
+    if (enabled && showPicker) {
         val datePickerState = rememberDatePickerState(initialSelectedDateMillis = date?.toUtcStartMillis())
 
         AlertDialog(
@@ -146,7 +146,7 @@ internal fun TimePicker(
     initialTimeMinutes: Int,
     onTimeChange: (Int?) -> Unit,
     enabled: Boolean = true,
-    modifier: Modifier = Modifier.Companion
+    modifier: Modifier = Modifier
 ) {
     var showPicker by remember { mutableStateOf(false) }
     DetailChip(
@@ -193,6 +193,7 @@ internal fun TimeRangePicker(
     onStartTimeChange: ((Int?) -> Unit)?,
     onEndTimeChange: ((Int?) -> Unit)?,
     isSmall: Boolean = false,
+    enabled: Boolean = true,
     modifier: Modifier = Modifier.fillMaxWidth()
 ) {
     Column(
@@ -211,6 +212,7 @@ internal fun TimeRangePicker(
                     onStartTimeChange?.invoke(value)
                     if (value == null && endTimeMinutes != null) onEndTimeChange?.invoke(null)
                 },
+                enabled = enabled
             )
             if (onEndTimeChange != null) {
                 if (isSmall) {
@@ -232,14 +234,14 @@ internal fun TimeRangePicker(
                     label = "End",
                     timeMinutes = endTimeMinutes,
                     initialTimeMinutes = ((startTimeMinutes ?: currentTimeMinutes()) + 60).coerceAtMost(MinutesPerDay - 1),
-                    enabled = startTimeMinutes != null,
+                    enabled = enabled && startTimeMinutes != null,
                     onTimeChange = {
                         onEndTimeChange.invoke(it)
                     },
                 )
             }
         }
-        if (onEndTimeChange != null && !isSmall) {
+        if (enabled && onEndTimeChange != null && !isSmall) {
             Row {
                 PickerShortcutRow {
                     TimeRangeShortcutDurations.forEach { duration ->

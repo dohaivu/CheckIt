@@ -28,7 +28,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.TaskTag
 import com.checkit.ui.tasks.ContentAlpha
-import com.checkit.ui.tasks.ContentContainerAlpha
 import com.checkit.ui.tasks.toColor
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -36,7 +35,8 @@ import com.checkit.ui.tasks.toColor
 fun TagPicker(
     availableTags: List<TaskTag>,
     selectedTagIds: Set<Long>,
-    onTagToggle: (Long) -> Unit
+    onTagToggle: (Long) -> Unit,
+    enabled: Boolean = true
 ) {
     if (availableTags.isEmpty()) return
     var expanded by remember { mutableStateOf(false) }
@@ -49,7 +49,7 @@ fun TagPicker(
         onDismissRequest = { expanded = false },
         anchor = {
             if (selectedTags.isEmpty()) {
-                TaskTagPill(tag = TaskTag.None, selected = false, onClick = { expanded = true })
+                TaskTagPill(tag = TaskTag.None, selected = false, onClick = { if (enabled) expanded = true })
             } else {
                 FlowRow(
                     modifier = Modifier,
@@ -60,7 +60,7 @@ fun TagPicker(
                         TaskTagPill(
                             tag = tag,
                             selected = false,
-                            onClick = { expanded = true }
+                            onClick = { if (enabled) expanded = true }
                         )
                     }
                 }

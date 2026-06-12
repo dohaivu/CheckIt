@@ -25,7 +25,8 @@ import com.checkit.ui.RepeatPreset
 @Composable
 fun RepeatPicker(
     selected: RepeatPreset,
-    onSelect: (RepeatPreset) -> Unit
+    onSelect: (RepeatPreset) -> Unit,
+    enabled: Boolean = true
 ) {
     var expanded by remember { mutableStateOf(false) }
     var selectedPreset by remember { mutableStateOf(selected) }
@@ -35,9 +36,9 @@ fun RepeatPicker(
         onDismissRequest = { expanded = false },
         anchor = {
             if (selectedPreset == RepeatPreset.None) {
-                DetailChip(icon = Icons.Default.Repeat, label = "None", iconTint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.58f), onClick = { expanded = true })
+                DetailChip(icon = Icons.Default.Repeat, label = "None", iconTint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.58f), onClick = { if (enabled) expanded = true })
             } else {
-                DetailChip(icon = Icons.Default.Repeat, label = selectedPreset.label, onClick = { expanded = true })
+                DetailChip(icon = Icons.Default.Repeat, label = selectedPreset.label, onClick = { if (enabled) expanded = true })
             }
         }
     ) {
