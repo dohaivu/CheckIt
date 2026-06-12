@@ -380,7 +380,7 @@ interface CheckItDao {
     @Query(
         """
         UPDATE daily_plan_items
-        SET titleSnapshot = :titleSnapshot,
+        SET title = :title,
             note = :note,
             source = :source,
             status = :status,
@@ -392,7 +392,7 @@ interface CheckItDao {
     )
     suspend fun updateDailyPlanItem(
         itemId: Long,
-        titleSnapshot: String,
+        title: String,
         note: String?,
         source: String,
         status: String,

@@ -98,17 +98,40 @@ class MyDayViewModel(
     fun addCheckIn() {
         val editor = _uiState.value.itemEditor ?: return
 
-        saveCheckIn(editor)
+        if (!saveCheckIn(editor)) return
 
         _uiState.update { it.copy(itemEditor = null, message = "Saved") }
     }
 
-    fun saveCheckIn(editor: DailyPlanItemEditorState) {
+    fun saveCheckIn(editor: DailyPlanItemEditorState): Boolean {
         val title = editor.title.trim()
         val note = editor.note.trim()
-        if (title.isBlank()) {
-            _uiState.update { it.copy(message = if (editor.source == DailyPlanItemSource.CheckInNote) "Add a note" else "Add a done item") }
-            return
+        when (editor.source) {
+            DailyPlanItemSource.CheckInNote -> {
+                if (title.isBlank() && note.isBlank()) {
+                    _uiState.update { it.copy(message = "Add a note") }
+                    return false
+                }
+            }
+            DailyPlanItemSource.CheckInManualDone -> {
+                val start = editor.startTimeMinutes
+                val end = editor.endTimeMinutes
+                when {
+                    title.isBlank() -> {
+                        _uiState.update { it.copy(message = "Add a done item") }
+                        return false
+                    }
+                    start == null || end == null -> {
+                        _uiState.update { it.copy(message = "Add start and end time") }
+                        return false
+                    }
+                    end <= start -> {
+                        _uiState.update { it.copy(message = "End time must be after start") }
+                        return false
+                    }
+                }
+            }
+            DailyPlanItemSource.ExistingTask -> Unit
         }
         viewModelScope.launch {
             if (editor.itemId == null) {
@@ -128,6 +151,7 @@ class MyDayViewModel(
                 )
             }
         }
+        return true
     }
 
     fun openSuggestions(
@@ -202,12 +226,8 @@ class MyDayViewModel(
                     taskId = item.taskId,
                     date = date,
                     source = item.source,
-                    title = if (item.source == DailyPlanItemSource.CheckInNote) {
-                        item.note.orEmpty()
-                    } else {
-                        item.titleSnapshot
-                    },
-                    note = if (item.source == DailyPlanItemSource.CheckInNote) "" else item.note.orEmpty(),
+                    title = item.editorTitle(),
+                    note = item.editorNote(),
                     status = item.status,
                     startTimeMinutes = item.startTimeMinutes,
                     endTimeMinutes = item.endTimeMinutes,
@@ -273,6 +293,11 @@ class MyDayViewModel(
         }
     }
 }
+
+private fun DailyPlanItem.editorTitle(): String = title
+
+private fun DailyPlanItem.editorNote(): String =
+    note.orEmpty()
 
 private fun MyDayUiState.selectedSuggestionTimeRangeFor(task: TaskItem): Pair<Int?, Int?> {
     val selectedDuration = suggestionStartTimeMinutes?.let { selectedStart ->

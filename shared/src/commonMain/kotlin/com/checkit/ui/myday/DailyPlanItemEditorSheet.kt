@@ -217,7 +217,7 @@ private fun DailyPlanItemFormContent(
                     fontWeight = FontWeight.SemiBold
                 ),
                 maxLines = 1,
-                placeholder = "What have you done?",
+                placeholder = "Title (optional)",
                 enabled = enabled
             )
 
@@ -229,6 +229,7 @@ private fun DailyPlanItemFormContent(
                     fontWeight = FontWeight.Normal
                 ),
                 maxLines = 5,
+                placeholder = "Note",
                 enabled = enabled
             )
 

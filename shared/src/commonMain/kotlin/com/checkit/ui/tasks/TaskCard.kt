@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.EventNote
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material3.Icon
@@ -186,7 +187,7 @@ internal fun DailyPlanTimelineCard(
         timeLabel = timeLabel,
         color = DailyPlanCardColor,
         leadingContent = {
-            Icon(Icons.Default.EventAvailable, contentDescription = null, modifier = Modifier.size(18.dp))
+            Icon(if (item.source == DailyPlanItemSource.CheckInNote) Icons.AutoMirrored.Filled.EventNote else Icons.Default.EventAvailable, contentDescription = null, modifier = Modifier.size(18.dp))
         },
         completedOverlay = completedOverlay,
         onClick = onClick,
@@ -243,7 +244,7 @@ internal fun AllDayDailyPlanCard(
     AllDayTypeCard(
         title = title,
         color = DailyPlanCardColor,
-        icon = { Icon(Icons.Default.EventAvailable, contentDescription = null, modifier = Modifier.size(18.dp)) },
+        icon = { Icon(if (item.source == DailyPlanItemSource.CheckInNote) Icons.AutoMirrored.Filled.EventNote else Icons.Default.EventAvailable, contentDescription = null, modifier = Modifier.size(18.dp)) },
         modifier = modifier,
         completedOverlay = completedOverlay
     )
@@ -324,8 +325,8 @@ private fun DailyPlanItem.timelineTimeLabel(): String? {
 
 private fun DailyPlanItem.timelineTitle(): String =
     when (source) {
-        DailyPlanItemSource.CheckInNote -> note.orEmpty().ifBlank { "Empty note" }
-        else -> titleSnapshot.ifBlank { "Untitled item" }
+        DailyPlanItemSource.CheckInNote -> checkInNoteTitle()
+        else -> title.ifBlank { "Untitled item" }
     }
 
 private fun DailyPlanItem.timelineSupportingText(): String =
@@ -340,5 +341,10 @@ private fun DailyPlanItemSource.timelineLabel(): String = when (this) {
     DailyPlanItemSource.CheckInManualDone -> "CheckIn done"
     DailyPlanItemSource.CheckInNote -> "CheckIn note"
 }
+
+private fun DailyPlanItem.checkInNoteTitle(): String =
+    title
+        .ifBlank { note.orEmpty() }
+        .ifBlank { "Empty note" }
 
 private val DailyPlanCardColor = Color(0xFF64748B)

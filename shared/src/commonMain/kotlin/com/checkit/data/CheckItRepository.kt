@@ -393,7 +393,7 @@ class RoomCheckItRepository(
             DailyPlanItemEntity(
                 dailyPlanId = planId,
                 taskId = task.id,
-                titleSnapshot = task.name.ifBlank { "Untitled task" },
+                title = task.name.ifBlank { "Untitled task" },
                 source = DailyPlanItemSource.ExistingTask.name,
                 status = if (task.status == TaskStatus.Completed) {
                     DailyPlanItemStatus.Done.name
@@ -422,17 +422,16 @@ class RoomCheckItRepository(
     ): Long {
         val planId = ensureDailyPlan(date)
         val now = Clock.System.now().toEpochMilliseconds()
-        val isNote = source == DailyPlanItemSource.CheckInNote
         val itemId = dao.insertDailyPlanItem(
             DailyPlanItemEntity(
                 dailyPlanId = planId,
-                titleSnapshot = if (isNote) "Note" else title.trim(),
-                note = if (isNote) title.trim() else note?.trim()?.takeIf { it.isNotBlank() },
+                title = title.trim(),
+                note = note?.trim()?.takeIf { it.isNotBlank() },
                 source = source.name,
                 status = DailyPlanItemStatus.Done.name,
                 sortOrder = dao.nextDailyPlanItemSortOrder(planId),
                 startTimeMinutes = startTimeMinutes,
-                endTimeMinutes = if (isNote) null else endTimeMinutes,
+                endTimeMinutes = if (source == DailyPlanItemSource.CheckInNote) null else endTimeMinutes,
                 addedAtMillis = now,
                 completedAtMillis = now
             )
@@ -456,12 +455,8 @@ class RoomCheckItRepository(
     override suspend fun updateDailyPlanItem(itemId: Long, input: DailyPlanItemWriteInput) {
         dao.updateDailyPlanItem(
             itemId = itemId,
-            titleSnapshot = if (input.source == DailyPlanItemSource.CheckInNote) "Note" else input.title.trim(),
-            note = if (input.source == DailyPlanItemSource.CheckInNote) {
-                input.title.trim()
-            } else {
-                input.note?.trim()?.takeIf { it.isNotBlank() }
-            },
+            title = input.title.trim(),
+            note = input.note?.trim()?.takeIf { it.isNotBlank() },
             source = input.source.name,
             status = input.status.name,
             startTimeMinutes = input.startTimeMinutes,
@@ -666,7 +661,7 @@ private fun DailyPlanItemEntity.toDomain(tags: List<TaskTag> = emptyList()) = Da
     id = id,
     dailyPlanId = dailyPlanId,
     taskId = taskId,
-    titleSnapshot = titleSnapshot,
+    title = title,
     note = note,
     source = enumValueOf(source),
     status = enumValueOf(status),

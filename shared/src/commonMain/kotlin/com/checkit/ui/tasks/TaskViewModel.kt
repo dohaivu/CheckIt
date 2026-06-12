@@ -849,7 +849,7 @@ private fun <T> Set<T>.toggle(value: T): Set<T> =
     if (contains(value)) this - value else this + value
 
 private fun DailyPlanItem.toWriteInput() = DailyPlanItemWriteInput(
-    title = titleSnapshot,
+    title = title,
     note = note,
     source = source,
     status = status,
