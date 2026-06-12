@@ -6,7 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,6 +20,8 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Notes
@@ -68,6 +69,7 @@ import com.checkit.ui.components.ReminderPicker
 import com.checkit.ui.components.RepeatPicker
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.components.TimeRangePicker
+import com.checkit.ui.components.priorityColor
 import kotlinx.datetime.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -395,7 +397,10 @@ private fun TaskFormContent(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            TaskStatusIcon(form.status, form.priority)
+            TaskStatusIcon(
+                completed = form.status == TaskStatus.Completed,
+                color = form.priority.priorityColor()
+            )
             DatePickerRow(
                 modifier = Modifier.weight(1f),
                 date = form.doDate,
@@ -511,19 +516,26 @@ private fun DailyPlanSection(
 
             if (enabled) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(0.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
 
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "Delete from My Day",
-                        modifier = Modifier.size(18.dp).clickable { onDelete() },
-                        tint = MaterialTheme.colorScheme.outlineVariant.copy(alpha = ContentAlpha)
-                    )
+                    IconButton(onClick = onDelete) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Delete from My Day",
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
 
-                    OutlinedButton(onClick = onStatusChange) {
-                        Text(if (item.status == DailyPlanItemStatus.Done) "Open" else "Done")
+                    IconButton(onClick = onStatusChange) {
+                        Icon(
+                            imageVector = if (item.status == DailyPlanItemStatus.Done) Icons.AutoMirrored.Filled.Undo else Icons.Default.Check,
+                            contentDescription = "Done from My Day",
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 }
             }

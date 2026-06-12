@@ -42,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
+import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
@@ -61,6 +62,7 @@ import com.checkit.ui.tasks.TimelineItem
 import com.checkit.ui.tasks.TimelineItemType
 import com.checkit.ui.tasks.TaskTimelineCard
 import com.checkit.ui.tasks.timeRangeLabel
+import com.checkit.ui.tasks.toClockLabel
 import kotlinx.datetime.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -198,13 +200,14 @@ internal fun MyDayAgenda(
     val projection = remember(items, board, date) { items.toTaskViewProjection(board = board, date = date) }
     val timelineItems = remember(projection, date) {
         val tasks = projection.plannedTasks.map { plannedTask ->
+            val dailyPlanItem = plannedTask.dailyPlanItem
             TimelineItem(
-                id = "daily-task-${plannedTask.dailyPlanItem.id}",
+                id = "daily-task-${dailyPlanItem.id}",
                 type = TimelineItemType.Task,
                 date = date,
-                startTimeMinutes = plannedTask.task.startTimeMinutes,
-                endTimeMinutes = plannedTask.task.endTimeMinutes,
-                sortOrder = plannedTask.dailyPlanItem.sortOrder,
+                startTimeMinutes = dailyPlanItem.startTimeMinutes,
+                endTimeMinutes = dailyPlanItem.endTimeMinutes,
+                sortOrder = dailyPlanItem.sortOrder,
                 tag = plannedTask
             )
         }
@@ -253,7 +256,11 @@ internal fun MyDayAgenda(
                     if (item.startTimeMinutes == null) {
                         AllDayTaskCard(task)
                     } else {
-                        TaskTimelineCard(task)
+                        TaskTimelineCard(
+                            task = task,
+                            timeLabel = tag.dailyPlanItem.dailyPlanTimeLabel(),
+                            completed = tag.dailyPlanItem.isDone()
+                        )
                     }
                 }
             }
@@ -280,12 +287,13 @@ private fun MyDayTimeline(
     }
     val timelineItems = remember(projection) {
         val tasks = projection.plannedTasks.map { plannedTask ->
+            val dailyPlanItem = plannedTask.dailyPlanItem
             TimelineItem(
-                id = "daily-task-${plannedTask.dailyPlanItem.id}",
+                id = "daily-task-${dailyPlanItem.id}",
                 type = TimelineItemType.Task,
-                startTimeMinutes = plannedTask.task.startTimeMinutes,
-                endTimeMinutes = plannedTask.task.endTimeMinutes,
-                sortOrder = plannedTask.dailyPlanItem.sortOrder,
+                startTimeMinutes = dailyPlanItem.startTimeMinutes,
+                endTimeMinutes = dailyPlanItem.endTimeMinutes,
+                sortOrder = dailyPlanItem.sortOrder,
                 isResizable = true,
                 tag = plannedTask
             )
@@ -345,7 +353,9 @@ private fun MyDayTimeline(
                 is NoteItem -> NoteTimelineCard(tag, selected = isSelected, modifier = Modifier.matchParentSize())
                 is PlannedTaskProjection -> TaskTimelineCard(
                     task = tag.task,
+                    timeLabel = tag.dailyPlanItem.dailyPlanTimeLabel(),
                     selected = isSelected,
+                    completed = tag.dailyPlanItem.isDone(),
                     modifier = Modifier.matchParentSize()
                 )
             }
@@ -412,6 +422,8 @@ private fun MyDayBoardItem(
         val task = plannedTask.task
         TaskTimelineCard(
             task = task,
+            timeLabel = plannedTask.dailyPlanItem.dailyPlanTimeLabel(),
+            completed = plannedTask.dailyPlanItem.isDone(),
             onClick = { onTaskClick(task, plannedTask.dailyPlanItem) }
         )
     } else {
@@ -421,6 +433,14 @@ private fun MyDayBoardItem(
         )
     }
 }
+
+private fun DailyPlanItem.dailyPlanTimeLabel(): String? {
+    val start = startTimeMinutes ?: return null
+    val end = endTimeMinutes
+    return if (end == null) start.toClockLabel() else "${start.toClockLabel()} - ${end.toClockLabel()}"
+}
+
+private fun DailyPlanItem.isDone(): Boolean = status == DailyPlanItemStatus.Done
 
 @Composable
 private fun SuggestionCard(

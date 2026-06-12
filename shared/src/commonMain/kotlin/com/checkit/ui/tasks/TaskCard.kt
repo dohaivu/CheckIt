@@ -35,6 +35,8 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
+import com.checkit.domain.TaskStatus
+import com.checkit.ui.components.priorityColor
 
 @Composable
 internal fun TaskCard(
@@ -118,6 +120,7 @@ internal fun TaskTimelineCard(
     onClick: (() -> Unit)? = null,
     timeLabel: String? = task.timeRangeLabel(),
     selected: Boolean = false,
+    completed: Boolean = task.status == TaskStatus.Completed,
     completedOverlay: Boolean = false
 ) {
     TaskCard(
@@ -125,7 +128,10 @@ internal fun TaskTimelineCard(
         timeLabel = timeLabel,
         color = task.cardColor(),
         leadingContent = {
-            TaskStatusIcon(task.status, task.priority)
+            TaskStatusIcon(
+                completed = completed,
+                color = task.priority.priorityColor()
+            )
         },
         completedOverlay = completedOverlay,
         onClick = onClick,
@@ -201,7 +207,12 @@ internal fun AllDayTaskCard(
     AllDayTypeCard(
         title = task.name.ifBlank { "Untitled task" },
         color = task.cardColor(),
-        icon = { TaskStatusIcon(task.status, task.priority) },
+        icon = {
+            TaskStatusIcon(
+                completed = task.status == TaskStatus.Completed,
+                color = task.priority.priorityColor()
+            )
+        },
         modifier = modifier,
         completedOverlay = completedOverlay
     )

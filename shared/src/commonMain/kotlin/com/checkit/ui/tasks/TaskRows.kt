@@ -26,13 +26,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskList
-import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.ui.TaskListDisplayType
 import com.checkit.ui.components.DateTimeRangeDetailChip
@@ -116,7 +116,10 @@ private fun BriefTaskRowContent(task: TaskItem) {
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        TaskStatusIcon(task.status, task.priority)
+        TaskStatusIcon(
+            completed = task.status == TaskStatus.Completed,
+            color = task.priority.priorityColor()
+        )
         Text(
             text = task.name,
             modifier = Modifier.weight(1f),
@@ -194,7 +197,10 @@ private fun TaskTitleRow(
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        TaskStatusIcon(task.status, task.priority)
+        TaskStatusIcon(
+            completed = task.status == TaskStatus.Completed,
+            color = task.priority.priorityColor()
+        )
         Column(Modifier.weight(1f)) {
             Text(task.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             if (descriptionMaxLines > 0 && task.description.isNotBlank()) {
@@ -212,11 +218,11 @@ private fun TaskTitleRow(
 }
 
 @Composable
-internal fun TaskStatusIcon(status: TaskStatus, priority: TaskPriority) {
+internal fun TaskStatusIcon(completed: Boolean, color: Color) {
     Icon(
-        imageVector = if (status == TaskStatus.Completed) Icons.Rounded.CheckBox else Icons.Rounded.CheckBoxOutlineBlank,
+        imageVector = if (completed) Icons.Rounded.CheckBox else Icons.Rounded.CheckBoxOutlineBlank,
         contentDescription = null,
-        tint = if (status == TaskStatus.Completed) MaterialTheme.colorScheme.onSurfaceVariant else priority.priorityColor(),
+        tint = if (completed) MaterialTheme.colorScheme.onSurfaceVariant else color,
         modifier = Modifier.size(20.dp)
     )
 }
@@ -282,4 +288,3 @@ private const val DefaultNoteRowBackgroundAlpha = 0.55f
 internal const val CompletedRowCoverAlpha = 0.62f
 internal const val ContentContainerAlpha = 0.45f
 internal const val ContentAlpha = 0.62f
-
