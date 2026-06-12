@@ -29,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -316,6 +317,10 @@ private fun TimelineItemCard(
     var bottomResizeOffsetY by remember(item.id, start, end) { mutableFloatStateOf(0f) }
     val resizeHeightDelta = with(density) { (bottomResizeOffsetY - topResizeOffsetY).toDp() }
     val visualHeight = (height + resizeHeightDelta).coerceAtLeast(36.dp)
+    val latestItem by rememberUpdatedState(item)
+    val latestOnClick by rememberUpdatedState(onClick)
+    val latestOnSelect by rememberUpdatedState(onSelect)
+    val latestOnTimeChange by rememberUpdatedState(onTimeChange)
 
     Box(
         modifier = Modifier
@@ -330,17 +335,17 @@ private fun TimelineItemCard(
             .zIndex(if (isSelected) 3f else 1f + layout.lane)
             .pointerInput(item.id) {
                 detectTapGestures(
-                    onTap = { onClick() },
-                    onLongPress = { onSelect() }
+                    onTap = { latestOnClick() },
+                    onLongPress = { latestOnSelect() }
                 )
             }
             .pointerInput(item.id, start, end, hourHeightPx) {
                 detectDragGesturesAfterLongPress(
-                    onDragStart = { onSelect() },
+                    onDragStart = { latestOnSelect() },
                     onDragEnd = {
                         val deltaMinutes = dragOffsetY.toMinutes(hourHeightPx)
                         val (nextStart, nextEnd) = moveTimelineRange(start, end, deltaMinutes)
-                        onTimeChange(item, nextStart, nextEnd)
+                        latestOnTimeChange(latestItem, nextStart, nextEnd)
                         dragOffsetY = 0f
                     },
                     onDragCancel = { dragOffsetY = 0f },
@@ -361,7 +366,7 @@ private fun TimelineItemCard(
                             onDragEnd = {
                                 val deltaMinutes = topResizeOffsetY.toMinutes(hourHeightPx)
                                 val (nextStart, nextEnd) = resizeTimelineStart(start, end, deltaMinutes)
-                                onTimeChange(item, nextStart, nextEnd)
+                                latestOnTimeChange(latestItem, nextStart, nextEnd)
                                 topResizeOffsetY = 0f
                             },
                             onDragCancel = { topResizeOffsetY = 0f },
@@ -380,7 +385,7 @@ private fun TimelineItemCard(
                             onDragEnd = {
                                 val deltaMinutes = bottomResizeOffsetY.toMinutes(hourHeightPx)
                                 val (nextStart, nextEnd) = resizeTimelineEnd(start, end, deltaMinutes)
-                                onTimeChange(item, nextStart, nextEnd)
+                                latestOnTimeChange(latestItem, nextStart, nextEnd)
                                 bottomResizeOffsetY = 0f
                             },
                             onDragCancel = { bottomResizeOffsetY = 0f },
