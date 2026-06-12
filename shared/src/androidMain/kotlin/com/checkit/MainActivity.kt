@@ -9,16 +9,24 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.mutableStateOf
 import androidx.core.app.ActivityCompat
 import com.checkit.notifications.CheckItNotificationCenter
 import com.checkit.ui.CheckItApp
+import com.checkit.widget.ExtraDailyPlanItemId
+import com.checkit.widget.ExtraNoteId
+import com.checkit.widget.ExtraTaskId
 
 class MainActivity : ComponentActivity() {
     private val NOTIFICATION_PERMISSION_REQUEST_CODE = 1001
+    private val dailyPlanItemLaunchId = mutableStateOf<Long?>(null)
+    private val taskLaunchId = mutableStateOf<Long?>(null)
+    private val noteLaunchId = mutableStateOf<Long?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        handleLaunchIntent(intent)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -30,7 +38,10 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             CheckItApp(
-
+                dailyPlanItemLaunchId = dailyPlanItemLaunchId.value,
+                taskLaunchId = taskLaunchId.value,
+                noteLaunchId = noteLaunchId.value,
+                onWidgetLaunchConsumed = ::clearWidgetLaunch
             )
         }
     }
@@ -38,6 +49,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        handleLaunchIntent(intent)
     }
 
     override fun onResume() {
@@ -53,4 +65,21 @@ class MainActivity : ComponentActivity() {
             false
         }
     }
+
+    private fun handleLaunchIntent(intent: Intent) {
+        dailyPlanItemLaunchId.value = intent.longExtraOrNull(ExtraDailyPlanItemId)
+        taskLaunchId.value = intent.longExtraOrNull(ExtraTaskId)
+        noteLaunchId.value = intent.longExtraOrNull(ExtraNoteId)
+    }
+
+    private fun clearWidgetLaunch() {
+        dailyPlanItemLaunchId.value = null
+        taskLaunchId.value = null
+        noteLaunchId.value = null
+    }
 }
+
+private fun Intent.longExtraOrNull(name: String): Long? =
+    getLongExtra(name, MissingLaunchId).takeIf { it != MissingLaunchId }
+
+private const val MissingLaunchId = -1L

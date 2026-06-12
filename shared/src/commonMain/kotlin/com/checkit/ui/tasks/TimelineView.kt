@@ -29,16 +29,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -118,7 +116,7 @@ private fun AllDaySection(
         }
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(0.dp)
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             visibleItems.forEach { item ->
                 Box(modifier = Modifier.clickable { onItemClick(item) }) {
@@ -126,46 +124,6 @@ private fun AllDaySection(
                 }
             }
         }
-    }
-}
-
-@Composable
-internal fun AllDayItemRow(
-    label: String,
-    icon: @Composable () -> Unit,
-    color: Color,
-    supportingLabel: String?,
-    modifier: Modifier = Modifier
-) {
-    val rowLabel = remember(label, supportingLabel) { compactAllDayLabel(label, supportingLabel) }
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(32.dp)
-            .padding(horizontal = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Box(
-            modifier = Modifier.size(18.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            icon()
-        }
-        Text(
-            text = rowLabel,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
-        )
-        Box(
-            modifier = Modifier
-                .size(6.dp)
-                .clip(CircleShape)
-                .background(color.copy(alpha = 0.8f))
-        )
     }
 }
 
@@ -359,6 +317,10 @@ private fun TimelineItemCard(
     var bottomResizeOffsetY by remember(item.id, start, end) { mutableFloatStateOf(0f) }
     val resizeHeightDelta = with(density) { (bottomResizeOffsetY - topResizeOffsetY).toDp() }
     val visualHeight = (height + resizeHeightDelta).coerceAtLeast(36.dp)
+    val latestItem by rememberUpdatedState(item)
+    val latestOnClick by rememberUpdatedState(onClick)
+    val latestOnSelect by rememberUpdatedState(onSelect)
+    val latestOnTimeChange by rememberUpdatedState(onTimeChange)
 
     Box(
         modifier = Modifier
@@ -373,17 +335,17 @@ private fun TimelineItemCard(
             .zIndex(if (isSelected) 3f else 1f + layout.lane)
             .pointerInput(item.id) {
                 detectTapGestures(
-                    onTap = { onClick() },
-                    onLongPress = { onSelect() }
+                    onTap = { latestOnClick() },
+                    onLongPress = { latestOnSelect() }
                 )
             }
             .pointerInput(item.id, start, end, hourHeightPx) {
                 detectDragGesturesAfterLongPress(
-                    onDragStart = { onSelect() },
+                    onDragStart = { latestOnSelect() },
                     onDragEnd = {
                         val deltaMinutes = dragOffsetY.toMinutes(hourHeightPx)
                         val (nextStart, nextEnd) = moveTimelineRange(start, end, deltaMinutes)
-                        onTimeChange(item, nextStart, nextEnd)
+                        latestOnTimeChange(latestItem, nextStart, nextEnd)
                         dragOffsetY = 0f
                     },
                     onDragCancel = { dragOffsetY = 0f },
@@ -404,7 +366,7 @@ private fun TimelineItemCard(
                             onDragEnd = {
                                 val deltaMinutes = topResizeOffsetY.toMinutes(hourHeightPx)
                                 val (nextStart, nextEnd) = resizeTimelineStart(start, end, deltaMinutes)
-                                onTimeChange(item, nextStart, nextEnd)
+                                latestOnTimeChange(latestItem, nextStart, nextEnd)
                                 topResizeOffsetY = 0f
                             },
                             onDragCancel = { topResizeOffsetY = 0f },
@@ -423,7 +385,7 @@ private fun TimelineItemCard(
                             onDragEnd = {
                                 val deltaMinutes = bottomResizeOffsetY.toMinutes(hourHeightPx)
                                 val (nextStart, nextEnd) = resizeTimelineEnd(start, end, deltaMinutes)
-                                onTimeChange(item, nextStart, nextEnd)
+                                latestOnTimeChange(latestItem, nextStart, nextEnd)
                                 bottomResizeOffsetY = 0f
                             },
                             onDragCancel = { bottomResizeOffsetY = 0f },
@@ -518,16 +480,6 @@ private fun minutesToY(minutes: Int, hourHeightPx: Float): Float =
 internal fun currentTimeMinutes(): Int {
     val time = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).time
     return time.hour * 60 + time.minute
-}
-
-internal fun compactAllDayLabel(label: String, supportingLabel: String?): String {
-    val primary = label
-        .lineSequence()
-        .map { it.trim() }
-        .filter { it.isNotEmpty() }
-        .joinToString(" ")
-        .ifBlank { label }
-    return supportingLabel?.let { "$primary · $it" } ?: primary
 }
 
 internal fun Int.snapToQuarterHour(): Int =

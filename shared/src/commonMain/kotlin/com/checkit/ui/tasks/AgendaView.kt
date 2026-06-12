@@ -21,6 +21,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Today
+import androidx.compose.material3.ButtonColors
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -119,8 +121,12 @@ private fun AgendaDaySection(
 
     val now = kotlin.time.Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
     val nowMinutes = now.hour * 60 + now.minute
-    val nextTimedItemIndex = remember(timedItems, nowMinutes) {
-        timedItems.indexOfFirst { (it.startTimeMinutes ?: 0) > nowMinutes }
+    val nextTimedItemIndex = remember(date, today, timedItems, nowMinutes) {
+        if (date == today) {
+            timedItems.indexOfFirst { (it.startTimeMinutes ?: 0) > nowMinutes }
+        } else {
+            -1
+        }
     }
 
     Column {

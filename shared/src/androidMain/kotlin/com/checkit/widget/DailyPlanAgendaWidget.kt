@@ -1,20 +1,20 @@
 package com.checkit.widget
 
 import android.content.Context
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.glance.ColorFilter
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
+import androidx.glance.action.Action
 import androidx.glance.action.actionStartActivity
+import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.cornerRadius
@@ -22,7 +22,6 @@ import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.lazy.itemsIndexed
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
-import androidx.glance.color.ColorProvider
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
@@ -39,14 +38,19 @@ import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
+import androidx.glance.unit.ColorProvider
 import com.checkit.MainActivity
+import com.checkit.domain.DailyPlanItem
+import com.checkit.domain.DailyPlanItemSource
+import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.NoteItem
-import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.shared.R
+import com.checkit.ui.myday.MyDayTaskViewProjection
+import com.checkit.ui.myday.PlannedTaskProjection
 import com.checkit.ui.myday.dailyItemColor
 import com.checkit.ui.myday.toTaskViewProjection
 import com.checkit.ui.tasks.cardColor
@@ -57,6 +61,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import androidx.glance.color.ColorProvider as DayNightColorProvider
 
 class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
 
@@ -76,14 +81,11 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
 
         provideContent {
             val projection = remember(items, board) { items.toTaskViewProjection(board, today) }
-            val allDayTasks = remember(projection) { projection.tasks.filter { it.startTimeMinutes == null } }
-            val allDayNotes = remember(projection) { projection.notes.filter { it.startTimeMinutes == null } }
-            val timedTasks = remember(projection) { projection.tasks.filter { it.startTimeMinutes != null } }
-            val timedNotes = remember(projection) { projection.notes.filter { it.startTimeMinutes != null } }
-
-            val timedItems = remember(timedTasks, timedNotes) {
-                (timedTasks.map { GlanceAgendaItem.Task(it) } + timedNotes.map { GlanceAgendaItem.Note(it) })
-                    .sortedBy { it.startTimeMinutes }
+            val allDayItems = remember(projection) {
+                projection.toWidgetItems(timed = false)
+            }
+            val timedItems = remember(projection) {
+                projection.toWidgetItems(timed = true)
             }
 
             // Find the index of the first item that starts AFTER now
@@ -91,7 +93,7 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                 timedItems.indexOfFirst { (it.startTimeMinutes ?: -1) > nowMinutes }
             }
 
-            val hasAllDay = allDayTasks.isNotEmpty() || allDayNotes.isNotEmpty()
+            val hasAllDay = allDayItems.isNotEmpty()
 
             GlanceTheme {
                 Column(
@@ -152,15 +154,9 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                                         isHighlighted = false
                                     ) {
                                         Column {
-                                            allDayTasks.forEachIndexed { index, task ->
-                                                GlanceTaskCard(task = task, board = board)
-                                                if (index < allDayTasks.lastIndex || allDayNotes.isNotEmpty()) {
-                                                    Spacer(GlanceModifier.height(6.dp))
-                                                }
-                                            }
-                                            allDayNotes.forEachIndexed { index, note ->
-                                                GlanceNoteCard(note = note, board = board)
-                                                if (index < allDayNotes.lastIndex) {
+                                            allDayItems.forEachIndexed { index, item ->
+                                                GlanceAgendaCard(item = item, allDay = true)
+                                                if (index < allDayItems.lastIndex) {
                                                     Spacer(GlanceModifier.height(6.dp))
                                                 }
                                             }
@@ -176,10 +172,7 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                                     isLast = index == timedItems.lastIndex,
                                     isHighlighted = index == nextTimedItemIndex
                                 ) {
-                                    when (item) {
-                                        is GlanceAgendaItem.Task -> GlanceTaskCard(task = item.task, board = board)
-                                        is GlanceAgendaItem.Note -> GlanceNoteCard(note = item.note, board = board)
-                                    }
+                                    GlanceAgendaCard(item = item, allDay = false)
                                 }
                             }
                         }
@@ -199,8 +192,8 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
     ) {
         val themeColors = GlanceTheme.colors
         val accentColor = if (isHighlighted) themeColors.error else themeColors.onSurfaceVariant
-        val markerColor = if (isHighlighted) themeColors.error else ColorProvider(day = Color.Black.copy(alpha = 0.2f), night = Color.White.copy(alpha = 0.2f))
-        val lineColor = ColorProvider(day = Color.Black.copy(alpha = 0.15f), night = Color.White.copy(alpha = 0.15f))
+        val markerColor = if (isHighlighted) themeColors.error else DayNightColorProvider(day = Color.Black.copy(alpha = 0.2f), night = Color.White.copy(alpha = 0.2f))
+        val lineColor = DayNightColorProvider(day = Color.Black.copy(alpha = 0.15f), night = Color.White.copy(alpha = 0.15f))
         val labelWeight = if (isHighlighted) FontWeight.Bold else FontWeight.Medium
 
         Row(
@@ -286,99 +279,225 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
     }
 
     @Composable
-    private fun GlanceTaskCard(task: TaskItem, board: TaskBoard) {
-        val baseColor = task.cardColor()
-        
-        GlanceItemCard(
-            title = task.name.ifBlank { "Untitled task" },
-            timeLabel = if (task.startTimeMinutes != null) task.timeRangeLabel() else null,
-            baseColor = baseColor,
-            isCompleted = task.status == TaskStatus.Completed
+    private fun GlanceAgendaCard(item: GlanceAgendaItem, allDay: Boolean) {
+        GlanceTypeCard(
+            title = item.title,
+            supportingText = if (allDay) null else item.timeLabel,
+            baseColor = item.color,
+            allDay = allDay,
+            clickAction = item.clickAction(),
+            icon = {
+                when (item) {
+                    is GlanceAgendaItem.Task -> TaskIcon(completed = item.completed, tintColor = item.color)
+                    is GlanceAgendaItem.Note -> NoteIcon()
+                    is GlanceAgendaItem.DailyPlan -> DailyPlanIcon()
+                }
+            }
         )
     }
 
     @Composable
-    private fun GlanceNoteCard(note: NoteItem, board: TaskBoard) {
-        val baseColor = note.cardColor()
-
-        GlanceItemCard(
-            title = note.content.ifBlank { "Empty note" },
-            timeLabel = note.startTimeMinutes?.toClockLabel(),
-            baseColor = baseColor,
-            isCompleted = note.status == TaskStatus.Completed
-        )
-    }
-
-    @Composable
-    private fun GlanceItemCard(
+    private fun GlanceTypeCard(
         title: String,
-        timeLabel: String?,
+        supportingText: String?,
         baseColor: Color,
-        isCompleted: Boolean
+        allDay: Boolean,
+        clickAction: Action,
+        icon: @Composable () -> Unit
     ) {
+        val cardHeight = if (allDay) 32.dp else 48.dp
         Row(
             modifier = GlanceModifier
                 .fillMaxWidth()
-                .background(ColorProvider(day = baseColor.copy(alpha = 0.12f), night = baseColor.copy(alpha = 0.12f)))
-                .padding(end = 8.dp)
-                .cornerRadius(8.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .height(cardHeight)
+                .cornerRadius(8.dp)
+                .background(baseColor.alphaProvider(DefaultCardBackgroundAlpha))
+                .clickable(clickAction)
         ) {
-            // Color indicator bar
             Spacer(
                 modifier = GlanceModifier
                     .width(4.dp)
-                    .height(48.dp)
-                    .background(ColorProvider(day = baseColor, night = baseColor))
-                    .cornerRadius(8.dp)
+                    .fillMaxHeight()
+                    .background(baseColor.provider())
             )
             Spacer(GlanceModifier.width(8.dp))
-            
-            Column(modifier = GlanceModifier.defaultWeight()) {
-                Text(
-                    text = title,
-                    style = TextStyle(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
-                        color = GlanceTheme.colors.onSurface
-                    ),
-                    maxLines = 1
-                )
-                if (timeLabel != null) {
+            Row(
+                modifier = GlanceModifier
+                    .defaultWeight()
+                    .fillMaxHeight()
+                    .padding(end = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                icon()
+                Spacer(GlanceModifier.width(8.dp))
+                Column(modifier = GlanceModifier.defaultWeight()) {
                     Text(
-                        text = timeLabel,
+                        text = title,
                         style = TextStyle(
-                            fontSize = 10.sp,
-                            color = GlanceTheme.colors.onSurfaceVariant
-                        )
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            color = GlanceTheme.colors.onSurface
+                        ),
+                        maxLines = 1
                     )
+                    if (supportingText != null) {
+                        Text(
+                            text = supportingText,
+                            style = TextStyle(
+                                fontSize = 10.sp,
+                                color = GlanceTheme.colors.onSurfaceVariant
+                            ),
+                            maxLines = 1
+                        )
+                    }
                 }
             }
-            if (isCompleted) {
-                // Completed indicator (simple colored dot)
-                Box(
-                    modifier = GlanceModifier
-                        .size(10.dp)
-                        .background(GlanceTheme.colors.primary)
-                        .cornerRadius(5.dp)
-                ) {}
-            }
         }
     }
 
-    private sealed class GlanceAgendaItem {
-        data class Task(val task: TaskItem) : GlanceAgendaItem()
-        data class Note(val note: NoteItem) : GlanceAgendaItem()
+    @Composable
+    private fun TaskIcon(completed: Boolean, tintColor: Color) {
+        Image(
+            provider = ImageProvider( if (completed) R.drawable.check_box_24px else R.drawable.check_box_outline_blank_24px),
+            contentDescription = "check icon",
+            modifier = GlanceModifier.size(24.dp),
+            colorFilter = ColorFilter.tint(
+                ColorProvider(tintColor)
+            )
+        )
+    }
 
-        val startTimeMinutes: Int? get() = when (this) {
-            is Task -> task.startTimeMinutes
-            is Note -> note.startTimeMinutes
-        }
+    @Composable
+    private fun NoteIcon() {
+        Image(
+            provider = ImageProvider(R.drawable.notes_24px),
+            contentDescription = "note icon",
+            modifier = GlanceModifier.size(22.dp),
+        )
+    }
+
+    @Composable
+    private fun DailyPlanIcon() {
+        Image(
+            provider = ImageProvider(R.drawable.event_available_24px),
+            contentDescription = "daily plan icon",
+            modifier = GlanceModifier.size(22.dp),
+        )
     }
 }
 
-private fun TaskItem.timeRangeLabel(): String {
-    val start = startTimeMinutes?.toClockLabel() ?: return ""
-    val end = endTimeMinutes?.toClockLabel() ?: return start
-    return "$start - $end"
+private sealed class GlanceAgendaItem {
+    abstract val startTimeMinutes: Int?
+    abstract val endTimeMinutes: Int?
+    abstract val sortOrder: Int
+    abstract val title: String
+    abstract val color: Color
+    abstract val completed: Boolean
+    abstract val dailyPlanItemId: Long?
+    abstract val taskId: Long?
+    abstract val noteId: Long?
+
+    val timeLabel: String?
+        get() = startTimeMinutes?.let { start ->
+            endTimeMinutes?.let { end -> "${start.toClockLabel()} - ${end.toClockLabel()}" } ?: start.toClockLabel()
+        }
+
+    fun clickAction(): Action {
+        val currentTaskId = taskId
+        val currentNoteId = noteId
+        val currentDailyPlanItemId = dailyPlanItemId
+        return when {
+            currentTaskId != null && currentDailyPlanItemId != null -> actionStartActivity<MainActivity>(
+                parameters = actionParametersOf(
+                    TaskIdParameterKey to currentTaskId,
+                    DailyPlanItemIdParameterKey to currentDailyPlanItemId
+                )
+            )
+            currentTaskId != null -> actionStartActivity<MainActivity>(
+                parameters = actionParametersOf(TaskIdParameterKey to currentTaskId)
+            )
+            currentNoteId != null -> actionStartActivity<MainActivity>(
+                parameters = actionParametersOf(NoteIdParameterKey to currentNoteId)
+            )
+            currentDailyPlanItemId != null -> actionStartActivity<MainActivity>(
+                parameters = actionParametersOf(DailyPlanItemIdParameterKey to currentDailyPlanItemId)
+            )
+            else -> actionStartActivity<MainActivity>()
+        }
+    }
+
+    data class Task(
+        val projection: PlannedTaskProjection
+    ) : GlanceAgendaItem() {
+        private val task: TaskItem = projection.task
+        private val item: DailyPlanItem = projection.dailyPlanItem
+        override val startTimeMinutes: Int? = item.startTimeMinutes
+        override val endTimeMinutes: Int? = item.endTimeMinutes
+        override val sortOrder: Int = item.sortOrder
+        override val title: String = task.name.ifBlank { "Untitled task" }
+        override val color: Color = dailyItemColor(task = task, list = task.list)
+        override val completed: Boolean = item.status == DailyPlanItemStatus.Done
+        override val dailyPlanItemId: Long = item.id
+        override val taskId: Long = task.id
+        override val noteId: Long? = null
+    }
+
+    data class Note(
+        val note: NoteItem
+    ) : GlanceAgendaItem() {
+        override val startTimeMinutes: Int? = note.startTimeMinutes
+        override val endTimeMinutes: Int? = note.startTimeMinutes?.let { it + DefaultNoteDurationMinutes }
+        override val sortOrder: Int = note.sortOrder
+        override val title: String = note.title.ifBlank { note.content.ifBlank { "Empty note" } }
+        override val color: Color = note.cardColor()
+        override val completed: Boolean = note.status == TaskStatus.Completed
+        override val dailyPlanItemId: Long? = null
+        override val taskId: Long? = null
+        override val noteId: Long = note.id
+    }
+
+    data class DailyPlan(
+        val item: DailyPlanItem
+    ) : GlanceAgendaItem() {
+        override val startTimeMinutes: Int? = item.startTimeMinutes
+        override val endTimeMinutes: Int? = item.endTimeMinutes
+        override val sortOrder: Int = item.sortOrder
+        override val title: String = item.widgetTitle()
+        override val color: Color = dailyItemColor(task = null, list = null)
+        override val completed: Boolean = item.status == DailyPlanItemStatus.Done
+        override val dailyPlanItemId: Long = item.id
+        override val taskId: Long? = item.taskId
+        override val noteId: Long? = null
+    }
 }
+
+private fun MyDayTaskViewProjection.toWidgetItems(timed: Boolean): List<GlanceAgendaItem> {
+    val items = plannedTasks.map { GlanceAgendaItem.Task(it) } +
+        notes.map { GlanceAgendaItem.Note(it) } +
+        checkIns.map { GlanceAgendaItem.DailyPlan(it) }
+    return items
+        .asSequence()
+        .filter { (it.startTimeMinutes != null) == timed }
+        .sortedWith(compareBy<GlanceAgendaItem> { it.startTimeMinutes ?: -1 }.thenBy { it.sortOrder })
+        .toList()
+}
+
+private fun DailyPlanItem.widgetTitle(): String =
+    when (source) {
+        DailyPlanItemSource.CheckInNote -> checkInNoteTitle()
+        DailyPlanItemSource.CheckInManualDone -> title.ifBlank { "Done item" }
+        DailyPlanItemSource.ExistingTask -> title.ifBlank { "Untitled task" }
+    }
+
+private fun DailyPlanItem.checkInNoteTitle(): String =
+    title
+        .ifBlank { note.orEmpty() }
+        .ifBlank { "Empty note" }
+
+private fun Color.provider(): ColorProvider = DayNightColorProvider(day = this, night = this)
+
+private fun Color.alphaProvider(alpha: Float): ColorProvider =
+    copy(alpha = alpha).provider()
+
+private const val DefaultNoteDurationMinutes = 30
+private const val DefaultCardBackgroundAlpha = 0.12f

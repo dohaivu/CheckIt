@@ -137,10 +137,8 @@ data class DailyPlanItemEditorState(
     val selectedTagIds: Set<Long> = emptySet()
 ) {
     val isAddMode: Boolean get() = mode == EditorMode.Add
-    val isViewMode: Boolean get() = mode == EditorMode.View
     val isEditMode: Boolean get() = mode == EditorMode.Edit
     val canDelete: Boolean get() = itemId != null
-    val canOpenTask: Boolean get() = taskId != null
 }
 
 sealed interface TaskEditorState {
@@ -276,7 +274,6 @@ data class CalendarUiState(
     val board: TaskBoard = TaskBoard(),
     val dailyPlans: List<DailyPlan> = emptyList()
 ) {
-    val listsById: Map<Long, TaskList> = board.lists.associateBy { it.id }
     val dailyPlanByDate: Map<kotlinx.datetime.LocalDate, DailyPlan> = dailyPlans.associateBy { it.date }
 
     private val listColors: Map<Long, Color> = board.lists.associateWith { list ->
@@ -294,14 +291,14 @@ data class CalendarUiState(
     fun markerColorsForDate(date: kotlinx.datetime.LocalDate): List<Color> {
         if (date <= today()) {
             val dailyItems = dailyPlanByDate[date]?.items.orEmpty()
-            if (dailyItems.isNotEmpty()) {
-                return buildList {
+            return if (dailyItems.isNotEmpty()) {
+                buildList {
                     for (item in dailyItems) {
                         add(dailyItemColor(item))
                         if (size >= MarkerCap) break
                     }
                 }
-            }
+            } else listOf()
         }
         val tasks = tasksForDate(date)
         val notes = notesForDate(date)
@@ -320,6 +317,12 @@ data class CalendarUiState(
         }
     }
 
+    fun dailyPlanWorkMinutesForDate(date: kotlinx.datetime.LocalDate): Int =
+        dailyPlanByDate[date]
+            ?.items
+            .orEmpty()
+            .sumOf { it.workMinutes() }
+
     fun dailyPlanForDate(date: kotlinx.datetime.LocalDate): DailyPlan? = dailyPlanByDate[date]
 
     private fun dailyItemColor(item: DailyPlanItem): Color =
@@ -331,6 +334,12 @@ data class CalendarUiState(
         const val MarkerCap: Int = 12
         val DefaultMarkerColor: Color = Color(0xFF64748B)
     }
+}
+
+private fun DailyPlanItem.workMinutes(): Int {
+    val start = startTimeMinutes ?: return 0
+    val end = endTimeMinutes ?: return 0
+    return (end - start).coerceAtLeast(0)
 }
 
 internal fun String.parseHexColorOrNull(): Color? {

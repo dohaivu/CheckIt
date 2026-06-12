@@ -122,9 +122,6 @@ internal fun CalendarScreen(
                 onDateDoubleClick = handleDateDoubleClick,
                 state = state
             )
-            AppHorizontalDivider(
-                modifier = Modifier.padding(top = 6.dp)
-            )
             SelectedDateHeader(
                 date = state.selectedDate,
                 taskCount = if (showDailyPlan) dailyPlanItems.size else tasksForDate.size,
@@ -157,8 +154,6 @@ internal fun CalendarScreen(
                     TaskAgendaView(
                         tasks = tasksForDate,
                         notes = notesForDate,
-                        lists = state.board.lists,
-                        showListName = true,
                         onTaskClick = {
                             onTaskClick(it, null)
                         },
@@ -253,6 +248,7 @@ private fun MonthCalendar(
             selectedBackground = colorScheme.primaryContainer.copy(alpha = ContentContainerAlpha),
             defaultBackground = colorScheme.surface,
             heatmapHighBackground = colorScheme.primaryContainer,
+            workLabel = colorScheme.primary,
             headerBackground = colorScheme.surfaceVariant,
             disabledDay = colorScheme.onSurface.copy(alpha = 0.32f),
             saturday = Color(0xFF249AC8),
@@ -316,6 +312,7 @@ private fun CalendarWeekRow(
                 onDateSelected = onDateSelected,
                 onDateDoubleClick = onDateDoubleClick,
                 markerColors = state.markerColorsForDate(date),
+                workMinutes = state.dailyPlanWorkMinutesForDate(date),
                 modifier = Modifier.weight(1f)
             )
         }
@@ -332,6 +329,7 @@ private fun CalendarDayCell(
     onDateSelected: (LocalDate) -> Unit,
     onDateDoubleClick: (LocalDate) -> Unit,
     markerColors: List<Color>,
+    workMinutes: Int,
     modifier: Modifier = Modifier
 ) {
     val isMonthDate = date.isSameMonth(month)
@@ -341,11 +339,15 @@ private fun CalendarDayCell(
         date.dayOfWeek == DayOfWeek.SUNDAY -> colors.sunday
         else -> colors.day
     }
-    val backgroundColor = if (isSelected) colors.selectedBackground else colors.defaultBackground
+    val backgroundColor = when {
+        isSelected -> colors.selectedBackground
+        isMonthDate && workMinutes > 0 -> colors.workHeatBackground(workMinutes)
+        else -> colors.defaultBackground
+    }
 
     Box(
         modifier = modifier
-            .height(44.dp)
+            .height(48.dp)
             .border(0.5.dp, colors.outline)
             .background(backgroundColor)
             .combinedClickable(
@@ -360,14 +362,28 @@ private fun CalendarDayCell(
                 .padding(top = 2.dp, bottom = 2.dp, start = 2.dp, end = 2.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            Text(
-                text = date.day.toString(),
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                style = MaterialTheme.typography.bodyMedium,
-                color = dayColor,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                textAlign = TextAlign.Start
-            )
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = date.day.toString(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = dayColor,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                    textAlign = TextAlign.Start
+                )
+                if (isMonthDate && workMinutes > 0) {
+                    Text(
+                        text = workMinutes.compactDurationLabel(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.workLabel,
+                        maxLines = 1,
+                        textAlign = TextAlign.End
+                    )
+                }
+            }
             if (isMonthDate && markerColors.isNotEmpty()) {
                 DayMarkers(colors = markerColors)
             }
@@ -398,6 +414,9 @@ private fun DayMarkers(colors: List<Color>) {
 }
 
 private const val MaxMarkersPerRow: Int = 6
+private const val HeatmapMaxMinutes: Int = 8 * 60
+private const val HeatmapMinAlpha: Float = 0.10f
+private const val HeatmapMaxAlpha: Float = 0.42f
 
 private fun calendarGridDates(month: LocalDate): List<LocalDate> {
     val first = month.firstDayOfMonth()
@@ -418,6 +437,7 @@ data class CalendarCellColors(
     val selectedBackground: Color,
     val defaultBackground: Color,
     val heatmapHighBackground: Color,
+    val workLabel: Color,
     val headerBackground: Color,
     val disabledDay: Color,
     val saturday: Color,
@@ -425,6 +445,22 @@ data class CalendarCellColors(
     val day: Color,
     val headerDay: Color
 )
+
+private fun CalendarCellColors.workHeatBackground(workMinutes: Int): Color {
+    val fraction = (workMinutes.toFloat() / HeatmapMaxMinutes).coerceIn(0f, 1f)
+    val alpha = HeatmapMinAlpha + (HeatmapMaxAlpha - HeatmapMinAlpha) * fraction
+    return heatmapHighBackground.copy(alpha = alpha)
+}
+
+internal fun Int.compactDurationLabel(): String {
+    val hours = this / 60
+    val minutes = this % 60
+    return when {
+        hours > 0 && minutes > 0 -> "${hours}h${minutes}m"
+        hours > 0 -> "${hours}h"
+        else -> "${minutes}m"
+    }
+}
 
 private val calendarWeekDays: List<DayOfWeek> = listOf(
     DayOfWeek.MONDAY,

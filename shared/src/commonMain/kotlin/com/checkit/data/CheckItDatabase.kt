@@ -154,7 +154,7 @@ data class DailyPlanItemEntity(
     val id: Long = 0L,
     val dailyPlanId: Long,
     val taskId: Long? = null,
-    val titleSnapshot: String,
+    val title: String,
     val note: String? = null,
     val source: String,
     val status: String,

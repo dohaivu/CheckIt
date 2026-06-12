@@ -83,7 +83,7 @@ data class DailyPlanItem(
     val id: Long,
     val dailyPlanId: Long,
     val taskId: Long? = null,
-    val titleSnapshot: String,
+    val title: String,
     val note: String? = null,
     val source: DailyPlanItemSource,
     val status: DailyPlanItemStatus,
