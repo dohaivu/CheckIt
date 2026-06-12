@@ -28,7 +28,6 @@ import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskList
 import com.checkit.ui.parseHexColorOrNull
 import com.checkit.ui.components.priorityColor
-import com.checkit.ui.tasks.cardColor
 import kotlin.math.roundToInt
 
 @Composable
@@ -120,7 +119,6 @@ private data class DayTimelineTick(
 
 private fun List<DailyPlanItem>.toDayTimelineBlocks(board: TaskBoard): List<DayTimelineBlock> {
     val tasksById = board.tasksById
-    val listsById = board.lists.associateBy { it.id }
     return mapNotNull { item ->
         val start = item.startTimeMinutes ?: return@mapNotNull null
         val end = item.endTimeMinutes ?: return@mapNotNull null

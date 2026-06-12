@@ -199,41 +199,7 @@ internal fun MyDayAgenda(
 ) {
     val projection = remember(items, board, date) { items.toTaskViewProjection(board = board, date = date) }
     val timelineItems = remember(projection, date) {
-        val tasks = projection.plannedTasks.map { plannedTask ->
-            val dailyPlanItem = plannedTask.dailyPlanItem
-            TimelineItem(
-                id = "daily-task-${dailyPlanItem.id}",
-                type = TimelineItemType.Task,
-                date = date,
-                startTimeMinutes = dailyPlanItem.startTimeMinutes,
-                endTimeMinutes = dailyPlanItem.endTimeMinutes,
-                sortOrder = dailyPlanItem.sortOrder,
-                tag = plannedTask
-            )
-        }
-        val notes = projection.notes.map { note ->
-            TimelineItem(
-                id = "note-${note.id}",
-                type = TimelineItemType.Note,
-                date = date,
-                startTimeMinutes = note.startTimeMinutes,
-                endTimeMinutes = note.startTimeMinutes?.let { it + 30 },
-                sortOrder = note.sortOrder,
-                tag = note
-            )
-        }
-        val checkIns = projection.checkIns.map { checkIn ->
-            TimelineItem(
-                id = "checkin-${checkIn.id}",
-                type = TimelineItemType.CheckIn,
-                date = date,
-                startTimeMinutes = checkIn.startTimeMinutes,
-                endTimeMinutes = checkIn.endTimeMinutes,
-                sortOrder = checkIn.sortOrder,
-                tag = checkIn
-            )
-        }
-        (tasks + notes + checkIns).sortedWith(compareBy<TimelineItem> { it.startTimeMinutes ?: -1 }.thenBy { it.sortOrder })
+        projection.toTimelineItems(date = date)
     }
 
     AgendaView(
@@ -286,41 +252,7 @@ private fun MyDayTimeline(
         items.toTaskViewProjection(board = board, date = date)
     }
     val timelineItems = remember(projection) {
-        val tasks = projection.plannedTasks.map { plannedTask ->
-            val dailyPlanItem = plannedTask.dailyPlanItem
-            TimelineItem(
-                id = "daily-task-${dailyPlanItem.id}",
-                type = TimelineItemType.Task,
-                startTimeMinutes = dailyPlanItem.startTimeMinutes,
-                endTimeMinutes = dailyPlanItem.endTimeMinutes,
-                sortOrder = dailyPlanItem.sortOrder,
-                isResizable = true,
-                tag = plannedTask
-            )
-        }
-        val notes = projection.notes.map { note ->
-            TimelineItem(
-                id = "note-${note.id}",
-                type = TimelineItemType.Note,
-                startTimeMinutes = note.startTimeMinutes,
-                endTimeMinutes = note.startTimeMinutes?.let { it + 30 },
-                sortOrder = note.sortOrder,
-                isResizable = false,
-                tag = note
-            )
-        }
-        val checkIns = projection.checkIns.map { checkIn ->
-            TimelineItem(
-                id = "checkin-${checkIn.id}",
-                type = TimelineItemType.CheckIn,
-                startTimeMinutes = checkIn.startTimeMinutes,
-                endTimeMinutes = checkIn.endTimeMinutes,
-                sortOrder = checkIn.sortOrder,
-                isResizable = checkIn.source != DailyPlanItemSource.CheckInNote,
-                tag = checkIn
-            )
-        }
-        (tasks + notes + checkIns).sortedWith(compareBy<TimelineItem> { it.startTimeMinutes ?: -1 }.thenBy { it.sortOrder })
+        projection.toTimelineItems(resizable = true)
     }
 
     TimelineView(
@@ -442,6 +374,51 @@ private fun DailyPlanItem.dailyPlanTimeLabel(): String? {
 
 private fun DailyPlanItem.isDone(): Boolean = status == DailyPlanItemStatus.Done
 
+private fun MyDayTaskViewProjection.toTimelineItems(
+    date: LocalDate? = null,
+    resizable: Boolean = false
+): List<TimelineItem> {
+    val tasks = plannedTasks.map { plannedTask ->
+        val item = plannedTask.dailyPlanItem
+        TimelineItem(
+            id = "daily-task-${item.id}",
+            type = TimelineItemType.Task,
+            date = date,
+            startTimeMinutes = item.startTimeMinutes,
+            endTimeMinutes = item.endTimeMinutes,
+            sortOrder = item.sortOrder,
+            isResizable = resizable,
+            tag = plannedTask
+        )
+    }
+    val noteItems = notes.map { note ->
+        TimelineItem(
+            id = "note-${note.id}",
+            type = TimelineItemType.Note,
+            date = date,
+            startTimeMinutes = note.startTimeMinutes,
+            endTimeMinutes = note.startTimeMinutes?.let { it + DefaultNoteDurationMinutes },
+            sortOrder = note.sortOrder,
+            isResizable = false,
+            tag = note
+        )
+    }
+    val checkInItems = checkIns.map { checkIn ->
+        TimelineItem(
+            id = "checkin-${checkIn.id}",
+            type = TimelineItemType.CheckIn,
+            date = date,
+            startTimeMinutes = checkIn.startTimeMinutes,
+            endTimeMinutes = checkIn.endTimeMinutes,
+            sortOrder = checkIn.sortOrder,
+            isResizable = resizable && checkIn.source != DailyPlanItemSource.CheckInNote,
+            tag = checkIn
+        )
+    }
+    return (tasks + noteItems + checkInItems)
+        .sortedWith(compareBy<TimelineItem> { it.startTimeMinutes ?: -1 }.thenBy { it.sortOrder })
+}
+
 @Composable
 private fun SuggestionCard(
     task: TaskItem,
@@ -555,3 +532,5 @@ private fun MyDayView.label(): String = when (this) {
     MyDayView.Timeline -> "Timeline"
     MyDayView.Board -> "Board"
 }
+
+private const val DefaultNoteDurationMinutes = 30

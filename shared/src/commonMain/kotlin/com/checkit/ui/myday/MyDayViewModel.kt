@@ -9,7 +9,6 @@ import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.TaskItem
 import com.checkit.domain.usecase.AddManualDoneToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
-import com.checkit.domain.usecase.CompleteTaskUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
@@ -41,8 +40,7 @@ class MyDayViewModel(
     private val addManualDoneToDailyPlan: AddManualDoneToDailyPlanUseCase,
     private val updateDailyPlanItemTime: UpdateDailyPlanItemTimeUseCase,
     private val updateDailyPlanItem: UpdateDailyPlanItemUseCase,
-    private val deleteDailyPlanItemUseCase: DeleteDailyPlanItemUseCase,
-    private val completeTask: CompleteTaskUseCase
+    private val deleteDailyPlanItemUseCase: DeleteDailyPlanItemUseCase
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(MyDayUiState())
     val uiState: StateFlow<MyDayUiState> = _uiState.asStateFlow()
@@ -67,8 +65,6 @@ class MyDayViewModel(
     fun selectView(view: MyDayView) {
         _uiState.update { it.copy(selectedView = view) }
     }
-
-
 
     fun updateItemTime(item: DailyPlanItem, startTimeMinutes: Int, endTimeMinutes: Int) {
         viewModelScope.launch {
@@ -226,8 +222,8 @@ class MyDayViewModel(
                     taskId = item.taskId,
                     date = date,
                     source = item.source,
-                    title = item.editorTitle(),
-                    note = item.editorNote(),
+                    title = item.title,
+                    note = item.note.orEmpty(),
                     status = item.status,
                     startTimeMinutes = item.startTimeMinutes,
                     endTimeMinutes = item.endTimeMinutes,
@@ -293,11 +289,6 @@ class MyDayViewModel(
         }
     }
 }
-
-private fun DailyPlanItem.editorTitle(): String = title
-
-private fun DailyPlanItem.editorNote(): String =
-    note.orEmpty()
 
 private fun MyDayUiState.selectedSuggestionTimeRangeFor(task: TaskItem): Pair<Int?, Int?> {
     val selectedDuration = suggestionStartTimeMinutes?.let { selectedStart ->

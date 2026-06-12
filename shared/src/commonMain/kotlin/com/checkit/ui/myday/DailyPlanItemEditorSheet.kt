@@ -106,7 +106,7 @@ internal fun DailyPlanItemEditorSheet(
                         enabled = enabled
                     )
                 }
-                if(state.isAddMode && enabled) {
+                if (state.isAddMode && enabled) {
                     item {
                         Row(
                             modifier = Modifier.fillMaxWidth(),

@@ -49,9 +49,3 @@ fun List<DailyPlanItem>.toTaskViewProjection(
         checkIns = projectedCheckIns
     )
 }
-
-fun DailyPlanItem.durationMinutes(): Int? {
-    val start = startTimeMinutes ?: return null
-    val end = endTimeMinutes ?: return null
-    return (end - start).takeIf { it >= 0 }
-}
