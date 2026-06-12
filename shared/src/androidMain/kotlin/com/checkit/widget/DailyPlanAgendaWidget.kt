@@ -12,7 +12,9 @@ import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
+import androidx.glance.action.Action
 import androidx.glance.action.actionStartActivity
+import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.cornerRadius
@@ -283,6 +285,7 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
             supportingText = if (allDay) null else item.timeLabel,
             baseColor = item.color,
             allDay = allDay,
+            clickAction = item.clickAction(),
             icon = {
                 when (item) {
                     is GlanceAgendaItem.Task -> TaskIcon(completed = item.completed, tintColor = item.color)
@@ -299,6 +302,7 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
         supportingText: String?,
         baseColor: Color,
         allDay: Boolean,
+        clickAction: Action,
         icon: @Composable () -> Unit
     ) {
         val cardHeight = if (allDay) 32.dp else 48.dp
@@ -308,6 +312,7 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                 .height(cardHeight)
                 .cornerRadius(8.dp)
                 .background(baseColor.alphaProvider(DefaultCardBackgroundAlpha))
+                .clickable(clickAction)
         ) {
             Spacer(
                 modifier = GlanceModifier
@@ -356,9 +361,9 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
             provider = ImageProvider( if (completed) R.drawable.check_box_24px else R.drawable.check_box_outline_blank_24px),
             contentDescription = "check icon",
             modifier = GlanceModifier.size(24.dp),
-//            colorFilter = ColorFilter.tint(
-//                ColorProvider(tintColor)
-//            )
+            colorFilter = ColorFilter.tint(
+                ColorProvider(tintColor)
+            )
         )
     }
 
@@ -388,11 +393,38 @@ private sealed class GlanceAgendaItem {
     abstract val title: String
     abstract val color: Color
     abstract val completed: Boolean
+    abstract val dailyPlanItemId: Long?
+    abstract val taskId: Long?
+    abstract val noteId: Long?
 
     val timeLabel: String?
         get() = startTimeMinutes?.let { start ->
             endTimeMinutes?.let { end -> "${start.toClockLabel()} - ${end.toClockLabel()}" } ?: start.toClockLabel()
         }
+
+    fun clickAction(): Action {
+        val currentTaskId = taskId
+        val currentNoteId = noteId
+        val currentDailyPlanItemId = dailyPlanItemId
+        return when {
+            currentTaskId != null && currentDailyPlanItemId != null -> actionStartActivity<MainActivity>(
+                parameters = actionParametersOf(
+                    TaskIdParameterKey to currentTaskId,
+                    DailyPlanItemIdParameterKey to currentDailyPlanItemId
+                )
+            )
+            currentTaskId != null -> actionStartActivity<MainActivity>(
+                parameters = actionParametersOf(TaskIdParameterKey to currentTaskId)
+            )
+            currentNoteId != null -> actionStartActivity<MainActivity>(
+                parameters = actionParametersOf(NoteIdParameterKey to currentNoteId)
+            )
+            currentDailyPlanItemId != null -> actionStartActivity<MainActivity>(
+                parameters = actionParametersOf(DailyPlanItemIdParameterKey to currentDailyPlanItemId)
+            )
+            else -> actionStartActivity<MainActivity>()
+        }
+    }
 
     data class Task(
         val projection: PlannedTaskProjection
@@ -405,6 +437,9 @@ private sealed class GlanceAgendaItem {
         override val title: String = task.name.ifBlank { "Untitled task" }
         override val color: Color = dailyItemColor(task = task, list = task.list)
         override val completed: Boolean = item.status == DailyPlanItemStatus.Done
+        override val dailyPlanItemId: Long = item.id
+        override val taskId: Long = task.id
+        override val noteId: Long? = null
     }
 
     data class Note(
@@ -416,6 +451,9 @@ private sealed class GlanceAgendaItem {
         override val title: String = note.title.ifBlank { note.content.ifBlank { "Empty note" } }
         override val color: Color = note.cardColor()
         override val completed: Boolean = note.status == TaskStatus.Completed
+        override val dailyPlanItemId: Long? = null
+        override val taskId: Long? = null
+        override val noteId: Long = note.id
     }
 
     data class DailyPlan(
@@ -427,6 +465,9 @@ private sealed class GlanceAgendaItem {
         override val title: String = item.widgetTitle()
         override val color: Color = dailyItemColor(task = null, list = null)
         override val completed: Boolean = item.status == DailyPlanItemStatus.Done
+        override val dailyPlanItemId: Long = item.id
+        override val taskId: Long? = item.taskId
+        override val noteId: Long? = null
     }
 }
 

@@ -41,6 +41,9 @@ import checkit.shared.generated.resources.tab_my_day
 import checkit.shared.generated.resources.tab_tasks
 import checkit.shared.generated.resources.tab_report
 import checkit.shared.generated.resources.tab_settings
+import com.checkit.domain.DailyPlanItem
+import com.checkit.domain.NoteItem
+import com.checkit.domain.TaskItem
 import com.checkit.ui.calendar.CalendarScreen
 import com.checkit.ui.calendar.CalendarViewModel
 import com.checkit.ui.myday.MyDayScreen
@@ -57,6 +60,7 @@ import com.checkit.ui.tasks.TaskEditorSheet
 import com.checkit.ui.theme.AppTheme
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -84,7 +88,11 @@ fun CheckItApp(
     myDayViewModel: MyDayViewModel = koinViewModel(),
     calendarViewModel: CalendarViewModel = koinViewModel(),
     reportViewModel: ReportViewModel = koinViewModel(),
-    settingsViewModel: SettingsViewModel = koinViewModel()
+    settingsViewModel: SettingsViewModel = koinViewModel(),
+    dailyPlanItemLaunchId: Long? = null,
+    taskLaunchId: Long? = null,
+    noteLaunchId: Long? = null,
+    onWidgetLaunchConsumed: () -> Unit = {}
 ) {
     val backStack = remember { mutableStateListOf<NavKey>(Routes.MyDay) }
     val taskMessage by remember(taskViewModel) {
@@ -144,6 +152,30 @@ fun CheckItApp(
         } else if (backStack.lastOrNull() != Routes.MyDay) {
             resetTo(Routes.MyDay)
         }
+    }
+
+    LaunchedEffect(
+        dailyPlanItemLaunchId,
+        taskLaunchId,
+        noteLaunchId,
+        taskUiState.board,
+        myDayUiState.dailyPlans
+    ) {
+        val launchTarget = WidgetLaunchTarget.from(
+            dailyPlanItemId = dailyPlanItemLaunchId,
+            taskId = taskLaunchId,
+            noteId = noteLaunchId,
+            taskUiState = taskUiState,
+            myDayUiState = myDayUiState
+        ) ?: return@LaunchedEffect
+
+        resetTo(Routes.MyDay)
+        when (launchTarget) {
+            is WidgetLaunchTarget.Task -> taskViewModel.openTask(launchTarget.task, launchTarget.dailyPlanItem)
+            is WidgetLaunchTarget.Note -> taskViewModel.openNote(launchTarget.note)
+            is WidgetLaunchTarget.DailyPlan -> myDayViewModel.openItemEditor(launchTarget.item, launchTarget.date)
+        }
+        onWidgetLaunchConsumed()
     }
 
     NavigationBackHandler(
@@ -314,6 +346,38 @@ private fun NavKey.asTab(): CheckItTab? = when (this) {
     Routes.Report -> CheckItTab.Report
     Routes.Settings -> CheckItTab.Settings
     else -> null
+}
+
+private sealed interface WidgetLaunchTarget {
+    data class Task(val task: TaskItem, val dailyPlanItem: DailyPlanItem?) : WidgetLaunchTarget
+    data class Note(val note: NoteItem) : WidgetLaunchTarget
+    data class DailyPlan(val item: DailyPlanItem, val date: LocalDate) : WidgetLaunchTarget
+
+    companion object {
+        fun from(
+            dailyPlanItemId: Long?,
+            taskId: Long?,
+            noteId: Long?,
+            taskUiState: TaskUiState,
+            myDayUiState: MyDayUiState
+        ): WidgetLaunchTarget? {
+            val dailyPlanTarget = dailyPlanItemId?.let { itemId ->
+                myDayUiState.dailyPlans.firstNotNullOfOrNull { plan ->
+                    plan.items.firstOrNull { it.id == itemId }?.let { item -> item to plan.date }
+                }
+            }
+            if (dailyPlanItemId != null && dailyPlanTarget == null) return null
+            if (taskId != null) {
+                val task = taskUiState.board.tasksById[taskId] ?: return null
+                return Task(task = task, dailyPlanItem = dailyPlanTarget?.first)
+            }
+            if (noteId != null) {
+                val note = taskUiState.board.notesById[noteId] ?: return null
+                return Note(note)
+            }
+            return dailyPlanTarget?.let { (item, date) -> DailyPlan(item, date) }
+        }
+    }
 }
 
 private fun CheckItTab.route(): NavKey = when (this) {
