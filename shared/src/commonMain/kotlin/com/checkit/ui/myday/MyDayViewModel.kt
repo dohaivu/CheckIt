@@ -152,6 +152,17 @@ class MyDayViewModel(
         }
     }
     fun addTaskFromSuggestion(task: TaskItem) {
+        addTaskToMyDay(task, clearSuggestions = true)
+    }
+
+    fun addTaskToMyDay(task: TaskItem) {
+        addTaskToMyDay(task, clearSuggestions = false)
+    }
+
+    private fun addTaskToMyDay(
+        task: TaskItem,
+        clearSuggestions: Boolean
+    ) {
         viewModelScope.launch {
             val state = _uiState.value
             val (startTimeMinutes, endTimeMinutes) = state.selectedSuggestionTimeRangeFor(task)
@@ -159,12 +170,17 @@ class MyDayViewModel(
             if (startTimeMinutes != task.startTimeMinutes || endTimeMinutes != task.endTimeMinutes) {
                 updateDailyPlanItemTime(itemId, startTimeMinutes, endTimeMinutes)
             }
-            _uiState.update {
-                it.copy(
-                    showSuggestions = false,
-                    suggestionStartTimeMinutes = null,
-                    suggestionEndTimeMinutes = null
-                )
+            _uiState.update { current ->
+                if (clearSuggestions) {
+                    current.copy(
+                        showSuggestions = false,
+                        suggestionStartTimeMinutes = null,
+                        suggestionEndTimeMinutes = null,
+                        message = "Added to My Day"
+                    )
+                } else {
+                    current.copy(message = "Added to My Day")
+                }
             }
         }
     }
@@ -275,23 +291,80 @@ class MyDayViewModel(
 }
 
 private fun MyDayUiState.selectedSuggestionTimeRangeFor(task: TaskItem): Pair<Int?, Int?> {
-    val selectedStart = suggestionStartTimeMinutes
-    if (selectedStart != null) {
-        return selectedStart to suggestionEndTimeMinutes
-    }
-
-    val start = task.startTimeMinutes
-        ?: return currentMyDayTimeMinutes().let { now ->
-            now to (now + DefaultTaskDurationMinutes).coerceAtMost(MyDayMinutesPerDay)
+    val selectedDuration = suggestionStartTimeMinutes?.let { selectedStart ->
+        suggestionEndTimeMinutes?.let { selectedEnd ->
+            (selectedEnd - selectedStart).takeIf { it > 0 }
         }
-    val end = task.endTimeMinutes
+    }
+    val durationMinutes = selectedDuration
+        ?: task.durationMinutes()
+        ?: DefaultTaskDurationMinutes
+    val preferredStart = suggestionStartTimeMinutes ?: task.preferredMyDayStartTime()
+    return nextAvailableTimeRange(preferredStart, durationMinutes)
+}
+
+private fun TaskItem.preferredMyDayStartTime(): Int {
     val now = currentMyDayTimeMinutes()
-    return if (start < now) {
-        now to (now + DefaultTaskDurationMinutes).coerceAtMost(MyDayMinutesPerDay)
+    val start = startTimeMinutes
+    return if (start == null || start < now) {
+        now
     } else {
-        start to end
+        start
     }
 }
+
+private fun TaskItem.durationMinutes(): Int? {
+    val start = startTimeMinutes ?: return null
+    val end = endTimeMinutes ?: return null
+    return (end - start).takeIf { it > 0 }
+}
+
+private fun MyDayUiState.nextAvailableTimeRange(
+    preferredStartTimeMinutes: Int,
+    durationMinutes: Int
+): Pair<Int?, Int?> {
+    val duration = durationMinutes.coerceIn(MinimumPlanDurationMinutes, MyDayMinutesPerDay)
+    val lastStart = MyDayMinutesPerDay - duration
+    val preferredStart = preferredStartTimeMinutes.coerceIn(0, lastStart)
+    val occupiedRanges = items
+        .mapNotNull { item -> item.occupiedTimeRange() }
+        .sortedBy { it.first }
+
+    findAvailableStart(preferredStart, duration, occupiedRanges)?.let { start ->
+        return start to start + duration
+    }
+    findAvailableStart(0, duration, occupiedRanges)?.let { start ->
+        return start to start + duration
+    }
+    return null to null
+}
+
+private fun DailyPlanItem.occupiedTimeRange(): Pair<Int, Int>? {
+    val start = startTimeMinutes ?: return null
+    val end = (endTimeMinutes ?: (start + DefaultTaskDurationMinutes)).coerceAtMost(MyDayMinutesPerDay)
+    return if (end > start) start.coerceIn(0, MyDayMinutesPerDay) to end else null
+}
+
+private fun findAvailableStart(
+    preferredStart: Int,
+    durationMinutes: Int,
+    occupiedRanges: List<Pair<Int, Int>>
+): Int? {
+    val lastStart = MyDayMinutesPerDay - durationMinutes
+    var candidate = preferredStart.coerceIn(0, lastStart)
+    occupiedRanges.forEach { (occupiedStart, occupiedEnd) ->
+        if (candidate + durationMinutes <= occupiedStart) return candidate
+        if (candidate < occupiedEnd && candidate + durationMinutes > occupiedStart) {
+            candidate = occupiedEnd.coerceAtMost(lastStart)
+        }
+    }
+    return candidate.takeIf { candidate + durationMinutes <= MyDayMinutesPerDay && !it.overlapsAny(durationMinutes, occupiedRanges) }
+}
+
+private fun Int.overlapsAny(durationMinutes: Int, occupiedRanges: List<Pair<Int, Int>>): Boolean =
+    occupiedRanges.any { (occupiedStart, occupiedEnd) ->
+        this < occupiedEnd && this + durationMinutes > occupiedStart
+    }
 
 private fun DailyPlanItemEditorState.toWriteInput(
     status: DailyPlanItemStatus,
@@ -312,4 +385,5 @@ private fun currentMyDayTimeMinutes(): Int {
 }
 
 private const val DefaultTaskDurationMinutes = 60
+private const val MinimumPlanDurationMinutes = 15
 private const val MyDayMinutesPerDay = 24 * 60

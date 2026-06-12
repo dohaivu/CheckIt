@@ -12,19 +12,24 @@ import com.checkit.ui.tasks.toClockLabel
 import kotlinx.datetime.LocalDate
 
 data class MyDayTaskViewProjection(
-    val tasks: List<TaskItem>,
+    val plannedTasks: List<PlannedTaskProjection>,
     val notes: List<NoteItem>,
     val checkIns: List<DailyPlanItem>,
-    val lists: List<TaskList>
+) {
+    val tasks: List<TaskItem> = plannedTasks.map { it.task }
+}
+
+data class PlannedTaskProjection(
+    val task: TaskItem,
+    val dailyPlanItem: DailyPlanItem
 )
 
 fun List<DailyPlanItem>.toTaskViewProjection(
     board: TaskBoard,
     date: LocalDate
 ): MyDayTaskViewProjection {
-    val lists = board.lists
     val realTasksById = board.tasksById
-    val projectedTasks = mutableListOf<TaskItem>()
+    val projectedTasks = mutableListOf<PlannedTaskProjection>()
     val projectedNotes = board.notes.filter { !it.isTrashed && it.date == date }
     val projectedCheckIns = mutableListOf<DailyPlanItem>()
 
@@ -33,12 +38,15 @@ fun List<DailyPlanItem>.toTaskViewProjection(
         if (taskId != null) {
             val realTask = realTasksById[taskId]
             if (realTask != null) {
-                projectedTasks += realTask.copy(
-                    status = item.status.toTaskStatus(),
-                    startTimeMinutes = item.startTimeMinutes,
-                    endTimeMinutes = item.endTimeMinutes,
-                    sortOrder = item.sortOrder,
-                    doDate = date
+                projectedTasks += PlannedTaskProjection(
+                    task = realTask.copy(
+                        status = item.status.toTaskStatus(),
+                        startTimeMinutes = item.startTimeMinutes,
+                        endTimeMinutes = item.endTimeMinutes,
+                        sortOrder = item.sortOrder,
+                        doDate = date
+                    ),
+                    dailyPlanItem = item
                 )
             }
         } else {
@@ -47,10 +55,9 @@ fun List<DailyPlanItem>.toTaskViewProjection(
     }
 
     return MyDayTaskViewProjection(
-        tasks = projectedTasks,
+        plannedTasks = projectedTasks,
         notes = projectedNotes,
-        checkIns = projectedCheckIns,
-        lists = lists
+        checkIns = projectedCheckIns
     )
 }
 

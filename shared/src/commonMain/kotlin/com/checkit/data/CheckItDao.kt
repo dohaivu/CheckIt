@@ -229,9 +229,6 @@ interface CheckItDao {
     @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM daily_plan_items WHERE dailyPlanId = :dailyPlanId")
     suspend fun nextDailyPlanItemSortOrder(dailyPlanId: Long): Int
 
-    @Query("SELECT COUNT(*) FROM daily_plan_items WHERE dailyPlanId = :dailyPlanId AND taskId = :taskId")
-    suspend fun dailyPlanTaskItemCount(dailyPlanId: Long, taskId: Long): Int
-
     @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM task_lists")
     suspend fun nextListSortOrder(): Int
 

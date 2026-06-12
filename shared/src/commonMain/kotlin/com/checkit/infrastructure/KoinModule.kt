@@ -110,8 +110,27 @@ val provideLocalServiceModule = module {
 val provideViewModelModule = module {
     viewModel {
         TaskViewModel(
-            get(), get(), get(), get(), get(), get(), get(), get(), get(), get(),
-            get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get()
         )
     }
     viewModel { CalendarViewModel(get(), get(), get()) }

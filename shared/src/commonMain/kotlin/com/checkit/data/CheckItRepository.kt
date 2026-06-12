@@ -381,7 +381,6 @@ class RoomCheckItRepository(
 
     override suspend fun addTaskToDailyPlan(date: LocalDate, task: TaskItem): Long {
         val planId = ensureDailyPlan(date)
-        if (dao.dailyPlanTaskItemCount(planId, task.id) > 0) return planId
         val now = Clock.System.now().toEpochMilliseconds()
         val itemId = dao.insertDailyPlanItem(
             DailyPlanItemEntity(

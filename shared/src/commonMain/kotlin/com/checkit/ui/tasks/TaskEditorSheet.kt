@@ -20,8 +20,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Event
@@ -37,12 +35,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -52,8 +50,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.DailyPlanItem
@@ -90,6 +86,8 @@ internal fun TaskEditorSheet(
     onDelete: () -> Unit,
     onComplete: () -> Unit,
     onOpen: () -> Unit,
+    canAddToMyDay: Boolean,
+    onAddToMyDay: () -> Unit,
     onTaskNameChange: (String) -> Unit,
     onTaskListChange: (Long) -> Unit,
     onTaskDescriptionChange: (String) -> Unit,
@@ -133,11 +131,7 @@ internal fun TaskEditorSheet(
                 isViewMode = editor.isViewMode(),
                 isAddMode = editor.isAddMode(),
                 isTaskSelected = editor is TaskEditorState.TaskForm,
-                canDelete = editor.canDelete(),
-                onDismiss = onDismiss,
                 onEdit = onEdit,
-                onSave = onSave,
-                onDelete = onDelete,
                 onSwitchAddModeToTask = onSwitchAddModeToTask,
                 onSwitchAddModeToNote = onSwitchAddModeToNote,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
@@ -218,25 +212,20 @@ internal fun TaskEditorSheet(
                         }
                     }
                 }
-                if (editor.isCompletableView()) {
-                    item {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                            Button(onClick = onComplete) {
-                                Text("Complete")
-                            }
-                        }
-                    }
-                }
-                if (editor.isOpenableView()) {
-                    item {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                            Button(onClick = onOpen) {
-                                Text("Open")
-                            }
-                        }
-                    }
-                }
             }
+            SheetFooter(
+                canDelete = editor.canDelete(),
+                isAddMode = editor.isAddMode(),
+                canAddToMyDay = canAddToMyDay,
+                isCompletable = editor.isCompletableView(),
+                isOpenable = editor.isOpenableView(),
+                onSave = onSave,
+                onAddToMyDay = onAddToMyDay,
+                onDelete = onDelete,
+                onComplete = onComplete,
+                onOpen = onOpen,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+            )
         }
     }
 }
@@ -271,21 +260,12 @@ private fun SheetHeader(
     isViewMode: Boolean,
     isAddMode: Boolean,
     isTaskSelected: Boolean,
-    canDelete: Boolean,
-    onDismiss: () -> Unit,
     onEdit: () -> Unit,
-    onSave: () -> Unit,
-    onDelete: () -> Unit,
     onSwitchAddModeToTask: () -> Unit,
     onSwitchAddModeToNote: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var menuExpanded by remember { mutableStateOf(false) }
     Box(modifier = modifier.fillMaxWidth()) {
-        IconButton(onClick = onDismiss) {
-            Icon(Icons.Default.Close, contentDescription = "Close")
-        }
-
         if (isAddMode) {
             Box(modifier = Modifier.align(Alignment.Center)) {
                 AddModeSwitch(
@@ -302,29 +282,72 @@ private fun SheetHeader(
                     Icon(Icons.Default.Edit, contentDescription = "Edit")
                 }
             }
-            if (canDelete && isViewMode) {
-                Box {
-                    IconButton(onClick = { menuExpanded = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "Options")
-                    }
-                    DropdownMenu(
-                        expanded = menuExpanded,
-                        onDismissRequest = { menuExpanded = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Delete") },
-                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
-                            onClick = {
-                                menuExpanded = false
-                                onDelete()
-                            }
-                        )
-                    }
+        }
+    }
+}
+
+@Composable
+private fun SheetFooter(
+    canDelete: Boolean,
+    isAddMode: Boolean,
+    canAddToMyDay: Boolean,
+    isCompletable: Boolean,
+    isOpenable: Boolean,
+    onSave: () -> Unit,
+    onAddToMyDay: () -> Unit,
+    onDelete: () -> Unit,
+    onComplete: () -> Unit,
+    onOpen: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (!canDelete && !isAddMode && !canAddToMyDay && !isCompletable && !isOpenable) return
+
+    var menuExpanded by remember { mutableStateOf(false) }
+
+    Box(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.align(Alignment.Center),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (canAddToMyDay) {
+                OutlinedButton(onClick = onAddToMyDay) {
+                    Text("Add to MyDay")
                 }
             }
             if (isAddMode) {
                 Button(onClick = onSave) {
                     Text("Save")
+                }
+            }
+            if (isCompletable) {
+                Button(onClick = onComplete) {
+                    Text("Complete")
+                }
+            }
+            if (isOpenable) {
+                Button(onClick = onOpen) {
+                    Text("Open")
+                }
+            }
+        }
+        if (canDelete) {
+            Box(modifier = Modifier.align(Alignment.CenterEnd)) {
+                IconButton(onClick = { menuExpanded = true }) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "Options")
+                }
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Delete") },
+                        leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
+                        onClick = {
+                            menuExpanded = false
+                            onDelete()
+                        }
+                    )
                 }
             }
         }
@@ -570,7 +593,7 @@ private fun DailyPlanSection(
         modifier = Modifier
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = ContentAlpha), RoundedCornerShape(16.dp))
             .padding(top = 8.dp, bottom = 8.dp, end = 8.dp)
         ,
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -590,7 +613,7 @@ private fun DailyPlanSection(
                 modifier = Modifier
             )
 
-            Button(onClick = onStatusChange) {
+            OutlinedButton(onClick = onStatusChange) {
                 Text(if (item.status == DailyPlanItemStatus.Done) "Open" else "Done")
             }
         }
@@ -677,13 +700,13 @@ private fun TaskEditorState.canDelete(): Boolean = when (this) {
 }
 
 private fun TaskEditorState.isCompletableView(): Boolean = when (this) {
-    is TaskEditorState.TaskForm -> mode == EditorMode.View && status != TaskStatus.Completed
-    is TaskEditorState.NoteForm -> mode == EditorMode.View && status != TaskStatus.Completed
+    is TaskEditorState.TaskForm -> mode == EditorMode.Edit && status != TaskStatus.Completed
+    is TaskEditorState.NoteForm -> mode == EditorMode.Edit && status != TaskStatus.Completed
 }
 
 private fun TaskEditorState.isOpenableView(): Boolean = when (this) {
-    is TaskEditorState.TaskForm -> mode == EditorMode.View && status == TaskStatus.Completed
-    is TaskEditorState.NoteForm -> mode == EditorMode.View && status == TaskStatus.Completed
+    is TaskEditorState.TaskForm -> mode == EditorMode.Edit && status == TaskStatus.Completed
+    is TaskEditorState.NoteForm -> mode == EditorMode.Edit && status == TaskStatus.Completed
 }
 
 private fun DailyPlanItem.durationMinutes(): Int? {

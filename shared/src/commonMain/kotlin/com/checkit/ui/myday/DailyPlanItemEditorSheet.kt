@@ -95,7 +95,6 @@ internal fun DailyPlanItemEditorSheet(
             DailyPlanItemSheetHeader(
                 state = state,
                 onSourceChange = onSourceChange,
-                onDismiss = onDismiss,
                 onEdit = onEdit,
                 onDelete = onDelete
             )
@@ -168,16 +167,11 @@ internal fun DailyPlanItemEditorSheet(
 private fun DailyPlanItemSheetHeader(
     state: DailyPlanItemEditorState,
     onSourceChange: (DailyPlanItemSource) -> Unit,
-    onDismiss: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)) {
-        IconButton(onClick = onDismiss) {
-            Icon(Icons.Default.Close, contentDescription = "Close")
-        }
-
         if (state.isAddMode || state.isEditMode && state.taskId == null) {
             DailyPlanSourceSwitch(
                 selected = state.source,

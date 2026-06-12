@@ -146,6 +146,7 @@ internal fun MyDayScreen(
                 MyDayView.Board -> MyDayBoard(
                     state = state,
                     onItemClick = { viewModel.openItemEditor(it, state.today) },
+                    onTaskClick = onTaskClick,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -200,15 +201,15 @@ internal fun MyDayAgenda(
 ) {
     val projection = remember(items, board, date) { items.toTaskViewProjection(board = board, date = date) }
     val timelineItems = remember(projection, date) {
-        val tasks = projection.tasks.map { task ->
+        val tasks = projection.plannedTasks.map { plannedTask ->
             TimelineItem(
-                id = "task-${task.id}",
+                id = "daily-task-${plannedTask.dailyPlanItem.id}",
                 type = TimelineItemType.Task,
                 date = date,
-                startTimeMinutes = task.startTimeMinutes,
-                endTimeMinutes = task.endTimeMinutes,
-                sortOrder = task.sortOrder,
-                tag = task
+                startTimeMinutes = plannedTask.task.startTimeMinutes,
+                endTimeMinutes = plannedTask.task.endTimeMinutes,
+                sortOrder = plannedTask.dailyPlanItem.sortOrder,
+                tag = plannedTask
             )
         }
         val notes = projection.notes.map { note ->
@@ -242,11 +243,7 @@ internal fun MyDayAgenda(
             when (val tag = item.tag) {
                 is DailyPlanItem -> onItemClick(tag)
                 is NoteItem -> onNoteClick(tag)
-                is TaskItem -> {
-                    val task = board.tasksById[tag.id]
-                    val dailyItem = items.find { it.taskId == tag.id }
-                    if (task != null && dailyItem != null) onTaskClick(task, dailyItem)
-                }
+                is PlannedTaskProjection -> onTaskClick(tag.task, tag.dailyPlanItem)
             }
         },
         dayLimit = 1,
@@ -267,12 +264,13 @@ internal fun MyDayAgenda(
                         completed = tag.status == TaskStatus.Completed
                     )
                 }
-                is TaskItem -> {
+                is PlannedTaskProjection -> {
+                    val task = tag.task
                     TaskCard(
-                        title = tag.name,
-                        color = tag.cardColor(),
-                        timeLabel = tag.timeRangeLabel(),
-                        leadingContent = { TaskStatusIcon(tag.status, tag.priority) }
+                        title = task.name,
+                        color = task.cardColor(),
+                        timeLabel = task.timeRangeLabel(),
+                        leadingContent = { TaskStatusIcon(task.status, task.priority) }
                     )
                 }
             }
@@ -298,15 +296,15 @@ private fun MyDayTimeline(
         items.toTaskViewProjection(board = board, date = date)
     }
     val timelineItems = remember(projection) {
-        val tasks = projection.tasks.map { task ->
+        val tasks = projection.plannedTasks.map { plannedTask ->
             TimelineItem(
-                id = "task-${task.id}",
+                id = "daily-task-${plannedTask.dailyPlanItem.id}",
                 type = TimelineItemType.Task,
-                startTimeMinutes = task.startTimeMinutes,
-                endTimeMinutes = task.endTimeMinutes,
-                sortOrder = task.sortOrder,
+                startTimeMinutes = plannedTask.task.startTimeMinutes,
+                endTimeMinutes = plannedTask.task.endTimeMinutes,
+                sortOrder = plannedTask.dailyPlanItem.sortOrder,
                 isResizable = true,
-                tag = task
+                tag = plannedTask
             )
         }
         val notes = projection.notes.map { note ->
@@ -340,11 +338,7 @@ private fun MyDayTimeline(
             when (val tag = item.tag) {
                 is DailyPlanItem -> onItemClick(tag)
                 is NoteItem -> onNoteClick(tag)
-                is TaskItem -> {
-                    val task = board.tasksById[tag.id]
-                    val dailyItem = items.find { it.taskId == tag.id }
-                    if (task != null && dailyItem != null) onTaskClick(task, dailyItem)
-                }
+                is PlannedTaskProjection -> onTaskClick(tag.task, tag.dailyPlanItem)
             }
         },
         onCreateRequest = onCreateTask,
@@ -352,22 +346,14 @@ private fun MyDayTimeline(
             when (val tag = item.tag) {
                 is DailyPlanItem -> onItemTimeChange(tag, start, end)
                 is NoteItem -> onNoteTimeChange(tag, start)
-                is TaskItem -> {
-                    val dailyItem = items.find { it.taskId == tag.id }
-                    if (dailyItem != null) onItemTimeChange(dailyItem, start, end)
-                }
+                is PlannedTaskProjection -> onItemTimeChange(tag.dailyPlanItem, start, end)
             }
         },
         allDayItemContent = { item ->
             when (val tag = item.tag) {
                 is DailyPlanItem -> DailyPlanCard(item = tag, onClick = { onItemClick(tag) })
                 is NoteItem -> { /* handle if needed */ }
-                is TaskItem -> {
-                    val dailyItem = items.find { it.taskId == tag.id }
-                    if (dailyItem != null) {
-                        DailyPlanCard(item = dailyItem, onClick = { onItemClick(dailyItem) })
-                    }
-                }
+                is PlannedTaskProjection -> DailyPlanCard(item = tag.dailyPlanItem, onClick = { onItemClick(tag.dailyPlanItem) })
             }
         },
         timedItemContent = { item, isSelected ->
@@ -388,12 +374,13 @@ private fun MyDayTimeline(
                         modifier = Modifier.matchParentSize(),
                     )
                 }
-                is TaskItem -> {
+                is PlannedTaskProjection -> {
+                    val task = tag.task
                     TaskCard(
-                        title = tag.name,
-                        color = tag.cardColor(),
-                        timeLabel = tag.timeRangeLabel(),
-                        leadingContent = { TaskStatusIcon(tag.status, tag.priority) },
+                        title = task.name,
+                        color = task.cardColor(),
+                        timeLabel = task.timeRangeLabel(),
+                        leadingContent = { TaskStatusIcon(task.status, task.priority) },
                         modifier = Modifier.matchParentSize(),
                         containerAlpha = if (isSelected) 0.28f else 0.17f
                     )
@@ -408,9 +395,15 @@ private fun MyDayTimeline(
 private fun MyDayBoard(
     state: MyDayUiState,
     onItemClick: (DailyPlanItem) -> Unit,
+    onTaskClick: (TaskItem, DailyPlanItem?) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val taskById = remember(state.board.tasks) { state.board.tasksById }
+    val plannedTasksByDailyItemId = remember(state.items, state.board, state.today) {
+        state.items
+            .toTaskViewProjection(board = state.board, date = state.today)
+            .plannedTasks
+            .associateBy { it.dailyPlanItem.id }
+    }
     LazyColumn(
         modifier = modifier.fillMaxWidth(),
         contentPadding = PaddingValues(bottom = 24.dp),
@@ -421,23 +414,13 @@ private fun MyDayBoard(
             item { EmptyStateText("Nothing planned") }
         } else {
             items(state.plannedItems, key = { "planned-${it.id}" }) { item ->
-                if (item.taskId != null) {
-                    val task = item.taskId.let { taskById[it] }
-                    if (task != null) {
-                        TaskCard(
-                            title = task.name,
-                            color = task.cardColor(),
-                            timeLabel = task.timeRangeLabel(),
-                            leadingContent = { TaskStatusIcon(task.status, task.priority) }
-                        )
-                    }
-                } else {
-                    DailyPlanCard(
-                        item = item,
-                        onClick = { onItemClick(item) }
-                    )
-                }
-
+                MyDayBoardItem(
+                    item = item,
+                    plannedTask = plannedTasksByDailyItemId[item.id],
+                    completed = false,
+                    onItemClick = onItemClick,
+                    onTaskClick = onTaskClick
+                )
             }
         }
         item { SectionLabel("Done") }
@@ -445,25 +428,41 @@ private fun MyDayBoard(
             item { EmptyStateText("Nothing done yet") }
         } else {
             items(state.doneItems, key = { "done-${it.id}" }) { item ->
-                if (item.taskId != null) {
-                    val task = item.taskId.let { taskById[it] }
-                    if (task != null) {
-                        TaskCard(
-                            title = task.name,
-                            color = task.cardColor(),
-                            timeLabel = task.timeRangeLabel(),
-                            leadingContent = { TaskStatusIcon(task.status, task.priority) },
-                            completed = true
-                        )
-                    }
-                } else {
-                    DailyPlanCard(
-                        item = item,
-                        onClick = { onItemClick(item) }
-                    )
-                }
+                MyDayBoardItem(
+                    item = item,
+                    plannedTask = plannedTasksByDailyItemId[item.id],
+                    completed = true,
+                    onItemClick = onItemClick,
+                    onTaskClick = onTaskClick
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun MyDayBoardItem(
+    item: DailyPlanItem,
+    plannedTask: PlannedTaskProjection?,
+    completed: Boolean,
+    onItemClick: (DailyPlanItem) -> Unit,
+    onTaskClick: (TaskItem, DailyPlanItem?) -> Unit
+) {
+    if (plannedTask != null) {
+        val task = plannedTask.task
+        TaskCard(
+            title = task.name,
+            color = task.cardColor(),
+            timeLabel = task.timeRangeLabel(),
+            leadingContent = { TaskStatusIcon(task.status, task.priority) },
+            completed = completed,
+            onClick = { onTaskClick(task, plannedTask.dailyPlanItem) }
+        )
+    } else {
+        DailyPlanCard(
+            item = item,
+            onClick = { onItemClick(item) }
+        )
     }
 }
 

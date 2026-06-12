@@ -100,12 +100,10 @@ data class MyDayUiState(
     val items: List<DailyPlanItem> = plan?.items.orEmpty()
     val plannedItems: List<DailyPlanItem> = items.filter { it.status != DailyPlanItemStatus.Done }
     val doneItems: List<DailyPlanItem> = items.filter { it.status == DailyPlanItemStatus.Done }
-    val itemTaskIds: Set<Long> = items.mapNotNull { it.taskId }.toSet()
     val suggestedTasks: List<TaskItem> = board.tasks
         .filter { task ->
             !task.isTrashed &&
-                task.status != TaskStatus.Completed &&
-                task.id !in itemTaskIds
+                task.status != TaskStatus.Completed
         }
         .sortedWith(compareBy<TaskItem> { it.doDate ?: LocalDate.fromEpochDays(Int.MAX_VALUE) }.thenBy { it.sortOrder })
 }

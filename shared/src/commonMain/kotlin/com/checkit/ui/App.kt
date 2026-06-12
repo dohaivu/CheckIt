@@ -55,6 +55,8 @@ import com.checkit.ui.settings.SettingsViewModel
 import com.checkit.ui.myday.DailyPlanItemEditorSheet
 import com.checkit.ui.tasks.TaskEditorSheet
 import com.checkit.ui.theme.AppTheme
+import com.checkit.domain.TaskStatus
+import com.checkit.domain.TaskItem
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
@@ -233,6 +235,7 @@ fun CheckItApp(
                     }
                 )
                 taskUiState.editor?.let { editor ->
+                    val addToMyDayTask = editor.taskForMyDayAction(taskUiState.board.tasks)
                     TaskEditorSheet(
                         editor = editor,
                         availableLists = taskUiState.board.lists,
@@ -243,6 +246,13 @@ fun CheckItApp(
                         onDelete = taskViewModel::deleteEditorItem,
                         onComplete = taskViewModel::completeCurrentItem,
                         onOpen = taskViewModel::openCurrentItem,
+                        canAddToMyDay = addToMyDayTask != null,
+                        onAddToMyDay = {
+                            addToMyDayTask?.let { task ->
+                                myDayViewModel.addTaskToMyDay(task)
+                                taskViewModel.dismissEditor()
+                            }
+                        },
                         onTaskNameChange = taskViewModel::updateTaskName,
                         onTaskListChange = taskViewModel::updateTaskListId,
                         onTaskDescriptionChange = taskViewModel::updateTaskDescription,
@@ -293,6 +303,13 @@ fun CheckItApp(
         }
     }
     }
+}
+
+private fun TaskEditorState.taskForMyDayAction(tasks: List<TaskItem>): TaskItem? {
+    val form = this as? TaskEditorState.TaskForm ?: return null
+    val taskId = form.taskId ?: return null
+    if (form.mode == EditorMode.Add || form.status == TaskStatus.Completed) return null
+    return tasks.firstOrNull { it.id == taskId }
 }
 
 private fun NavKey.asTab(): CheckItTab? = when (this) {
