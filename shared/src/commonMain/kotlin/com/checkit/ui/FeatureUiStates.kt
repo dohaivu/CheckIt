@@ -137,10 +137,8 @@ data class DailyPlanItemEditorState(
     val selectedTagIds: Set<Long> = emptySet()
 ) {
     val isAddMode: Boolean get() = mode == EditorMode.Add
-    val isViewMode: Boolean get() = mode == EditorMode.View
     val isEditMode: Boolean get() = mode == EditorMode.Edit
     val canDelete: Boolean get() = itemId != null
-    val canOpenTask: Boolean get() = taskId != null
 }
 
 sealed interface TaskEditorState {

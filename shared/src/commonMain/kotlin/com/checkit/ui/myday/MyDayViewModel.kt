@@ -216,8 +216,6 @@ class MyDayViewModel(
             )
         }
     }
-    fun editItemEditor() = updateItemEditor { it.copy(mode = EditorMode.Edit) }
-
     fun updateDoneTitle(title: String) = updateItemEditor { it.copy(title = title) }
     fun updateDoneNote(note: String) = updateItemEditor { it.copy(note = note) }
     fun updateEditorSource(source: DailyPlanItemSource) = updateItemEditor {
@@ -236,35 +234,6 @@ class MyDayViewModel(
             it.selectedTagIds + tagId
         }
         it.copy(selectedTagIds = newTagIds)
-    }
-
-    fun markEditorDone() {
-        val editor = _uiState.value.itemEditor ?: return
-        val title = editor.title.trim()
-        if (title.isBlank()) {
-            _uiState.update { it.copy(message = if (editor.source == DailyPlanItemSource.CheckInNote) "Add a note" else "Add a done item") }
-            return
-        }
-        viewModelScope.launch {
-            if (editor.itemId == null) {
-                addManualDoneToDailyPlan(
-                    editor.date,
-                    title,
-                    editor.note.trim().takeIf { it.isNotBlank() },
-                    editor.startTimeMinutes,
-                    editor.endTimeMinutes,
-                    DailyPlanItemSource.CheckInManualDone,
-                    tagIds = editor.selectedTagIds.toList()
-                )
-            } else {
-                updateDailyPlanItem(
-                    editor.itemId,
-                    editor.toWriteInput(status = DailyPlanItemStatus.Done)
-                )
-            }
-            editor.taskId?.let { completeTask(it) }
-            _uiState.update { it.copy(itemEditor = null, message = "Done") }
-        }
     }
 
     fun deleteEditorItem() {

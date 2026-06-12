@@ -315,7 +315,6 @@ fun CheckItApp(
                     )
                 }
                 myDayUiState.itemEditor?.let { editor ->
-                    val task = editor.taskId?.let { taskId -> myDayUiState.board.tasks.firstOrNull { it.id == taskId } }
                     DailyPlanItemEditorSheet(
                         state = editor,
                         availableTags = myDayUiState.board.tags,
@@ -326,11 +325,8 @@ fun CheckItApp(
                         onStartTimeChange = myDayViewModel::updateStartTime,
                         onEndTimeChange = myDayViewModel::updateEndTime,
                         onTagToggle = myDayViewModel::toggleTag,
-                        onEdit = myDayViewModel::editItemEditor,
                         onAdd = myDayViewModel::addCheckIn,
-                        onDone = myDayViewModel::markEditorDone,
-                        onDelete = myDayViewModel::deleteEditorItem,
-                        onOpenTask = task?.let { { taskViewModel.openTask(it) } }
+                        onDelete = myDayViewModel::deleteEditorItem
                     )
                 }
             }
