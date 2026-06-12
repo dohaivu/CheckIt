@@ -2,20 +2,13 @@ package com.checkit.ui.tasks
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Notes
-import androidx.compose.material.icons.filled.Notes
-import androidx.compose.material.icons.filled.TaskAlt
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,7 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
-import com.checkit.domain.TaskList
 import com.checkit.domain.TaskStatus
 import com.checkit.ui.TaskListDisplayType
 import com.checkit.ui.TaskUiState
@@ -76,10 +68,8 @@ internal fun TaskContent(
             TaskWorkspaceView.Agenda -> TaskAgendaView(
                 tasks = state.visibleTasks,
                 notes = state.visibleNotes,
-                lists = state.board.lists,
                 dayLimit = state.dayLimit,
                 focusedDate = today(),
-                showListName = showListName,
                 onTaskClick = onTaskClick,
                 onNoteClick = onNoteClick,
                 modifier = Modifier.weight(1f)
@@ -87,8 +77,6 @@ internal fun TaskContent(
             TaskWorkspaceView.Timeline -> TaskTimelineView(
                 tasks = state.visibleTasks,
                 notes = state.visibleNotes,
-                lists = state.board.lists,
-                showListName = showListName,
                 onTaskClick = onTaskClick,
                 onNoteClick = onNoteClick,
                 onTimelineCreateTask = onTimelineCreateTask,
@@ -104,10 +92,8 @@ internal fun TaskContent(
 internal fun TaskAgendaView(
     tasks: List<TaskItem>,
     notes: List<NoteItem>,
-    lists: List<TaskList>,
     dayLimit: Int?,
     focusedDate: LocalDate,
-    showListName: Boolean,
     onTaskClick: (TaskItem) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
     modifier: Modifier = Modifier
@@ -150,20 +136,16 @@ internal fun TaskAgendaView(
         focusedDate = focusedDate,
         itemContent = { item ->
             when (val tag = item.tag) {
-                is TaskItem -> TaskCard(
-                    title = tag.name.ifBlank { "Untitled task" },
-                    supportingText = if (showListName) tag.list.name else null,
-                    leadingContent = { TaskStatusIcon(tag.status, tag.priority) },
-                    color = tag.cardColor(),
-                    completed = tag.status == TaskStatus.Completed
-                )
-                is NoteItem -> TaskCard(
-                    title = tag.content.ifBlank { "Empty note" },
-                    supportingText = if (showListName) tag.list.name else null,
-                    color = tag.cardColor(),
-                    leadingContent = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null, modifier = Modifier.size(20.dp)) },
-                    completed = tag.status == TaskStatus.Completed
-                )
+                is TaskItem -> if (item.startTimeMinutes == null) {
+                    AllDayTaskCard(tag, completedOverlay = tag.status == TaskStatus.Completed)
+                } else {
+                    TaskTimelineCard(tag, completedOverlay = tag.status == TaskStatus.Completed)
+                }
+                is NoteItem -> if (item.startTimeMinutes == null) {
+                    AllDayNoteCard(tag, completedOverlay = tag.status == TaskStatus.Completed)
+                } else {
+                    NoteTimelineCard(tag, completedOverlay = tag.status == TaskStatus.Completed)
+                }
             }
         },
         modifier = modifier
@@ -174,8 +156,6 @@ internal fun TaskAgendaView(
 internal fun TaskTimelineView(
     tasks: List<TaskItem>,
     notes: List<NoteItem>,
-    lists: List<TaskList>,
-    showListName: Boolean,
     onTaskClick: (TaskItem) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
     onTimelineCreateTask: (Int, Int) -> Unit,
@@ -225,61 +205,24 @@ internal fun TaskTimelineView(
         },
         allDayItemContent = { item ->
             when (val tag = item.tag) {
-                is TaskItem -> {
-                    AllDayItemRow(
-                        label = tag.name.ifBlank { "Untitled task" },
-                        icon = { Icon(Icons.Default.TaskAlt, contentDescription = null, modifier = Modifier.size(20.dp)) },
-                        color = tag.cardColor(),
-                        supportingLabel = if (showListName) tag.list.name else null
-                    )
-                }
-                is NoteItem -> {
-                    AllDayItemRow(
-                        label = tag.content.ifBlank { "Empty note" },
-                        icon = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null, modifier = Modifier.size(20.dp)) },
-                        color = tag.cardColor(),
-                        supportingLabel = if (showListName) tag.list.name else null
-                    )
-                }
+                is TaskItem -> AllDayTaskCard(tag, completedOverlay = tag.status == TaskStatus.Completed)
+                is NoteItem -> AllDayNoteCard(tag, completedOverlay = tag.status == TaskStatus.Completed)
             }
         },
         timedItemContent = { item, isSelected ->
             when (val tag = item.tag) {
-                is TaskItem -> {
-                    val start = tag.startTimeMinutes ?: 0
-                    val end = tag.endTimeMinutes ?: (start + 60)
-                    TaskCard(
-                        title = tag.name.ifBlank { "Untitled task" },
-                        timeLabel = "${start.toClockLabel()} - ${end.toClockLabel()}",
-                        supportingText = if (showListName) tag.list.name else null,
-                        leadingContent = { TaskStatusIcon(tag.status, tag.priority) },
-                        color = tag.cardColor(),
-                        minHeight = 36.dp,
-                        titleMaxLines = 1,
-                        completed = tag.status == TaskStatus.Completed,
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
-                        containerAlpha = if (isSelected) SelectedTaskCardAlpha else DefaultTaskCardAlpha,
-                        tonalElevation = if (isSelected) 3.dp else 1.dp,
-                        modifier = Modifier.matchParentSize()
-                    )
-                }
-                is NoteItem -> {
-                    val start = tag.startTimeMinutes ?: 0
-                    TaskCard(
-                        title = tag.content.ifBlank { "Empty note" },
-                        timeLabel = start.toClockLabel(),
-                        supportingText = if (showListName) tag.list.name else null,
-                        color = tag.cardColor(),
-                        leadingContent = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null, modifier = Modifier.size(20.dp)) },
-                        minHeight = 36.dp,
-                        titleMaxLines = 1,
-                        completed = tag.status == TaskStatus.Completed,
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
-                        containerAlpha = DefaultTaskCardAlpha,
-                        tonalElevation = 1.dp,
-                        modifier = Modifier.matchParentSize()
-                    )
-                }
+                is TaskItem -> TaskTimelineCard(
+                    task = tag,
+                    selected = isSelected,
+                    completedOverlay = tag.status == TaskStatus.Completed,
+                    modifier = Modifier.matchParentSize()
+                )
+                is NoteItem -> NoteTimelineCard(
+                    note = tag,
+                    selected = isSelected,
+                    completedOverlay = tag.status == TaskStatus.Completed,
+                    modifier = Modifier.matchParentSize()
+                )
             }
         },
         modifier = modifier

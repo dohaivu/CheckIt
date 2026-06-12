@@ -157,8 +157,6 @@ internal fun CalendarScreen(
                     TaskAgendaView(
                         tasks = tasksForDate,
                         notes = notesForDate,
-                        lists = state.board.lists,
-                        showListName = true,
                         onTaskClick = {
                             onTaskClick(it, null)
                         },
