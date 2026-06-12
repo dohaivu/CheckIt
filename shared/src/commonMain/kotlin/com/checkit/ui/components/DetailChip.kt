@@ -37,11 +37,6 @@ internal fun DetailChip(
     iconTint: Color = MaterialTheme.colorScheme.primary,
     onClick: (() -> Unit)? = null
 ) {
-    val surfaceVariant = MaterialTheme.colorScheme.surfaceContainerHigh
-    val backgroundColor = remember(surfaceVariant) {
-        surfaceVariant.copy(alpha = ContentContainerAlpha)
-    }
-
     Row(
         modifier = modifier
             .clip(CircleShape)

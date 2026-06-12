@@ -41,7 +41,7 @@ class MyDayViewModel(
     private val addManualDoneToDailyPlan: AddManualDoneToDailyPlanUseCase,
     private val updateDailyPlanItemTime: UpdateDailyPlanItemTimeUseCase,
     private val updateDailyPlanItem: UpdateDailyPlanItemUseCase,
-    private val deleteDailyPlanItem: DeleteDailyPlanItemUseCase,
+    private val deleteDailyPlanItemUseCase: DeleteDailyPlanItemUseCase,
     private val completeTask: CompleteTaskUseCase
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(MyDayUiState())
@@ -269,9 +269,24 @@ class MyDayViewModel(
 
     fun deleteEditorItem() {
         val itemId = _uiState.value.itemEditor?.itemId ?: return
+        deleteDailyPlanItem(itemId) {
+            it.copy(itemEditor = null, message = "Deleted")
+        }
+    }
+
+    fun deleteDailyPlanItem(item: DailyPlanItem) {
+        deleteDailyPlanItem(item.id) {
+            it.copy(message = "Removed from My Day")
+        }
+    }
+
+    private fun deleteDailyPlanItem(
+        itemId: Long,
+        updateState: (MyDayUiState) -> MyDayUiState
+    ) {
         viewModelScope.launch {
-            deleteDailyPlanItem(itemId)
-            _uiState.update { it.copy(itemEditor = null, message = "Deleted") }
+            deleteDailyPlanItemUseCase(itemId)
+            _uiState.update(updateState)
         }
     }
 

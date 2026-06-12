@@ -344,6 +344,7 @@ class RoomCheckItRepository(
 
     override suspend fun trashTask(taskId: Long) {
         dao.trashTask(taskId, Clock.System.now().toEpochMilliseconds())
+        dao.deleteOpenDailyPlanItemsForTask(taskId)
         reminderNotificationScheduler.cancelTaskReminders(taskId)
     }
 

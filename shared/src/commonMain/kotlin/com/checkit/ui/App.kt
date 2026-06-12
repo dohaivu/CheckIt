@@ -262,6 +262,10 @@ fun CheckItApp(
                         onDailyPlanStartTimeChange = taskViewModel::updateDailyPlanStartTime,
                         onDailyPlanEndTimeChange = taskViewModel::updateDailyPlanEndTime,
                         onDailyPlanStatus = taskViewModel::updateDailyPlanStatus,
+                        onDailyPlanDelete = { dailyPlanItem ->
+                            myDayViewModel.deleteDailyPlanItem(dailyPlanItem)
+                            taskViewModel.removeDailyPlanItemFromEditor(dailyPlanItem.id)
+                        },
                         onTaskRepeatChange = taskViewModel::updateTaskRepeat,
                         onTaskPriorityChange = taskViewModel::updateTaskPriority,
                         onTaskReminderToggle = taskViewModel::toggleTaskReminder,

@@ -538,6 +538,14 @@ class TaskViewModel(
         }
     }
 
+    fun removeDailyPlanItemFromEditor(itemId: Long) {
+        _uiState.update { state ->
+            val form = state.editor as? TaskEditorState.TaskForm ?: return@update state
+            if (form.dailyPlanItem?.id != itemId) return@update state
+            state.copy(editor = form.copy(dailyPlanItem = null))
+        }
+    }
+
     fun updateTaskTime(task: TaskItem, startTimeMinutes: Int, endTimeMinutes: Int) {
         val normalizedStart = startTimeMinutes.coerceIn(0, LastTimelineStartMinute)
         val normalizedEnd = endTimeMinutes.coerceIn(

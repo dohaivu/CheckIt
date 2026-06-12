@@ -2,6 +2,7 @@ package com.checkit.ui.tasks
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -97,6 +99,7 @@ internal fun TaskEditorSheet(
     onDailyPlanStartTimeChange: (Int?) -> Unit,
     onDailyPlanEndTimeChange: (Int?) -> Unit,
     onDailyPlanStatus: () -> Unit,
+    onDailyPlanDelete: (DailyPlanItem) -> Unit,
     onTaskRepeatChange: (RepeatPreset) -> Unit,
     onTaskPriorityChange: (TaskPriority) -> Unit,
     onTaskReminderToggle: (Int) -> Unit,
@@ -160,6 +163,7 @@ internal fun TaskEditorSheet(
                                 onDailyPlanStartTimeChange = onDailyPlanStartTimeChange,
                                 onDailyPlanEndTimeChange = onDailyPlanEndTimeChange,
                                 onDailyPlanStatus = onDailyPlanStatus,
+                                onDailyPlanDelete = onDailyPlanDelete,
                                 onRepeatChange = onTaskRepeatChange,
                                 onPriorityChange = onTaskPriorityChange,
                                 onReminderToggle = onTaskReminderToggle,
@@ -183,6 +187,7 @@ internal fun TaskEditorSheet(
                                 onDailyPlanStartTimeChange = onDailyPlanStartTimeChange,
                                 onDailyPlanEndTimeChange = onDailyPlanEndTimeChange,
                                 onDailyPlanStatus = onDailyPlanStatus,
+                                onDailyPlanDelete = onDailyPlanDelete,
                                 onRepeatChange = onTaskRepeatChange,
                                 onPriorityChange = onTaskPriorityChange,
                                 onReminderToggle = onTaskReminderToggle,
@@ -368,6 +373,7 @@ private fun TaskViewContent(
     onDailyPlanStartTimeChange: (Int?) -> Unit,
     onDailyPlanEndTimeChange: (Int?) -> Unit,
     onDailyPlanStatus: () -> Unit,
+    onDailyPlanDelete: (DailyPlanItem) -> Unit,
     onRepeatChange: (RepeatPreset) -> Unit,
     onPriorityChange: (TaskPriority) -> Unit,
     onReminderToggle: (Int) -> Unit,
@@ -384,7 +390,8 @@ private fun TaskViewContent(
                 item = dailyPlanItem,
                 onStartTimeChange = onDailyPlanStartTimeChange,
                 onEndTimeChange = onDailyPlanEndTimeChange,
-                onStatusChange = onDailyPlanStatus
+                onStatusChange = onDailyPlanStatus,
+                onDelete = { onDailyPlanDelete(dailyPlanItem) }
             )
         }
         Text(
@@ -485,6 +492,7 @@ private fun TaskFormContent(
     onDailyPlanStartTimeChange: (Int?) -> Unit,
     onDailyPlanEndTimeChange: (Int?) -> Unit,
     onDailyPlanStatus: () -> Unit,
+    onDailyPlanDelete: (DailyPlanItem) -> Unit,
     onRepeatChange: (RepeatPreset) -> Unit,
     onPriorityChange: (TaskPriority) -> Unit,
     onReminderToggle: (Int) -> Unit,
@@ -500,7 +508,8 @@ private fun TaskFormContent(
                 item = dailyPlanItem,
                 onStartTimeChange = onDailyPlanStartTimeChange,
                 onEndTimeChange = onDailyPlanEndTimeChange,
-                onStatusChange = onDailyPlanStatus
+                onStatusChange = onDailyPlanStatus,
+                onDelete = { onDailyPlanDelete(dailyPlanItem) }
             )
             Spacer(modifier = Modifier.height(16.dp))
         }
@@ -587,7 +596,8 @@ private fun DailyPlanSection(
     item: DailyPlanItem,
     onStartTimeChange: (Int?) -> Unit,
     onEndTimeChange: (Int?) -> Unit,
-    onStatusChange: () -> Unit
+    onStatusChange: () -> Unit,
+    onDelete: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -613,8 +623,19 @@ private fun DailyPlanSection(
                 modifier = Modifier
             )
 
-            OutlinedButton(onClick = onStatusChange) {
-                Text(if (item.status == DailyPlanItemStatus.Done) "Open" else "Done")
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+
+                Icon(Icons.Default.Delete,
+                    contentDescription = "Delete from My Day",
+                    modifier = Modifier.size(18.dp).clickable{onDelete()},
+                    tint = MaterialTheme.colorScheme.outlineVariant.copy(alpha = ContentAlpha))
+
+                OutlinedButton(onClick = onStatusChange) {
+                    Text(if (item.status == DailyPlanItemStatus.Done) "Open" else "Done")
+                }
             }
         }
     }
