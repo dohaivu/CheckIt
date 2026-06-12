@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -18,7 +19,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.EventAvailable
-import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -32,11 +32,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.DailyPlanItem
+import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
-import com.checkit.ui.myday.displaySupportingText
-import com.checkit.ui.myday.displayTitle
-import com.checkit.ui.myday.timeLabel
 
 @Composable
 internal fun TaskCard(
@@ -63,13 +61,7 @@ internal fun TaskCard(
             .background(MaterialTheme.colorScheme.surface)
             .then(clickableModifier)
     ) {
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .width(4.dp)
-                .fillMaxHeight()
-                .background(color)
-        )
+        CardStripe(color = color)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -114,11 +106,7 @@ internal fun TaskCard(
             }
         }
         if (completedOverlay) {
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .background(MaterialTheme.colorScheme.surface.copy(alpha = CompletedRowCoverAlpha))
-            )
+            CompletedOverlay()
         }
     }
 }
@@ -182,8 +170,8 @@ internal fun DailyPlanTimelineCard(
     item: DailyPlanItem,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
-    title: String = item.displayTitle(),
-    timeLabel: String? = item.timeLabel() ?: item.displaySupportingText(),
+    title: String = item.timelineTitle(),
+    timeLabel: String? = item.timelineTimeLabel() ?: item.timelineSupportingText(),
     selected: Boolean = false,
     completedOverlay: Boolean = false
 ) {
@@ -238,7 +226,7 @@ internal fun AllDayNoteCard(
 internal fun AllDayDailyPlanCard(
     item: DailyPlanItem,
     modifier: Modifier = Modifier,
-    title: String = item.displayTitle(),
+    title: String = item.timelineTitle(),
     completedOverlay: Boolean = false
 ) {
     AllDayTypeCard(
@@ -265,13 +253,7 @@ private fun AllDayTypeCard(
             .clip(RoundedCornerShape(8.dp))
             .background(color.copy(alpha = DefaultTaskCardAlpha))
     ) {
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .width(4.dp)
-                .fillMaxHeight()
-                .background(color)
-        )
+        CardStripe(color = color)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -299,13 +281,53 @@ private fun AllDayTypeCard(
             }
         }
         if (completedOverlay) {
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .background(MaterialTheme.colorScheme.surface.copy(alpha = CompletedRowCoverAlpha))
-            )
+            CompletedOverlay()
         }
     }
+}
+
+@Composable
+private fun CardStripe(color: Color) {
+    Box(
+        modifier = Modifier
+            .fillMaxHeight()
+            .width(4.dp)
+            .background(color)
+    )
+}
+
+@Composable
+private fun BoxScope.CompletedOverlay() {
+    Box(
+        modifier = Modifier
+            .matchParentSize()
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = CompletedRowCoverAlpha))
+    )
+}
+
+private fun DailyPlanItem.timelineTimeLabel(): String? {
+    val start = startTimeMinutes ?: return null
+    val end = endTimeMinutes
+    return if (end == null) start.toClockLabel() else "${start.toClockLabel()} - ${end.toClockLabel()}"
+}
+
+private fun DailyPlanItem.timelineTitle(): String =
+    when (source) {
+        DailyPlanItemSource.CheckInNote -> note.orEmpty().ifBlank { "Empty note" }
+        else -> titleSnapshot.ifBlank { "Untitled item" }
+    }
+
+private fun DailyPlanItem.timelineSupportingText(): String =
+    when {
+        source == DailyPlanItemSource.CheckInNote -> source.timelineLabel()
+        !note.isNullOrBlank() -> note.orEmpty()
+        else -> source.timelineLabel()
+    }
+
+private fun DailyPlanItemSource.timelineLabel(): String = when (this) {
+    DailyPlanItemSource.ExistingTask -> "Task"
+    DailyPlanItemSource.CheckInManualDone -> "CheckIn done"
+    DailyPlanItemSource.CheckInNote -> "CheckIn note"
 }
 
 private val DailyPlanCardColor = Color(0xFF64748B)
