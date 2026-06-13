@@ -82,19 +82,20 @@ internal fun CalendarScreen(
     onNoteClick: (NoteItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val today = today()
     val tasksForDate = state.tasksForDate(state.selectedDate)
     val notesForDate = state.notesForDate(state.selectedDate)
-    val showDailyPlan = state.selectedDate <= today()
+    val showDailyPlan = state.selectedDate <= today
     val selectedDailyPlan = state.dailyPlanForDate(state.selectedDate)
     val dailyPlanItems = selectedDailyPlan?.items.orEmpty()
     val hasItemsForDate = if (showDailyPlan) {
         dailyPlanItems.isNotEmpty()
     } else {
-        tasksForDate.isNotEmpty()
+        tasksForDate.isNotEmpty() || notesForDate.isNotEmpty()
     }
     val handleDateDoubleClick: (LocalDate) -> Unit = { date ->
         calendarViewModel.selectDate(date)
-        if (date <= today()) {
+        if (date <= today) {
             onAddDailyPlanItem(date)
         } else {
             onDateDoubleClick(date)
@@ -124,8 +125,8 @@ internal fun CalendarScreen(
                 month = state.selectedMonth,
                 selectedDate = state.selectedDate,
                 displayMode = state.calendarDisplayMode,
-                onPreviousMonth = calendarViewModel::previousMonth,
-                onNextMonth = calendarViewModel::nextMonth,
+                onPreviousPeriod = calendarViewModel::previousPeriod,
+                onNextPeriod = calendarViewModel::nextPeriod,
                 onCurrentMonth = calendarViewModel::resetToToday,
                 onDisplayModeToggle = calendarViewModel::toggleCalendarDisplayMode
             )
@@ -234,8 +235,8 @@ private fun CalendarPeriodHeader(
     month: LocalDate,
     selectedDate: LocalDate,
     displayMode: CalendarDisplayMode,
-    onPreviousMonth: () -> Unit,
-    onNextMonth: () -> Unit,
+    onPreviousPeriod: () -> Unit,
+    onNextPeriod: () -> Unit,
     onCurrentMonth: () -> Unit,
     onDisplayModeToggle: () -> Unit
 ) {
@@ -244,7 +245,7 @@ private fun CalendarPeriodHeader(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        IconButton(onClick = onPreviousMonth) {
+        IconButton(onClick = onPreviousPeriod) {
             Icon(Icons.Default.ChevronLeft, contentDescription = "Previous period")
         }
         Row(
@@ -285,7 +286,7 @@ private fun CalendarPeriodHeader(
                 )
             }
         }
-        IconButton(onClick = onNextMonth) {
+        IconButton(onClick = onNextPeriod) {
             Icon(Icons.Default.ChevronRight, contentDescription = "Next period")
         }
     }
@@ -564,7 +565,7 @@ private fun DateCellMetadata(
     ) {
         if (markers.hasMarkers) {
             Text(
-                text = markers.totalCount.markerCountLabel(),
+                text = markers.countLabel(),
                 style = MaterialTheme.typography.labelSmall,
                 color = colors.markerLabel,
                 fontWeight = FontWeight.SemiBold,
@@ -678,8 +679,8 @@ internal fun Int.compactDurationLabel(): String {
     }
 }
 
-private fun Int.markerCountLabel(): String =
-    if (this > MaxVisibleMarkerCount) "${MaxVisibleMarkerCount}+" else toString()
+private fun CalendarDateMarkers.countLabel(): String =
+    if (totalCount > MaxVisibleMarkerCount) "${MaxVisibleMarkerCount}+" else totalCount.toString()
 
 private val calendarWeekDays: List<DayOfWeek> = listOf(
     DayOfWeek.MONDAY,

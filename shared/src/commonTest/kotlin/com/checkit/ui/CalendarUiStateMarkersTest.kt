@@ -16,7 +16,7 @@ import kotlin.test.assertEquals
 
 class CalendarUiStateMarkersTest {
     @Test
-    fun pastDateMarkersCountDailyPlanItemTypes() {
+    fun pastDateMarkersCountDailyPlanItems() {
         val date = today()
         val state = CalendarUiState(
             dailyPlans = listOf(
@@ -34,12 +34,12 @@ class CalendarUiStateMarkersTest {
 
         val markers = state.markersForDate(date)
 
-        assertEquals(CalendarDateMarkers(taskCount = 2, doneCount = 1, noteCount = 1), markers)
+        assertEquals(CalendarDateMarkers(totalCount = 4), markers)
         assertEquals(4, markers.totalCount)
     }
 
     @Test
-    fun futureDateMarkersCountTasksAndNotes() {
+    fun futureDateMarkersCountTaskAndNoteItems() {
         val date = today().plus(1, DateTimeUnit.DAY)
         val state = CalendarUiState(
             board = TaskBoard(
@@ -50,7 +50,7 @@ class CalendarUiStateMarkersTest {
 
         val markers = state.markersForDate(date)
 
-        assertEquals(CalendarDateMarkers(taskCount = 2, doneCount = 0, noteCount = 1), markers)
+        assertEquals(CalendarDateMarkers(totalCount = 3), markers)
         assertEquals(3, markers.totalCount)
     }
 

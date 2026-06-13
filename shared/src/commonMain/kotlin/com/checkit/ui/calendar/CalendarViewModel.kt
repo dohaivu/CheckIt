@@ -44,7 +44,7 @@ class CalendarViewModel(
         }
     }
 
-    fun previousMonth() {
+    fun previousPeriod() {
         _uiState.update { state ->
             when (state.calendarDisplayMode) {
                 CalendarDisplayMode.Month -> state.copy(selectedMonth = state.selectedMonth.minus(1, DateTimeUnit.MONTH))
@@ -59,7 +59,7 @@ class CalendarViewModel(
         }
     }
 
-    fun nextMonth() {
+    fun nextPeriod() {
         _uiState.update { state ->
             when (state.calendarDisplayMode) {
                 CalendarDisplayMode.Month -> state.copy(selectedMonth = state.selectedMonth.plus(1, DateTimeUnit.MONTH))

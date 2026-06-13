@@ -254,32 +254,18 @@ data class CalendarUiState(
     val dailyPlanByDate: Map<kotlinx.datetime.LocalDate, DailyPlan> = dailyPlans.associateBy { it.date }
 
     private val dailyPlanMarkersByDate: Map<kotlinx.datetime.LocalDate, CalendarDateMarkers> by lazy {
-        dailyPlans.associate { plan ->
-            var taskCount = 0
-            var doneCount = 0
-            var noteCount = 0
-            plan.items.forEach { item ->
-                when (item.source) {
-                    DailyPlanItemSource.ExistingTask -> taskCount++
-                    DailyPlanItemSource.CheckInManualDone -> doneCount++
-                    DailyPlanItemSource.CheckInNote -> noteCount++
-                }
-            }
-            plan.date to CalendarDateMarkers(
-                taskCount = taskCount,
-                doneCount = doneCount,
-                noteCount = noteCount
-            )
-        }
+        dailyPlans.associate { plan -> plan.date to CalendarDateMarkers(totalCount = plan.items.size) }
+    }
+
+    private val dailyPlanWorkMinutesByDate: Map<kotlinx.datetime.LocalDate, Int> by lazy {
+        dailyPlans.associate { plan -> plan.date to plan.items.sumOf { it.workMinutes() } }
     }
 
     private val futureMarkersByDate: Map<kotlinx.datetime.LocalDate, CalendarDateMarkers> by lazy {
         val dates = board.tasksByDate.keys + board.notesByDate.keys
         dates.associateWith { date ->
             CalendarDateMarkers(
-                taskCount = board.tasksByDate[date].orEmpty().size,
-                doneCount = 0,
-                noteCount = board.notesByDate[date].orEmpty().size
+                totalCount = board.tasksByDate[date].orEmpty().size + board.notesByDate[date].orEmpty().size
             )
         }
     }
@@ -331,10 +317,7 @@ data class CalendarUiState(
         }
 
     fun dailyPlanWorkMinutesForDate(date: kotlinx.datetime.LocalDate): Int =
-        dailyPlanByDate[date]
-            ?.items
-            .orEmpty()
-            .sumOf { it.workMinutes() }
+        dailyPlanWorkMinutesByDate[date] ?: 0
 
     fun dailyPlanForDate(date: kotlinx.datetime.LocalDate): DailyPlan? = dailyPlanByDate[date]
 
@@ -350,12 +333,9 @@ data class CalendarUiState(
 }
 
 data class CalendarDateMarkers(
-    val taskCount: Int = 0,
-    val doneCount: Int = 0,
-    val noteCount: Int = 0
+    val totalCount: Int = 0
 ) {
-    val hasMarkers: Boolean get() = taskCount > 0 || doneCount > 0 || noteCount > 0
-    val totalCount: Int get() = taskCount + doneCount + noteCount
+    val hasMarkers: Boolean get() = totalCount > 0
 
     companion object {
         val Empty = CalendarDateMarkers()
