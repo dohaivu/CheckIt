@@ -15,8 +15,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Article
@@ -44,18 +44,19 @@ import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.usecase.BuildDailyPlanMarkdownSummaryUseCase
 import com.checkit.ui.CalendarUiState
-import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.MonthHeader
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.firstDayOfMonth
 import com.checkit.ui.isSameMonth
 import com.checkit.ui.localizedCompactDateWithDayName
-import com.checkit.ui.shortName
 import com.checkit.ui.myday.DayLinearTimeline
 import com.checkit.ui.myday.MyDayAgenda
+import com.checkit.ui.shortName
 import com.checkit.ui.tasks.ContentContainerAlpha
 import com.checkit.ui.tasks.TaskAgendaView
 import com.checkit.ui.today
+import com.mikepenz.markdown.m3.Markdown
+import com.mikepenz.markdown.m3.markdownTypography
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
@@ -261,13 +262,19 @@ private fun DailyPlanMarkdownSummary(
     markdown: String,
     modifier: Modifier = Modifier
 ) {
-    Text(
-        text = markdown,
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurface,
-        modifier = modifier
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 8.dp, vertical = 12.dp)
+    val scrollState = rememberScrollState()
+    Markdown(
+        modifier = modifier.verticalScroll(scrollState),
+        content = markdown,
+//        colors = markdownColor(text = contentColor),
+        typography = markdownTypography(
+            h1 = MaterialTheme.typography.headlineSmall,
+            h2 = MaterialTheme.typography.titleLarge,
+            h3 = MaterialTheme.typography.titleMedium,
+            h4 = MaterialTheme.typography.bodyMedium,
+            h5 = MaterialTheme.typography.bodySmall,
+            h6 = MaterialTheme.typography.bodySmall
+        ),
     )
 }
 
