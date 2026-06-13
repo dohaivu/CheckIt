@@ -87,6 +87,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 object AppIconColorDefaults {
     const val FallbackColorHex: String = "#64748B"
     val FallbackColor: Color = Color(0xFF64748B)
+    val DailyPlanCardColor = FallbackColor
 
     val ListColors: List<String> = listOf(
         "#2563EB", // Blue

@@ -13,12 +13,14 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
 import com.checkit.ui.TaskWorkspaceView
 import com.checkit.ui.components.priorityColor
 import com.checkit.ui.shortMonthName
 import com.checkit.ui.shortName
+import com.checkit.ui.theme.AppIconColorDefaults
 import com.checkit.ui.theme.AppIconColorDefaults.FallbackColor
 import com.checkit.ui.theme.toColor
 import com.checkit.ui.today
@@ -56,6 +58,10 @@ fun NoteItem?.cardColor(): Color {
 
 fun TaskItem?.cardColor(): Color {
     return this?.tags?.firstOrNull()?.color?.toColor() ?: this?.list?.color?.toColor() ?: this?.priority?.priorityColor() ?: FallbackColor
+}
+
+fun DailyPlanItem.cardColor(): Color {
+    return this.tags.firstOrNull()?.color?.toColor() ?: AppIconColorDefaults.DailyPlanCardColor
 }
 
 fun TaskItem.timeRangeLabel(): String {
