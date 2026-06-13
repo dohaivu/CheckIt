@@ -1,10 +1,10 @@
 package com.checkit.data
 
-import com.checkit.domain.DueDatePreset
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
+import com.checkit.domain.DueDatePreset
 import com.checkit.domain.NoteItem
 import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
@@ -16,9 +16,9 @@ import com.checkit.domain.TaskReminder
 import com.checkit.domain.TaskReminderWriteInput
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskTag
-import com.checkit.notifications.NoOpTaskReminderNotificationScheduler
 import com.checkit.notifications.DailyPlanScheduleReminderScheduler
 import com.checkit.notifications.NoOpDailyPlanScheduleReminderScheduler
+import com.checkit.notifications.NoOpTaskReminderNotificationScheduler
 import com.checkit.notifications.ScheduledTaskReminder
 import com.checkit.notifications.TaskReminderNotificationScheduler
 import kotlinx.coroutines.flow.Flow
@@ -224,7 +224,7 @@ class RoomCheckItRepository(
                 listId = inboxId,
                 name = "Plan the day",
                 description = "Review agenda, timeline, and the next task to start.",
-                status = TaskStatus.InProgress.name,
+                status = TaskStatus.Open.name,
                 priority = TaskPriority.High.name,
                 doDateEpochDays = today.toEpochDays().toInt(),
                 startTimeMinutes = 9 * 60,
@@ -563,7 +563,7 @@ class RoomCheckItRepository(
     }
 
     private suspend fun scheduleTaskReminders(taskId: Long, input: TaskWriteInput) {
-        if (input.status == TaskStatus.Completed || input.status == TaskStatus.Cancelled) {
+        if (input.status == TaskStatus.Completed) {
             reminderNotificationScheduler.cancelTaskReminders(taskId)
             return
         }

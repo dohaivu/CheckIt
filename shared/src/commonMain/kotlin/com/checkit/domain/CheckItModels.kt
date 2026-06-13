@@ -163,10 +163,7 @@ data class TaskFilter(
 
 enum class TaskStatus {
     Open,
-    InProgress,
-    Blocked,
-    Completed,
-    Cancelled
+    Completed
 }
 
 enum class TaskPriority {
