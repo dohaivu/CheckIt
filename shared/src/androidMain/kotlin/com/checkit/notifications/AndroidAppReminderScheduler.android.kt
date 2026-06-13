@@ -17,7 +17,8 @@ import java.util.concurrent.TimeUnit
 import kotlin.math.max
 
 class AndroidAppReminderScheduler(
-    context: Context
+    context: Context,
+    private val dailyPlanScheduleReminderScheduler: DailyPlanScheduleReminderScheduler
 ) : AppReminderScheduler {
     private val appContext = context.applicationContext
     private val workManager = WorkManager.getInstance(appContext)
@@ -25,6 +26,7 @@ class AndroidAppReminderScheduler(
     private var lastPlanTime: Int? = null
     private var lastReviewTime: Int? = null
     private var lastCheckInEnabled: Boolean? = null
+    private var lastScheduleEnabled: Boolean? = null
 
     override suspend fun applySettings(settings: UserSettings) {
         println("AndroidAppReminderScheduler: Applying settings: plan=${settings.planReminderEnabled}, review=${settings.reviewReminderEnabled}, checkIn=${settings.checkInReminderEnabled}")
@@ -68,6 +70,16 @@ class AndroidAppReminderScheduler(
         } else {
             workManager.cancelUniqueWork(CheckInReminderWorker.WorkName)
             lastCheckInEnabled = false
+        }
+
+        if (settings.scheduleReminderEnabled) {
+            if (lastScheduleEnabled != true) {
+                dailyPlanScheduleReminderScheduler.rescheduleNext()
+                lastScheduleEnabled = true
+            }
+        } else {
+            dailyPlanScheduleReminderScheduler.cancel()
+            lastScheduleEnabled = false
         }
     }
 

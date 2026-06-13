@@ -11,6 +11,7 @@ import com.checkit.data.createPreferencesDataStore
 import com.checkit.data.provideDatabaseBuilder
 import com.checkit.data.SettingsRepository
 import com.checkit.domain.CheckInReminderPolicy
+import com.checkit.domain.DailyPlanScheduleReminderPolicy
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.notifications.AppReminderScheduler
 import com.checkit.domain.usecase.AddNoteUseCase
@@ -24,6 +25,8 @@ import com.checkit.domain.usecase.CompleteNoteUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
+import com.checkit.domain.usecase.DeleteTaskListUseCase
+import com.checkit.domain.usecase.DeleteTaskTagUseCase
 import com.checkit.domain.usecase.IsTagNameTakenUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
@@ -40,6 +43,8 @@ import com.checkit.domain.usecase.UpdateTaskTagUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
 import com.checkit.ui.calendar.CalendarViewModel
 import com.checkit.ui.myday.MyDayViewModel
+import com.checkit.ui.tasks.TaskListViewModel
+import com.checkit.ui.tasks.TaskTagViewModel
 import com.checkit.ui.tasks.TaskViewModel
 import com.checkit.ui.reports.ReportViewModel
 import com.checkit.ui.settings.SettingsViewModel
@@ -70,14 +75,16 @@ fun initKoin(config: KoinAppDeclaration? = null) =
 
 val provideInteractorModule = module {
     single { HttpClient() }
-    single<CheckItRepository> { RoomCheckItRepository(get(), get()) }
+    single<CheckItRepository> { RoomCheckItRepository(get(), get(), get()) }
     single { ObserveTaskBoardUseCase(get()) }
     single { ObserveDailyPlansUseCase(get()) }
     single { EnsureDefaultTaskDataUseCase(get()) }
     single { AddTaskListUseCase(get()) }
     single { UpdateTaskListUseCase(get()) }
+    single { DeleteTaskListUseCase(get()) }
     single { AddTaskTagUseCase(get()) }
     single { UpdateTaskTagUseCase(get()) }
+    single { DeleteTaskTagUseCase(get()) }
     single { IsTagNameTakenUseCase(get()) }
     single { AddTaskUseCase(get()) }
     single { UpdateTaskUseCase(get()) }
@@ -98,6 +105,7 @@ val provideInteractorModule = module {
     single { RestoreNoteUseCase(get()) }
     single { SelectTaskBoardItemsUseCase() }
     single { CheckInReminderPolicy(get(), get()) }
+    single { DailyPlanScheduleReminderPolicy(get(), get()) }
 }
 
 val provideDatabaseModule = module {
@@ -131,14 +139,11 @@ val provideViewModelModule = module {
             restoreNote = get(),
             updateDailyPlanItemTime = get(),
             updateDailyPlanItem = get(),
-            addTaskList = get(),
-            updateTaskList = get(),
-            addTaskTag = get(),
-            updateTaskTag = get(),
-            isTagNameTaken = get(),
             settingsRepository = get()
         )
     }
+    viewModel { TaskListViewModel(get(), get(), get()) }
+    viewModel { TaskTagViewModel(get(), get(), get(), get()) }
     viewModel { CalendarViewModel(get(), get(), get()) }
     viewModel {
         MyDayViewModel(

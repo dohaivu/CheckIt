@@ -36,6 +36,8 @@ import androidx.compose.ui.unit.dp
 import com.checkit.domain.TaskFilter
 import com.checkit.domain.TaskList
 import com.checkit.domain.TaskTag
+import com.checkit.ui.theme.materialIcon
+import com.checkit.ui.theme.toColor
 
 @Composable
 internal fun TaskSidebar(

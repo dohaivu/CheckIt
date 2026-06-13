@@ -232,6 +232,12 @@ private fun ReminderSettingsScreen(
                 )
             }
             item {
+                ScheduleReminderRow(
+                    enabled = state.scheduleEnabled,
+                    onEnabledChange = viewModel::setScheduleReminderEnabled
+                )
+            }
+            item {
                 CheckInReminderRow(
                     enabled = state.checkInEnabled,
                     lastShownAtMillis = state.checkInLastShownAtMillis,
@@ -288,6 +294,32 @@ private fun ReminderRow(
                 showTimePicker = false
             }
         )
+    }
+}
+
+@Composable
+private fun ScheduleReminderRow(
+    enabled: Boolean,
+    onEnabledChange: (Boolean) -> Unit
+) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.Notifications, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.size(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Schedule reminder", fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Reminds when timed My Day items start",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            Switch(checked = enabled, onCheckedChange = onEnabledChange)
+        }
+        AppHorizontalDivider()
     }
 }
 
@@ -557,10 +589,10 @@ private fun AppColorSchemeMode.label(): String = when (this) {
 }
 
 private fun reminderSummary(state: ReminderSettingsUiState): String {
-    val enabledCount = listOf(state.planEnabled, state.reviewEnabled, state.checkInEnabled).count { it }
+    val enabledCount = listOf(state.planEnabled, state.reviewEnabled, state.checkInEnabled, state.scheduleEnabled).count { it }
     return when (enabledCount) {
         0 -> "All reminders off"
-        3 -> "Plan ${formatTime(state.planTimeMinutes)}, Review ${formatTime(state.reviewTimeMinutes)}, CheckIn on"
+        4 -> "Plan ${formatTime(state.planTimeMinutes)}, Review ${formatTime(state.reviewTimeMinutes)}, Schedule on"
         else -> "$enabledCount reminders on"
     }
 }

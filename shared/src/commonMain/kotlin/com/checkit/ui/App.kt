@@ -49,6 +49,8 @@ import com.checkit.ui.calendar.CalendarViewModel
 import com.checkit.ui.myday.MyDayScreen
 import com.checkit.ui.myday.MyDayViewModel
 import com.checkit.ui.tasks.TaskScreen
+import com.checkit.ui.tasks.TaskListViewModel
+import com.checkit.ui.tasks.TaskTagViewModel
 import com.checkit.ui.tasks.TaskViewModel
 import com.checkit.ui.localization.AppLocaleProvider
 import com.checkit.ui.reports.ReportScreen
@@ -85,6 +87,8 @@ private data object Routes {
 @Composable
 fun CheckItApp(
     taskViewModel: TaskViewModel = koinViewModel(),
+    taskListViewModel: TaskListViewModel = koinViewModel(),
+    taskTagViewModel: TaskTagViewModel = koinViewModel(),
     myDayViewModel: MyDayViewModel = koinViewModel(),
     calendarViewModel: CalendarViewModel = koinViewModel(),
     reportViewModel: ReportViewModel = koinViewModel(),
@@ -100,6 +104,12 @@ fun CheckItApp(
     }.collectAsState(null)
     val settingsMessage by remember(settingsViewModel) {
         settingsViewModel.uiState.map { it.message }.distinctUntilChanged()
+    }.collectAsState(null)
+    val taskListMessage by remember(taskListViewModel) {
+        taskListViewModel.uiState.map { it.message }.distinctUntilChanged()
+    }.collectAsState(null)
+    val taskTagMessage by remember(taskTagViewModel) {
+        taskTagViewModel.uiState.map { it.message }.distinctUntilChanged()
     }.collectAsState(null)
     val myDayMessage by remember(myDayViewModel) {
         myDayViewModel.uiState.map { it.message }.distinctUntilChanged()
@@ -123,8 +133,9 @@ fun CheckItApp(
     val myDayUiState by myDayViewModel.uiState.collectAsState()
     val calendarUiState by calendarViewModel.uiState.collectAsState()
 
-    LaunchedEffect(taskMessage, myDayMessage, settingsMessage) {
-        val message = taskMessage ?: myDayMessage ?: settingsMessage ?: return@LaunchedEffect
+    LaunchedEffect(taskMessage, myDayMessage, settingsMessage, taskListMessage, taskTagMessage) {
+        val message = taskMessage ?: myDayMessage ?: settingsMessage ?: taskListMessage ?: taskTagMessage
+            ?: return@LaunchedEffect
         snackbarHostState.showSnackbar(message)
 
         if (myDayMessage != null) {
@@ -132,6 +143,12 @@ fun CheckItApp(
         }
         if (settingsMessage != null) {
             settingsViewModel.consumeMessage()
+        }
+        if (taskListMessage != null) {
+            taskListViewModel.consumeMessage()
+        }
+        if (taskTagMessage != null) {
+            taskTagViewModel.consumeMessage()
         }
     }
 
@@ -227,7 +244,12 @@ fun CheckItApp(
                         NavEntry(key) {
                             when (key) {
                                 Routes.Task -> {
-                                    TaskScreen(taskUiState, taskViewModel)
+                                    TaskScreen(
+                                        state = taskUiState,
+                                        viewModel = taskViewModel,
+                                        listViewModel = taskListViewModel,
+                                        tagViewModel = taskTagViewModel
+                                    )
                                 }
                                 Routes.MyDay -> {
                                     MyDayScreen(

@@ -17,6 +17,8 @@ import com.checkit.domain.TaskReminderWriteInput
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskTag
 import com.checkit.notifications.NoOpTaskReminderNotificationScheduler
+import com.checkit.notifications.DailyPlanScheduleReminderScheduler
+import com.checkit.notifications.NoOpDailyPlanScheduleReminderScheduler
 import com.checkit.notifications.ScheduledTaskReminder
 import com.checkit.notifications.TaskReminderNotificationScheduler
 import kotlinx.coroutines.flow.Flow
@@ -34,8 +36,10 @@ interface CheckItRepository {
     suspend fun ensureDefaultTaskData()
     suspend fun addList(input: TaskListWriteInput): Long
     suspend fun updateList(listId: Long, input: TaskListWriteInput)
+    suspend fun deleteList(listId: Long)
     suspend fun addTag(input: TaskTagWriteInput): Long
     suspend fun updateTag(tagId: Long, input: TaskTagWriteInput)
+    suspend fun deleteTag(tagId: Long)
     suspend fun isTagNameTaken(name: String, excludeTagId: Long? = null): Boolean
     suspend fun addTask(input: TaskWriteInput): Long
     suspend fun updateTask(taskId: Long, input: TaskWriteInput)
@@ -118,7 +122,9 @@ data class DailyPlanItemWriteInput(
 
 class RoomCheckItRepository(
     private val dao: CheckItDao,
-    private val reminderNotificationScheduler: TaskReminderNotificationScheduler = NoOpTaskReminderNotificationScheduler()
+    private val reminderNotificationScheduler: TaskReminderNotificationScheduler = NoOpTaskReminderNotificationScheduler(),
+    private val dailyPlanScheduleReminderScheduler: DailyPlanScheduleReminderScheduler =
+        NoOpDailyPlanScheduleReminderScheduler()
 ) : CheckItRepository {
     private val seedMutex = Mutex()
 
@@ -276,6 +282,16 @@ class RoomCheckItRepository(
         dao.updateList(listId = listId, name = input.name, color = input.color, icon = input.icon)
     }
 
+    override suspend fun deleteList(listId: Long) {
+        val inboxId = dao.inboxListId() ?: return
+        if (listId == inboxId) return
+        dao.deleteListMovingContentsToList(
+            listId = listId,
+            targetListId = inboxId,
+            timestampMillis = Clock.System.now().toEpochMilliseconds()
+        )
+    }
+
     override suspend fun addTag(input: TaskTagWriteInput): Long =
         dao.insertTag(
             TagEntity(
@@ -286,6 +302,10 @@ class RoomCheckItRepository(
 
     override suspend fun updateTag(tagId: Long, input: TaskTagWriteInput) {
         dao.updateTag(tagId = tagId, name = input.name, color = input.color)
+    }
+
+    override suspend fun deleteTag(tagId: Long) {
+        dao.deleteTag(tagId)
     }
 
     override suspend fun isTagNameTaken(name: String, excludeTagId: Long?): Boolean =
@@ -340,6 +360,7 @@ class RoomCheckItRepository(
         dao.replaceTaskReminders(taskId, input.reminders)
         if (shouldRemoveOpenDailyPlanItems) {
             dao.deleteOpenDailyPlanItemsForTask(taskId)
+            dailyPlanScheduleReminderScheduler.rescheduleNext()
         }
         scheduleTaskReminders(taskId, input)
     }
@@ -348,6 +369,7 @@ class RoomCheckItRepository(
         dao.trashTask(taskId, Clock.System.now().toEpochMilliseconds())
         dao.deleteOpenDailyPlanItemsForTask(taskId)
         reminderNotificationScheduler.cancelTaskReminders(taskId)
+        dailyPlanScheduleReminderScheduler.rescheduleNext()
     }
 
     override suspend fun restoreTask(taskId: Long) {
@@ -370,6 +392,7 @@ class RoomCheckItRepository(
             completedAtMillis = completedAtMillis
         )
         reminderNotificationScheduler.cancelTaskReminders(taskId)
+        dailyPlanScheduleReminderScheduler.rescheduleNext()
     }
 
     override suspend fun openTask(taskId: Long) {
@@ -384,6 +407,7 @@ class RoomCheckItRepository(
             status = DailyPlanItemStatus.Planned.name,
             completedAtMillis = null
         )
+        dailyPlanScheduleReminderScheduler.rescheduleNext()
     }
 
     override suspend fun addTaskToDailyPlan(date: LocalDate, task: TaskItem): Long {
@@ -408,6 +432,7 @@ class RoomCheckItRepository(
             )
         )
         task.tags.forEach { tag -> dao.insertDailyPlanItemTagIfParentsExist(itemId, tag.id) }
+        dailyPlanScheduleReminderScheduler.rescheduleNext()
         return itemId
     }
 
@@ -437,6 +462,7 @@ class RoomCheckItRepository(
             )
         )
         tagIds.forEach { tagId -> dao.insertDailyPlanItemTagIfParentsExist(itemId, tagId) }
+        dailyPlanScheduleReminderScheduler.rescheduleNext()
         return itemId
     }
 
@@ -450,6 +476,7 @@ class RoomCheckItRepository(
         item?.taskId?.let { taskId ->
             dao.clearTaskTime(taskId, Clock.System.now().toEpochMilliseconds())
         }
+        dailyPlanScheduleReminderScheduler.rescheduleNext()
     }
 
     override suspend fun updateDailyPlanItem(itemId: Long, input: DailyPlanItemWriteInput) {
@@ -469,10 +496,12 @@ class RoomCheckItRepository(
         )
         dao.deleteDailyPlanItemTags(itemId)
         input.tagIds.forEach { tagId -> dao.insertDailyPlanItemTagIfParentsExist(itemId, tagId) }
+        dailyPlanScheduleReminderScheduler.rescheduleNext()
     }
 
     override suspend fun deleteDailyPlanItem(itemId: Long) {
         dao.deleteDailyPlanItem(itemId)
+        dailyPlanScheduleReminderScheduler.rescheduleNext()
     }
 
     override suspend fun addNote(input: NoteWriteInput): Long {

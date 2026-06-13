@@ -38,6 +38,7 @@ import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
 import com.checkit.ui.components.priorityColor
+import com.checkit.ui.theme.AppIconColorDefaults
 
 @Composable
 internal fun TaskCard(
@@ -185,7 +186,7 @@ internal fun DailyPlanTimelineCard(
     TaskCard(
         title = title,
         timeLabel = timeLabel,
-        color = DailyPlanCardColor,
+        color =  item.cardColor(),
         leadingContent = {
             Icon(if (item.source == DailyPlanItemSource.CheckInNote) Icons.AutoMirrored.Filled.EventNote else Icons.Default.EventAvailable, contentDescription = null, modifier = Modifier.size(18.dp))
         },
@@ -243,7 +244,7 @@ internal fun AllDayDailyPlanCard(
 ) {
     AllDayTypeCard(
         title = title,
-        color = DailyPlanCardColor,
+        color = item.cardColor(),
         icon = { Icon(if (item.source == DailyPlanItemSource.CheckInNote) Icons.AutoMirrored.Filled.EventNote else Icons.Default.EventAvailable, contentDescription = null, modifier = Modifier.size(18.dp)) },
         modifier = modifier,
         completedOverlay = completedOverlay
@@ -346,5 +347,3 @@ private fun DailyPlanItem.checkInNoteTitle(): String =
     title
         .ifBlank { note.orEmpty() }
         .ifBlank { "Empty note" }
-
-private val DailyPlanCardColor = Color(0xFF64748B)

@@ -29,9 +29,10 @@ class CheckInReminderWorker(
                 )
             ) {
                 CheckItNotificationCenter(applicationContext).showAppReminder(
-                    notificationId = NotificationId,
+                    notificationId = NotificationIds.CheckInReminder,
                     title = "Check in",
-                    body = "Nothing is in My Day around now. Add or adjust your plan?"
+                    body = "Nothing is in My Day around now. Add or adjust your plan?",
+                    type = AppReminderType.CheckIn
                 )
                 checkInReminderPolicy.markReminderShown(now)
             }
@@ -43,6 +44,5 @@ class CheckInReminderWorker(
 
     companion object {
         const val WorkName = "check-in-reminder"
-        private const val NotificationId = 70_003
     }
 }

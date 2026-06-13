@@ -232,11 +232,33 @@ interface CheckItDao {
     @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM task_lists")
     suspend fun nextListSortOrder(): Int
 
+    @Query("SELECT id FROM task_lists WHERE name = 'Inbox' ORDER BY sortOrder ASC, id ASC LIMIT 1")
+    suspend fun inboxListId(): Long?
+
     @Query("UPDATE task_lists SET name = :name, color = :color, icon = :icon WHERE id = :listId")
     suspend fun updateList(listId: Long, name: String, color: String, icon: String)
 
+    @Query("UPDATE tasks SET listId = :toListId, updatedAtMillis = :updatedAtMillis WHERE listId = :fromListId")
+    suspend fun moveTasksToList(fromListId: Long, toListId: Long, updatedAtMillis: Long)
+
+    @Query("UPDATE notes SET listId = :toListId, editedAtMillis = :editedAtMillis WHERE listId = :fromListId")
+    suspend fun moveNotesToList(fromListId: Long, toListId: Long, editedAtMillis: Long)
+
+    @Query("DELETE FROM task_lists WHERE id = :listId")
+    suspend fun deleteList(listId: Long)
+
+    @Transaction
+    suspend fun deleteListMovingContentsToList(listId: Long, targetListId: Long, timestampMillis: Long) {
+        moveTasksToList(fromListId = listId, toListId = targetListId, updatedAtMillis = timestampMillis)
+        moveNotesToList(fromListId = listId, toListId = targetListId, editedAtMillis = timestampMillis)
+        deleteList(listId)
+    }
+
     @Query("UPDATE tags SET name = :name, color = :color WHERE id = :tagId")
     suspend fun updateTag(tagId: Long, name: String, color: String)
+
+    @Query("DELETE FROM tags WHERE id = :tagId")
+    suspend fun deleteTag(tagId: Long)
 
     @Query("SELECT COUNT(*) FROM tags WHERE name = :name AND id != :excludeId")
     suspend fun tagNameInUseExcept(name: String, excludeId: Long): Int

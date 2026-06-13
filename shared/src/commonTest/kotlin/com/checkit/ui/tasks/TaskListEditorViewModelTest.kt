@@ -1,24 +1,9 @@
 package com.checkit.ui.tasks
 
 import com.checkit.domain.TaskList
-import com.checkit.domain.usecase.AddNoteUseCase
 import com.checkit.domain.usecase.AddTaskListUseCase
-import com.checkit.domain.usecase.AddTaskTagUseCase
-import com.checkit.domain.usecase.AddTaskUseCase
-import com.checkit.domain.usecase.CompleteTaskUseCase
-import com.checkit.domain.usecase.CompleteNoteUseCase
-import com.checkit.domain.usecase.OpenTaskUseCase
-import com.checkit.domain.usecase.OpenNoteUseCase
-import com.checkit.domain.usecase.DeleteNoteUseCase
-import com.checkit.domain.usecase.DeleteTaskUseCase
-import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
-import com.checkit.domain.usecase.IsTagNameTakenUseCase
-import com.checkit.domain.usecase.ObserveTaskBoardUseCase
-import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
-import com.checkit.domain.usecase.UpdateNoteUseCase
+import com.checkit.domain.usecase.DeleteTaskListUseCase
 import com.checkit.domain.usecase.UpdateTaskListUseCase
-import com.checkit.domain.usecase.UpdateTaskTagUseCase
-import com.checkit.domain.usecase.UpdateTaskUseCase
 import com.checkit.ui.EditorMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -38,31 +23,16 @@ import kotlin.test.assertTrue
 class TaskListEditorViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private lateinit var repository: FakeCheckItRepository
-    private lateinit var viewModel: TaskViewModel
+    private lateinit var viewModel: TaskListViewModel
 
     @BeforeTest
     fun setUp() {
         Dispatchers.setMain(dispatcher)
         repository = FakeCheckItRepository()
-        viewModel = TaskViewModel(
-            observeTaskBoard = ObserveTaskBoardUseCase(repository),
-            ensureDefaultTaskData = EnsureDefaultTaskDataUseCase(repository),
-            selectTaskBoardItems = SelectTaskBoardItemsUseCase(),
-            addTask = AddTaskUseCase(repository),
-            updateTask = UpdateTaskUseCase(repository),
-            deleteTask = DeleteTaskUseCase(repository),
-            completeTask = CompleteTaskUseCase(repository),
-            completeNote = CompleteNoteUseCase(repository),
-            openTask = OpenTaskUseCase(repository),
-            openNote = OpenNoteUseCase(repository),
-            addNote = AddNoteUseCase(repository),
-            updateNote = UpdateNoteUseCase(repository),
-            deleteNote = DeleteNoteUseCase(repository),
+        viewModel = TaskListViewModel(
             addTaskList = AddTaskListUseCase(repository),
             updateTaskList = UpdateTaskListUseCase(repository),
-            addTaskTag = AddTaskTagUseCase(repository),
-            updateTaskTag = UpdateTaskTagUseCase(repository),
-            isTagNameTaken = IsTagNameTakenUseCase(repository)
+            deleteTaskList = DeleteTaskListUseCase(repository)
         )
     }
 
@@ -75,7 +45,7 @@ class TaskListEditorViewModelTest {
     fun openNewListProducesEmptyAddEditor() = runTest(dispatcher) {
         viewModel.openNewList()
 
-        val editor = viewModel.uiState.value.listEditor
+        val editor = viewModel.uiState.value.editor
         assertNotNull(editor)
         assertEquals(EditorMode.Add, editor.mode)
         assertEquals("", editor.name)
@@ -94,7 +64,7 @@ class TaskListEditorViewModelTest {
 
         viewModel.openEditList(list)
 
-        val editor = viewModel.uiState.value.listEditor
+        val editor = viewModel.uiState.value.editor
         assertNotNull(editor)
         assertEquals(EditorMode.Edit, editor.mode)
         assertEquals(12L, editor.listId)
@@ -106,25 +76,26 @@ class TaskListEditorViewModelTest {
     @Test
     fun saveListEditorWithBlankNameKeepsEditorAndShowsMessage() = runTest(dispatcher) {
         viewModel.openNewList()
-        viewModel.updateListEditorName("   ")
+        viewModel.updateName("   ")
 
-        viewModel.saveListEditor()
+        viewModel.saveEditor()
         dispatcher.scheduler.advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        assertNotNull(state.listEditor)
+        assertNotNull(state.editor)
         assertEquals("Add a list name", state.message)
         assertTrue(repository.addedLists.isEmpty())
     }
 
     @Test
-    fun saveNewListPersistsTrimmedInputAndSelectsIt() = runTest(dispatcher) {
+    fun saveNewListPersistsTrimmedInputAndReportsSavedId() = runTest(dispatcher) {
+        var savedId: Long? = null
         viewModel.openNewList()
-        viewModel.updateListEditorName("  Reading  ")
-        viewModel.updateListEditorColor("#059669")
-        viewModel.updateListEditorIcon("Notes")
+        viewModel.updateName("  Reading  ")
+        viewModel.updateColor("#059669")
+        viewModel.updateIcon("Notes")
 
-        viewModel.saveListEditor()
+        viewModel.saveEditor(onSaved = { savedId = it })
         dispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(1, repository.addedLists.size)
@@ -132,9 +103,8 @@ class TaskListEditorViewModelTest {
         assertEquals("Reading", added.name)
         assertEquals("#059669", added.color)
         assertEquals("Notes", added.icon)
-        val state = viewModel.uiState.value
-        assertNull(state.listEditor)
-        assertEquals(repository.lastAssignedListId, state.selectedListId)
+        assertNull(viewModel.uiState.value.editor)
+        assertEquals(repository.lastAssignedListId, savedId)
     }
 
     @Test
@@ -147,10 +117,10 @@ class TaskListEditorViewModelTest {
             sortOrder = 0
         )
         viewModel.openEditList(list)
-        viewModel.updateListEditorName("House")
-        viewModel.updateListEditorColor("#DC2626")
+        viewModel.updateName("House")
+        viewModel.updateColor("#DC2626")
 
-        viewModel.saveListEditor()
+        viewModel.saveEditor()
         dispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(1, repository.updatedLists.size)
@@ -160,14 +130,14 @@ class TaskListEditorViewModelTest {
         assertEquals("#DC2626", input.color)
         assertEquals("Home", input.icon)
         assertTrue(repository.addedLists.isEmpty())
-        assertNull(viewModel.uiState.value.listEditor)
+        assertNull(viewModel.uiState.value.editor)
     }
 
     @Test
     fun dismissListEditorClearsState() = runTest(dispatcher) {
         viewModel.openNewList()
-        viewModel.dismissListEditor()
+        viewModel.dismissEditor()
 
-        assertNull(viewModel.uiState.value.listEditor)
+        assertNull(viewModel.uiState.value.editor)
     }
 }

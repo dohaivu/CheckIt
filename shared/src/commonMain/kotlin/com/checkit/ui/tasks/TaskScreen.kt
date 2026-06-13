@@ -16,6 +16,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,10 +31,14 @@ import kotlinx.coroutines.launch
 internal fun TaskScreen(
     state: TaskUiState,
     viewModel: TaskViewModel,
+    listViewModel: TaskListViewModel,
+    tagViewModel: TaskTagViewModel,
     modifier: Modifier = Modifier
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    val listState by listViewModel.uiState.collectAsState()
+    val tagState by tagViewModel.uiState.collectAsState()
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -57,10 +63,10 @@ internal fun TaskScreen(
                         viewModel.selectTag(tagId)
                         scope.launch { drawerState.close() }
                     },
-                    onAddListClick = { viewModel.openNewList() },
-                    onEditListClick = { list -> viewModel.openEditList(list) },
-                    onAddTagClick = { viewModel.openNewTag() },
-                    onEditTagClick = { tag -> viewModel.openEditTag(tag) }
+                    onAddListClick = { listViewModel.openNewList() },
+                    onEditListClick = { list -> listViewModel.openEditList(list) },
+                    onAddTagClick = { tagViewModel.openNewTag() },
+                    onEditTagClick = { tag -> tagViewModel.openEditTag(tag) }
                 )
             }
         }
@@ -121,24 +127,26 @@ internal fun TaskScreen(
         }
     }
 
-    state.listEditor?.let { listEditor ->
+    listState.editor?.let { listEditor ->
         TaskListEditorSheet(
             editor = listEditor,
-            onDismiss = viewModel::dismissListEditor,
-            onSave = viewModel::saveListEditor,
-            onNameChange = viewModel::updateListEditorName,
-            onColorChange = viewModel::updateListEditorColor,
-            onIconChange = viewModel::updateListEditorIcon
+            onDismiss = listViewModel::dismissEditor,
+            onSave = { listViewModel.saveEditor(onSaved = viewModel::selectList) },
+            onDelete = { listViewModel.deleteEditorList() },
+            onNameChange = listViewModel::updateName,
+            onColorChange = listViewModel::updateColor,
+            onIconChange = listViewModel::updateIcon
         )
     }
 
-    state.tagEditor?.let { tagEditor ->
+    tagState.editor?.let { tagEditor ->
         TaskTagEditorSheet(
             editor = tagEditor,
-            onDismiss = viewModel::dismissTagEditor,
-            onSave = viewModel::saveTagEditor,
-            onNameChange = viewModel::updateTagEditorName,
-            onColorChange = viewModel::updateTagEditorColor
+            onDismiss = tagViewModel::dismissEditor,
+            onSave = { tagViewModel.saveEditor(onSaved = viewModel::selectTag) },
+            onDelete = { tagViewModel.deleteEditorTag() },
+            onNameChange = tagViewModel::updateName,
+            onColorChange = tagViewModel::updateColor
         )
     }
 }

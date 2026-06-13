@@ -16,7 +16,9 @@ import com.checkit.domain.TaskList
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.ui.components.ReportPeriod
-import com.checkit.ui.tasks.toColor
+import com.checkit.ui.theme.AppIconColorDefaults
+import com.checkit.ui.theme.parseHexColorOrNull
+import com.checkit.ui.theme.toColor
 import kotlinx.datetime.LocalDate
 
 data class TaskUiState(
@@ -33,8 +35,6 @@ data class TaskUiState(
     val visibleTasks: List<TaskItem> = emptyList(),
     val visibleNotes: List<NoteItem> = emptyList(),
     val editor: TaskEditorState? = null,
-    val listEditor: ListEditorState? = null,
-    val tagEditor: TagEditorState? = null,
     val isLoading: Boolean = true,
     val message: String? = null
 ) {
@@ -114,6 +114,7 @@ data class ReminderSettingsUiState(
     val reviewEnabled: Boolean = true,
     val reviewTimeMinutes: Int = 21 * 60,
     val checkInEnabled: Boolean = true,
+    val scheduleEnabled: Boolean = true,
     val checkInLastShownAtMillis: Long? = null,
 )
 
@@ -200,47 +201,16 @@ data class ListEditorState(
     val mode: EditorMode,
     val listId: Long? = null,
     val name: String = "",
-    val color: String = ListEditorDefaults.Colors.first(),
-    val icon: String = ListEditorDefaults.Icons.first()
+    val color: String = AppIconColorDefaults.ListColors.first(),
+    val icon: String = AppIconColorDefaults.ListIcons.first()
 )
 
 data class TagEditorState(
     val mode: EditorMode,
     val tagId: Long? = null,
     val name: String = "",
-    val color: String = TagEditorDefaults.Colors.first()
+    val color: String = AppIconColorDefaults.ListColors.first()
 )
-
-object ListEditorDefaults {
-    val Colors: List<String> = listOf(
-        "#2563EB",
-        "#7C3AED",
-        "#059669",
-        "#DC2626",
-        "#CA8A04",
-        "#0891B2",
-        "#DB2777",
-        "#64748B"
-    )
-    val Icons: List<String> = listOf(
-        "Inbox",
-        "Home",
-        "Work",
-        "Folder",
-        "TaskAlt",
-        "Notes",
-        "Today",
-        "Schedule",
-        "ShoppingCart",
-        "Flight",
-        "School",
-        "Star"
-    )
-}
-
-object TagEditorDefaults {
-    val Colors: List<String> = ListEditorDefaults.Colors
-}
 
 enum class RepeatPreset(
     val label: String,
@@ -277,9 +247,7 @@ data class CalendarUiState(
     val dailyPlanByDate: Map<kotlinx.datetime.LocalDate, DailyPlan> = dailyPlans.associateBy { it.date }
 
     private val listColors: Map<Long, Color> = board.lists.associateWith { list ->
-        list.color.parseHexColorOrNull()
-            ?: ListEditorDefaults.Colors.first().parseHexColorOrNull()
-            ?: DefaultMarkerColor
+        list.color.toColor()
     }.mapKeys { it.key.id }
 
     fun tasksForDate(date: kotlinx.datetime.LocalDate): List<TaskItem> =
@@ -332,7 +300,7 @@ data class CalendarUiState(
 
     private companion object {
         const val MarkerCap: Int = 12
-        val DefaultMarkerColor: Color = Color(0xFF64748B)
+        val DefaultMarkerColor: Color = AppIconColorDefaults.FallbackColor
     }
 }
 
@@ -340,16 +308,6 @@ private fun DailyPlanItem.workMinutes(): Int {
     val start = startTimeMinutes ?: return 0
     val end = endTimeMinutes ?: return 0
     return (end - start).coerceAtLeast(0)
-}
-
-internal fun String.parseHexColorOrNull(): Color? {
-    val hex = removePrefix("#")
-    val rgb = hex.toIntOrNull(16) ?: return null
-    return Color(
-        red = ((rgb shr 16) and 0xFF) / 255f,
-        green = ((rgb shr 8) and 0xFF) / 255f,
-        blue = (rgb and 0xFF) / 255f
-    )
 }
 
 data class ReportUiState(

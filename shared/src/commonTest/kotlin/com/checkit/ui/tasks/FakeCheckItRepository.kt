@@ -3,9 +3,11 @@ package com.checkit.ui.tasks
 import com.checkit.data.CheckItRepository
 import com.checkit.data.DailyPlanItemWriteInput
 import com.checkit.data.NoteWriteInput
+import com.checkit.data.SettingsRepository
 import com.checkit.data.TaskListWriteInput
 import com.checkit.data.TaskTagWriteInput
 import com.checkit.data.TaskWriteInput
+import com.checkit.data.UserSettings
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.SubTaskItem
@@ -25,10 +27,13 @@ internal class FakeCheckItRepository(
     private val boardFlow = MutableStateFlow(initialBoard)
     val addedLists = mutableListOf<TaskListWriteInput>()
     val updatedLists = mutableListOf<Pair<Long, TaskListWriteInput>>()
+    val deletedLists = mutableListOf<Long>()
     val addedTags = mutableListOf<TaskTagWriteInput>()
     val updatedTags = mutableListOf<Pair<Long, TaskTagWriteInput>>()
+    val deletedTags = mutableListOf<Long>()
     val addedTasks = mutableListOf<TaskWriteInput>()
     val updatedTasks = mutableListOf<Pair<Long, TaskWriteInput>>()
+    val currentBoard: TaskBoard get() = boardFlow.value
 
     var lastAssignedListId: Long = 0L
         private set
@@ -77,6 +82,22 @@ internal class FakeCheckItRepository(
         }
     }
 
+    override suspend fun deleteList(listId: Long) {
+        deletedLists.add(listId)
+        boardFlow.update { board ->
+            val inbox = board.lists.firstOrNull { it.name == "Inbox" } ?: return@update board
+            board.copy(
+                lists = board.lists.filterNot { it.id == listId },
+                tasks = board.tasks.map { task ->
+                    if (task.list.id == listId) task.copy(list = inbox) else task
+                },
+                notes = board.notes.map { note ->
+                    if (note.list.id == listId) note.copy(list = inbox) else note
+                }
+            )
+        }
+    }
+
     override suspend fun addTag(input: TaskTagWriteInput): Long {
         addedTags.add(input)
         val id = nextTagId++
@@ -103,6 +124,21 @@ internal class FakeCheckItRepository(
                     } else {
                         tag
                     }
+                }
+            )
+        }
+    }
+
+    override suspend fun deleteTag(tagId: Long) {
+        deletedTags.add(tagId)
+        boardFlow.update { board ->
+            board.copy(
+                tags = board.tags.filterNot { it.id == tagId },
+                tasks = board.tasks.map { task ->
+                    task.copy(tags = task.tags.filterNot { it.id == tagId })
+                },
+                notes = board.notes.map { note ->
+                    note.copy(tags = note.tags.filterNot { it.id == tagId })
                 }
             )
         }
@@ -147,6 +183,7 @@ internal class FakeCheckItRepository(
         }
     }
     override suspend fun trashTask(taskId: Long) = Unit
+    override suspend fun restoreTask(taskId: Long) = Unit
     override suspend fun completeTask(taskId: Long) = Unit
     override suspend fun openTask(taskId: Long) = Unit
     override suspend fun completeNote(noteId: Long) = Unit
@@ -167,6 +204,70 @@ internal class FakeCheckItRepository(
     override suspend fun addNote(input: NoteWriteInput): Long = 0L
     override suspend fun updateNote(noteId: Long, input: NoteWriteInput) = Unit
     override suspend fun trashNote(noteId: Long) = Unit
+    override suspend fun restoreNote(noteId: Long) = Unit
+}
+
+internal class FakeSettingsRepository(
+    initialSettings: UserSettings = UserSettings()
+) : SettingsRepository {
+    private val settingsFlow = MutableStateFlow(initialSettings)
+    override val settings: Flow<UserSettings> = settingsFlow
+
+    override suspend fun setLanguageCode(code: String) {
+        settingsFlow.update { it.copy(languageCode = code) }
+    }
+
+    override suspend fun setThemeModeCode(code: String) {
+        settingsFlow.update { it.copy(themeModeCode = code) }
+    }
+
+    override suspend fun setColorSchemeModeCode(code: String) {
+        settingsFlow.update { it.copy(colorSchemeModeCode = code) }
+    }
+
+    override suspend fun setTaskWorkspaceViewCode(code: String) {
+        settingsFlow.update { it.copy(taskWorkspaceViewCode = code) }
+    }
+
+    override suspend fun setTaskListDisplayTypeCode(code: String) {
+        settingsFlow.update { it.copy(taskListDisplayTypeCode = code) }
+    }
+
+    override suspend fun setTaskShowCompleted(showCompleted: Boolean) {
+        settingsFlow.update { it.copy(taskShowCompleted = showCompleted) }
+    }
+
+    override suspend fun setTaskSortOptionCode(code: String) {
+        settingsFlow.update { it.copy(taskSortOptionCode = code) }
+    }
+
+    override suspend fun setPlanReminderEnabled(enabled: Boolean) {
+        settingsFlow.update { it.copy(planReminderEnabled = enabled) }
+    }
+
+    override suspend fun setPlanReminderTimeMinutes(minutes: Int) {
+        settingsFlow.update { it.copy(planReminderTimeMinutes = minutes) }
+    }
+
+    override suspend fun setReviewReminderEnabled(enabled: Boolean) {
+        settingsFlow.update { it.copy(reviewReminderEnabled = enabled) }
+    }
+
+    override suspend fun setReviewReminderTimeMinutes(minutes: Int) {
+        settingsFlow.update { it.copy(reviewReminderTimeMinutes = minutes) }
+    }
+
+    override suspend fun setCheckInReminderEnabled(enabled: Boolean) {
+        settingsFlow.update { it.copy(checkInReminderEnabled = enabled) }
+    }
+
+    override suspend fun setScheduleReminderEnabled(enabled: Boolean) {
+        settingsFlow.update { it.copy(scheduleReminderEnabled = enabled) }
+    }
+
+    override suspend fun setCheckInReminderLastShownAtMillis(millis: Long) {
+        settingsFlow.update { it.copy(checkInReminderLastShownAtMillis = millis) }
+    }
 }
 
 private fun TaskWriteInput.toTaskItem(

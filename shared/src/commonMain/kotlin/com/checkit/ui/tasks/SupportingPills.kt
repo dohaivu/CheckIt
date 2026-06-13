@@ -13,6 +13,8 @@ import com.checkit.domain.TaskList
 import com.checkit.domain.TaskTag
 import com.checkit.ui.components.DetailChip
 import com.checkit.ui.components.TaskTagPill
+import com.checkit.ui.theme.materialIcon
+import com.checkit.ui.theme.toColor
 
 @Composable
 internal fun SupportingPills(

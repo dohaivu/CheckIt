@@ -24,10 +24,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.TaskBoard
-import com.checkit.domain.TaskItem
-import com.checkit.domain.TaskList
-import com.checkit.ui.parseHexColorOrNull
-import com.checkit.ui.components.priorityColor
+import com.checkit.ui.tasks.cardColor
 import kotlin.math.roundToInt
 
 @Composable
@@ -132,7 +129,7 @@ private fun List<DailyPlanItem>.toDayTimelineBlocks(board: TaskBoard): List<DayT
             DayTimelineBlock(
                 startMinutes = clippedStart,
                 endMinutes = clippedEnd,
-                color = dailyItemColor(task, list)
+                color = task.cardColor()
             )
         }
     }
@@ -165,11 +162,6 @@ internal fun Int.toDurationLabel(): String {
         else -> "${hours}h ${minutes}m"
     }
 }
-
-internal fun dailyItemColor(task: TaskItem?, list: TaskList?): Color =
-    list?.color?.parseHexColorOrNull()
-        ?: task?.priority?.priorityColor()
-        ?: Color(0xFF64748B)
 
 private const val DayTimelineStartMinutes = 6 * 60
 private const val DayTimelineEndMinutes = 22 * 60

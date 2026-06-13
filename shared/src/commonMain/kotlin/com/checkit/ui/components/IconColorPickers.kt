@@ -20,8 +20,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.checkit.ui.tasks.materialIcon
-import com.checkit.ui.tasks.toColor
+import com.checkit.ui.theme.materialIcon
+import com.checkit.ui.theme.toColor
 
 @Composable
 internal fun SectionLabel(text: String) {
@@ -91,8 +91,8 @@ internal fun IconPicker(
 ) {
     FlowRow(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        horizontalArrangement = Arrangement.spacedBy(0.dp),
+        verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
         icons.forEach { iconName ->
             val isSelected = iconName == selected
@@ -101,9 +101,9 @@ internal fun IconPicker(
                     .size(48.dp)
                     .background(
                         color = if (isSelected) {
-                            MaterialTheme.colorScheme.primaryContainer
-                        } else {
                             MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+                        } else {
+                            Color.Unspecified
                         },
                         shape = RoundedCornerShape(10.dp)
                     )
