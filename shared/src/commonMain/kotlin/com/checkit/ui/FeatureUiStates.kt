@@ -248,9 +248,27 @@ data class CalendarUiState(
     val selectedDate: kotlinx.datetime.LocalDate = today(),
     val board: TaskBoard = TaskBoard(),
     val dailyPlans: List<DailyPlan> = emptyList(),
-    val showDailyPlanSummary: Boolean = false
+    val showDailyPlanSummary: Boolean = false,
+    val calendarDisplayMode: CalendarDisplayMode = CalendarDisplayMode.Month
 ) {
     val dailyPlanByDate: Map<kotlinx.datetime.LocalDate, DailyPlan> = dailyPlans.associateBy { it.date }
+
+    private val dailyPlanMarkersByDate: Map<kotlinx.datetime.LocalDate, CalendarDateMarkers> by lazy {
+        dailyPlans.associate { plan -> plan.date to CalendarDateMarkers(totalCount = plan.items.size) }
+    }
+
+    private val dailyPlanWorkMinutesByDate: Map<kotlinx.datetime.LocalDate, Int> by lazy {
+        dailyPlans.associate { plan -> plan.date to plan.items.sumOf { it.workMinutes() } }
+    }
+
+    private val futureMarkersByDate: Map<kotlinx.datetime.LocalDate, CalendarDateMarkers> by lazy {
+        val dates = board.tasksByDate.keys + board.notesByDate.keys
+        dates.associateWith { date ->
+            CalendarDateMarkers(
+                totalCount = board.tasksByDate[date].orEmpty().size + board.notesByDate[date].orEmpty().size
+            )
+        }
+    }
 
     private val listColors: Map<Long, Color> = board.lists.associateWith { list ->
         list.color.toColor()
@@ -291,11 +309,15 @@ data class CalendarUiState(
         }
     }
 
+    fun markersForDate(date: kotlinx.datetime.LocalDate): CalendarDateMarkers =
+        if (date <= today()) {
+            dailyPlanMarkersByDate[date] ?: CalendarDateMarkers.Empty
+        } else {
+            futureMarkersByDate[date] ?: CalendarDateMarkers.Empty
+        }
+
     fun dailyPlanWorkMinutesForDate(date: kotlinx.datetime.LocalDate): Int =
-        dailyPlanByDate[date]
-            ?.items
-            .orEmpty()
-            .sumOf { it.workMinutes() }
+        dailyPlanWorkMinutesByDate[date] ?: 0
 
     fun dailyPlanForDate(date: kotlinx.datetime.LocalDate): DailyPlan? = dailyPlanByDate[date]
 
@@ -308,6 +330,21 @@ data class CalendarUiState(
         const val MarkerCap: Int = 12
         val DefaultMarkerColor: Color = AppIconColorDefaults.FallbackColor
     }
+}
+
+data class CalendarDateMarkers(
+    val totalCount: Int = 0
+) {
+    val hasMarkers: Boolean get() = totalCount > 0
+
+    companion object {
+        val Empty = CalendarDateMarkers()
+    }
+}
+
+enum class CalendarDisplayMode {
+    Month,
+    Week
 }
 
 private fun DailyPlanItem.workMinutes(): Int {

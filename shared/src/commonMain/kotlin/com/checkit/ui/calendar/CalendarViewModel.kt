@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
+import com.checkit.ui.CalendarDisplayMode
 import com.checkit.ui.CalendarUiState
 import com.checkit.ui.firstDayOfMonth
 import com.checkit.ui.today
@@ -43,20 +44,60 @@ class CalendarViewModel(
         }
     }
 
-    fun previousMonth() {
-        _uiState.update { it.copy(selectedMonth = it.selectedMonth.minus(1, DateTimeUnit.MONTH)) }
+    fun previousPeriod() {
+        _uiState.update { state ->
+            when (state.calendarDisplayMode) {
+                CalendarDisplayMode.Month -> state.copy(selectedMonth = state.selectedMonth.minus(1, DateTimeUnit.MONTH))
+                CalendarDisplayMode.Week -> {
+                    val selectedDate = state.selectedDate.minus(7, DateTimeUnit.DAY)
+                    state.copy(
+                        selectedDate = selectedDate,
+                        selectedMonth = selectedDate.firstDayOfMonth()
+                    )
+                }
+            }
+        }
     }
 
-    fun nextMonth() {
-        _uiState.update { it.copy(selectedMonth = it.selectedMonth.plus(1, DateTimeUnit.MONTH)) }
+    fun nextPeriod() {
+        _uiState.update { state ->
+            when (state.calendarDisplayMode) {
+                CalendarDisplayMode.Month -> state.copy(selectedMonth = state.selectedMonth.plus(1, DateTimeUnit.MONTH))
+                CalendarDisplayMode.Week -> {
+                    val selectedDate = state.selectedDate.plus(7, DateTimeUnit.DAY)
+                    state.copy(
+                        selectedDate = selectedDate,
+                        selectedMonth = selectedDate.firstDayOfMonth()
+                    )
+                }
+            }
+        }
     }
 
     fun selectDate(date: LocalDate) {
-        _uiState.update { it.copy(selectedDate = date) }
+        _uiState.update {
+            it.copy(
+                selectedDate = date,
+                selectedMonth = date.firstDayOfMonth()
+            )
+        }
     }
 
     fun toggleDailyPlanSummary() {
         _uiState.update { it.copy(showDailyPlanSummary = !it.showDailyPlanSummary) }
+    }
+
+    fun toggleCalendarDisplayMode() {
+        _uiState.update { state ->
+            val mode = when (state.calendarDisplayMode) {
+                CalendarDisplayMode.Month -> CalendarDisplayMode.Week
+                CalendarDisplayMode.Week -> CalendarDisplayMode.Month
+            }
+            state.copy(
+                calendarDisplayMode = mode,
+                selectedMonth = state.selectedDate.firstDayOfMonth()
+            )
+        }
     }
 
     fun resetToToday() {

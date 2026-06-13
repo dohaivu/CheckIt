@@ -48,8 +48,6 @@ class BuildDailyPlanMarkdownSummaryUseCase {
             .sortedBy { it.startTimeMinutes ?: Int.MAX_VALUE }
 
         return buildString {
-            appendLine("# ${date.toSummaryDateLabel()}")
-            appendLine()
             if (doneItems.isEmpty()) {
                 appendLine("No completed daily-plan items.")
                 return@buildString
