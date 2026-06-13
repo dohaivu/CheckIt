@@ -247,7 +247,8 @@ data class CalendarUiState(
     val selectedMonth: kotlinx.datetime.LocalDate = today().firstDayOfMonth(),
     val selectedDate: kotlinx.datetime.LocalDate = today(),
     val board: TaskBoard = TaskBoard(),
-    val dailyPlans: List<DailyPlan> = emptyList()
+    val dailyPlans: List<DailyPlan> = emptyList(),
+    val showDailyPlanSummary: Boolean = false
 ) {
     val dailyPlanByDate: Map<kotlinx.datetime.LocalDate, DailyPlan> = dailyPlans.associateBy { it.date }
 
