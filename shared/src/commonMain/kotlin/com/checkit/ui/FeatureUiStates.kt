@@ -33,8 +33,6 @@ data class TaskUiState(
     val visibleTasks: List<TaskItem> = emptyList(),
     val visibleNotes: List<NoteItem> = emptyList(),
     val editor: TaskEditorState? = null,
-    val listEditor: ListEditorState? = null,
-    val tagEditor: TagEditorState? = null,
     val isLoading: Boolean = true,
     val message: String? = null
 ) {

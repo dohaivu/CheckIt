@@ -36,8 +36,10 @@ interface CheckItRepository {
     suspend fun ensureDefaultTaskData()
     suspend fun addList(input: TaskListWriteInput): Long
     suspend fun updateList(listId: Long, input: TaskListWriteInput)
+    suspend fun deleteList(listId: Long)
     suspend fun addTag(input: TaskTagWriteInput): Long
     suspend fun updateTag(tagId: Long, input: TaskTagWriteInput)
+    suspend fun deleteTag(tagId: Long)
     suspend fun isTagNameTaken(name: String, excludeTagId: Long? = null): Boolean
     suspend fun addTask(input: TaskWriteInput): Long
     suspend fun updateTask(taskId: Long, input: TaskWriteInput)
@@ -280,6 +282,16 @@ class RoomCheckItRepository(
         dao.updateList(listId = listId, name = input.name, color = input.color, icon = input.icon)
     }
 
+    override suspend fun deleteList(listId: Long) {
+        val inboxId = dao.inboxListId() ?: return
+        if (listId == inboxId) return
+        dao.deleteListMovingContentsToList(
+            listId = listId,
+            targetListId = inboxId,
+            timestampMillis = Clock.System.now().toEpochMilliseconds()
+        )
+    }
+
     override suspend fun addTag(input: TaskTagWriteInput): Long =
         dao.insertTag(
             TagEntity(
@@ -290,6 +302,10 @@ class RoomCheckItRepository(
 
     override suspend fun updateTag(tagId: Long, input: TaskTagWriteInput) {
         dao.updateTag(tagId = tagId, name = input.name, color = input.color)
+    }
+
+    override suspend fun deleteTag(tagId: Long) {
+        dao.deleteTag(tagId)
     }
 
     override suspend fun isTagNameTaken(name: String, excludeTagId: Long?): Boolean =

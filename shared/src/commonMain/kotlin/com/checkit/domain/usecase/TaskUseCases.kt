@@ -51,6 +51,12 @@ class UpdateTaskListUseCase(
         repository.updateList(listId, input)
 }
 
+class DeleteTaskListUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(listId: Long) = repository.deleteList(listId)
+}
+
 class AddTaskTagUseCase(
     private val repository: CheckItRepository
 ) {
@@ -62,6 +68,12 @@ class UpdateTaskTagUseCase(
 ) {
     suspend operator fun invoke(tagId: Long, input: TaskTagWriteInput) =
         repository.updateTag(tagId, input)
+}
+
+class DeleteTaskTagUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(tagId: Long) = repository.deleteTag(tagId)
 }
 
 class IsTagNameTakenUseCase(

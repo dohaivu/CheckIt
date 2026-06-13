@@ -2,28 +2,10 @@ package com.checkit.ui.tasks
 
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskTag
-import com.checkit.domain.usecase.AddNoteUseCase
-import com.checkit.domain.usecase.AddTaskListUseCase
 import com.checkit.domain.usecase.AddTaskTagUseCase
-import com.checkit.domain.usecase.AddTaskUseCase
-import com.checkit.domain.usecase.CompleteTaskUseCase
-import com.checkit.domain.usecase.CompleteNoteUseCase
-import com.checkit.domain.usecase.OpenTaskUseCase
-import com.checkit.domain.usecase.OpenNoteUseCase
-import com.checkit.domain.usecase.RestoreNoteUseCase
-import com.checkit.domain.usecase.RestoreTaskUseCase
-import com.checkit.domain.usecase.DeleteNoteUseCase
-import com.checkit.domain.usecase.DeleteTaskUseCase
-import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
+import com.checkit.domain.usecase.DeleteTaskTagUseCase
 import com.checkit.domain.usecase.IsTagNameTakenUseCase
-import com.checkit.domain.usecase.ObserveTaskBoardUseCase
-import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
-import com.checkit.domain.usecase.UpdateNoteUseCase
-import com.checkit.domain.usecase.UpdateDailyPlanItemUseCase
-import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
-import com.checkit.domain.usecase.UpdateTaskListUseCase
 import com.checkit.domain.usecase.UpdateTaskTagUseCase
-import com.checkit.domain.usecase.UpdateTaskUseCase
 import com.checkit.ui.EditorMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -43,7 +25,7 @@ import kotlin.test.assertTrue
 class TaskTagEditorViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private lateinit var repository: FakeCheckItRepository
-    private lateinit var viewModel: TaskViewModel
+    private lateinit var viewModel: TaskTagViewModel
 
     private val existingTag = TaskTag(
         id = 42L,
@@ -55,30 +37,11 @@ class TaskTagEditorViewModelTest {
     fun setUp() {
         Dispatchers.setMain(dispatcher)
         repository = FakeCheckItRepository(initialBoard = TaskBoard(tags = listOf(existingTag)))
-        viewModel = TaskViewModel(
-            observeTaskBoard = ObserveTaskBoardUseCase(repository),
-            ensureDefaultTaskData = EnsureDefaultTaskDataUseCase(repository),
-            selectTaskBoardItems = SelectTaskBoardItemsUseCase(),
-            addTask = AddTaskUseCase(repository),
-            updateTask = UpdateTaskUseCase(repository),
-            deleteTask = DeleteTaskUseCase(repository),
-            restoreTask = RestoreTaskUseCase(repository),
-            completeTask = CompleteTaskUseCase(repository),
-            completeNote = CompleteNoteUseCase(repository),
-            openTask = OpenTaskUseCase(repository),
-            openNote = OpenNoteUseCase(repository),
-            addNote = AddNoteUseCase(repository),
-            updateNote = UpdateNoteUseCase(repository),
-            deleteNote = DeleteNoteUseCase(repository),
-            restoreNote = RestoreNoteUseCase(repository),
-            updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository),
-            updateDailyPlanItem = UpdateDailyPlanItemUseCase(repository),
-            addTaskList = AddTaskListUseCase(repository),
-            updateTaskList = UpdateTaskListUseCase(repository),
+        viewModel = TaskTagViewModel(
             addTaskTag = AddTaskTagUseCase(repository),
             updateTaskTag = UpdateTaskTagUseCase(repository),
-            isTagNameTaken = IsTagNameTakenUseCase(repository),
-            settingsRepository = FakeSettingsRepository()
+            deleteTaskTag = DeleteTaskTagUseCase(repository),
+            isTagNameTaken = IsTagNameTakenUseCase(repository)
         )
     }
 
@@ -91,7 +54,7 @@ class TaskTagEditorViewModelTest {
     fun openNewTagProducesEmptyAddEditor() = runTest(dispatcher) {
         viewModel.openNewTag()
 
-        val editor = viewModel.uiState.value.tagEditor
+        val editor = viewModel.uiState.value.editor
         assertNotNull(editor)
         assertEquals(EditorMode.Add, editor.mode)
         assertEquals("", editor.name)
@@ -102,7 +65,7 @@ class TaskTagEditorViewModelTest {
     fun openEditTagPrefillsExistingValues() = runTest(dispatcher) {
         viewModel.openEditTag(existingTag)
 
-        val editor = viewModel.uiState.value.tagEditor
+        val editor = viewModel.uiState.value.editor
         assertNotNull(editor)
         assertEquals(EditorMode.Edit, editor.mode)
         assertEquals(42L, editor.tagId)
@@ -113,13 +76,13 @@ class TaskTagEditorViewModelTest {
     @Test
     fun saveTagEditorWithBlankNameShowsMessageAndDoesNotPersist() = runTest(dispatcher) {
         viewModel.openNewTag()
-        viewModel.updateTagEditorName("   ")
+        viewModel.updateName("   ")
 
-        viewModel.saveTagEditor()
+        viewModel.saveEditor()
         dispatcher.scheduler.advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        assertNotNull(state.tagEditor)
+        assertNotNull(state.editor)
         assertEquals("Add a tag name", state.message)
         assertTrue(repository.addedTags.isEmpty())
     }
@@ -127,42 +90,41 @@ class TaskTagEditorViewModelTest {
     @Test
     fun saveTagEditorRejectsDuplicateName() = runTest(dispatcher) {
         viewModel.openNewTag()
-        viewModel.updateTagEditorName("  Work  ")
+        viewModel.updateName("  Work  ")
 
-        viewModel.saveTagEditor()
+        viewModel.saveEditor()
         dispatcher.scheduler.advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        assertNotNull(state.tagEditor)
+        assertNotNull(state.editor)
         assertEquals("Tag name already exists", state.message)
         assertTrue(repository.addedTags.isEmpty())
     }
 
     @Test
-    fun saveNewTagPersistsTrimmedInputAndSelectsIt() = runTest(dispatcher) {
+    fun saveNewTagPersistsTrimmedInputAndReportsSavedId() = runTest(dispatcher) {
+        var savedId: Long? = null
         viewModel.openNewTag()
-        viewModel.updateTagEditorName("  Personal  ")
-        viewModel.updateTagEditorColor("#059669")
+        viewModel.updateName("  Personal  ")
+        viewModel.updateColor("#059669")
 
-        viewModel.saveTagEditor()
+        viewModel.saveEditor(onSaved = { savedId = it })
         dispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(1, repository.addedTags.size)
         val added = repository.addedTags.single()
         assertEquals("Personal", added.name)
         assertEquals("#059669", added.color)
-        val state = viewModel.uiState.value
-        assertNull(state.tagEditor)
-        assertEquals(repository.lastAssignedTagId, state.selectedTagId)
-        assertNull(state.selectedListId)
+        assertNull(viewModel.uiState.value.editor)
+        assertEquals(repository.lastAssignedTagId, savedId)
     }
 
     @Test
     fun saveEditedTagKeepingNameDoesNotTriggerDuplicateError() = runTest(dispatcher) {
         viewModel.openEditTag(existingTag)
-        viewModel.updateTagEditorColor("#DC2626")
+        viewModel.updateColor("#DC2626")
 
-        viewModel.saveTagEditor()
+        viewModel.saveEditor()
         dispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(1, repository.updatedTags.size)
@@ -171,16 +133,14 @@ class TaskTagEditorViewModelTest {
         assertEquals("Work", input.name)
         assertEquals("#DC2626", input.color)
         assertTrue(repository.addedTags.isEmpty())
-        val state = viewModel.uiState.value
-        assertNull(state.tagEditor)
-        assertEquals(42L, state.selectedTagId)
+        assertNull(viewModel.uiState.value.editor)
     }
 
     @Test
     fun dismissTagEditorClearsState() = runTest(dispatcher) {
         viewModel.openNewTag()
-        viewModel.dismissTagEditor()
+        viewModel.dismissEditor()
 
-        assertNull(viewModel.uiState.value.tagEditor)
+        assertNull(viewModel.uiState.value.editor)
     }
 }

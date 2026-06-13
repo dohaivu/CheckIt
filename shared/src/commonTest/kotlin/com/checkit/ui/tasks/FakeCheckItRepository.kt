@@ -27,10 +27,13 @@ internal class FakeCheckItRepository(
     private val boardFlow = MutableStateFlow(initialBoard)
     val addedLists = mutableListOf<TaskListWriteInput>()
     val updatedLists = mutableListOf<Pair<Long, TaskListWriteInput>>()
+    val deletedLists = mutableListOf<Long>()
     val addedTags = mutableListOf<TaskTagWriteInput>()
     val updatedTags = mutableListOf<Pair<Long, TaskTagWriteInput>>()
+    val deletedTags = mutableListOf<Long>()
     val addedTasks = mutableListOf<TaskWriteInput>()
     val updatedTasks = mutableListOf<Pair<Long, TaskWriteInput>>()
+    val currentBoard: TaskBoard get() = boardFlow.value
 
     var lastAssignedListId: Long = 0L
         private set
@@ -79,6 +82,22 @@ internal class FakeCheckItRepository(
         }
     }
 
+    override suspend fun deleteList(listId: Long) {
+        deletedLists.add(listId)
+        boardFlow.update { board ->
+            val inbox = board.lists.firstOrNull { it.name == "Inbox" } ?: return@update board
+            board.copy(
+                lists = board.lists.filterNot { it.id == listId },
+                tasks = board.tasks.map { task ->
+                    if (task.list.id == listId) task.copy(list = inbox) else task
+                },
+                notes = board.notes.map { note ->
+                    if (note.list.id == listId) note.copy(list = inbox) else note
+                }
+            )
+        }
+    }
+
     override suspend fun addTag(input: TaskTagWriteInput): Long {
         addedTags.add(input)
         val id = nextTagId++
@@ -105,6 +124,21 @@ internal class FakeCheckItRepository(
                     } else {
                         tag
                     }
+                }
+            )
+        }
+    }
+
+    override suspend fun deleteTag(tagId: Long) {
+        deletedTags.add(tagId)
+        boardFlow.update { board ->
+            board.copy(
+                tags = board.tags.filterNot { it.id == tagId },
+                tasks = board.tasks.map { task ->
+                    task.copy(tags = task.tags.filterNot { it.id == tagId })
+                },
+                notes = board.notes.map { note ->
+                    note.copy(tags = note.tags.filterNot { it.id == tagId })
                 }
             )
         }

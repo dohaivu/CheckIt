@@ -14,6 +14,8 @@ import com.checkit.domain.usecase.OpenNoteUseCase
 import com.checkit.domain.usecase.RestoreNoteUseCase
 import com.checkit.domain.usecase.RestoreTaskUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
+import com.checkit.domain.usecase.DeleteTaskListUseCase
+import com.checkit.domain.usecase.DeleteTaskTagUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.domain.usecase.IsTagNameTakenUseCase
@@ -71,11 +73,6 @@ class TaskTimelineViewModelTest {
             restoreNote = RestoreNoteUseCase(repository),
             updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository),
             updateDailyPlanItem = UpdateDailyPlanItemUseCase(repository),
-            addTaskList = AddTaskListUseCase(repository),
-            updateTaskList = UpdateTaskListUseCase(repository),
-            addTaskTag = AddTaskTagUseCase(repository),
-            updateTaskTag = UpdateTaskTagUseCase(repository),
-            isTagNameTaken = IsTagNameTakenUseCase(repository),
             settingsRepository = FakeSettingsRepository()
         )
         dispatcher.scheduler.advanceUntilIdle()
