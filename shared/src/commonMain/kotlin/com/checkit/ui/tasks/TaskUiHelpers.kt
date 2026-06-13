@@ -16,8 +16,10 @@ import androidx.compose.ui.unit.dp
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
 import com.checkit.ui.TaskWorkspaceView
+import com.checkit.ui.components.priorityColor
 import com.checkit.ui.shortMonthName
 import com.checkit.ui.shortName
+import com.checkit.ui.theme.AppIconColorDefaults.FallbackColor
 import com.checkit.ui.theme.toColor
 import com.checkit.ui.today
 import kotlinx.datetime.DateTimeUnit
@@ -48,12 +50,12 @@ internal fun LocalDate.compact(): String {
     }
 }
 
-fun NoteItem.cardColor(): Color {
-    return list.color.toColor()
+fun NoteItem?.cardColor(): Color {
+    return this?.tags?.firstOrNull()?.color?.toColor() ?: this?.list?.color?.toColor() ?: FallbackColor
 }
 
-fun TaskItem.cardColor(): Color {
-    return list.color.toColor()
+fun TaskItem?.cardColor(): Color {
+    return this?.tags?.firstOrNull()?.color?.toColor() ?: this?.list?.color?.toColor() ?: this?.priority?.priorityColor() ?: FallbackColor
 }
 
 fun TaskItem.timeRangeLabel(): String {

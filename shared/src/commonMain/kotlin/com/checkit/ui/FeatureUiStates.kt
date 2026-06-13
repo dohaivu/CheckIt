@@ -18,6 +18,7 @@ import com.checkit.domain.TaskStatus
 import com.checkit.ui.components.ReportPeriod
 import com.checkit.ui.theme.AppIconColorDefaults
 import com.checkit.ui.theme.parseHexColorOrNull
+import com.checkit.ui.theme.toColor
 import kotlinx.datetime.LocalDate
 
 data class TaskUiState(
@@ -246,8 +247,7 @@ data class CalendarUiState(
     val dailyPlanByDate: Map<kotlinx.datetime.LocalDate, DailyPlan> = dailyPlans.associateBy { it.date }
 
     private val listColors: Map<Long, Color> = board.lists.associateWith { list ->
-        list.color.parseHexColorOrNull()
-            ?: AppIconColorDefaults.FallbackColor
+        list.color.toColor()
     }.mapKeys { it.key.id }
 
     fun tasksForDate(date: kotlinx.datetime.LocalDate): List<TaskItem> =

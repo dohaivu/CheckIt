@@ -13,8 +13,8 @@ import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.action.Action
-import androidx.glance.action.actionStartActivity
 import androidx.glance.action.actionParametersOf
+import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.cornerRadius
@@ -51,10 +51,10 @@ import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.shared.R
 import com.checkit.ui.myday.MyDayTaskViewProjection
 import com.checkit.ui.myday.PlannedTaskProjection
-import com.checkit.ui.myday.dailyItemColor
 import com.checkit.ui.myday.toTaskViewProjection
 import com.checkit.ui.tasks.cardColor
 import com.checkit.ui.tasks.toClockLabel
+import com.checkit.ui.theme.AppIconColorDefaults.FallbackColor
 import com.checkit.ui.today
 import kotlinx.coroutines.flow.first
 import kotlinx.datetime.TimeZone
@@ -435,7 +435,7 @@ private sealed class GlanceAgendaItem {
         override val endTimeMinutes: Int? = item.endTimeMinutes
         override val sortOrder: Int = item.sortOrder
         override val title: String = task.name.ifBlank { "Untitled task" }
-        override val color: Color = dailyItemColor(task = task, list = task.list)
+        override val color: Color = task.cardColor()
         override val completed: Boolean = item.status == DailyPlanItemStatus.Done
         override val dailyPlanItemId: Long = item.id
         override val taskId: Long = task.id
@@ -463,7 +463,7 @@ private sealed class GlanceAgendaItem {
         override val endTimeMinutes: Int? = item.endTimeMinutes
         override val sortOrder: Int = item.sortOrder
         override val title: String = item.widgetTitle()
-        override val color: Color = dailyItemColor(task = null, list = null)
+        override val color: Color = FallbackColor
         override val completed: Boolean = item.status == DailyPlanItemStatus.Done
         override val dailyPlanItemId: Long = item.id
         override val taskId: Long? = item.taskId
