@@ -38,11 +38,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.checkit.ui.EditorMode
-import com.checkit.ui.ListEditorDefaults
 import com.checkit.ui.ListEditorState
 import com.checkit.ui.components.ColorPicker
 import com.checkit.ui.components.IconPicker
 import com.checkit.ui.components.SectionLabel
+import com.checkit.ui.theme.AppIconColorDefaults
+import com.checkit.ui.theme.toColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -117,7 +118,7 @@ internal fun TaskListEditorSheet(
             item {
                 SectionLabel("Color")
                 ColorPicker(
-                    colors = ListEditorDefaults.Colors,
+                    colors = AppIconColorDefaults.ListColors,
                     selected = editor.color,
                     onSelect = onColorChange
                 )
@@ -125,7 +126,7 @@ internal fun TaskListEditorSheet(
             item {
                 SectionLabel("Icon")
                 IconPicker(
-                    icons = ListEditorDefaults.Icons,
+                    icons = AppIconColorDefaults.ListIcons,
                     selected = editor.icon,
                     tint = editor.color.toColor(),
                     onSelect = onIconChange

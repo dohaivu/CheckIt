@@ -26,8 +26,8 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskList
-import com.checkit.ui.parseHexColorOrNull
 import com.checkit.ui.components.priorityColor
+import com.checkit.ui.theme.parseHexColorOrNull
 import kotlin.math.roundToInt
 
 @Composable

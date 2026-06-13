@@ -38,10 +38,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.checkit.ui.EditorMode
-import com.checkit.ui.TagEditorDefaults
 import com.checkit.ui.TagEditorState
 import com.checkit.ui.components.ColorPicker
-import com.checkit.ui.components.SectionLabel
+import com.checkit.ui.theme.AppIconColorDefaults
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -114,7 +113,7 @@ internal fun TaskTagEditorSheet(
             }
             item {
                 ColorPicker(
-                    colors = TagEditorDefaults.Colors,
+                    colors = AppIconColorDefaults.ListColors,
                     selected = editor.color,
                     onSelect = onColorChange
                 )
