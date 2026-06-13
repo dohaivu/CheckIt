@@ -15,12 +15,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -38,19 +42,21 @@ import checkit.shared.generated.resources.calendar_title
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
+import com.checkit.domain.usecase.BuildDailyPlanMarkdownSummaryUseCase
 import com.checkit.ui.CalendarUiState
-import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.MonthHeader
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.firstDayOfMonth
 import com.checkit.ui.isSameMonth
 import com.checkit.ui.localizedCompactDateWithDayName
-import com.checkit.ui.shortName
 import com.checkit.ui.myday.DayLinearTimeline
 import com.checkit.ui.myday.MyDayAgenda
+import com.checkit.ui.shortName
 import com.checkit.ui.tasks.ContentContainerAlpha
 import com.checkit.ui.tasks.TaskAgendaView
 import com.checkit.ui.today
+import com.mikepenz.markdown.m3.Markdown
+import com.mikepenz.markdown.m3.markdownTypography
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
@@ -73,7 +79,8 @@ internal fun CalendarScreen(
     val tasksForDate = state.tasksForDate(state.selectedDate)
     val notesForDate = state.notesForDate(state.selectedDate)
     val showDailyPlan = state.selectedDate <= today()
-    val dailyPlanItems = state.dailyPlanForDate(state.selectedDate)?.items.orEmpty()
+    val selectedDailyPlan = state.dailyPlanForDate(state.selectedDate)
+    val dailyPlanItems = selectedDailyPlan?.items.orEmpty()
     val hasItemsForDate = if (showDailyPlan) {
         dailyPlanItems.isNotEmpty()
     } else {
@@ -125,7 +132,10 @@ internal fun CalendarScreen(
             SelectedDateHeader(
                 date = state.selectedDate,
                 taskCount = if (showDailyPlan) dailyPlanItems.size else tasksForDate.size,
-                noteCount = notesForDate.size
+                noteCount = notesForDate.size,
+                summaryEnabled = showDailyPlan && state.showDailyPlanSummary,
+                summaryAvailable = showDailyPlan,
+                onSummaryToggle = calendarViewModel::toggleDailyPlanSummary
             )
             if (showDailyPlan) {
                 DayLinearTimeline(
@@ -137,7 +147,22 @@ internal fun CalendarScreen(
                         .padding(bottom = 4.dp)
                 )
             }
-            if (hasItemsForDate) {
+            if (showDailyPlan && state.showDailyPlanSummary) {
+                val summaryBuilder = remember { BuildDailyPlanMarkdownSummaryUseCase() }
+                val summaryMarkdown = remember(state.selectedDate, selectedDailyPlan, state.board) {
+                    summaryBuilder(
+                        date = state.selectedDate,
+                        plan = selectedDailyPlan,
+                        board = state.board
+                    )
+                }
+                DailyPlanMarkdownSummary(
+                    markdown = summaryMarkdown,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                )
+            } else if (hasItemsForDate) {
                 if (showDailyPlan) {
                     MyDayAgenda(
                         items = dailyPlanItems,
@@ -187,7 +212,10 @@ internal fun CalendarScreen(
 private fun SelectedDateHeader(
     date: LocalDate,
     taskCount: Int,
-    noteCount: Int
+    noteCount: Int,
+    summaryEnabled: Boolean,
+    summaryAvailable: Boolean,
+    onSummaryToggle: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -208,8 +236,46 @@ private fun SelectedDateHeader(
         ) {
             CountBadge(icon = Icons.Default.TaskAlt, count = taskCount)
             CountBadge(icon = Icons.AutoMirrored.Filled.Notes, count = noteCount)
+            if (summaryAvailable) {
+                IconButton(
+                    onClick = onSummaryToggle,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Article,
+                        contentDescription = if (summaryEnabled) "Hide summary" else "Show summary",
+                        modifier = Modifier.size(18.dp),
+                        tint = if (summaryEnabled) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
+                }
+            }
         }
     }
+}
+
+@Composable
+private fun DailyPlanMarkdownSummary(
+    markdown: String,
+    modifier: Modifier = Modifier
+) {
+    val scrollState = rememberScrollState()
+    Markdown(
+        modifier = modifier.verticalScroll(scrollState),
+        content = markdown,
+//        colors = markdownColor(text = contentColor),
+        typography = markdownTypography(
+            h1 = MaterialTheme.typography.headlineSmall,
+            h2 = MaterialTheme.typography.titleLarge,
+            h3 = MaterialTheme.typography.titleMedium,
+            h4 = MaterialTheme.typography.bodyMedium,
+            h5 = MaterialTheme.typography.bodySmall,
+            h6 = MaterialTheme.typography.bodySmall
+        ),
+    )
 }
 
 @Composable
@@ -347,7 +413,7 @@ private fun CalendarDayCell(
 
     Box(
         modifier = modifier
-            .height(48.dp)
+            .height(44.dp)
             .border(0.5.dp, colors.outline)
             .background(backgroundColor)
             .combinedClickable(

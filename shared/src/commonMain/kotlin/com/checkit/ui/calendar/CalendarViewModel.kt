@@ -55,6 +55,10 @@ class CalendarViewModel(
         _uiState.update { it.copy(selectedDate = date) }
     }
 
+    fun toggleDailyPlanSummary() {
+        _uiState.update { it.copy(showDailyPlanSummary = !it.showDailyPlanSummary) }
+    }
+
     fun resetToToday() {
         val today = today()
         _uiState.update {

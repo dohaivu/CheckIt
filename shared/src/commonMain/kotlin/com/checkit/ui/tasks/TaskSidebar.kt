@@ -2,6 +2,7 @@ package com.checkit.ui.tasks
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -19,7 +20,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -84,18 +85,8 @@ internal fun TaskSidebar(
                     color = list.color.toColor(),
                     selected = selectedListId == list.id,
                     onClick = { onListClick(list.id) },
-                    trailing = {
-                        IconButton(
-                            onClick = { onEditListClick(list) },
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = "Edit ${list.name}",
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                    onLongClick = {
+                        onEditListClick(list)
                     }
                 )
             }
@@ -134,18 +125,8 @@ internal fun TaskSidebar(
                     color = tag.color.toColor(),
                     selected = selectedTagId == tag.id,
                     onClick = { onTagClick(tag.id) },
-                    trailing = {
-                        IconButton(
-                            onClick = { onEditTagClick(tag) },
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = "Edit ${tag.name}",
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                    onLongClick = {
+                        onEditTagClick(tag)
                     }
                 )
             }
@@ -181,6 +162,7 @@ private fun SidebarItem(
     color: Color,
     selected: Boolean,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null
 ) {
     val background = if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
@@ -189,6 +171,12 @@ private fun SidebarItem(
             .fillMaxWidth()
             .background(background, RoundedCornerShape(8.dp))
             .clickable(onClick = onClick)
+            .pointerInput(title) {
+                detectTapGestures(
+                    onTap = { onClick() },
+                    onLongPress = { onLongClick?.invoke() }
+                )
+            }
             .padding(horizontal = 10.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)

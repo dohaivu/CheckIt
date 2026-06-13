@@ -7,6 +7,7 @@ import com.checkit.data.TaskListWriteInput
 import com.checkit.data.TaskTagWriteInput
 import com.checkit.data.TaskWriteInput
 import com.checkit.domain.DailyPlan
+import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DueDatePreset
@@ -31,6 +32,52 @@ class ObserveDailyPlansUseCase(
     private val repository: CheckItRepository
 ) {
     operator fun invoke(): Flow<List<DailyPlan>> = repository.observeDailyPlans()
+}
+
+class BuildDailyPlanMarkdownSummaryUseCase {
+    operator fun invoke(
+        date: LocalDate,
+        plan: DailyPlan?,
+        board: TaskBoard
+    ): String {
+        val tasksById = board.tasksById
+        val doneItems = plan
+            ?.items
+            .orEmpty()
+            .filter { it.status == DailyPlanItemStatus.Done }
+            .sortedBy { it.startTimeMinutes ?: Int.MAX_VALUE }
+
+        return buildString {
+            appendLine("# ${date.toSummaryDateLabel()}")
+            appendLine()
+            if (doneItems.isEmpty()) {
+                appendLine("No completed daily-plan items.")
+                return@buildString
+            }
+
+            doneItems.forEachIndexed { index, item ->
+                if (index > 0) appendLine()
+                val task = item.taskId?.let { tasksById[it] }
+                val title = item.titleLine()
+                val detailLines = item.summaryDetailLines(task)
+                val subtasks = task?.subtasks.orEmpty()
+                val hasDetailLines = detailLines.isNotEmpty()
+                val hasContinuation = title != null || hasDetailLines || subtasks.isNotEmpty()
+
+                appendLine("- **${item.timeLabel()}**${if (hasContinuation) MarkdownHardBreak else ""}")
+                title?.let {
+                    appendLine("$it${if (hasDetailLines || subtasks.isNotEmpty()) MarkdownHardBreak else ""}")
+                }
+                detailLines.forEachIndexed { detailIndex, detail ->
+                    val hasNextLine = detailIndex < detailLines.lastIndex
+                    appendLine("_${detail}_${if (hasNextLine || subtasks.isNotEmpty()) MarkdownHardBreak else ""}")
+                }
+                subtasks.forEach { subtask ->
+                    appendLine("  - [${if (subtask.isCompleted) "x" else " "}] ${subtask.name.cleanMarkdownLine()}")
+                }
+            }
+        }.trimEnd()
+    }
 }
 
 class EnsureDefaultTaskDataUseCase(
@@ -236,6 +283,62 @@ data class TaskBoardItems(
     val tasks: List<TaskItem>,
     val notes: List<NoteItem>
 )
+
+private fun DailyPlanItem.titleLine(): String? {
+    val title = title.cleanMarkdownLine().takeIf { it.isNotBlank() } ?: return null
+    val tagLabel = tags
+        .mapNotNull { it.name.toMarkdownTag() }
+        .joinToString(separator = " ")
+        .takeIf { it.isNotBlank() }
+    return listOfNotNull(title, tagLabel).joinToString(separator = " ")
+}
+
+private fun DailyPlanItem.summaryDetailLines(task: TaskItem?): List<String> {
+    val taskDescription = if (source == DailyPlanItemSource.ExistingTask) {
+        task?.description
+    } else {
+        null
+    }
+    val detail = taskDescription?.takeIf { it.isNotBlank() } ?: note
+    return detail?.cleanMarkdownLines().orEmpty()
+}
+
+private fun DailyPlanItem.timeLabel(): String {
+    val start = startTimeMinutes ?: return "All-Day"
+    val end = endTimeMinutes
+    return if (end == null) start.toClockLabel() else "${start.toClockLabel()} - ${end.toClockLabel()}"
+}
+
+private fun String.toMarkdownTag(): String? {
+    val name = trim().removePrefix("#").replace(WhitespaceRegex, "")
+    return name.takeIf { it.isNotBlank() }?.let { "#$it" }
+}
+
+private fun String.cleanMarkdownLine(): String =
+    trim().replace(WhitespaceRegex, " ")
+
+private fun String.cleanMarkdownLines(): List<String> =
+    lineSequence()
+        .map { it.cleanMarkdownLine() }
+        .filter { it.isNotBlank() }
+        .toList()
+
+private val WhitespaceRegex = Regex("\\s+")
+private const val MarkdownHardBreak = "  "
+
+private fun Int.toClockLabel(): String {
+    val hour = this / 60
+    val minute = this % 60
+    val suffix = if (hour >= 12) "PM" else "AM"
+    val displayHour = when (val normalized = hour % 12) {
+        0 -> 12
+        else -> normalized
+    }
+    return "$displayHour:${minute.toString().padStart(2, '0')} $suffix"
+}
+
+private fun LocalDate.toSummaryDateLabel(): String =
+    "${month.name.lowercase().replaceFirstChar { it.uppercase() }.take(3)} $day, $year"
 
 private fun TaskItem.matches(filter: TaskFilter, today: LocalDate): Boolean {
     if (filter.includeTrashed) return isTrashed
