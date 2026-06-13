@@ -325,6 +325,7 @@ fun CheckItApp(
                         onSubTaskAdd = taskViewModel::addSubTask,
                         onSubTaskNameChange = taskViewModel::updateSubTaskName,
                         onSubTaskRemove = taskViewModel::removeSubTask,
+                        onSubTaskMove = taskViewModel::moveSubTask,
                         onTaskTagToggle = taskViewModel::toggleTaskTag,
                         onNoteTitleChange = taskViewModel::updateNoteTitle,
                         onNoteContentChange = taskViewModel::updateNoteContent,

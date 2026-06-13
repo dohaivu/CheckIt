@@ -102,6 +102,7 @@ internal fun TaskEditorSheet(
     onSubTaskAdd: () -> Unit,
     onSubTaskNameChange: (Int, String) -> Unit,
     onSubTaskRemove: (Int) -> Unit,
+    onSubTaskMove: (Int, Int) -> Unit,
     onTaskTagToggle: (Long) -> Unit,
     onNoteTitleChange: (String) -> Unit,
     onNoteContentChange: (String) -> Unit,
@@ -168,6 +169,7 @@ internal fun TaskEditorSheet(
                             onSubTaskAdd = onSubTaskAdd,
                             onSubTaskNameChange = onSubTaskNameChange,
                             onSubTaskRemove = onSubTaskRemove,
+                            onSubTaskMove = onSubTaskMove,
                             onTagToggle = onTaskTagToggle,
                             enabled = editor.isFormEditable()
                         )
@@ -378,6 +380,7 @@ private fun TaskFormContent(
     onSubTaskAdd: () -> Unit,
     onSubTaskNameChange: (Int, String) -> Unit,
     onSubTaskRemove: (Int) -> Unit,
+    onSubTaskMove: (Int, Int) -> Unit,
     onTagToggle: (Long) -> Unit,
     enabled: Boolean = true
 ) {
@@ -442,6 +445,7 @@ private fun TaskFormContent(
             onAdd = onSubTaskAdd,
             onNameChange = onSubTaskNameChange,
             onRemove = onSubTaskRemove,
+            onMove = onSubTaskMove,
             enabled = enabled
         )
 

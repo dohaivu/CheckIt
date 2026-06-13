@@ -40,6 +40,22 @@ class DailyPlanScheduleReminderPlannerTest {
     }
 
     @Test
+    fun nextReminderSkipsItemsAtEarliestTime() {
+        val reminder = DailyPlanScheduleReminderPlanner.nextReminder(
+            items = listOf(
+                item(id = 1L, title = "Now", startTimeMinutes = 9 * 60),
+                item(id = 2L, title = "Next", startTimeMinutes = 9 * 60 + 1)
+            ),
+            earliestTimeMinutes = 9 * 60
+        )
+
+        assertEquals(
+            DailyPlanScheduleReminder(itemId = 2L, title = "Next", startTimeMinutes = 9 * 60 + 1),
+            reminder
+        )
+    }
+
+    @Test
     fun nextReminderReturnsNullAfterEndOfDay() {
         val reminder = DailyPlanScheduleReminderPlanner.nextReminder(
             items = listOf(item(id = 1L, title = "Late", startTimeMinutes = 23 * 60 + 59)),

@@ -25,7 +25,7 @@ object DailyPlanScheduleReminderPlanner {
             .filter { it.status == DailyPlanItemStatus.Planned }
             .mapNotNull { item ->
                 val start = item.startTimeMinutes ?: return@mapNotNull null
-                if (start < earliest) return@mapNotNull null
+                if (start <= earliest) return@mapNotNull null
                 DailyPlanScheduleReminder(
                     itemId = item.id,
                     title = item.title.ifBlank { "My Day item" },

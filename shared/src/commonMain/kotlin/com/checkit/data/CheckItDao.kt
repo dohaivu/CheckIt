@@ -34,6 +34,45 @@ interface CheckItDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertFilter(filter: TaskFilterEntity): Long
 
+    @Query(
+        """
+        INSERT INTO task_filters(
+            name,
+            icon,
+            color,
+            tagId,
+            dueDatePreset,
+            status,
+            priority,
+            includeTrashed,
+            sortOrder
+        )
+        SELECT
+            :name,
+            :icon,
+            :color,
+            NULL,
+            :dueDatePreset,
+            :status,
+            :priority,
+            :includeTrashed,
+            :sortOrder
+        WHERE NOT EXISTS(
+            SELECT 1 FROM task_filters WHERE name = :name
+        )
+        """
+    )
+    suspend fun insertFilterIfNameMissing(
+        name: String,
+        icon: String,
+        color: String,
+        dueDatePreset: String?,
+        status: String?,
+        priority: String?,
+        includeTrashed: Boolean,
+        sortOrder: Int
+    )
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSubTask(subTask: SubTaskEntity): Long
 
@@ -125,11 +164,11 @@ interface CheckItDao {
     @Query(
         """
         DELETE FROM task_filters
-        WHERE name IN ('All', 'Today', 'Completed', 'High priority', 'Trashed')
+        WHERE name IN ('All', 'Today', 'Upcoming', 'Overdue', 'Completed', 'High priority', 'Trashed')
           AND id NOT IN (
               SELECT MIN(id)
               FROM task_filters
-              WHERE name IN ('All', 'Today', 'Completed', 'High priority', 'Trashed')
+              WHERE name IN ('All', 'Today', 'Upcoming', 'Overdue', 'Completed', 'High priority', 'Trashed')
               GROUP BY name
           )
         """
@@ -364,16 +403,15 @@ interface CheckItDao {
     @Query(
         """
         UPDATE daily_plan_items
-        SET status = :status,
+        SET status = 'Done',
             completedAtMillis = :completedAtMillis
         WHERE taskId = :taskId
-          AND status != :status
+          AND status = 'Planned'
         """
     )
-    suspend fun updateDailyPlanItemsForTaskStatus(
+    suspend fun completePlannedDailyPlanItemsForTask(
         taskId: Long,
-        status: String,
-        completedAtMillis: Long?
+        completedAtMillis: Long
     )
 
     @Query(
@@ -383,7 +421,7 @@ interface CheckItDao {
           AND status = 'Planned'
         """
     )
-    suspend fun deleteOpenDailyPlanItemsForTask(taskId: Long)
+    suspend fun deletePlannedDailyPlanItemsForTask(taskId: Long)
 
     @Query(
         """
@@ -397,6 +435,20 @@ interface CheckItDao {
         itemId: Long,
         startTimeMinutes: Int?,
         endTimeMinutes: Int?
+    )
+
+    @Query(
+        """
+        UPDATE daily_plan_items
+        SET status = :status,
+            completedAtMillis = :completedAtMillis
+        WHERE id = :itemId
+        """
+    )
+    suspend fun updateDailyPlanItemStatus(
+        itemId: Long,
+        status: String,
+        completedAtMillis: Long?
     )
 
     @Query(

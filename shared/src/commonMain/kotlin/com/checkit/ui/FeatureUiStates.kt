@@ -188,7 +188,8 @@ enum class EditorMode {
 data class SubTaskEditorState(
     val id: Long? = null,
     val name: String,
-    val isCompleted: Boolean = false
+    val isCompleted: Boolean = false,
+    val editorKey: Long = nextSubTaskEditorKey()
 )
 
 fun SubTaskItem.toEditorState() = SubTaskEditorState(
@@ -196,6 +197,10 @@ fun SubTaskItem.toEditorState() = SubTaskEditorState(
     name = name,
     isCompleted = isCompleted
 )
+
+private var subTaskEditorKeySeed = 0L
+
+private fun nextSubTaskEditorKey(): Long = --subTaskEditorKeySeed
 
 data class ListEditorState(
     val mode: EditorMode,

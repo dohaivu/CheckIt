@@ -23,7 +23,7 @@ import com.checkit.domain.usecase.IsTagNameTakenUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.UpdateNoteUseCase
-import com.checkit.domain.usecase.UpdateDailyPlanItemUseCase
+import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.domain.usecase.UpdateTaskListUseCase
 import com.checkit.domain.usecase.UpdateTaskTagUseCase
@@ -117,6 +117,23 @@ class TaskSubtaskViewModelTest {
     }
 
     @Test
+    fun editModeCanReorderSubtasks() = runTest(dispatcher) {
+        createViewModel(TaskBoard(lists = listOf(inboxList()), tasks = listOf(taskWithSubtasks())))
+        dispatcher.scheduler.advanceUntilIdle()
+        viewModel.openTask(taskWithSubtasks())
+        viewModel.editCurrentItem()
+
+        viewModel.moveSubTask(fromIndex = 1, toIndex = 0)
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val editor = viewModel.uiState.value.editor as TaskEditorState.TaskForm
+        assertEquals(listOf("Send", "Draft"), editor.subtasks.map { it.name })
+        val input = repository.updatedTasks.last().second
+        assertEquals(listOf("Send", "Draft"), input.subtasks.map { it.name })
+        assertEquals(listOf(true, false), input.subtasks.map { it.isCompleted })
+    }
+
+    @Test
     fun saveTaskPersistsSelectedReminderOffsets() = runTest(dispatcher) {
         createViewModel(TaskBoard(lists = listOf(inboxList())))
         viewModel.openNewTask()
@@ -165,7 +182,7 @@ class TaskSubtaskViewModelTest {
             deleteNote = DeleteNoteUseCase(repository),
             restoreNote = RestoreNoteUseCase(repository),
             updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository),
-            updateDailyPlanItem = UpdateDailyPlanItemUseCase(repository),
+            updateDailyPlanItemStatus = UpdateDailyPlanItemStatusUseCase(repository),
             settingsRepository = FakeSettingsRepository()
         )
         dispatcher.scheduler.advanceUntilIdle()

@@ -37,6 +37,7 @@ import com.checkit.domain.usecase.RestoreTaskUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.UpdateNoteUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemUseCase
+import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.domain.usecase.UpdateTaskListUseCase
 import com.checkit.domain.usecase.UpdateTaskTagUseCase
@@ -97,6 +98,7 @@ val provideInteractorModule = module {
     single { AddTaskToDailyPlanUseCase(get()) }
     single { AddManualDoneToDailyPlanUseCase(get()) }
     single { UpdateDailyPlanItemTimeUseCase(get()) }
+    single { UpdateDailyPlanItemStatusUseCase(get()) }
     single { UpdateDailyPlanItemUseCase(get()) }
     single { DeleteDailyPlanItemUseCase(get()) }
     single { AddNoteUseCase(get()) }
@@ -138,7 +140,7 @@ val provideViewModelModule = module {
             deleteNote = get(),
             restoreNote = get(),
             updateDailyPlanItemTime = get(),
-            updateDailyPlanItem = get(),
+            updateDailyPlanItemStatus = get(),
             settingsRepository = get()
         )
     }

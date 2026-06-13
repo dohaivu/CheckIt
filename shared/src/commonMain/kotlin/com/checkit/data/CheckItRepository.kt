@@ -1,10 +1,10 @@
 package com.checkit.data
 
-import com.checkit.domain.DueDatePreset
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
+import com.checkit.domain.DueDatePreset
 import com.checkit.domain.NoteItem
 import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
@@ -16,9 +16,9 @@ import com.checkit.domain.TaskReminder
 import com.checkit.domain.TaskReminderWriteInput
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskTag
-import com.checkit.notifications.NoOpTaskReminderNotificationScheduler
 import com.checkit.notifications.DailyPlanScheduleReminderScheduler
 import com.checkit.notifications.NoOpDailyPlanScheduleReminderScheduler
+import com.checkit.notifications.NoOpTaskReminderNotificationScheduler
 import com.checkit.notifications.ScheduledTaskReminder
 import com.checkit.notifications.TaskReminderNotificationScheduler
 import kotlinx.coroutines.flow.Flow
@@ -58,6 +58,7 @@ interface CheckItRepository {
         tagIds: List<Long> = emptyList()
     ): Long
     suspend fun updateDailyPlanItemTime(itemId: Long, startTimeMinutes: Int?, endTimeMinutes: Int?)
+    suspend fun updateDailyPlanItemStatus(itemId: Long, status: DailyPlanItemStatus)
     suspend fun updateDailyPlanItem(itemId: Long, input: DailyPlanItemWriteInput)
     suspend fun deleteDailyPlanItem(itemId: Long)
     suspend fun addNote(input: NoteWriteInput): Long
@@ -204,6 +205,7 @@ class RoomCheckItRepository(
 
     override suspend fun ensureDefaultTaskData() = seedMutex.withLock {
         cleanupDuplicateSeedData()
+        ensureDefaultFilters()
         if (dao.listCount() > 0) return@withLock
 
         val instant = Clock.System.now()
@@ -224,7 +226,7 @@ class RoomCheckItRepository(
                 listId = inboxId,
                 name = "Plan the day",
                 description = "Review agenda, timeline, and the next task to start.",
-                status = TaskStatus.InProgress.name,
+                status = TaskStatus.Open.name,
                 priority = TaskPriority.High.name,
                 doDateEpochDays = today.toEpochDays().toInt(),
                 startTimeMinutes = 9 * 60,
@@ -260,12 +262,6 @@ class RoomCheckItRepository(
             )
         )
         dao.insertNoteTagIfParentsExist(noteId, homeId)
-
-        dao.insertFilter(TaskFilterEntity(name = "All", icon = "AllInclusive", color = "#475569", sortOrder = 0))
-        dao.insertFilter(TaskFilterEntity(name = "Today", icon = "Today", color = "#2563EB", dueDatePreset = DueDatePreset.Today.name, sortOrder = 1))
-        dao.insertFilter(TaskFilterEntity(name = "Completed", icon = "TaskAlt", color = "#059669", status = TaskStatus.Completed.name, sortOrder = 2))
-        dao.insertFilter(TaskFilterEntity(name = "High priority", icon = "PriorityHigh", color = "#DC2626", priority = TaskPriority.High.name, sortOrder = 3))
-        dao.insertFilter(TaskFilterEntity(name = "Trashed", icon = "Delete", color = "#6B7280", includeTrashed = true, sortOrder = 4))
     }
 
     override suspend fun addList(input: TaskListWriteInput): Long =
@@ -359,7 +355,7 @@ class RoomCheckItRepository(
         dao.replaceTaskSubTasks(taskId, input.subtasks)
         dao.replaceTaskReminders(taskId, input.reminders)
         if (shouldRemoveOpenDailyPlanItems) {
-            dao.deleteOpenDailyPlanItemsForTask(taskId)
+            dao.deletePlannedDailyPlanItemsForTask(taskId)
             dailyPlanScheduleReminderScheduler.rescheduleNext()
         }
         scheduleTaskReminders(taskId, input)
@@ -367,7 +363,7 @@ class RoomCheckItRepository(
 
     override suspend fun trashTask(taskId: Long) {
         dao.trashTask(taskId, Clock.System.now().toEpochMilliseconds())
-        dao.deleteOpenDailyPlanItemsForTask(taskId)
+        dao.deletePlannedDailyPlanItemsForTask(taskId)
         reminderNotificationScheduler.cancelTaskReminders(taskId)
         dailyPlanScheduleReminderScheduler.rescheduleNext()
     }
@@ -386,9 +382,8 @@ class RoomCheckItRepository(
             completedDateEpochDays = today.toEpochDays().toInt(),
             updatedAtMillis = completedAtMillis
         )
-        dao.updateDailyPlanItemsForTaskStatus(
+        dao.completePlannedDailyPlanItemsForTask(
             taskId = taskId,
-            status = DailyPlanItemStatus.Done.name,
             completedAtMillis = completedAtMillis
         )
         reminderNotificationScheduler.cancelTaskReminders(taskId)
@@ -402,12 +397,6 @@ class RoomCheckItRepository(
             status = TaskStatus.Open.name,
             updatedAtMillis = now
         )
-        dao.updateDailyPlanItemsForTaskStatus(
-            taskId = taskId,
-            status = DailyPlanItemStatus.Planned.name,
-            completedAtMillis = null
-        )
-        dailyPlanScheduleReminderScheduler.rescheduleNext()
     }
 
     override suspend fun addTaskToDailyPlan(date: LocalDate, task: TaskItem): Long {
@@ -462,7 +451,6 @@ class RoomCheckItRepository(
             )
         )
         tagIds.forEach { tagId -> dao.insertDailyPlanItemTagIfParentsExist(itemId, tagId) }
-        dailyPlanScheduleReminderScheduler.rescheduleNext()
         return itemId
     }
 
@@ -476,6 +464,19 @@ class RoomCheckItRepository(
         item?.taskId?.let { taskId ->
             dao.clearTaskTime(taskId, Clock.System.now().toEpochMilliseconds())
         }
+        dailyPlanScheduleReminderScheduler.rescheduleNext()
+    }
+
+    override suspend fun updateDailyPlanItemStatus(itemId: Long, status: DailyPlanItemStatus) {
+        dao.updateDailyPlanItemStatus(
+            itemId = itemId,
+            status = status.name,
+            completedAtMillis = if (status == DailyPlanItemStatus.Done) {
+                Clock.System.now().toEpochMilliseconds()
+            } else {
+                null
+            }
+        )
         dailyPlanScheduleReminderScheduler.rescheduleNext()
     }
 
@@ -563,7 +564,7 @@ class RoomCheckItRepository(
     }
 
     private suspend fun scheduleTaskReminders(taskId: Long, input: TaskWriteInput) {
-        if (input.status == TaskStatus.Completed || input.status == TaskStatus.Cancelled) {
+        if (input.status == TaskStatus.Completed) {
             reminderNotificationScheduler.cancelTaskReminders(taskId)
             return
         }
@@ -601,7 +602,73 @@ class RoomCheckItRepository(
         dao.deleteDuplicateSeedTags()
         dao.deleteDuplicateEmptySeedLists()
     }
+
+    private suspend fun ensureDefaultFilters() {
+        DefaultTaskFilters.forEach { filter ->
+            dao.insertFilterIfNameMissing(
+                name = filter.name,
+                icon = filter.icon,
+                color = filter.color,
+                dueDatePreset = filter.dueDatePreset?.name,
+                status = filter.status?.name,
+                priority = filter.priority?.name,
+                includeTrashed = filter.includeTrashed,
+                sortOrder = filter.sortOrder
+            )
+        }
+    }
 }
+
+private val DefaultTaskFilters = listOf(
+    TaskFilterSeed(name = "All", icon = "AllInclusive", color = "#475569", sortOrder = 0),
+    TaskFilterSeed(
+        name = "Today",
+        icon = "Today",
+        color = "#2563EB",
+        dueDatePreset = DueDatePreset.Today,
+        sortOrder = 1
+    ),
+    TaskFilterSeed(
+        name = "Upcoming",
+        icon = "Schedule",
+        color = "#0891B2",
+        dueDatePreset = DueDatePreset.Upcoming,
+        sortOrder = 2
+    ),
+    TaskFilterSeed(
+        name = "Overdue",
+        icon = "Flag",
+        color = "#EA580C",
+        dueDatePreset = DueDatePreset.Overdue,
+        sortOrder = 3
+    ),
+    TaskFilterSeed(
+        name = "Completed",
+        icon = "TaskAlt",
+        color = "#059669",
+        status = TaskStatus.Completed,
+        sortOrder = 4
+    ),
+    TaskFilterSeed(
+        name = "High priority",
+        icon = "PriorityHigh",
+        color = "#DC2626",
+        priority = TaskPriority.High,
+        sortOrder = 5
+    ),
+    TaskFilterSeed(name = "Trashed", icon = "Delete", color = "#6B7280", includeTrashed = true, sortOrder = 6)
+)
+
+private data class TaskFilterSeed(
+    val name: String,
+    val icon: String,
+    val color: String,
+    val dueDatePreset: DueDatePreset? = null,
+    val status: TaskStatus? = null,
+    val priority: TaskPriority? = null,
+    val includeTrashed: Boolean = false,
+    val sortOrder: Int
+)
 
 private data class TaskBoardRows(
     val lists: List<TaskListEntity>,
