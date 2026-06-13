@@ -9,8 +9,6 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,7 +16,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -39,7 +36,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -50,6 +46,7 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.usecase.BuildDailyPlanMarkdownSummaryUseCase
+import com.checkit.ui.CalendarDateMarkers
 import com.checkit.ui.CalendarDisplayMode
 import com.checkit.ui.CalendarUiState
 import com.checkit.ui.components.TinyTopAppBar
@@ -481,7 +478,7 @@ private fun CalendarWeekRow(
                 colors = colors,
                 onDateSelected = onDateSelected,
                 onDateDoubleClick = onDateDoubleClick,
-                markerColors = if (isEnabled) state.markerColorsForDate(date) else emptyList(),
+                markers = if (isEnabled) state.markersForDate(date) else CalendarDateMarkers.Empty,
                 workMinutes = if (isEnabled) state.dailyPlanWorkMinutesForDate(date) else 0,
                 modifier = Modifier.weight(1f)
             )
@@ -498,7 +495,7 @@ private fun CalendarDayCell(
     colors: CalendarCellColors,
     onDateSelected: (LocalDate) -> Unit,
     onDateDoubleClick: (LocalDate) -> Unit,
-    markerColors: List<Color>,
+    markers: CalendarDateMarkers,
     workMinutes: Int,
     modifier: Modifier = Modifier
 ) {
@@ -533,7 +530,7 @@ private fun CalendarDayCell(
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.Start,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
@@ -543,46 +540,53 @@ private fun CalendarDayCell(
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                     textAlign = TextAlign.Start
                 )
-                if (isEnabled && workMinutes > 0) {
-                    Text(
-                        text = workMinutes.compactDurationLabel(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colors.workLabel,
-                        maxLines = 1,
-                        textAlign = TextAlign.End
-                    )
-                }
             }
-            if (isEnabled && markerColors.isNotEmpty()) {
-                DayMarkers(colors = markerColors)
+            if (isEnabled && (markers.hasMarkers || workMinutes > 0)) {
+                DateCellMetadata(
+                    markers = markers,
+                    workMinutes = workMinutes,
+                    colors = colors
+                )
             }
         }
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun DayMarkers(colors: List<Color>) {
-    FlowRow(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 1.dp),
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-        maxItemsInEachRow = MaxMarkersPerRow
+private fun DateCellMetadata(
+    markers: CalendarDateMarkers,
+    workMinutes: Int,
+    colors: CalendarCellColors
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        colors.forEach { color ->
-            Box(
-                modifier = Modifier
-                    .size(5.dp)
-                    .clip(CircleShape)
-                    .background(color)
+        if (markers.hasMarkers) {
+            Text(
+                text = markers.totalCount.markerCountLabel(),
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.markerLabel,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                modifier = Modifier.weight(1f)
+            )
+        } else {
+            Box(modifier = Modifier.weight(1f))
+        }
+        if (workMinutes > 0) {
+            Text(
+                text = workMinutes.compactDurationLabel(),
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.workLabel,
+                maxLines = 1,
+                textAlign = TextAlign.End
             )
         }
     }
 }
 
-private const val MaxMarkersPerRow: Int = 6
+private const val MaxVisibleMarkerCount: Int = 9
 private const val HeatmapMaxMinutes: Int = 8 * 60
 private const val HeatmapMinAlpha: Float = 0.10f
 private const val HeatmapMaxAlpha: Float = 0.42f
@@ -602,7 +606,8 @@ private fun rememberCalendarCellColors(): CalendarCellColors {
             saturday = Color(0xFF249AC8),
             sunday = colorScheme.error,
             day = colorScheme.onSurface,
-            headerDay = colorScheme.onSurfaceVariant
+            headerDay = colorScheme.onSurfaceVariant,
+            markerLabel = colorScheme.onSurfaceVariant
         )
     }
 }
@@ -653,7 +658,8 @@ data class CalendarCellColors(
     val saturday: Color,
     val sunday: Color,
     val day: Color,
-    val headerDay: Color
+    val headerDay: Color,
+    val markerLabel: Color
 )
 
 private fun CalendarCellColors.workHeatBackground(workMinutes: Int): Color {
@@ -671,6 +677,9 @@ internal fun Int.compactDurationLabel(): String {
         else -> "${minutes}m"
     }
 }
+
+private fun Int.markerCountLabel(): String =
+    if (this > MaxVisibleMarkerCount) "${MaxVisibleMarkerCount}+" else toString()
 
 private val calendarWeekDays: List<DayOfWeek> = listOf(
     DayOfWeek.MONDAY,

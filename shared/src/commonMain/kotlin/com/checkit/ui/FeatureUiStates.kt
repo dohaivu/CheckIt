@@ -253,6 +253,37 @@ data class CalendarUiState(
 ) {
     val dailyPlanByDate: Map<kotlinx.datetime.LocalDate, DailyPlan> = dailyPlans.associateBy { it.date }
 
+    private val dailyPlanMarkersByDate: Map<kotlinx.datetime.LocalDate, CalendarDateMarkers> by lazy {
+        dailyPlans.associate { plan ->
+            var taskCount = 0
+            var doneCount = 0
+            var noteCount = 0
+            plan.items.forEach { item ->
+                when (item.source) {
+                    DailyPlanItemSource.ExistingTask -> taskCount++
+                    DailyPlanItemSource.CheckInManualDone -> doneCount++
+                    DailyPlanItemSource.CheckInNote -> noteCount++
+                }
+            }
+            plan.date to CalendarDateMarkers(
+                taskCount = taskCount,
+                doneCount = doneCount,
+                noteCount = noteCount
+            )
+        }
+    }
+
+    private val futureMarkersByDate: Map<kotlinx.datetime.LocalDate, CalendarDateMarkers> by lazy {
+        val dates = board.tasksByDate.keys + board.notesByDate.keys
+        dates.associateWith { date ->
+            CalendarDateMarkers(
+                taskCount = board.tasksByDate[date].orEmpty().size,
+                doneCount = 0,
+                noteCount = board.notesByDate[date].orEmpty().size
+            )
+        }
+    }
+
     private val listColors: Map<Long, Color> = board.lists.associateWith { list ->
         list.color.toColor()
     }.mapKeys { it.key.id }
@@ -292,6 +323,13 @@ data class CalendarUiState(
         }
     }
 
+    fun markersForDate(date: kotlinx.datetime.LocalDate): CalendarDateMarkers =
+        if (date <= today()) {
+            dailyPlanMarkersByDate[date] ?: CalendarDateMarkers.Empty
+        } else {
+            futureMarkersByDate[date] ?: CalendarDateMarkers.Empty
+        }
+
     fun dailyPlanWorkMinutesForDate(date: kotlinx.datetime.LocalDate): Int =
         dailyPlanByDate[date]
             ?.items
@@ -308,6 +346,19 @@ data class CalendarUiState(
     private companion object {
         const val MarkerCap: Int = 12
         val DefaultMarkerColor: Color = AppIconColorDefaults.FallbackColor
+    }
+}
+
+data class CalendarDateMarkers(
+    val taskCount: Int = 0,
+    val doneCount: Int = 0,
+    val noteCount: Int = 0
+) {
+    val hasMarkers: Boolean get() = taskCount > 0 || doneCount > 0 || noteCount > 0
+    val totalCount: Int get() = taskCount + doneCount + noteCount
+
+    companion object {
+        val Empty = CalendarDateMarkers()
     }
 }
 
