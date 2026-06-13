@@ -3,9 +3,11 @@ package com.checkit.ui.tasks
 import com.checkit.data.CheckItRepository
 import com.checkit.data.DailyPlanItemWriteInput
 import com.checkit.data.NoteWriteInput
+import com.checkit.data.SettingsRepository
 import com.checkit.data.TaskListWriteInput
 import com.checkit.data.TaskTagWriteInput
 import com.checkit.data.TaskWriteInput
+import com.checkit.data.UserSettings
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.SubTaskItem
@@ -147,6 +149,7 @@ internal class FakeCheckItRepository(
         }
     }
     override suspend fun trashTask(taskId: Long) = Unit
+    override suspend fun restoreTask(taskId: Long) = Unit
     override suspend fun completeTask(taskId: Long) = Unit
     override suspend fun openTask(taskId: Long) = Unit
     override suspend fun completeNote(noteId: Long) = Unit
@@ -167,6 +170,70 @@ internal class FakeCheckItRepository(
     override suspend fun addNote(input: NoteWriteInput): Long = 0L
     override suspend fun updateNote(noteId: Long, input: NoteWriteInput) = Unit
     override suspend fun trashNote(noteId: Long) = Unit
+    override suspend fun restoreNote(noteId: Long) = Unit
+}
+
+internal class FakeSettingsRepository(
+    initialSettings: UserSettings = UserSettings()
+) : SettingsRepository {
+    private val settingsFlow = MutableStateFlow(initialSettings)
+    override val settings: Flow<UserSettings> = settingsFlow
+
+    override suspend fun setLanguageCode(code: String) {
+        settingsFlow.update { it.copy(languageCode = code) }
+    }
+
+    override suspend fun setThemeModeCode(code: String) {
+        settingsFlow.update { it.copy(themeModeCode = code) }
+    }
+
+    override suspend fun setColorSchemeModeCode(code: String) {
+        settingsFlow.update { it.copy(colorSchemeModeCode = code) }
+    }
+
+    override suspend fun setTaskWorkspaceViewCode(code: String) {
+        settingsFlow.update { it.copy(taskWorkspaceViewCode = code) }
+    }
+
+    override suspend fun setTaskListDisplayTypeCode(code: String) {
+        settingsFlow.update { it.copy(taskListDisplayTypeCode = code) }
+    }
+
+    override suspend fun setTaskShowCompleted(showCompleted: Boolean) {
+        settingsFlow.update { it.copy(taskShowCompleted = showCompleted) }
+    }
+
+    override suspend fun setTaskSortOptionCode(code: String) {
+        settingsFlow.update { it.copy(taskSortOptionCode = code) }
+    }
+
+    override suspend fun setPlanReminderEnabled(enabled: Boolean) {
+        settingsFlow.update { it.copy(planReminderEnabled = enabled) }
+    }
+
+    override suspend fun setPlanReminderTimeMinutes(minutes: Int) {
+        settingsFlow.update { it.copy(planReminderTimeMinutes = minutes) }
+    }
+
+    override suspend fun setReviewReminderEnabled(enabled: Boolean) {
+        settingsFlow.update { it.copy(reviewReminderEnabled = enabled) }
+    }
+
+    override suspend fun setReviewReminderTimeMinutes(minutes: Int) {
+        settingsFlow.update { it.copy(reviewReminderTimeMinutes = minutes) }
+    }
+
+    override suspend fun setCheckInReminderEnabled(enabled: Boolean) {
+        settingsFlow.update { it.copy(checkInReminderEnabled = enabled) }
+    }
+
+    override suspend fun setScheduleReminderEnabled(enabled: Boolean) {
+        settingsFlow.update { it.copy(scheduleReminderEnabled = enabled) }
+    }
+
+    override suspend fun setCheckInReminderLastShownAtMillis(millis: Long) {
+        settingsFlow.update { it.copy(checkInReminderLastShownAtMillis = millis) }
+    }
 }
 
 private fun TaskWriteInput.toTaskItem(

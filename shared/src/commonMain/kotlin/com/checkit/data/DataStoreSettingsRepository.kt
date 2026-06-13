@@ -56,6 +56,10 @@ class DataStoreSettingsRepository(
         dataStore.setCheckInReminderEnabled(enabled)
     }
 
+    override suspend fun setScheduleReminderEnabled(enabled: Boolean) {
+        dataStore.setScheduleReminderEnabled(enabled)
+    }
+
     override suspend fun setCheckInReminderLastShownAtMillis(millis: Long) {
         dataStore.setCheckInReminderLastShownAtMillis(millis)
     }

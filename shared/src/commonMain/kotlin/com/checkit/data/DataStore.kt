@@ -32,6 +32,7 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
                 reviewReminderEnabled = prefs[KEY_REVIEW_REMINDER_ENABLED] ?: UserSettings().reviewReminderEnabled,
                 reviewReminderTimeMinutes = prefs[KEY_REVIEW_REMINDER_TIME] ?: UserSettings().reviewReminderTimeMinutes,
                 checkInReminderEnabled = prefs[KEY_CHECK_IN_REMINDER_ENABLED] ?: UserSettings().checkInReminderEnabled,
+                scheduleReminderEnabled = prefs[KEY_SCHEDULE_REMINDER_ENABLED] ?: UserSettings().scheduleReminderEnabled,
                 checkInReminderLastShownAtMillis = prefs[KEY_CHECK_IN_REMINDER_LAST_SHOWN],
             )
         }
@@ -84,6 +85,10 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { it[KEY_CHECK_IN_REMINDER_ENABLED] = enabled }
     }
 
+    suspend fun setScheduleReminderEnabled(enabled: Boolean) {
+        dataStore.edit { it[KEY_SCHEDULE_REMINDER_ENABLED] = enabled }
+    }
+
     suspend fun setCheckInReminderLastShownAtMillis(millis: Long) {
         dataStore.edit { it[KEY_CHECK_IN_REMINDER_LAST_SHOWN] = millis }
     }
@@ -102,6 +107,7 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
         val KEY_REVIEW_REMINDER_ENABLED = booleanPreferencesKey("review_reminder_enabled")
         val KEY_REVIEW_REMINDER_TIME = intPreferencesKey("review_reminder_time_minutes")
         val KEY_CHECK_IN_REMINDER_ENABLED = booleanPreferencesKey("check_in_reminder_enabled")
+        val KEY_SCHEDULE_REMINDER_ENABLED = booleanPreferencesKey("schedule_reminder_enabled")
         val KEY_CHECK_IN_REMINDER_LAST_SHOWN = longPreferencesKey("check_in_reminder_last_shown_at_millis")
     }
 }

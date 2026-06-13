@@ -14,6 +14,7 @@ import androidx.core.content.ContextCompat
 import com.checkit.MainActivity
 import com.checkit.domain.NotificationDoNotDisturbPolicy
 import com.checkit.shared.R
+import com.checkit.widget.ExtraDailyPlanItemId
 import java.time.LocalTime
 
 class CheckItNotificationCenter(
@@ -41,13 +42,43 @@ class CheckItNotificationCenter(
         )
     }
 
+    fun showDailyPlanScheduleReminder(itemId: Long, title: String) {
+        showReminder(
+            notificationId = dailyPlanNotificationId(itemId),
+            requestCode = dailyPlanNotificationId(itemId),
+            title = title.ifBlank { "My Day item" },
+            body = "Starting now",
+            dailyPlanItemId = itemId,
+            bypassDnd = false
+        )
+    }
+
     private fun showReminder(notificationId: Int, requestCode: Int, title: String, body: String, bypassDnd: Boolean) {
+        showReminder(
+            notificationId = notificationId,
+            requestCode = requestCode,
+            title = title,
+            body = body,
+            dailyPlanItemId = null,
+            bypassDnd = bypassDnd
+        )
+    }
+
+    private fun showReminder(
+        notificationId: Int,
+        requestCode: Int,
+        title: String,
+        body: String,
+        dailyPlanItemId: Long?,
+        bypassDnd: Boolean
+    ) {
         if (!canPostNotifications()) return
         if (!bypassDnd && !canNotifyNow()) return
 
         ensureChannels()
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            dailyPlanItemId?.let { putExtra(ExtraDailyPlanItemId, it) }
         }
         val pendingIntent = PendingIntent.getActivity(
             context,
@@ -93,6 +124,9 @@ class CheckItNotificationCenter(
 
     private fun notificationId(taskId: Long): Int =
         (taskId xor (taskId ushr 32)).toInt()
+
+    private fun dailyPlanNotificationId(itemId: Long): Int =
+        80_000 + (itemId xor (itemId ushr 32)).toInt().and(0x3fff)
 
     companion object {
         const val ReminderChannelId = "task_reminders"

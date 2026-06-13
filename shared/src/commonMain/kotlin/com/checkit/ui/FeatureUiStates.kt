@@ -114,6 +114,7 @@ data class ReminderSettingsUiState(
     val reviewEnabled: Boolean = true,
     val reviewTimeMinutes: Int = 21 * 60,
     val checkInEnabled: Boolean = true,
+    val scheduleEnabled: Boolean = true,
     val checkInLastShownAtMillis: Long? = null,
 )
 

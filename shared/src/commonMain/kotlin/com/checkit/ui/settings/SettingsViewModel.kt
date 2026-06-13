@@ -102,6 +102,13 @@ class SettingsViewModel(
         }
     }
 
+    fun setScheduleReminderEnabled(enabled: Boolean) {
+        _uiState.update { it.copy(reminders = it.reminders.copy(scheduleEnabled = enabled)) }
+        viewModelScope.launch {
+            settingsRepository.setScheduleReminderEnabled(enabled)
+        }
+    }
+
     fun showMessage(message: String) {
         _uiState.update { it.copy(message = message) }
     }
@@ -121,5 +128,6 @@ private fun UserSettings.toReminderSettingsUiState() = ReminderSettingsUiState(
     reviewEnabled = reviewReminderEnabled,
     reviewTimeMinutes = reviewReminderTimeMinutes,
     checkInEnabled = checkInReminderEnabled,
+    scheduleEnabled = scheduleReminderEnabled,
     checkInLastShownAtMillis = checkInReminderLastShownAtMillis
 )

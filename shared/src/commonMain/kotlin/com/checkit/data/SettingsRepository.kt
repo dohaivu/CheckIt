@@ -15,6 +15,7 @@ data class UserSettings(
     val reviewReminderEnabled: Boolean = true,
     val reviewReminderTimeMinutes: Int = 21 * 60,
     val checkInReminderEnabled: Boolean = true,
+    val scheduleReminderEnabled: Boolean = true,
     val checkInReminderLastShownAtMillis: Long? = null
 )
 
@@ -32,5 +33,6 @@ interface SettingsRepository {
     suspend fun setReviewReminderEnabled(enabled: Boolean)
     suspend fun setReviewReminderTimeMinutes(minutes: Int)
     suspend fun setCheckInReminderEnabled(enabled: Boolean)
+    suspend fun setScheduleReminderEnabled(enabled: Boolean)
     suspend fun setCheckInReminderLastShownAtMillis(millis: Long)
 }

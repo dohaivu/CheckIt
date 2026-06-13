@@ -11,6 +11,7 @@ import com.checkit.data.createPreferencesDataStore
 import com.checkit.data.provideDatabaseBuilder
 import com.checkit.data.SettingsRepository
 import com.checkit.domain.CheckInReminderPolicy
+import com.checkit.domain.DailyPlanScheduleReminderPolicy
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.notifications.AppReminderScheduler
 import com.checkit.domain.usecase.AddNoteUseCase
@@ -70,7 +71,7 @@ fun initKoin(config: KoinAppDeclaration? = null) =
 
 val provideInteractorModule = module {
     single { HttpClient() }
-    single<CheckItRepository> { RoomCheckItRepository(get(), get()) }
+    single<CheckItRepository> { RoomCheckItRepository(get(), get(), get()) }
     single { ObserveTaskBoardUseCase(get()) }
     single { ObserveDailyPlansUseCase(get()) }
     single { EnsureDefaultTaskDataUseCase(get()) }
@@ -98,6 +99,7 @@ val provideInteractorModule = module {
     single { RestoreNoteUseCase(get()) }
     single { SelectTaskBoardItemsUseCase() }
     single { CheckInReminderPolicy(get(), get()) }
+    single { DailyPlanScheduleReminderPolicy(get(), get()) }
 }
 
 val provideDatabaseModule = module {

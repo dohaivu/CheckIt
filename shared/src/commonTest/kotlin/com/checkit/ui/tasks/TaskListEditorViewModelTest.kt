@@ -9,6 +9,8 @@ import com.checkit.domain.usecase.CompleteTaskUseCase
 import com.checkit.domain.usecase.CompleteNoteUseCase
 import com.checkit.domain.usecase.OpenTaskUseCase
 import com.checkit.domain.usecase.OpenNoteUseCase
+import com.checkit.domain.usecase.RestoreNoteUseCase
+import com.checkit.domain.usecase.RestoreTaskUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
@@ -16,6 +18,8 @@ import com.checkit.domain.usecase.IsTagNameTakenUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.UpdateNoteUseCase
+import com.checkit.domain.usecase.UpdateDailyPlanItemUseCase
+import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.domain.usecase.UpdateTaskListUseCase
 import com.checkit.domain.usecase.UpdateTaskTagUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
@@ -51,6 +55,7 @@ class TaskListEditorViewModelTest {
             addTask = AddTaskUseCase(repository),
             updateTask = UpdateTaskUseCase(repository),
             deleteTask = DeleteTaskUseCase(repository),
+            restoreTask = RestoreTaskUseCase(repository),
             completeTask = CompleteTaskUseCase(repository),
             completeNote = CompleteNoteUseCase(repository),
             openTask = OpenTaskUseCase(repository),
@@ -58,11 +63,15 @@ class TaskListEditorViewModelTest {
             addNote = AddNoteUseCase(repository),
             updateNote = UpdateNoteUseCase(repository),
             deleteNote = DeleteNoteUseCase(repository),
+            restoreNote = RestoreNoteUseCase(repository),
+            updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository),
+            updateDailyPlanItem = UpdateDailyPlanItemUseCase(repository),
             addTaskList = AddTaskListUseCase(repository),
             updateTaskList = UpdateTaskListUseCase(repository),
             addTaskTag = AddTaskTagUseCase(repository),
             updateTaskTag = UpdateTaskTagUseCase(repository),
-            isTagNameTaken = IsTagNameTakenUseCase(repository)
+            isTagNameTaken = IsTagNameTakenUseCase(repository),
+            settingsRepository = FakeSettingsRepository()
         )
     }
 
