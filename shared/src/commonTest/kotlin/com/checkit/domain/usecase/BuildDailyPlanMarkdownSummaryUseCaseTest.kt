@@ -67,19 +67,19 @@ class BuildDailyPlanMarkdownSummaryUseCaseTest {
         )
 
         assertEquals(
-            """
-            # Jun 13, 2026
-
-            - **9:00 AM - 9:30 AM**
-            Plan the day #Work #Planning
-            _Review agenda, timeline, and the next task to start._
-            - [x] Check calendar
-            - [ ] Pick top priority
-
-            - **10:15 AM**
-            Capture sprint idea #Product
-            _Consider grouping review reminders with daily planning._
-            """.trimIndent(),
+            listOf(
+                "# Jun 13, 2026",
+                "",
+                "- **9:00 AM - 9:30 AM**  ",
+                "  Plan the day #Work #Planning  ",
+                "  _Review agenda, timeline, and the next task to start._  ",
+                "  - [x] Check calendar",
+                "  - [ ] Pick top priority",
+                "",
+                "- **10:15 AM**  ",
+                "  Capture sprint idea #Product  ",
+                "  _Consider grouping review reminders with daily planning._"
+            ).joinToString("\n"),
             markdown
         )
     }
@@ -108,17 +108,17 @@ class BuildDailyPlanMarkdownSummaryUseCaseTest {
         val markdown = buildSummary(date = date, plan = plan, board = TaskBoard())
 
         assertEquals(
-            """
-            # Jun 13, 2026
-
-            - **8:00 AM - 8:10 AM**
-            Timed
-            _Done first._
-
-            - **All-Day**
-            Loose win
-            _Wrapped a small follow-up._
-            """.trimIndent(),
+            listOf(
+                "# Jun 13, 2026",
+                "",
+                "- **8:00 AM - 8:10 AM**  ",
+                "  Timed  ",
+                "  _Done first._",
+                "",
+                "- **All-Day**  ",
+                "  Loose win  ",
+                "  _Wrapped a small follow-up._"
+            ).joinToString("\n"),
             markdown
         )
     }
@@ -158,12 +158,46 @@ class BuildDailyPlanMarkdownSummaryUseCaseTest {
         val markdown = buildSummary(date = date, plan = plan, board = TaskBoard())
 
         assertEquals(
-            """
-            # Jun 13, 2026
+            listOf(
+                "# Jun 13, 2026",
+                "",
+                "- **9:00 AM**  ",
+                "  _No title needed._"
+            ).joinToString("\n"),
+            markdown
+        )
+    }
 
-            - **9:00 AM**
-            _No title needed._
-            """.trimIndent(),
+    @Test
+    fun multilineNoteKeepsSeparateMarkdownLines() {
+        val plan = dailyPlan(
+            items = listOf(
+                item(
+                    id = 1L,
+                    title = "Wrap up",
+                    note = """
+                        First line
+                        Second line
+
+                        Third line
+                    """.trimIndent(),
+                    startTimeMinutes = 17 * 60
+                )
+            )
+        )
+
+        val markdown = buildSummary(date = date, plan = plan, board = TaskBoard())
+
+        assertEquals(
+            listOf(
+                "# Jun 13, 2026",
+                "",
+                "- **5:00 PM**  ",
+                "  Wrap up  ",
+                "  _First line_  ",
+                "  _Second line_  ",
+                "  _Third line_"
+            ).joinToString("\n"),
             markdown
         )
     }

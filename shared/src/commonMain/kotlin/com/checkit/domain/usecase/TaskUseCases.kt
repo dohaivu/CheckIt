@@ -57,16 +57,23 @@ class BuildDailyPlanMarkdownSummaryUseCase {
 
             doneItems.forEachIndexed { index, item ->
                 if (index > 0) appendLine()
-                appendLine("- **${item.timeLabel()}**")
-                item.titleLine()?.let { title ->
-                    appendLine(title)
-                }
                 val task = item.taskId?.let { tasksById[it] }
-                item.summaryDetail(task)?.let { detail ->
-                    appendLine("_${detail}_")
+                val title = item.titleLine()
+                val detailLines = item.summaryDetailLines(task)
+                val subtasks = task?.subtasks.orEmpty()
+                val hasDetailLines = detailLines.isNotEmpty()
+                val hasContinuation = title != null || hasDetailLines || subtasks.isNotEmpty()
+
+                appendLine("- **${item.timeLabel()}**${if (hasContinuation) MarkdownHardBreak else ""}")
+                title?.let {
+                    appendLine("$it${if (hasDetailLines || subtasks.isNotEmpty()) MarkdownHardBreak else ""}")
                 }
-                task?.subtasks.orEmpty().forEach { subtask ->
-                    appendLine("- [${if (subtask.isCompleted) "x" else " "}] ${subtask.name.cleanMarkdownLine()}")
+                detailLines.forEachIndexed { detailIndex, detail ->
+                    val hasNextLine = detailIndex < detailLines.lastIndex
+                    appendLine("_${detail}_${if (hasNextLine || subtasks.isNotEmpty()) MarkdownHardBreak else ""}")
+                }
+                subtasks.forEach { subtask ->
+                    appendLine("  - [${if (subtask.isCompleted) "x" else " "}] ${subtask.name.cleanMarkdownLine()}")
                 }
             }
         }.trimEnd()
@@ -286,16 +293,14 @@ private fun DailyPlanItem.titleLine(): String? {
     return listOfNotNull(title, tagLabel).joinToString(separator = " ")
 }
 
-private fun DailyPlanItem.summaryDetail(task: TaskItem?): String? {
+private fun DailyPlanItem.summaryDetailLines(task: TaskItem?): List<String> {
     val taskDescription = if (source == DailyPlanItemSource.ExistingTask) {
         task?.description
     } else {
         null
     }
-    return taskDescription
-        ?.cleanMarkdownLine()
-        ?.takeIf { it.isNotBlank() }
-        ?: note?.cleanMarkdownLine()?.takeIf { it.isNotBlank() }
+    val detail = taskDescription?.takeIf { it.isNotBlank() } ?: note
+    return detail?.cleanMarkdownLines().orEmpty()
 }
 
 private fun DailyPlanItem.timeLabel(): String {
@@ -312,7 +317,14 @@ private fun String.toMarkdownTag(): String? {
 private fun String.cleanMarkdownLine(): String =
     trim().replace(WhitespaceRegex, " ")
 
+private fun String.cleanMarkdownLines(): List<String> =
+    lineSequence()
+        .map { it.cleanMarkdownLine() }
+        .filter { it.isNotBlank() }
+        .toList()
+
 private val WhitespaceRegex = Regex("\\s+")
+private const val MarkdownHardBreak = "  "
 
 private fun Int.toClockLabel(): String {
     val hour = this / 60
