@@ -248,7 +248,8 @@ data class CalendarUiState(
     val selectedDate: kotlinx.datetime.LocalDate = today(),
     val board: TaskBoard = TaskBoard(),
     val dailyPlans: List<DailyPlan> = emptyList(),
-    val showDailyPlanSummary: Boolean = false
+    val showDailyPlanSummary: Boolean = false,
+    val calendarDisplayMode: CalendarDisplayMode = CalendarDisplayMode.Month
 ) {
     val dailyPlanByDate: Map<kotlinx.datetime.LocalDate, DailyPlan> = dailyPlans.associateBy { it.date }
 
@@ -308,6 +309,11 @@ data class CalendarUiState(
         const val MarkerCap: Int = 12
         val DefaultMarkerColor: Color = AppIconColorDefaults.FallbackColor
     }
+}
+
+enum class CalendarDisplayMode {
+    Month,
+    Week
 }
 
 private fun DailyPlanItem.workMinutes(): Int {
