@@ -1,10 +1,15 @@
 package com.checkit.ui.tasks
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,11 +18,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CheckBox
-import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.material.icons.rounded.CheckBox
 import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
 import androidx.compose.material3.Icon
@@ -25,14 +27,30 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import com.checkit.ui.EditorMode
 import com.checkit.ui.SubTaskEditorState
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 @Composable
 internal fun SubtaskChecklist(
@@ -41,10 +59,14 @@ internal fun SubtaskChecklist(
     onAdd: () -> Unit,
     onNameChange: (Int, String) -> Unit,
     onRemove: (Int) -> Unit,
+    onMove: (Int, Int) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true
 ) {
     if (subtasks.isEmpty() && !enabled) return
+    val rowBounds = remember { mutableStateMapOf<Int, SubtaskRowBounds>() }
+    val draggedIndex = remember { mutableIntStateOf(-1) }
+    val draggedCenterY = remember { mutableFloatStateOf(0f) }
 
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -56,13 +78,46 @@ internal fun SubtaskChecklist(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             subtasks.forEachIndexed { index, subtask ->
-                SubtaskRow(
-                    subtask = subtask,
-                    onToggle = { onToggle(index) },
-                    onNameChange = { onNameChange(index, it) },
-                    onRemove = { onRemove(index) },
-                    enabled = enabled
-                )
+                val rowKey = subtask.stableKey(index)
+                key(rowKey) {
+                    SubtaskRow(
+                        subtask = subtask,
+                        onToggle = { onToggle(index) },
+                        onNameChange = { onNameChange(index, it) },
+                        onRemove = { onRemove(index) },
+                        onMove = { dragAmountY ->
+                            if (draggedIndex.intValue == -1) return@SubtaskRow
+                            draggedCenterY.floatValue += dragAmountY
+                            val targetIndex = rowBounds.entries
+                                .filter { (rowIndex, _) -> rowIndex != draggedIndex.intValue }
+                                .firstOrNull { (_, bounds) ->
+                                    draggedCenterY.floatValue in bounds.top..bounds.bottom
+                                }
+                                ?.key
+                                ?: return@SubtaskRow
+                            onMove(draggedIndex.intValue, targetIndex)
+                            draggedIndex.intValue = targetIndex
+                        },
+                        onDragStart = {
+                            rowBounds[index]?.let { bounds ->
+                                draggedIndex.intValue = index
+                                draggedCenterY.floatValue = bounds.center
+                            }
+                        },
+                        onDragEnd = {
+                            draggedIndex.intValue = -1
+                            draggedCenterY.floatValue = 0f
+                        },
+                        modifier = Modifier.animateSubtaskPlacement(rowKey) { coordinates ->
+                            val top = coordinates.positionInParent().y
+                            rowBounds[index] = SubtaskRowBounds(
+                                top = top,
+                                bottom = top + coordinates.size.height
+                            )
+                        },
+                        enabled = enabled
+                    )
+                }
             }
             if (enabled) {
                 Row(
@@ -96,10 +151,14 @@ private fun SubtaskRow(
     onToggle: () -> Unit,
     onNameChange: (String) -> Unit,
     onRemove: () -> Unit,
+    onMove: (Float) -> Unit,
+    onDragStart: () -> Unit,
+    onDragEnd: () -> Unit,
+    modifier: Modifier = Modifier,
     enabled: Boolean = true
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -164,7 +223,63 @@ private fun SubtaskRow(
                         .size(18.dp)
                         .clickable { onRemove() }
                 )
+                Icon(
+                    Icons.Default.DragIndicator,
+                    contentDescription = "Reorder subtask",
+                    tint = MaterialTheme.colorScheme.outlineVariant.copy(alpha = ContentAlpha),
+                    modifier = Modifier
+                        .size(20.dp)
+                        .pointerInput(Unit) {
+                            detectDragGestures(
+                                onDragStart = { onDragStart() },
+                                onDragEnd = onDragEnd,
+                                onDragCancel = onDragEnd,
+                                onDrag = { change, dragAmount ->
+                                    change.consume()
+                                    onMove(dragAmount.y)
+                                }
+                            )
+                        }
+                )
             }
         }
     }
+}
+
+private data class SubtaskRowBounds(
+    val top: Float,
+    val bottom: Float
+) {
+    val center: Float get() = (top + bottom) / 2f
+}
+
+private fun SubTaskEditorState.stableKey(index: Int): Any =
+    id ?: name.takeIf { it.isNotBlank() } ?: "new-$index"
+
+private fun Modifier.animateSubtaskPlacement(
+    key: Any,
+    onPositioned: (LayoutCoordinates) -> Unit
+): Modifier = composed {
+    val scope = rememberCoroutineScope()
+    val offsetY = remember(key) { Animatable(0f) }
+    var previousTop by remember(key) { mutableStateOf<Float?>(null) }
+
+    onGloballyPositioned { coordinates ->
+        onPositioned(coordinates)
+        val nextTop = coordinates.positionInParent().y
+        val lastTop = previousTop
+        if (lastTop != null && lastTop != nextTop) {
+            scope.launch {
+                offsetY.snapTo(lastTop - nextTop)
+                offsetY.animateTo(
+                    targetValue = 0f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    )
+                )
+            }
+        }
+        previousTop = nextTop
+    }.offset { IntOffset(x = 0, y = offsetY.value.roundToInt()) }
 }

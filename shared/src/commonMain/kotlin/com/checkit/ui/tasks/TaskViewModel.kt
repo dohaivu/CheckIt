@@ -331,6 +331,16 @@ class TaskViewModel(
     fun removeSubTask(index: Int) = updateTaskForm { form ->
         form.copy(subtasks = form.subtasks.filterIndexed { subtaskIndex, _ -> subtaskIndex != index })
     }
+    fun moveSubTask(fromIndex: Int, toIndex: Int) = updateTaskForm { form ->
+        if (fromIndex == toIndex ||
+            fromIndex !in form.subtasks.indices ||
+            toIndex !in form.subtasks.indices
+        ) {
+            form
+        } else {
+            form.copy(subtasks = form.subtasks.move(fromIndex, toIndex))
+        }
+    }
     fun toggleSubTask(index: Int) {
         val current = _uiState.value.editor as? TaskEditorState.TaskForm ?: return
         val nextSubtasks = current.subtasks.mapIndexed { subtaskIndex, subtask ->
@@ -703,6 +713,11 @@ private fun TaskPriority.rankForSort(): Int =
 
 private fun <T> Set<T>.toggle(value: T): Set<T> =
     if (contains(value)) this - value else this + value
+
+private fun <T> List<T>.move(fromIndex: Int, toIndex: Int): List<T> =
+    toMutableList().apply {
+        add(toIndex, removeAt(fromIndex))
+    }
 
 private fun DailyPlanItem.toWriteInput() = DailyPlanItemWriteInput(
     title = title,
