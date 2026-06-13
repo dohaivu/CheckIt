@@ -8,6 +8,7 @@ import com.checkit.data.TaskTagWriteInput
 import com.checkit.data.TaskWriteInput
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItemSource
+import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DueDatePreset
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
@@ -146,6 +147,13 @@ class UpdateDailyPlanItemTimeUseCase(
 ) {
     suspend operator fun invoke(itemId: Long, startTimeMinutes: Int?, endTimeMinutes: Int?) =
         repository.updateDailyPlanItemTime(itemId, startTimeMinutes, endTimeMinutes)
+}
+
+class UpdateDailyPlanItemStatusUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(itemId: Long, status: DailyPlanItemStatus) =
+        repository.updateDailyPlanItemStatus(itemId, status)
 }
 
 class UpdateDailyPlanItemUseCase(

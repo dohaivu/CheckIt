@@ -2,7 +2,6 @@ package com.checkit.ui.tasks
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.checkit.data.DailyPlanItemWriteInput
 import com.checkit.data.NoteWriteInput
 import com.checkit.data.SettingsRepository
 import com.checkit.data.SubTaskWriteInput
@@ -31,7 +30,7 @@ import com.checkit.domain.usecase.RestoreTaskUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.TaskBoardSelection
 import com.checkit.domain.usecase.UpdateNoteUseCase
-import com.checkit.domain.usecase.UpdateDailyPlanItemUseCase
+import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
 import com.checkit.ui.EditorMode
@@ -70,7 +69,7 @@ class TaskViewModel(
     private val deleteNote: DeleteNoteUseCase,
     private val restoreNote: RestoreNoteUseCase,
     private val updateDailyPlanItemTime: UpdateDailyPlanItemTimeUseCase,
-    private val updateDailyPlanItem: UpdateDailyPlanItemUseCase,
+    private val updateDailyPlanItemStatus: UpdateDailyPlanItemStatusUseCase,
     private val settingsRepository: SettingsRepository
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(TaskUiState())
@@ -437,7 +436,7 @@ class TaskViewModel(
             state.copy(editor = currentForm.copy(dailyPlanItem = updatedItem))
         }
         viewModelScope.launch {
-            updateDailyPlanItem(item.id, updatedItem.toWriteInput())
+            updateDailyPlanItemStatus(item.id, nextStatus)
         }
     }
 
@@ -718,16 +717,6 @@ private fun <T> List<T>.move(fromIndex: Int, toIndex: Int): List<T> =
     toMutableList().apply {
         add(toIndex, removeAt(fromIndex))
     }
-
-private fun DailyPlanItem.toWriteInput() = DailyPlanItemWriteInput(
-    title = title,
-    note = note,
-    source = source,
-    status = status,
-    startTimeMinutes = startTimeMinutes,
-    endTimeMinutes = endTimeMinutes,
-    tagIds = tags.map { it.id }
-)
 
 private const val MinimumTimelineDurationMinutes = 15
 private const val LastTimelineStartMinute = MinutesPerDay - MinimumTimelineDurationMinutes

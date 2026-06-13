@@ -23,7 +23,7 @@ import com.checkit.domain.usecase.IsTagNameTakenUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.UpdateNoteUseCase
-import com.checkit.domain.usecase.UpdateDailyPlanItemUseCase
+import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.domain.usecase.UpdateTaskListUseCase
 import com.checkit.domain.usecase.UpdateTaskTagUseCase
@@ -182,7 +182,7 @@ class TaskSubtaskViewModelTest {
             deleteNote = DeleteNoteUseCase(repository),
             restoreNote = RestoreNoteUseCase(repository),
             updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository),
-            updateDailyPlanItem = UpdateDailyPlanItemUseCase(repository),
+            updateDailyPlanItemStatus = UpdateDailyPlanItemStatusUseCase(repository),
             settingsRepository = FakeSettingsRepository()
         )
         dispatcher.scheduler.advanceUntilIdle()
