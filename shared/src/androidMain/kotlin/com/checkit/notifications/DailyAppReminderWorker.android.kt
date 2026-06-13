@@ -26,9 +26,10 @@ class DailyAppReminderWorker(
         println("DailyAppReminderWorker: Running for type=$type at time=$timeMinutes")
 
         CheckItNotificationCenter(applicationContext).showAppReminder(
-            notificationId = notificationId(type),
+            notificationId = NotificationIds.appReminder(type),
             title = title,
-            body = body
+            body = body,
+            type = AppReminderType.fromDailyWorkerType(type)
         )
         scheduleNext(applicationContext, type, timeMinutes, title, body)
         return Result.success()
@@ -73,10 +74,5 @@ class DailyAppReminderWorker(
             return max(0L, Duration.between(now, target).toMillis())
         }
 
-        private fun notificationId(type: String): Int = when (type) {
-            TypePlan -> 70_001
-            TypeReview -> 70_002
-            else -> 70_000
-        }
     }
 }
