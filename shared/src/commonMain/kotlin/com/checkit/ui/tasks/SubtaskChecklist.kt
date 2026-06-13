@@ -78,7 +78,7 @@ internal fun SubtaskChecklist(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             subtasks.forEachIndexed { index, subtask ->
-                val rowKey = subtask.stableKey(index)
+                val rowKey = subtask.stableKey()
                 key(rowKey) {
                     SubtaskRow(
                         subtask = subtask,
@@ -253,8 +253,8 @@ private data class SubtaskRowBounds(
     val center: Float get() = (top + bottom) / 2f
 }
 
-private fun SubTaskEditorState.stableKey(index: Int): Any =
-    id ?: name.takeIf { it.isNotBlank() } ?: "new-$index"
+private fun SubTaskEditorState.stableKey(): Any =
+    id ?: editorKey
 
 private fun Modifier.animateSubtaskPlacement(
     key: Any,
