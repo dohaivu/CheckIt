@@ -52,9 +52,11 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import com.checkit.domain.TaskFilter
 import com.checkit.ui.TaskSortOption
 import com.checkit.ui.TaskWorkspaceView
 import com.checkit.ui.components.AppOutlinedTextField
+import com.checkit.ui.theme.materialIcon
 
 
 @Composable
@@ -63,6 +65,9 @@ internal fun ViewOptionsMenu(
     onShowCompletedChange: (Boolean) -> Unit,
     searchText: String,
     onSearchTextChange: (String) -> Unit,
+    filters: List<TaskFilter>,
+    selectedFilterId: Long?,
+    selectFilter: (Long) -> Unit,
     availableViews: List<TaskWorkspaceView>,
     selectedView: TaskWorkspaceView,
     selectView: (view: TaskWorkspaceView) -> Unit,
@@ -71,7 +76,8 @@ internal fun ViewOptionsMenu(
 ) {
     var isPopupOpen by remember { mutableStateOf(false) }
     val visibleState = remember { MutableTransitionState(false) }
-    val hasActiveItemOptions = showCompleted || searchText.isNotBlank()
+    val hasActiveItemOptions = showCompleted || searchText.isNotBlank() || selectedFilterId != null
+    val scopeFilters = remember(filters) { filters.filterNot { it.isAllTasksFilter() } }
 
     Box(
         modifier = Modifier.wrapContentSize(Alignment.TopEnd)
@@ -152,6 +158,23 @@ internal fun ViewOptionsMenu(
                                 }
                             }
 
+                            if (scopeFilters.isNotEmpty()) {
+                                OptionSectionLabel("Scope")
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    scopeFilters.forEach { filter ->
+                                        ViewOptionChip(
+                                            icon = materialIcon(filter.icon),
+                                            label = filter.name,
+                                            selected = selectedFilterId == filter.id,
+                                            onClick = { selectFilter(filter.id) }
+                                        )
+                                    }
+                                }
+                            }
+
                             OptionSectionLabel("Items")
                             AppOutlinedTextField(
                                 value = searchText,
@@ -192,6 +215,13 @@ internal fun ViewOptionsMenu(
         }
     }
 }
+
+private fun TaskFilter.isAllTasksFilter(): Boolean =
+    tagId == null &&
+        dueDatePreset == null &&
+        status == null &&
+        priority == null &&
+        !includeTrashed
 
 @Composable
 private fun OptionSectionLabel(text: String) {

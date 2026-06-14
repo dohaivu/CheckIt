@@ -138,6 +138,16 @@ class TaskViewModelViewsTest {
     }
 
     @Test
+    fun selectingActiveFilterClearsScope() = runTest(dispatcher) {
+        viewModel.selectFilter(2L)
+        viewModel.selectFilter(2L)
+
+        val state = viewModel.uiState.value
+        assertNull(state.selectedFilterId)
+        assertEquals("All tasks", state.title)
+    }
+
+    @Test
     fun selectViewTimelineIsIgnoredWhenFilterIsNotToday() = runTest(dispatcher) {
         viewModel.selectFilter(2L)
         viewModel.selectView(TaskWorkspaceView.Timeline)

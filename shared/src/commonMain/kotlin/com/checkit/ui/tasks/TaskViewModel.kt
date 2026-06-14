@@ -103,6 +103,14 @@ class TaskViewModel(
         }
     }
 
+    fun selectBoard() {
+        _uiState.update {
+            it.copy(selectedListId = null, selectedFilterId = null, selectedTagId = null)
+                .refreshVisibleItems()
+                .coerceViewToAvailable()
+        }
+    }
+
     fun selectList(listId: Long) {
         _uiState.update {
             it.copy(selectedListId = listId, selectedFilterId = null, selectedTagId = null)
@@ -112,8 +120,9 @@ class TaskViewModel(
     }
 
     fun selectFilter(filterId: Long) {
-        _uiState.update {
-            it.copy(selectedListId = null, selectedFilterId = filterId, selectedTagId = null)
+        _uiState.update { state ->
+            val nextFilterId = filterId.takeUnless { state.selectedFilterId == filterId }
+            state.copy(selectedListId = null, selectedFilterId = nextFilterId, selectedTagId = null)
                 .refreshVisibleItems()
                 .coerceViewToAvailable()
         }
@@ -629,7 +638,6 @@ class TaskViewModel(
 
     private fun TaskUiState.withBoard(board: TaskBoard): TaskUiState {
         val nextListId = selectedListId?.takeIf { selectedId -> board.lists.any { it.id == selectedId } }
-            ?: board.lists.firstOrNull()?.id
         val nextFilterId = selectedFilterId?.takeIf { selectedId -> board.filters.any { it.id == selectedId } }
         val nextTagId = selectedTagId?.takeIf { selectedId -> board.tags.any { it.id == selectedId } }
         return copy(
@@ -653,7 +661,10 @@ class TaskViewModel(
         }
         val selection = selectedFilter?.let { TaskBoardSelection.FilterSelection(it) }
             ?: selectedListId?.let { TaskBoardSelection.ListSelection(it) }
-            ?: return copy(visibleTasks = emptyList(), visibleNotes = emptyList())
+            ?: return withVisibleItems(
+                tasks = board.tasks.filter { task -> !task.isTrashed },
+                notes = board.notes.filter { note -> !note.isTrashed }
+            )
         val items = selectTaskBoardItems(board, selection, today())
         return withVisibleItems(items.tasks, items.notes)
     }

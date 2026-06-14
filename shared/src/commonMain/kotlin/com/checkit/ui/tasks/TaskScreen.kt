@@ -45,17 +45,16 @@ internal fun TaskScreen(
             ModalDrawerSheet {
                 TaskSidebar(
                     lists = state.board.lists,
-                    filters = state.board.filters,
                     tags = state.board.tags,
+                    isBoardSelected = state.selectedListId == null && state.selectedFilterId == null && state.selectedTagId == null,
                     selectedListId = state.selectedListId,
-                    selectedFilterId = state.selectedFilterId,
                     selectedTagId = state.selectedTagId,
-                    onListClick = { listId ->
-                        viewModel.selectList(listId)
+                    onBoardClick = {
+                        viewModel.selectBoard()
                         scope.launch { drawerState.close() }
                     },
-                    onFilterClick = { filterId ->
-                        viewModel.selectFilter(filterId)
+                    onListClick = { listId ->
+                        viewModel.selectList(listId)
                         scope.launch { drawerState.close() }
                     },
                     onTagClick = { tagId ->
@@ -99,6 +98,9 @@ internal fun TaskScreen(
                             onShowCompletedChange = viewModel::setShowCompleted,
                             searchText = state.searchText,
                             onSearchTextChange = viewModel::updateSearchText,
+                            filters = state.board.filters,
+                            selectedFilterId = state.selectedFilterId,
+                            selectFilter = viewModel::selectFilter,
                             availableViews = state.availableViews,
                             selectedView = state.selectedView,
                             selectView = viewModel::selectView,
