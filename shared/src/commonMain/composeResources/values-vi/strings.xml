@@ -20,8 +20,8 @@
     <string name="tags_report_empty">Không có thời gian hoàn thành theo nhãn trong kỳ này.</string>
     <string name="time_report_title">Thời gian</string>
     <string name="time_report_empty">Không có thời gian hoàn thành trong kỳ này.</string>
-    <string name="weekly_digest_title">Tóm tắt tuần</string>
-    <string name="weekly_digest_empty">Không có công việc hoàn thành để tóm tắt trong tuần này.</string>
+    <string name="weekly_digest_title">Tóm tắt</string>
+    <string name="weekly_digest_empty">Không có công việc hoàn thành để tóm tắt trong kỳ này.</string>
     <string name="weekly_digest_total_time">Thời gian hoàn thành</string>
     <string name="weekly_digest_done_items">Mục đã xong</string>
     <string name="weekly_digest_active_days">Ngày hoạt động</string>

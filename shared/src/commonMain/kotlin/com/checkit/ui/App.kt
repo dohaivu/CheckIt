@@ -55,8 +55,8 @@ import com.checkit.ui.tasks.TaskViewModel
 import com.checkit.ui.localization.AppLocaleProvider
 import com.checkit.ui.reports.ReportScreen
 import com.checkit.ui.reports.ReportViewModel
+import com.checkit.ui.reports.TagsReport
 import com.checkit.ui.reports.TimeReport
-import com.checkit.ui.reports.WeeklyDigestReport
 import com.checkit.ui.settings.SettingsScreen
 import com.checkit.ui.settings.SettingsViewModel
 import com.checkit.ui.myday.DailyPlanItemEditorSheet
@@ -86,7 +86,7 @@ private data object Routes {
     data object TimeReport : NavKey
 
     @Serializable
-    data object WeeklyDigestReport : NavKey
+    data object TagsReport : NavKey
 
     @Serializable
     data object Settings : NavKey
@@ -284,8 +284,19 @@ fun CheckItApp(
                                     ReportScreen(
                                         state = reportState,
                                         reportViewModel = reportViewModel,
+                                        onShowTagsReport = { push(Routes.TagsReport) },
                                         onShowTimeReport = { push(Routes.TimeReport) },
-                                        onShowWeeklyDigest = { push(Routes.WeeklyDigestReport) },
+                                    )
+                                }
+                                Routes.TagsReport -> {
+                                    val reportState by reportViewModel.uiState.collectAsState()
+                                    TagsReport(
+                                        state = reportState,
+                                        onPeriodSelected = reportViewModel::selectPeriod,
+                                        onPreviousPeriod = reportViewModel::previousPeriod,
+                                        onNextPeriod = reportViewModel::nextPeriod,
+                                        onCurrentPeriod = reportViewModel::resetToCurrentPeriod,
+                                        onNavigateBack = { onBack() },
                                     )
                                 }
                                 Routes.TimeReport -> {
@@ -296,16 +307,6 @@ fun CheckItApp(
                                         onPreviousPeriod = reportViewModel::previousPeriod,
                                         onNextPeriod = reportViewModel::nextPeriod,
                                         onCurrentPeriod = reportViewModel::resetToCurrentPeriod,
-                                        onNavigateBack = { onBack() },
-                                    )
-                                }
-                                Routes.WeeklyDigestReport -> {
-                                    val reportState by reportViewModel.uiState.collectAsState()
-                                    WeeklyDigestReport(
-                                        state = reportState,
-                                        onPreviousWeek = reportViewModel::previousWeek,
-                                        onNextWeek = reportViewModel::nextWeek,
-                                        onCurrentWeek = reportViewModel::resetToCurrentPeriod,
                                         onNavigateBack = { onBack() },
                                     )
                                 }
@@ -395,7 +396,7 @@ private fun NavKey.asTab(): CheckItTab? = when (this) {
     Routes.Calendar -> CheckItTab.Calendar
     Routes.Report -> CheckItTab.Report
     Routes.TimeReport -> CheckItTab.Report
-    Routes.WeeklyDigestReport -> CheckItTab.Report
+    Routes.TagsReport -> CheckItTab.Report
     Routes.Settings -> CheckItTab.Settings
     else -> null
 }

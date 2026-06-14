@@ -20,8 +20,8 @@
     <string name="tags_report_empty">No done work time with tags in this period.</string>
     <string name="time_report_title">Time</string>
     <string name="time_report_empty">No done work time in this period.</string>
-    <string name="weekly_digest_title">Weekly digest</string>
-    <string name="weekly_digest_empty">No completed work to summarize this week.</string>
+    <string name="weekly_digest_title">Digest</string>
+    <string name="weekly_digest_empty">No completed work to summarize in this period.</string>
     <string name="weekly_digest_total_time">Done work time</string>
     <string name="weekly_digest_done_items">Done items</string>
     <string name="weekly_digest_active_days">Active days</string>

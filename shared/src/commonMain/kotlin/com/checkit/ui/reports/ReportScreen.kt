@@ -22,8 +22,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.tab_report
+import checkit.shared.generated.resources.tags_report_title
 import checkit.shared.generated.resources.time_report_title
-import checkit.shared.generated.resources.weekly_digest_title
 import com.checkit.ui.ReportUiState
 import com.checkit.ui.components.TinyTopAppBar
 import org.jetbrains.compose.resources.stringResource
@@ -32,8 +32,8 @@ import org.jetbrains.compose.resources.stringResource
 internal fun ReportScreen(
     state: ReportUiState,
     reportViewModel: ReportViewModel,
+    onShowTagsReport: () -> Unit,
     onShowTimeReport: () -> Unit,
-    onShowWeeklyDigest: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
@@ -59,17 +59,17 @@ internal fun ReportScreen(
                         onDismissRequest = { menuExpanded = false }
                     ) {
                         ReportMenuItem(
+                            text = stringResource(Res.string.tags_report_title),
+                            onClick = {
+                                menuExpanded = false
+                                onShowTagsReport()
+                            }
+                        )
+                        ReportMenuItem(
                             text = stringResource(Res.string.time_report_title),
                             onClick = {
                                 menuExpanded = false
                                 onShowTimeReport()
-                            }
-                        )
-                        ReportMenuItem(
-                            text = stringResource(Res.string.weekly_digest_title),
-                            onClick = {
-                                menuExpanded = false
-                                onShowWeeklyDigest()
                             }
                         )
                     }
@@ -83,7 +83,7 @@ internal fun ReportScreen(
                 .padding(padding)
                 .padding(horizontal = 16.dp, vertical = 14.dp)
         ) {
-            TagsReport(
+            DigestReport(
                 state = state,
                 onPeriodSelected = reportViewModel::selectPeriod,
                 onPreviousPeriod = reportViewModel::previousPeriod,

@@ -13,7 +13,12 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -29,6 +34,7 @@ import com.checkit.ui.ReportUiState
 import com.checkit.ui.TagReportItem
 import com.checkit.ui.components.ReportPeriod
 import com.checkit.ui.components.ReportPeriodHeader
+import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.tasks.formatDuration
 import com.checkit.ui.theme.toColor
 import org.jetbrains.compose.resources.stringResource
@@ -40,42 +46,67 @@ internal fun TagsReport(
     onPreviousPeriod: () -> Unit,
     onNextPeriod: () -> Unit,
     onCurrentPeriod: () -> Unit,
+    onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
+    Scaffold(
         modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(18.dp)
-    ) {
-        ReportPeriodHeader(
-            selectedPeriod = state.selectedPeriod,
-            selectedDate = state.selectedDate,
-            onPeriodSelected = onPeriodSelected,
-            onPreviousPeriod = onPreviousPeriod,
-            onNextPeriod = onNextPeriod,
-            onCurrentPeriod = onCurrentPeriod,
-            periods = ReportPeriod.entries
-        )
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            TinyTopAppBar(
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                title = {
+                    Text(
+                        text = stringResource(Res.string.tags_report_title),
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            )
+        }
+    ) { padding ->
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(bottom = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
-            Text(
-                text = stringResource(Res.string.tags_report_title),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold
+            ReportPeriodHeader(
+                selectedPeriod = state.selectedPeriod,
+                selectedDate = state.selectedDate,
+                onPeriodSelected = onPeriodSelected,
+                onPreviousPeriod = onPreviousPeriod,
+                onNextPeriod = onNextPeriod,
+                onCurrentPeriod = onCurrentPeriod,
+                periods = ReportPeriod.entries
             )
-            if (state.tagReports.isEmpty()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 Text(
-                    text = stringResource(Res.string.tags_report_empty),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = stringResource(Res.string.tags_report_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold
                 )
-            } else {
-                TagBarChart(items = state.tagReports)
+                if (state.tagReports.isEmpty()) {
+                    Text(
+                        text = stringResource(Res.string.tags_report_empty),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    TagBarChart(items = state.tagReports)
+                }
             }
         }
     }

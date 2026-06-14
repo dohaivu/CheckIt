@@ -4,8 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -13,15 +13,11 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -40,116 +36,112 @@ import com.checkit.ui.ReportUiState
 import com.checkit.ui.TagReportItem
 import com.checkit.ui.TimeReportItem
 import com.checkit.ui.WeeklyDigestHighlight
-import com.checkit.ui.components.TinyTopAppBar
-import com.checkit.ui.components.WeekHeader
+import com.checkit.ui.components.ReportPeriod
+import com.checkit.ui.components.ReportPeriodHeader
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.tasks.formatDuration
 import com.checkit.ui.theme.toColor
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-internal fun WeeklyDigestReport(
+internal fun DigestReport(
     state: ReportUiState,
-    onPreviousWeek: () -> Unit,
-    onNextWeek: () -> Unit,
-    onCurrentWeek: () -> Unit,
-    onNavigateBack: () -> Unit,
+    onPeriodSelected: (ReportPeriod) -> Unit,
+    onPreviousPeriod: () -> Unit,
+    onNextPeriod: () -> Unit,
+    onCurrentPeriod: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val digest = state.weeklyDigest
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            TinyTopAppBar(
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                title = {
-                    Text(
-                        text = stringResource(Res.string.weekly_digest_title),
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            )
+    val selectedPeriod = when (state.selectedPeriod) {
+        ReportPeriod.Daily,
+        ReportPeriod.Week -> state.selectedPeriod
+        ReportPeriod.Month,
+        ReportPeriod.Annual -> ReportPeriod.Week
+    }
+    val reportState = if (state.selectedPeriod == selectedPeriod) state else state.copy(selectedPeriod = selectedPeriod)
+    val digest = reportState.digestReport
+    LaunchedEffect(state.selectedPeriod) {
+        if (state.selectedPeriod != selectedPeriod) {
+            onPeriodSelected(selectedPeriod)
         }
-    ) { padding ->
+    }
+
+    Column(
+        modifier = modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(18.dp)
+    ) {
+        ReportPeriodHeader(
+            selectedPeriod = selectedPeriod,
+            selectedDate = state.selectedDate,
+            onPeriodSelected = onPeriodSelected,
+            onPreviousPeriod = onPreviousPeriod,
+            onNextPeriod = onNextPeriod,
+            onCurrentPeriod = onCurrentPeriod,
+            periods = listOf(ReportPeriod.Daily, ReportPeriod.Week)
+        )
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp)
+                .fillMaxWidth()
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(bottom = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            WeekHeader(
-                week = state.selectedDate,
-                onPreviousWeek = onPreviousWeek,
-                onNextWeek = onNextWeek,
-                onCurrentWeek = onCurrentWeek
+            Text(
+                text = stringResource(Res.string.weekly_digest_title),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold
             )
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState())
-                    .padding(bottom = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
+            if (digest.totalMinutes == 0 && digest.doneItemCount == 0) {
                 Text(
-                    text = stringResource(Res.string.weekly_digest_title),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold
+                    text = stringResource(Res.string.weekly_digest_empty),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                if (digest.totalMinutes == 0 && digest.doneItemCount == 0) {
+            } else {
+                DigestMetric(
+                    label = stringResource(Res.string.weekly_digest_total_time),
+                    value = digest.totalMinutes.formatDuration()
+                )
+                DigestMetric(
+                    label = stringResource(Res.string.weekly_digest_done_items),
+                    value = digest.doneItemCount.toString()
+                )
+                DigestMetric(
+                    label = stringResource(Res.string.weekly_digest_active_days),
+                    value = if (selectedPeriod == ReportPeriod.Daily) {
+                        digest.activeDayCount.toString()
+                    } else {
+                        "${digest.activeDayCount}/7"
+                    }
+                )
+                DigestMetric(
+                    label = stringResource(Res.string.weekly_digest_busiest_day),
+                    value = digest.busiestDay?.busiestDayLabel() ?: "-"
+                )
+                if (digest.highlights.isNotEmpty()) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                     Text(
-                        text = stringResource(Res.string.weekly_digest_empty),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = stringResource(Res.string.weekly_digest_highlights),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
                     )
-                } else {
-                    DigestMetric(
-                        label = stringResource(Res.string.weekly_digest_total_time),
-                        value = digest.totalMinutes.formatDuration()
-                    )
-                    DigestMetric(
-                        label = stringResource(Res.string.weekly_digest_done_items),
-                        value = digest.doneItemCount.toString()
-                    )
-                    DigestMetric(
-                        label = stringResource(Res.string.weekly_digest_active_days),
-                        value = "${digest.activeDayCount}/7"
-                    )
-                    DigestMetric(
-                        label = stringResource(Res.string.weekly_digest_busiest_day),
-                        value = digest.busiestDay?.busiestDayLabel() ?: "-"
-                    )
-                    if (digest.highlights.isNotEmpty()) {
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-                        Text(
-                            text = stringResource(Res.string.weekly_digest_highlights),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            digest.highlights.forEach { highlight ->
-                                HighlightRow(highlight)
-                            }
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        digest.highlights.forEach { highlight ->
+                            HighlightRow(highlight)
                         }
                     }
-                    if (digest.topTags.isNotEmpty()) {
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-                        Text(
-                            text = stringResource(Res.string.weekly_digest_top_tags),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            digest.topTags.forEach { tag ->
-                                TopTagRow(tag)
-                            }
+                }
+                if (digest.topTags.isNotEmpty()) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+                    Text(
+                        text = stringResource(Res.string.weekly_digest_top_tags),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        digest.topTags.forEach { tag ->
+                            TopTagRow(tag)
                         }
                     }
                 }

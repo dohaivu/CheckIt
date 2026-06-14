@@ -66,17 +66,6 @@ class ReportViewModel(
         _uiState.update { it.copy(selectedDate = today()) }
     }
 
-    fun previousWeek() {
-        _uiState.update { state ->
-            state.copy(selectedDate = ReportPeriod.Week.move(state.selectedDate, -1))
-        }
-    }
-
-    fun nextWeek() {
-        _uiState.update { state ->
-            state.copy(selectedDate = ReportPeriod.Week.move(state.selectedDate, 1))
-        }
-    }
 }
 
 private fun ReportPeriod.move(date: LocalDate, amount: Int): LocalDate = when (this) {

@@ -429,9 +429,14 @@ private fun List<DailyPlan>.toTimeReports(period: ReportPeriod, selectedDate: Lo
         }
     }
 
-private fun List<DailyPlan>.toWeeklyDigest(selectedDate: LocalDate): WeeklyDigestReport {
-    val start = ReportPeriod.Week.periodStart(selectedDate)
-    val days = (0 until 7).map { offset ->
+private fun List<DailyPlan>.toDigest(period: ReportPeriod, selectedDate: LocalDate): DigestReportSummary {
+    val digestPeriod = if (period == ReportPeriod.Daily) ReportPeriod.Daily else ReportPeriod.Week
+    val start = digestPeriod.periodStart(selectedDate)
+    val dayCount = when (digestPeriod) {
+        ReportPeriod.Daily -> 1
+        else -> 7
+    }
+    val days = (0 until dayCount).map { offset ->
         val date = start.plus(offset, DateTimeUnit.DAY)
         TimeReportItem(
             startDate = date,
@@ -439,7 +444,7 @@ private fun List<DailyPlan>.toWeeklyDigest(selectedDate: LocalDate): WeeklyDiges
             totalMinutes = doneWorkMinutesForDate(date)
         )
     }
-    val endExclusive = start.plus(7, DateTimeUnit.DAY)
+    val endExclusive = digestPeriod.periodEndExclusive(selectedDate)
     val doneItems = asSequence()
         .filter { plan -> plan.date >= start && plan.date < endExclusive }
         .flatMap { it.items.asSequence() }
@@ -464,9 +469,9 @@ private fun List<DailyPlan>.toWeeklyDigest(selectedDate: LocalDate): WeeklyDiges
         }
         .toList()
 
-    return WeeklyDigestReport(
+    return DigestReportSummary(
         startDate = start,
-        endDate = start.plus(6, DateTimeUnit.DAY),
+        endDate = endExclusive.minus(1, DateTimeUnit.DAY),
         totalMinutes = days.sumOf { it.totalMinutes },
         doneItemCount = doneItems.size,
         activeDayCount = days.count { it.totalMinutes > 0 },
@@ -513,8 +518,8 @@ data class ReportUiState(
     val timeReports: List<TimeReportItem> by lazy {
         dailyPlans.toTimeReports(selectedPeriod, selectedDate)
     }
-    val weeklyDigest: WeeklyDigestReport by lazy {
-        dailyPlans.toWeeklyDigest(selectedDate)
+    val digestReport: DigestReportSummary by lazy {
+        dailyPlans.toDigest(selectedPeriod, selectedDate)
     }
 }
 
@@ -531,7 +536,7 @@ data class TimeReportItem(
     val totalMinutes: Int
 )
 
-data class WeeklyDigestReport(
+data class DigestReportSummary(
     val startDate: LocalDate,
     val endDate: LocalDate,
     val totalMinutes: Int,
