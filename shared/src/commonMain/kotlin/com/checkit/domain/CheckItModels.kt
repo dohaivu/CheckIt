@@ -177,5 +177,6 @@ enum class DueDatePreset {
     Today,
     Upcoming,
     Overdue,
+    NoDate,
     Someday
 }

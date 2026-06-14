@@ -353,6 +353,7 @@ private fun TaskItem.matchesDueDate(preset: DueDatePreset, today: LocalDate): Bo
         DueDatePreset.Today -> doDate == today
         DueDatePreset.Upcoming -> doDate != null && doDate >= today && doDate <= today.plus(7, DateTimeUnit.DAY)
         DueDatePreset.Overdue -> doDate != null && doDate < today && status != TaskStatus.Completed
+        DueDatePreset.NoDate -> doDate == null
         DueDatePreset.Someday -> doDate == null && priority == TaskPriority.None
     }
 
@@ -371,5 +372,6 @@ private fun matchesNoteDate(preset: DueDatePreset, date: LocalDate, today: Local
         DueDatePreset.Today -> date == today
         DueDatePreset.Upcoming -> date >= today && date <= today.plus(7, DateTimeUnit.DAY)
         DueDatePreset.Overdue -> date < today
+        DueDatePreset.NoDate -> false
         DueDatePreset.Someday -> false
     }

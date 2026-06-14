@@ -24,7 +24,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import com.checkit.ui.TaskUiState
 import com.checkit.ui.components.TinyTopAppBar
-import com.checkit.ui.components.ViewOptionsMenu
 import kotlinx.coroutines.launch
 
 @Composable

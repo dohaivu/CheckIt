@@ -1,4 +1,4 @@
-package com.checkit.ui.components
+package com.checkit.ui.tasks
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
@@ -19,8 +19,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.PriorityHigh
@@ -51,8 +51,6 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import com.checkit.ui.TaskSortOption
 import com.checkit.ui.TaskWorkspaceView
-import com.checkit.ui.tasks.ContentContainerAlpha
-import com.checkit.ui.tasks.icon
 
 
 @Composable
@@ -235,7 +233,7 @@ internal fun ViewOptionChip(
 
 private fun TaskSortOption.icon(): ImageVector =
     when (this) {
-        TaskSortOption.Custom -> Icons.Default.ViewList
+        TaskSortOption.Custom -> Icons.AutoMirrored.Filled.ViewList
         TaskSortOption.Priority -> Icons.Default.PriorityHigh
         TaskSortOption.Title -> Icons.Default.SortByAlpha
         TaskSortOption.Date -> Icons.Default.Event
