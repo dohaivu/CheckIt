@@ -21,6 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,6 +51,17 @@ internal fun TimeReport(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val selectedPeriod = when (state.selectedPeriod) {
+        ReportPeriod.Daily -> ReportPeriod.Week
+        else -> state.selectedPeriod
+    }
+    val timeReports = state.timeReportsFor(selectedPeriod)
+    val totalMinutes = timeReports.sumOf { it.totalMinutes }
+    LaunchedEffect(state.selectedPeriod) {
+        if (state.selectedPeriod == ReportPeriod.Daily) {
+            onPeriodSelected(ReportPeriod.Week)
+        }
+    }
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
@@ -74,28 +86,43 @@ internal fun TimeReport(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             ReportPeriodHeader(
-                selectedPeriod = state.selectedPeriod,
+                selectedPeriod = selectedPeriod,
                 selectedDate = state.selectedDate,
                 onPeriodSelected = onPeriodSelected,
                 onPreviousPeriod = onPreviousPeriod,
                 onNextPeriod = onNextPeriod,
-                onCurrentPeriod = onCurrentPeriod
+                onCurrentPeriod = onCurrentPeriod,
+                periods = listOf(ReportPeriod.Week, ReportPeriod.Month, ReportPeriod.Annual)
             )
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(
-                    text = stringResource(Res.string.time_report_title),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-                if (state.timeReports.all { it.totalMinutes == 0 }) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(Res.string.time_report_title),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = totalMinutes.formatDuration(),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                if (timeReports.all { it.totalMinutes == 0 }) {
                     Text(
                         text = stringResource(Res.string.time_report_empty),
                         style = MaterialTheme.typography.bodyMedium,
@@ -103,14 +130,17 @@ internal fun TimeReport(
                     )
                 } else {
                     TimeBarChart(
-                        items = state.timeReports,
-                        period = state.selectedPeriod
+                        items = timeReports,
+                        period = selectedPeriod
                     )
                 }
             }
         }
     }
 }
+
+private fun ReportUiState.timeReportsFor(period: ReportPeriod): List<TimeReportItem> =
+    if (selectedPeriod == period) timeReports else copy(selectedPeriod = period).timeReports
 
 @Composable
 private fun TimeBarChart(

@@ -29,6 +29,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.checkit.ui.localizedMonthTitle
+import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.localizedShortMonthName
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
@@ -39,6 +40,7 @@ import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.*
 
 enum class ReportPeriod {
+    Daily,
     Week,
     Month,
     Annual
@@ -48,6 +50,7 @@ enum class ReportPeriod {
 internal fun ReportPeriodSwitcher(
     selectedPeriod: ReportPeriod,
     onPeriodSelected: (ReportPeriod) -> Unit,
+    periods: List<ReportPeriod> = ReportPeriod.entries,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -56,7 +59,7 @@ internal fun ReportPeriodSwitcher(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        ReportPeriod.entries.forEach { period ->
+        periods.forEach { period ->
             FilterChip(
                 selected = selectedPeriod == period,
                 onClick = { onPeriodSelected(period) },
@@ -88,6 +91,7 @@ internal fun ReportPeriodSwitcher(
 
 @Composable
 private fun ReportPeriod.label(): String = when (this) {
+    ReportPeriod.Daily -> stringResource(Res.string.daily)
     ReportPeriod.Week -> stringResource(Res.string.weekly)
     ReportPeriod.Month -> stringResource(Res.string.monthly)
     ReportPeriod.Annual -> stringResource(Res.string.annual)
@@ -101,6 +105,7 @@ internal fun ReportPeriodHeader(
     onPreviousPeriod: () -> Unit,
     onNextPeriod: () -> Unit,
     onCurrentPeriod: () -> Unit,
+    periods: List<ReportPeriod> = ReportPeriod.entries,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -109,9 +114,16 @@ internal fun ReportPeriodHeader(
     ) {
         ReportPeriodSwitcher(
             selectedPeriod = selectedPeriod,
-            onPeriodSelected = onPeriodSelected
+            onPeriodSelected = onPeriodSelected,
+            periods = periods
         )
         when (selectedPeriod) {
+            ReportPeriod.Daily -> DayHeader(
+                day = selectedDate,
+                onPreviousDay = onPreviousPeriod,
+                onNextDay = onNextPeriod,
+                onCurrentDay = onCurrentPeriod
+            )
             ReportPeriod.Week -> WeekHeader(
                 week = selectedDate,
                 onPreviousWeek = onPreviousPeriod,
@@ -132,6 +144,23 @@ internal fun ReportPeriodHeader(
             )
         }
     }
+}
+
+@Composable
+internal fun DayHeader(
+    day: LocalDate,
+    onPreviousDay: () -> Unit,
+    onNextDay: () -> Unit,
+    onCurrentDay: () -> Unit
+) {
+    PeriodHeader(
+        title = day.localizedCompactDateWithDayName(),
+        onPrevious = onPreviousDay,
+        onNext = onNextDay,
+        onCurrentPeriod = onCurrentDay,
+        previousContentDescription = stringResource(Res.string.previous_day),
+        nextContentDescription = stringResource(Res.string.next_day)
+    )
 }
 
 @Composable

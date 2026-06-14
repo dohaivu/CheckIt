@@ -3,9 +3,12 @@
     <string name="clear_text">Clear text</string>
 
     <string name="calendar_title">Calendar</string>
+    <string name="daily">Daily</string>
     <string name="weekly">Weekly</string>
     <string name="monthly">Monthly</string>
     <string name="annual">Annual</string>
+    <string name="previous_day">Previous day</string>
+    <string name="next_day">Next day</string>
     <string name="previous_week">Previous week</string>
     <string name="next_week">Next week</string>
     <string name="previous_month">Previous month</string>
@@ -24,6 +27,7 @@
     <string name="weekly_digest_active_days">Active days</string>
     <string name="weekly_digest_busiest_day">Busiest day</string>
     <string name="weekly_digest_top_tags">Top tags</string>
+    <string name="weekly_digest_highlights">Completed highlights</string>
     <string name="month_january">January</string>
     <string name="month_february">February</string>
     <string name="month_march">March</string>

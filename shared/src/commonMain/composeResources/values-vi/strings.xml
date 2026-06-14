@@ -3,9 +3,12 @@
     <string name="clear_text">Xóa văn bản</string>
 
     <string name="calendar_title">Lịch</string>
+    <string name="daily">Theo ngày</string>
     <string name="weekly">Theo tuần</string>
     <string name="monthly">Theo tháng</string>
     <string name="annual">Theo năm</string>
+    <string name="previous_day">Ngày trước</string>
+    <string name="next_day">Ngày sau</string>
     <string name="previous_week">Tuần trước</string>
     <string name="next_week">Tuần sau</string>
     <string name="previous_month">Tháng trước</string>
@@ -24,6 +27,7 @@
     <string name="weekly_digest_active_days">Ngày hoạt động</string>
     <string name="weekly_digest_busiest_day">Ngày bận nhất</string>
     <string name="weekly_digest_top_tags">Nhãn hàng đầu</string>
+    <string name="weekly_digest_highlights">Điểm nổi bật đã hoàn thành</string>
     <string name="month_january">Tháng 1</string>
     <string name="month_february">Tháng 2</string>
     <string name="month_march">Tháng 3</string>

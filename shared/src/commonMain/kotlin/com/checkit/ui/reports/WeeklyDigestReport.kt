@@ -32,12 +32,14 @@ import checkit.shared.generated.resources.weekly_digest_active_days
 import checkit.shared.generated.resources.weekly_digest_busiest_day
 import checkit.shared.generated.resources.weekly_digest_done_items
 import checkit.shared.generated.resources.weekly_digest_empty
+import checkit.shared.generated.resources.weekly_digest_highlights
 import checkit.shared.generated.resources.weekly_digest_title
 import checkit.shared.generated.resources.weekly_digest_top_tags
 import checkit.shared.generated.resources.weekly_digest_total_time
 import com.checkit.ui.ReportUiState
 import com.checkit.ui.TagReportItem
 import com.checkit.ui.TimeReportItem
+import com.checkit.ui.WeeklyDigestHighlight
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.components.WeekHeader
 import com.checkit.ui.localizedCompactDateWithDayName
@@ -79,7 +81,6 @@ internal fun WeeklyDigestReport(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
@@ -90,7 +91,11 @@ internal fun WeeklyDigestReport(
                 onCurrentWeek = onCurrentWeek
             )
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Text(
@@ -121,6 +126,19 @@ internal fun WeeklyDigestReport(
                         label = stringResource(Res.string.weekly_digest_busiest_day),
                         value = digest.busiestDay?.busiestDayLabel() ?: "-"
                     )
+                    if (digest.highlights.isNotEmpty()) {
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+                        Text(
+                            text = stringResource(Res.string.weekly_digest_highlights),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            digest.highlights.forEach { highlight ->
+                                HighlightRow(highlight)
+                            }
+                        }
+                    }
                     if (digest.topTags.isNotEmpty()) {
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                         Text(
@@ -158,6 +176,37 @@ private fun DigestMetric(
         Text(
             text = value,
             style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold
+        )
+    }
+}
+
+@Composable
+private fun HighlightRow(highlight: WeeklyDigestHighlight) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = highlight.title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = highlight.date.localizedCompactDateWithDayName(),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
+            )
+        }
+        Text(
+            text = highlight.totalMinutes.formatDuration(),
+            modifier = Modifier.widthIn(min = 54.dp),
+            style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.SemiBold
         )
     }

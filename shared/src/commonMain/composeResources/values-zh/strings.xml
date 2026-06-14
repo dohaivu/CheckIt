@@ -3,9 +3,12 @@
     <string name="clear_text">清除文本</string>
 
     <string name="calendar_title">日历</string>
+    <string name="daily">按日</string>
     <string name="weekly">按周</string>
     <string name="monthly">按月</string>
     <string name="annual">按年</string>
+    <string name="previous_day">前一天</string>
+    <string name="next_day">后一天</string>
     <string name="previous_week">上一周</string>
     <string name="next_week">下一周</string>
     <string name="previous_month">上个月</string>
@@ -24,6 +27,7 @@
     <string name="weekly_digest_active_days">活跃天数</string>
     <string name="weekly_digest_busiest_day">最忙的一天</string>
     <string name="weekly_digest_top_tags">热门标签</string>
+    <string name="weekly_digest_highlights">已完成亮点</string>
     <string name="month_january">一月</string>
     <string name="month_february">二月</string>
     <string name="month_march">三月</string>

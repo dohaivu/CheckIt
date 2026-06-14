@@ -389,6 +389,13 @@ private fun List<DailyPlan>.toTagReports(startDate: LocalDate, endDateExclusive:
 
 private fun List<DailyPlan>.toTimeReports(period: ReportPeriod, selectedDate: LocalDate): List<TimeReportItem> =
     when (period) {
+        ReportPeriod.Daily -> listOf(
+            TimeReportItem(
+                startDate = selectedDate,
+                endDate = selectedDate,
+                totalMinutes = doneWorkMinutesForDate(selectedDate)
+            )
+        )
         ReportPeriod.Week -> {
             val start = period.periodStart(selectedDate)
             (0 until 7).map { offset ->
@@ -438,6 +445,24 @@ private fun List<DailyPlan>.toWeeklyDigest(selectedDate: LocalDate): WeeklyDiges
         .flatMap { it.items.asSequence() }
         .filter { it.status == DailyPlanItemStatus.Done }
         .toList()
+    val highlights = asSequence()
+        .filter { plan -> plan.date >= start && plan.date < endExclusive }
+        .flatMap { plan -> plan.items.asSequence().map { item -> plan.date to item } }
+        .filter { (_, item) -> item.status == DailyPlanItemStatus.Done }
+        .sortedWith(
+            compareByDescending<Pair<LocalDate, DailyPlanItem>> { it.first }
+                .thenBy { (_, item) -> item.startTimeMinutes ?: Int.MAX_VALUE }
+                .thenBy { (_, item) -> item.sortOrder }
+        )
+        .take(5)
+        .map { (date, item) ->
+            WeeklyDigestHighlight(
+                date = date,
+                title = item.title,
+                totalMinutes = item.workMinutes()
+            )
+        }
+        .toList()
 
     return WeeklyDigestReport(
         startDate = start,
@@ -446,7 +471,8 @@ private fun List<DailyPlan>.toWeeklyDigest(selectedDate: LocalDate): WeeklyDiges
         doneItemCount = doneItems.size,
         activeDayCount = days.count { it.totalMinutes > 0 },
         busiestDay = days.maxByOrNull { it.totalMinutes }?.takeIf { it.totalMinutes > 0 },
-        topTags = toTagReports(start, endExclusive).take(3)
+        topTags = toTagReports(start, endExclusive).take(3),
+        highlights = highlights
     )
 }
 
@@ -458,12 +484,14 @@ private fun List<DailyPlan>.dailyPlansWorkMinutesInRange(startDate: LocalDate, e
         .sumOf { it.workMinutes() }
 
 private fun ReportPeriod.periodStart(date: LocalDate): LocalDate = when (this) {
+    ReportPeriod.Daily -> date
     ReportPeriod.Week -> date.firstDayOfWeek()
     ReportPeriod.Month -> date.firstDayOfMonth()
     ReportPeriod.Annual -> LocalDate(date.year, 1, 1)
 }
 
 private fun ReportPeriod.periodEndExclusive(date: LocalDate): LocalDate = when (this) {
+    ReportPeriod.Daily -> date.plus(1, DateTimeUnit.DAY)
     ReportPeriod.Week -> periodStart(date).plus(7, DateTimeUnit.DAY)
     ReportPeriod.Month -> periodStart(date).plus(1, DateTimeUnit.MONTH)
     ReportPeriod.Annual -> periodStart(date).plus(1, DateTimeUnit.YEAR)
@@ -510,7 +538,14 @@ data class WeeklyDigestReport(
     val doneItemCount: Int,
     val activeDayCount: Int,
     val busiestDay: TimeReportItem?,
-    val topTags: List<TagReportItem>
+    val topTags: List<TagReportItem>,
+    val highlights: List<WeeklyDigestHighlight>
+)
+
+data class WeeklyDigestHighlight(
+    val date: LocalDate,
+    val title: String,
+    val totalMinutes: Int
 )
 
 data class SettingsUiState(

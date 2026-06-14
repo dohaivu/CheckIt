@@ -80,6 +80,7 @@ class ReportViewModel(
 }
 
 private fun ReportPeriod.move(date: LocalDate, amount: Int): LocalDate = when (this) {
+    ReportPeriod.Daily -> date.plus(amount, DateTimeUnit.DAY)
     ReportPeriod.Week -> date.plus(amount * 7, DateTimeUnit.DAY)
     ReportPeriod.Month -> date.plus(amount, DateTimeUnit.MONTH).firstDayOfMonth()
     ReportPeriod.Annual -> date.plus(amount, DateTimeUnit.YEAR)
