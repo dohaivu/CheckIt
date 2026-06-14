@@ -1,8 +1,11 @@
 package com.checkit.ui.tasks
 
 import com.checkit.domain.DueDatePreset
+import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskFilter
+import com.checkit.domain.TaskItem
+import com.checkit.domain.TaskList
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.usecase.AddNoteUseCase
 import com.checkit.domain.usecase.AddTaskListUseCase
@@ -28,6 +31,8 @@ import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.domain.usecase.UpdateTaskListUseCase
 import com.checkit.domain.usecase.UpdateTaskTagUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
+import com.checkit.ui.TaskListEntry
+import com.checkit.ui.TaskSortOption
 import com.checkit.ui.TaskWorkspaceView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -35,6 +40,7 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.datetime.LocalDate
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -172,4 +178,77 @@ class TaskViewModelViewsTest {
         assertNull(state.dayLimit)
         assertEquals(TaskWorkspaceView.List, state.selectedView)
     }
+
+    @Test
+    fun titleSortBuildsUnifiedTaskAndNoteListOrder() = runTest(dispatcher) {
+        val inbox = TaskList(id = 1L, name = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
+        viewModel = createViewModel(
+            TaskBoard(
+                lists = listOf(inbox),
+                tasks = listOf(
+                    task(id = 1L, list = inbox, name = "Bravo"),
+                    task(id = 2L, list = inbox, name = "Delta")
+                ),
+                notes = listOf(
+                    note(id = 3L, list = inbox, title = "Alpha"),
+                    note(id = 4L, list = inbox, title = "Charlie")
+                )
+            )
+        )
+        dispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.selectSortOption(TaskSortOption.Title)
+
+        val labels = viewModel.uiState.value.visibleListItems.map { entry ->
+            when (entry) {
+                is TaskListEntry.Task -> "task:${entry.item.name}"
+                is TaskListEntry.Note -> "note:${entry.item.title}"
+            }
+        }
+        assertEquals(listOf("note:Alpha", "task:Bravo", "note:Charlie", "task:Delta"), labels)
+    }
+
+    private fun createViewModel(board: TaskBoard): TaskViewModel {
+        repository = FakeCheckItRepository(initialBoard = board)
+        return TaskViewModel(
+            observeTaskBoard = ObserveTaskBoardUseCase(repository),
+            ensureDefaultTaskData = EnsureDefaultTaskDataUseCase(repository),
+            selectTaskBoardItems = SelectTaskBoardItemsUseCase(),
+            addTask = AddTaskUseCase(repository),
+            updateTask = UpdateTaskUseCase(repository),
+            deleteTask = DeleteTaskUseCase(repository),
+            restoreTask = RestoreTaskUseCase(repository),
+            completeTask = CompleteTaskUseCase(repository),
+            completeNote = CompleteNoteUseCase(repository),
+            openTask = OpenTaskUseCase(repository),
+            openNote = OpenNoteUseCase(repository),
+            addNote = AddNoteUseCase(repository),
+            updateNote = UpdateNoteUseCase(repository),
+            deleteNote = DeleteNoteUseCase(repository),
+            restoreNote = RestoreNoteUseCase(repository),
+            updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository),
+            updateDailyPlanItemStatus = UpdateDailyPlanItemStatusUseCase(repository),
+            settingsRepository = FakeSettingsRepository()
+        )
+    }
+
+    private fun task(id: Long, list: TaskList, name: String) = TaskItem(
+        id = id,
+        list = list,
+        name = name,
+        sortOrder = id.toInt(),
+        createdAtMillis = 0L,
+        updatedAtMillis = 0L
+    )
+
+    private fun note(id: Long, list: TaskList, title: String) = NoteItem(
+        id = id,
+        list = list,
+        title = title,
+        content = "",
+        date = LocalDate(2026, 6, 14),
+        createdAtMillis = 0L,
+        editedAtMillis = 0L,
+        sortOrder = id.toInt()
+    )
 }

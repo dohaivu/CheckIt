@@ -44,12 +44,12 @@ import androidx.compose.ui.window.PopupProperties
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskList
+import com.checkit.ui.TaskListEntry
 import com.checkit.ui.TaskListDisplayType
 
 @Composable
 internal fun TaskListView(
-    tasks: List<TaskItem>,
-    notes: List<NoteItem>,
+    items: List<TaskListEntry>,
     lists: List<TaskList>,
     showListName: Boolean,
     displayType: TaskListDisplayType = TaskListDisplayType.Standard,
@@ -65,21 +65,27 @@ internal fun TaskListView(
             Spacer(modifier = Modifier.height(8.dp))
         }
 
-        items(tasks, key = { "task-${it.id}" }) { task ->
-            TaskRow(
-                task = task,
-                onClick = { onTaskClick(task) },
-                list = if (showListName) task.list else null,
-                displayType = displayType
-            )
-        }
-        items(notes, key = { "note-${it.id}" }) { note ->
-            NoteRow(
-                note = note,
-                onClick = { onNoteClick(note) },
-                list = if (showListName) note.list else null,
-                displayType = displayType
-            )
+        items(items, key = { it.key }) { item ->
+            when (item) {
+                is TaskListEntry.Task -> {
+                    val task = item.item
+                    TaskRow(
+                        task = task,
+                        onClick = { onTaskClick(task) },
+                        list = if (showListName) task.list else null,
+                        displayType = displayType
+                    )
+                }
+                is TaskListEntry.Note -> {
+                    val note = item.item
+                    NoteRow(
+                        note = note,
+                        onClick = { onNoteClick(note) },
+                        list = if (showListName) note.list else null,
+                        displayType = displayType
+                    )
+                }
+            }
         }
         item {
             Spacer(modifier = Modifier.height(8.dp))

@@ -27,6 +27,7 @@ data class TaskUiState(
     val sortOption: TaskSortOption = TaskSortOption.Custom,
     val visibleTasks: List<TaskItem> = emptyList(),
     val visibleNotes: List<NoteItem> = emptyList(),
+    val visibleListItems: List<TaskListEntry> = emptyList(),
     val editor: TaskEditorState? = null,
     val isLoading: Boolean = true,
     val message: String? = null
@@ -40,6 +41,18 @@ data class TaskUiState(
         TaskWorkspaceView.entries
     } else {
         TaskWorkspaceView.entries.filter { it != TaskWorkspaceView.Timeline }
+    }
+}
+
+sealed interface TaskListEntry {
+    val key: String
+
+    data class Task(val item: TaskItem) : TaskListEntry {
+        override val key: String = "task-${item.id}"
+    }
+
+    data class Note(val item: NoteItem) : TaskListEntry {
+        override val key: String = "note-${item.id}"
     }
 }
 
