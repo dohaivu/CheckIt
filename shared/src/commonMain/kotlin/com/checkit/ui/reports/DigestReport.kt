@@ -7,11 +7,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -31,6 +31,7 @@ import checkit.shared.generated.resources.weekly_digest_empty
 import checkit.shared.generated.resources.weekly_digest_highlights
 import checkit.shared.generated.resources.weekly_digest_title
 import checkit.shared.generated.resources.weekly_digest_top_tags
+import checkit.shared.generated.resources.weekly_digest_total_items
 import checkit.shared.generated.resources.weekly_digest_total_time
 import com.checkit.ui.ReportUiState
 import com.checkit.ui.TagReportItem
@@ -92,7 +93,7 @@ internal fun DigestReport(
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold
             )
-            if (digest.totalMinutes == 0 && digest.doneItemCount == 0) {
+            if (digest.totalItemCount == 0) {
                 Text(
                     text = stringResource(Res.string.weekly_digest_empty),
                     style = MaterialTheme.typography.bodyMedium,
@@ -100,25 +101,27 @@ internal fun DigestReport(
                 )
             } else {
                 DigestMetric(
+                    label = stringResource(Res.string.weekly_digest_total_items),
+                    value = digest.totalItemCount.toString()
+                )
+                DigestMetric(
                     label = stringResource(Res.string.weekly_digest_total_time),
                     value = digest.totalMinutes.formatDuration()
                 )
                 DigestMetric(
                     label = stringResource(Res.string.weekly_digest_done_items),
-                    value = digest.doneItemCount.toString()
+                    value = "${digest.doneItemCount}/${digest.doneItemCount + digest.plannedItemCount}"
                 )
-                DigestMetric(
-                    label = stringResource(Res.string.weekly_digest_active_days),
-                    value = if (selectedPeriod == ReportPeriod.Daily) {
-                        digest.activeDayCount.toString()
-                    } else {
-                        "${digest.activeDayCount}/7"
-                    }
-                )
-                DigestMetric(
-                    label = stringResource(Res.string.weekly_digest_busiest_day),
-                    value = digest.busiestDay?.busiestDayLabel() ?: "-"
-                )
+                if (selectedPeriod == ReportPeriod.Week) {
+                    DigestMetric(
+                        label = stringResource(Res.string.weekly_digest_active_days),
+                        value = "${digest.activeDayCount}/7"
+                    )
+                    DigestMetric(
+                        label = stringResource(Res.string.weekly_digest_busiest_day),
+                        value = digest.busiestDay?.busiestDayLabel() ?: "-"
+                    )
+                }
                 if (digest.highlights.isNotEmpty()) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                     Text(
@@ -128,7 +131,10 @@ internal fun DigestReport(
                     )
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         digest.highlights.forEach { highlight ->
-                            HighlightRow(highlight)
+                            HighlightRow(
+                                highlight = highlight,
+                                selectedPeriod = selectedPeriod
+                            )
                         }
                     }
                 }
@@ -139,9 +145,13 @@ internal fun DigestReport(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
+                    val maxTagMinutes = digest.topTags.maxOf { it.totalMinutes }
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         digest.topTags.forEach { tag ->
-                            TopTagRow(tag)
+                            TopTagRow(
+                                tag = tag,
+                                fraction = if (maxTagMinutes == 0) 0f else tag.totalMinutes.toFloat() / maxTagMinutes.toFloat()
+                            )
                         }
                     }
                 }
@@ -174,7 +184,10 @@ private fun DigestMetric(
 }
 
 @Composable
-private fun HighlightRow(highlight: WeeklyDigestHighlight) {
+private fun HighlightRow(
+    highlight: WeeklyDigestHighlight,
+    selectedPeriod: ReportPeriod
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -188,41 +201,62 @@ private fun HighlightRow(highlight: WeeklyDigestHighlight) {
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+            val detail = listOfNotNull(
+                highlight.date.localizedCompactDateWithDayName().takeIf { selectedPeriod == ReportPeriod.Week },
+                highlight.note?.takeIf { it.isNotBlank() }?.takeIf { highlight.totalMinutes == 0 }
+            ).joinToString(" - ")
+            if (detail.isNotBlank()) {
+                Text(
+                    text = detail,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        if (highlight.totalMinutes > 0) {
             Text(
-                text = highlight.date.localizedCompactDateWithDayName(),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1
+                text = highlight.totalMinutes.formatDuration(),
+                modifier = Modifier.widthIn(min = 54.dp),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold
             )
         }
-        Text(
-            text = highlight.totalMinutes.formatDuration(),
-            modifier = Modifier.widthIn(min = 54.dp),
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold
-        )
     }
 }
 
 @Composable
-private fun TopTagRow(tag: TagReportItem) {
+private fun TopTagRow(
+    tag: TagReportItem,
+    fraction: Float
+) {
+    val tagColor = tag.color.toColor()
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(10.dp)
-                .background(tag.color.toColor(), CircleShape)
-        )
         Text(
             text = tag.name,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.widthIn(min = 72.dp, max = 118.dp),
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(18.dp)
+                .background(tagColor.copy(alpha = 0.16f), RoundedCornerShape(6.dp))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(fraction.coerceIn(0.04f, 1f))
+                    .height(18.dp)
+                    .background(tagColor, RoundedCornerShape(6.dp))
+            )
+        }
         Text(
             text = tag.totalMinutes.formatDuration(),
             modifier = Modifier.widthIn(min = 54.dp),
@@ -231,6 +265,7 @@ private fun TopTagRow(tag: TagReportItem) {
         )
     }
 }
+
 
 @Composable
 private fun TimeReportItem.busiestDayLabel(): String =
