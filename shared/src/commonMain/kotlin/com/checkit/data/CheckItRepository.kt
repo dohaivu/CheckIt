@@ -643,20 +643,27 @@ private val DefaultTaskFilters = listOf(
         sortOrder = 3
     ),
     TaskFilterSeed(
+        name = "No date",
+        icon = "Schedule",
+        color = "#7C3AED",
+        dueDatePreset = DueDatePreset.NoDate,
+        sortOrder = 4
+    ),
+    TaskFilterSeed(
         name = "Completed",
         icon = "TaskAlt",
         color = "#059669",
         status = TaskStatus.Completed,
-        sortOrder = 4
+        sortOrder = 5
     ),
     TaskFilterSeed(
         name = "High priority",
         icon = "PriorityHigh",
         color = "#DC2626",
         priority = TaskPriority.High,
-        sortOrder = 5
+        sortOrder = 6
     ),
-    TaskFilterSeed(name = "Trashed", icon = "Delete", color = "#6B7280", includeTrashed = true, sortOrder = 6)
+    TaskFilterSeed(name = "Trashed", icon = "Delete", color = "#6B7280", includeTrashed = true, sortOrder = 7)
 )
 
 private data class TaskFilterSeed(

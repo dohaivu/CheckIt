@@ -39,7 +39,14 @@ class CalendarViewModel(
                     _uiState.update { it.copy() }
                 }
                 .collect { (board, dailyPlans) ->
-                    _uiState.update { it.copy(board = board, dailyPlans = dailyPlans) }
+                    _uiState.update { state ->
+                        val availableTagIds = board.tags.map { it.id }.toSet()
+                        state.copy(
+                            board = board,
+                            dailyPlans = dailyPlans,
+                            selectedTagIds = state.selectedTagIds.intersect(availableTagIds)
+                        )
+                    }
                 }
         }
     }
@@ -85,6 +92,17 @@ class CalendarViewModel(
 
     fun toggleDailyPlanSummary() {
         _uiState.update { it.copy(showDailyPlanSummary = !it.showDailyPlanSummary) }
+    }
+
+    fun toggleTagFilter(tagId: Long) {
+        _uiState.update { state ->
+            val selectedTagIds = if (tagId in state.selectedTagIds) {
+                state.selectedTagIds - tagId
+            } else {
+                state.selectedTagIds + tagId
+            }
+            state.copy(selectedTagIds = selectedTagIds)
+        }
     }
 
     fun toggleCalendarDisplayMode() {

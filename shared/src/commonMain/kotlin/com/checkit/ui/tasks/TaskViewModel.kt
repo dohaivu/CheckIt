@@ -38,6 +38,7 @@ import com.checkit.ui.RepeatPreset
 import com.checkit.ui.SubTaskEditorState
 import com.checkit.ui.TaskListDisplayType
 import com.checkit.ui.TaskEditorState
+import com.checkit.ui.TaskListEntry
 import com.checkit.ui.TaskSortOption
 import com.checkit.ui.TaskUiState
 import com.checkit.ui.TaskWorkspaceView
@@ -102,6 +103,14 @@ class TaskViewModel(
         }
     }
 
+    fun selectBoard() {
+        _uiState.update {
+            it.copy(selectedListId = null, selectedFilterId = null, selectedTagId = null)
+                .refreshVisibleItems()
+                .coerceViewToAvailable()
+        }
+    }
+
     fun selectList(listId: Long) {
         _uiState.update {
             it.copy(selectedListId = listId, selectedFilterId = null, selectedTagId = null)
@@ -111,8 +120,9 @@ class TaskViewModel(
     }
 
     fun selectFilter(filterId: Long) {
-        _uiState.update {
-            it.copy(selectedListId = null, selectedFilterId = filterId, selectedTagId = null)
+        _uiState.update { state ->
+            val nextFilterId = filterId.takeUnless { state.selectedFilterId == filterId }
+            state.copy(selectedListId = null, selectedFilterId = nextFilterId, selectedTagId = null)
                 .refreshVisibleItems()
                 .coerceViewToAvailable()
         }
@@ -147,6 +157,10 @@ class TaskViewModel(
         viewModelScope.launch {
             settingsRepository.setTaskShowCompleted(showCompleted)
         }
+    }
+
+    fun updateSearchText(searchText: String) {
+        _uiState.update { it.copy(searchText = searchText).refreshVisibleItems() }
     }
 
     fun selectSortOption(sortOption: TaskSortOption) {
@@ -624,7 +638,6 @@ class TaskViewModel(
 
     private fun TaskUiState.withBoard(board: TaskBoard): TaskUiState {
         val nextListId = selectedListId?.takeIf { selectedId -> board.lists.any { it.id == selectedId } }
-            ?: board.lists.firstOrNull()?.id
         val nextFilterId = selectedFilterId?.takeIf { selectedId -> board.filters.any { it.id == selectedId } }
         val nextTagId = selectedTagId?.takeIf { selectedId -> board.tags.any { it.id == selectedId } }
         return copy(
@@ -648,7 +661,10 @@ class TaskViewModel(
         }
         val selection = selectedFilter?.let { TaskBoardSelection.FilterSelection(it) }
             ?: selectedListId?.let { TaskBoardSelection.ListSelection(it) }
-            ?: return copy(visibleTasks = emptyList(), visibleNotes = emptyList())
+            ?: return withVisibleItems(
+                tasks = board.tasks.filter { task -> !task.isTrashed },
+                notes = board.notes.filter { note -> !note.isTrashed }
+            )
         val items = selectTaskBoardItems(board, selection, today())
         return withVisibleItems(items.tasks, items.notes)
     }
@@ -668,39 +684,107 @@ class TaskViewModel(
         } else {
             notes
         }
+        val query = searchText.trim()
+        val searchFilteredTasks = if (query.isEmpty()) {
+            completionFilteredTasks
+        } else {
+            completionFilteredTasks.filter { it.matchesSearch(query) }
+        }
+        val searchFilteredNotes = if (query.isEmpty()) {
+            completionFilteredNotes
+        } else {
+            completionFilteredNotes.filter { it.matchesSearch(query) }
+        }
+        val visibleItems = searchFilteredTasks.map { TaskListEntry.Task(it) } +
+            searchFilteredNotes.map { TaskListEntry.Note(it) }
+        val sortedVisibleItems = visibleItems.sortedFor(sortOption)
         return copy(
-            visibleTasks = completionFilteredTasks.sortedTasksFor(sortOption),
-            visibleNotes = completionFilteredNotes.sortedNotesFor(sortOption)
+            visibleTasks = sortedVisibleItems.mapNotNull { (it as? TaskListEntry.Task)?.item },
+            visibleNotes = sortedVisibleItems.mapNotNull { (it as? TaskListEntry.Note)?.item },
+            visibleListItems = sortedVisibleItems
         )
     }
 }
 
-private fun List<TaskItem>.sortedTasksFor(sortOption: TaskSortOption): List<TaskItem> =
+private fun TaskItem.matchesSearch(query: String): Boolean =
+    name.contains(query, ignoreCase = true) ||
+        description.contains(query, ignoreCase = true)
+
+private fun NoteItem.matchesSearch(query: String): Boolean =
+    title.contains(query, ignoreCase = true) ||
+        content.contains(query, ignoreCase = true)
+
+private fun List<TaskListEntry>.sortedFor(sortOption: TaskSortOption): List<TaskListEntry> =
     when (sortOption) {
-        TaskSortOption.Custom -> sortedWith(compareBy<TaskItem> { it.sortOrder }.thenBy { it.doDate })
-        TaskSortOption.Priority -> sortedWith(
-            compareBy<TaskItem> { it.priority.rankForSort() }
-                .thenBy { it.doDate ?: LocalDate.fromEpochDays(Int.MAX_VALUE) }
-                .thenBy { it.sortOrder }
+        TaskSortOption.Custom -> sortedWith(
+            compareBy<TaskListEntry> { it.sortOrder }
+                .thenBy { it.typeRank }
+                .thenBy { it.id }
         )
-        TaskSortOption.Title -> sortedWith(compareBy<TaskItem> { it.name.lowercase() }.thenBy { it.sortOrder })
-        TaskSortOption.Date -> sortedWith(
-            compareBy<TaskItem> { it.doDate ?: LocalDate.fromEpochDays(Int.MAX_VALUE) }
-                .thenBy { it.startTimeMinutes ?: Int.MAX_VALUE }
+        TaskSortOption.Priority -> sortedWith(
+            compareBy<TaskListEntry> { it.priorityRank }
+                .thenBy { it.dateForSort ?: LocalDate.fromEpochDays(Int.MAX_VALUE) }
+                .thenBy { it.startTimeForSort ?: Int.MAX_VALUE }
                 .thenBy { it.sortOrder }
+                .thenBy { it.typeRank }
+                .thenBy { it.id }
+        )
+        TaskSortOption.Title -> sortedWith(
+            compareBy<TaskListEntry> { it.titleForSort }
+                .thenBy { it.sortOrder }
+                .thenBy { it.typeRank }
+                .thenBy { it.id }
+        )
+        TaskSortOption.Date -> sortedWith(
+            compareBy<TaskListEntry> { it.dateForSort ?: LocalDate.fromEpochDays(Int.MAX_VALUE) }
+                .thenBy { it.startTimeForSort ?: Int.MAX_VALUE }
+                .thenBy { it.sortOrder }
+                .thenBy { it.typeRank }
+                .thenBy { it.id }
         )
     }
 
-private fun List<NoteItem>.sortedNotesFor(sortOption: TaskSortOption): List<NoteItem> =
-    when (sortOption) {
-        TaskSortOption.Custom,
-        TaskSortOption.Priority -> sortedBy { it.sortOrder }
-        TaskSortOption.Title -> sortedWith(
-            compareBy<NoteItem> { it.title.ifBlank { it.content }.lowercase() }
-                .thenBy { it.sortOrder }
-        )
-        TaskSortOption.Date -> sortedWith(compareBy<NoteItem> { it.date }.thenBy { it.sortOrder })
+private val TaskListEntry.id: Long
+    get() = when (this) {
+        is TaskListEntry.Task -> item.id
+        is TaskListEntry.Note -> item.id
     }
+
+private val TaskListEntry.sortOrder: Int
+    get() = when (this) {
+        is TaskListEntry.Task -> item.sortOrder
+        is TaskListEntry.Note -> item.sortOrder
+    }
+
+private val TaskListEntry.typeRank: Int
+    get() = when (this) {
+        is TaskListEntry.Task -> 0
+        is TaskListEntry.Note -> 1
+    }
+
+private val TaskListEntry.priorityRank: Int
+    get() = when (this) {
+        is TaskListEntry.Task -> item.priority.rankForSort()
+        is TaskListEntry.Note -> TaskPriority.None.rankForSort()
+    }
+
+private val TaskListEntry.dateForSort: LocalDate?
+    get() = when (this) {
+        is TaskListEntry.Task -> item.doDate
+        is TaskListEntry.Note -> item.date
+    }
+
+private val TaskListEntry.startTimeForSort: Int?
+    get() = when (this) {
+        is TaskListEntry.Task -> item.startTimeMinutes
+        is TaskListEntry.Note -> item.startTimeMinutes
+    }
+
+private val TaskListEntry.titleForSort: String
+    get() = when (this) {
+        is TaskListEntry.Task -> item.name
+        is TaskListEntry.Note -> item.title.ifBlank { item.content }
+    }.lowercase()
 
 private fun TaskPriority.rankForSort(): Int =
     when (this) {

@@ -1,4 +1,4 @@
-package com.checkit.ui.components
+package com.checkit.ui.tasks
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
@@ -13,14 +13,17 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.PriorityHigh
@@ -49,16 +52,22 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import com.checkit.domain.TaskFilter
 import com.checkit.ui.TaskSortOption
 import com.checkit.ui.TaskWorkspaceView
-import com.checkit.ui.tasks.ContentContainerAlpha
-import com.checkit.ui.tasks.icon
+import com.checkit.ui.components.AppOutlinedTextField
+import com.checkit.ui.theme.materialIcon
 
 
 @Composable
 internal fun ViewOptionsMenu(
     showCompleted: Boolean,
     onShowCompletedChange: (Boolean) -> Unit,
+    searchText: String,
+    onSearchTextChange: (String) -> Unit,
+    filters: List<TaskFilter>,
+    selectedFilterId: Long?,
+    selectFilter: (Long) -> Unit,
     availableViews: List<TaskWorkspaceView>,
     selectedView: TaskWorkspaceView,
     selectView: (view: TaskWorkspaceView) -> Unit,
@@ -67,6 +76,8 @@ internal fun ViewOptionsMenu(
 ) {
     var isPopupOpen by remember { mutableStateOf(false) }
     val visibleState = remember { MutableTransitionState(false) }
+    val hasActiveItemOptions = showCompleted || searchText.isNotBlank() || selectedFilterId != null
+    val scopeFilters = remember(filters) { filters.filterNot { it.isAllTasksFilter() } }
 
     Box(
         modifier = Modifier.wrapContentSize(Alignment.TopEnd)
@@ -80,10 +91,18 @@ internal fun ViewOptionsMenu(
             Box(modifier = Modifier.size(24.dp)) {
                 Icon(
                     imageVector = Icons.Outlined.Tune,
-                    contentDescription = "view options",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    contentDescription = if (hasActiveItemOptions) "View options active" else "View options",
+                    tint = if (hasActiveItemOptions) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.align(Alignment.Center)
                 )
+                if (hasActiveItemOptions) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .size(8.dp)
+                            .background(MaterialTheme.colorScheme.primary, CircleShape)
+                    )
+                }
             }
         }
 
@@ -139,7 +158,33 @@ internal fun ViewOptionsMenu(
                                 }
                             }
 
+                            if (scopeFilters.isNotEmpty()) {
+                                OptionSectionLabel("Scope")
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    scopeFilters.forEach { filter ->
+                                        ViewOptionChip(
+                                            icon = materialIcon(filter.icon),
+                                            label = filter.name,
+                                            selected = selectedFilterId == filter.id,
+                                            onClick = { selectFilter(filter.id) }
+                                        )
+                                    }
+                                }
+                            }
+
                             OptionSectionLabel("Items")
+                            AppOutlinedTextField(
+                                value = searchText,
+                                onValueChange = onSearchTextChange,
+                                placeholder = "Search tasks and notes",
+                                maxLines = 1,
+                                textStyle = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.fillMaxWidth().widthIn(min = 220.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+                            )
                             ViewOptionChip(
                                 icon = if (showCompleted) Icons.Default.CheckCircle else Icons.Default.TaskAlt,
                                 label = if (showCompleted) "Hide completed" else "Show completed",
@@ -170,6 +215,13 @@ internal fun ViewOptionsMenu(
         }
     }
 }
+
+private fun TaskFilter.isAllTasksFilter(): Boolean =
+    tagId == null &&
+        dueDatePreset == null &&
+        status == null &&
+        priority == null &&
+        !includeTrashed
 
 @Composable
 private fun OptionSectionLabel(text: String) {
@@ -235,7 +287,7 @@ internal fun ViewOptionChip(
 
 private fun TaskSortOption.icon(): ImageVector =
     when (this) {
-        TaskSortOption.Custom -> Icons.Default.ViewList
+        TaskSortOption.Custom -> Icons.AutoMirrored.Filled.ViewList
         TaskSortOption.Priority -> Icons.Default.PriorityHigh
         TaskSortOption.Title -> Icons.Default.SortByAlpha
         TaskSortOption.Date -> Icons.Default.Event

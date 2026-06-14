@@ -34,7 +34,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.checkit.domain.TaskFilter
 import com.checkit.domain.TaskList
 import com.checkit.domain.TaskTag
 import com.checkit.ui.theme.materialIcon
@@ -43,13 +42,12 @@ import com.checkit.ui.theme.toColor
 @Composable
 internal fun TaskSidebar(
     lists: List<TaskList>,
-    filters: List<TaskFilter>,
     tags: List<TaskTag>,
+    isBoardSelected: Boolean,
     selectedListId: Long?,
-    selectedFilterId: Long?,
     selectedTagId: Long?,
+    onBoardClick: () -> Unit,
     onListClick: (Long) -> Unit,
-    onFilterClick: (Long) -> Unit,
     onTagClick: (Long) -> Unit,
     onAddListClick: () -> Unit,
     onEditListClick: (TaskList) -> Unit,
@@ -65,6 +63,19 @@ internal fun TaskSidebar(
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             item {
+                SidebarHeader("Board")
+            }
+            item {
+                SidebarItem(
+                    title = "All tasks",
+                    icon = materialIcon("AllInclusive"),
+                    color = MaterialTheme.colorScheme.primary,
+                    selected = isBoardSelected,
+                    onClick = onBoardClick
+                )
+            }
+            item {
+                Spacer(Modifier.height(10.dp))
                 SidebarHeader(
                     text = "Lists",
                     action = {
@@ -88,19 +99,6 @@ internal fun TaskSidebar(
                     onLongClick = {
                         onEditListClick(list)
                     }
-                )
-            }
-            item {
-                Spacer(Modifier.height(10.dp))
-                SidebarHeader("Filters")
-            }
-            items(filters, key = { "filter-${it.id}" }) { filter ->
-                SidebarItem(
-                    title = filter.name,
-                    icon = materialIcon(filter.icon),
-                    color = filter.color.toColor(),
-                    selected = selectedFilterId == filter.id,
-                    onClick = { onFilterClick(filter.id) }
                 )
             }
             item {

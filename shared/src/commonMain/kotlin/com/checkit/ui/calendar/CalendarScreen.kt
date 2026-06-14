@@ -49,6 +49,7 @@ import com.checkit.domain.usecase.BuildDailyPlanMarkdownSummaryUseCase
 import com.checkit.ui.CalendarDateMarkers
 import com.checkit.ui.CalendarDisplayMode
 import com.checkit.ui.CalendarUiState
+import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.firstDayOfMonth
 import com.checkit.ui.isSameMonth
@@ -110,7 +111,13 @@ internal fun CalendarScreen(
                 title = {
                     Text(stringResource(Res.string.calendar_title), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
                 },
-                actions = {}
+                actions = {
+                    TagOptionMenu(
+                        availableTags = state.board.tags,
+                        selectedTagIds = state.selectedTagIds,
+                        onTagToggle = calendarViewModel::toggleTagFilter
+                    )
+                }
             )
         }
     ) { padding ->

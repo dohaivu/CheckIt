@@ -41,6 +41,31 @@ class UseCaseTest {
     }
 
     @Test
+    fun noDateFilterReturnsUndatedTasksOnly() {
+        val board = TaskBoard(
+            tasks = listOf(
+                task(id = 1, doDate = null),
+                task(id = 2, doDate = null, priority = TaskPriority.High),
+                task(id = 3, doDate = today)
+            ),
+            notes = listOf(note(id = 4, date = today))
+        )
+        val filter = TaskFilter(
+            id = 5,
+            name = "No date",
+            icon = "Schedule",
+            color = "#7C3AED",
+            dueDatePreset = DueDatePreset.NoDate,
+            sortOrder = 0
+        )
+
+        val items = selectItems(board, TaskBoardSelection.FilterSelection(filter), today)
+
+        assertEquals(listOf(1L, 2L), items.tasks.map { it.id })
+        assertEquals(emptyList(), items.notes.map { it.id })
+    }
+
+    @Test
     fun tagAndPriorityFilterCanBeCombined() {
         val tag = TaskTag(id = 7, name = "Work", color = "#7C3AED")
         val board = TaskBoard(
