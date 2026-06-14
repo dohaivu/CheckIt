@@ -447,17 +447,12 @@ private fun List<DailyPlan>.toDigest(period: ReportPeriod, selectedDate: LocalDa
     val endExclusive = digestPeriod.periodEndExclusive(selectedDate)
     val periodItems = asSequence()
         .filter { plan -> plan.date >= start && plan.date < endExclusive }
-        .flatMap { it.items.asSequence() }
-        .toList()
-    val actionItems = periodItems.filter { it.source != DailyPlanItemSource.CheckInNote }
-    val doneItems = actionItems
-        .asSequence()
-        .filter { it.status == DailyPlanItemStatus.Done }
-        .toList()
-    val plannedItemCount = actionItems.count { it.status == DailyPlanItemStatus.Planned }
-    val highlights = asSequence()
-        .filter { plan -> plan.date >= start && plan.date < endExclusive }
         .flatMap { plan -> plan.items.asSequence().map { item -> plan.date to item } }
+        .toList()
+    val actionItems = periodItems.map { it.second }.filter { it.isActionableDigestItem() }
+    val doneItemCount = actionItems.count { it.status == DailyPlanItemStatus.Done }
+    val plannedItemCount = actionItems.count { it.status == DailyPlanItemStatus.Planned }
+    val highlights = periodItems.asSequence()
         .filter { (_, item) -> item.status == DailyPlanItemStatus.Done }
         .sortedWith(
             compareBy<Pair<LocalDate, DailyPlanItem>> { (_, item) -> item.workMinutes() == 0 }
@@ -467,7 +462,7 @@ private fun List<DailyPlan>.toDigest(period: ReportPeriod, selectedDate: LocalDa
         )
         .take(8)
         .map { (date, item) ->
-            WeeklyDigestHighlight(
+            DigestHighlight(
                 date = date,
                 title = item.title,
                 note = item.note,
@@ -481,7 +476,7 @@ private fun List<DailyPlan>.toDigest(period: ReportPeriod, selectedDate: LocalDa
         endDate = endExclusive.minus(1, DateTimeUnit.DAY),
         totalItemCount = periodItems.size,
         totalMinutes = days.sumOf { it.totalMinutes },
-        doneItemCount = doneItems.size,
+        doneItemCount = doneItemCount,
         plannedItemCount = plannedItemCount,
         activeDayCount = days.count { it.totalMinutes > 0 },
         busiestDay = days.maxByOrNull { it.totalMinutes }?.takeIf { it.totalMinutes > 0 },
@@ -489,6 +484,9 @@ private fun List<DailyPlan>.toDigest(period: ReportPeriod, selectedDate: LocalDa
         highlights = highlights
     )
 }
+
+private fun DailyPlanItem.isActionableDigestItem(): Boolean =
+    source == DailyPlanItemSource.CheckInManualDone || source == DailyPlanItemSource.ExistingTask
 
 private fun List<DailyPlan>.dailyPlansWorkMinutesInRange(startDate: LocalDate, endDateExclusive: LocalDate): Int =
     asSequence()
@@ -555,10 +553,10 @@ data class DigestReportSummary(
     val activeDayCount: Int,
     val busiestDay: TimeReportItem?,
     val topTags: List<TagReportItem>,
-    val highlights: List<WeeklyDigestHighlight>
+    val highlights: List<DigestHighlight>
 )
 
-data class WeeklyDigestHighlight(
+data class DigestHighlight(
     val date: LocalDate,
     val title: String,
     val note: String?,

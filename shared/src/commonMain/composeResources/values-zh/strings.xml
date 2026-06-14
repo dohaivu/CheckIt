@@ -25,7 +25,6 @@
     <string name="weekly_digest_total_items">项目总数</string>
     <string name="weekly_digest_total_time">已完成工作时间</string>
     <string name="weekly_digest_done_items">已完成项目</string>
-    <string name="weekly_digest_planned_items">计划项目</string>
     <string name="weekly_digest_active_days">活跃天数</string>
     <string name="weekly_digest_busiest_day">最忙的一天</string>
     <string name="weekly_digest_top_tags">热门标签</string>

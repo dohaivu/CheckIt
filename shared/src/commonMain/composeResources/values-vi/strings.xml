@@ -25,7 +25,6 @@
     <string name="weekly_digest_total_items">Tổng số mục</string>
     <string name="weekly_digest_total_time">Thời gian hoàn thành</string>
     <string name="weekly_digest_done_items">Mục đã xong</string>
-    <string name="weekly_digest_planned_items">Mục đã lên kế hoạch</string>
     <string name="weekly_digest_active_days">Ngày hoạt động</string>
     <string name="weekly_digest_busiest_day">Ngày bận nhất</string>
     <string name="weekly_digest_top_tags">Nhãn hàng đầu</string>

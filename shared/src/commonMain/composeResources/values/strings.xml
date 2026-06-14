@@ -25,7 +25,6 @@
     <string name="weekly_digest_total_items">Total items</string>
     <string name="weekly_digest_total_time">Done work time</string>
     <string name="weekly_digest_done_items">Done items</string>
-    <string name="weekly_digest_planned_items">Planned items</string>
     <string name="weekly_digest_active_days">Active days</string>
     <string name="weekly_digest_busiest_day">Busiest day</string>
     <string name="weekly_digest_top_tags">Top tags</string>
