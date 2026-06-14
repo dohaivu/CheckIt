@@ -3,13 +3,18 @@
     <string name="clear_text">Clear text</string>
 
     <string name="calendar_title">Calendar</string>
+    <string name="weekly">Weekly</string>
     <string name="monthly">Monthly</string>
     <string name="annual">Annual</string>
+    <string name="previous_week">Previous week</string>
+    <string name="next_week">Next week</string>
     <string name="previous_month">Previous month</string>
     <string name="next_month">Next month</string>
     <string name="previous_year">Previous year</string>
     <string name="next_year">Next year</string>
     <string name="year_range">Jan 01 - Dec 31</string>
+    <string name="tags_report_title">Tags</string>
+    <string name="tags_report_empty">No done work time with tags in this period.</string>
     <string name="month_january">January</string>
     <string name="month_february">February</string>
     <string name="month_march">March</string>

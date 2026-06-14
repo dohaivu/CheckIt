@@ -3,13 +3,18 @@
     <string name="clear_text">清除文本</string>
 
     <string name="calendar_title">日历</string>
+    <string name="weekly">按周</string>
     <string name="monthly">按月</string>
     <string name="annual">按年</string>
+    <string name="previous_week">上一周</string>
+    <string name="next_week">下一周</string>
     <string name="previous_month">上个月</string>
     <string name="next_month">下个月</string>
     <string name="previous_year">上一年</string>
     <string name="next_year">下一年</string>
     <string name="year_range">1月1日 - 12月31日</string>
+    <string name="tags_report_title">标签</string>
+    <string name="tags_report_empty">此周期内没有带标签的已完成工作时间。</string>
     <string name="month_january">一月</string>
     <string name="month_february">二月</string>
     <string name="month_march">三月</string>

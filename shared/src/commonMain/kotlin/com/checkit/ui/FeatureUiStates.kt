@@ -20,6 +20,9 @@ import com.checkit.ui.theme.AppIconColorDefaults
 import com.checkit.ui.theme.parseHexColorOrNull
 import com.checkit.ui.theme.toColor
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 
 data class TaskUiState(
     val activeTagToken: ActiveTagToken? = null,
@@ -353,8 +356,62 @@ private fun DailyPlanItem.workMinutes(): Int {
     return (end - start).coerceAtLeast(0)
 }
 
+private fun List<DailyPlan>.toTagReports(startDate: LocalDate, endDateExclusive: LocalDate): List<TagReportItem> =
+    asSequence()
+        .filter { plan -> plan.date >= startDate && plan.date < endDateExclusive }
+        .flatMap { plan -> plan.items.asSequence() }
+        .filter { item -> item.status == DailyPlanItemStatus.Done }
+        .flatMap { item ->
+            val minutes = item.workMinutes()
+            if (minutes <= 0) {
+                emptySequence()
+            } else {
+                item.tags.asSequence().map { tag -> tag to minutes }
+            }
+        }
+        .groupBy({ (tag, _) -> tag }, { (_, minutes) -> minutes })
+        .map { (tag, minutes) ->
+            TagReportItem(
+                tagId = tag.id,
+                name = tag.name,
+                color = tag.color,
+                totalMinutes = minutes.sum()
+            )
+        }
+        .sortedWith(compareByDescending<TagReportItem> { it.totalMinutes }.thenBy { it.name.lowercase() })
+
+private fun ReportPeriod.periodStart(date: LocalDate): LocalDate = when (this) {
+    ReportPeriod.Week -> date.firstDayOfWeek()
+    ReportPeriod.Month -> date.firstDayOfMonth()
+    ReportPeriod.Annual -> LocalDate(date.year, 1, 1)
+}
+
+private fun ReportPeriod.periodEndExclusive(date: LocalDate): LocalDate = when (this) {
+    ReportPeriod.Week -> periodStart(date).plus(7, DateTimeUnit.DAY)
+    ReportPeriod.Month -> periodStart(date).plus(1, DateTimeUnit.MONTH)
+    ReportPeriod.Annual -> periodStart(date).plus(1, DateTimeUnit.YEAR)
+}
+
+private fun LocalDate.firstDayOfWeek(): LocalDate =
+    minus(dayOfWeek.ordinal, DateTimeUnit.DAY)
+
 data class ReportUiState(
-    val selectedMonth: kotlinx.datetime.LocalDate = today().firstDayOfMonth(),
+    val selectedPeriod: ReportPeriod = ReportPeriod.Week,
+    val selectedDate: kotlinx.datetime.LocalDate = today(),
+    val dailyPlans: List<DailyPlan> = emptyList(),
+    val isLoading: Boolean = true,
+    val message: String? = null
+) {
+    val tagReports: List<TagReportItem> by lazy {
+        dailyPlans.toTagReports(selectedPeriod.periodStart(selectedDate), selectedPeriod.periodEndExclusive(selectedDate))
+    }
+}
+
+data class TagReportItem(
+    val tagId: Long,
+    val name: String,
+    val color: String,
+    val totalMinutes: Int
 )
 
 data class SettingsUiState(

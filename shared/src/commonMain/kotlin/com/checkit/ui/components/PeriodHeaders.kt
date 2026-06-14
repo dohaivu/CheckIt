@@ -4,12 +4,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronLeft
@@ -27,12 +29,17 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.checkit.ui.localizedMonthTitle
+import com.checkit.ui.localizedShortMonthName
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 import org.jetbrains.compose.resources.stringResource
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.*
 
 enum class ReportPeriod {
+    Week,
     Month,
     Annual
 }
@@ -81,8 +88,69 @@ internal fun ReportPeriodSwitcher(
 
 @Composable
 private fun ReportPeriod.label(): String = when (this) {
+    ReportPeriod.Week -> stringResource(Res.string.weekly)
     ReportPeriod.Month -> stringResource(Res.string.monthly)
     ReportPeriod.Annual -> stringResource(Res.string.annual)
+}
+
+@Composable
+internal fun ReportPeriodHeader(
+    selectedPeriod: ReportPeriod,
+    selectedDate: LocalDate,
+    onPeriodSelected: (ReportPeriod) -> Unit,
+    onPreviousPeriod: () -> Unit,
+    onNextPeriod: () -> Unit,
+    onCurrentPeriod: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        ReportPeriodSwitcher(
+            selectedPeriod = selectedPeriod,
+            onPeriodSelected = onPeriodSelected
+        )
+        when (selectedPeriod) {
+            ReportPeriod.Week -> WeekHeader(
+                week = selectedDate,
+                onPreviousWeek = onPreviousPeriod,
+                onNextWeek = onNextPeriod,
+                onCurrentWeek = onCurrentPeriod
+            )
+            ReportPeriod.Month -> MonthHeader(
+                month = selectedDate,
+                onPreviousMonth = onPreviousPeriod,
+                onNextMonth = onNextPeriod,
+                onCurrentMonth = onCurrentPeriod
+            )
+            ReportPeriod.Annual -> YearHeader(
+                year = selectedDate.year,
+                onPreviousYear = onPreviousPeriod,
+                onNextYear = onNextPeriod,
+                onCurrentYear = onCurrentPeriod
+            )
+        }
+    }
+}
+
+@Composable
+internal fun WeekHeader(
+    week: LocalDate,
+    onPreviousWeek: () -> Unit,
+    onNextWeek: () -> Unit,
+    onCurrentWeek: () -> Unit
+) {
+    val start = week.firstDayOfWeek()
+    val end = start.plus(6, DateTimeUnit.DAY)
+    PeriodHeader(
+        title = weekRangeTitle(start, end),
+        onPrevious = onPreviousWeek,
+        onNext = onNextWeek,
+        onCurrentPeriod = onCurrentWeek,
+        previousContentDescription = stringResource(Res.string.previous_week),
+        nextContentDescription = stringResource(Res.string.next_week)
+    )
 }
 
 @Composable
@@ -133,7 +201,7 @@ private fun PeriodHeader(
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         IconButton(onClick = onPrevious) {
             Icon(Icons.Default.ChevronLeft, contentDescription = previousContentDescription)
@@ -146,11 +214,14 @@ private fun PeriodHeader(
                 .pointerInput(onCurrentPeriod) {
                     detectTapGestures(onDoubleTap = { onCurrentPeriod() })
                 }
-                .padding(horizontal = 14.dp, vertical = 7.dp),
+                .padding(horizontal = 8.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
-            Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+            )
             if (subtitle != null) {
                 Text(
                     text = "($subtitle)",
@@ -159,15 +230,23 @@ private fun PeriodHeader(
                     modifier = Modifier.padding(start = 2.dp)
                 )
             }
-            Icon(
-                Icons.Default.CalendarMonth,
-                contentDescription = null,
-                modifier = Modifier.padding(start = 14.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
         }
         IconButton(onClick = onNext) {
             Icon(Icons.Default.ChevronRight, contentDescription = nextContentDescription)
         }
+    }
+}
+
+private fun LocalDate.firstDayOfWeek(): LocalDate =
+    minus(dayOfWeek.ordinal, DateTimeUnit.DAY)
+
+@Composable
+private fun weekRangeTitle(start: LocalDate, end: LocalDate): String {
+    val startLabel = "${start.localizedShortMonthName()} ${start.day}"
+    val endLabel = "${end.localizedShortMonthName()} ${end.day}"
+    return if (start.year == end.year) {
+        "$startLabel - $endLabel, ${end.year}"
+    } else {
+        "$startLabel, ${start.year} - $endLabel, ${end.year}"
     }
 }

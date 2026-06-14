@@ -3,13 +3,18 @@
     <string name="clear_text">Xóa văn bản</string>
 
     <string name="calendar_title">Lịch</string>
+    <string name="weekly">Theo tuần</string>
     <string name="monthly">Theo tháng</string>
     <string name="annual">Theo năm</string>
+    <string name="previous_week">Tuần trước</string>
+    <string name="next_week">Tuần sau</string>
     <string name="previous_month">Tháng trước</string>
     <string name="next_month">Tháng sau</string>
     <string name="previous_year">Năm trước</string>
     <string name="next_year">Năm sau</string>
     <string name="year_range">01 Thg 1 - 31 Thg 12</string>
+    <string name="tags_report_title">Nhãn</string>
+    <string name="tags_report_empty">Không có thời gian hoàn thành theo nhãn trong kỳ này.</string>
     <string name="month_january">Tháng 1</string>
     <string name="month_february">Tháng 2</string>
     <string name="month_march">Tháng 3</string>
