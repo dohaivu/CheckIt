@@ -18,21 +18,24 @@ data class TaskUiState(
     val activeTagToken: ActiveTagToken? = null,
     val tagSuggestions: List<String> = emptyList(),
     val board: TaskBoard = TaskBoard(),
-    val selectedListId: Long? = null,
-    val selectedFilterId: Long? = null,
-    val selectedTagId: Long? = null,
-    val selectedView: TaskWorkspaceView = TaskWorkspaceView.List,
-    val listDisplayType: TaskListDisplayType = TaskListDisplayType.Standard,
-    val showCompleted: Boolean = false,
-    val searchText: String = "",
-    val sortOption: TaskSortOption = TaskSortOption.Custom,
-    val visibleTasks: List<TaskItem> = emptyList(),
-    val visibleNotes: List<NoteItem> = emptyList(),
-    val visibleListItems: List<TaskListEntry> = emptyList(),
+    val selection: TaskSelectionState = TaskSelectionState(),
+    val options: TaskViewOptionsState = TaskViewOptionsState(),
+    val visibleItems: TaskVisibleItemsState = TaskVisibleItemsState(),
     val editor: TaskEditorState? = null,
     val isLoading: Boolean = true,
     val message: String? = null
 ) {
+    val selectedListId: Long? get() = selection.selectedListId
+    val selectedFilterId: Long? get() = selection.selectedFilterId
+    val selectedTagId: Long? get() = selection.selectedTagId
+    val selectedView: TaskWorkspaceView get() = options.selectedView
+    val listDisplayType: TaskListDisplayType get() = options.listDisplayType
+    val showCompleted: Boolean get() = options.showCompleted
+    val searchText: String get() = options.searchText
+    val sortOption: TaskSortOption get() = options.sortOption
+    val visibleTasks: List<TaskItem> get() = visibleItems.tasks
+    val visibleNotes: List<NoteItem> get() = visibleItems.notes
+    val visibleListItems: List<TaskListEntry> get() = visibleItems.listItems
     val selectedList: TaskList? = board.lists.firstOrNull { it.id == selectedListId }
     val selectedFilter: TaskFilter? = board.filters.firstOrNull { it.id == selectedFilterId }
     val selectedTag = board.tags.firstOrNull { it.id == selectedTagId }
@@ -44,6 +47,26 @@ data class TaskUiState(
         TaskWorkspaceView.entries.filter { it != TaskWorkspaceView.Timeline }
     }
 }
+
+data class TaskSelectionState(
+    val selectedListId: Long? = null,
+    val selectedFilterId: Long? = null,
+    val selectedTagId: Long? = null
+)
+
+data class TaskViewOptionsState(
+    val selectedView: TaskWorkspaceView = TaskWorkspaceView.List,
+    val listDisplayType: TaskListDisplayType = TaskListDisplayType.Standard,
+    val showCompleted: Boolean = false,
+    val searchText: String = "",
+    val sortOption: TaskSortOption = TaskSortOption.Custom
+)
+
+data class TaskVisibleItemsState(
+    val tasks: List<TaskItem> = emptyList(),
+    val notes: List<NoteItem> = emptyList(),
+    val listItems: List<TaskListEntry> = emptyList()
+)
 
 sealed interface TaskListEntry {
     val key: String

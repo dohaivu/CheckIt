@@ -38,6 +38,7 @@ fun AppOutlinedTextField(
     maxLines: Int = Int.MAX_VALUE,
     modifier: Modifier = Modifier.fillMaxWidth(),
     enabled: Boolean = true,
+    clearEnabled: Boolean = false,
     contentPadding: PaddingValues = PaddingValues(horizontal = 0.dp, vertical = 0.dp)
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -77,6 +78,22 @@ fun AppOutlinedTextField(
                             )
                         }
                     } else null,
+                trailingIcon = if (clearEnabled) {
+                    {
+                        if (value.isNotEmpty()) {
+                            IconButton(
+                                onClick = { onValueChange("") },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Clear,
+                                    contentDescription = stringResource(Res.string.clear_text),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+                } else null,
                 visualTransformation = VisualTransformation.None,
                 interactionSource = interactionSource,
                 contentPadding = contentPadding,

@@ -4,6 +4,7 @@ import com.checkit.domain.DueDatePreset
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskFilter
 import com.checkit.domain.TaskPriority
+import com.checkit.ui.TaskSelectionState
 import com.checkit.ui.TaskUiState
 import com.checkit.ui.TaskWorkspaceView
 import kotlin.test.Test
@@ -54,7 +55,7 @@ class TaskUiStateViewsTest {
     @Test
     fun availableViewsExcludesTimelineForNonTodayFilter() {
         val board = TaskBoard(filters = listOf(highPriorityFilter()))
-        val state = TaskUiState(board = board, selectedFilterId = 2L)
+        val state = TaskUiState(board = board, selection = TaskSelectionState(selectedFilterId = 2L))
 
         assertNull(state.dayLimit)
         assertFalse(TaskWorkspaceView.Timeline in state.availableViews)
@@ -63,7 +64,7 @@ class TaskUiStateViewsTest {
     @Test
     fun availableViewsIncludesTimelineForTodayFilter() {
         val board = TaskBoard(filters = listOf(todayFilter(), highPriorityFilter()))
-        val state = TaskUiState(board = board, selectedFilterId = 1L)
+        val state = TaskUiState(board = board, selection = TaskSelectionState(selectedFilterId = 1L))
 
         assertEquals(1, state.dayLimit)
         assertEquals(TaskWorkspaceView.entries, state.availableViews)
@@ -72,7 +73,7 @@ class TaskUiStateViewsTest {
     @Test
     fun availableViewsExcludesTimelineForAllFilter() {
         val board = TaskBoard(filters = listOf(allFilter(), todayFilter(), highPriorityFilter()))
-        val state = TaskUiState(board = board, selectedFilterId = 0L)
+        val state = TaskUiState(board = board, selection = TaskSelectionState(selectedFilterId = 0L))
 
         assertNull(state.dayLimit)
         assertEquals(
@@ -84,7 +85,7 @@ class TaskUiStateViewsTest {
     @Test
     fun availableViewsIsTimelineOnlyForListOrTagSelection() {
         val board = TaskBoard(filters = listOf(todayFilter(), highPriorityFilter()))
-        val state = TaskUiState(board = board, selectedFilterId = null, selectedListId = 99L)
+        val state = TaskUiState(board = board, selection = TaskSelectionState(selectedListId = 99L))
 
         assertNull(state.dayLimit)
         assertFalse(TaskWorkspaceView.Timeline in state.availableViews)
