@@ -47,18 +47,21 @@ import kotlinx.datetime.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun DatePickerRow(
+internal fun DatePicker(
     modifier: Modifier = Modifier,
     date: LocalDate?,
     startTimeMinutes: Int?,
     endTimeMinutes: Int?,
     durationMinutes: Int?,
     onDateChange: (LocalDate?) -> Unit,
-    onStartTimeChange: ((Int?) -> Unit)?,
+    onStartTimeChange: ((Int?) -> Unit),
     onEndTimeChange: ((Int?) -> Unit)?,
     enabled: Boolean = true
 ) {
     var showPicker by remember { mutableStateOf(false) }
+    var startTime by remember { mutableStateOf(startTimeMinutes) }
+    var endTime by remember { mutableStateOf(endTimeMinutes) }
+
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -74,17 +77,21 @@ internal fun DatePickerRow(
 
     if (enabled && showPicker) {
         val datePickerState = rememberDatePickerState(initialSelectedDateMillis = date?.toUtcStartMillis())
-
+        fun dismiss() {
+            showPicker = false
+            startTime = startTimeMinutes
+            endTime = endTimeMinutes
+        }
         AlertDialog(
-            onDismissRequest = { showPicker = false },
+            onDismissRequest = { dismiss() },
             confirmButton = {
                 Row(
                     modifier = Modifier,
-                    horizontalArrangement = Arrangement.Start // Forces left alignment
+                    horizontalArrangement = Arrangement.Start
                 ) {
                     TextButton(onClick = {
                         onDateChange(null)
-                        onStartTimeChange?.invoke(null)
+                        onStartTimeChange.invoke(null)
                         onEndTimeChange?.invoke(null)
 
                         showPicker = false
@@ -92,13 +99,16 @@ internal fun DatePickerRow(
                         Text("Clear", color = MaterialTheme.colorScheme.error)
                     }
                     Spacer(modifier = Modifier.weight(1f))
-                    TextButton(onClick = { showPicker = false }) {
+                    TextButton(onClick = { dismiss() }) {
                         Text("Cancel")
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     TextButton(
                         onClick = {
                             onDateChange(datePickerState.selectedDateMillis?.toUtcLocalDate())
+                            onStartTimeChange.invoke(startTime)
+                            onEndTimeChange?.invoke(endTime)
+
                             showPicker = false
                         }
                     ) {
@@ -123,15 +133,18 @@ internal fun DatePickerRow(
                         showModeToggle = false,
                         colors = DatePickerDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
                     )
-                    if (onStartTimeChange != null) {
-                        TimeRangePicker(
-                            startTimeMinutes = startTimeMinutes,
-                            endTimeMinutes = endTimeMinutes,
-                            durationMinutes = durationMinutes,
-                            onStartTimeChange = onStartTimeChange,
-                            onEndTimeChange = onEndTimeChange
-                        )
-                    }
+
+                    TimeRangePicker(
+                        startTimeMinutes = startTime,
+                        endTimeMinutes = endTime,
+                        durationMinutes = durationMinutes,
+                        onStartTimeChange = {
+                            startTime = it
+                        },
+                        onEndTimeChange = {
+                            endTime = it
+                        }
+                    )
                 }
             }
         )

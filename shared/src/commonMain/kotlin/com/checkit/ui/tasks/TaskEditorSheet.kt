@@ -2,7 +2,6 @@ package com.checkit.ui.tasks
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -62,7 +61,7 @@ import com.checkit.ui.EditorMode
 import com.checkit.ui.RepeatPreset
 import com.checkit.ui.TaskEditorState
 import com.checkit.ui.components.AppOutlinedTextField
-import com.checkit.ui.components.DatePickerRow
+import com.checkit.ui.components.DatePicker
 import com.checkit.ui.components.ListPicker
 import com.checkit.ui.components.PriorityPicker
 import com.checkit.ui.components.ReminderPicker
@@ -404,7 +403,7 @@ private fun TaskFormContent(
                 completed = form.status == TaskStatus.Completed,
                 color = form.priority.priorityColor()
             )
-            DatePickerRow(
+            DatePicker(
                 modifier = Modifier.weight(1f),
                 date = form.doDate,
                 onDateChange = onDoDateChange,
@@ -584,7 +583,7 @@ private fun NoteFormContent(
             enabled = enabled
         )
 
-        DatePickerRow(
+        DatePicker(
             date = form.date,
             onDateChange = {
                 it?.let {onDateChange.invoke(it)  }

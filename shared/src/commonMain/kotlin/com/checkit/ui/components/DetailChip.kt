@@ -1,6 +1,7 @@
 package com.checkit.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -35,6 +36,7 @@ internal fun DetailChip(
     label: String,
     modifier: Modifier = Modifier,
     iconTint: Color = MaterialTheme.colorScheme.primary,
+    isHighlighted: Boolean = false,
     onClick: (() -> Unit)? = null
 ) {
     Row(
@@ -47,7 +49,7 @@ internal fun DetailChip(
                     Modifier
                 }
             )
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .background( if (isHighlighted) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceContainerHigh)
             .padding(horizontal = 10.dp, vertical = 7.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically
