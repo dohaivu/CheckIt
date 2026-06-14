@@ -69,6 +69,7 @@ import com.checkit.ui.components.RepeatPicker
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.components.TimeRangePicker
 import com.checkit.ui.components.priorityColor
+import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -412,7 +413,8 @@ private fun TaskFormContent(
                 durationMinutes = form.durationMinutes,
                 onStartTimeChange = onStartTimeChange,
                 onEndTimeChange = onEndTimeChange,
-                enabled = enabled
+                enabled = enabled,
+                isOverdue = form.isTaskOverdue()
             )
         }
 
@@ -649,6 +651,18 @@ private fun TaskEditorState.isCompletableView(): Boolean = when (this) {
 private fun TaskEditorState.isOpenableView(): Boolean = when (this) {
     is TaskEditorState.TaskForm -> mode == EditorMode.Edit && status == TaskStatus.Completed && trashedAtMillis == null
     is TaskEditorState.NoteForm -> mode == EditorMode.Edit && status == TaskStatus.Completed && trashedAtMillis == null
+}
+
+private fun TaskEditorState.isTaskOverdue(): Boolean {
+    if (this !is TaskEditorState.TaskForm) return false
+    return if (status == TaskStatus.Completed || doDate == null) {
+        false
+    } else if (doDate < today()) {
+        true
+    } else if (doDate == today()) {
+        val deadline = endTimeMinutes ?: startTimeMinutes
+        deadline != null && currentTimeMinutes() > deadline
+    } else false
 }
 
 private fun DailyPlanItem.durationMinutes(): Int? {

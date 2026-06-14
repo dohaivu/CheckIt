@@ -56,7 +56,8 @@ internal fun DatePicker(
     onDateChange: (LocalDate?) -> Unit,
     onStartTimeChange: ((Int?) -> Unit),
     onEndTimeChange: ((Int?) -> Unit)?,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    isOverdue: Boolean = false
 ) {
     var showPicker by remember { mutableStateOf(false) }
     var startTime by remember { mutableStateOf(startTimeMinutes) }
@@ -69,6 +70,7 @@ internal fun DatePicker(
         DetailChip(
             icon = Icons.Default.Event,
             label = if (date == null) "No date" else dateTimeRangeDetailLabel(date, startTimeMinutes, endTimeMinutes),
+            isHighlighted = isOverdue,
             onClick = {
                 if (enabled) showPicker = true
             }
