@@ -15,6 +15,15 @@
     <string name="year_range">01 Thg 1 - 31 Thg 12</string>
     <string name="tags_report_title">Nhãn</string>
     <string name="tags_report_empty">Không có thời gian hoàn thành theo nhãn trong kỳ này.</string>
+    <string name="time_report_title">Thời gian</string>
+    <string name="time_report_empty">Không có thời gian hoàn thành trong kỳ này.</string>
+    <string name="weekly_digest_title">Tóm tắt tuần</string>
+    <string name="weekly_digest_empty">Không có công việc hoàn thành để tóm tắt trong tuần này.</string>
+    <string name="weekly_digest_total_time">Thời gian hoàn thành</string>
+    <string name="weekly_digest_done_items">Mục đã xong</string>
+    <string name="weekly_digest_active_days">Ngày hoạt động</string>
+    <string name="weekly_digest_busiest_day">Ngày bận nhất</string>
+    <string name="weekly_digest_top_tags">Nhãn hàng đầu</string>
     <string name="month_january">Tháng 1</string>
     <string name="month_february">Tháng 2</string>
     <string name="month_march">Tháng 3</string>

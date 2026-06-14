@@ -15,6 +15,15 @@
     <string name="year_range">Jan 01 - Dec 31</string>
     <string name="tags_report_title">Tags</string>
     <string name="tags_report_empty">No done work time with tags in this period.</string>
+    <string name="time_report_title">Time</string>
+    <string name="time_report_empty">No done work time in this period.</string>
+    <string name="weekly_digest_title">Weekly digest</string>
+    <string name="weekly_digest_empty">No completed work to summarize this week.</string>
+    <string name="weekly_digest_total_time">Done work time</string>
+    <string name="weekly_digest_done_items">Done items</string>
+    <string name="weekly_digest_active_days">Active days</string>
+    <string name="weekly_digest_busiest_day">Busiest day</string>
+    <string name="weekly_digest_top_tags">Top tags</string>
     <string name="month_january">January</string>
     <string name="month_february">February</string>
     <string name="month_march">March</string>

@@ -356,6 +356,13 @@ private fun DailyPlanItem.workMinutes(): Int {
     return (end - start).coerceAtLeast(0)
 }
 
+private fun List<DailyPlan>.doneWorkMinutesForDate(date: LocalDate): Int =
+    firstOrNull { it.date == date }
+        ?.items
+        .orEmpty()
+        .filter { it.status == DailyPlanItemStatus.Done }
+        .sumOf { it.workMinutes() }
+
 private fun List<DailyPlan>.toTagReports(startDate: LocalDate, endDateExclusive: LocalDate): List<TagReportItem> =
     asSequence()
         .filter { plan -> plan.date >= startDate && plan.date < endDateExclusive }
@@ -379,6 +386,76 @@ private fun List<DailyPlan>.toTagReports(startDate: LocalDate, endDateExclusive:
             )
         }
         .sortedWith(compareByDescending<TagReportItem> { it.totalMinutes }.thenBy { it.name.lowercase() })
+
+private fun List<DailyPlan>.toTimeReports(period: ReportPeriod, selectedDate: LocalDate): List<TimeReportItem> =
+    when (period) {
+        ReportPeriod.Week -> {
+            val start = period.periodStart(selectedDate)
+            (0 until 7).map { offset ->
+                val date = start.plus(offset, DateTimeUnit.DAY)
+                TimeReportItem(
+                    startDate = date,
+                    endDate = date,
+                    totalMinutes = doneWorkMinutesForDate(date)
+                )
+            }
+        }
+        ReportPeriod.Month,
+        ReportPeriod.Annual -> {
+            val periodStart = period.periodStart(selectedDate)
+            val periodEnd = period.periodEndExclusive(selectedDate)
+            generateSequence(periodStart.firstDayOfWeek()) { it.plus(7, DateTimeUnit.DAY) }
+                .takeWhile { weekStart -> weekStart < periodEnd }
+                .map { weekStart ->
+                    val weekEnd = weekStart.plus(6, DateTimeUnit.DAY)
+                    val total = dailyPlansWorkMinutesInRange(
+                        startDate = maxOf(weekStart, periodStart),
+                        endDateExclusive = minOf(weekEnd.plus(1, DateTimeUnit.DAY), periodEnd)
+                    )
+                    TimeReportItem(
+                        startDate = maxOf(weekStart, periodStart),
+                        endDate = minOf(weekEnd, periodEnd.minus(1, DateTimeUnit.DAY)),
+                        totalMinutes = total
+                    )
+                }
+                .toList()
+        }
+    }
+
+private fun List<DailyPlan>.toWeeklyDigest(selectedDate: LocalDate): WeeklyDigestReport {
+    val start = ReportPeriod.Week.periodStart(selectedDate)
+    val days = (0 until 7).map { offset ->
+        val date = start.plus(offset, DateTimeUnit.DAY)
+        TimeReportItem(
+            startDate = date,
+            endDate = date,
+            totalMinutes = doneWorkMinutesForDate(date)
+        )
+    }
+    val endExclusive = start.plus(7, DateTimeUnit.DAY)
+    val doneItems = asSequence()
+        .filter { plan -> plan.date >= start && plan.date < endExclusive }
+        .flatMap { it.items.asSequence() }
+        .filter { it.status == DailyPlanItemStatus.Done }
+        .toList()
+
+    return WeeklyDigestReport(
+        startDate = start,
+        endDate = start.plus(6, DateTimeUnit.DAY),
+        totalMinutes = days.sumOf { it.totalMinutes },
+        doneItemCount = doneItems.size,
+        activeDayCount = days.count { it.totalMinutes > 0 },
+        busiestDay = days.maxByOrNull { it.totalMinutes }?.takeIf { it.totalMinutes > 0 },
+        topTags = toTagReports(start, endExclusive).take(3)
+    )
+}
+
+private fun List<DailyPlan>.dailyPlansWorkMinutesInRange(startDate: LocalDate, endDateExclusive: LocalDate): Int =
+    asSequence()
+        .filter { plan -> plan.date >= startDate && plan.date < endDateExclusive }
+        .flatMap { it.items.asSequence() }
+        .filter { it.status == DailyPlanItemStatus.Done }
+        .sumOf { it.workMinutes() }
 
 private fun ReportPeriod.periodStart(date: LocalDate): LocalDate = when (this) {
     ReportPeriod.Week -> date.firstDayOfWeek()
@@ -405,6 +482,12 @@ data class ReportUiState(
     val tagReports: List<TagReportItem> by lazy {
         dailyPlans.toTagReports(selectedPeriod.periodStart(selectedDate), selectedPeriod.periodEndExclusive(selectedDate))
     }
+    val timeReports: List<TimeReportItem> by lazy {
+        dailyPlans.toTimeReports(selectedPeriod, selectedDate)
+    }
+    val weeklyDigest: WeeklyDigestReport by lazy {
+        dailyPlans.toWeeklyDigest(selectedDate)
+    }
 }
 
 data class TagReportItem(
@@ -412,6 +495,22 @@ data class TagReportItem(
     val name: String,
     val color: String,
     val totalMinutes: Int
+)
+
+data class TimeReportItem(
+    val startDate: LocalDate,
+    val endDate: LocalDate,
+    val totalMinutes: Int
+)
+
+data class WeeklyDigestReport(
+    val startDate: LocalDate,
+    val endDate: LocalDate,
+    val totalMinutes: Int,
+    val doneItemCount: Int,
+    val activeDayCount: Int,
+    val busiestDay: TimeReportItem?,
+    val topTags: List<TagReportItem>
 )
 
 data class SettingsUiState(
