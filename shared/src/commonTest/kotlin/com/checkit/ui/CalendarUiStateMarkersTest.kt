@@ -8,8 +8,10 @@ import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskList
+import com.checkit.domain.TaskTag
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -54,6 +56,62 @@ class CalendarUiStateMarkersTest {
         assertEquals(3, markers.totalCount)
     }
 
+    @Test
+    fun dailyPlanForDateFiltersItemsBySelectedTags() {
+        val date = today()
+        val tagOne = tag(id = 1L)
+        val tagTwo = tag(id = 2L)
+        val tagThree = tag(id = 3L)
+        val state = CalendarUiState(
+            dailyPlans = listOf(
+                dailyPlan(
+                    date = date,
+                    items = listOf(
+                        dailyPlanItem(id = 1L, source = DailyPlanItemSource.ExistingTask, tags = listOf(tagOne)),
+                        dailyPlanItem(id = 2L, source = DailyPlanItemSource.ExistingTask, tags = listOf(tagTwo)),
+                        dailyPlanItem(id = 3L, source = DailyPlanItemSource.ExistingTask, tags = listOf(tagThree)),
+                        dailyPlanItem(id = 4L, source = DailyPlanItemSource.CheckInManualDone)
+                    )
+                )
+            ),
+            selectedTagIds = setOf(tagOne.id, tagTwo.id)
+        )
+
+        val itemIds = state.dailyPlanForDate(date)?.items.orEmpty().map { it.id }
+
+        assertEquals(listOf(1L, 2L), itemIds)
+    }
+
+    @Test
+    fun pastDateMarkersUseSelectedTagFilterAcrossDates() {
+        val date = today()
+        val otherDate = today().minus(1, DateTimeUnit.DAY)
+        val selectedTag = tag(id = 1L)
+        val otherTag = tag(id = 2L)
+        val state = CalendarUiState(
+            dailyPlans = listOf(
+                dailyPlan(
+                    date = date,
+                    items = listOf(
+                        dailyPlanItem(id = 1L, source = DailyPlanItemSource.ExistingTask, tags = listOf(selectedTag)),
+                        dailyPlanItem(id = 2L, source = DailyPlanItemSource.ExistingTask, tags = listOf(otherTag))
+                    )
+                ),
+                dailyPlan(
+                    date = otherDate,
+                    items = listOf(
+                        dailyPlanItem(id = 3L, source = DailyPlanItemSource.ExistingTask, tags = listOf(selectedTag)),
+                        dailyPlanItem(id = 4L, source = DailyPlanItemSource.ExistingTask)
+                    )
+                )
+            ),
+            selectedTagIds = setOf(selectedTag.id)
+        )
+
+        assertEquals(CalendarDateMarkers(totalCount = 1), state.markersForDate(date))
+        assertEquals(CalendarDateMarkers(totalCount = 1), state.markersForDate(otherDate))
+    }
+
     private fun dailyPlan(
         date: LocalDate,
         items: List<DailyPlanItem>
@@ -67,15 +125,23 @@ class CalendarUiStateMarkersTest {
 
     private fun dailyPlanItem(
         id: Long,
-        source: DailyPlanItemSource
+        source: DailyPlanItemSource,
+        tags: List<TaskTag> = emptyList()
     ) = DailyPlanItem(
         id = id,
         dailyPlanId = 1L,
         title = "Item $id",
         source = source,
         status = DailyPlanItemStatus.Planned,
+        tags = tags,
         sortOrder = id.toInt(),
         addedAtMillis = 0L
+    )
+
+    private fun tag(id: Long) = TaskTag(
+        id = id,
+        name = "Tag $id",
+        color = "#FFFFFF"
     )
 
     private fun task(

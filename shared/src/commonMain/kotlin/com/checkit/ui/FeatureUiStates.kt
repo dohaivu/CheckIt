@@ -252,16 +252,28 @@ data class CalendarUiState(
     val board: TaskBoard = TaskBoard(),
     val dailyPlans: List<DailyPlan> = emptyList(),
     val showDailyPlanSummary: Boolean = false,
-    val calendarDisplayMode: CalendarDisplayMode = CalendarDisplayMode.Month
+    val calendarDisplayMode: CalendarDisplayMode = CalendarDisplayMode.Month,
+    val selectedTagIds: Set<Long> = emptySet()
 ) {
-    val dailyPlanByDate: Map<kotlinx.datetime.LocalDate, DailyPlan> = dailyPlans.associateBy { it.date }
+    private val filteredDailyPlans: List<DailyPlan> by lazy {
+        if (selectedTagIds.isEmpty()) {
+            dailyPlans
+        } else {
+            dailyPlans.mapNotNull { plan ->
+                val filteredItems = plan.items.filter { item -> item.hasAnyTag(selectedTagIds) }
+                if (filteredItems.isEmpty()) null else plan.copy(items = filteredItems)
+            }
+        }
+    }
+
+    val dailyPlanByDate: Map<kotlinx.datetime.LocalDate, DailyPlan> = filteredDailyPlans.associateBy { it.date }
 
     private val dailyPlanMarkersByDate: Map<kotlinx.datetime.LocalDate, CalendarDateMarkers> by lazy {
-        dailyPlans.associate { plan -> plan.date to CalendarDateMarkers(totalCount = plan.items.size) }
+        filteredDailyPlans.associate { plan -> plan.date to CalendarDateMarkers(totalCount = plan.items.size) }
     }
 
     private val dailyPlanWorkMinutesByDate: Map<kotlinx.datetime.LocalDate, Int> by lazy {
-        dailyPlans.associate { plan -> plan.date to plan.items.sumOf { it.workMinutes() } }
+        filteredDailyPlans.associate { plan -> plan.date to plan.items.sumOf { it.workMinutes() } }
     }
 
     private val futureMarkersByDate: Map<kotlinx.datetime.LocalDate, CalendarDateMarkers> by lazy {
@@ -334,6 +346,9 @@ data class CalendarUiState(
         val DefaultMarkerColor: Color = AppIconColorDefaults.FallbackColor
     }
 }
+
+private fun DailyPlanItem.hasAnyTag(tagIds: Set<Long>): Boolean =
+    tags.any { it.id in tagIds }
 
 data class CalendarDateMarkers(
     val totalCount: Int = 0
