@@ -97,6 +97,8 @@ internal fun TaskScreen(
                         ViewOptionsMenu(
                             showCompleted = state.showCompleted,
                             onShowCompletedChange = viewModel::setShowCompleted,
+                            searchText = state.searchText,
+                            onSearchTextChange = viewModel::updateSearchText,
                             availableViews = state.availableViews,
                             selectedView = state.selectedView,
                             selectView = viewModel::selectView,

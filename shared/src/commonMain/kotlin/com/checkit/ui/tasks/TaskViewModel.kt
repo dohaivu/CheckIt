@@ -150,6 +150,10 @@ class TaskViewModel(
         }
     }
 
+    fun updateSearchText(searchText: String) {
+        _uiState.update { it.copy(searchText = searchText).refreshVisibleItems() }
+    }
+
     fun selectSortOption(sortOption: TaskSortOption) {
         _uiState.update { it.copy(sortOption = sortOption).refreshVisibleItems() }
         viewModelScope.launch {
@@ -669,8 +673,19 @@ class TaskViewModel(
         } else {
             notes
         }
-        val visibleItems = completionFilteredTasks.map { TaskListEntry.Task(it) } +
-            completionFilteredNotes.map { TaskListEntry.Note(it) }
+        val query = searchText.trim()
+        val searchFilteredTasks = if (query.isEmpty()) {
+            completionFilteredTasks
+        } else {
+            completionFilteredTasks.filter { it.matchesSearch(query) }
+        }
+        val searchFilteredNotes = if (query.isEmpty()) {
+            completionFilteredNotes
+        } else {
+            completionFilteredNotes.filter { it.matchesSearch(query) }
+        }
+        val visibleItems = searchFilteredTasks.map { TaskListEntry.Task(it) } +
+            searchFilteredNotes.map { TaskListEntry.Note(it) }
         val sortedVisibleItems = visibleItems.sortedFor(sortOption)
         return copy(
             visibleTasks = sortedVisibleItems.mapNotNull { (it as? TaskListEntry.Task)?.item },
@@ -679,6 +694,14 @@ class TaskViewModel(
         )
     }
 }
+
+private fun TaskItem.matchesSearch(query: String): Boolean =
+    name.contains(query, ignoreCase = true) ||
+        description.contains(query, ignoreCase = true)
+
+private fun NoteItem.matchesSearch(query: String): Boolean =
+    title.contains(query, ignoreCase = true) ||
+        content.contains(query, ignoreCase = true)
 
 private fun List<TaskListEntry>.sortedFor(sortOption: TaskSortOption): List<TaskListEntry> =
     when (sortOption) {

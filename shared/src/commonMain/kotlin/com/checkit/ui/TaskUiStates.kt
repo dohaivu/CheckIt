@@ -24,6 +24,7 @@ data class TaskUiState(
     val selectedView: TaskWorkspaceView = TaskWorkspaceView.List,
     val listDisplayType: TaskListDisplayType = TaskListDisplayType.Standard,
     val showCompleted: Boolean = false,
+    val searchText: String = "",
     val sortOption: TaskSortOption = TaskSortOption.Custom,
     val visibleTasks: List<TaskItem> = emptyList(),
     val visibleNotes: List<NoteItem> = emptyList(),

@@ -13,10 +13,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -51,12 +54,15 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import com.checkit.ui.TaskSortOption
 import com.checkit.ui.TaskWorkspaceView
+import com.checkit.ui.components.AppOutlinedTextField
 
 
 @Composable
 internal fun ViewOptionsMenu(
     showCompleted: Boolean,
     onShowCompletedChange: (Boolean) -> Unit,
+    searchText: String,
+    onSearchTextChange: (String) -> Unit,
     availableViews: List<TaskWorkspaceView>,
     selectedView: TaskWorkspaceView,
     selectView: (view: TaskWorkspaceView) -> Unit,
@@ -65,6 +71,7 @@ internal fun ViewOptionsMenu(
 ) {
     var isPopupOpen by remember { mutableStateOf(false) }
     val visibleState = remember { MutableTransitionState(false) }
+    val hasActiveItemOptions = showCompleted || searchText.isNotBlank()
 
     Box(
         modifier = Modifier.wrapContentSize(Alignment.TopEnd)
@@ -78,10 +85,18 @@ internal fun ViewOptionsMenu(
             Box(modifier = Modifier.size(24.dp)) {
                 Icon(
                     imageVector = Icons.Outlined.Tune,
-                    contentDescription = "view options",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    contentDescription = if (hasActiveItemOptions) "View options active" else "View options",
+                    tint = if (hasActiveItemOptions) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.align(Alignment.Center)
                 )
+                if (hasActiveItemOptions) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .size(8.dp)
+                            .background(MaterialTheme.colorScheme.primary, CircleShape)
+                    )
+                }
             }
         }
 
@@ -138,6 +153,15 @@ internal fun ViewOptionsMenu(
                             }
 
                             OptionSectionLabel("Items")
+                            AppOutlinedTextField(
+                                value = searchText,
+                                onValueChange = onSearchTextChange,
+                                placeholder = "Search tasks and notes",
+                                maxLines = 1,
+                                textStyle = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.fillMaxWidth().widthIn(min = 220.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+                            )
                             ViewOptionChip(
                                 icon = if (showCompleted) Icons.Default.CheckCircle else Icons.Default.TaskAlt,
                                 label = if (showCompleted) "Hide completed" else "Show completed",

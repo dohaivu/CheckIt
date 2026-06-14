@@ -208,6 +208,35 @@ class TaskViewModelViewsTest {
         assertEquals(listOf("note:Alpha", "task:Bravo", "note:Charlie", "task:Delta"), labels)
     }
 
+    @Test
+    fun searchFiltersTasksAndNotesByTitleAndBody() = runTest(dispatcher) {
+        val inbox = TaskList(id = 1L, name = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
+        viewModel = createViewModel(
+            TaskBoard(
+                lists = listOf(inbox),
+                tasks = listOf(
+                    task(id = 1L, list = inbox, name = "Budget", description = "Quarterly planning"),
+                    task(id = 2L, list = inbox, name = "Groceries", description = "Milk")
+                ),
+                notes = listOf(
+                    note(id = 3L, list = inbox, title = "Ideas", content = "Quarterly roadmap"),
+                    note(id = 4L, list = inbox, title = "Receipt", content = "Coffee")
+                )
+            )
+        )
+        dispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.updateSearchText("quarter")
+
+        val labels = viewModel.uiState.value.visibleListItems.map { entry ->
+            when (entry) {
+                is TaskListEntry.Task -> "task:${entry.item.name}"
+                is TaskListEntry.Note -> "note:${entry.item.title}"
+            }
+        }
+        assertEquals(listOf("task:Budget", "note:Ideas"), labels)
+    }
+
     private fun createViewModel(board: TaskBoard): TaskViewModel {
         repository = FakeCheckItRepository(initialBoard = board)
         return TaskViewModel(
@@ -232,20 +261,31 @@ class TaskViewModelViewsTest {
         )
     }
 
-    private fun task(id: Long, list: TaskList, name: String) = TaskItem(
+    private fun task(
+        id: Long,
+        list: TaskList,
+        name: String,
+        description: String = ""
+    ) = TaskItem(
         id = id,
         list = list,
         name = name,
+        description = description,
         sortOrder = id.toInt(),
         createdAtMillis = 0L,
         updatedAtMillis = 0L
     )
 
-    private fun note(id: Long, list: TaskList, title: String) = NoteItem(
+    private fun note(
+        id: Long,
+        list: TaskList,
+        title: String,
+        content: String = ""
+    ) = NoteItem(
         id = id,
         list = list,
         title = title,
-        content = "",
+        content = content,
         date = LocalDate(2026, 6, 14),
         createdAtMillis = 0L,
         editedAtMillis = 0L,
