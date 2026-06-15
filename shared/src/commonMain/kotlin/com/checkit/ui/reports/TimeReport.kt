@@ -38,7 +38,7 @@ import com.checkit.ui.components.ReportPeriodHeader
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.localizedShortMonthName
-import com.checkit.ui.tasks.formatDuration
+import com.checkit.ui.tasks.toDurationLabel
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -117,7 +117,7 @@ internal fun TimeReport(
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
-                        text = totalMinutes.formatDuration(),
+                        text = totalMinutes.toDurationLabel(),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -199,7 +199,7 @@ private fun TimeBarRow(
             }
         }
         Text(
-            text = item.totalMinutes.formatDuration(),
+            text = item.totalMinutes.toDurationLabel(),
             modifier = Modifier.widthIn(min = 54.dp),
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.SemiBold,

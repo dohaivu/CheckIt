@@ -88,11 +88,11 @@ fun LocalDate?.isOverdue(today: LocalDate, deadline: Int?, isCompleted: Boolean)
         else -> false
     }
 
-fun Int.formatDuration(): String {
+fun Int.toDurationLabel(compact: Boolean = false): String {
     val hours = this / 60
     val minutes = this % 60
     return when {
-        hours > 0 && minutes > 0 -> "${hours}h ${minutes}m"
+        hours > 0 && minutes > 0 -> "${hours}h${if(compact) "" else " "}${minutes}m"
         hours > 0 -> "${hours}h"
         else -> "${minutes}m"
     }

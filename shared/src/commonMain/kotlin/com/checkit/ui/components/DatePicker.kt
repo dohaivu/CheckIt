@@ -39,7 +39,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.unit.dp
 import com.checkit.ui.tasks.ContentContainerAlpha
 import com.checkit.ui.tasks.currentTimeMinutes
-import com.checkit.ui.tasks.formatDuration
+import com.checkit.ui.tasks.toDurationLabel
 import com.checkit.ui.tasks.toClockLabel
 import com.checkit.ui.toUtcLocalDate
 import com.checkit.ui.toUtcStartMillis
@@ -430,7 +430,7 @@ internal fun DurationText(
     modifier: Modifier = Modifier.Companion
 ) {
     Text(
-        text = duration.formatDuration(),
+        text = duration.toDurationLabel(),
         style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier

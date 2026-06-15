@@ -15,7 +15,6 @@ import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.rounded.CheckBox
 import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
@@ -38,7 +37,6 @@ import com.checkit.domain.TaskStatus
 import com.checkit.ui.TaskListDisplayType
 import com.checkit.ui.components.DateTimeRangeDetailChip
 import com.checkit.ui.components.DetailChip
-import com.checkit.ui.components.PriorityPill
 import com.checkit.ui.components.RepeatPill
 import com.checkit.ui.components.priorityColor
 
@@ -150,7 +148,7 @@ private fun DetailTaskRowContent(task: TaskItem, list: TaskList?) {
         TaskTitleRow(task, descriptionMaxLines = 3)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes, isOverdue = task.isOverdue())
-            task.durationMinutes?.let { DetailChip(Icons.Default.Schedule, it.formatDuration()) }
+            task.durationMinutes?.let { DetailChip(Icons.Default.Schedule, it.toDurationLabel()) }
             RepeatPill(task.repeatRRule)
             if (task.reminders.isNotEmpty()) DetailChip(Icons.Default.Notifications, "${task.reminders.size} reminders")
         }

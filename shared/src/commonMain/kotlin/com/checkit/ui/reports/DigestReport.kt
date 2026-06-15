@@ -73,7 +73,7 @@ import com.checkit.ui.components.ReportPeriodHeader
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.shortName
 import com.checkit.ui.tasks.cardColor
-import com.checkit.ui.tasks.formatDuration
+import com.checkit.ui.tasks.toDurationLabel
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.abs
@@ -221,7 +221,7 @@ private fun HeroSummaryCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = totalMinutes.formatDuration(),
+                        text = totalMinutes.toDurationLabel(),
                         style = MaterialTheme.typography.headlineLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -396,7 +396,7 @@ private fun WeeklyActivityChart(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(154.dp)
+                .height(170.dp)
                 .padding(horizontal = 18.dp, vertical = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Bottom
@@ -427,7 +427,7 @@ private fun ActivityBar(
     modifier: Modifier = Modifier
 ) {
     val fraction = if (maxMinutes == 0) 0f else item.totalMinutes.toFloat() / maxMinutes.toFloat()
-    val fillHeight = if (item.totalMinutes == 0) 8.dp else 88.dp * fraction.coerceIn(0.22f, 1f)
+    val fillHeight = if (item.totalMinutes == 0) 0.dp else 88.dp * fraction.coerceIn(0.22f, 1f)
     val barColor = if (selected) ReportBlue else ReportPurple
     val dayColor = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
 
@@ -436,38 +436,33 @@ private fun ActivityBar(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Bottom
     ) {
+        if (showValue) {
+            Text(
+                text = item.totalMinutes.toDurationLabel(compact = true),
+                modifier = Modifier
+//                        .align(Alignment.TopCenter)
+                    .padding(bottom = 8.dp),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = dayColor,
+                maxLines = 1
+            )
+        }
         Box(
-            modifier = Modifier.height(108.dp),
+            modifier = Modifier
+                .width(20.dp)
+                .height(88.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.62f)),
             contentAlignment = Alignment.BottomCenter
         ) {
-            if (showValue) {
-                Text(
-                    text = item.totalMinutes.formatDuration(),
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(bottom = 8.dp),
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = dayColor,
-                    maxLines = 1
-                )
-            }
             Box(
                 modifier = Modifier
-                    .width(20.dp)
-                    .height(88.dp)
+                    .fillMaxWidth()
+                    .height(fillHeight)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.62f)),
-                contentAlignment = Alignment.BottomCenter
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(fillHeight)
-                        .clip(CircleShape)
-                        .background(barColor)
-                )
-            }
+                    .background(barColor)
+            )
         }
         Text(
             text = item.startDate.dayOfWeek.shortName(),
@@ -591,7 +586,7 @@ private fun CompletedHighlightRow(
         }
         if (highlight.totalMinutes > 0) {
             Text(
-                text = highlight.totalMinutes.formatDuration(),
+                text = highlight.totalMinutes.toDurationLabel(),
                 modifier = Modifier.widthIn(min = 58.dp),
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Bold,
