@@ -14,8 +14,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.DailyPlanItem
+import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
+import com.checkit.domain.TaskStatus
 import com.checkit.ui.TaskWorkspaceView
 import com.checkit.ui.components.priorityColor
 import com.checkit.ui.shortMonthName
@@ -38,14 +40,14 @@ internal fun LocalDate.compact(): String {
     val today = today()
     val monthDay = "${shortMonthName()} $day"
     return when (this) {
-        today -> "Today, $monthDay"
-        today.plus(1, DateTimeUnit.DAY) -> "Tomorrow, $monthDay"
-        today.plus(-1, DateTimeUnit.DAY) -> "Yesterday, $monthDay"
+        today -> "Today"
+        today.plus(1, DateTimeUnit.DAY) -> "Tomorrow"
+        today.plus(-1, DateTimeUnit.DAY) -> "Yesterday"
         today.plus(2, DateTimeUnit.DAY),
         today.plus(3, DateTimeUnit.DAY),
         today.plus(4, DateTimeUnit.DAY),
         today.plus(5, DateTimeUnit.DAY),
-        today.plus(6, DateTimeUnit.DAY) -> "${dayOfWeek.shortName()}, $monthDay"
+        today.plus(6, DateTimeUnit.DAY) -> dayOfWeek.shortName()
         else -> {
             if (year == today.year) monthDay else "$monthDay, $year"
         }
@@ -70,11 +72,27 @@ fun TaskItem.timeRangeLabel(): String {
     return if (end == null) start else "$start - $end"
 }
 
-fun Int.formatDuration(): String {
+fun TaskItem.isOverdue(): Boolean {
+    return doDate.isOverdue(today(), endTimeMinutes, status == TaskStatus.Completed)
+}
+
+fun DailyPlanItem.isOverdue(date: LocalDate): Boolean {
+    return date.isOverdue(today(), endTimeMinutes, status == DailyPlanItemStatus.Done)
+}
+
+fun LocalDate?.isOverdue(today: LocalDate, deadline: Int?, isCompleted: Boolean): Boolean =
+    when {
+        isCompleted || this == null -> false
+        this < today -> true
+        this == today -> deadline != null && currentTimeMinutes() > deadline
+        else -> false
+    }
+
+fun Int.toDurationLabel(compact: Boolean = false): String {
     val hours = this / 60
     val minutes = this % 60
     return when {
-        hours > 0 && minutes > 0 -> "${hours}h ${minutes}m"
+        hours > 0 && minutes > 0 -> "${hours}h${if(compact) "" else " "}${minutes}m"
         hours > 0 -> "${hours}h"
         else -> "${minutes}m"
     }

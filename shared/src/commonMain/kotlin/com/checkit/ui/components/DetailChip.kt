@@ -1,6 +1,7 @@
 package com.checkit.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -35,6 +36,7 @@ internal fun DetailChip(
     label: String,
     modifier: Modifier = Modifier,
     iconTint: Color = MaterialTheme.colorScheme.primary,
+    isHighlighted: Boolean = false,
     onClick: (() -> Unit)? = null
 ) {
     Row(
@@ -47,7 +49,7 @@ internal fun DetailChip(
                     Modifier
                 }
             )
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .background( MaterialTheme.colorScheme.surfaceContainerHigh)
             .padding(horizontal = 10.dp, vertical = 7.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -63,7 +65,7 @@ internal fun DetailChip(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = if (isHighlighted) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -84,12 +86,14 @@ internal fun TimeRangeDetailChip(
 internal fun DateTimeRangeDetailChip(
     date: LocalDate?,
     startTimeMinutes: Int?,
-    endTimeMinutes: Int?
+    endTimeMinutes: Int?,
+    isOverdue: Boolean = false
 ) {
     if (date == null && startTimeMinutes == null && endTimeMinutes == null) return
     DetailChip(
         icon = if (date == null) Icons.Default.Schedule else Icons.Default.Event,
-        label = dateTimeRangeDetailLabel(date, startTimeMinutes, endTimeMinutes)
+        label = dateTimeRangeDetailLabel(date, startTimeMinutes, endTimeMinutes),
+        isHighlighted = isOverdue
     )
 }
 
@@ -108,7 +112,7 @@ internal fun dateTimeRangeDetailLabel(
     }
 }
 
-private fun timeRangeDetailLabel(
+internal fun timeRangeDetailLabel(
     startTimeMinutes: Int?,
     endTimeMinutes: Int?
 ): String = when {

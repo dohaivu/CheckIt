@@ -17,7 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.checkit.ui.TagReportItem
-import com.checkit.ui.tasks.formatDuration
+import com.checkit.ui.tasks.toDurationLabel
 import com.checkit.ui.theme.toColor
 
 @Composable
@@ -53,7 +53,7 @@ internal fun TagReportBarRow(
             )
         }
         Text(
-            text = item.totalMinutes.formatDuration(),
+            text = item.totalMinutes.toDurationLabel(),
             modifier = Modifier.widthIn(min = 54.dp),
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.SemiBold,

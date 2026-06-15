@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.TaskBoard
 import com.checkit.ui.tasks.cardColor
+import com.checkit.ui.tasks.toDurationLabel
 import kotlin.math.roundToInt
 
 @Composable
@@ -151,16 +152,6 @@ private fun List<DayTimelineBlock>.totalOccupiedMinutes(): Int {
         }
     }
     return total + currentEnd - currentStart
-}
-
-internal fun Int.toDurationLabel(): String {
-    val hours = this / 60
-    val minutes = this % 60
-    return when {
-        hours == 0 -> "${minutes}m"
-        minutes == 0 -> "${hours}h"
-        else -> "${hours}h ${minutes}m"
-    }
 }
 
 private const val DayTimelineStartMinutes = 6 * 60

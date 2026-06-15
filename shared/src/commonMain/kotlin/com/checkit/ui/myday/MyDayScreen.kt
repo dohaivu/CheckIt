@@ -25,6 +25,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -61,6 +62,7 @@ import com.checkit.ui.tasks.TimelineView
 import com.checkit.ui.tasks.TimelineItem
 import com.checkit.ui.tasks.TimelineItemType
 import com.checkit.ui.tasks.TaskTimelineCard
+import com.checkit.ui.tasks.isOverdue
 import com.checkit.ui.tasks.timeRangeLabel
 import com.checkit.ui.tasks.toClockLabel
 import kotlinx.datetime.LocalDate
@@ -154,7 +156,6 @@ internal fun MyDayScreen(
     if (state.showSuggestions) {
         SuggestionsSheet(
             tasks = state.suggestedTasks,
-            lists = state.board.lists,
             onDismiss = viewModel::dismissSuggestions,
             onTaskClick = {
                 onTaskClick.invoke(it, null)
@@ -225,7 +226,8 @@ internal fun MyDayAgenda(
                         TaskTimelineCard(
                             task = task,
                             timeLabel = tag.dailyPlanItem.dailyPlanTimeLabel(),
-                            completed = tag.dailyPlanItem.isDone()
+                            completed = tag.dailyPlanItem.isDone(),
+                            isOverdue = tag.dailyPlanItem.isOverdue(date)
                         )
                     }
                 }
@@ -288,7 +290,8 @@ private fun MyDayTimeline(
                     timeLabel = tag.dailyPlanItem.dailyPlanTimeLabel(),
                     selected = isSelected,
                     completed = tag.dailyPlanItem.isDone(),
-                    modifier = Modifier.matchParentSize()
+                    modifier = Modifier.matchParentSize(),
+                    isOverdue = tag.dailyPlanItem.isOverdue(date)
                 )
             }
         },
@@ -446,14 +449,12 @@ private fun SuggestionCard(
 @Composable
 private fun SuggestionsSheet(
     tasks: List<TaskItem>,
-    lists: List<TaskList>,
     onDismiss: () -> Unit,
     onTaskClick: (TaskItem) -> Unit,
     onAddTask: (TaskItem) -> Unit,
     onCreateTask: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val listById = remember(lists) { lists.associateBy { it.id } }
     ModalBottomSheet(
         onDismissRequest = onDismiss, 
         sheetState = sheetState,
@@ -474,8 +475,8 @@ private fun SuggestionsSheet(
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.SemiBold
                 )
-                Button(onClick = onCreateTask) {
-                    Text("Add")
+                OutlinedButton(onClick = onCreateTask) {
+                    Text("New Task")
                 }
             }
             if (tasks.isEmpty()) {

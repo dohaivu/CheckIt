@@ -2,31 +2,41 @@ package com.checkit.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.checkit.ui.localizedMonthTitle
 import com.checkit.ui.localizedCompactDateWithDayName
@@ -53,38 +63,66 @@ internal fun ReportPeriodSwitcher(
     periods: List<ReportPeriod> = ReportPeriod.entries,
     modifier: Modifier = Modifier
 ) {
+    val fillAvailableWidth = periods.size > 2
     Row(
-        modifier = modifier
-            .height(34.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = if (fillAvailableWidth) {
+            modifier
+                .fillMaxWidth()
+                .height(44.dp)
+        } else {
+            modifier.height(44.dp)
+        },
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         periods.forEach { period ->
-            FilterChip(
-                selected = selectedPeriod == period,
-                onClick = { onPeriodSelected(period) },
-                label = {
-                    Text(
-                        text = period.label(),
-                        style = MaterialTheme.typography.labelLarge
+            val selected = selectedPeriod == period
+            Box(
+                modifier = Modifier
+                    .height(42.dp)
+                    .then(
+                        if (fillAvailableWidth) {
+                            Modifier.weight(1f)
+                        } else {
+                            Modifier.widthIn(min = 96.dp)
+                        }
                     )
-                },
-                modifier = Modifier.height(32.dp),
-                shape = CircleShape,
-                colors = FilterChipDefaults.filterChipColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer
-                ),
-                border = FilterChipDefaults.filterChipBorder(
-                    enabled = true,
-                    selected = selectedPeriod == period,
-                    borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f),
-                    selectedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.72f)
+                    .clip(CircleShape)
+                    .background(
+                        brush = if (selected) {
+                            Brush.horizontalGradient(listOf(ReportHeaderBlue, ReportHeaderPurple))
+                        } else {
+                            Brush.horizontalGradient(
+                                listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surface)
+                            )
+                        }
+                    )
+                    .border(
+                        width = 1.dp,
+                        color = if (selected) {
+                            Color.Transparent
+                        } else {
+                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f)
+                        },
+                        shape = CircleShape
+                    )
+                    .clickable { onPeriodSelected(period) }
+                    .padding(horizontal = 16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = period.label(),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (selected) {
+                        Color.White
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-            )
+            }
         }
     }
 }
@@ -227,41 +265,59 @@ private fun PeriodHeader(
     nextContentDescription: String,
     subtitle: String? = null
 ) {
-    Row(
+    Card(
         modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        border = CardDefaults.outlinedCardBorder().copy(
+            brush = Brush.linearGradient(
+                listOf(
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.18f)
+                )
+            )
+        )
     ) {
-        IconButton(onClick = onPrevious) {
-            Icon(Icons.Default.ChevronLeft, contentDescription = previousContentDescription)
-        }
         Row(
             modifier = Modifier
-                .weight(1f)
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f), RoundedCornerShape(14.dp))
-                .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f), RoundedCornerShape(14.dp))
-                .pointerInput(onCurrentPeriod) {
-                    detectTapGestures(onDoubleTap = { onCurrentPeriod() })
-                }
-                .padding(horizontal = 8.dp, vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
+                .fillMaxWidth()
+                .height(62.dp)
+                .padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-            )
-            if (subtitle != null) {
+            IconButton(onClick = onPrevious) {
+                Icon(Icons.Default.ChevronLeft, contentDescription = previousContentDescription)
+            }
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .pointerInput(onCurrentPeriod) {
+                        detectTapGestures(onDoubleTap = { onCurrentPeriod() })
+                    },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CalendarMonth,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.width(12.dp))
                 Text(
-                    text = "($subtitle)",
+                    text = if (subtitle == null) title else "$title ($subtitle)",
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 2.dp)
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
-        }
-        IconButton(onClick = onNext) {
-            Icon(Icons.Default.ChevronRight, contentDescription = nextContentDescription)
+            IconButton(onClick = onNext) {
+                Icon(Icons.Default.ChevronRight, contentDescription = nextContentDescription)
+            }
         }
     }
 }
@@ -279,3 +335,6 @@ private fun weekRangeTitle(start: LocalDate, end: LocalDate): String {
         "$startLabel, ${start.year} - $endLabel, ${end.year}"
     }
 }
+
+private val ReportHeaderBlue = Color(0xFF3E72F2)
+private val ReportHeaderPurple = Color(0xFF7B5CF0)

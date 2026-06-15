@@ -48,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
@@ -181,9 +182,13 @@ internal fun ViewOptionsMenu(
                                 onValueChange = onSearchTextChange,
                                 placeholder = "Search tasks and notes",
                                 maxLines = 1,
-                                textStyle = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.fillMaxWidth().widthIn(min = 220.dp),
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+                                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    fontWeight = FontWeight.Normal
+                                ),
+                                clearEnabled = true,
+                                modifier = Modifier.fillMaxWidth().widthIn(min = 150.dp),
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
                             )
                             ViewOptionChip(
                                 icon = if (showCompleted) Icons.Default.CheckCircle else Icons.Default.TaskAlt,

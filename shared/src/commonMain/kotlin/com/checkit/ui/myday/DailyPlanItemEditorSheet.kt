@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -78,6 +79,7 @@ internal fun DailyPlanItemEditorSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(0.7f)
+                .padding(bottom = 24.dp)
                 .windowInsetsPadding(WindowInsets.ime)
         ) {
             DailyPlanItemSheetHeader(
@@ -89,9 +91,9 @@ internal fun DailyPlanItemEditorSheet(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f, fill = false)
+                    .weight(1f)
                     .padding(horizontal = 20.dp),
-                contentPadding = PaddingValues(top = 6.dp, bottom = 24.dp),
+                contentPadding = PaddingValues(top = 6.dp, bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 item {
@@ -106,20 +108,8 @@ internal fun DailyPlanItemEditorSheet(
                         enabled = enabled
                     )
                 }
-                if (state.isAddMode && enabled) {
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Button(onClick = onAdd) {
-                                Text("Add CheckIn")
-                            }
-                        }
-                    }
-                }
             }
+            DailyPlanItemSheetFooter(state.isAddMode, enabled, onAdd)
         }
     }
 }
@@ -159,6 +149,25 @@ private fun DailyPlanItemSheetHeader(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DailyPlanItemSheetFooter(
+    isAddMode: Boolean,
+    enabled: Boolean,
+    onAdd: () -> Unit,
+) {
+    if (isAddMode && enabled) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Button(onClick = onAdd) {
+                Text("Add CheckIn")
             }
         }
     }
@@ -230,11 +239,12 @@ private fun DailyPlanItemFormContent(
                 ),
                 maxLines = 5,
                 placeholder = "Note",
-                enabled = enabled
+                enabled = enabled,
+                modifier = Modifier.heightIn(min = 130.dp)
             )
 
             TimePicker(
-                label = "Start",
+                label = "",
                 timeMinutes = state.startTimeMinutes,
                 initialTimeMinutes = currentTimeMinutes(),
                 onTimeChange = onStartTimeChange,
@@ -268,7 +278,8 @@ private fun DailyPlanItemFormContent(
                     fontWeight = FontWeight.Normal
                 ),
                 maxLines = 5,
-                enabled = enabled
+                enabled = enabled,
+                modifier = Modifier.heightIn(min = 130.dp)
             )
 
             TimeRangePicker(

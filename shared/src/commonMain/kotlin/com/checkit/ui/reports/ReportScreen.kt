@@ -80,8 +80,8 @@ internal fun ReportScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 16.dp, vertical = 14.dp)
+                .padding(top = padding.calculateTopPadding())
+                .padding(horizontal = 16.dp, vertical = 0.dp)
         ) {
             DigestReport(
                 state = state,

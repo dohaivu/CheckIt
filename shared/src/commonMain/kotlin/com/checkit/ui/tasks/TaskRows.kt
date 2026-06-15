@@ -11,10 +11,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.rounded.CheckBox
 import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
@@ -37,7 +37,6 @@ import com.checkit.domain.TaskStatus
 import com.checkit.ui.TaskListDisplayType
 import com.checkit.ui.components.DateTimeRangeDetailChip
 import com.checkit.ui.components.DetailChip
-import com.checkit.ui.components.PriorityPill
 import com.checkit.ui.components.RepeatPill
 import com.checkit.ui.components.priorityColor
 
@@ -129,7 +128,7 @@ private fun BriefTaskRowContent(task: TaskItem) {
             overflow = TextOverflow.Ellipsis
         )
 
-        task.doDate?.let { DetailChip(Icons.Default.Event, it.compact()) }
+        task.doDate?.let { DetailChip(Icons.Default.Event, it.compact(), isHighlighted = task.isOverdue()) }
     }
 }
 
@@ -137,7 +136,7 @@ private fun BriefTaskRowContent(task: TaskItem) {
 private fun StandardTaskRowContent(task: TaskItem, list: TaskList?) {
     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         TaskTitleRow(task, descriptionMaxLines = 0)
-        DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes)
+        DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes, isOverdue = task.isOverdue())
         task.subtasks.takeIf { it.isNotEmpty() }?.let { SubtaskProgressText(task) }
         SupportingPills(list = list, tags = task.tags.take(2), overflowCount = (task.tags.size - 2).coerceAtLeast(0))
     }
@@ -148,8 +147,8 @@ private fun DetailTaskRowContent(task: TaskItem, list: TaskList?) {
     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         TaskTitleRow(task, descriptionMaxLines = 3)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes)
-            task.durationMinutes?.let { DetailChip(Icons.Default.Schedule, it.formatDuration()) }
+            DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes, isOverdue = task.isOverdue())
+            task.durationMinutes?.let { DetailChip(Icons.Default.Schedule, it.toDurationLabel()) }
             RepeatPill(task.repeatRRule)
             if (task.reminders.isNotEmpty()) DetailChip(Icons.Default.Notifications, "${task.reminders.size} reminders")
         }
@@ -228,7 +227,7 @@ internal fun TaskStatusIcon(completed: Boolean, color: Color) {
 }
 
 @Composable
-private fun SubtaskProgressText(task: TaskItem) {
+internal fun SubtaskProgressText(task: TaskItem) {
     Text(
         text = "${task.subtasks.count { it.isCompleted }}/${task.subtasks.size} subtasks",
         style = MaterialTheme.typography.labelSmall,
@@ -275,9 +274,9 @@ private fun NoteRowScaffold(
 }
 
 @Composable
-private fun NoteStatusIcon(status: TaskStatus) {
+internal fun NoteStatusIcon(status: TaskStatus) {
     Icon(
-        imageVector = if (status == TaskStatus.Completed) Icons.Default.CheckCircle else Icons.Default.Notes,
+        imageVector = if (status == TaskStatus.Completed) Icons.Default.CheckCircle else Icons.AutoMirrored.Filled.Notes,
         contentDescription = null,
         tint = if (status == TaskStatus.Completed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
         modifier = Modifier.size(22.dp)

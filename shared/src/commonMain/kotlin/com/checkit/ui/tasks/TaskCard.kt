@@ -52,6 +52,7 @@ internal fun TaskCard(
     minHeight: Dp = 64.dp,
     contentPadding: PaddingValues = PaddingValues(horizontal = 10.dp, vertical = 10.dp),
     titleMaxLines: Int = 2,
+    isHighlighted: Boolean = false,
     completedOverlay: Boolean = false,
     containerAlpha: Float = 0.11f
 ) {
@@ -102,7 +103,7 @@ internal fun TaskCard(
                     Text(
                         text = timeLabel ?: supportingText.orEmpty(),
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = if (isHighlighted) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -123,7 +124,8 @@ internal fun TaskTimelineCard(
     timeLabel: String? = task.timeRangeLabel(),
     selected: Boolean = false,
     completed: Boolean = task.status == TaskStatus.Completed,
-    completedOverlay: Boolean = false
+    completedOverlay: Boolean = false,
+    isOverdue: Boolean? = null
 ) {
     TaskCard(
         title = task.name.ifBlank { "Untitled task" },
@@ -141,6 +143,7 @@ internal fun TaskTimelineCard(
         containerAlpha = if (selected) SelectedTaskCardAlpha else DefaultTaskCardAlpha,
         minHeight = 36.dp,
         titleMaxLines = 1,
+        isHighlighted = isOverdue ?: task.isOverdue(),
         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
     )
 }

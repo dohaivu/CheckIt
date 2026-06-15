@@ -61,6 +61,7 @@ import com.checkit.ui.myday.MyDayAgenda
 import com.checkit.ui.shortName
 import com.checkit.ui.tasks.ContentContainerAlpha
 import com.checkit.ui.tasks.TaskAgendaView
+import com.checkit.ui.tasks.toDurationLabel
 import com.checkit.ui.today
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownTypography
@@ -584,7 +585,7 @@ private fun DateCellMetadata(
         }
         if (workMinutes > 0) {
             Text(
-                text = workMinutes.compactDurationLabel(),
+                text = workMinutes.toDurationLabel(compact = true),
                 style = MaterialTheme.typography.labelSmall,
                 color = colors.workLabel,
                 maxLines = 1,
@@ -674,16 +675,6 @@ private fun CalendarCellColors.workHeatBackground(workMinutes: Int): Color {
     val fraction = (workMinutes.toFloat() / HeatmapMaxMinutes).coerceIn(0f, 1f)
     val alpha = HeatmapMinAlpha + (HeatmapMaxAlpha - HeatmapMinAlpha) * fraction
     return heatmapHighBackground.copy(alpha = alpha)
-}
-
-internal fun Int.compactDurationLabel(): String {
-    val hours = this / 60
-    val minutes = this % 60
-    return when {
-        hours > 0 && minutes > 0 -> "${hours}h${minutes}m"
-        hours > 0 -> "${hours}h"
-        else -> "${minutes}m"
-    }
 }
 
 private fun CalendarDateMarkers.countLabel(): String =
