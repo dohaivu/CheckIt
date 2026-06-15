@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -78,6 +79,7 @@ internal fun DailyPlanItemEditorSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(0.7f)
+                .padding(bottom = 24.dp)
                 .windowInsetsPadding(WindowInsets.ime)
         ) {
             DailyPlanItemSheetHeader(
@@ -161,7 +163,7 @@ private fun DailyPlanItemSheetFooter(
     if (isAddMode && enabled) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
+            horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Button(onClick = onAdd) {
@@ -237,11 +239,12 @@ private fun DailyPlanItemFormContent(
                 ),
                 maxLines = 5,
                 placeholder = "Note",
-                enabled = enabled
+                enabled = enabled,
+                modifier = Modifier.heightIn(min = 130.dp)
             )
 
             TimePicker(
-                label = "Start",
+                label = "",
                 timeMinutes = state.startTimeMinutes,
                 initialTimeMinutes = currentTimeMinutes(),
                 onTimeChange = onStartTimeChange,
@@ -275,7 +278,8 @@ private fun DailyPlanItemFormContent(
                     fontWeight = FontWeight.Normal
                 ),
                 maxLines = 5,
-                enabled = enabled
+                enabled = enabled,
+                modifier = Modifier.heightIn(min = 130.dp)
             )
 
             TimeRangePicker(

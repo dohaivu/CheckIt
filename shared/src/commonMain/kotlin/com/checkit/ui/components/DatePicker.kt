@@ -265,7 +265,7 @@ internal fun TimeRangePicker(
     ) {
         DetailChip(
             icon = Icons.Default.Schedule,
-            label = if (startTime == null) "No Time" else timeRangeDetailLabel(startTime, endTime),
+            label = if (startTime == null) "No time" else timeRangeDetailLabel(startTime, endTime),
             isHighlighted = isOverdue,
             onClick = {
                 if (enabled) showPicker = true

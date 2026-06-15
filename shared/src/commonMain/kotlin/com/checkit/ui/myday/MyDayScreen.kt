@@ -25,6 +25,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -155,7 +156,6 @@ internal fun MyDayScreen(
     if (state.showSuggestions) {
         SuggestionsSheet(
             tasks = state.suggestedTasks,
-            lists = state.board.lists,
             onDismiss = viewModel::dismissSuggestions,
             onTaskClick = {
                 onTaskClick.invoke(it, null)
@@ -449,14 +449,12 @@ private fun SuggestionCard(
 @Composable
 private fun SuggestionsSheet(
     tasks: List<TaskItem>,
-    lists: List<TaskList>,
     onDismiss: () -> Unit,
     onTaskClick: (TaskItem) -> Unit,
     onAddTask: (TaskItem) -> Unit,
     onCreateTask: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val listById = remember(lists) { lists.associateBy { it.id } }
     ModalBottomSheet(
         onDismissRequest = onDismiss, 
         sheetState = sheetState,
@@ -477,8 +475,8 @@ private fun SuggestionsSheet(
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.SemiBold
                 )
-                Button(onClick = onCreateTask) {
-                    Text("Add")
+                OutlinedButton(onClick = onCreateTask) {
+                    Text("New Task")
                 }
             }
             if (tasks.isEmpty()) {
