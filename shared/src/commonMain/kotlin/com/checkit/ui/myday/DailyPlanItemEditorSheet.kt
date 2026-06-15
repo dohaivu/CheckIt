@@ -89,9 +89,9 @@ internal fun DailyPlanItemEditorSheet(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f, fill = false)
+                    .weight(1f)
                     .padding(horizontal = 20.dp),
-                contentPadding = PaddingValues(top = 6.dp, bottom = 24.dp),
+                contentPadding = PaddingValues(top = 6.dp, bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 item {
