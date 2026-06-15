@@ -112,7 +112,7 @@ internal fun dateTimeRangeDetailLabel(
     }
 }
 
-private fun timeRangeDetailLabel(
+internal fun timeRangeDetailLabel(
     startTimeMinutes: Int?,
     endTimeMinutes: Int?
 ): String = when {

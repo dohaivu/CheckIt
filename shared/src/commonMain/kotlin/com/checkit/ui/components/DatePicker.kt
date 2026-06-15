@@ -69,7 +69,7 @@ internal fun DatePicker(
     ) {
         DetailChip(
             icon = Icons.Default.Event,
-            label = if (date == null) "No date" else dateTimeRangeDetailLabel(date, startTimeMinutes, endTimeMinutes),
+            label = if (date == null) "No date" else dateTimeRangeDetailLabel(date, startTime, endTime),
             isHighlighted = isOverdue,
             onClick = {
                 if (enabled) showPicker = true
@@ -93,8 +93,10 @@ internal fun DatePicker(
                 ) {
                     TextButton(onClick = {
                         onDateChange(null)
-                        onStartTimeChange.invoke(null)
-                        onEndTimeChange?.invoke(null)
+                        startTime = null
+                        endTime = null
+                        onStartTimeChange.invoke(startTime)
+                        onEndTimeChange?.invoke(endTime)
 
                         showPicker = false
                     }) {
@@ -126,7 +128,8 @@ internal fun DatePicker(
                     modifier = Modifier
                         .fillMaxWidth()
                         .verticalScroll(rememberScrollState()),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     DatePicker(
                         state = datePickerState,
@@ -136,17 +139,58 @@ internal fun DatePicker(
                         colors = DatePickerDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
                     )
 
-                    TimeRangePicker(
-                        startTimeMinutes = startTime,
-                        endTimeMinutes = endTime,
-                        durationMinutes = durationMinutes,
-                        onStartTimeChange = {
-                            startTime = it
-                        },
-                        onEndTimeChange = {
-                            endTime = it
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, alignment = Alignment.Start),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TimePicker(
+                            label = "Start",
+                            timeMinutes = startTime,
+                            initialTimeMinutes = currentTimeMinutes(),
+                            onTimeChange = { value ->
+                                startTime = value
+                                if (value == null && endTimeMinutes != null) endTime = null
+                            },
+                            enabled = enabled
+                        )
+                        if (onEndTimeChange != null) {
+                            durationMinutes?.let { duration ->
+                                DurationText(
+                                    duration = duration,
+                                    modifier = Modifier.align(Alignment.CenterVertically)
+                                )
+                            }
+                            TimePicker(
+                                label = "End",
+                                timeMinutes = endTime,
+                                initialTimeMinutes = ((startTime ?: currentTimeMinutes()) + 60).coerceAtMost(MinutesPerDay - 1),
+                                enabled = enabled && startTime != null,
+                                onTimeChange = {
+                                    endTime = it
+                                },
+                            )
                         }
-                    )
+                    }
+                    if (enabled && onEndTimeChange != null) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Start
+                        ) {
+                            PickerShortcutRow {
+                                TimeRangeShortcutDurations.forEach { duration ->
+                                    PickerShortcut(
+                                        text = duration.shortcutDurationLabel(),
+                                        onClick = {
+                                            val start = startTime ?: currentTimeMinutes()
+                                            startTime = start
+                                            endTime = (start + duration).coerceAtMost(MinutesPerDay - 1)
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         )
@@ -205,73 +249,136 @@ internal fun TimeRangePicker(
     startTimeMinutes: Int?,
     endTimeMinutes: Int?,
     durationMinutes: Int?,
-    onStartTimeChange: ((Int?) -> Unit)?,
+    onStartTimeChange: ((Int?) -> Unit),
     onEndTimeChange: ((Int?) -> Unit)?,
-    isSmall: Boolean = false,
     enabled: Boolean = true,
+    isOverdue: Boolean = false,
     modifier: Modifier = Modifier.fillMaxWidth()
 ) {
+    var showPicker by remember { mutableStateOf(false) }
+    var startTime by remember { mutableStateOf(startTimeMinutes) }
+    var endTime by remember { mutableStateOf(endTimeMinutes) }
+
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TimePicker(
-                label = "Start",
-                timeMinutes = startTimeMinutes,
-                initialTimeMinutes = currentTimeMinutes(),
-                onTimeChange = { value ->
-                    onStartTimeChange?.invoke(value)
-                    if (value == null && endTimeMinutes != null) onEndTimeChange?.invoke(null)
-                },
-                enabled = enabled
-            )
-            if (onEndTimeChange != null) {
-                if (isSmall) {
-                    Text(
-                        text = "\u2014",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = modifier
-                    )
-                } else {
-                    durationMinutes?.let { duration ->
-                        DurationText(
-                            duration = duration,
-                            modifier = Modifier.align(Alignment.CenterVertically)
-                        )
+        DetailChip(
+            icon = Icons.Default.Schedule,
+            label = if (startTime == null) "No Time" else timeRangeDetailLabel(startTime, endTime),
+            isHighlighted = isOverdue,
+            onClick = {
+                if (enabled) showPicker = true
+            }
+        )
+    }
+
+    if (enabled && showPicker) {
+        fun dismiss() {
+            showPicker = false
+            startTime = startTimeMinutes
+            endTime = endTimeMinutes
+        }
+        AlertDialog(
+            onDismissRequest = { dismiss() },
+            confirmButton = {
+                Row(
+                    modifier = Modifier,
+                    horizontalArrangement = Arrangement.Start
+                ) {
+                    TextButton(onClick = {
+                        startTime = null
+                        endTime = null
+                        onStartTimeChange.invoke(startTime)
+                        onEndTimeChange?.invoke(endTime)
+
+                        showPicker = false
+                    }) {
+                        Text("Clear", color = MaterialTheme.colorScheme.error)
+                    }
+                    Spacer(modifier = Modifier.weight(1f))
+                    TextButton(onClick = { dismiss() }) {
+                        Text("Cancel")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TextButton(
+                        onClick = {
+                            onStartTimeChange.invoke(startTime)
+                            onEndTimeChange?.invoke(endTime)
+
+                            showPicker = false
+                        }
+                    ) {
+                        Text("OK")
                     }
                 }
-                TimePicker(
-                    label = "End",
-                    timeMinutes = endTimeMinutes,
-                    initialTimeMinutes = ((startTimeMinutes ?: currentTimeMinutes()) + 60).coerceAtMost(MinutesPerDay - 1),
-                    enabled = enabled && startTimeMinutes != null,
-                    onTimeChange = {
-                        onEndTimeChange.invoke(it)
-                    },
-                )
-            }
-        }
-        if (enabled && onEndTimeChange != null && !isSmall) {
-            Row {
-                PickerShortcutRow {
-                    TimeRangeShortcutDurations.forEach { duration ->
-                        PickerShortcut(
-                            text = duration.shortcutDurationLabel(),
-                            onClick = {
-                                val start = startTimeMinutes ?: currentTimeMinutes()
-                                onStartTimeChange?.invoke(start)
-                                onEndTimeChange.invoke((start + duration).coerceAtMost(MinutesPerDay - 1))
+
+            },
+            dismissButton = null,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, alignment = Alignment.Start),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TimePicker(
+                            label = "Start",
+                            timeMinutes = startTime,
+                            initialTimeMinutes = currentTimeMinutes(),
+                            onTimeChange = { value ->
+                                startTime = value
+                                if (value == null && endTimeMinutes != null) endTime = null
+                            },
+                            enabled = enabled
+                        )
+                        if (onEndTimeChange != null) {
+                            durationMinutes?.let { duration ->
+                                DurationText(
+                                    duration = duration,
+                                    modifier = Modifier.align(Alignment.CenterVertically)
+                                )
                             }
-                        )
+                            TimePicker(
+                                label = "End",
+                                timeMinutes = endTime,
+                                initialTimeMinutes = ((startTime ?: currentTimeMinutes()) + 60).coerceAtMost(MinutesPerDay - 1),
+                                enabled = enabled && startTime != null,
+                                onTimeChange = {
+                                    endTime = it
+                                },
+                            )
+                        }
+                    }
+                    if (enabled && onEndTimeChange != null) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Start
+                        ) {
+                            PickerShortcutRow {
+                                TimeRangeShortcutDurations.forEach { duration ->
+                                    PickerShortcut(
+                                        text = duration.shortcutDurationLabel(),
+                                        onClick = {
+                                            val start = startTime ?: currentTimeMinutes()
+                                            startTime = start
+                                            endTime = (start + duration).coerceAtMost(MinutesPerDay - 1)
+                                        }
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
-        }
+        )
     }
 }
 
