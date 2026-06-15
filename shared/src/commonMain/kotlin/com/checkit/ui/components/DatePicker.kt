@@ -61,7 +61,7 @@ internal fun DatePicker(
 ) {
     var showPicker by remember { mutableStateOf(false) }
     var startTime by remember { mutableStateOf(startTimeMinutes) }
-    var endTime by remember { mutableStateOf(endTimeMinutes) }
+    var endTime by remember { mutableStateOf(validTimeRangeEnd(startTimeMinutes, endTimeMinutes)) }
 
     Column(
         modifier = modifier,
@@ -82,7 +82,7 @@ internal fun DatePicker(
         fun dismiss() {
             showPicker = false
             startTime = startTimeMinutes
-            endTime = endTimeMinutes
+            endTime = validTimeRangeEnd(startTimeMinutes, endTimeMinutes)
         }
         AlertDialog(
             onDismissRequest = { dismiss() },
@@ -150,7 +150,7 @@ internal fun DatePicker(
                             initialTimeMinutes = currentTimeMinutes(),
                             onTimeChange = { value ->
                                 startTime = value
-                                if (value == null && endTimeMinutes != null) endTime = null
+                                endTime = validTimeRangeEnd(value, endTime)
                             },
                             enabled = enabled
                         )
@@ -167,7 +167,7 @@ internal fun DatePicker(
                                 initialTimeMinutes = ((startTime ?: currentTimeMinutes()) + 60).coerceAtMost(MinutesPerDay - 1),
                                 enabled = enabled && startTime != null,
                                 onTimeChange = {
-                                    endTime = it
+                                    endTime = validTimeRangeEnd(startTime, it)
                                 },
                             )
                         }
@@ -257,7 +257,7 @@ internal fun TimeRangePicker(
 ) {
     var showPicker by remember { mutableStateOf(false) }
     var startTime by remember { mutableStateOf(startTimeMinutes) }
-    var endTime by remember { mutableStateOf(endTimeMinutes) }
+    var endTime by remember { mutableStateOf(validTimeRangeEnd(startTimeMinutes, endTimeMinutes)) }
 
     Column(
         modifier = modifier,
@@ -277,7 +277,7 @@ internal fun TimeRangePicker(
         fun dismiss() {
             showPicker = false
             startTime = startTimeMinutes
-            endTime = endTimeMinutes
+            endTime = validTimeRangeEnd(startTimeMinutes, endTimeMinutes)
         }
         AlertDialog(
             onDismissRequest = { dismiss() },
@@ -335,7 +335,7 @@ internal fun TimeRangePicker(
                             initialTimeMinutes = currentTimeMinutes(),
                             onTimeChange = { value ->
                                 startTime = value
-                                if (value == null && endTimeMinutes != null) endTime = null
+                                endTime = validTimeRangeEnd(value, endTime)
                             },
                             enabled = enabled
                         )
@@ -352,7 +352,7 @@ internal fun TimeRangePicker(
                                 initialTimeMinutes = ((startTime ?: currentTimeMinutes()) + 60).coerceAtMost(MinutesPerDay - 1),
                                 enabled = enabled && startTime != null,
                                 onTimeChange = {
-                                    endTime = it
+                                    endTime = validTimeRangeEnd(startTime, it)
                                 },
                             )
                         }
@@ -444,6 +444,13 @@ internal fun Int.shortcutDurationLabel(): String =
         else -> "${this / 60}h ${this % 60}m"
     }
 
+internal fun validTimeRangeEnd(startTime: Int?, endTime: Int?): Int? =
+    when {
+        startTime == null -> null
+        endTime == null -> null
+        startTime > endTime -> null
+        else -> endTime
+    }
 
 internal const val HoursPerDay = 24
 internal const val MinutesPerDay = 24 * 60
