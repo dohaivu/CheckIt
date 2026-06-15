@@ -187,8 +187,8 @@ internal fun ViewOptionsMenu(
                                     fontWeight = FontWeight.Normal
                                 ),
                                 clearEnabled = true,
-                                modifier = Modifier.fillMaxWidth().widthIn(min = 220.dp),
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+                                modifier = Modifier.fillMaxWidth().widthIn(min = 150.dp),
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
                             )
                             ViewOptionChip(
                                 icon = if (showCompleted) Icons.Default.CheckCircle else Icons.Default.TaskAlt,

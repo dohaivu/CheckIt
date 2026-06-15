@@ -61,6 +61,7 @@ import com.checkit.ui.tasks.TimelineView
 import com.checkit.ui.tasks.TimelineItem
 import com.checkit.ui.tasks.TimelineItemType
 import com.checkit.ui.tasks.TaskTimelineCard
+import com.checkit.ui.tasks.isOverdue
 import com.checkit.ui.tasks.timeRangeLabel
 import com.checkit.ui.tasks.toClockLabel
 import kotlinx.datetime.LocalDate
@@ -225,7 +226,8 @@ internal fun MyDayAgenda(
                         TaskTimelineCard(
                             task = task,
                             timeLabel = tag.dailyPlanItem.dailyPlanTimeLabel(),
-                            completed = tag.dailyPlanItem.isDone()
+                            completed = tag.dailyPlanItem.isDone(),
+                            isOverdue = tag.dailyPlanItem.isOverdue(date)
                         )
                     }
                 }
@@ -288,7 +290,8 @@ private fun MyDayTimeline(
                     timeLabel = tag.dailyPlanItem.dailyPlanTimeLabel(),
                     selected = isSelected,
                     completed = tag.dailyPlanItem.isDone(),
-                    modifier = Modifier.matchParentSize()
+                    modifier = Modifier.matchParentSize(),
+                    isOverdue = tag.dailyPlanItem.isOverdue(date)
                 )
             }
         },

@@ -14,8 +14,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.DailyPlanItem
+import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
+import com.checkit.domain.TaskStatus
 import com.checkit.ui.TaskWorkspaceView
 import com.checkit.ui.components.priorityColor
 import com.checkit.ui.shortMonthName
@@ -69,6 +71,22 @@ fun TaskItem.timeRangeLabel(): String {
     val end = endTimeMinutes?.toClockLabel()
     return if (end == null) start else "$start - $end"
 }
+
+fun TaskItem.isOverdue(): Boolean {
+    return doDate.isOverdue(today(), endTimeMinutes, status == TaskStatus.Completed)
+}
+
+fun DailyPlanItem.isOverdue(date: LocalDate): Boolean {
+    return date.isOverdue(today(), endTimeMinutes, status == DailyPlanItemStatus.Done)
+}
+
+fun LocalDate?.isOverdue(today: LocalDate, deadline: Int?, isCompleted: Boolean): Boolean =
+    when {
+        isCompleted || this == null -> false
+        this < today -> true
+        this == today -> deadline != null && currentTimeMinutes() > deadline
+        else -> false
+    }
 
 fun Int.formatDuration(): String {
     val hours = this / 60

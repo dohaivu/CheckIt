@@ -49,7 +49,7 @@ internal fun DetailChip(
                     Modifier
                 }
             )
-            .background( if (isHighlighted) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceContainerHigh)
+            .background( MaterialTheme.colorScheme.surfaceContainerHigh)
             .padding(horizontal = 10.dp, vertical = 7.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -65,7 +65,7 @@ internal fun DetailChip(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = if (isHighlighted) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -86,12 +86,14 @@ internal fun TimeRangeDetailChip(
 internal fun DateTimeRangeDetailChip(
     date: LocalDate?,
     startTimeMinutes: Int?,
-    endTimeMinutes: Int?
+    endTimeMinutes: Int?,
+    isOverdue: Boolean = false
 ) {
     if (date == null && startTimeMinutes == null && endTimeMinutes == null) return
     DetailChip(
         icon = if (date == null) Icons.Default.Schedule else Icons.Default.Event,
-        label = dateTimeRangeDetailLabel(date, startTimeMinutes, endTimeMinutes)
+        label = dateTimeRangeDetailLabel(date, startTimeMinutes, endTimeMinutes),
+        isHighlighted = isOverdue
     )
 }
 

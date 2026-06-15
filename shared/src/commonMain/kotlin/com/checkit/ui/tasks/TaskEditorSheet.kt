@@ -414,7 +414,7 @@ private fun TaskFormContent(
                 onStartTimeChange = onStartTimeChange,
                 onEndTimeChange = onEndTimeChange,
                 enabled = enabled,
-                isOverdue = form.isTaskOverdue()
+                isOverdue = form.isOverdue()
             )
         }
 
@@ -653,16 +653,8 @@ private fun TaskEditorState.isOpenableView(): Boolean = when (this) {
     is TaskEditorState.NoteForm -> mode == EditorMode.Edit && status == TaskStatus.Completed && trashedAtMillis == null
 }
 
-private fun TaskEditorState.isTaskOverdue(): Boolean {
-    if (this !is TaskEditorState.TaskForm) return false
-    return if (status == TaskStatus.Completed || doDate == null) {
-        false
-    } else if (doDate < today()) {
-        true
-    } else if (doDate == today()) {
-        val deadline = endTimeMinutes ?: startTimeMinutes
-        deadline != null && currentTimeMinutes() > deadline
-    } else false
+private fun TaskEditorState.TaskForm.isOverdue(): Boolean {
+    return doDate.isOverdue(today(), endTimeMinutes ?: startTimeMinutes, status == TaskStatus.Completed )
 }
 
 private fun DailyPlanItem.durationMinutes(): Int? {

@@ -129,7 +129,7 @@ private fun BriefTaskRowContent(task: TaskItem) {
             overflow = TextOverflow.Ellipsis
         )
 
-        task.doDate?.let { DetailChip(Icons.Default.Event, it.compact()) }
+        task.doDate?.let { DetailChip(Icons.Default.Event, it.compact(), isHighlighted = task.isOverdue()) }
     }
 }
 
@@ -137,7 +137,7 @@ private fun BriefTaskRowContent(task: TaskItem) {
 private fun StandardTaskRowContent(task: TaskItem, list: TaskList?) {
     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         TaskTitleRow(task, descriptionMaxLines = 0)
-        DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes)
+        DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes, isOverdue = task.isOverdue())
         task.subtasks.takeIf { it.isNotEmpty() }?.let { SubtaskProgressText(task) }
         SupportingPills(list = list, tags = task.tags.take(2), overflowCount = (task.tags.size - 2).coerceAtLeast(0))
     }
@@ -148,7 +148,7 @@ private fun DetailTaskRowContent(task: TaskItem, list: TaskList?) {
     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         TaskTitleRow(task, descriptionMaxLines = 3)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes)
+            DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes, isOverdue = task.isOverdue())
             task.durationMinutes?.let { DetailChip(Icons.Default.Schedule, it.formatDuration()) }
             RepeatPill(task.repeatRRule)
             if (task.reminders.isNotEmpty()) DetailChip(Icons.Default.Notifications, "${task.reminders.size} reminders")
