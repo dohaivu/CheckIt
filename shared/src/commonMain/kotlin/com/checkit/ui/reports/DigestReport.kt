@@ -3,15 +3,12 @@ package com.checkit.ui.reports
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -27,8 +24,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.LocalFireDepartment
@@ -38,7 +33,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -55,19 +49,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import checkit.shared.generated.resources.Res
-import checkit.shared.generated.resources.daily
-import checkit.shared.generated.resources.next_day
-import checkit.shared.generated.resources.next_week
-import checkit.shared.generated.resources.previous_day
-import checkit.shared.generated.resources.previous_week
-import checkit.shared.generated.resources.weekly
 import checkit.shared.generated.resources.weekly_digest_active_days
 import checkit.shared.generated.resources.weekly_digest_busiest_day
 import checkit.shared.generated.resources.weekly_digest_empty
@@ -82,8 +69,8 @@ import com.checkit.ui.ReportUiState
 import com.checkit.ui.TagReportItem
 import com.checkit.ui.TimeReportItem
 import com.checkit.ui.components.ReportPeriod
+import com.checkit.ui.components.ReportPeriodHeader
 import com.checkit.ui.localizedCompactDateWithDayName
-import com.checkit.ui.localizedShortMonthName
 import com.checkit.ui.shortName
 import com.checkit.ui.tasks.cardColor
 import com.checkit.ui.tasks.formatDuration
@@ -122,17 +109,14 @@ internal fun DigestReport(
         modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        ReportSegmentedControl(
+        ReportPeriodHeader(
             selectedPeriod = selectedPeriod,
-            onPeriodSelected = onPeriodSelected
-        )
-        WeekSelector(
-            selectedPeriod = selectedPeriod,
-            startDate = digest.startDate,
-            endDate = digest.endDate,
+            selectedDate = state.selectedDate,
+            onPeriodSelected = onPeriodSelected,
             onPreviousPeriod = onPreviousPeriod,
             onNextPeriod = onNextPeriod,
-            onCurrentPeriod = onCurrentPeriod
+            onCurrentPeriod = onCurrentPeriod,
+            periods = listOf(ReportPeriod.Daily, ReportPeriod.Week)
         )
         Column(
             modifier = Modifier
@@ -181,131 +165,6 @@ internal fun DigestReport(
                 if (digest.topTags.isNotEmpty()) {
                     TopTagsCard(items = digest.topTags)
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ReportSegmentedControl(
-    selectedPeriod: ReportPeriod,
-    onPeriodSelected: (ReportPeriod) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier.height(44.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        listOf(ReportPeriod.Daily, ReportPeriod.Week).forEach { period ->
-            val selected = selectedPeriod == period
-            Box(
-                modifier = Modifier
-                    .height(42.dp)
-                    .widthIn(min = 96.dp)
-                    .clip(CircleShape)
-                    .background(
-                        brush = if (selected) {
-                            Brush.horizontalGradient(listOf(ReportBlue, ReportPurple))
-                        } else {
-                            Brush.horizontalGradient(
-                                listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surface)
-                            )
-                        }
-                    )
-                    .border(
-                        width = 1.dp,
-                        color = if (selected) {
-                            Color.Transparent
-                        } else {
-                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f)
-                        },
-                        shape = CircleShape
-                    )
-                    .clickable { onPeriodSelected(period) }
-                    .padding(horizontal = 22.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = period.segmentLabel(),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun WeekSelector(
-    selectedPeriod: ReportPeriod,
-    startDate: LocalDate,
-    endDate: LocalDate,
-    onPreviousPeriod: () -> Unit,
-    onNextPeriod: () -> Unit,
-    onCurrentPeriod: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val previousDescription = stringResource(
-        if (selectedPeriod == ReportPeriod.Week) Res.string.previous_week else Res.string.previous_day
-    )
-    val nextDescription = stringResource(
-        if (selectedPeriod == ReportPeriod.Week) Res.string.next_week else Res.string.next_day
-    )
-
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-        border = CardDefaults.outlinedCardBorder().copy(
-            brush = Brush.linearGradient(
-                listOf(
-                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
-                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.18f)
-                )
-            )
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(62.dp)
-                .padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onPreviousPeriod) {
-                Icon(Icons.Default.ChevronLeft, contentDescription = previousDescription)
-            }
-            Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .pointerInput(onCurrentPeriod) {
-                        detectTapGestures(onDoubleTap = { onCurrentPeriod() })
-                    },
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.CalendarMonth,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.width(12.dp))
-                Text(
-                    text = periodRangeLabel(selectedPeriod, startDate, endDate),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-            IconButton(onClick = onNextPeriod) {
-                Icon(Icons.Default.ChevronRight, contentDescription = nextDescription)
             }
         }
     }
@@ -902,32 +761,6 @@ private fun EmptyDigestCard(modifier: Modifier = Modifier) {
         )
     }
 }
-
-@Composable
-private fun ReportPeriod.segmentLabel(): String = when (this) {
-    ReportPeriod.Daily -> stringResource(Res.string.daily)
-    ReportPeriod.Week -> stringResource(Res.string.weekly)
-    ReportPeriod.Month,
-    ReportPeriod.Annual -> stringResource(Res.string.weekly)
-}
-
-@Composable
-private fun periodRangeLabel(
-    selectedPeriod: ReportPeriod,
-    startDate: LocalDate,
-    endDate: LocalDate
-): String =
-    if (selectedPeriod == ReportPeriod.Daily) {
-        startDate.localizedCompactDateWithDayName()
-    } else {
-        val startLabel = "${startDate.localizedShortMonthName()} ${startDate.day}"
-        val endLabel = "${endDate.localizedShortMonthName()} ${endDate.day}"
-        if (startDate.year == endDate.year) {
-            "$startLabel - $endLabel, ${endDate.year}"
-        } else {
-            "$startLabel, ${startDate.year} - $endLabel, ${endDate.year}"
-        }
-    }
 
 private fun DigestHighlight.icon(): ImageVector = when {
     title.contains("code", ignoreCase = true) -> Icons.Default.Code
