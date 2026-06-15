@@ -40,14 +40,14 @@ internal fun LocalDate.compact(): String {
     val today = today()
     val monthDay = "${shortMonthName()} $day"
     return when (this) {
-        today -> "Today, $monthDay"
-        today.plus(1, DateTimeUnit.DAY) -> "Tomorrow, $monthDay"
-        today.plus(-1, DateTimeUnit.DAY) -> "Yesterday, $monthDay"
+        today -> "Today"
+        today.plus(1, DateTimeUnit.DAY) -> "Tomorrow"
+        today.plus(-1, DateTimeUnit.DAY) -> "Yesterday"
         today.plus(2, DateTimeUnit.DAY),
         today.plus(3, DateTimeUnit.DAY),
         today.plus(4, DateTimeUnit.DAY),
         today.plus(5, DateTimeUnit.DAY),
-        today.plus(6, DateTimeUnit.DAY) -> "${dayOfWeek.shortName()}, $monthDay"
+        today.plus(6, DateTimeUnit.DAY) -> dayOfWeek.shortName()
         else -> {
             if (year == today.year) monthDay else "$monthDay, $year"
         }

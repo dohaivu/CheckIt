@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Notifications
@@ -228,7 +229,7 @@ internal fun TaskStatusIcon(completed: Boolean, color: Color) {
 }
 
 @Composable
-private fun SubtaskProgressText(task: TaskItem) {
+internal fun SubtaskProgressText(task: TaskItem) {
     Text(
         text = "${task.subtasks.count { it.isCompleted }}/${task.subtasks.size} subtasks",
         style = MaterialTheme.typography.labelSmall,
@@ -275,9 +276,9 @@ private fun NoteRowScaffold(
 }
 
 @Composable
-private fun NoteStatusIcon(status: TaskStatus) {
+internal fun NoteStatusIcon(status: TaskStatus) {
     Icon(
-        imageVector = if (status == TaskStatus.Completed) Icons.Default.CheckCircle else Icons.Default.Notes,
+        imageVector = if (status == TaskStatus.Completed) Icons.Default.CheckCircle else Icons.AutoMirrored.Filled.Notes,
         contentDescription = null,
         tint = if (status == TaskStatus.Completed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
         modifier = Modifier.size(22.dp)

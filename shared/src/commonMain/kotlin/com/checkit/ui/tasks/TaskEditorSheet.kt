@@ -419,6 +419,7 @@ private fun TaskFormContent(
                 enabled = enabled,
                 isOverdue = form.isOverdue()
             )
+            PriorityPicker(selected = form.priority, onSelect = onPriorityChange, enabled = enabled)
         }
 
         AppOutlinedTextField(
@@ -457,7 +458,6 @@ private fun TaskFormContent(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            PriorityPicker(selected = form.priority, onSelect = onPriorityChange, enabled = enabled)
             RepeatPicker(selected = form.repeatPreset, onSelect = onRepeatChange, enabled = enabled)
             ReminderPicker(
                 reminderOffsets = form.reminderOffsets,
@@ -565,6 +565,25 @@ private fun NoteFormContent(
     enabled: Boolean = true
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            NoteStatusIcon(status = form.status)
+            DatePicker(
+                date = form.date,
+                onDateChange = {
+                    it?.let {onDateChange.invoke(it)  }
+                },
+                startTimeMinutes = form.startTimeMinutes,
+                endTimeMinutes = null,
+                durationMinutes = null,
+                onStartTimeChange = onStartTimeChange,
+                onEndTimeChange = null,
+                enabled = enabled
+            )
+        }
         AppOutlinedTextField(
             value = form.title,
             onValueChange = onTitleChange,
@@ -574,7 +593,8 @@ private fun NoteFormContent(
             ),
             maxLines = 1,
             placeholder = "Note title",
-            enabled = enabled
+            enabled = enabled,
+            modifier = Modifier.fillMaxWidth()
         )
         AppOutlinedTextField(
             value = form.content,
@@ -585,20 +605,8 @@ private fun NoteFormContent(
             ),
             maxLines = 10,
             placeholder = "Write something",
-            enabled = enabled
-        )
-
-        DatePicker(
-            date = form.date,
-            onDateChange = {
-                it?.let {onDateChange.invoke(it)  }
-            },
-            startTimeMinutes = form.startTimeMinutes,
-            endTimeMinutes = null,
-            durationMinutes = null,
-            onStartTimeChange = onStartTimeChange,
-            onEndTimeChange = null,
-            enabled = enabled
+            enabled = enabled,
+            modifier = Modifier.fillMaxWidth().height(130.dp)
         )
 
         Row(
