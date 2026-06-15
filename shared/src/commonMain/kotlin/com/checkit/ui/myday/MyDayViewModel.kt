@@ -259,8 +259,8 @@ class MyDayViewModel(
         }
     }
 
-    fun deleteDailyPlanItem(item: DailyPlanItem) {
-        deleteDailyPlanItem(item.id) {
+    fun deleteDailyPlanItem(itemId: Long) {
+        deleteDailyPlanItem(itemId) {
             it.copy(message = "Removed from My Day")
         }
     }

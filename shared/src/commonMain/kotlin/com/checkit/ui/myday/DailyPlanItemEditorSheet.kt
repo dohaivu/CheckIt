@@ -106,20 +106,8 @@ internal fun DailyPlanItemEditorSheet(
                         enabled = enabled
                     )
                 }
-                if (state.isAddMode && enabled) {
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Button(onClick = onAdd) {
-                                Text("Add CheckIn")
-                            }
-                        }
-                    }
-                }
             }
+            DailyPlanItemSheetFooter(state.isAddMode, enabled, onAdd)
         }
     }
 }
@@ -159,6 +147,25 @@ private fun DailyPlanItemSheetHeader(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DailyPlanItemSheetFooter(
+    isAddMode: Boolean,
+    enabled: Boolean,
+    onAdd: () -> Unit,
+) {
+    if (isAddMode && enabled) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Button(onClick = onAdd) {
+                Text("Add CheckIn")
             }
         }
     }

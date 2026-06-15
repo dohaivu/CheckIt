@@ -61,6 +61,7 @@ import com.checkit.domain.TaskTag
 import com.checkit.ui.EditorMode
 import com.checkit.ui.RepeatPreset
 import com.checkit.ui.TaskEditorState
+import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DatePicker
 import com.checkit.ui.components.ListPicker
@@ -95,7 +96,7 @@ internal fun TaskEditorSheet(
     onDailyPlanStartTimeChange: (Int?) -> Unit,
     onDailyPlanEndTimeChange: (Int?) -> Unit,
     onDailyPlanStatus: () -> Unit,
-    onDailyPlanDelete: (DailyPlanItem) -> Unit,
+    onDailyPlanDelete: (Long) -> Unit,
     onTaskRepeatChange: (RepeatPreset) -> Unit,
     onTaskPriorityChange: (TaskPriority) -> Unit,
     onTaskReminderToggle: (Int) -> Unit,
@@ -148,46 +149,62 @@ internal fun TaskEditorSheet(
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 when (editor) {
-                    is TaskEditorState.TaskForm -> item {
-                        TaskFormContent(
-                            form = editor,
-                            availableLists = availableLists,
-                            availableTags = availableTags,
-                            onNameChange = onTaskNameChange,
-                            onListChange = onTaskListChange,
-                            onDescriptionChange = onTaskDescriptionChange,
-                            onDoDateChange = onTaskDoDateChange,
-                            onStartTimeChange = onTaskStartTimeChange,
-                            onEndTimeChange = onTaskEndTimeChange,
-                            onDailyPlanStartTimeChange = onDailyPlanStartTimeChange,
-                            onDailyPlanEndTimeChange = onDailyPlanEndTimeChange,
-                            onDailyPlanStatus = onDailyPlanStatus,
-                            onDailyPlanDelete = onDailyPlanDelete,
-                            onRepeatChange = onTaskRepeatChange,
-                            onPriorityChange = onTaskPriorityChange,
-                            onReminderToggle = onTaskReminderToggle,
-                            onSubTaskToggle = onSubTaskToggle,
-                            onSubTaskAdd = onSubTaskAdd,
-                            onSubTaskNameChange = onSubTaskNameChange,
-                            onSubTaskRemove = onSubTaskRemove,
-                            onSubTaskMove = onSubTaskMove,
-                            onTagToggle = onTaskTagToggle,
-                            enabled = editor.isFormEditable()
-                        )
+                    is TaskEditorState.TaskForm -> {
+                        editor.dailyPlanItem?.let { dailyPlanItem ->
+                            item {
+                                DailyPlanSection(
+                                    item = dailyPlanItem,
+                                    onStartTimeChange = onDailyPlanStartTimeChange,
+                                    onEndTimeChange = onDailyPlanEndTimeChange,
+                                    onStatusChange = onDailyPlanStatus,
+                                    onDelete = onDailyPlanDelete,
+                                    enabled = editor.isFormEditable()
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                AppHorizontalDivider()
+                            }
+                        }
+
+                        item {
+                            TaskFormContent(
+                                form = editor,
+                                availableLists = availableLists,
+                                availableTags = availableTags,
+                                onNameChange = onTaskNameChange,
+                                onListChange = onTaskListChange,
+                                onDescriptionChange = onTaskDescriptionChange,
+                                onDoDateChange = onTaskDoDateChange,
+                                onStartTimeChange = onTaskStartTimeChange,
+                                onEndTimeChange = onTaskEndTimeChange,
+                                onRepeatChange = onTaskRepeatChange,
+                                onPriorityChange = onTaskPriorityChange,
+                                onReminderToggle = onTaskReminderToggle,
+                                onSubTaskToggle = onSubTaskToggle,
+                                onSubTaskAdd = onSubTaskAdd,
+                                onSubTaskNameChange = onSubTaskNameChange,
+                                onSubTaskRemove = onSubTaskRemove,
+                                onSubTaskMove = onSubTaskMove,
+                                onTagToggle = onTaskTagToggle,
+                                enabled = editor.isFormEditable()
+                            )
+                        }
                     }
-                    is TaskEditorState.NoteForm -> item {
-                        NoteFormContent(
-                            form = editor,
-                            availableLists = availableLists,
-                            availableTags = availableTags,
-                            onTitleChange = onNoteTitleChange,
-                            onContentChange = onNoteContentChange,
-                            onListChange = onNoteListChange,
-                            onDateChange = onNoteDateChange,
-                            onStartTimeChange = onNoteStartTimeChange,
-                            onTagToggle = onNoteTagToggle,
-                            enabled = editor.isFormEditable()
-                        )
+
+                    is TaskEditorState.NoteForm -> {
+                        item {
+                            NoteFormContent(
+                                form = editor,
+                                availableLists = availableLists,
+                                availableTags = availableTags,
+                                onTitleChange = onNoteTitleChange,
+                                onContentChange = onNoteContentChange,
+                                onListChange = onNoteListChange,
+                                onDateChange = onNoteDateChange,
+                                onStartTimeChange = onNoteStartTimeChange,
+                                onTagToggle = onNoteTagToggle,
+                                enabled = editor.isFormEditable()
+                            )
+                        }
                     }
                 }
             }
@@ -370,10 +387,6 @@ private fun TaskFormContent(
     onDoDateChange: (LocalDate?) -> Unit,
     onStartTimeChange: (Int?) -> Unit,
     onEndTimeChange: (Int?) -> Unit,
-    onDailyPlanStartTimeChange: (Int?) -> Unit,
-    onDailyPlanEndTimeChange: (Int?) -> Unit,
-    onDailyPlanStatus: () -> Unit,
-    onDailyPlanDelete: (DailyPlanItem) -> Unit,
     onRepeatChange: (RepeatPreset) -> Unit,
     onPriorityChange: (TaskPriority) -> Unit,
     onReminderToggle: (Int) -> Unit,
@@ -386,17 +399,6 @@ private fun TaskFormContent(
     enabled: Boolean = true
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        form.dailyPlanItem?.let { dailyPlanItem ->
-            DailyPlanSection(
-                item = dailyPlanItem,
-                onStartTimeChange = onDailyPlanStartTimeChange,
-                onEndTimeChange = onDailyPlanEndTimeChange,
-                onStatusChange = onDailyPlanStatus,
-                onDelete = { onDailyPlanDelete(dailyPlanItem) },
-                enabled = enabled
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-        }
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -488,13 +490,14 @@ private fun TaskFormContent(
 
 @Composable
 private fun DailyPlanSection(
-    item: DailyPlanItem,
+    item: DailyPlanItem?,
     onStartTimeChange: (Int?) -> Unit,
     onEndTimeChange: (Int?) -> Unit,
     onStatusChange: () -> Unit,
-    onDelete: () -> Unit,
+    onDelete: (Long) -> Unit,
     enabled: Boolean = true
 ) {
+    if (item == null) return
     Column(
         modifier = Modifier
             .clip(RoundedCornerShape(16.dp))
@@ -515,7 +518,6 @@ private fun DailyPlanSection(
                 durationMinutes = item.durationMinutes(),
                 onStartTimeChange = onStartTimeChange,
                 onEndTimeChange = onEndTimeChange,
-                isSmall = true,
                 modifier = Modifier,
                 enabled = enabled
             )
@@ -526,7 +528,7 @@ private fun DailyPlanSection(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
 
-                    IconButton(onClick = onDelete) {
+                    IconButton(onClick = {onDelete(item.id)}) {
                         Icon(
                             Icons.Default.Delete,
                             contentDescription = "Delete from My Day",
