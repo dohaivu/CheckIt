@@ -7,6 +7,7 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.TaskItem
+import com.checkit.domain.hasEndTime
 import com.checkit.domain.usecase.AddManualDoneToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
@@ -68,7 +69,7 @@ class MyDayViewModel(
 
     fun updateItemTime(item: DailyPlanItem, startTimeMinutes: Int, endTimeMinutes: Int) {
         viewModelScope.launch {
-            updateDailyPlanItemTime(item.id, startTimeMinutes, if (item.source == DailyPlanItemSource.MyDayNote) null else endTimeMinutes)
+            updateDailyPlanItemTime(item.id, startTimeMinutes, if (item.source.hasEndTime()) endTimeMinutes else null)
         }
     }
 
@@ -109,6 +110,18 @@ class MyDayViewModel(
                     return false
                 }
             }
+            DailyPlanItemSource.MyDayReminder -> {
+                when {
+                    title.isBlank() -> {
+                        _uiState.update { it.copy(message = "Add a reminder") }
+                        return false
+                    }
+                    editor.startTimeMinutes == null -> {
+                        _uiState.update { it.copy(message = "Add reminder time") }
+                        return false
+                    }
+                }
+            }
             DailyPlanItemSource.MyDayTask -> {
                 val start = editor.startTimeMinutes
                 val end = editor.endTimeMinutes
@@ -136,7 +149,7 @@ class MyDayViewModel(
                     title,
                     note.takeIf { it.isNotBlank() },
                     editor.startTimeMinutes,
-                    editor.endTimeMinutes,
+                    if (editor.source.hasEndTime()) editor.endTimeMinutes else null,
                     editor.source,
                     status = editor.status,
                     tagIds = editor.selectedTagIds.toList()
@@ -241,8 +254,8 @@ class MyDayViewModel(
     fun updateEditorSource(source: DailyPlanItemSource) = updateItemEditor {
         it.copy(
             source = source,
-            status = DailyPlanItemStatus.Done,
-            endTimeMinutes = if (source == DailyPlanItemSource.MyDayNote) null else it.endTimeMinutes
+            status = source.defaultStatus(),
+            endTimeMinutes = if (source.hasEndTime()) it.endTimeMinutes else null
         )
     }
     fun updateStartTime(timeMinutes: Int?) = updateItemEditor { it.copy(startTimeMinutes = timeMinutes) }
@@ -379,9 +392,14 @@ private fun DailyPlanItemEditorState.toWriteInput(
     source = source,
     status = status,
     startTimeMinutes = startTimeMinutes,
-    endTimeMinutes = endTimeMinutes,
+    endTimeMinutes = if (source.hasEndTime()) endTimeMinutes else null,
     tagIds = selectedTagIds.toList()
 )
+
+private fun DailyPlanItemSource.defaultStatus(): DailyPlanItemStatus = when (this) {
+    DailyPlanItemSource.MyDayReminder -> DailyPlanItemStatus.Planned
+    else -> DailyPlanItemStatus.Done
+}
 
 private fun currentMyDayTimeMinutes(): Int {
     val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).time

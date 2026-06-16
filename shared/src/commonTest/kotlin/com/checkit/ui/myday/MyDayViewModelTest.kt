@@ -1,6 +1,7 @@
 package com.checkit.ui.myday
 
 import com.checkit.domain.DailyPlanItemStatus
+import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.usecase.AddManualDoneToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
@@ -59,5 +60,21 @@ class MyDayViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(DailyPlanItemStatus.Planned, repository.addedManualDailyPlanItems.single().status)
+    }
+
+    @Test
+    fun addReminderPersistsStartTimeOnlyAndPlannedStatus() = runTest(dispatcher) {
+        viewModel.openCheckIn(startTimeMinutes = 9 * 60, endTimeMinutes = 10 * 60)
+        viewModel.updateEditorSource(DailyPlanItemSource.MyDayReminder)
+        viewModel.updateDoneTitle("Send invoice")
+
+        viewModel.addCheckIn()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val reminder = repository.addedManualDailyPlanItems.single()
+        assertEquals(DailyPlanItemSource.MyDayReminder, reminder.source)
+        assertEquals(DailyPlanItemStatus.Planned, reminder.status)
+        assertEquals(9 * 60, reminder.startTimeMinutes)
+        assertEquals(null, reminder.endTimeMinutes)
     }
 }

@@ -520,6 +520,7 @@ private fun MyDayTaskViewProjection.toWidgetItems(timed: Boolean): List<GlanceAg
 private fun DailyPlanItem.widgetTitle(): String =
     when (source) {
         DailyPlanItemSource.MyDayNote -> checkInNoteTitle()
+        DailyPlanItemSource.MyDayReminder -> reminderTitle()
         DailyPlanItemSource.MyDayTask -> title.ifBlank { "Done item" }
         DailyPlanItemSource.ExistingTask -> title.ifBlank { "Untitled task" }
     }
@@ -528,6 +529,11 @@ private fun DailyPlanItem.checkInNoteTitle(): String =
     title
         .ifBlank { note.orEmpty() }
         .ifBlank { "Empty note" }
+
+private fun DailyPlanItem.reminderTitle(): String =
+    title
+        .ifBlank { note.orEmpty() }
+        .ifBlank { "Reminder" }
 
 private fun Color.provider(): ColorProvider = DayNightColorProvider(day = this, night = this)
 

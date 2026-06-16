@@ -47,6 +47,7 @@ import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskList
+import com.checkit.domain.hasEndTime
 import com.checkit.ui.MyDayUiState
 import com.checkit.ui.MyDayView
 import com.checkit.ui.components.TinyTopAppBar
@@ -56,6 +57,7 @@ import com.checkit.ui.tasks.NoteAllDayCard
 import com.checkit.ui.tasks.TaskAllDayCard
 import com.checkit.ui.tasks.AgendaView
 import com.checkit.ui.tasks.DailyPlanTimelineCard
+import com.checkit.ui.tasks.DefaultDurationMinutes
 import com.checkit.ui.tasks.NoteTimelineCard
 import com.checkit.ui.tasks.TimelineView
 import com.checkit.ui.tasks.TimelineItem
@@ -405,7 +407,7 @@ private fun MyDayTaskViewProjection.toTimelineItems(
             type = TimelineItemType.Note,
             date = date,
             startTimeMinutes = note.startTimeMinutes,
-            endTimeMinutes = note.startTimeMinutes?.let { it + DefaultNoteDurationMinutes },
+            endTimeMinutes = null,
             sortOrder = note.sortOrder,
             isResizable = false,
             tag = note
@@ -419,7 +421,7 @@ private fun MyDayTaskViewProjection.toTimelineItems(
             startTimeMinutes = checkIn.startTimeMinutes,
             endTimeMinutes = checkIn.endTimeMinutes,
             sortOrder = checkIn.sortOrder,
-            isResizable = resizable && checkIn.source != DailyPlanItemSource.MyDayNote,
+            isResizable = resizable && checkIn.source.hasEndTime(),
             tag = checkIn
         )
     }
@@ -538,5 +540,3 @@ private fun MyDayView.label(): String = when (this) {
     MyDayView.Timeline -> "Timeline"
     MyDayView.Board -> "Board"
 }
-
-private const val DefaultNoteDurationMinutes = 30

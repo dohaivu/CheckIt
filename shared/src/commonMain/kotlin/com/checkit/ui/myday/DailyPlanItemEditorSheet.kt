@@ -15,9 +15,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Notes
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
@@ -186,6 +187,7 @@ private fun DailyPlanSourceSwitch(
 ) {
     val options = listOf(
         DailyPlanItemSource.MyDayNote to "Status",
+        DailyPlanItemSource.MyDayReminder to "Reminder",
         DailyPlanItemSource.MyDayTask to "Done"
     )
     SingleChoiceSegmentedButtonRow(modifier = modifier) {
@@ -197,7 +199,11 @@ private fun DailyPlanSourceSwitch(
                 shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
                 icon = {
                     Icon(
-                        imageVector = if (source == DailyPlanItemSource.MyDayNote) Icons.Default.Notes else Icons.Default.TaskAlt,
+                        imageVector = when (source) {
+                            DailyPlanItemSource.MyDayNote -> Icons.AutoMirrored.Filled.Notes
+                            DailyPlanItemSource.MyDayReminder -> Icons.Default.Schedule
+                            else -> Icons.Default.TaskAlt
+                        },
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )
@@ -222,71 +228,32 @@ private fun DailyPlanItemFormContent(
     enabled: Boolean
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        if (state.source == DailyPlanItemSource.MyDayNote) {
-            AppOutlinedTextField(
-                value = state.title,
-                onValueChange = onDoneTitleChange,
-                textStyle = MaterialTheme.typography.headlineSmall.copy(
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.SemiBold
-                ),
-                maxLines = 1,
-                placeholder = "Title (optional)",
-                enabled = enabled
-            )
+        AppOutlinedTextField(
+            value = state.title,
+            onValueChange = onDoneTitleChange,
+            textStyle = MaterialTheme.typography.headlineSmall.copy(
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.SemiBold
+            ),
+            maxLines = 1,
+            placeholder = state.source.titlePlaceholder(),
+            enabled = enabled
+        )
 
-            AppOutlinedTextField(
-                value = state.note,
-                onValueChange = onDoneNoteChange,
-                textStyle = MaterialTheme.typography.bodyLarge.copy(
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.Normal
-                ),
-                maxLines = 5,
-                placeholder = "Note",
-                enabled = enabled,
-                modifier = Modifier.heightIn(min = 130.dp)
-            )
+        AppOutlinedTextField(
+            value = state.note,
+            onValueChange = onDoneNoteChange,
+            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Normal
+            ),
+            maxLines = 5,
+            placeholder = state.source.notePlaceholder(),
+            enabled = enabled,
+            modifier = Modifier.heightIn(min = 130.dp)
+        )
 
-            TimePicker(
-                label = "",
-                timeMinutes = state.startTimeMinutes,
-                initialTimeMinutes = currentTimeMinutes(),
-                onTimeChange = onStartTimeChange,
-                enabled = enabled
-            )
-
-            TagPicker(
-                availableTags = availableTags,
-                selectedTagIds = state.selectedTagIds,
-                onTagToggle = onTagToggle,
-                enabled = enabled
-            )
-        } else {
-            AppOutlinedTextField(
-                value = state.title,
-                onValueChange = onDoneTitleChange,
-                textStyle = MaterialTheme.typography.headlineSmall.copy(
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.SemiBold
-                ),
-                maxLines = 1,
-                placeholder = "What have you done?",
-                enabled = enabled
-            )
-
-            AppOutlinedTextField(
-                value = state.note,
-                onValueChange = onDoneNoteChange,
-                textStyle = MaterialTheme.typography.bodyLarge.copy(
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.Normal
-                ),
-                maxLines = 5,
-                enabled = enabled,
-                modifier = Modifier.heightIn(min = 130.dp)
-            )
-
+        if (state.source.usesStatusCheckbox()) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -302,7 +269,17 @@ private fun DailyPlanItemFormContent(
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }
+        }
 
+        if (state.source.usesTimePicker()) {
+            TimePicker(
+                label = "",
+                timeMinutes = state.startTimeMinutes,
+                initialTimeMinutes = currentTimeMinutes(),
+                onTimeChange = onStartTimeChange,
+                enabled = enabled
+            )
+        } else {
             TimeRangePicker(
                 startTimeMinutes = state.startTimeMinutes,
                 endTimeMinutes = state.endTimeMinutes,
@@ -311,14 +288,14 @@ private fun DailyPlanItemFormContent(
                 onEndTimeChange = onEndTimeChange,
                 enabled = enabled
             )
-
-            TagPicker(
-                availableTags = availableTags,
-                selectedTagIds = state.selectedTagIds,
-                onTagToggle = onTagToggle,
-                enabled = enabled
-            )
         }
+
+        TagPicker(
+            availableTags = availableTags,
+            selectedTagIds = state.selectedTagIds,
+            onTagToggle = onTagToggle,
+            enabled = enabled
+        )
     }
 }
 
@@ -330,3 +307,23 @@ private fun DailyPlanItemEditorState.durationMinutes(): Int? {
     val end = endTimeMinutes ?: return null
     return (end - start).takeIf { it >= 0 }
 }
+
+private fun DailyPlanItemSource.titlePlaceholder(): String = when (this) {
+    DailyPlanItemSource.ExistingTask -> "Task title"
+    DailyPlanItemSource.MyDayTask -> "What have you done?"
+    DailyPlanItemSource.MyDayNote -> "Title (optional)"
+    DailyPlanItemSource.MyDayReminder -> "What do you want to remember?"
+}
+
+private fun DailyPlanItemSource.notePlaceholder(): String? = when (this) {
+    DailyPlanItemSource.ExistingTask -> "Details"
+    DailyPlanItemSource.MyDayTask -> "Add details"
+    DailyPlanItemSource.MyDayNote -> "Note"
+    DailyPlanItemSource.MyDayReminder -> "Reminder details"
+}
+
+private fun DailyPlanItemSource.usesStatusCheckbox(): Boolean =
+    this == DailyPlanItemSource.MyDayTask || this == DailyPlanItemSource.MyDayReminder
+
+private fun DailyPlanItemSource.usesTimePicker(): Boolean =
+    this == DailyPlanItemSource.MyDayNote || this == DailyPlanItemSource.MyDayReminder

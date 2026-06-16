@@ -16,6 +16,7 @@ import com.checkit.domain.TaskReminder
 import com.checkit.domain.TaskReminderWriteInput
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskTag
+import com.checkit.domain.hasEndTime
 import com.checkit.notifications.DailyPlanScheduleReminderScheduler
 import com.checkit.notifications.NoOpDailyPlanScheduleReminderScheduler
 import com.checkit.notifications.NoOpTaskReminderNotificationScheduler
@@ -447,7 +448,7 @@ class RoomCheckItRepository(
                 status = status.name,
                 sortOrder = dao.nextDailyPlanItemSortOrder(planId),
                 startTimeMinutes = startTimeMinutes,
-                endTimeMinutes = if (source == DailyPlanItemSource.MyDayNote) null else endTimeMinutes,
+                endTimeMinutes = if (source.hasEndTime()) endTimeMinutes else null,
                 addedAtMillis = now,
                 completedAtMillis = if (status == DailyPlanItemStatus.Done) now else null
             )
@@ -490,7 +491,7 @@ class RoomCheckItRepository(
             source = input.source.name,
             status = input.status.name,
             startTimeMinutes = input.startTimeMinutes,
-            endTimeMinutes = if (input.source == DailyPlanItemSource.MyDayNote) null else input.endTimeMinutes,
+            endTimeMinutes = if (input.source.hasEndTime()) input.endTimeMinutes else null,
             completedAtMillis = if (input.status == DailyPlanItemStatus.Done) {
                 Clock.System.now().toEpochMilliseconds()
             } else {

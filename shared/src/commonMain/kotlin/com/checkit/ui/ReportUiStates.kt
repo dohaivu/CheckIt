@@ -239,7 +239,9 @@ private fun List<DailyPlan>.toDigest(period: ReportPeriod, selectedDate: LocalDa
 }
 
 private fun DailyPlanItem.isActionableDigestItem(): Boolean =
-    source == DailyPlanItemSource.MyDayTask || source == DailyPlanItemSource.ExistingTask
+    source == DailyPlanItemSource.MyDayTask ||
+        source == DailyPlanItemSource.MyDayReminder ||
+        source == DailyPlanItemSource.ExistingTask
 
 private fun List<DailyPlan>.dailyPlansWorkMinutesInRange(startDate: LocalDate, endDateExclusive: LocalDate): Int =
     asSequence()

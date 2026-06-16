@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.EventNote
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.EventAvailable
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -245,7 +246,7 @@ internal fun DailyPlanTimelineCard(
         timeLabel = timeLabel,
         color =  item.cardColor(),
         leadingContent = {
-            Icon(if (item.source == DailyPlanItemSource.MyDayNote) Icons.AutoMirrored.Filled.EventNote else Icons.Default.EventAvailable, contentDescription = null, modifier = Modifier.size(18.dp))
+            Icon(item.source.timelineIcon(), contentDescription = null, modifier = Modifier.size(18.dp))
         },
         completedOverlay = completedOverlay,
         onClick = onClick,
@@ -318,7 +319,7 @@ internal fun DailyPlanAllDayCard(
     AllDayTypeCard(
         title = title,
         color = item.cardColor(),
-        icon = { Icon(if (item.source == DailyPlanItemSource.MyDayNote) Icons.AutoMirrored.Filled.EventNote else Icons.Default.EventAvailable, contentDescription = null, modifier = Modifier.size(18.dp)) },
+        icon = { Icon(item.source.timelineIcon(), contentDescription = null, modifier = Modifier.size(18.dp)) },
         modifier = modifier,
         completedOverlay = completedOverlay
     )
@@ -399,13 +400,14 @@ private fun DailyPlanItem.timelineTimeLabel(): String? {
 
 private fun DailyPlanItem.timelineTitle(): String =
     when (source) {
-        DailyPlanItemSource.MyDayNote -> checkInNoteTitle()
+        DailyPlanItemSource.MyDayNote,
+        DailyPlanItemSource.MyDayReminder -> checkInNoteTitle()
         else -> title.ifBlank { "Untitled item" }
     }
 
 private fun DailyPlanItem.timelineSupportingText(): String =
     when {
-        source == DailyPlanItemSource.MyDayNote -> source.timelineLabel()
+        source == DailyPlanItemSource.MyDayNote || source == DailyPlanItemSource.MyDayReminder -> source.timelineLabel()
         !note.isNullOrBlank() -> note.orEmpty()
         else -> source.timelineLabel()
     }
@@ -414,6 +416,13 @@ private fun DailyPlanItemSource.timelineLabel(): String = when (this) {
     DailyPlanItemSource.ExistingTask -> "Task"
     DailyPlanItemSource.MyDayTask -> "CheckIn done"
     DailyPlanItemSource.MyDayNote -> "CheckIn note"
+    DailyPlanItemSource.MyDayReminder -> "Reminder"
+}
+
+private fun DailyPlanItemSource.timelineIcon() = when (this) {
+    DailyPlanItemSource.MyDayNote -> Icons.AutoMirrored.Filled.EventNote
+    DailyPlanItemSource.MyDayReminder -> Icons.Default.Schedule
+    else -> Icons.Default.EventAvailable
 }
 
 private fun DailyPlanItem.checkInNoteTitle(): String =
