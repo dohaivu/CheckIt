@@ -104,6 +104,7 @@ fun CheckItApp(
     dailyPlanItemLaunchId: Long? = null,
     taskLaunchId: Long? = null,
     noteLaunchId: Long? = null,
+    openMyDaySuggestionsLaunch: Boolean = false,
     onWidgetLaunchConsumed: () -> Unit = {}
 ) {
     val backStack = remember { mutableStateListOf<NavKey>(Routes.MyDay) }
@@ -177,6 +178,13 @@ fun CheckItApp(
         } else if (backStack.lastOrNull() != Routes.MyDay) {
             resetTo(Routes.MyDay)
         }
+    }
+
+    LaunchedEffect(openMyDaySuggestionsLaunch) {
+        if (!openMyDaySuggestionsLaunch) return@LaunchedEffect
+        resetTo(Routes.MyDay)
+        myDayViewModel.openSuggestions()
+        onWidgetLaunchConsumed()
     }
 
     LaunchedEffect(

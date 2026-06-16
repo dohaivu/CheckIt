@@ -108,14 +108,15 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                     // Header
                     Row(
                         modifier = GlanceModifier
-                            .fillMaxWidth()
-                            .clickable(actionStartActivity<MainActivity>()),
+                            .fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Image(
                             provider = ImageProvider(R.mipmap.ic_launcher),
                             contentDescription = null,
-                            modifier = GlanceModifier.size(20.dp),
+                            modifier = GlanceModifier
+                                .size(20.dp)
+                                .clickable(actionStartActivity<MainActivity>()),
                             contentScale = ContentScale.Fit
                         )
                         Spacer(modifier = GlanceModifier.width(8.dp))
@@ -126,8 +127,24 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                                 fontSize = 15.sp,
                                 color = GlanceTheme.colors.onSurface
                             ),
-                            modifier = GlanceModifier.defaultWeight()
+                            modifier = GlanceModifier
+                                .defaultWeight()
+                                .clickable(actionStartActivity<MainActivity>())
                         )
+                        Box(
+                            modifier = GlanceModifier
+                                .size(32.dp)
+                                .cornerRadius(16.dp)
+                                .clickable(openSuggestionsAction()),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Image(
+                                provider = ImageProvider(R.drawable.lightbulb_24px),
+                                contentDescription = "Open suggestions",
+                                modifier = GlanceModifier.size(20.dp),
+                                colorFilter = ColorFilter.tint(GlanceTheme.colors.primary)
+                            )
+                        }
                     }
                     Spacer(modifier = GlanceModifier.height(12.dp))
 
@@ -183,6 +200,10 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
             }
         }
     }
+
+    private fun openSuggestionsAction(): Action = actionStartActivity<MainActivity>(
+        parameters = actionParametersOf(OpenMyDaySuggestionsParameterKey to true)
+    )
 
     @Composable
     private fun GlanceAgendaAxisRow(
