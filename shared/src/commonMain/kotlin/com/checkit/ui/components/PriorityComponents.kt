@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.checkit.domain.TaskPriority
 import com.checkit.ui.tasks.ContentAlpha
 import com.checkit.ui.tasks.ContentContainerAlpha
+import com.checkit.ui.tasks.priorityColor
 
 @Composable
 internal fun PriorityPicker(
@@ -103,13 +104,6 @@ internal fun PriorityPill(
             color = MaterialTheme.colorScheme.onSurface
         )
     }
-}
-
-internal fun TaskPriority.priorityColor(): Color = when (this) {
-    TaskPriority.High -> Color(0xFFDC2626)
-    TaskPriority.Medium -> Color(0xFFCA8A04)
-    TaskPriority.Low -> Color(0xFF2563EB)
-    TaskPriority.None -> Color(0xFF64748B)
 }
 
 private val EditablePriorities = listOf(

@@ -56,7 +56,7 @@ internal fun TimelineView(
     onTimeChange: (TimelineItem, startTimeMinutes: Int, endTimeMinutes: Int) -> Unit,
     modifier: Modifier = Modifier,
     allDayItemContent: @Composable (TimelineItem) -> Unit,
-    timedItemContent: @Composable BoxScope.(TimelineItem, isSelected: Boolean) -> Unit
+    timedItemContent: @Composable BoxScope.(TimelineItem, isSelected: Boolean, displayMode: TimelineItemDisplayMode) -> Unit
 ) {
     val allDayItems = remember(items) { items.filter { it.startTimeMinutes == null } }
     val timedItems = remember(items) { items.filter { it.startTimeMinutes != null } }
@@ -133,7 +133,7 @@ private fun TimelineGrid(
     onItemClick: (TimelineItem) -> Unit,
     onCreateRequest: (startTimeMinutes: Int, endTimeMinutes: Int) -> Unit,
     onTimeChange: (TimelineItem, startTimeMinutes: Int, endTimeMinutes: Int) -> Unit,
-    itemContent: @Composable BoxScope.(TimelineItem, isSelected: Boolean) -> Unit,
+    itemContent: @Composable BoxScope.(TimelineItem, isSelected: Boolean, displayMode: TimelineItemDisplayMode) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val density = LocalDensity.current
@@ -298,13 +298,14 @@ private fun TimelineItemCard(
     onClick: () -> Unit,
     onSelect: () -> Unit,
     onTimeChange: (TimelineItem, startTimeMinutes: Int, endTimeMinutes: Int) -> Unit,
-    content: @Composable BoxScope.(TimelineItem, Boolean) -> Unit
+    content: @Composable BoxScope.(TimelineItem, Boolean, TimelineItemDisplayMode) -> Unit
 ) {
     val start = item.startTimeMinutes ?: return
     val end = item.endTimeMinutes ?: (start + DefaultDurationMinutes)
     val duration = (end - start).coerceAtLeast(MinimumDurationMinutes)
     val y = hourHeight * (start / 60f)
-    val height = (hourHeight * (duration / 60f)).coerceAtLeast(36.dp)
+    val minimumHeight = hourHeight / 4f
+    val height = (hourHeight * (duration / 60f)).coerceAtLeast(minimumHeight)
     val density = LocalDensity.current
     val yPx = with(density) { y.roundToPx() }
     val laneWidth = taskAreaWidth / layout.laneCount
@@ -316,7 +317,12 @@ private fun TimelineItemCard(
     var topResizeOffsetY by remember(item.id, start, end) { mutableFloatStateOf(0f) }
     var bottomResizeOffsetY by remember(item.id, start, end) { mutableFloatStateOf(0f) }
     val resizeHeightDelta = with(density) { (bottomResizeOffsetY - topResizeOffsetY).toDp() }
-    val visualHeight = (height + resizeHeightDelta).coerceAtLeast(36.dp)
+    val visualHeight = (height + resizeHeightDelta).coerceAtLeast(minimumHeight)
+    val displayMode = when {
+        visualHeight < UltraCompactTimelineItemHeight -> TimelineItemDisplayMode.UltraCompact
+        visualHeight < CompactTimelineItemHeight -> TimelineItemDisplayMode.Compact
+        else -> TimelineItemDisplayMode.Comfortable
+    }
     val latestItem by rememberUpdatedState(item)
     val latestOnClick by rememberUpdatedState(onClick)
     val latestOnSelect by rememberUpdatedState(onSelect)
@@ -356,7 +362,7 @@ private fun TimelineItemCard(
                 )
             }
     ) {
-        content(item, isSelected)
+        content(item, isSelected, displayMode)
         if (isSelected && item.isResizable) {
             ResizeHandle(
                 modifier = Modifier
@@ -398,6 +404,12 @@ private fun TimelineItemCard(
             )
         }
     }
+}
+
+internal enum class TimelineItemDisplayMode {
+    Comfortable,
+    Compact,
+    UltraCompact
 }
 
 @Composable
@@ -545,7 +557,7 @@ internal fun Int.hourLabel(): String =
 
 
 internal const val TimelineStepMinutes = 15
-internal const val DefaultDurationMinutes = 60
+internal const val DefaultDurationMinutes = 30
 internal const val NoteDurationMinutes = 30
 internal const val MinimumDurationMinutes = 15
 internal const val LastStartMinute = MinutesPerDay - MinimumDurationMinutes
@@ -553,3 +565,5 @@ internal const val CurrentTimeVisibleHoursBefore = 2f
 internal const val CollapsedAllDayItemCount = 2
 internal const val DefaultTaskCardAlpha = 0.17f
 internal const val SelectedTaskCardAlpha = 0.28f
+private val CompactTimelineItemHeight = 48.dp
+private val UltraCompactTimelineItemHeight = 34.dp

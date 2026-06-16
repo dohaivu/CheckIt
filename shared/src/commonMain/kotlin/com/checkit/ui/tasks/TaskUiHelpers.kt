@@ -17,9 +17,9 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
+import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.ui.TaskWorkspaceView
-import com.checkit.ui.components.priorityColor
 import com.checkit.ui.shortMonthName
 import com.checkit.ui.shortName
 import com.checkit.ui.theme.AppIconColorDefaults
@@ -52,6 +52,13 @@ internal fun LocalDate.compact(): String {
             if (year == today.year) monthDay else "$monthDay, $year"
         }
     }
+}
+
+fun TaskPriority.priorityColor(): Color = when (this) {
+    TaskPriority.High -> Color(0xFFDC2626)
+    TaskPriority.Medium -> Color(0xFFCA8A04)
+    TaskPriority.Low -> Color(0xFF2563EB)
+    TaskPriority.None -> Color(0xFF64748B)
 }
 
 fun NoteItem?.cardColor(): Color {

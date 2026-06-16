@@ -34,6 +34,8 @@ internal class FakeCheckItRepository(
     val deletedTags = mutableListOf<Long>()
     val addedTasks = mutableListOf<TaskWriteInput>()
     val updatedTasks = mutableListOf<Pair<Long, TaskWriteInput>>()
+    val addedDailyPlanTasks = mutableListOf<Pair<LocalDate, TaskItem>>()
+    val addedManualDailyPlanItems = mutableListOf<DailyPlanItemWriteInput>()
     val currentBoard: TaskBoard get() = boardFlow.value
 
     var lastAssignedListId: Long = 0L
@@ -189,7 +191,10 @@ internal class FakeCheckItRepository(
     override suspend fun openTask(taskId: Long) = Unit
     override suspend fun completeNote(noteId: Long) = Unit
     override suspend fun openNote(noteId: Long) = Unit
-    override suspend fun addTaskToDailyPlan(date: LocalDate, task: TaskItem): Long = 0L
+    override suspend fun addTaskToDailyPlan(date: LocalDate, task: TaskItem): Long {
+        addedDailyPlanTasks.add(date to task)
+        return addedDailyPlanTasks.size.toLong()
+    }
     override suspend fun addManualDoneToDailyPlan(
         date: LocalDate,
         title: String,
@@ -197,8 +202,22 @@ internal class FakeCheckItRepository(
         startTimeMinutes: Int?,
         endTimeMinutes: Int?,
         source: DailyPlanItemSource,
+        status: DailyPlanItemStatus,
         tagIds: List<Long>
-    ): Long = 0L
+    ): Long {
+        addedManualDailyPlanItems.add(
+            DailyPlanItemWriteInput(
+                title = title,
+                note = note,
+                source = source,
+                status = status,
+                startTimeMinutes = startTimeMinutes,
+                endTimeMinutes = endTimeMinutes,
+                tagIds = tagIds
+            )
+        )
+        return addedManualDailyPlanItems.size.toLong()
+    }
     override suspend fun updateDailyPlanItemTime(itemId: Long, startTimeMinutes: Int?, endTimeMinutes: Int?) = Unit
     override suspend fun updateDailyPlanItemStatus(itemId: Long, status: DailyPlanItemStatus) = Unit
     override suspend fun updateDailyPlanItem(itemId: Long, input: DailyPlanItemWriteInput) = Unit

@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.TaskTag
 import com.checkit.ui.DailyPlanItemEditorState
@@ -61,6 +63,7 @@ internal fun DailyPlanItemEditorSheet(
     onDismiss: () -> Unit,
     onDoneTitleChange: (String) -> Unit,
     onDoneNoteChange: (String) -> Unit,
+    onStatusChange: (Boolean) -> Unit,
     onSourceChange: (DailyPlanItemSource) -> Unit,
     onStartTimeChange: (Int?) -> Unit,
     onEndTimeChange: (Int?) -> Unit,
@@ -102,6 +105,7 @@ internal fun DailyPlanItemEditorSheet(
                         availableTags = availableTags,
                         onDoneTitleChange = onDoneTitleChange,
                         onDoneNoteChange = onDoneNoteChange,
+                        onStatusChange = onStatusChange,
                         onStartTimeChange = onStartTimeChange,
                         onEndTimeChange = onEndTimeChange,
                         onTagToggle = onTagToggle,
@@ -211,6 +215,7 @@ private fun DailyPlanItemFormContent(
     availableTags: List<TaskTag>,
     onDoneTitleChange: (String) -> Unit,
     onDoneNoteChange: (String) -> Unit,
+    onStatusChange: (Boolean) -> Unit,
     onStartTimeChange: (Int?) -> Unit,
     onEndTimeChange: (Int?) -> Unit,
     onTagToggle: (Long) -> Unit,
@@ -233,7 +238,7 @@ private fun DailyPlanItemFormContent(
             AppOutlinedTextField(
                 value = state.note,
                 onValueChange = onDoneNoteChange,
-                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                textStyle = MaterialTheme.typography.bodyLarge.copy(
                     color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Normal
                 ),
@@ -273,7 +278,7 @@ private fun DailyPlanItemFormContent(
             AppOutlinedTextField(
                 value = state.note,
                 onValueChange = onDoneNoteChange,
-                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                textStyle = MaterialTheme.typography.bodyLarge.copy(
                     color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Normal
                 ),
@@ -281,6 +286,22 @@ private fun DailyPlanItemFormContent(
                 enabled = enabled,
                 modifier = Modifier.heightIn(min = 130.dp)
             )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = state.status == DailyPlanItemStatus.Done,
+                    onCheckedChange = onStatusChange,
+                    enabled = enabled
+                )
+                Text(
+                    text = "Done",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
 
             TimeRangePicker(
                 startTimeMinutes = state.startTimeMinutes,

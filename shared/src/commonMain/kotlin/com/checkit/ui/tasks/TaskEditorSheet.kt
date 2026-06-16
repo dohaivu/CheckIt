@@ -70,7 +70,6 @@ import com.checkit.ui.components.ReminderPicker
 import com.checkit.ui.components.RepeatPicker
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.components.TimeRangePicker
-import com.checkit.ui.components.priorityColor
 import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
 
@@ -519,7 +518,8 @@ private fun DailyPlanSection(
                 onStartTimeChange = onStartTimeChange,
                 onEndTimeChange = onEndTimeChange,
                 modifier = Modifier,
-                enabled = enabled
+                enabled = enabled,
+                isOverdue = item.isOverdue(today())
             )
 
             if (enabled) {

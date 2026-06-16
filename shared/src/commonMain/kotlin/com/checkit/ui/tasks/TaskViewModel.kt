@@ -15,6 +15,7 @@ import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskReminderPlanner
 import com.checkit.domain.TaskReminderPreset
 import com.checkit.domain.usecase.AddNoteUseCase
+import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
 import com.checkit.domain.usecase.CompleteNoteUseCase
@@ -47,6 +48,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
@@ -56,6 +59,7 @@ class TaskViewModel(
     private val ensureDefaultTaskData: EnsureDefaultTaskDataUseCase,
     private val selectTaskBoardItems: SelectTaskBoardItemsUseCase,
     private val addTask: AddTaskUseCase,
+    private val addTaskToDailyPlan: AddTaskToDailyPlanUseCase,
     private val updateTask: UpdateTaskUseCase,
     private val deleteTask: DeleteTaskUseCase,
     private val restoreTask: RestoreTaskUseCase,
@@ -175,18 +179,19 @@ class TaskViewModel(
         }
     }
 
-    fun openNewTask() {
-        openNewTaskOnDate(today())
+    fun openNewTask(addToMyDayOnSave: Boolean = false) {
+        openNewTaskOnDate(today(), addToMyDayOnSave)
     }
 
-    fun openNewTaskOnDate(date: LocalDate) {
+    fun openNewTaskOnDate(date: LocalDate, addToMyDayOnSave: Boolean = false) {
         val listId = editableListId() ?: return showMessage("Create a list before adding tasks")
         _uiState.update {
             it.copy(
                 editor = TaskEditorState.TaskForm(
                     mode = EditorMode.Add,
                     listId = listId,
-                    doDate = date
+                    doDate = date,
+                    addToMyDayOnSave = addToMyDayOnSave
                 )
             )
         }
@@ -508,7 +513,14 @@ class TaskViewModel(
         val input = form.toWriteInput() ?: return
         viewModelScope.launch {
             if (form.mode == EditorMode.Add) {
-                addTask(input)
+                val taskId = addTask(input)
+                if (form.addToMyDayOnSave) {
+                    val task = _uiState.value.board.tasksById[taskId]
+                        ?: observeTaskBoard()
+                            .mapNotNull { board -> board.tasksById[taskId] }
+                            .first()
+                    addTaskToDailyPlan(today(), task)
+                }
             } else {
                 updateTask(form.taskId ?: return@launch, input)
             }

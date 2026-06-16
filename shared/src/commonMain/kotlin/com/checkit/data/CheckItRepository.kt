@@ -55,6 +55,7 @@ interface CheckItRepository {
         startTimeMinutes: Int?,
         endTimeMinutes: Int?,
         source: DailyPlanItemSource = DailyPlanItemSource.CheckInManualDone,
+        status: DailyPlanItemStatus = DailyPlanItemStatus.Done,
         tagIds: List<Long> = emptyList()
     ): Long
     suspend fun updateDailyPlanItemTime(itemId: Long, startTimeMinutes: Int?, endTimeMinutes: Int?)
@@ -432,6 +433,7 @@ class RoomCheckItRepository(
         startTimeMinutes: Int?,
         endTimeMinutes: Int?,
         source: DailyPlanItemSource,
+        status: DailyPlanItemStatus,
         tagIds: List<Long>
     ): Long {
         val planId = ensureDailyPlan(date)
@@ -442,12 +444,12 @@ class RoomCheckItRepository(
                 title = title.trim(),
                 note = note?.trim()?.takeIf { it.isNotBlank() },
                 source = source.name,
-                status = DailyPlanItemStatus.Done.name,
+                status = status.name,
                 sortOrder = dao.nextDailyPlanItemSortOrder(planId),
                 startTimeMinutes = startTimeMinutes,
                 endTimeMinutes = if (source == DailyPlanItemSource.CheckInNote) null else endTimeMinutes,
                 addedAtMillis = now,
-                completedAtMillis = now
+                completedAtMillis = if (status == DailyPlanItemStatus.Done) now else null
             )
         )
         tagIds.forEach { tagId -> dao.insertDailyPlanItemTagIfParentsExist(itemId, tagId) }

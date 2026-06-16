@@ -136,6 +136,7 @@ sealed interface TaskEditorState {
         val status: TaskStatus = TaskStatus.Open,
         val priority: TaskPriority = TaskPriority.None,
         val selectedTagIds: Set<Long> = emptySet(),
+        val addToMyDayOnSave: Boolean = false,
         val dailyPlanItem: DailyPlanItem? = null,
         val trashedAtMillis: Long? = null
     ) : TaskEditorState {

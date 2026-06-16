@@ -136,12 +136,12 @@ internal fun TaskAgendaView(
         itemContent = { item ->
             when (val tag = item.tag) {
                 is TaskItem -> if (item.startTimeMinutes == null) {
-                    AllDayTaskCard(tag, completedOverlay = tag.status == TaskStatus.Completed)
+                    TaskAllDayCard(tag, completedOverlay = tag.status == TaskStatus.Completed)
                 } else {
                     TaskTimelineCard(tag, completedOverlay = tag.status == TaskStatus.Completed)
                 }
                 is NoteItem -> if (item.startTimeMinutes == null) {
-                    AllDayNoteCard(tag, completedOverlay = tag.status == TaskStatus.Completed)
+                    NoteAllDayCard(tag, completedOverlay = tag.status == TaskStatus.Completed)
                 } else {
                     NoteTimelineCard(tag, completedOverlay = tag.status == TaskStatus.Completed)
                 }
@@ -204,17 +204,18 @@ internal fun TaskTimelineView(
         },
         allDayItemContent = { item ->
             when (val tag = item.tag) {
-                is TaskItem -> AllDayTaskCard(tag, completedOverlay = tag.status == TaskStatus.Completed)
-                is NoteItem -> AllDayNoteCard(tag, completedOverlay = tag.status == TaskStatus.Completed)
+                is TaskItem -> TaskAllDayCard(tag, completedOverlay = tag.status == TaskStatus.Completed)
+                is NoteItem -> NoteAllDayCard(tag, completedOverlay = tag.status == TaskStatus.Completed)
             }
         },
-        timedItemContent = { item, isSelected ->
+        timedItemContent = { item, isSelected, displayMode ->
             when (val tag = item.tag) {
                 is TaskItem -> TaskTimelineCard(
                     task = tag,
                     selected = isSelected,
                     completedOverlay = tag.status == TaskStatus.Completed,
-                    modifier = Modifier.matchParentSize()
+                    modifier = Modifier.matchParentSize(),
+                    displayMode = displayMode
                 )
                 is NoteItem -> NoteTimelineCard(
                     note = tag,

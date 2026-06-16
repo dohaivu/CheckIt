@@ -74,7 +74,7 @@ internal fun TaskScreen(
             containerColor = MaterialTheme.colorScheme.background,
             floatingActionButton = {
                 TaskActionFab(
-                    onTaskClick = viewModel::openNewTask,
+                    onTaskClick = { viewModel.openNewTask() },
                     onNoteClick = viewModel::openNewNote
                 )
             },
