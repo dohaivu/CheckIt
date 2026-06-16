@@ -6,6 +6,7 @@ import com.checkit.domain.TaskList
 import com.checkit.domain.usecase.AddNoteUseCase
 import com.checkit.domain.usecase.AddTaskListUseCase
 import com.checkit.domain.usecase.AddTaskTagUseCase
+import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
 import com.checkit.domain.usecase.CompleteNoteUseCase
@@ -60,6 +61,7 @@ class TaskTimelineViewModelTest {
             ensureDefaultTaskData = EnsureDefaultTaskDataUseCase(repository),
             selectTaskBoardItems = SelectTaskBoardItemsUseCase(),
             addTask = AddTaskUseCase(repository),
+            addTaskToDailyPlan = AddTaskToDailyPlanUseCase(repository),
             updateTask = UpdateTaskUseCase(repository),
             deleteTask = DeleteTaskUseCase(repository),
             restoreTask = RestoreTaskUseCase(repository),

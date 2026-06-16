@@ -34,6 +34,7 @@ internal class FakeCheckItRepository(
     val deletedTags = mutableListOf<Long>()
     val addedTasks = mutableListOf<TaskWriteInput>()
     val updatedTasks = mutableListOf<Pair<Long, TaskWriteInput>>()
+    val addedDailyPlanTasks = mutableListOf<Pair<LocalDate, TaskItem>>()
     val currentBoard: TaskBoard get() = boardFlow.value
 
     var lastAssignedListId: Long = 0L
@@ -189,7 +190,10 @@ internal class FakeCheckItRepository(
     override suspend fun openTask(taskId: Long) = Unit
     override suspend fun completeNote(noteId: Long) = Unit
     override suspend fun openNote(noteId: Long) = Unit
-    override suspend fun addTaskToDailyPlan(date: LocalDate, task: TaskItem): Long = 0L
+    override suspend fun addTaskToDailyPlan(date: LocalDate, task: TaskItem): Long {
+        addedDailyPlanTasks.add(date to task)
+        return addedDailyPlanTasks.size.toLong()
+    }
     override suspend fun addManualDoneToDailyPlan(
         date: LocalDate,
         title: String,

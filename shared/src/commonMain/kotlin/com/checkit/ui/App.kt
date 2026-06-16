@@ -272,7 +272,7 @@ fun CheckItApp(
                                     CalendarScreen(
                                         state = calendarUiState,
                                         calendarViewModel = calendarViewModel,
-                                        onDateDoubleClick = taskViewModel::openNewTaskOnDate,
+                                        onDateDoubleClick = { date -> taskViewModel.openNewTaskOnDate(date) },
                                         onDailyPlanItemClick = myDayViewModel::openItemEditor,
                                         onAddDailyPlanItem = { date -> myDayViewModel.openCheckIn(date = date) },
                                         onTaskClick = taskViewModel::openTask,

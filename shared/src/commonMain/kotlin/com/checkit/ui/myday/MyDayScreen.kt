@@ -74,7 +74,7 @@ internal fun MyDayScreen(
     onTaskClick: (TaskItem, DailyPlanItem?) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
     onNoteTimeChange: (NoteItem, Int) -> Unit,
-    onCreateTask: () -> Unit,
+    onCreateTask: (addToMyDayOnSave: Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -163,7 +163,7 @@ internal fun MyDayScreen(
             onAddTask = viewModel::addTaskFromSuggestion,
             onCreateTask = {
                 viewModel.dismissSuggestions()
-                onCreateTask()
+                onCreateTask(true)
             }
         )
     }

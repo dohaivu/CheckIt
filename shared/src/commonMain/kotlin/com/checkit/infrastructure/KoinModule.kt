@@ -128,6 +128,7 @@ val provideViewModelModule = module {
             ensureDefaultTaskData = get(),
             selectTaskBoardItems = get(),
             addTask = get(),
+            addTaskToDailyPlan = get(),
             updateTask = get(),
             deleteTask = get(),
             restoreTask = get(),
