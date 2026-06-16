@@ -37,7 +37,6 @@ import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
-import com.checkit.ui.components.priorityColor
 
 @Composable
 internal fun TaskCard(

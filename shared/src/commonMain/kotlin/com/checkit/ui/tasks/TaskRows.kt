@@ -38,7 +38,6 @@ import com.checkit.ui.TaskListDisplayType
 import com.checkit.ui.components.DateTimeRangeDetailChip
 import com.checkit.ui.components.DetailChip
 import com.checkit.ui.components.RepeatPill
-import com.checkit.ui.components.priorityColor
 
 @Composable
 internal fun TaskRow(

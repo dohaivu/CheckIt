@@ -53,6 +53,8 @@ import com.checkit.ui.myday.MyDayTaskViewProjection
 import com.checkit.ui.myday.PlannedTaskProjection
 import com.checkit.ui.myday.toTaskViewProjection
 import com.checkit.ui.tasks.cardColor
+import com.checkit.ui.tasks.isOverdue
+import com.checkit.ui.tasks.priorityColor
 import com.checkit.ui.tasks.toClockLabel
 import com.checkit.ui.theme.AppIconColorDefaults.FallbackColor
 import com.checkit.ui.today
@@ -63,6 +65,7 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import androidx.glance.color.ColorProvider as DayNightColorProvider
 
+val today = today()
 class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
 
     private val observeTaskBoard: ObserveTaskBoardUseCase by inject()
@@ -71,7 +74,6 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val board = observeTaskBoard().first()
         val dailyPlans = observeDailyPlans().first()
-        val today = today()
         val todayPlan = dailyPlans.find { it.date == today }
         val items = todayPlan?.items ?: emptyList()
 
@@ -285,12 +287,13 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
             supportingText = if (allDay) null else item.timeLabel,
             baseColor = item.color,
             allDay = allDay,
+            overdue = item.overdue,
             clickAction = item.clickAction(),
             icon = {
                 when (item) {
-                    is GlanceAgendaItem.Task -> TaskIcon(completed = item.completed, tintColor = item.color)
-                    is GlanceAgendaItem.Note -> NoteIcon()
-                    is GlanceAgendaItem.DailyPlan -> DailyPlanIcon()
+                    is GlanceAgendaItem.Task -> TaskIcon(completed = item.completed, tintColor = item.task.priority.priorityColor())
+                    is GlanceAgendaItem.Note -> NoteIcon(item.color)
+                    is GlanceAgendaItem.DailyPlan -> DailyPlanIcon(item.color)
                 }
             }
         )
@@ -302,6 +305,7 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
         supportingText: String?,
         baseColor: Color,
         allDay: Boolean,
+        overdue: Boolean,
         clickAction: Action,
         icon: @Composable () -> Unit
     ) {
@@ -345,7 +349,7 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                             text = supportingText,
                             style = TextStyle(
                                 fontSize = 10.sp,
-                                color = GlanceTheme.colors.onSurfaceVariant
+                                color = if (overdue) GlanceTheme.colors.error else GlanceTheme.colors.onSurfaceVariant
                             ),
                             maxLines = 1
                         )
@@ -368,20 +372,26 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
     }
 
     @Composable
-    private fun NoteIcon() {
+    private fun NoteIcon(tintColor: Color) {
         Image(
             provider = ImageProvider(R.drawable.notes_24px),
             contentDescription = "note icon",
             modifier = GlanceModifier.size(22.dp),
+            colorFilter = ColorFilter.tint(
+                ColorProvider(tintColor)
+            )
         )
     }
 
     @Composable
-    private fun DailyPlanIcon() {
+    private fun DailyPlanIcon(tintColor: Color) {
         Image(
             provider = ImageProvider(R.drawable.event_available_24px),
             contentDescription = "daily plan icon",
             modifier = GlanceModifier.size(22.dp),
+            colorFilter = ColorFilter.tint(
+                ColorProvider(tintColor)
+            )
         )
     }
 }
@@ -393,6 +403,7 @@ private sealed class GlanceAgendaItem {
     abstract val title: String
     abstract val color: Color
     abstract val completed: Boolean
+    abstract val overdue: Boolean
     abstract val dailyPlanItemId: Long?
     abstract val taskId: Long?
     abstract val noteId: Long?
@@ -429,14 +440,15 @@ private sealed class GlanceAgendaItem {
     data class Task(
         val projection: PlannedTaskProjection
     ) : GlanceAgendaItem() {
-        private val task: TaskItem = projection.task
-        private val item: DailyPlanItem = projection.dailyPlanItem
+        val task: TaskItem = projection.task
+        val item: DailyPlanItem = projection.dailyPlanItem
         override val startTimeMinutes: Int? = item.startTimeMinutes
         override val endTimeMinutes: Int? = item.endTimeMinutes
         override val sortOrder: Int = item.sortOrder
         override val title: String = task.name.ifBlank { "Untitled task" }
         override val color: Color = task.cardColor()
         override val completed: Boolean = item.status == DailyPlanItemStatus.Done
+        override val overdue: Boolean = item.isOverdue(today)
         override val dailyPlanItemId: Long = item.id
         override val taskId: Long = task.id
         override val noteId: Long? = null
@@ -451,6 +463,7 @@ private sealed class GlanceAgendaItem {
         override val title: String = note.title.ifBlank { note.content.ifBlank { "Empty note" } }
         override val color: Color = note.cardColor()
         override val completed: Boolean = note.status == TaskStatus.Completed
+        override val overdue: Boolean = false
         override val dailyPlanItemId: Long? = null
         override val taskId: Long? = null
         override val noteId: Long = note.id
@@ -465,6 +478,7 @@ private sealed class GlanceAgendaItem {
         override val title: String = item.widgetTitle()
         override val color: Color = FallbackColor
         override val completed: Boolean = item.status == DailyPlanItemStatus.Done
+        override val overdue: Boolean = item.isOverdue(today)
         override val dailyPlanItemId: Long = item.id
         override val taskId: Long? = item.taskId
         override val noteId: Long? = null
