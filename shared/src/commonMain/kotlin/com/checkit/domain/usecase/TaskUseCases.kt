@@ -219,7 +219,7 @@ class AddManualDoneToDailyPlanUseCase(
         note: String?,
         startTimeMinutes: Int?,
         endTimeMinutes: Int?,
-        source: DailyPlanItemSource = DailyPlanItemSource.CheckInManualDone,
+        source: DailyPlanItemSource = DailyPlanItemSource.MyDayTask,
         status: DailyPlanItemStatus = DailyPlanItemStatus.Done,
         tagIds: List<Long> = emptyList()
     ): Long =

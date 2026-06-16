@@ -27,8 +27,8 @@ class CalendarUiStateMarkersTest {
                     items = listOf(
                         dailyPlanItem(id = 1L, source = DailyPlanItemSource.ExistingTask),
                         dailyPlanItem(id = 2L, source = DailyPlanItemSource.ExistingTask),
-                        dailyPlanItem(id = 3L, source = DailyPlanItemSource.CheckInManualDone),
-                        dailyPlanItem(id = 4L, source = DailyPlanItemSource.CheckInNote)
+                        dailyPlanItem(id = 3L, source = DailyPlanItemSource.MyDayTask),
+                        dailyPlanItem(id = 4L, source = DailyPlanItemSource.MyDayNote)
                     )
                 )
             )
@@ -70,7 +70,7 @@ class CalendarUiStateMarkersTest {
                         dailyPlanItem(id = 1L, source = DailyPlanItemSource.ExistingTask, tags = listOf(tagOne)),
                         dailyPlanItem(id = 2L, source = DailyPlanItemSource.ExistingTask, tags = listOf(tagTwo)),
                         dailyPlanItem(id = 3L, source = DailyPlanItemSource.ExistingTask, tags = listOf(tagThree)),
-                        dailyPlanItem(id = 4L, source = DailyPlanItemSource.CheckInManualDone)
+                        dailyPlanItem(id = 4L, source = DailyPlanItemSource.MyDayTask)
                     )
                 )
             ),

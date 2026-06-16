@@ -519,8 +519,8 @@ private fun MyDayTaskViewProjection.toWidgetItems(timed: Boolean): List<GlanceAg
 
 private fun DailyPlanItem.widgetTitle(): String =
     when (source) {
-        DailyPlanItemSource.CheckInNote -> checkInNoteTitle()
-        DailyPlanItemSource.CheckInManualDone -> title.ifBlank { "Done item" }
+        DailyPlanItemSource.MyDayNote -> checkInNoteTitle()
+        DailyPlanItemSource.MyDayTask -> title.ifBlank { "Done item" }
         DailyPlanItemSource.ExistingTask -> title.ifBlank { "Untitled task" }
     }
 

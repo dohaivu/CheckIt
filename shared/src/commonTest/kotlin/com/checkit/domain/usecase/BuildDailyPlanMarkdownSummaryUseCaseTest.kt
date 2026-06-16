@@ -43,7 +43,7 @@ class BuildDailyPlanMarkdownSummaryUseCaseTest {
                     id = 2L,
                     title = "Capture sprint idea",
                     note = "Consider grouping review reminders with daily planning.",
-                    source = DailyPlanItemSource.CheckInNote,
+                    source = DailyPlanItemSource.MyDayNote,
                     startTimeMinutes = 10 * 60 + 15,
                     endTimeMinutes = null,
                     tags = listOf(TaskTag(id = 3L, name = "Product", color = "#7C3AED"))
@@ -200,7 +200,7 @@ class BuildDailyPlanMarkdownSummaryUseCaseTest {
         taskId: Long? = null,
         title: String = "Item $id",
         note: String? = null,
-        source: DailyPlanItemSource = DailyPlanItemSource.CheckInManualDone,
+        source: DailyPlanItemSource = DailyPlanItemSource.MyDayTask,
         status: DailyPlanItemStatus = DailyPlanItemStatus.Done,
         startTimeMinutes: Int? = null,
         endTimeMinutes: Int? = null,

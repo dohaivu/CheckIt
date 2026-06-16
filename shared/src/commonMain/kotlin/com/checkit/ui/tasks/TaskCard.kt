@@ -245,7 +245,7 @@ internal fun DailyPlanTimelineCard(
         timeLabel = timeLabel,
         color =  item.cardColor(),
         leadingContent = {
-            Icon(if (item.source == DailyPlanItemSource.CheckInNote) Icons.AutoMirrored.Filled.EventNote else Icons.Default.EventAvailable, contentDescription = null, modifier = Modifier.size(18.dp))
+            Icon(if (item.source == DailyPlanItemSource.MyDayNote) Icons.AutoMirrored.Filled.EventNote else Icons.Default.EventAvailable, contentDescription = null, modifier = Modifier.size(18.dp))
         },
         completedOverlay = completedOverlay,
         onClick = onClick,
@@ -318,7 +318,7 @@ internal fun DailyPlanAllDayCard(
     AllDayTypeCard(
         title = title,
         color = item.cardColor(),
-        icon = { Icon(if (item.source == DailyPlanItemSource.CheckInNote) Icons.AutoMirrored.Filled.EventNote else Icons.Default.EventAvailable, contentDescription = null, modifier = Modifier.size(18.dp)) },
+        icon = { Icon(if (item.source == DailyPlanItemSource.MyDayNote) Icons.AutoMirrored.Filled.EventNote else Icons.Default.EventAvailable, contentDescription = null, modifier = Modifier.size(18.dp)) },
         modifier = modifier,
         completedOverlay = completedOverlay
     )
@@ -399,21 +399,21 @@ private fun DailyPlanItem.timelineTimeLabel(): String? {
 
 private fun DailyPlanItem.timelineTitle(): String =
     when (source) {
-        DailyPlanItemSource.CheckInNote -> checkInNoteTitle()
+        DailyPlanItemSource.MyDayNote -> checkInNoteTitle()
         else -> title.ifBlank { "Untitled item" }
     }
 
 private fun DailyPlanItem.timelineSupportingText(): String =
     when {
-        source == DailyPlanItemSource.CheckInNote -> source.timelineLabel()
+        source == DailyPlanItemSource.MyDayNote -> source.timelineLabel()
         !note.isNullOrBlank() -> note.orEmpty()
         else -> source.timelineLabel()
     }
 
 private fun DailyPlanItemSource.timelineLabel(): String = when (this) {
     DailyPlanItemSource.ExistingTask -> "Task"
-    DailyPlanItemSource.CheckInManualDone -> "CheckIn done"
-    DailyPlanItemSource.CheckInNote -> "CheckIn note"
+    DailyPlanItemSource.MyDayTask -> "CheckIn done"
+    DailyPlanItemSource.MyDayNote -> "CheckIn note"
 }
 
 private fun DailyPlanItem.checkInNoteTitle(): String =

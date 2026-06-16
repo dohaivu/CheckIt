@@ -68,7 +68,7 @@ class MyDayViewModel(
 
     fun updateItemTime(item: DailyPlanItem, startTimeMinutes: Int, endTimeMinutes: Int) {
         viewModelScope.launch {
-            updateDailyPlanItemTime(item.id, startTimeMinutes, if (item.source == DailyPlanItemSource.CheckInNote) null else endTimeMinutes)
+            updateDailyPlanItemTime(item.id, startTimeMinutes, if (item.source == DailyPlanItemSource.MyDayNote) null else endTimeMinutes)
         }
     }
 
@@ -103,13 +103,13 @@ class MyDayViewModel(
         val title = editor.title.trim()
         val note = editor.note.trim()
         when (editor.source) {
-            DailyPlanItemSource.CheckInNote -> {
+            DailyPlanItemSource.MyDayNote -> {
                 if (title.isBlank() && note.isBlank()) {
                     _uiState.update { it.copy(message = "Add a note") }
                     return false
                 }
             }
-            DailyPlanItemSource.CheckInManualDone -> {
+            DailyPlanItemSource.MyDayTask -> {
                 val start = editor.startTimeMinutes
                 val end = editor.endTimeMinutes
                 when {
@@ -242,7 +242,7 @@ class MyDayViewModel(
         it.copy(
             source = source,
             status = DailyPlanItemStatus.Done,
-            endTimeMinutes = if (source == DailyPlanItemSource.CheckInNote) null else it.endTimeMinutes
+            endTimeMinutes = if (source == DailyPlanItemSource.MyDayNote) null else it.endTimeMinutes
         )
     }
     fun updateStartTime(timeMinutes: Int?) = updateItemEditor { it.copy(startTimeMinutes = timeMinutes) }

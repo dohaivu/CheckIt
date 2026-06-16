@@ -97,8 +97,8 @@ data class DailyPlanItem(
 
 enum class DailyPlanItemSource {
     ExistingTask,
-    CheckInManualDone,
-    CheckInNote
+    MyDayTask,
+    MyDayNote
 }
 
 enum class DailyPlanItemStatus {

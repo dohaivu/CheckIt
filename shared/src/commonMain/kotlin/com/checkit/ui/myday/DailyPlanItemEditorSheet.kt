@@ -185,8 +185,8 @@ private fun DailyPlanSourceSwitch(
     modifier: Modifier = Modifier
 ) {
     val options = listOf(
-        DailyPlanItemSource.CheckInNote to "Status",
-        DailyPlanItemSource.CheckInManualDone to "Done"
+        DailyPlanItemSource.MyDayNote to "Status",
+        DailyPlanItemSource.MyDayTask to "Done"
     )
     SingleChoiceSegmentedButtonRow(modifier = modifier) {
         options.forEachIndexed { index, (source, label) ->
@@ -197,7 +197,7 @@ private fun DailyPlanSourceSwitch(
                 shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
                 icon = {
                     Icon(
-                        imageVector = if (source == DailyPlanItemSource.CheckInNote) Icons.Default.Notes else Icons.Default.TaskAlt,
+                        imageVector = if (source == DailyPlanItemSource.MyDayNote) Icons.Default.Notes else Icons.Default.TaskAlt,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )
@@ -222,7 +222,7 @@ private fun DailyPlanItemFormContent(
     enabled: Boolean
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        if (state.source == DailyPlanItemSource.CheckInNote) {
+        if (state.source == DailyPlanItemSource.MyDayNote) {
             AppOutlinedTextField(
                 value = state.title,
                 onValueChange = onDoneTitleChange,

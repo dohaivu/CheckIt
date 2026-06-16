@@ -419,7 +419,7 @@ private fun MyDayTaskViewProjection.toTimelineItems(
             startTimeMinutes = checkIn.startTimeMinutes,
             endTimeMinutes = checkIn.endTimeMinutes,
             sortOrder = checkIn.sortOrder,
-            isResizable = resizable && checkIn.source != DailyPlanItemSource.CheckInNote,
+            isResizable = resizable && checkIn.source != DailyPlanItemSource.MyDayNote,
             tag = checkIn
         )
     }

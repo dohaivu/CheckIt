@@ -44,7 +44,7 @@ data class DailyPlanItemEditorState(
     val itemId: Long? = null,
     val taskId: Long? = null,
     val date: LocalDate = today(),
-    val source: DailyPlanItemSource = DailyPlanItemSource.CheckInManualDone,
+    val source: DailyPlanItemSource = DailyPlanItemSource.MyDayTask,
     val title: String = "",
     val note: String = "",
     val status: DailyPlanItemStatus = DailyPlanItemStatus.Done,

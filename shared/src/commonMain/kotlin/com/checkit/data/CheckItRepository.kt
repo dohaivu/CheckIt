@@ -54,7 +54,7 @@ interface CheckItRepository {
         note: String?,
         startTimeMinutes: Int?,
         endTimeMinutes: Int?,
-        source: DailyPlanItemSource = DailyPlanItemSource.CheckInManualDone,
+        source: DailyPlanItemSource = DailyPlanItemSource.MyDayTask,
         status: DailyPlanItemStatus = DailyPlanItemStatus.Done,
         tagIds: List<Long> = emptyList()
     ): Long
@@ -447,7 +447,7 @@ class RoomCheckItRepository(
                 status = status.name,
                 sortOrder = dao.nextDailyPlanItemSortOrder(planId),
                 startTimeMinutes = startTimeMinutes,
-                endTimeMinutes = if (source == DailyPlanItemSource.CheckInNote) null else endTimeMinutes,
+                endTimeMinutes = if (source == DailyPlanItemSource.MyDayNote) null else endTimeMinutes,
                 addedAtMillis = now,
                 completedAtMillis = if (status == DailyPlanItemStatus.Done) now else null
             )
@@ -490,7 +490,7 @@ class RoomCheckItRepository(
             source = input.source.name,
             status = input.status.name,
             startTimeMinutes = input.startTimeMinutes,
-            endTimeMinutes = if (input.source == DailyPlanItemSource.CheckInNote) null else input.endTimeMinutes,
+            endTimeMinutes = if (input.source == DailyPlanItemSource.MyDayNote) null else input.endTimeMinutes,
             completedAtMillis = if (input.status == DailyPlanItemStatus.Done) {
                 Clock.System.now().toEpochMilliseconds()
             } else {
