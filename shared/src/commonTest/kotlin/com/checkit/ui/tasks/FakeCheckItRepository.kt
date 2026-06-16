@@ -289,6 +289,10 @@ internal class FakeSettingsRepository(
     override suspend fun setCheckInReminderLastShownAtMillis(millis: Long) {
         settingsFlow.update { it.copy(checkInReminderLastShownAtMillis = millis) }
     }
+
+    override suspend fun setAutoMyDayLastRunEpochDay(epochDay: Int) {
+        settingsFlow.update { it.copy(autoMyDayLastRunEpochDay = epochDay) }
+    }
 }
 
 private fun TaskWriteInput.toTaskItem(

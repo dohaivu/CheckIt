@@ -34,6 +34,7 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
                 checkInReminderEnabled = prefs[KEY_CHECK_IN_REMINDER_ENABLED] ?: UserSettings().checkInReminderEnabled,
                 scheduleReminderEnabled = prefs[KEY_SCHEDULE_REMINDER_ENABLED] ?: UserSettings().scheduleReminderEnabled,
                 checkInReminderLastShownAtMillis = prefs[KEY_CHECK_IN_REMINDER_LAST_SHOWN],
+                autoMyDayLastRunEpochDay = prefs[KEY_AUTO_MY_DAY_LAST_RUN_EPOCH_DAY],
             )
         }
 
@@ -93,6 +94,10 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { it[KEY_CHECK_IN_REMINDER_LAST_SHOWN] = millis }
     }
 
+    suspend fun setAutoMyDayLastRunEpochDay(epochDay: Int) {
+        dataStore.edit { it[KEY_AUTO_MY_DAY_LAST_RUN_EPOCH_DAY] = epochDay }
+    }
+
     private companion object {
         const val MinutesPerDay = 24 * 60
         val KEY_LANGUAGE = stringPreferencesKey("language")
@@ -109,6 +114,7 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
         val KEY_CHECK_IN_REMINDER_ENABLED = booleanPreferencesKey("check_in_reminder_enabled")
         val KEY_SCHEDULE_REMINDER_ENABLED = booleanPreferencesKey("schedule_reminder_enabled")
         val KEY_CHECK_IN_REMINDER_LAST_SHOWN = longPreferencesKey("check_in_reminder_last_shown_at_millis")
+        val KEY_AUTO_MY_DAY_LAST_RUN_EPOCH_DAY = intPreferencesKey("auto_my_day_last_run_epoch_day")
     }
 }
 

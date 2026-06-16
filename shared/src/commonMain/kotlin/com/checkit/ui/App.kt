@@ -23,12 +23,17 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.ui.NavDisplay
@@ -44,6 +49,7 @@ import checkit.shared.generated.resources.tab_settings
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
+import com.checkit.domain.usecase.AutoAddTodayTasksToMyDayUseCase
 import com.checkit.ui.calendar.CalendarScreen
 import com.checkit.ui.calendar.CalendarViewModel
 import com.checkit.ui.myday.MyDayScreen
@@ -64,9 +70,11 @@ import com.checkit.ui.tasks.TaskEditorSheet
 import com.checkit.ui.theme.AppTheme
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 private data object Routes {
@@ -101,6 +109,7 @@ fun CheckItApp(
     calendarViewModel: CalendarViewModel = koinViewModel(),
     reportViewModel: ReportViewModel = koinViewModel(),
     settingsViewModel: SettingsViewModel = koinViewModel(),
+    autoAddTodayTasksToMyDayUseCase: AutoAddTodayTasksToMyDayUseCase = koinInject(),
     dailyPlanItemLaunchId: Long? = null,
     taskLaunchId: Long? = null,
     noteLaunchId: Long? = null,
@@ -141,6 +150,28 @@ fun CheckItApp(
     val taskUiState by taskViewModel.uiState.collectAsState()
     val myDayUiState by myDayViewModel.uiState.collectAsState()
     val calendarUiState by calendarViewModel.uiState.collectAsState()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val appScope = rememberCoroutineScope()
+
+    fun runAutoAddTodayTasksToMyDay() {
+        appScope.launch {
+            runCatching { autoAddTodayTasksToMyDayUseCase() }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        runAutoAddTodayTasksToMyDay()
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                runAutoAddTodayTasksToMyDay()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     LaunchedEffect(taskMessage, myDayMessage, settingsMessage, taskListMessage, taskTagMessage) {
         val message = taskMessage ?: myDayMessage ?: settingsMessage ?: taskListMessage ?: taskTagMessage

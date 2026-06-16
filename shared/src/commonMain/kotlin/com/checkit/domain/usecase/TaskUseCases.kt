@@ -3,6 +3,7 @@ package com.checkit.domain.usecase
 import com.checkit.data.CheckItRepository
 import com.checkit.data.DailyPlanItemWriteInput
 import com.checkit.data.NoteWriteInput
+import com.checkit.data.SettingsRepository
 import com.checkit.data.TaskListWriteInput
 import com.checkit.data.TaskTagWriteInput
 import com.checkit.data.TaskWriteInput
@@ -18,9 +19,15 @@ import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
 
 class ObserveTaskBoardUseCase(
     private val repository: CheckItRepository
@@ -82,6 +89,37 @@ class EnsureDefaultTaskDataUseCase(
     private val repository: CheckItRepository
 ) {
     suspend operator fun invoke() = repository.ensureDefaultTaskData()
+}
+
+class AutoAddTodayTasksToMyDayUseCase(
+    private val repository: CheckItRepository,
+    private val settingsRepository: SettingsRepository
+) {
+    private val mutex = Mutex()
+
+    suspend operator fun invoke(): Int = mutex.withLock {
+        val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+        val todayEpochDay = today.toEpochDays().toInt()
+        if (settingsRepository.settings.first().autoMyDayLastRunEpochDay == todayEpochDay) {
+            return@withLock 0
+        }
+
+        repository.ensureDefaultTaskData()
+        val tasksToAdd = repository.observeTaskBoard()
+            .first()
+            .tasks
+            .filter { task ->
+                !task.isTrashed &&
+                    task.status == TaskStatus.Open &&
+                    task.doDate == today
+            }
+
+        tasksToAdd.forEach { task ->
+            repository.addTaskToDailyPlan(today, task)
+        }
+        settingsRepository.setAutoMyDayLastRunEpochDay(todayEpochDay)
+        tasksToAdd.size
+    }
 }
 
 class AddTaskListUseCase(
