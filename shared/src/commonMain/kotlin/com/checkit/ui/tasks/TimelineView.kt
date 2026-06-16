@@ -304,7 +304,8 @@ private fun TimelineItemCard(
     val end = item.endTimeMinutes ?: (start + DefaultDurationMinutes)
     val duration = (end - start).coerceAtLeast(MinimumDurationMinutes)
     val y = hourHeight * (start / 60f)
-    val height = (hourHeight * (duration / 60f)).coerceAtLeast(36.dp)
+    val minimumHeight = hourHeight / 4f
+    val height = (hourHeight * (duration / 60f)).coerceAtLeast(minimumHeight)
     val density = LocalDensity.current
     val yPx = with(density) { y.roundToPx() }
     val laneWidth = taskAreaWidth / layout.laneCount
@@ -316,11 +317,11 @@ private fun TimelineItemCard(
     var topResizeOffsetY by remember(item.id, start, end) { mutableFloatStateOf(0f) }
     var bottomResizeOffsetY by remember(item.id, start, end) { mutableFloatStateOf(0f) }
     val resizeHeightDelta = with(density) { (bottomResizeOffsetY - topResizeOffsetY).toDp() }
-    val visualHeight = (height + resizeHeightDelta).coerceAtLeast(36.dp)
-    val displayMode = if (visualHeight < CompactTimelineItemHeight) {
-        TimelineItemDisplayMode.Compact
-    } else {
-        TimelineItemDisplayMode.Comfortable
+    val visualHeight = (height + resizeHeightDelta).coerceAtLeast(minimumHeight)
+    val displayMode = when {
+        visualHeight < UltraCompactTimelineItemHeight -> TimelineItemDisplayMode.UltraCompact
+        visualHeight < CompactTimelineItemHeight -> TimelineItemDisplayMode.Compact
+        else -> TimelineItemDisplayMode.Comfortable
     }
     val latestItem by rememberUpdatedState(item)
     val latestOnClick by rememberUpdatedState(onClick)
@@ -407,7 +408,8 @@ private fun TimelineItemCard(
 
 internal enum class TimelineItemDisplayMode {
     Comfortable,
-    Compact
+    Compact,
+    UltraCompact
 }
 
 @Composable
@@ -564,3 +566,4 @@ internal const val CollapsedAllDayItemCount = 2
 internal const val DefaultTaskCardAlpha = 0.17f
 internal const val SelectedTaskCardAlpha = 0.28f
 private val CompactTimelineItemHeight = 48.dp
+private val UltraCompactTimelineItemHeight = 36.dp

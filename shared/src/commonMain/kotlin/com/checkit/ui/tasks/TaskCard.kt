@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -57,25 +58,27 @@ internal fun TaskCard(
     completedOverlay: Boolean = false,
     containerAlpha: Float = 0.11f,
     showSupportingText: Boolean = true,
-    inlineSupportingText: String? = null
+    inlineSupportingText: String? = null,
+    titleTextStyle: TextStyle? = null,
+    inlineSupportingTextStyle: SpanStyle? = null
 ) {
     val shape = RoundedCornerShape(8.dp)
     val clickableModifier = if (onClick == null) Modifier else Modifier.clickable(onClick = onClick)
+    val resolvedTitleTextStyle = titleTextStyle ?: MaterialTheme.typography.bodyLarge
+    val resolvedInlineSupportingTextStyle = inlineSupportingTextStyle ?: SpanStyle(
+        color = if (isHighlighted) {
+            MaterialTheme.colorScheme.error
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        fontSize = MaterialTheme.typography.labelMedium.fontSize,
+        fontWeight = FontWeight.Medium
+    )
     val titleText = buildAnnotatedString {
         append(title)
         if (!inlineSupportingText.isNullOrBlank()) {
             append("  ")
-            withStyle(
-                SpanStyle(
-                    color = if (isHighlighted) {
-                        MaterialTheme.colorScheme.error
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                    fontSize = MaterialTheme.typography.labelMedium.fontSize,
-                    fontWeight = FontWeight.Medium
-                )
-            ) {
+            withStyle(resolvedInlineSupportingTextStyle) {
                 append("· ")
                 append(inlineSupportingText)
             }
@@ -101,7 +104,7 @@ internal fun TaskCard(
                 modifier = Modifier
                     .weight(1f)
                     .padding(contentPadding),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.Top
             ) {
                 if (leadingContent != null) {
@@ -118,7 +121,7 @@ internal fun TaskCard(
                 ) {
                     Text(
                         text = titleText,
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = resolvedTitleTextStyle,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = titleMaxLines,
                         overflow = TextOverflow.Ellipsis
@@ -154,7 +157,8 @@ internal fun TaskTimelineCard(
     displayMode: TimelineItemDisplayMode = TimelineItemDisplayMode.Comfortable
 ) {
     val resolvedTimeLabel = timeLabel
-    val compact = displayMode == TimelineItemDisplayMode.Compact && !resolvedTimeLabel.isNullOrBlank()
+    val compact = displayMode != TimelineItemDisplayMode.Comfortable && !resolvedTimeLabel.isNullOrBlank()
+    val ultraCompact = displayMode == TimelineItemDisplayMode.UltraCompact
     TaskCard(
         title = task.name.ifBlank { "Untitled task" },
         timeLabel = resolvedTimeLabel,
@@ -169,11 +173,30 @@ internal fun TaskTimelineCard(
         onClick = onClick,
         modifier = modifier,
         containerAlpha = if (selected) SelectedTaskCardAlpha else DefaultTaskCardAlpha,
-        minHeight = 36.dp,
+        minHeight = if (ultraCompact) 0.dp else 36.dp,
+        contentPadding = if (ultraCompact) {
+            PaddingValues(horizontal = 9.dp, vertical = 1.dp)
+        } else {
+            PaddingValues(horizontal = 10.dp, vertical = 8.dp)
+        },
         titleMaxLines = 1,
         isHighlighted = isOverdue ?: task.isOverdue(),
         showSupportingText = !compact,
-        inlineSupportingText = resolvedTimeLabel.takeIf { compact }
+        inlineSupportingText = resolvedTimeLabel.takeIf { compact },
+        titleTextStyle = if (ultraCompact) MaterialTheme.typography.bodyMedium else null,
+        inlineSupportingTextStyle = if (ultraCompact) {
+            SpanStyle(
+                color = if (isOverdue ?: task.isOverdue()) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                fontSize = MaterialTheme.typography.labelSmall.fontSize,
+                fontWeight = FontWeight.Medium
+            )
+        } else {
+            null
+        }
     )
 }
 
@@ -215,7 +238,8 @@ internal fun DailyPlanTimelineCard(
     completedOverlay: Boolean = false,
     displayMode: TimelineItemDisplayMode = TimelineItemDisplayMode.Comfortable
 ) {
-    val compact = displayMode == TimelineItemDisplayMode.Compact && !timeLabel.isNullOrBlank()
+    val compact = displayMode != TimelineItemDisplayMode.Comfortable && !timeLabel.isNullOrBlank()
+    val ultraCompact = displayMode == TimelineItemDisplayMode.UltraCompact
     TaskCard(
         title = title,
         timeLabel = timeLabel,
@@ -227,10 +251,25 @@ internal fun DailyPlanTimelineCard(
         onClick = onClick,
         modifier = modifier,
         containerAlpha = if (selected) SelectedTaskCardAlpha else DefaultTaskCardAlpha,
-        minHeight = 36.dp,
+        minHeight = if (ultraCompact) 0.dp else 36.dp,
+        contentPadding = if (ultraCompact) {
+            PaddingValues(horizontal = 9.dp, vertical = 1.dp)
+        } else {
+            PaddingValues(horizontal = 10.dp, vertical = 8.dp)
+        },
         titleMaxLines = 1,
         showSupportingText = !compact,
-        inlineSupportingText = timeLabel.takeIf { compact }
+        inlineSupportingText = timeLabel.takeIf { compact },
+        titleTextStyle = if (ultraCompact) MaterialTheme.typography.bodyMedium else null,
+        inlineSupportingTextStyle = if (ultraCompact) {
+            SpanStyle(
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = MaterialTheme.typography.labelSmall.fontSize,
+                fontWeight = FontWeight.Medium
+            )
+        } else {
+            null
+        }
     )
 }
 
