@@ -384,6 +384,7 @@ fun CheckItApp(
                         onDismiss = myDayViewModel::dismissCheckIn,
                         onDoneTitleChange = myDayViewModel::updateDoneTitle,
                         onDoneNoteChange = myDayViewModel::updateDoneNote,
+                        onStatusChange = myDayViewModel::updateStatus,
                         onSourceChange = myDayViewModel::updateEditorSource,
                         onStartTimeChange = myDayViewModel::updateStartTime,
                         onEndTimeChange = myDayViewModel::updateEndTime,

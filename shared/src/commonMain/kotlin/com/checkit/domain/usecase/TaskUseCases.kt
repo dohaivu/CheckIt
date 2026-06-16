@@ -182,9 +182,10 @@ class AddManualDoneToDailyPlanUseCase(
         startTimeMinutes: Int?,
         endTimeMinutes: Int?,
         source: DailyPlanItemSource = DailyPlanItemSource.CheckInManualDone,
+        status: DailyPlanItemStatus = DailyPlanItemStatus.Done,
         tagIds: List<Long> = emptyList()
     ): Long =
-        repository.addManualDoneToDailyPlan(date, title, note, startTimeMinutes, endTimeMinutes, source, tagIds)
+        repository.addManualDoneToDailyPlan(date, title, note, startTimeMinutes, endTimeMinutes, source, status, tagIds)
 }
 
 class UpdateDailyPlanItemTimeUseCase(

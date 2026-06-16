@@ -138,6 +138,7 @@ class MyDayViewModel(
                     editor.startTimeMinutes,
                     editor.endTimeMinutes,
                     editor.source,
+                    status = editor.status,
                     tagIds = editor.selectedTagIds.toList()
                 )
             } else {
@@ -234,6 +235,9 @@ class MyDayViewModel(
     }
     fun updateDoneTitle(title: String) = updateItemEditor { it.copy(title = title) }
     fun updateDoneNote(note: String) = updateItemEditor { it.copy(note = note) }
+    fun updateStatus(isDone: Boolean) = updateItemEditor {
+        it.copy(status = if (isDone) DailyPlanItemStatus.Done else DailyPlanItemStatus.Planned)
+    }
     fun updateEditorSource(source: DailyPlanItemSource) = updateItemEditor {
         it.copy(
             source = source,
