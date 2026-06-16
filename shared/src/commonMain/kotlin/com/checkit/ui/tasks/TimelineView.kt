@@ -566,4 +566,4 @@ internal const val CollapsedAllDayItemCount = 2
 internal const val DefaultTaskCardAlpha = 0.17f
 internal const val SelectedTaskCardAlpha = 0.28f
 private val CompactTimelineItemHeight = 48.dp
-private val UltraCompactTimelineItemHeight = 36.dp
+private val UltraCompactTimelineItemHeight = 34.dp

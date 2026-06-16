@@ -518,7 +518,8 @@ private fun DailyPlanSection(
                 onStartTimeChange = onStartTimeChange,
                 onEndTimeChange = onEndTimeChange,
                 modifier = Modifier,
-                enabled = enabled
+                enabled = enabled,
+                isOverdue = item.isOverdue(today())
             )
 
             if (enabled) {
