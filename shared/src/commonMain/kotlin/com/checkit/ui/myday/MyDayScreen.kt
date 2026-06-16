@@ -280,9 +280,14 @@ private fun MyDayTimeline(
                 is PlannedTaskProjection -> TaskAllDayCard(tag.task)
             }
         },
-        timedItemContent = { item, isSelected ->
+        timedItemContent = { item, isSelected, displayMode ->
             when (val tag = item.tag) {
-                is DailyPlanItem -> DailyPlanTimelineCard(tag, selected = isSelected, modifier = Modifier.matchParentSize())
+                is DailyPlanItem -> DailyPlanTimelineCard(
+                    item = tag,
+                    selected = isSelected,
+                    modifier = Modifier.matchParentSize(),
+                    displayMode = displayMode
+                )
                 is NoteItem -> NoteTimelineCard(tag, selected = isSelected, modifier = Modifier.matchParentSize())
                 is PlannedTaskProjection -> TaskTimelineCard(
                     task = tag.task,
@@ -290,7 +295,8 @@ private fun MyDayTimeline(
                     selected = isSelected,
                     completed = tag.dailyPlanItem.isDone(),
                     modifier = Modifier.matchParentSize(),
-                    isOverdue = tag.dailyPlanItem.isOverdue(date)
+                    isOverdue = tag.dailyPlanItem.isOverdue(date),
+                    displayMode = displayMode
                 )
             }
         },

@@ -208,13 +208,14 @@ internal fun TaskTimelineView(
                 is NoteItem -> NoteAllDayCard(tag, completedOverlay = tag.status == TaskStatus.Completed)
             }
         },
-        timedItemContent = { item, isSelected ->
+        timedItemContent = { item, isSelected, displayMode ->
             when (val tag = item.tag) {
                 is TaskItem -> TaskTimelineCard(
                     task = tag,
                     selected = isSelected,
                     completedOverlay = tag.status == TaskStatus.Completed,
-                    modifier = Modifier.matchParentSize()
+                    modifier = Modifier.matchParentSize(),
+                    displayMode = displayMode
                 )
                 is NoteItem -> NoteTimelineCard(
                     note = tag,
