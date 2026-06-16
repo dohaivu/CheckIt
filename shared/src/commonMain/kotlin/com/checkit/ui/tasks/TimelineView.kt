@@ -545,7 +545,7 @@ internal fun Int.hourLabel(): String =
 
 
 internal const val TimelineStepMinutes = 15
-internal const val DefaultDurationMinutes = 60
+internal const val DefaultDurationMinutes = 45
 internal const val NoteDurationMinutes = 30
 internal const val MinimumDurationMinutes = 15
 internal const val LastStartMinute = MinutesPerDay - MinimumDurationMinutes

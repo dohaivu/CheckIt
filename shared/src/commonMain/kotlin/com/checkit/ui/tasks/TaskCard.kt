@@ -38,7 +38,6 @@ import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
 import com.checkit.ui.components.priorityColor
-import com.checkit.ui.theme.AppIconColorDefaults
 
 @Composable
 internal fun TaskCard(
@@ -50,7 +49,7 @@ internal fun TaskCard(
     supportingText: String? = null,
     leadingContent: (@Composable () -> Unit)? = null,
     minHeight: Dp = 64.dp,
-    contentPadding: PaddingValues = PaddingValues(horizontal = 10.dp, vertical = 10.dp),
+    contentPadding: PaddingValues = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
     titleMaxLines: Int = 2,
     isHighlighted: Boolean = false,
     completedOverlay: Boolean = false,
@@ -143,8 +142,7 @@ internal fun TaskTimelineCard(
         containerAlpha = if (selected) SelectedTaskCardAlpha else DefaultTaskCardAlpha,
         minHeight = 36.dp,
         titleMaxLines = 1,
-        isHighlighted = isOverdue ?: task.isOverdue(),
-        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
+        isHighlighted = isOverdue ?: task.isOverdue()
     )
 }
 
@@ -172,7 +170,6 @@ internal fun NoteTimelineCard(
         containerAlpha = if (selected) SelectedTaskCardAlpha else DefaultTaskCardAlpha,
         minHeight = 36.dp,
         titleMaxLines = 1,
-        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
     )
 }
 
@@ -198,13 +195,12 @@ internal fun DailyPlanTimelineCard(
         modifier = modifier,
         containerAlpha = if (selected) SelectedTaskCardAlpha else DefaultTaskCardAlpha,
         minHeight = 36.dp,
-        titleMaxLines = 1,
-        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
+        titleMaxLines = 1
     )
 }
 
 @Composable
-internal fun AllDayTaskCard(
+internal fun TaskAllDayCard(
     task: TaskItem,
     modifier: Modifier = Modifier,
     completedOverlay: Boolean = false
@@ -224,7 +220,7 @@ internal fun AllDayTaskCard(
 }
 
 @Composable
-internal fun AllDayNoteCard(
+internal fun NoteAllDayCard(
     note: NoteItem,
     modifier: Modifier = Modifier,
     completedOverlay: Boolean = false
@@ -239,7 +235,7 @@ internal fun AllDayNoteCard(
 }
 
 @Composable
-internal fun AllDayDailyPlanCard(
+internal fun DailyPlanAllDayCard(
     item: DailyPlanItem,
     modifier: Modifier = Modifier,
     title: String = item.timelineTitle(),

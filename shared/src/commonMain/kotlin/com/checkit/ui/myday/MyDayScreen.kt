@@ -19,7 +19,6 @@ import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.ViewAgenda
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -52,9 +51,9 @@ import com.checkit.ui.MyDayUiState
 import com.checkit.ui.MyDayView
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.localizedCompactDateWithDayName
-import com.checkit.ui.tasks.AllDayDailyPlanCard
-import com.checkit.ui.tasks.AllDayNoteCard
-import com.checkit.ui.tasks.AllDayTaskCard
+import com.checkit.ui.tasks.DailyPlanAllDayCard
+import com.checkit.ui.tasks.NoteAllDayCard
+import com.checkit.ui.tasks.TaskAllDayCard
 import com.checkit.ui.tasks.AgendaView
 import com.checkit.ui.tasks.DailyPlanTimelineCard
 import com.checkit.ui.tasks.NoteTimelineCard
@@ -216,12 +215,12 @@ internal fun MyDayAgenda(
         focusedDate = date,
         itemContent = { item ->
             when (val tag = item.tag) {
-                is DailyPlanItem -> if (item.startTimeMinutes == null) AllDayDailyPlanCard(tag) else DailyPlanTimelineCard(tag)
-                is NoteItem -> if (item.startTimeMinutes == null) AllDayNoteCard(tag) else NoteTimelineCard(tag)
+                is DailyPlanItem -> if (item.startTimeMinutes == null) DailyPlanAllDayCard(tag) else DailyPlanTimelineCard(tag)
+                is NoteItem -> if (item.startTimeMinutes == null) NoteAllDayCard(tag) else NoteTimelineCard(tag)
                 is PlannedTaskProjection -> {
                     val task = tag.task
                     if (item.startTimeMinutes == null) {
-                        AllDayTaskCard(task)
+                        TaskAllDayCard(task)
                     } else {
                         TaskTimelineCard(
                             task = task,
@@ -276,9 +275,9 @@ private fun MyDayTimeline(
         },
         allDayItemContent = { item ->
             when (val tag = item.tag) {
-                is DailyPlanItem -> AllDayDailyPlanCard(tag)
-                is NoteItem -> AllDayNoteCard(tag)
-                is PlannedTaskProjection -> AllDayTaskCard(tag.task)
+                is DailyPlanItem -> DailyPlanAllDayCard(tag)
+                is NoteItem -> NoteAllDayCard(tag)
+                is PlannedTaskProjection -> TaskAllDayCard(tag.task)
             }
         },
         timedItemContent = { item, isSelected ->

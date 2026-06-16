@@ -384,6 +384,6 @@ private fun currentMyDayTimeMinutes(): Int {
     return now.hour * 60 + now.minute
 }
 
-private const val DefaultTaskDurationMinutes = 60
+private const val DefaultTaskDurationMinutes = 45
 private const val MinimumPlanDurationMinutes = 15
 private const val MyDayMinutesPerDay = 24 * 60
