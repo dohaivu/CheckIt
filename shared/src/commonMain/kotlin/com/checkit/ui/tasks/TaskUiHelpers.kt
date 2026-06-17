@@ -8,12 +8,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.EventNote
 import androidx.compose.material.icons.automirrored.filled.Notes
+import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.ViewAgenda
-import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material.icons.rounded.CheckBox
 import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
 import androidx.compose.material3.Icon
@@ -49,7 +49,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.plus
 
 internal fun TaskWorkspaceView.icon(): ImageVector = when (this) {
-    TaskWorkspaceView.List -> Icons.Default.ViewList
+    TaskWorkspaceView.List -> Icons.AutoMirrored.Filled.ViewList
     TaskWorkspaceView.Agenda -> Icons.Default.ViewAgenda
     TaskWorkspaceView.Timeline -> Icons.Default.Schedule
 }

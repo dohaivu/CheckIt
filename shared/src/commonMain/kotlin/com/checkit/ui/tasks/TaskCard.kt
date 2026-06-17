@@ -25,6 +25,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -64,25 +65,32 @@ internal fun TaskCard(
     titleTextStyle: TextStyle? = null,
     inlineSupportingTextStyle: SpanStyle? = null
 ) {
-    val shape = RoundedCornerShape(8.dp)
+    val colorScheme = MaterialTheme.colorScheme
+    val typography = MaterialTheme.typography
+    val shape = remember { RoundedCornerShape(8.dp) }
     val clickableModifier = if (onClick == null) Modifier else Modifier.clickable(onClick = onClick)
-    val resolvedTitleTextStyle = titleTextStyle ?: MaterialTheme.typography.bodyLarge
-    val resolvedInlineSupportingTextStyle = inlineSupportingTextStyle ?: SpanStyle(
-        color = if (isHighlighted) {
-            MaterialTheme.colorScheme.error
-        } else {
-            MaterialTheme.colorScheme.onSurfaceVariant
-        },
-        fontSize = MaterialTheme.typography.labelMedium.fontSize,
-        fontWeight = FontWeight.Medium
-    )
-    val titleText = buildAnnotatedString {
-        append(title)
-        if (!inlineSupportingText.isNullOrBlank()) {
-            append("  ")
-            withStyle(resolvedInlineSupportingTextStyle) {
-                append("· ")
-                append(inlineSupportingText)
+    val resolvedTitleTextStyle = titleTextStyle ?: typography.bodyLarge
+    val defaultInlineSupportingTextStyle = remember(isHighlighted, colorScheme, typography) {
+        SpanStyle(
+            color = if (isHighlighted) {
+                colorScheme.error
+            } else {
+                colorScheme.onSurfaceVariant
+            },
+            fontSize = typography.labelMedium.fontSize,
+            fontWeight = FontWeight.Medium
+        )
+    }
+    val resolvedInlineSupportingTextStyle = inlineSupportingTextStyle ?: defaultInlineSupportingTextStyle
+    val titleText = remember(title, inlineSupportingText, resolvedInlineSupportingTextStyle) {
+        buildAnnotatedString {
+            append(title)
+            if (!inlineSupportingText.isNullOrBlank()) {
+                append("  ")
+                withStyle(resolvedInlineSupportingTextStyle) {
+                    append("· ")
+                    append(inlineSupportingText)
+                }
             }
         }
     }
@@ -161,6 +169,7 @@ internal fun TaskTimelineCard(
     val resolvedTimeLabel = timeLabel
     val compact = displayMode != TimelineItemDisplayMode.Comfortable && !resolvedTimeLabel.isNullOrBlank()
     val ultraCompact = displayMode == TimelineItemDisplayMode.UltraCompact
+    val highlighted = isOverdue ?: task.isOverdue()
     TaskCard(
         title = task.name.ifBlank { "Untitled task" },
         timeLabel = resolvedTimeLabel,
@@ -182,13 +191,13 @@ internal fun TaskTimelineCard(
             PaddingValues(horizontal = 10.dp, vertical = 8.dp)
         },
         titleMaxLines = 1,
-        isHighlighted = isOverdue ?: task.isOverdue(),
+        isHighlighted = highlighted,
         showSupportingText = !compact,
         inlineSupportingText = resolvedTimeLabel.takeIf { compact },
         titleTextStyle = if (ultraCompact) MaterialTheme.typography.bodyMedium else null,
         inlineSupportingTextStyle = if (ultraCompact) {
             SpanStyle(
-                color = if (isOverdue ?: task.isOverdue()) {
+                color = if (highlighted) {
                     MaterialTheme.colorScheme.error
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant

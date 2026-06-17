@@ -497,7 +497,7 @@ private sealed class GlanceAgendaItem {
         override val endTimeMinutes: Int? = item.endTimeMinutes
         override val sortOrder: Int = item.sortOrder
         override val title: String = item.widgetTitle()
-        override val color: Color = FallbackColor
+        override val color: Color = item.cardColor()
         override val completed: Boolean = item.status == DailyPlanItemStatus.Done
         override val overdue: Boolean = item.isOverdue(today)
         override val dailyPlanItemId: Long = item.id

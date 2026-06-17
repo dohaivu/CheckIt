@@ -40,6 +40,7 @@ import com.checkit.ui.TaskEditorState
 import com.checkit.ui.TaskSelectionState
 import com.checkit.ui.TaskSortOption
 import com.checkit.ui.TaskUiState
+import com.checkit.ui.TaskViewOptionsState
 import com.checkit.ui.TaskWorkspaceView
 import com.checkit.ui.components.MinutesPerDay
 import com.checkit.ui.toEditorState
@@ -98,14 +99,21 @@ class TaskViewModel(
         viewModelScope.launch {
             settingsRepository.settings.collect { settings ->
                 _uiState.update { state ->
-                    state.copy(
-                        options = state.options.copy(
-                            selectedView = TaskWorkspaceView.fromCode(settings.taskWorkspaceViewCode),
-                            listDisplayType = TaskListDisplayType.fromCode(settings.taskListDisplayTypeCode),
-                            showCompleted = settings.taskShowCompleted,
-                            sortOption = TaskSortOption.fromCode(settings.taskSortOptionCode)
-                        )
-                    ).refreshVisibleItems().coerceViewToAvailable()
+                    val nextOptions = state.options.copy(
+                        selectedView = TaskWorkspaceView.fromCode(settings.taskWorkspaceViewCode),
+                        listDisplayType = TaskListDisplayType.fromCode(settings.taskListDisplayTypeCode),
+                        showCompleted = settings.taskShowCompleted,
+                        sortOption = TaskSortOption.fromCode(settings.taskSortOptionCode)
+                    )
+                    if (nextOptions == state.options) {
+                        state
+                    } else if (nextOptions.hasSameVisibleItemsAs(state.options)) {
+                        state.copy(options = nextOptions).coerceViewToAvailable()
+                    } else {
+                        state.copy(options = nextOptions)
+                            .refreshVisibleItems()
+                            .coerceViewToAvailable()
+                    }
                 }
             }
         }
@@ -145,40 +153,80 @@ class TaskViewModel(
     }
 
     fun selectView(view: TaskWorkspaceView) {
+        var shouldPersist = false
         _uiState.update {
-            if (view in it.availableViews) {
-                it.copy(options = it.options.copy(selectedView = view))
-            } else {
+            if (view == it.selectedView || view !in it.availableViews) {
                 it
+            } else {
+                shouldPersist = true
+                it.copy(options = it.options.copy(selectedView = view))
             }
         }
-        viewModelScope.launch {
-            settingsRepository.setTaskWorkspaceViewCode(view.name)
+        if (shouldPersist) {
+            viewModelScope.launch {
+                settingsRepository.setTaskWorkspaceViewCode(view.name)
+            }
         }
     }
 
     fun selectListDisplayType(displayType: TaskListDisplayType) {
-        _uiState.update { it.copy(options = it.options.copy(listDisplayType = displayType)) }
-        viewModelScope.launch {
-            settingsRepository.setTaskListDisplayTypeCode(displayType.name)
+        var shouldPersist = false
+        _uiState.update {
+            if (displayType == it.listDisplayType) {
+                it
+            } else {
+                shouldPersist = true
+                it.copy(options = it.options.copy(listDisplayType = displayType))
+            }
+        }
+        if (shouldPersist) {
+            viewModelScope.launch {
+                settingsRepository.setTaskListDisplayTypeCode(displayType.name)
+            }
         }
     }
 
     fun setShowCompleted(showCompleted: Boolean) {
-        _uiState.update { it.copy(options = it.options.copy(showCompleted = showCompleted)).refreshVisibleItems() }
-        viewModelScope.launch {
-            settingsRepository.setTaskShowCompleted(showCompleted)
+        var shouldPersist = false
+        _uiState.update {
+            if (showCompleted == it.showCompleted) {
+                it
+            } else {
+                shouldPersist = true
+                it.copy(options = it.options.copy(showCompleted = showCompleted)).refreshVisibleItems()
+            }
+        }
+        if (shouldPersist) {
+            viewModelScope.launch {
+                settingsRepository.setTaskShowCompleted(showCompleted)
+            }
         }
     }
 
     fun updateSearchText(searchText: String) {
-        _uiState.update { it.copy(options = it.options.copy(searchText = searchText)).refreshVisibleItems() }
+        _uiState.update {
+            if (searchText == it.searchText) {
+                it
+            } else {
+                it.copy(options = it.options.copy(searchText = searchText)).refreshVisibleItems()
+            }
+        }
     }
 
     fun selectSortOption(sortOption: TaskSortOption) {
-        _uiState.update { it.copy(options = it.options.copy(sortOption = sortOption)).refreshVisibleItems() }
-        viewModelScope.launch {
-            settingsRepository.setTaskSortOptionCode(sortOption.name)
+        var shouldPersist = false
+        _uiState.update {
+            if (sortOption == it.sortOption) {
+                it
+            } else {
+                shouldPersist = true
+                it.copy(options = it.options.copy(sortOption = sortOption)).refreshVisibleItems()
+            }
+        }
+        if (shouldPersist) {
+            viewModelScope.launch {
+                settingsRepository.setTaskSortOptionCode(sortOption.name)
+            }
         }
     }
 
@@ -746,6 +794,11 @@ private fun <T> List<T>.move(fromIndex: Int, toIndex: Int): List<T> =
     toMutableList().apply {
         add(toIndex, removeAt(fromIndex))
     }
+
+private fun TaskViewOptionsState.hasSameVisibleItemsAs(other: TaskViewOptionsState): Boolean =
+    showCompleted == other.showCompleted &&
+        searchText == other.searchText &&
+        sortOption == other.sortOption
 
 private const val MinimumTimelineDurationMinutes = 15
 private const val LastTimelineStartMinute = MinutesPerDay - MinimumTimelineDurationMinutes

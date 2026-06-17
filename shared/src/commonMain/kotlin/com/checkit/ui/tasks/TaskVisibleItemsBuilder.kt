@@ -46,37 +46,31 @@ internal class TaskVisibleItemsBuilder(
             )
         }
 
-        val shouldHideCompleted = !options.showCompleted && selectedFilter?.status != TaskStatus.Completed
-        val completionFilteredTasks = if (shouldHideCompleted) {
-            selectedItems.tasks.filter { it.status != TaskStatus.Completed }
-        } else {
-            selectedItems.tasks
-        }
-        val completionFilteredNotes = if (shouldHideCompleted) {
-            selectedItems.notes.filter { it.status != TaskStatus.Completed }
-        } else {
-            selectedItems.notes
-        }
-
+        val visibleEntries = mutableListOf<TaskListEntry>()
         val query = options.searchText.trim()
-        val searchFilteredTasks = if (query.isEmpty()) {
-            completionFilteredTasks
-        } else {
-            completionFilteredTasks.filter { it.matchesSearch(query) }
+        val shouldHideCompleted = !options.showCompleted && selectedFilter?.status != TaskStatus.Completed
+        selectedItems.tasks.forEach { task ->
+            if (task.isVisible(shouldHideCompleted, query)) {
+                visibleEntries += TaskListEntry.Task(task)
+            }
         }
-        val searchFilteredNotes = if (query.isEmpty()) {
-            completionFilteredNotes
-        } else {
-            completionFilteredNotes.filter { it.matchesSearch(query) }
+        selectedItems.notes.forEach { note ->
+            if (note.isVisible(shouldHideCompleted, query)) {
+                visibleEntries += TaskListEntry.Note(note)
+            }
         }
-
-        val sortedVisibleItems = (searchFilteredTasks.map { TaskListEntry.Task(it) } +
-            searchFilteredNotes.map { TaskListEntry.Note(it) })
-            .sortedFor(options.sortOption)
-
+        val sortedVisibleItems = visibleEntries.sortedFor(options.sortOption)
+        val visibleTasks = mutableListOf<TaskItem>()
+        val visibleNotes = mutableListOf<NoteItem>()
+        sortedVisibleItems.forEach { entry ->
+            when (entry) {
+                is TaskListEntry.Task -> visibleTasks += entry.item
+                is TaskListEntry.Note -> visibleNotes += entry.item
+            }
+        }
         return TaskVisibleItemsState(
-            tasks = sortedVisibleItems.mapNotNull { (it as? TaskListEntry.Task)?.item },
-            notes = sortedVisibleItems.mapNotNull { (it as? TaskListEntry.Note)?.item },
+            tasks = visibleTasks,
+            notes = visibleNotes,
             listItems = sortedVisibleItems
         )
     }
@@ -86,6 +80,16 @@ private data class SelectedTaskItems(
     val tasks: List<TaskItem>,
     val notes: List<NoteItem>
 )
+
+private fun TaskItem.isVisible(shouldHideCompleted: Boolean, query: String): Boolean {
+    if (shouldHideCompleted && status == TaskStatus.Completed) return false
+    return query.isEmpty() || matchesSearch(query)
+}
+
+private fun NoteItem.isVisible(shouldHideCompleted: Boolean, query: String): Boolean {
+    if (shouldHideCompleted && status == TaskStatus.Completed) return false
+    return query.isEmpty() || matchesSearch(query)
+}
 
 private fun TaskItem.matchesSearch(query: String): Boolean =
     name.contains(query, ignoreCase = true) ||
@@ -97,33 +101,37 @@ private fun NoteItem.matchesSearch(query: String): Boolean =
 
 private fun List<TaskListEntry>.sortedFor(sortOption: TaskSortOption): List<TaskListEntry> =
     when (sortOption) {
-        TaskSortOption.Custom -> sortedWith(
-            compareBy<TaskListEntry> { it.sortOrder }
-                .thenBy { it.typeRank }
-                .thenBy { it.id }
-        )
-        TaskSortOption.Priority -> sortedWith(
-            compareBy<TaskListEntry> { it.priorityRank }
-                .thenBy { it.dateForSort ?: LocalDate.fromEpochDays(Int.MAX_VALUE) }
-                .thenBy { it.startTimeForSort ?: Int.MAX_VALUE }
-                .thenBy { it.sortOrder }
-                .thenBy { it.typeRank }
-                .thenBy { it.id }
-        )
-        TaskSortOption.Title -> sortedWith(
-            compareBy<TaskListEntry> { it.titleForSort }
-                .thenBy { it.sortOrder }
-                .thenBy { it.typeRank }
-                .thenBy { it.id }
-        )
-        TaskSortOption.Date -> sortedWith(
-            compareBy<TaskListEntry> { it.dateForSort ?: LocalDate.fromEpochDays(Int.MAX_VALUE) }
-                .thenBy { it.startTimeForSort ?: Int.MAX_VALUE }
-                .thenBy { it.sortOrder }
-                .thenBy { it.typeRank }
-                .thenBy { it.id }
-        )
+        TaskSortOption.Custom -> sortedWith(TaskListEntryCustomComparator)
+        TaskSortOption.Priority -> sortedWith(TaskListEntryPriorityComparator)
+        TaskSortOption.Title -> sortedWith(TaskListEntryTitleComparator)
+        TaskSortOption.Date -> sortedWith(TaskListEntryDateComparator)
     }
+
+private val TaskListEntryCustomComparator: Comparator<TaskListEntry> =
+    compareBy<TaskListEntry> { it.sortOrder }
+        .thenBy { it.typeRank }
+        .thenBy { it.id }
+
+private val TaskListEntryPriorityComparator: Comparator<TaskListEntry> =
+    compareBy<TaskListEntry> { it.priorityRank }
+        .thenBy { it.dateForSort ?: LocalDate.fromEpochDays(Int.MAX_VALUE) }
+        .thenBy { it.startTimeForSort ?: Int.MAX_VALUE }
+        .thenBy { it.sortOrder }
+        .thenBy { it.typeRank }
+        .thenBy { it.id }
+
+private val TaskListEntryTitleComparator: Comparator<TaskListEntry> =
+    compareBy<TaskListEntry> { it.titleForSort }
+        .thenBy { it.sortOrder }
+        .thenBy { it.typeRank }
+        .thenBy { it.id }
+
+private val TaskListEntryDateComparator: Comparator<TaskListEntry> =
+    compareBy<TaskListEntry> { it.dateForSort ?: LocalDate.fromEpochDays(Int.MAX_VALUE) }
+        .thenBy { it.startTimeForSort ?: Int.MAX_VALUE }
+        .thenBy { it.sortOrder }
+        .thenBy { it.typeRank }
+        .thenBy { it.id }
 
 private val TaskListEntry.id: Long
     get() = when (this) {

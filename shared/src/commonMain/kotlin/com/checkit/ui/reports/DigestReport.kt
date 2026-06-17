@@ -112,7 +112,7 @@ internal fun DigestReport(
             onPreviousPeriod = onPreviousPeriod,
             onNextPeriod = onNextPeriod,
             onCurrentPeriod = onCurrentPeriod,
-            periods = listOf(ReportPeriod.Daily, ReportPeriod.Week)
+            periods = DigestReportPeriods
         )
         Column(
             modifier = Modifier
@@ -172,7 +172,12 @@ private fun HeroSummaryCard(
     modifier: Modifier = Modifier
 ) {
     val doneTotal = doneCount + plannedCount
-    val trend = totalMinutes.trendSummary(previousTotalMinutes, selectedPeriod)
+    val trend = remember(totalMinutes, previousTotalMinutes, selectedPeriod) {
+        totalMinutes.trendSummary(previousTotalMinutes, selectedPeriod)
+    }
+    val encouragement = remember(doneCount, plannedCount, selectedPeriod) {
+        heroEncouragement(doneCount, plannedCount, selectedPeriod)
+    }
     val progressSegments = remember(progressItems) {
         progressItems.toProgressRingSegments()
     }
@@ -217,7 +222,7 @@ private fun HeroSummaryCard(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = heroEncouragement(doneCount, plannedCount, selectedPeriod),
+                        text = encouragement,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
@@ -260,7 +265,8 @@ private fun WeeklyActivityChart(
     selectedPeriod: ReportPeriod,
     modifier: Modifier = Modifier
 ) {
-    val maxMinutes = items.maxOfOrNull { it.totalMinutes } ?: 0
+    val maxMinutes = remember(items) { items.maxOfOrNull { it.totalMinutes } ?: 0 }
+    val subtitle = remember(selectedPeriod) { activityChartSubtitle(selectedPeriod) }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -283,7 +289,7 @@ private fun WeeklyActivityChart(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = activityChartSubtitle(selectedPeriod),
+                    text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -327,6 +333,8 @@ private fun activityChartSubtitle(selectedPeriod: ReportPeriod): AnnotatedString
             append(".")
         }
     }
+
+private val DigestReportPeriods = listOf(ReportPeriod.Daily, ReportPeriod.Week)
 
 @Composable
 private fun ActivityBar(

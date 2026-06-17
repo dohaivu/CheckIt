@@ -56,11 +56,13 @@ internal fun AgendaView(
     itemContent: @Composable (TimelineItem) -> Unit
 ) {
     val today = today()
-    val itemsByDate = remember(items) { items.groupBy { it.date } }
+    val itemsByDate = remember(items) { items.groupedByAgendaDate() }
     val boundedDayCount = dayLimit?.coerceAtLeast(1)
     val initialIndex = if (boundedDayCount == null) TodayIndex else 0
     val state = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
     val scope = rememberCoroutineScope()
+    val now = kotlin.time.Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+    val nowMinutes = now.hour * 60 + now.minute
 
     LaunchedEffect(focusedDate, initialIndex) {
         state.scrollToItem(initialIndex)
@@ -80,7 +82,8 @@ internal fun AgendaView(
                 AgendaDaySection(
                     date = date,
                     today = today,
-                    items = itemsByDate[date].orEmpty(),
+                    items = itemsByDate[date] ?: AgendaDayItems.Empty,
+                    nowMinutes = nowMinutes,
                     showHeader = boundedDayCount != 1,
                     onItemClick = onItemClick,
                     itemContent = itemContent
@@ -107,23 +110,15 @@ internal fun AgendaView(
 private fun AgendaDaySection(
     date: LocalDate,
     today: LocalDate,
-    items: List<TimelineItem>,
+    items: AgendaDayItems,
+    nowMinutes: Int,
     showHeader: Boolean,
     onItemClick: (TimelineItem) -> Unit,
     itemContent: @Composable (TimelineItem) -> Unit
 ) {
-    val allDayItems = items
-        .filter { it.startTimeMinutes == null }
-        .sortedBy { it.sortOrder }
-    val timedItems = items
-        .filter { it.startTimeMinutes != null }
-        .sortedWith(compareBy<TimelineItem> { it.startTimeMinutes }.thenBy { it.sortOrder })
-
-    val now = kotlin.time.Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-    val nowMinutes = now.hour * 60 + now.minute
-    val nextTimedItemIndex = remember(date, today, timedItems, nowMinutes) {
+    val nextTimedItemIndex = remember(date, today, items.timedItems, nowMinutes) {
         if (date == today) {
-            timedItems.indexOfFirst { (it.startTimeMinutes ?: 0) > nowMinutes }
+            items.timedItems.indexOfFirst { (it.startTimeMinutes ?: 0) > nowMinutes }
         } else {
             -1
         }
@@ -134,22 +129,22 @@ private fun AgendaDaySection(
             AgendaDayHeader(date = date, today = today)
             Spacer(Modifier.height(8.dp))
         }
-        if (allDayItems.isEmpty() && timedItems.isEmpty()) {
+        if (items.isEmpty) {
             AgendaEmptyDay()
         } else {
-            if (allDayItems.isNotEmpty()) {
+            if (items.allDayItems.isNotEmpty()) {
                 AgendaAllDayRow(
-                    items = allDayItems,
-                    showBottomLine = timedItems.isNotEmpty(),
+                    items = items.allDayItems,
+                    showBottomLine = items.timedItems.isNotEmpty(),
                     onItemClick = onItemClick,
                     itemContent = itemContent
                 )
             }
-            timedItems.forEachIndexed { index, item ->
+            items.timedItems.forEachIndexed { index, item ->
                 AgendaTimedRow(
                     item = item,
-                    showTopLine = index > 0 || allDayItems.isNotEmpty(),
-                    showBottomLine = index < timedItems.lastIndex,
+                    showTopLine = index > 0 || items.allDayItems.isNotEmpty(),
+                    showBottomLine = index < items.timedItems.lastIndex,
                     isHighlighted = index == nextTimedItemIndex,
                     onItemClick = onItemClick,
                     itemContent = itemContent
@@ -158,6 +153,44 @@ private fun AgendaDaySection(
         }
     }
 }
+
+private data class AgendaDayItems(
+    val allDayItems: List<TimelineItem>,
+    val timedItems: List<TimelineItem>
+) {
+    val isEmpty: Boolean get() = allDayItems.isEmpty() && timedItems.isEmpty()
+
+    companion object {
+        val Empty = AgendaDayItems(emptyList(), emptyList())
+    }
+}
+
+private data class MutableAgendaDayItems(
+    val allDayItems: MutableList<TimelineItem> = mutableListOf(),
+    val timedItems: MutableList<TimelineItem> = mutableListOf()
+)
+
+private fun List<TimelineItem>.groupedByAgendaDate(): Map<LocalDate, AgendaDayItems> {
+    val buckets = mutableMapOf<LocalDate, MutableAgendaDayItems>()
+    forEach { item ->
+        val date = item.date ?: return@forEach
+        val dayItems = buckets.getOrPut(date) { MutableAgendaDayItems() }
+        if (item.startTimeMinutes == null) {
+            dayItems.allDayItems += item
+        } else {
+            dayItems.timedItems += item
+        }
+    }
+    return buckets.mapValues { (_, dayItems) ->
+        AgendaDayItems(
+            allDayItems = dayItems.allDayItems.sortedBy { it.sortOrder },
+            timedItems = dayItems.timedItems.sortedWith(AgendaTimedItemComparator)
+        )
+    }
+}
+
+private val AgendaTimedItemComparator: Comparator<TimelineItem> =
+    compareBy<TimelineItem> { it.startTimeMinutes }.thenBy { it.sortOrder }
 
 @Composable
 private fun AgendaDayHeader(date: LocalDate, today: LocalDate) {

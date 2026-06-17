@@ -2,8 +2,8 @@ package com.checkit.ui.tasks
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -40,7 +40,7 @@ internal fun TaskActionFab(
             )
             DropdownMenuItem(
                 text = { Text("Note") },
-                leadingIcon = { Icon(Icons.Default.Notes, contentDescription = null) },
+                leadingIcon = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null) },
                 onClick = {
                     expanded = false
                     onNoteClick()

@@ -19,27 +19,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -50,7 +39,9 @@ import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.TaskTag
 import com.checkit.ui.DailyPlanItemEditorState
+import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
+import com.checkit.ui.components.DeleteOverflowMenu
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.components.TimePicker
 import com.checkit.ui.components.TimeRangePicker
@@ -75,49 +66,43 @@ internal fun DailyPlanItemEditorSheet(
     onAdd: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val enabled = state.isEditableByDate()
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        sheetGesturesEnabled = true
+
+    AppEditorBottomSheet(
+        onDismiss = onDismiss,
+        modifier = Modifier
+            .fillMaxHeight()
+            .padding(bottom = 24.dp)
+            .windowInsetsPadding(WindowInsets.ime)
     ) {
-        Column(
+        DailyPlanItemSheetHeader(
+            state = state,
+            onDelete = onDelete
+        )
+        LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight()
-                .padding(bottom = 24.dp)
-                .windowInsetsPadding(WindowInsets.ime)
+                .weight(1f)
+                .padding(horizontal = 20.dp),
+            contentPadding = PaddingValues(top = 10.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            DailyPlanItemSheetHeader(
-                state = state,
-                onDelete = onDelete
-            )
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(horizontal = 20.dp),
-                contentPadding = PaddingValues(top = 10.dp, bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                item {
-                    DailyPlanItemFormContent(
-                        state = state,
-                        availableTags = availableTags,
-                        onTitleChange = onTitleChange,
-                        onNoteChange = onNoteChange,
-                        onStatusChange = onStatusChange,
-                        onSourceChange = onSourceChange,
-                        onStartTimeChange = onStartTimeChange,
-                        onEndTimeChange = onEndTimeChange,
-                        onTagToggle = onTagToggle,
-                        enabled = enabled
-                    )
-                }
+            item {
+                DailyPlanItemFormContent(
+                    state = state,
+                    availableTags = availableTags,
+                    onTitleChange = onTitleChange,
+                    onNoteChange = onNoteChange,
+                    onStatusChange = onStatusChange,
+                    onSourceChange = onSourceChange,
+                    onStartTimeChange = onStartTimeChange,
+                    onEndTimeChange = onEndTimeChange,
+                    onTagToggle = onTagToggle,
+                    enabled = enabled
+                )
             }
-            DailyPlanItemSheetFooter(state.isAddMode, enabled, onAdd)
         }
+        DailyPlanItemSheetFooter(state.isAddMode, enabled, onAdd)
     }
 }
 
@@ -126,7 +111,6 @@ private fun DailyPlanItemSheetHeader(
     state: DailyPlanItemEditorState,
     onDelete: () -> Unit
 ) {
-    var menuExpanded by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
@@ -153,24 +137,7 @@ private fun DailyPlanItemSheetHeader(
                 )
             }
             if (state.canDelete) {
-                Box {
-                    IconButton(onClick = { menuExpanded = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "Options")
-                    }
-                    DropdownMenu(
-                        expanded = menuExpanded,
-                        onDismissRequest = { menuExpanded = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Delete") },
-                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
-                            onClick = {
-                                menuExpanded = false
-                                onDelete()
-                            }
-                        )
-                    }
-                }
+                DeleteOverflowMenu(onDelete = onDelete)
             }
         }
     }
