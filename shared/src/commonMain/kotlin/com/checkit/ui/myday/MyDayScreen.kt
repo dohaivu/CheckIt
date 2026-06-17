@@ -66,6 +66,7 @@ import com.checkit.ui.tasks.TaskTimelineCard
 import com.checkit.ui.tasks.isOverdue
 import com.checkit.ui.tasks.timeRangeLabel
 import com.checkit.ui.tasks.toClockLabel
+import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -217,7 +218,7 @@ internal fun MyDayAgenda(
         focusedDate = date,
         itemContent = { item ->
             when (val tag = item.tag) {
-                is DailyPlanItem -> if (item.startTimeMinutes == null) DailyPlanAllDayCard(tag) else DailyPlanTimelineCard(tag)
+                is DailyPlanItem -> if (item.startTimeMinutes == null) DailyPlanAllDayCard(tag) else DailyPlanTimelineCard(tag, isOverdue = tag.isOverdue(date))
                 is NoteItem -> if (item.startTimeMinutes == null) NoteAllDayCard(tag) else NoteTimelineCard(tag)
                 is PlannedTaskProjection -> {
                     val task = tag.task
@@ -288,7 +289,8 @@ private fun MyDayTimeline(
                     item = tag,
                     selected = isSelected,
                     modifier = Modifier.matchParentSize(),
-                    displayMode = displayMode
+                    displayMode = displayMode,
+                    isOverdue = tag.isOverdue(date)
                 )
                 is NoteItem -> NoteTimelineCard(tag, selected = isSelected, modifier = Modifier.matchParentSize())
                 is PlannedTaskProjection -> TaskTimelineCard(
@@ -371,7 +373,8 @@ private fun MyDayBoardItem(
     } else {
         DailyPlanTimelineCard(
             item = item,
-            onClick = { onItemClick(item) }
+            onClick = { onItemClick(item) },
+            isOverdue = item.isOverdue(today())
         )
     }
 }

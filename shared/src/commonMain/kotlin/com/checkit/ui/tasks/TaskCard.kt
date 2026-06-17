@@ -13,15 +13,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.EventNote
-import androidx.compose.material.icons.automirrored.filled.Notes
-import androidx.compose.material.icons.filled.EventAvailable
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -247,6 +240,7 @@ internal fun DailyPlanTimelineCard(
     timeLabel: String? = item.timelineTimeLabel() ?: item.timelineSupportingText(),
     selected: Boolean = false,
     completedOverlay: Boolean = false,
+    isOverdue: Boolean,
     displayMode: TimelineItemDisplayMode = TimelineItemDisplayMode.Comfortable
 ) {
     val compact = displayMode != TimelineItemDisplayMode.Comfortable && !timeLabel.isNullOrBlank()
@@ -269,6 +263,7 @@ internal fun DailyPlanTimelineCard(
             PaddingValues(horizontal = 10.dp, vertical = 8.dp)
         },
         titleMaxLines = 1,
+        isHighlighted = isOverdue,
         showSupportingText = !compact,
         inlineSupportingText = timeLabel.takeIf { compact },
         titleTextStyle = if (ultraCompact) MaterialTheme.typography.bodyMedium else null,

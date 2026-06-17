@@ -181,7 +181,7 @@ fun TaskItem.isOverdue(): Boolean {
 }
 
 fun DailyPlanItem.isOverdue(date: LocalDate): Boolean {
-    return date.isOverdue(today(), endTimeMinutes, status == DailyPlanItemStatus.Done)
+    return date.isOverdue(today(), endTimeMinutes ?: startTimeMinutes, status == DailyPlanItemStatus.Done)
 }
 
 fun LocalDate?.isOverdue(today: LocalDate, deadline: Int?, isCompleted: Boolean): Boolean =
