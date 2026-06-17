@@ -97,9 +97,13 @@ data class DailyPlanItem(
 
 enum class DailyPlanItemSource {
     ExistingTask,
-    CheckInManualDone,
-    CheckInNote
+    MyDayTask,
+    MyDayNote,
+    MyDayReminder
 }
+
+fun DailyPlanItemSource.hasEndTime(): Boolean =
+    this == DailyPlanItemSource.ExistingTask || this == DailyPlanItemSource.MyDayTask
 
 enum class DailyPlanItemStatus {
     Planned,

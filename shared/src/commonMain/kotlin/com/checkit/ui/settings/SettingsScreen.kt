@@ -6,6 +6,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,7 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.AlertDialog
@@ -41,6 +42,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -204,7 +206,7 @@ private fun ReminderSettingsScreen(
         title = "Reminders",
         navigationIcon = {
             IconButton(onClick = onBack) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
             }
         }
     ) { contentModifier ->
@@ -213,7 +215,7 @@ private fun ReminderSettingsScreen(
         ) {
             item {
                 ReminderRow(
-                    title = "Plan reminder",
+                    title = "Plan",
                     subtitle = "Start the day by planning My Day",
                     enabled = state.planEnabled,
                     timeMinutes = state.planTimeMinutes,
@@ -223,7 +225,7 @@ private fun ReminderSettingsScreen(
             }
             item {
                 ReminderRow(
-                    title = "Review reminder",
+                    title = "Review",
                     subtitle = "Close the day with a quick review",
                     enabled = state.reviewEnabled,
                     timeMinutes = state.reviewTimeMinutes,
@@ -259,29 +261,20 @@ private fun ReminderRow(
 ) {
     var showTimePicker by remember { mutableStateOf(false) }
 
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(Icons.Default.Notifications, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.size(12.dp))
-            Column(
-                modifier = Modifier.weight(1f).clickable(enabled = enabled) { showTimePicker = true }
-            ) {
-                Text(title, fontWeight = FontWeight.SemiBold)
-                Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                Text(
-                    text = formatTime(timeMinutes),
-                    modifier = Modifier.padding(top = 4.dp),
-                    color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-            Switch(checked = enabled, onCheckedChange = onEnabledChange)
-        }
-        AppHorizontalDivider()
+    SwitchSettingsRow(
+        title = title,
+        subtitle = subtitle,
+        enabled = enabled,
+        onEnabledChange = onEnabledChange,
+        contentModifier = Modifier.clickable(enabled = enabled) { showTimePicker = true }
+    ) {
+        Text(
+            text = formatTime(timeMinutes),
+            modifier = Modifier.padding(top = 4.dp),
+            color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium
+        )
     }
 
     if (showTimePicker) {
@@ -298,24 +291,27 @@ private fun ReminderRow(
 }
 
 @Composable
-private fun ScheduleReminderRow(
+private fun SwitchSettingsRow(
+    title: String,
+    subtitle: String,
     enabled: Boolean,
-    onEnabledChange: (Boolean) -> Unit
+    onEnabledChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    icon: ImageVector = Icons.Default.Notifications,
+    contentModifier: Modifier = Modifier,
+    extraContent: @Composable ColumnScope.() -> Unit = {}
 ) {
-    Column {
+    Column(modifier = modifier) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Default.Notifications, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.size(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text("Schedule reminder", fontWeight = FontWeight.SemiBold)
-                Text(
-                    "Reminds when timed My Day items start",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodySmall
-                )
+            Column(modifier = Modifier.weight(1f).then(contentModifier)) {
+                Text(title, fontWeight = FontWeight.SemiBold)
+                Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                extraContent()
             }
             Switch(checked = enabled, onCheckedChange = onEnabledChange)
         }
@@ -324,35 +320,36 @@ private fun ScheduleReminderRow(
 }
 
 @Composable
+private fun ScheduleReminderRow(
+    enabled: Boolean,
+    onEnabledChange: (Boolean) -> Unit
+) {
+    SwitchSettingsRow(
+        title = "Schedule",
+        subtitle = "Reminds when timed My Day items start",
+        enabled = enabled,
+        onEnabledChange = onEnabledChange
+    )
+}
+
+@Composable
 private fun CheckInReminderRow(
     enabled: Boolean,
     lastShownAtMillis: Long?,
     onEnabledChange: (Boolean) -> Unit
 ) {
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(Icons.Default.Notifications, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.size(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text("CheckIn reminder", fontWeight = FontWeight.SemiBold)
-                Text(
-                    "Checks every 30 minutes when My Day has nothing near now",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodySmall
-                )
-                Text(
-                    text = lastShownAtMillis?.let { "Last shown ${formatLastShown(it)}" } ?: "Last shown never",
-                    modifier = Modifier.padding(top = 4.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-            Switch(checked = enabled, onCheckedChange = onEnabledChange)
-        }
-        AppHorizontalDivider()
+    SwitchSettingsRow(
+        title = "CheckIn",
+        subtitle = "Checks every 30 minutes when My Day has nothing near now",
+        enabled = enabled,
+        onEnabledChange = onEnabledChange
+    ) {
+        Text(
+            text = lastShownAtMillis?.let { "Last shown ${formatLastShown(it)}" } ?: "Last shown never",
+            modifier = Modifier.padding(top = 4.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodySmall
+        )
     }
 }
 
@@ -410,65 +407,35 @@ internal fun SettingsRow(
 
 @Composable
 private fun LanguageSettings(state: SettingsUiState, viewModel: SettingsViewModel) {
-    var showDialog by remember { mutableStateOf(false) }
-
-    SettingValueRow(
+    SelectionSetting(
         title = stringResource(Res.string.language),
-        value = state.language.label,
-        onClick = { showDialog = true }
+        selected = state.language,
+        options = AppLanguage.entries,
+        label = { it.label },
+        onSelected = viewModel::setLanguage
     )
-    if (showDialog) {
-        LanguageSelectionDialog(
-            selected = state.language,
-            onDismiss = { showDialog = false },
-            onSelected = { language ->
-                viewModel.setLanguage(language)
-                showDialog = false
-            }
-        )
-    }
 }
 
 @Composable
 private fun ThemeSettings(state: SettingsUiState, viewModel: SettingsViewModel) {
-    var showDialog by remember { mutableStateOf(false) }
-
-    SettingValueRow(
+    SelectionSetting(
         title = stringResource(Res.string.theme),
-        value = state.themeMode.label(),
-        onClick = { showDialog = true }
+        selected = state.themeMode,
+        options = AppThemeMode.entries,
+        label = { it.label() },
+        onSelected = viewModel::setThemeMode
     )
-    if (showDialog) {
-        ThemeSelectionDialog(
-            selected = state.themeMode,
-            onDismiss = { showDialog = false },
-            onSelected = { themeMode ->
-                viewModel.setThemeMode(themeMode)
-                showDialog = false
-            }
-        )
-    }
 }
 
 @Composable
 private fun ColorSchemeSettings(state: SettingsUiState, viewModel: SettingsViewModel) {
-    var showDialog by remember { mutableStateOf(false) }
-
-    SettingValueRow(
+    SelectionSetting(
         title = stringResource(Res.string.color_scheme),
-        value = state.colorSchemeMode.label(),
-        onClick = { showDialog = true }
+        selected = state.colorSchemeMode,
+        options = AppColorSchemeMode.entries,
+        label = { it.label() },
+        onSelected = viewModel::setColorSchemeMode
     )
-    if (showDialog) {
-        ColorSchemeSelectionDialog(
-            selected = state.colorSchemeMode,
-            onDismiss = { showDialog = false },
-            onSelected = { colorSchemeMode ->
-                viewModel.setColorSchemeMode(colorSchemeMode)
-                showDialog = false
-            }
-        )
-    }
 }
 
 @Composable
@@ -491,87 +458,34 @@ private fun SettingValueRow(
 }
 
 @Composable
-private fun LanguageSelectionDialog(
-    selected: AppLanguage,
-    onDismiss: () -> Unit,
-    onSelected: (AppLanguage) -> Unit
+private fun <T> SelectionSetting(
+    title: String,
+    selected: T,
+    options: List<T>,
+    label: @Composable (T) -> String,
+    onSelected: (T) -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(Res.string.language)) },
-        text = {
-            Column {
-                AppLanguage.entries.forEach { language ->
-                    SelectionRow(
-                        text = language.label,
-                        selected = selected == language,
-                        onClick = { onSelected(language) }
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(Res.string.cancel))
-            }
-        }
-    )
-}
+    var showDialog by remember { mutableStateOf(false) }
 
-@Composable
-private fun ThemeSelectionDialog(
-    selected: AppThemeMode,
-    onDismiss: () -> Unit,
-    onSelected: (AppThemeMode) -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(Res.string.theme)) },
-        text = {
-            Column {
-                AppThemeMode.entries.forEach { themeMode ->
-                    SelectionRow(
-                        text = themeMode.label(),
-                        selected = selected == themeMode,
-                        onClick = { onSelected(themeMode) }
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(Res.string.cancel))
-            }
-        }
+    SettingValueRow(
+        title = title,
+        value = label(selected),
+        onClick = { showDialog = true }
     )
-}
 
-@Composable
-private fun ColorSchemeSelectionDialog(
-    selected: AppColorSchemeMode,
-    onDismiss: () -> Unit,
-    onSelected: (AppColorSchemeMode) -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(Res.string.color_scheme)) },
-        text = {
-            Column {
-                AppColorSchemeMode.entries.forEach { colorSchemeMode ->
-                    SelectionRow(
-                        text = colorSchemeMode.label(),
-                        selected = selected == colorSchemeMode,
-                        onClick = { onSelected(colorSchemeMode) }
-                    )
-                }
+    if (showDialog) {
+        SelectionDialog(
+            title = title,
+            selected = selected,
+            options = options,
+            label = label,
+            onDismiss = { showDialog = false },
+            onSelected = { option ->
+                onSelected(option)
+                showDialog = false
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(Res.string.cancel))
-            }
-        }
-    )
+        )
+    }
 }
 
 @Composable
@@ -663,4 +577,35 @@ private fun SelectionRow(
             )
         }
     }
+}
+
+@Composable
+private fun <T> SelectionDialog(
+    title: String,
+    selected: T,
+    options: List<T>,
+    label: @Composable (T) -> String,
+    onDismiss: () -> Unit,
+    onSelected: (T) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column {
+                options.forEach { option ->
+                    SelectionRow(
+                        text = label(option),
+                        selected = selected == option,
+                        onClick = { onSelected(option) }
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(Res.string.cancel))
+            }
+        }
+    )
 }

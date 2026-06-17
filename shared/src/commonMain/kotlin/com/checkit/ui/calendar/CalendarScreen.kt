@@ -42,8 +42,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.calendar_title
+import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.NoteItem
+import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.usecase.BuildDailyPlanMarkdownSummaryUseCase
 import com.checkit.ui.CalendarDateMarkers
@@ -85,16 +87,7 @@ internal fun CalendarScreen(
     modifier: Modifier = Modifier
 ) {
     val today = today()
-    val tasksForDate = state.tasksForDate(state.selectedDate)
-    val notesForDate = state.notesForDate(state.selectedDate)
-    val showDailyPlan = state.selectedDate <= today
-    val selectedDailyPlan = state.dailyPlanForDate(state.selectedDate)
-    val dailyPlanItems = selectedDailyPlan?.items.orEmpty()
-    val hasItemsForDate = if (showDailyPlan) {
-        dailyPlanItems.isNotEmpty()
-    } else {
-        tasksForDate.isNotEmpty() || notesForDate.isNotEmpty()
-    }
+    val selectedContent = remember(state, today) { state.selectedDateContent(today) }
     val handleDateDoubleClick: (LocalDate) -> Unit = { date ->
         calendarViewModel.selectDate(date)
         if (date <= today) {
@@ -161,15 +154,15 @@ internal fun CalendarScreen(
             }
             SelectedDateHeader(
                 date = state.selectedDate,
-                taskCount = if (showDailyPlan) dailyPlanItems.size else tasksForDate.size,
-                noteCount = notesForDate.size,
-                summaryEnabled = showDailyPlan && state.showDailyPlanSummary,
-                summaryAvailable = showDailyPlan,
+                taskCount = selectedContent.taskCount,
+                noteCount = selectedContent.noteCount,
+                summaryEnabled = selectedContent.showDailyPlan && state.showDailyPlanSummary,
+                summaryAvailable = selectedContent.showDailyPlan,
                 onSummaryToggle = calendarViewModel::toggleDailyPlanSummary
             )
-            if (showDailyPlan) {
+            if (selectedContent.showDailyPlan) {
                 DayLinearTimeline(
-                    items = dailyPlanItems,
+                    items = selectedContent.dailyPlanItems,
                     board = state.board,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -177,64 +170,86 @@ internal fun CalendarScreen(
                         .padding(bottom = 4.dp)
                 )
             }
-            if (showDailyPlan && state.showDailyPlanSummary) {
-                val summaryBuilder = remember { BuildDailyPlanMarkdownSummaryUseCase() }
-                val summaryMarkdown = remember(state.selectedDate, selectedDailyPlan, state.board) {
-                    summaryBuilder(
-                        date = state.selectedDate,
-                        plan = selectedDailyPlan,
-                        board = state.board
-                    )
-                }
-                DailyPlanMarkdownSummary(
-                    markdown = summaryMarkdown,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                )
-            } else if (hasItemsForDate) {
-                if (showDailyPlan) {
-                    MyDayAgenda(
-                        items = dailyPlanItems,
-                        board = state.board,
-                        date = state.selectedDate,
-                        onItemClick = { onDailyPlanItemClick(it, state.selectedDate) },
-                        onTaskClick = onTaskClick,
-                        onNoteClick = onNoteClick,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                    )
-                } else {
-                    TaskAgendaView(
-                        tasks = tasksForDate,
-                        notes = notesForDate,
-                        onTaskClick = {
-                            onTaskClick(it, null)
-                        },
-                        onNoteClick = onNoteClick,
-                        dayLimit = 1,
-                        focusedDate = state.selectedDate,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                    )
-                }
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 24.dp, horizontal = 8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = if (showDailyPlan) "No My Day history for this day" else "No tasks or notes for this day",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+            SelectedDateContent(
+                content = selectedContent,
+                showDailyPlanSummary = state.showDailyPlanSummary,
+                onDailyPlanItemClick = onDailyPlanItemClick,
+                onTaskClick = onTaskClick,
+                onNoteClick = onNoteClick,
+                modifier = Modifier.fillMaxWidth().weight(1f)
+            )
         }
+    }
+}
+
+@Composable
+private fun SelectedDateContent(
+    content: SelectedCalendarDateContent,
+    showDailyPlanSummary: Boolean,
+    onDailyPlanItemClick: (DailyPlanItem, LocalDate) -> Unit,
+    onTaskClick: (TaskItem, DailyPlanItem?) -> Unit,
+    onNoteClick: (NoteItem) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (content.showDailyPlan && showDailyPlanSummary) {
+        val summaryBuilder = remember { BuildDailyPlanMarkdownSummaryUseCase() }
+        val summaryMarkdown = remember(content.date, content.dailyPlan, content.board) {
+            summaryBuilder(
+                date = content.date,
+                plan = content.dailyPlan,
+                board = content.board
+            )
+        }
+        DailyPlanMarkdownSummary(
+            markdown = summaryMarkdown,
+            modifier = modifier
+        )
+    } else if (content.hasItems) {
+        if (content.showDailyPlan) {
+            MyDayAgenda(
+                items = content.dailyPlanItems,
+                board = content.board,
+                date = content.date,
+                onItemClick = { onDailyPlanItemClick(it, content.date) },
+                onTaskClick = onTaskClick,
+                onNoteClick = onNoteClick,
+                modifier = modifier
+            )
+        } else {
+            TaskAgendaView(
+                tasks = content.tasks,
+                notes = content.notes,
+                onTaskClick = { onTaskClick(it, null) },
+                onNoteClick = onNoteClick,
+                dayLimit = 1,
+                focusedDate = content.date,
+                modifier = modifier
+            )
+        }
+    } else {
+        EmptySelectedDateMessage(
+            showDailyPlan = content.showDailyPlan,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 24.dp, horizontal = 8.dp)
+        )
+    }
+}
+
+@Composable
+private fun EmptySelectedDateMessage(
+    showDailyPlan: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = if (showDailyPlan) "No My Day history for this day" else "No tasks or notes for this day",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -358,7 +373,6 @@ private fun DailyPlanMarkdownSummary(
     Markdown(
         modifier = modifier.verticalScroll(scrollState),
         content = markdown,
-//        colors = markdownColor(text = contentColor),
         typography = markdownTypography(
             h1 = MaterialTheme.typography.headlineSmall,
             h2 = MaterialTheme.typography.titleLarge,
@@ -367,6 +381,34 @@ private fun DailyPlanMarkdownSummary(
             h5 = MaterialTheme.typography.bodySmall,
             h6 = MaterialTheme.typography.bodySmall
         ),
+    )
+}
+
+private data class SelectedCalendarDateContent(
+    val date: LocalDate,
+    val board: TaskBoard,
+    val showDailyPlan: Boolean,
+    val dailyPlan: DailyPlan?,
+    val dailyPlanItems: List<DailyPlanItem>,
+    val tasks: List<TaskItem>,
+    val notes: List<NoteItem>
+) {
+    val taskCount: Int get() = if (showDailyPlan) dailyPlanItems.size else tasks.size
+    val noteCount: Int get() = notes.size
+    val hasItems: Boolean get() = if (showDailyPlan) dailyPlanItems.isNotEmpty() else tasks.isNotEmpty() || notes.isNotEmpty()
+}
+
+private fun CalendarUiState.selectedDateContent(today: LocalDate): SelectedCalendarDateContent {
+    val showDailyPlan = selectedDate <= today
+    val dailyPlan = dailyPlanForDate(selectedDate)
+    return SelectedCalendarDateContent(
+        date = selectedDate,
+        board = board,
+        showDailyPlan = showDailyPlan,
+        dailyPlan = dailyPlan,
+        dailyPlanItems = dailyPlan?.items.orEmpty(),
+        tasks = tasksForDate(selectedDate),
+        notes = notesForDate(selectedDate)
     )
 }
 

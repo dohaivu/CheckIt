@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.checkit.domain.CheckInReminderPolicy
+import com.checkit.domain.NotificationMessage
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.time.LocalDate
@@ -28,10 +29,11 @@ class CheckInReminderWorker(
                     nowMillis = now
                 )
             ) {
+                val message = NotificationMessage.randomCheckIn()
                 CheckItNotificationCenter(applicationContext).showAppReminder(
                     notificationId = NotificationIds.CheckInReminder,
-                    title = "Check in",
-                    body = "Nothing is in My Day around now. Add or adjust your plan?",
+                    title = message.title,
+                    body = NotificationText.withActionQuote(message.body),
                     type = AppReminderType.CheckIn
                 )
                 checkInReminderPolicy.markReminderShown(now)

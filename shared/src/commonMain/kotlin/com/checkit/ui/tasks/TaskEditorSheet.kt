@@ -19,37 +19,27 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.RestoreFromTrash
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.DailyPlanItem
@@ -62,8 +52,10 @@ import com.checkit.ui.EditorMode
 import com.checkit.ui.RepeatPreset
 import com.checkit.ui.TaskEditorState
 import com.checkit.ui.components.AppHorizontalDivider
+import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DatePicker
+import com.checkit.ui.components.DeleteOverflowMenu
 import com.checkit.ui.components.ListPicker
 import com.checkit.ui.components.PriorityPicker
 import com.checkit.ui.components.ReminderPicker
@@ -114,114 +106,106 @@ internal fun TaskEditorSheet(
     onSwitchAddModeToTask: () -> Unit,
     onSwitchAddModeToNote: () -> Unit
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        sheetGesturesEnabled = true
+    AppEditorBottomSheet(
+        onDismiss = onDismiss,
+        modifier = Modifier
+            .fillMaxHeight(0.7f)
+            .windowInsetsPadding(WindowInsets.ime)
     ) {
-        Column(
+        SheetHeader(
+            isAddMode = editor.isAddMode(),
+            isTaskSelected = editor is TaskEditorState.TaskForm,
+            onSwitchAddModeToTask = onSwitchAddModeToTask,
+            onSwitchAddModeToNote = onSwitchAddModeToNote,
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+        )
+        TrashedStatusSection(
+            isTrashed = editor.isTrashed(),
+            onRestore = onRestore,
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
+        )
+        LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.7f)
-                .windowInsetsPadding(WindowInsets.ime)
+                .weight(1f)
+                .padding(horizontal = 20.dp),
+            contentPadding = PaddingValues(top = 6.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            SheetHeader(
-                isAddMode = editor.isAddMode(),
-                isTaskSelected = editor is TaskEditorState.TaskForm,
-                onSwitchAddModeToTask = onSwitchAddModeToTask,
-                onSwitchAddModeToNote = onSwitchAddModeToNote,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
-            )
-            TrashedStatusSection(
-                isTrashed = editor.isTrashed(),
-                onRestore = onRestore,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
-            )
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(horizontal = 20.dp),
-                contentPadding = PaddingValues(top = 6.dp, bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                when (editor) {
-                    is TaskEditorState.TaskForm -> {
-                        editor.dailyPlanItem?.let { dailyPlanItem ->
-                            item {
-                                DailyPlanSection(
-                                    item = dailyPlanItem,
-                                    onStartTimeChange = onDailyPlanStartTimeChange,
-                                    onEndTimeChange = onDailyPlanEndTimeChange,
-                                    onStatusChange = onDailyPlanStatus,
-                                    onDelete = onDailyPlanDelete,
-                                    enabled = editor.isFormEditable()
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                                AppHorizontalDivider()
-                            }
-                        }
-
+            when (editor) {
+                is TaskEditorState.TaskForm -> {
+                    editor.dailyPlanItem?.let { dailyPlanItem ->
                         item {
-                            TaskFormContent(
-                                form = editor,
-                                availableLists = availableLists,
-                                availableTags = availableTags,
-                                onNameChange = onTaskNameChange,
-                                onListChange = onTaskListChange,
-                                onDescriptionChange = onTaskDescriptionChange,
-                                onDoDateChange = onTaskDoDateChange,
-                                onStartTimeChange = onTaskStartTimeChange,
-                                onEndTimeChange = onTaskEndTimeChange,
-                                onRepeatChange = onTaskRepeatChange,
-                                onPriorityChange = onTaskPriorityChange,
-                                onReminderToggle = onTaskReminderToggle,
-                                onSubTaskToggle = onSubTaskToggle,
-                                onSubTaskAdd = onSubTaskAdd,
-                                onSubTaskNameChange = onSubTaskNameChange,
-                                onSubTaskRemove = onSubTaskRemove,
-                                onSubTaskMove = onSubTaskMove,
-                                onTagToggle = onTaskTagToggle,
+                            DailyPlanSection(
+                                item = dailyPlanItem,
+                                onStartTimeChange = onDailyPlanStartTimeChange,
+                                onEndTimeChange = onDailyPlanEndTimeChange,
+                                onStatusChange = onDailyPlanStatus,
+                                onDelete = onDailyPlanDelete,
                                 enabled = editor.isFormEditable()
                             )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            AppHorizontalDivider()
                         }
                     }
 
-                    is TaskEditorState.NoteForm -> {
-                        item {
-                            NoteFormContent(
-                                form = editor,
-                                availableLists = availableLists,
-                                availableTags = availableTags,
-                                onTitleChange = onNoteTitleChange,
-                                onContentChange = onNoteContentChange,
-                                onListChange = onNoteListChange,
-                                onDateChange = onNoteDateChange,
-                                onStartTimeChange = onNoteStartTimeChange,
-                                onTagToggle = onNoteTagToggle,
-                                enabled = editor.isFormEditable()
-                            )
-                        }
+                    item {
+                        TaskFormContent(
+                            form = editor,
+                            availableLists = availableLists,
+                            availableTags = availableTags,
+                            onNameChange = onTaskNameChange,
+                            onListChange = onTaskListChange,
+                            onDescriptionChange = onTaskDescriptionChange,
+                            onDoDateChange = onTaskDoDateChange,
+                            onStartTimeChange = onTaskStartTimeChange,
+                            onEndTimeChange = onTaskEndTimeChange,
+                            onRepeatChange = onTaskRepeatChange,
+                            onPriorityChange = onTaskPriorityChange,
+                            onReminderToggle = onTaskReminderToggle,
+                            onSubTaskToggle = onSubTaskToggle,
+                            onSubTaskAdd = onSubTaskAdd,
+                            onSubTaskNameChange = onSubTaskNameChange,
+                            onSubTaskRemove = onSubTaskRemove,
+                            onSubTaskMove = onSubTaskMove,
+                            onTagToggle = onTaskTagToggle,
+                            enabled = editor.isFormEditable()
+                        )
+                    }
+                }
+
+                is TaskEditorState.NoteForm -> {
+                    item {
+                        NoteFormContent(
+                            form = editor,
+                            availableLists = availableLists,
+                            availableTags = availableTags,
+                            onTitleChange = onNoteTitleChange,
+                            onContentChange = onNoteContentChange,
+                            onListChange = onNoteListChange,
+                            onDateChange = onNoteDateChange,
+                            onStartTimeChange = onNoteStartTimeChange,
+                            onTagToggle = onNoteTagToggle,
+                            enabled = editor.isFormEditable()
+                        )
                     }
                 }
             }
-            SheetFooter(
-                canDelete = editor.canDelete(),
-                isTrashed = editor.isTrashed(),
-                isAddMode = editor.isAddMode(),
-                showAddToMyDay = editor.shouldShowAddToMyDay(),
-                isCompletable = editor.isCompletableView(),
-                isOpenable = editor.isOpenableView(),
-                onSave = onSave,
-                onAddToMyDay = onAddToMyDay,
-                onDelete = onDelete,
-                onComplete = onComplete,
-                onOpen = onOpen,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
-            )
         }
+        SheetFooter(
+            canDelete = editor.canDelete(),
+            isTrashed = editor.isTrashed(),
+            isAddMode = editor.isAddMode(),
+            showAddToMyDay = editor.shouldShowAddToMyDay(),
+            isCompletable = editor.isCompletableView(),
+            isOpenable = editor.isOpenableView(),
+            onSave = onSave,
+            onAddToMyDay = onAddToMyDay,
+            onDelete = onDelete,
+            onComplete = onComplete,
+            onOpen = onOpen,
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+        )
     }
 }
 
@@ -245,7 +229,7 @@ private fun AddModeSwitch(
             selected = !isTaskSelected,
             onClick = onNoteClick,
             shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-            icon = { Icon(Icons.Default.Notes, contentDescription = null) },
+            icon = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null) },
             label = { Text("Note") },
             colors = SegmentedButtonDefaults.colors(activeContainerColor = MaterialTheme.colorScheme.primaryContainer, activeContentColor = MaterialTheme.colorScheme.primary)
         )
@@ -323,8 +307,6 @@ private fun SheetFooter(
     val showOptionsMenu = canDelete && !isTrashed
     if (!showOptionsMenu && !isAddMode && !showAddToMyDay && !isCompletable && !isOpenable) return
 
-    var menuExpanded by remember { mutableStateOf(false) }
-
     Row(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.weight(1f),
@@ -353,24 +335,7 @@ private fun SheetFooter(
             }
         }
         if (showOptionsMenu) {
-            Box(modifier = Modifier) {
-                IconButton(onClick = { menuExpanded = true }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "Options")
-                }
-                DropdownMenu(
-                    expanded = menuExpanded,
-                    onDismissRequest = { menuExpanded = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Delete") },
-                        leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
-                        onClick = {
-                            menuExpanded = false
-                            onDelete()
-                        }
-                    )
-                }
-            }
+            DeleteOverflowMenu(onDelete = onDelete)
         }
     }
 }
@@ -402,7 +367,7 @@ private fun TaskFormContent(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            TaskStatusIcon(
+            TaskIcon(
                 completed = form.status == TaskStatus.Completed,
                 color = form.priority.priorityColor()
             )
@@ -570,7 +535,7 @@ private fun NoteFormContent(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            NoteStatusIcon(status = form.status)
+            NoteIcon(status = form.status)
             DatePicker(
                 date = form.date,
                 onDateChange = {

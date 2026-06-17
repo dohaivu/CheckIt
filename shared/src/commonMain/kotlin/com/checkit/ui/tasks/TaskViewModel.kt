@@ -40,6 +40,7 @@ import com.checkit.ui.TaskEditorState
 import com.checkit.ui.TaskSelectionState
 import com.checkit.ui.TaskSortOption
 import com.checkit.ui.TaskUiState
+import com.checkit.ui.TaskViewOptionsState
 import com.checkit.ui.TaskWorkspaceView
 import com.checkit.ui.components.MinutesPerDay
 import com.checkit.ui.toEditorState
@@ -51,6 +52,8 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 
@@ -78,6 +81,7 @@ class TaskViewModel(
     private val _uiState = MutableStateFlow(TaskUiState())
     val uiState: StateFlow<TaskUiState> = _uiState.asStateFlow()
     private val visibleItemsBuilder = TaskVisibleItemsBuilder(selectTaskBoardItems)
+    private var pendingTaskTextSaveJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -95,14 +99,21 @@ class TaskViewModel(
         viewModelScope.launch {
             settingsRepository.settings.collect { settings ->
                 _uiState.update { state ->
-                    state.copy(
-                        options = state.options.copy(
-                            selectedView = TaskWorkspaceView.fromCode(settings.taskWorkspaceViewCode),
-                            listDisplayType = TaskListDisplayType.fromCode(settings.taskListDisplayTypeCode),
-                            showCompleted = settings.taskShowCompleted,
-                            sortOption = TaskSortOption.fromCode(settings.taskSortOptionCode)
-                        )
-                    ).refreshVisibleItems().coerceViewToAvailable()
+                    val nextOptions = state.options.copy(
+                        selectedView = TaskWorkspaceView.fromCode(settings.taskWorkspaceViewCode),
+                        listDisplayType = TaskListDisplayType.fromCode(settings.taskListDisplayTypeCode),
+                        showCompleted = settings.taskShowCompleted,
+                        sortOption = TaskSortOption.fromCode(settings.taskSortOptionCode)
+                    )
+                    if (nextOptions == state.options) {
+                        state
+                    } else if (nextOptions.hasSameVisibleItemsAs(state.options)) {
+                        state.copy(options = nextOptions).coerceViewToAvailable()
+                    } else {
+                        state.copy(options = nextOptions)
+                            .refreshVisibleItems()
+                            .coerceViewToAvailable()
+                    }
                 }
             }
         }
@@ -142,40 +153,80 @@ class TaskViewModel(
     }
 
     fun selectView(view: TaskWorkspaceView) {
+        var shouldPersist = false
         _uiState.update {
-            if (view in it.availableViews) {
-                it.copy(options = it.options.copy(selectedView = view))
-            } else {
+            if (view == it.selectedView || view !in it.availableViews) {
                 it
+            } else {
+                shouldPersist = true
+                it.copy(options = it.options.copy(selectedView = view))
             }
         }
-        viewModelScope.launch {
-            settingsRepository.setTaskWorkspaceViewCode(view.name)
+        if (shouldPersist) {
+            viewModelScope.launch {
+                settingsRepository.setTaskWorkspaceViewCode(view.name)
+            }
         }
     }
 
     fun selectListDisplayType(displayType: TaskListDisplayType) {
-        _uiState.update { it.copy(options = it.options.copy(listDisplayType = displayType)) }
-        viewModelScope.launch {
-            settingsRepository.setTaskListDisplayTypeCode(displayType.name)
+        var shouldPersist = false
+        _uiState.update {
+            if (displayType == it.listDisplayType) {
+                it
+            } else {
+                shouldPersist = true
+                it.copy(options = it.options.copy(listDisplayType = displayType))
+            }
+        }
+        if (shouldPersist) {
+            viewModelScope.launch {
+                settingsRepository.setTaskListDisplayTypeCode(displayType.name)
+            }
         }
     }
 
     fun setShowCompleted(showCompleted: Boolean) {
-        _uiState.update { it.copy(options = it.options.copy(showCompleted = showCompleted)).refreshVisibleItems() }
-        viewModelScope.launch {
-            settingsRepository.setTaskShowCompleted(showCompleted)
+        var shouldPersist = false
+        _uiState.update {
+            if (showCompleted == it.showCompleted) {
+                it
+            } else {
+                shouldPersist = true
+                it.copy(options = it.options.copy(showCompleted = showCompleted)).refreshVisibleItems()
+            }
+        }
+        if (shouldPersist) {
+            viewModelScope.launch {
+                settingsRepository.setTaskShowCompleted(showCompleted)
+            }
         }
     }
 
     fun updateSearchText(searchText: String) {
-        _uiState.update { it.copy(options = it.options.copy(searchText = searchText)).refreshVisibleItems() }
+        _uiState.update {
+            if (searchText == it.searchText) {
+                it
+            } else {
+                it.copy(options = it.options.copy(searchText = searchText)).refreshVisibleItems()
+            }
+        }
     }
 
     fun selectSortOption(sortOption: TaskSortOption) {
-        _uiState.update { it.copy(options = it.options.copy(sortOption = sortOption)).refreshVisibleItems() }
-        viewModelScope.launch {
-            settingsRepository.setTaskSortOptionCode(sortOption.name)
+        var shouldPersist = false
+        _uiState.update {
+            if (sortOption == it.sortOption) {
+                it
+            } else {
+                shouldPersist = true
+                it.copy(options = it.options.copy(sortOption = sortOption)).refreshVisibleItems()
+            }
+        }
+        if (shouldPersist) {
+            viewModelScope.launch {
+                settingsRepository.setTaskSortOptionCode(sortOption.name)
+            }
         }
     }
 
@@ -185,6 +236,7 @@ class TaskViewModel(
 
     fun openNewTaskOnDate(date: LocalDate, addToMyDayOnSave: Boolean = false) {
         val listId = editableListId() ?: return showMessage("Create a list before adding tasks")
+        cancelPendingTaskTextSave()
         _uiState.update {
             it.copy(
                 editor = TaskEditorState.TaskForm(
@@ -199,6 +251,7 @@ class TaskViewModel(
 
     fun openNewTaskAt(startTimeMinutes: Int, endTimeMinutes: Int) {
         val listId = editableListId() ?: return showMessage("Create a list before adding tasks")
+        cancelPendingTaskTextSave()
         _uiState.update {
             it.copy(
                 editor = TaskEditorState.TaskForm(
@@ -214,6 +267,7 @@ class TaskViewModel(
 
     fun openNewNote() {
         val listId = editableListId() ?: return showMessage("Create a list before adding notes")
+        cancelPendingTaskTextSave()
         _uiState.update {
             it.copy(editor = TaskEditorState.NoteForm(mode = EditorMode.Add, listId = listId, date = today()))
         }
@@ -255,6 +309,7 @@ class TaskViewModel(
     }
 
     fun openTask(task: TaskItem, dailyPlan: DailyPlanItem? = null) {
+        cancelPendingTaskTextSave()
         _uiState.update {
             it.copy(
                 editor = TaskEditorState.TaskForm(
@@ -280,6 +335,7 @@ class TaskViewModel(
     }
 
     fun openNote(note: NoteItem) {
+        cancelPendingTaskTextSave()
         _uiState.update {
             it.copy(
                 editor = TaskEditorState.NoteForm(
@@ -310,12 +366,13 @@ class TaskViewModel(
     }
 
     fun dismissEditor() {
+        flushPendingTaskTextSave()
         _uiState.update { it.copy(editor = null) }
     }
 
-    fun updateTaskName(name: String) = updateTaskForm { it.copy(name = name) }
+    fun updateTaskName(name: String) = updateTaskForm(saveImmediately = false) { it.copy(name = name) }
     fun updateTaskListId(listId: Long) = updateTaskForm { it.copy(listId = listId) }
-    fun updateTaskDescription(description: String) = updateTaskForm { it.copy(description = description) }
+    fun updateTaskDescription(description: String) = updateTaskForm(saveImmediately = false) { it.copy(description = description) }
     fun updateTaskDoDate(doDate: LocalDate?) = updateTaskForm {
         it.copy(
             doDate = doDate,
@@ -344,7 +401,7 @@ class TaskViewModel(
     fun addSubTask() = updateTaskForm { form ->
         form.copy(subtasks = form.subtasks + SubTaskEditorState(name = ""))
     }
-    fun updateSubTaskName(index: Int, name: String) = updateTaskForm { form ->
+    fun updateSubTaskName(index: Int, name: String) = updateTaskForm(saveImmediately = false) { form ->
         form.copy(
             subtasks = form.subtasks.mapIndexed { subtaskIndex, subtask ->
                 if (subtaskIndex == index) subtask.copy(name = name) else subtask
@@ -372,6 +429,7 @@ class TaskViewModel(
         val nextForm = current.copy(subtasks = nextSubtasks)
         _uiState.update { it.copy(editor = nextForm) }
         if (current.mode == EditorMode.View || current.mode == EditorMode.Edit) {
+            cancelPendingTaskTextSave()
             persistTaskInPlace(nextForm)
         }
     }
@@ -388,6 +446,7 @@ class TaskViewModel(
     }
 
     fun saveEditor() {
+        flushPendingTaskTextSave()
         val editor = _uiState.value.editor ?: return
         when (editor) {
             is TaskEditorState.TaskForm -> if (editor.mode != EditorMode.View) saveTask(editor)
@@ -398,6 +457,7 @@ class TaskViewModel(
     }
 
     fun deleteEditorItem() {
+        cancelPendingTaskTextSave()
         val editor = _uiState.value.editor ?: return
         viewModelScope.launch {
             when (editor) {
@@ -409,6 +469,7 @@ class TaskViewModel(
     }
 
     fun completeCurrentItem() {
+        flushPendingTaskTextSave()
         val editor = _uiState.value.editor ?: return
         viewModelScope.launch {
             when (editor) {
@@ -420,6 +481,7 @@ class TaskViewModel(
     }
 
     fun openCurrentItem() {
+        flushPendingTaskTextSave()
         val editor = _uiState.value.editor ?: return
         viewModelScope.launch {
             when (editor) {
@@ -431,6 +493,7 @@ class TaskViewModel(
     }
 
     fun restoreCurrentItem() {
+        cancelPendingTaskTextSave()
         val editor = _uiState.value.editor ?: return
         viewModelScope.launch {
             when (editor) {
@@ -614,12 +677,23 @@ class TaskViewModel(
         }
     }
 
-    private fun updateTaskForm(transform: (TaskEditorState.TaskForm) -> TaskEditorState.TaskForm) {
+    private fun updateTaskForm(
+        saveImmediately: Boolean = true,
+        transform: (TaskEditorState.TaskForm) -> TaskEditorState.TaskForm
+    ) {
+        var updatedForm: TaskEditorState.TaskForm? = null
         _uiState.update { state ->
             val form = state.editor as? TaskEditorState.TaskForm ?: return@update state
-            val updatedForm = transform(form)
-            if (form.mode == EditorMode.Edit) saveTask(updatedForm)
+            updatedForm = transform(form)
             state.copy(editor = updatedForm)
+        }
+        val form = updatedForm ?: return
+        if (form.mode != EditorMode.Edit) return
+        if (saveImmediately) {
+            cancelPendingTaskTextSave()
+            saveTask(form)
+        } else {
+            scheduleTaskTextSave()
         }
     }
 
@@ -644,6 +718,32 @@ class TaskViewModel(
         viewModelScope.launch {
             updateDailyPlanItemTime(updatedItem.id, updatedItem.startTimeMinutes, updatedItem.endTimeMinutes)
         }
+    }
+
+    private fun scheduleTaskTextSave() {
+        pendingTaskTextSaveJob?.cancel()
+        pendingTaskTextSaveJob = viewModelScope.launch {
+            delay(TaskTextSaveDebounceMillis)
+            pendingTaskTextSaveJob = null
+            saveCurrentTaskForm()
+        }
+    }
+
+    private fun flushPendingTaskTextSave() {
+        val pendingSave = pendingTaskTextSaveJob ?: return
+        pendingSave.cancel()
+        pendingTaskTextSaveJob = null
+        saveCurrentTaskForm()
+    }
+
+    private fun cancelPendingTaskTextSave() {
+        pendingTaskTextSaveJob?.cancel()
+        pendingTaskTextSaveJob = null
+    }
+
+    private fun saveCurrentTaskForm() {
+        val form = _uiState.value.editor as? TaskEditorState.TaskForm ?: return
+        if (form.mode == EditorMode.Edit) saveTask(form)
     }
 
     private fun editableListId(): Long? =
@@ -695,8 +795,14 @@ private fun <T> List<T>.move(fromIndex: Int, toIndex: Int): List<T> =
         add(toIndex, removeAt(fromIndex))
     }
 
+private fun TaskViewOptionsState.hasSameVisibleItemsAs(other: TaskViewOptionsState): Boolean =
+    showCompleted == other.showCompleted &&
+        searchText == other.searchText &&
+        sortOption == other.sortOption
+
 private const val MinimumTimelineDurationMinutes = 15
 private const val LastTimelineStartMinute = MinutesPerDay - MinimumTimelineDurationMinutes
+private const val TaskTextSaveDebounceMillis = 600L
 
 private fun calculateDurationMinutes(startTimeMinutes: Int?, endTimeMinutes: Int?): Int? {
     val start = startTimeMinutes ?: return null

@@ -13,17 +13,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.EventNote
-import androidx.compose.material.icons.automirrored.filled.Notes
-import androidx.compose.material.icons.filled.EventAvailable
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,6 +33,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
+import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
@@ -62,25 +58,32 @@ internal fun TaskCard(
     titleTextStyle: TextStyle? = null,
     inlineSupportingTextStyle: SpanStyle? = null
 ) {
-    val shape = RoundedCornerShape(8.dp)
+    val colorScheme = MaterialTheme.colorScheme
+    val typography = MaterialTheme.typography
+    val shape = remember { RoundedCornerShape(8.dp) }
     val clickableModifier = if (onClick == null) Modifier else Modifier.clickable(onClick = onClick)
-    val resolvedTitleTextStyle = titleTextStyle ?: MaterialTheme.typography.bodyLarge
-    val resolvedInlineSupportingTextStyle = inlineSupportingTextStyle ?: SpanStyle(
-        color = if (isHighlighted) {
-            MaterialTheme.colorScheme.error
-        } else {
-            MaterialTheme.colorScheme.onSurfaceVariant
-        },
-        fontSize = MaterialTheme.typography.labelMedium.fontSize,
-        fontWeight = FontWeight.Medium
-    )
-    val titleText = buildAnnotatedString {
-        append(title)
-        if (!inlineSupportingText.isNullOrBlank()) {
-            append("  ")
-            withStyle(resolvedInlineSupportingTextStyle) {
-                append("· ")
-                append(inlineSupportingText)
+    val resolvedTitleTextStyle = titleTextStyle ?: typography.bodyLarge
+    val defaultInlineSupportingTextStyle = remember(isHighlighted, colorScheme, typography) {
+        SpanStyle(
+            color = if (isHighlighted) {
+                colorScheme.error
+            } else {
+                colorScheme.onSurfaceVariant
+            },
+            fontSize = typography.labelMedium.fontSize,
+            fontWeight = FontWeight.Medium
+        )
+    }
+    val resolvedInlineSupportingTextStyle = inlineSupportingTextStyle ?: defaultInlineSupportingTextStyle
+    val titleText = remember(title, inlineSupportingText, resolvedInlineSupportingTextStyle) {
+        buildAnnotatedString {
+            append(title)
+            if (!inlineSupportingText.isNullOrBlank()) {
+                append("  ")
+                withStyle(resolvedInlineSupportingTextStyle) {
+                    append("· ")
+                    append(inlineSupportingText)
+                }
             }
         }
     }
@@ -159,12 +162,13 @@ internal fun TaskTimelineCard(
     val resolvedTimeLabel = timeLabel
     val compact = displayMode != TimelineItemDisplayMode.Comfortable && !resolvedTimeLabel.isNullOrBlank()
     val ultraCompact = displayMode == TimelineItemDisplayMode.UltraCompact
+    val highlighted = isOverdue ?: task.isOverdue()
     TaskCard(
         title = task.name.ifBlank { "Untitled task" },
         timeLabel = resolvedTimeLabel,
         color = task.cardColor(),
         leadingContent = {
-            TaskStatusIcon(
+            TaskIcon(
                 completed = completed,
                 color = task.priority.priorityColor()
             )
@@ -180,13 +184,13 @@ internal fun TaskTimelineCard(
             PaddingValues(horizontal = 10.dp, vertical = 8.dp)
         },
         titleMaxLines = 1,
-        isHighlighted = isOverdue ?: task.isOverdue(),
+        isHighlighted = highlighted,
         showSupportingText = !compact,
         inlineSupportingText = resolvedTimeLabel.takeIf { compact },
         titleTextStyle = if (ultraCompact) MaterialTheme.typography.bodyMedium else null,
         inlineSupportingTextStyle = if (ultraCompact) {
             SpanStyle(
-                color = if (isOverdue ?: task.isOverdue()) {
+                color = if (highlighted) {
                     MaterialTheme.colorScheme.error
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant
@@ -216,7 +220,7 @@ internal fun NoteTimelineCard(
         timeLabel = subtitle,
         color = note.cardColor(),
         leadingContent = {
-            Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null, modifier = Modifier.size(18.dp))
+            NoteIcon(status = note.status)
         },
         completedOverlay = completedOverlay,
         onClick = onClick,
@@ -236,6 +240,7 @@ internal fun DailyPlanTimelineCard(
     timeLabel: String? = item.timelineTimeLabel() ?: item.timelineSupportingText(),
     selected: Boolean = false,
     completedOverlay: Boolean = false,
+    isOverdue: Boolean,
     displayMode: TimelineItemDisplayMode = TimelineItemDisplayMode.Comfortable
 ) {
     val compact = displayMode != TimelineItemDisplayMode.Comfortable && !timeLabel.isNullOrBlank()
@@ -245,7 +250,7 @@ internal fun DailyPlanTimelineCard(
         timeLabel = timeLabel,
         color =  item.cardColor(),
         leadingContent = {
-            Icon(if (item.source == DailyPlanItemSource.CheckInNote) Icons.AutoMirrored.Filled.EventNote else Icons.Default.EventAvailable, contentDescription = null, modifier = Modifier.size(18.dp))
+            DailyPlanIcon(item.source, item.status == DailyPlanItemStatus.Done)
         },
         completedOverlay = completedOverlay,
         onClick = onClick,
@@ -258,6 +263,7 @@ internal fun DailyPlanTimelineCard(
             PaddingValues(horizontal = 10.dp, vertical = 8.dp)
         },
         titleMaxLines = 1,
+        isHighlighted = isOverdue,
         showSupportingText = !compact,
         inlineSupportingText = timeLabel.takeIf { compact },
         titleTextStyle = if (ultraCompact) MaterialTheme.typography.bodyMedium else null,
@@ -283,7 +289,7 @@ internal fun TaskAllDayCard(
         title = task.name.ifBlank { "Untitled task" },
         color = task.cardColor(),
         icon = {
-            TaskStatusIcon(
+            TaskIcon(
                 completed = task.status == TaskStatus.Completed,
                 color = task.priority.priorityColor()
             )
@@ -302,7 +308,7 @@ internal fun NoteAllDayCard(
     AllDayTypeCard(
         title = note.title.ifBlank { note.content.ifBlank { "Empty note" } },
         color = note.cardColor(),
-        icon = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null, modifier = Modifier.size(18.dp)) },
+        icon = { NoteIcon(note.status)},
         modifier = modifier,
         completedOverlay = completedOverlay
     )
@@ -318,7 +324,7 @@ internal fun DailyPlanAllDayCard(
     AllDayTypeCard(
         title = title,
         color = item.cardColor(),
-        icon = { Icon(if (item.source == DailyPlanItemSource.CheckInNote) Icons.AutoMirrored.Filled.EventNote else Icons.Default.EventAvailable, contentDescription = null, modifier = Modifier.size(18.dp)) },
+        icon = { DailyPlanIcon(item.source, item.status == DailyPlanItemStatus.Done)},
         modifier = modifier,
         completedOverlay = completedOverlay
     )
@@ -399,21 +405,23 @@ private fun DailyPlanItem.timelineTimeLabel(): String? {
 
 private fun DailyPlanItem.timelineTitle(): String =
     when (source) {
-        DailyPlanItemSource.CheckInNote -> checkInNoteTitle()
+        DailyPlanItemSource.MyDayNote,
+        DailyPlanItemSource.MyDayReminder -> checkInNoteTitle()
         else -> title.ifBlank { "Untitled item" }
     }
 
 private fun DailyPlanItem.timelineSupportingText(): String =
     when {
-        source == DailyPlanItemSource.CheckInNote -> source.timelineLabel()
+        source == DailyPlanItemSource.MyDayNote || source == DailyPlanItemSource.MyDayReminder -> source.timelineLabel()
         !note.isNullOrBlank() -> note.orEmpty()
         else -> source.timelineLabel()
     }
 
 private fun DailyPlanItemSource.timelineLabel(): String = when (this) {
     DailyPlanItemSource.ExistingTask -> "Task"
-    DailyPlanItemSource.CheckInManualDone -> "CheckIn done"
-    DailyPlanItemSource.CheckInNote -> "CheckIn note"
+    DailyPlanItemSource.MyDayTask -> "CheckIn done"
+    DailyPlanItemSource.MyDayNote -> "CheckIn note"
+    DailyPlanItemSource.MyDayReminder -> "Reminder"
 }
 
 private fun DailyPlanItem.checkInNoteTitle(): String =

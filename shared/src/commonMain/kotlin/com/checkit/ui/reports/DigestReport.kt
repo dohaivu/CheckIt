@@ -7,8 +7,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -23,10 +21,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.EventAvailable
-import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.Card
@@ -49,18 +45,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import checkit.shared.generated.resources.Res
-import checkit.shared.generated.resources.weekly_digest_active_days
-import checkit.shared.generated.resources.weekly_digest_busiest_day
 import checkit.shared.generated.resources.weekly_digest_empty
-import checkit.shared.generated.resources.weekly_digest_highlights
-import checkit.shared.generated.resources.weekly_digest_top_tags
-import checkit.shared.generated.resources.weekly_digest_total_items
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
@@ -116,7 +112,7 @@ internal fun DigestReport(
             onPreviousPeriod = onPreviousPeriod,
             onNextPeriod = onNextPeriod,
             onCurrentPeriod = onCurrentPeriod,
-            periods = listOf(ReportPeriod.Daily, ReportPeriod.Week)
+            periods = DigestReportPeriods
         )
         Column(
             modifier = Modifier
@@ -144,12 +140,6 @@ internal fun DigestReport(
                     progressItems = digest.progressItems,
                     doneCount = digest.doneItemCount,
                     plannedCount = digest.plannedItemCount
-                )
-                MetricGrid(
-                    totalItemCount = digest.totalItemCount,
-                    selectedPeriod = selectedPeriod,
-                    activeDayCount = digest.activeDayCount,
-                    busiestDay = digest.busiestDay
                 )
                 WeeklyActivityChart(
                     items = digest.weekActivityItems,
@@ -182,7 +172,12 @@ private fun HeroSummaryCard(
     modifier: Modifier = Modifier
 ) {
     val doneTotal = doneCount + plannedCount
-    val trend = totalMinutes.trendSummary(previousTotalMinutes, selectedPeriod)
+    val trend = remember(totalMinutes, previousTotalMinutes, selectedPeriod) {
+        totalMinutes.trendSummary(previousTotalMinutes, selectedPeriod)
+    }
+    val encouragement = remember(doneCount, plannedCount, selectedPeriod) {
+        heroEncouragement(doneCount, plannedCount, selectedPeriod)
+    }
     val progressSegments = remember(progressItems) {
         progressItems.toProgressRingSegments()
     }
@@ -216,7 +211,7 @@ private fun HeroSummaryCard(
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        text = "Total Focus Time",
+                        text = "You invested",
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -225,6 +220,13 @@ private fun HeroSummaryCard(
                         style = MaterialTheme.typography.headlineLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = encouragement,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
                     Surface(
                         color = trend.color.copy(alpha = 0.13f),
@@ -257,139 +259,14 @@ private fun HeroSummaryCard(
 }
 
 @Composable
-private fun MetricGrid(
-    totalItemCount: Int,
-    selectedPeriod: ReportPeriod,
-    activeDayCount: Int,
-    busiestDay: TimeReportItem?,
-    modifier: Modifier = Modifier
-) {
-    val metrics = buildList {
-        add(
-            DashboardMetric(
-                value = totalItemCount.toString(),
-                label = stringResource(Res.string.weekly_digest_total_items),
-                icon = Icons.Default.EventAvailable,
-                accent = ReportBlue
-            )
-        )
-        if (selectedPeriod == ReportPeriod.Week) {
-            add(
-                DashboardMetric(
-                    value = "$activeDayCount/7",
-                    label = stringResource(Res.string.weekly_digest_active_days),
-                    icon = Icons.Default.CalendarMonth,
-                    accent = ReportOrange
-                )
-            )
-            add(
-                DashboardMetric(
-                    value = busiestDay?.startDate?.dayOfWeek?.shortName() ?: "-",
-                    label = stringResource(Res.string.weekly_digest_busiest_day),
-                    icon = Icons.Default.LocalFireDepartment,
-                    accent = ReportPurple
-                )
-            )
-        }
-    }
-
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        metrics.chunked(2).forEach { rowMetrics ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                rowMetrics.forEach { metric ->
-                    MetricCard(
-                        metric = metric,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                if (rowMetrics.size == 1) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun MetricCard(
-    metric: DashboardMetric,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier
-            .heightIn(min = 116.dp)
-            .aspectRatio(1.18f),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = metric.accent.copy(alpha = 0.055f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = CardDefaults.outlinedCardBorder().copy(
-            brush = Brush.linearGradient(
-                listOf(
-                    metric.accent.copy(alpha = 0.42f),
-                    metric.accent.copy(alpha = 0.16f)
-                )
-            )
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(14.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(13.dp))
-                    .background(metric.accent),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = metric.icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(23.dp),
-                    tint = Color.White
-                )
-            }
-            Column(
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = metric.value,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    textAlign = TextAlign.Center
-                )
-                Text(
-                    text = metric.label,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun WeeklyActivityChart(
     items: List<TimeReportItem>,
     selectedDate: LocalDate,
     selectedPeriod: ReportPeriod,
     modifier: Modifier = Modifier
 ) {
-    val maxMinutes = items.maxOfOrNull { it.totalMinutes } ?: 0
+    val maxMinutes = remember(items) { items.maxOfOrNull { it.totalMinutes } ?: 0 }
+    val subtitle = remember(selectedPeriod) { activityChartSubtitle(selectedPeriod) }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -398,30 +275,66 @@ private fun WeeklyActivityChart(
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         border = CardDefaults.outlinedCardBorder()
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(170.dp)
                 .padding(horizontal = 18.dp, vertical = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Bottom
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            items.forEach { item ->
-                val selected = selectedPeriod == ReportPeriod.Daily && item.startDate == selectedDate
-                ActivityBar(
-                    item = item,
-                    maxMinutes = maxMinutes,
-                    selected = selected,
-                    showValue = when (selectedPeriod) {
-                        ReportPeriod.Daily -> selected
-                        else -> item.totalMinutes == maxMinutes && maxMinutes > 0
-                    },
-                    modifier = Modifier.weight(1f)
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    text = sectionTitle(prefix = "Your ", emphasis = "rhythm", accent = ReportPurple),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(138.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Bottom
+            ) {
+                items.forEach { item ->
+                    val selected = selectedPeriod == ReportPeriod.Daily && item.startDate == selectedDate
+                    ActivityBar(
+                        item = item,
+                        maxMinutes = maxMinutes,
+                        selected = selected,
+                        showValue = when (selectedPeriod) {
+                            ReportPeriod.Daily -> selected
+                            else -> item.totalMinutes == maxMinutes && maxMinutes > 0
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
     }
 }
+
+private fun activityChartSubtitle(selectedPeriod: ReportPeriod): AnnotatedString =
+    buildAnnotatedString {
+        if (selectedPeriod == ReportPeriod.Daily) {
+            append("A gentle view of the ")
+            highlight("week", ReportPurple)
+            append(" around this day.")
+        } else {
+            append("Days you ")
+            highlight("showed up", ReportPurple)
+            append(", even when it was ")
+            softEmphasis("just a little")
+            append(".")
+        }
+    }
+
+private val DigestReportPeriods = listOf(ReportPeriod.Daily, ReportPeriod.Week)
 
 @Composable
 private fun ActivityBar(
@@ -477,7 +390,6 @@ private fun ActivityBar(
         )
     }
 }
-
 @Composable
 private fun CompletedHighlightsCard(
     highlights: List<DigestHighlight>,
@@ -513,12 +425,27 @@ private fun CompletedHighlightsCard(
                         tint = Color.White
                     )
                 }
-                Text(
-                    text = stringResource(Res.string.weekly_digest_highlights),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        text = sectionTitle(
+                            prefix = "",
+                            emphasis = "Wins",
+                            suffix = " you can feel good about",
+                            accent = ReportBlue
+                        ),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = highlightsSubtitle(selectedPeriod),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
             highlights.forEachIndexed { index, highlight ->
                 if (index > 0) {
@@ -532,6 +459,13 @@ private fun CompletedHighlightsCard(
         }
     }
 }
+
+private fun highlightsSubtitle(selectedPeriod: ReportPeriod): AnnotatedString =
+    buildAnnotatedString {
+        append("A few ")
+        highlight("finished moments", ReportBlue)
+        append(if (selectedPeriod == ReportPeriod.Week) " from this week." else " from today.")
+    }
 
 @Composable
 private fun CompletedHighlightRow(
@@ -729,11 +663,23 @@ private fun TopTagsCard(
             modifier = Modifier.padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                text = stringResource(Res.string.weekly_digest_top_tags),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = sectionTitle(
+                        prefix = "Where your ",
+                        emphasis = "energy",
+                        suffix = " went",
+                        accent = ReportGreenDark
+                    ),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = energySubtitle(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             items.forEach { tag ->
                 TagReportBarRow(
                     item = tag,
@@ -768,6 +714,87 @@ private fun DigestHighlight.icon(): ImageVector = when {
     item.source == DailyPlanItemSource.ExistingTask -> Icons.Default.TaskAlt
     else -> Icons.Default.EventAvailable
 }
+
+private fun heroEncouragement(
+    doneCount: Int,
+    plannedCount: Int,
+    selectedPeriod: ReportPeriod
+): AnnotatedString {
+    val period = if (selectedPeriod == ReportPeriod.Week) "this week" else "today"
+    return buildAnnotatedString {
+        when {
+            doneCount > 0 -> {
+                append("You finished ")
+                highlight(doneCount.itemCountLabel(), ReportBlue)
+                append(" $period. ")
+                highlight("That is real progress.", ReportGreenDark, fontStyle = FontStyle.Italic)
+            }
+            plannedCount > 0 -> {
+                append("You made a ")
+                highlight("plan", ReportBlue)
+                append(" $period. ")
+                highlight("That is the first move.", ReportGreenDark, fontStyle = FontStyle.Italic)
+            }
+            else -> {
+                append("You gave your day ")
+                highlight("some shape", ReportBlue)
+                append(". ")
+                highlight("Keep going.", ReportGreenDark, fontStyle = FontStyle.Italic)
+            }
+        }
+    }
+}
+
+private fun sectionTitle(
+    prefix: String,
+    emphasis: String,
+    accent: Color,
+    suffix: String = ""
+): AnnotatedString =
+    buildAnnotatedString {
+        append(prefix)
+        highlight(emphasis, accent)
+        append(suffix)
+    }
+
+private fun energySubtitle(): AnnotatedString =
+    buildAnnotatedString {
+        append("The areas you ")
+        highlight("gave time to", ReportGreenDark)
+        append(".")
+    }
+
+private fun AnnotatedString.Builder.highlight(
+    text: String,
+    color: Color,
+    fontWeight: FontWeight = FontWeight.Bold,
+    fontStyle: FontStyle? = null
+) {
+    withStyle(
+        SpanStyle(
+            color = color,
+            fontWeight = fontWeight,
+            fontStyle = fontStyle
+        )
+    ) {
+        append(text)
+    }
+}
+
+private fun AnnotatedString.Builder.softEmphasis(text: String) {
+    withStyle(
+        SpanStyle(
+            color = ReportMuted,
+            fontWeight = FontWeight.SemiBold,
+            fontStyle = FontStyle.Italic
+        )
+    ) {
+        append(text)
+    }
+}
+
+private fun Int.itemCountLabel(): String =
+    "$this ${if (this == 1) "thing" else "things"}"
 
 private fun List<DailyPlanItem>.toProgressRingSegments(): List<ProgressRingSegment> =
     progressSegmentsFor(DailyPlanItemStatus.Done, completed = true) +
@@ -832,17 +859,9 @@ private data class ProgressRingSegment(
     val completed: Boolean
 )
 
-private data class DashboardMetric(
-    val value: String,
-    val label: String,
-    val icon: ImageVector,
-    val accent: Color
-)
-
 private val ReportBlue = Color(0xFF3E72F2)
 private val ReportPurple = Color(0xFF7B5CF0)
 private val ReportGreen = Color(0xFF2EC995)
 private val ReportGreenDark = Color(0xFF0E9F73)
-private val ReportOrange = Color(0xFFFF8A24)
 private val ReportPink = Color(0xFFF05AA6)
 private val ReportMuted = Color(0xFF667085)

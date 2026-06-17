@@ -8,25 +8,18 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Notes
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.rounded.CheckBox
-import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -114,7 +107,7 @@ private fun BriefTaskRowContent(task: TaskItem) {
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        TaskStatusIcon(
+        TaskIcon(
             completed = task.status == TaskStatus.Completed,
             color = task.priority.priorityColor()
         )
@@ -163,7 +156,7 @@ private fun BriefNoteRowContent(note: NoteItem) {
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        NoteStatusIcon(note.status)
+        NoteIcon(note.status)
         Text(
             text = note.title.ifBlank { note.content },
             modifier = Modifier.weight(1f),
@@ -195,7 +188,7 @@ private fun TaskTitleRow(
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        TaskStatusIcon(
+        TaskIcon(
             completed = task.status == TaskStatus.Completed,
             color = task.priority.priorityColor()
         )
@@ -213,16 +206,6 @@ private fun TaskTitleRow(
             }
         }
     }
-}
-
-@Composable
-internal fun TaskStatusIcon(completed: Boolean, color: Color) {
-    Icon(
-        imageVector = if (completed) Icons.Rounded.CheckBox else Icons.Rounded.CheckBoxOutlineBlank,
-        contentDescription = null,
-        tint = if (completed) MaterialTheme.colorScheme.onSurfaceVariant else color,
-        modifier = Modifier.size(20.dp)
-    )
 }
 
 @Composable
@@ -246,7 +229,7 @@ private fun NoteRowScaffold(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
-            NoteStatusIcon(note.status)
+            NoteIcon(note.status)
             Column(Modifier.weight(1f)) {
                 if (note.title.isNotBlank()) {
                     Text(note.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
@@ -270,16 +253,6 @@ private fun NoteRowScaffold(
             overflowCount = (note.tags.size - visibleTagCount).coerceAtLeast(0)
         )
     }
-}
-
-@Composable
-internal fun NoteStatusIcon(status: TaskStatus) {
-    Icon(
-        imageVector = if (status == TaskStatus.Completed) Icons.Default.CheckCircle else Icons.AutoMirrored.Filled.Notes,
-        contentDescription = null,
-        tint = if (status == TaskStatus.Completed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
-        modifier = Modifier.size(22.dp)
-    )
 }
 
 private const val DefaultNoteRowBackgroundAlpha = 0.55f

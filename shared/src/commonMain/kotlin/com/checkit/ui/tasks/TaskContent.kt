@@ -97,31 +97,7 @@ internal fun TaskAgendaView(
     onNoteClick: (NoteItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val agendaItems = remember(tasks, notes) {
-        val taskItems = tasks.map { task ->
-            TimelineItem(
-                id = "task-${task.id}",
-                type = TimelineItemType.Task,
-                date = task.doDate,
-                startTimeMinutes = task.startTimeMinutes,
-                endTimeMinutes = task.endTimeMinutes,
-                sortOrder = task.sortOrder,
-                tag = task
-            )
-        }
-        val noteItems = notes.map { note ->
-            TimelineItem(
-                id = "note-${note.id}",
-                type = TimelineItemType.Note,
-                date = note.date,
-                startTimeMinutes = note.startTimeMinutes,
-                endTimeMinutes = note.startTimeMinutes?.let { it + 30 },
-                sortOrder = note.sortOrder,
-                tag = note
-            )
-        }
-        (taskItems + noteItems).sortedWith(compareBy<TimelineItem> { it.date }.thenBy { it.startTimeMinutes ?: -1 })
-    }
+    val agendaItems = remember(tasks, notes) { buildAgendaTimelineItems(tasks, notes) }
 
     AgendaView(
         items = agendaItems,
@@ -162,31 +138,7 @@ internal fun TaskTimelineView(
     onTimelineNoteTimeChange: (NoteItem, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val timelineItems = remember(tasks, notes) {
-        val taskItems = tasks.map { task ->
-            TimelineItem(
-                id = "task-${task.id}",
-                type = TimelineItemType.Task,
-                startTimeMinutes = task.startTimeMinutes,
-                endTimeMinutes = task.endTimeMinutes,
-                sortOrder = task.sortOrder,
-                isResizable = true,
-                tag = task
-            )
-        }
-        val noteItems = notes.map { note ->
-            TimelineItem(
-                id = "note-${note.id}",
-                type = TimelineItemType.Note,
-                startTimeMinutes = note.startTimeMinutes,
-                endTimeMinutes = note.startTimeMinutes?.let { it + 30 },
-                sortOrder = note.sortOrder,
-                isResizable = false,
-                tag = note
-            )
-        }
-        (taskItems + noteItems).sortedBy { it.startTimeMinutes ?: -1 }
-    }
+    val timelineItems = remember(tasks, notes) { buildTimelineItems(tasks, notes) }
     TimelineView(
         items = timelineItems,
         onItemClick = { item ->
@@ -228,3 +180,69 @@ internal fun TaskTimelineView(
         modifier = modifier
     )
 }
+
+private fun buildAgendaTimelineItems(
+    tasks: List<TaskItem>,
+    notes: List<NoteItem>
+): List<TimelineItem> {
+    val items = ArrayList<TimelineItem>(tasks.size + notes.size)
+    tasks.forEach { task ->
+        items += TimelineItem(
+            id = "task-${task.id}",
+            type = TimelineItemType.Task,
+            date = task.doDate,
+            startTimeMinutes = task.startTimeMinutes,
+            endTimeMinutes = task.endTimeMinutes,
+            sortOrder = task.sortOrder,
+            tag = task
+        )
+    }
+    notes.forEach { note ->
+        items += TimelineItem(
+            id = "note-${note.id}",
+            type = TimelineItemType.Note,
+            date = note.date,
+            startTimeMinutes = note.startTimeMinutes,
+            endTimeMinutes = note.startTimeMinutes?.let { it + 30 },
+            sortOrder = note.sortOrder,
+            tag = note
+        )
+    }
+    return items.sortedWith(AgendaTimelineItemComparator)
+}
+
+private fun buildTimelineItems(
+    tasks: List<TaskItem>,
+    notes: List<NoteItem>
+): List<TimelineItem> {
+    val items = ArrayList<TimelineItem>(tasks.size + notes.size)
+    tasks.forEach { task ->
+        items += TimelineItem(
+            id = "task-${task.id}",
+            type = TimelineItemType.Task,
+            startTimeMinutes = task.startTimeMinutes,
+            endTimeMinutes = task.endTimeMinutes,
+            sortOrder = task.sortOrder,
+            isResizable = true,
+            tag = task
+        )
+    }
+    notes.forEach { note ->
+        items += TimelineItem(
+            id = "note-${note.id}",
+            type = TimelineItemType.Note,
+            startTimeMinutes = note.startTimeMinutes,
+            endTimeMinutes = note.startTimeMinutes?.let { it + 30 },
+            sortOrder = note.sortOrder,
+            isResizable = false,
+            tag = note
+        )
+    }
+    return items.sortedWith(TimelineItemComparator)
+}
+
+private val AgendaTimelineItemComparator: Comparator<TimelineItem> =
+    compareBy<TimelineItem> { it.date }.thenBy { it.startTimeMinutes ?: -1 }
+
+private val TimelineItemComparator: Comparator<TimelineItem> =
+    compareBy<TimelineItem> { it.startTimeMinutes ?: -1 }

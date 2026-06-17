@@ -36,6 +36,7 @@ internal class FakeCheckItRepository(
     val updatedTasks = mutableListOf<Pair<Long, TaskWriteInput>>()
     val addedDailyPlanTasks = mutableListOf<Pair<LocalDate, TaskItem>>()
     val addedManualDailyPlanItems = mutableListOf<DailyPlanItemWriteInput>()
+    val updatedDailyPlanItems = mutableListOf<Pair<Long, DailyPlanItemWriteInput>>()
     val currentBoard: TaskBoard get() = boardFlow.value
 
     var lastAssignedListId: Long = 0L
@@ -220,7 +221,9 @@ internal class FakeCheckItRepository(
     }
     override suspend fun updateDailyPlanItemTime(itemId: Long, startTimeMinutes: Int?, endTimeMinutes: Int?) = Unit
     override suspend fun updateDailyPlanItemStatus(itemId: Long, status: DailyPlanItemStatus) = Unit
-    override suspend fun updateDailyPlanItem(itemId: Long, input: DailyPlanItemWriteInput) = Unit
+    override suspend fun updateDailyPlanItem(itemId: Long, input: DailyPlanItemWriteInput) {
+        updatedDailyPlanItems.add(itemId to input)
+    }
     override suspend fun deleteDailyPlanItem(itemId: Long) = Unit
     override suspend fun addNote(input: NoteWriteInput): Long = 0L
     override suspend fun updateNote(noteId: Long, input: NoteWriteInput) = Unit
@@ -288,6 +291,10 @@ internal class FakeSettingsRepository(
 
     override suspend fun setCheckInReminderLastShownAtMillis(millis: Long) {
         settingsFlow.update { it.copy(checkInReminderLastShownAtMillis = millis) }
+    }
+
+    override suspend fun setAutoMyDayLastRunEpochDay(epochDay: Int) {
+        settingsFlow.update { it.copy(autoMyDayLastRunEpochDay = epochDay) }
     }
 }
 

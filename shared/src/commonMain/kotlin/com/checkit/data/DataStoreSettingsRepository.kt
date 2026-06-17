@@ -63,4 +63,8 @@ class DataStoreSettingsRepository(
     override suspend fun setCheckInReminderLastShownAtMillis(millis: Long) {
         dataStore.setCheckInReminderLastShownAtMillis(millis)
     }
+
+    override suspend fun setAutoMyDayLastRunEpochDay(epochDay: Int) {
+        dataStore.setAutoMyDayLastRunEpochDay(epochDay)
+    }
 }

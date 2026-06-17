@@ -16,6 +16,7 @@ import com.checkit.domain.TaskReminder
 import com.checkit.domain.TaskReminderWriteInput
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskTag
+import com.checkit.domain.hasEndTime
 import com.checkit.notifications.DailyPlanScheduleReminderScheduler
 import com.checkit.notifications.NoOpDailyPlanScheduleReminderScheduler
 import com.checkit.notifications.NoOpTaskReminderNotificationScheduler
@@ -54,7 +55,7 @@ interface CheckItRepository {
         note: String?,
         startTimeMinutes: Int?,
         endTimeMinutes: Int?,
-        source: DailyPlanItemSource = DailyPlanItemSource.CheckInManualDone,
+        source: DailyPlanItemSource = DailyPlanItemSource.MyDayTask,
         status: DailyPlanItemStatus = DailyPlanItemStatus.Done,
         tagIds: List<Long> = emptyList()
     ): Long
@@ -220,8 +221,8 @@ class RoomCheckItRepository(
                 sortOrder = 0
             )
         )
-        val workId = dao.insertTag(TagEntity(name = "Work", color = "#7C3AED"))
-        val homeId = dao.insertTag(TagEntity(name = "Home", color = "#059669"))
+        val workId = dao.insertTag(TagEntity(name = "work", color = "#7C3AED"))
+        val homeId = dao.insertTag(TagEntity(name = "home", color = "#059669"))
         val todayTaskId = dao.insertTask(
             TaskEntity(
                 listId = inboxId,
@@ -447,7 +448,7 @@ class RoomCheckItRepository(
                 status = status.name,
                 sortOrder = dao.nextDailyPlanItemSortOrder(planId),
                 startTimeMinutes = startTimeMinutes,
-                endTimeMinutes = if (source == DailyPlanItemSource.CheckInNote) null else endTimeMinutes,
+                endTimeMinutes = if (source.hasEndTime()) endTimeMinutes else null,
                 addedAtMillis = now,
                 completedAtMillis = if (status == DailyPlanItemStatus.Done) now else null
             )
@@ -490,7 +491,7 @@ class RoomCheckItRepository(
             source = input.source.name,
             status = input.status.name,
             startTimeMinutes = input.startTimeMinutes,
-            endTimeMinutes = if (input.source == DailyPlanItemSource.CheckInNote) null else input.endTimeMinutes,
+            endTimeMinutes = if (input.source.hasEndTime()) input.endTimeMinutes else null,
             completedAtMillis = if (input.status == DailyPlanItemStatus.Done) {
                 Clock.System.now().toEpochMilliseconds()
             } else {

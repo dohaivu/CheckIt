@@ -16,7 +16,8 @@ data class UserSettings(
     val reviewReminderTimeMinutes: Int = 21 * 60,
     val checkInReminderEnabled: Boolean = true,
     val scheduleReminderEnabled: Boolean = true,
-    val checkInReminderLastShownAtMillis: Long? = null
+    val checkInReminderLastShownAtMillis: Long? = null,
+    val autoMyDayLastRunEpochDay: Int? = null
 )
 
 interface SettingsRepository {
@@ -35,4 +36,5 @@ interface SettingsRepository {
     suspend fun setCheckInReminderEnabled(enabled: Boolean)
     suspend fun setScheduleReminderEnabled(enabled: Boolean)
     suspend fun setCheckInReminderLastShownAtMillis(millis: Long)
+    suspend fun setAutoMyDayLastRunEpochDay(epochDay: Int)
 }

@@ -20,6 +20,7 @@ import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskListUseCase
 import com.checkit.domain.usecase.AddTaskTagUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
+import com.checkit.domain.usecase.AutoAddTodayTasksToMyDayUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
 import com.checkit.domain.usecase.CompleteNoteUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
@@ -80,6 +81,7 @@ val provideInteractorModule = module {
     single { ObserveTaskBoardUseCase(get()) }
     single { ObserveDailyPlansUseCase(get()) }
     single { EnsureDefaultTaskDataUseCase(get()) }
+    single { AutoAddTodayTasksToMyDayUseCase(get(), get()) }
     single { AddTaskListUseCase(get()) }
     single { UpdateTaskListUseCase(get()) }
     single { DeleteTaskListUseCase(get()) }

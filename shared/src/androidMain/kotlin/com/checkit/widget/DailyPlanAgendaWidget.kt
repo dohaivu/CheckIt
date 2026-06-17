@@ -314,7 +314,7 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                 when (item) {
                     is GlanceAgendaItem.Task -> TaskIcon(completed = item.completed, tintColor = item.task.priority.priorityColor())
                     is GlanceAgendaItem.Note -> NoteIcon(item.color)
-                    is GlanceAgendaItem.DailyPlan -> DailyPlanIcon(item.color)
+                    is GlanceAgendaItem.DailyPlan -> DailyPlanIcon(source = item.item.source, completed = item.completed, item.color)
                 }
             }
         )
@@ -385,7 +385,7 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
         Image(
             provider = ImageProvider( if (completed) R.drawable.check_box_24px else R.drawable.check_box_outline_blank_24px),
             contentDescription = "check icon",
-            modifier = GlanceModifier.size(24.dp),
+            modifier = GlanceModifier.size(22.dp),
             colorFilter = ColorFilter.tint(
                 ColorProvider(tintColor)
             )
@@ -405,9 +405,13 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
     }
 
     @Composable
-    private fun DailyPlanIcon(tintColor: Color) {
+    private fun DailyPlanIcon(source: DailyPlanItemSource, completed: Boolean, tintColor: Color) {
         Image(
-            provider = ImageProvider(R.drawable.event_available_24px),
+            provider = ImageProvider(
+                resId = if (source == DailyPlanItemSource.MyDayNote) R.drawable.event_available_24px
+                        else if (completed) R.drawable.check_box_24px
+                        else R.drawable.check_box_outline_blank_24px
+            ),
             contentDescription = "daily plan icon",
             modifier = GlanceModifier.size(22.dp),
             colorFilter = ColorFilter.tint(
@@ -497,7 +501,7 @@ private sealed class GlanceAgendaItem {
         override val endTimeMinutes: Int? = item.endTimeMinutes
         override val sortOrder: Int = item.sortOrder
         override val title: String = item.widgetTitle()
-        override val color: Color = FallbackColor
+        override val color: Color = item.cardColor()
         override val completed: Boolean = item.status == DailyPlanItemStatus.Done
         override val overdue: Boolean = item.isOverdue(today)
         override val dailyPlanItemId: Long = item.id
@@ -519,8 +523,9 @@ private fun MyDayTaskViewProjection.toWidgetItems(timed: Boolean): List<GlanceAg
 
 private fun DailyPlanItem.widgetTitle(): String =
     when (source) {
-        DailyPlanItemSource.CheckInNote -> checkInNoteTitle()
-        DailyPlanItemSource.CheckInManualDone -> title.ifBlank { "Done item" }
+        DailyPlanItemSource.MyDayNote -> checkInNoteTitle()
+        DailyPlanItemSource.MyDayReminder -> reminderTitle()
+        DailyPlanItemSource.MyDayTask -> title.ifBlank { "Done item" }
         DailyPlanItemSource.ExistingTask -> title.ifBlank { "Untitled task" }
     }
 
@@ -528,6 +533,11 @@ private fun DailyPlanItem.checkInNoteTitle(): String =
     title
         .ifBlank { note.orEmpty() }
         .ifBlank { "Empty note" }
+
+private fun DailyPlanItem.reminderTitle(): String =
+    title
+        .ifBlank { note.orEmpty() }
+        .ifBlank { "Reminder" }
 
 private fun Color.provider(): ColorProvider = DayNightColorProvider(day = this, night = this)
 

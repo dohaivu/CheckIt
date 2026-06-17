@@ -41,7 +41,7 @@ class CheckInReminderPolicy(
     }
 
     companion object {
-        const val NearbyWindowMinutes = 20
+        const val NearbyWindowMinutes = 15
         const val MinimumRepeatIntervalMillis = 2L * 60L * 60L * 1000L
         private const val MinutesPerDay = 24 * 60
 
