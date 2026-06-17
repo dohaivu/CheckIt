@@ -51,6 +51,8 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 
@@ -78,6 +80,7 @@ class TaskViewModel(
     private val _uiState = MutableStateFlow(TaskUiState())
     val uiState: StateFlow<TaskUiState> = _uiState.asStateFlow()
     private val visibleItemsBuilder = TaskVisibleItemsBuilder(selectTaskBoardItems)
+    private var pendingTaskTextSaveJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -185,6 +188,7 @@ class TaskViewModel(
 
     fun openNewTaskOnDate(date: LocalDate, addToMyDayOnSave: Boolean = false) {
         val listId = editableListId() ?: return showMessage("Create a list before adding tasks")
+        cancelPendingTaskTextSave()
         _uiState.update {
             it.copy(
                 editor = TaskEditorState.TaskForm(
@@ -199,6 +203,7 @@ class TaskViewModel(
 
     fun openNewTaskAt(startTimeMinutes: Int, endTimeMinutes: Int) {
         val listId = editableListId() ?: return showMessage("Create a list before adding tasks")
+        cancelPendingTaskTextSave()
         _uiState.update {
             it.copy(
                 editor = TaskEditorState.TaskForm(
@@ -214,6 +219,7 @@ class TaskViewModel(
 
     fun openNewNote() {
         val listId = editableListId() ?: return showMessage("Create a list before adding notes")
+        cancelPendingTaskTextSave()
         _uiState.update {
             it.copy(editor = TaskEditorState.NoteForm(mode = EditorMode.Add, listId = listId, date = today()))
         }
@@ -255,6 +261,7 @@ class TaskViewModel(
     }
 
     fun openTask(task: TaskItem, dailyPlan: DailyPlanItem? = null) {
+        cancelPendingTaskTextSave()
         _uiState.update {
             it.copy(
                 editor = TaskEditorState.TaskForm(
@@ -280,6 +287,7 @@ class TaskViewModel(
     }
 
     fun openNote(note: NoteItem) {
+        cancelPendingTaskTextSave()
         _uiState.update {
             it.copy(
                 editor = TaskEditorState.NoteForm(
@@ -310,12 +318,13 @@ class TaskViewModel(
     }
 
     fun dismissEditor() {
+        flushPendingTaskTextSave()
         _uiState.update { it.copy(editor = null) }
     }
 
-    fun updateTaskName(name: String) = updateTaskForm { it.copy(name = name) }
+    fun updateTaskName(name: String) = updateTaskForm(saveImmediately = false) { it.copy(name = name) }
     fun updateTaskListId(listId: Long) = updateTaskForm { it.copy(listId = listId) }
-    fun updateTaskDescription(description: String) = updateTaskForm { it.copy(description = description) }
+    fun updateTaskDescription(description: String) = updateTaskForm(saveImmediately = false) { it.copy(description = description) }
     fun updateTaskDoDate(doDate: LocalDate?) = updateTaskForm {
         it.copy(
             doDate = doDate,
@@ -344,7 +353,7 @@ class TaskViewModel(
     fun addSubTask() = updateTaskForm { form ->
         form.copy(subtasks = form.subtasks + SubTaskEditorState(name = ""))
     }
-    fun updateSubTaskName(index: Int, name: String) = updateTaskForm { form ->
+    fun updateSubTaskName(index: Int, name: String) = updateTaskForm(saveImmediately = false) { form ->
         form.copy(
             subtasks = form.subtasks.mapIndexed { subtaskIndex, subtask ->
                 if (subtaskIndex == index) subtask.copy(name = name) else subtask
@@ -372,6 +381,7 @@ class TaskViewModel(
         val nextForm = current.copy(subtasks = nextSubtasks)
         _uiState.update { it.copy(editor = nextForm) }
         if (current.mode == EditorMode.View || current.mode == EditorMode.Edit) {
+            cancelPendingTaskTextSave()
             persistTaskInPlace(nextForm)
         }
     }
@@ -388,6 +398,7 @@ class TaskViewModel(
     }
 
     fun saveEditor() {
+        flushPendingTaskTextSave()
         val editor = _uiState.value.editor ?: return
         when (editor) {
             is TaskEditorState.TaskForm -> if (editor.mode != EditorMode.View) saveTask(editor)
@@ -398,6 +409,7 @@ class TaskViewModel(
     }
 
     fun deleteEditorItem() {
+        cancelPendingTaskTextSave()
         val editor = _uiState.value.editor ?: return
         viewModelScope.launch {
             when (editor) {
@@ -409,6 +421,7 @@ class TaskViewModel(
     }
 
     fun completeCurrentItem() {
+        flushPendingTaskTextSave()
         val editor = _uiState.value.editor ?: return
         viewModelScope.launch {
             when (editor) {
@@ -420,6 +433,7 @@ class TaskViewModel(
     }
 
     fun openCurrentItem() {
+        flushPendingTaskTextSave()
         val editor = _uiState.value.editor ?: return
         viewModelScope.launch {
             when (editor) {
@@ -431,6 +445,7 @@ class TaskViewModel(
     }
 
     fun restoreCurrentItem() {
+        cancelPendingTaskTextSave()
         val editor = _uiState.value.editor ?: return
         viewModelScope.launch {
             when (editor) {
@@ -614,12 +629,23 @@ class TaskViewModel(
         }
     }
 
-    private fun updateTaskForm(transform: (TaskEditorState.TaskForm) -> TaskEditorState.TaskForm) {
+    private fun updateTaskForm(
+        saveImmediately: Boolean = true,
+        transform: (TaskEditorState.TaskForm) -> TaskEditorState.TaskForm
+    ) {
+        var updatedForm: TaskEditorState.TaskForm? = null
         _uiState.update { state ->
             val form = state.editor as? TaskEditorState.TaskForm ?: return@update state
-            val updatedForm = transform(form)
-            if (form.mode == EditorMode.Edit) saveTask(updatedForm)
+            updatedForm = transform(form)
             state.copy(editor = updatedForm)
+        }
+        val form = updatedForm ?: return
+        if (form.mode != EditorMode.Edit) return
+        if (saveImmediately) {
+            cancelPendingTaskTextSave()
+            saveTask(form)
+        } else {
+            scheduleTaskTextSave()
         }
     }
 
@@ -644,6 +670,32 @@ class TaskViewModel(
         viewModelScope.launch {
             updateDailyPlanItemTime(updatedItem.id, updatedItem.startTimeMinutes, updatedItem.endTimeMinutes)
         }
+    }
+
+    private fun scheduleTaskTextSave() {
+        pendingTaskTextSaveJob?.cancel()
+        pendingTaskTextSaveJob = viewModelScope.launch {
+            delay(TaskTextSaveDebounceMillis)
+            pendingTaskTextSaveJob = null
+            saveCurrentTaskForm()
+        }
+    }
+
+    private fun flushPendingTaskTextSave() {
+        val pendingSave = pendingTaskTextSaveJob ?: return
+        pendingSave.cancel()
+        pendingTaskTextSaveJob = null
+        saveCurrentTaskForm()
+    }
+
+    private fun cancelPendingTaskTextSave() {
+        pendingTaskTextSaveJob?.cancel()
+        pendingTaskTextSaveJob = null
+    }
+
+    private fun saveCurrentTaskForm() {
+        val form = _uiState.value.editor as? TaskEditorState.TaskForm ?: return
+        if (form.mode == EditorMode.Edit) saveTask(form)
     }
 
     private fun editableListId(): Long? =
@@ -697,6 +749,7 @@ private fun <T> List<T>.move(fromIndex: Int, toIndex: Int): List<T> =
 
 private const val MinimumTimelineDurationMinutes = 15
 private const val LastTimelineStartMinute = MinutesPerDay - MinimumTimelineDurationMinutes
+private const val TaskTextSaveDebounceMillis = 600L
 
 private fun calculateDurationMinutes(startTimeMinutes: Int?, endTimeMinutes: Int?): Int? {
     val start = startTimeMinutes ?: return null

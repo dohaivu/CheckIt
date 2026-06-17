@@ -4,6 +4,7 @@ import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskList
+import com.checkit.domain.TaskPriority
 import com.checkit.domain.usecase.AddNoteUseCase
 import com.checkit.domain.usecase.AddTaskListUseCase
 import com.checkit.domain.usecase.AddTaskTagUseCase
@@ -132,6 +133,67 @@ class TaskSubtaskViewModelTest {
         val input = repository.updatedTasks.last().second
         assertEquals(listOf("Send", "Draft"), input.subtasks.map { it.name })
         assertEquals(listOf(true, false), input.subtasks.map { it.isCompleted })
+    }
+
+    @Test
+    fun editTaskTextFieldsSaveAfterDebounce() = runTest(dispatcher) {
+        createViewModel(TaskBoard(lists = listOf(inboxList()), tasks = listOf(taskWithSubtasks())))
+        dispatcher.scheduler.advanceUntilIdle()
+        viewModel.openTask(taskWithSubtasks())
+        viewModel.editCurrentItem()
+
+        viewModel.updateTaskName("Sh")
+        viewModel.updateTaskName("Ship edited")
+        viewModel.updateTaskDescription("Better detail")
+        viewModel.updateSubTaskName(0, "Outline")
+
+        assertEquals(0, repository.updatedTasks.size)
+
+        dispatcher.scheduler.advanceTimeBy(599)
+        assertEquals(0, repository.updatedTasks.size)
+
+        dispatcher.scheduler.advanceTimeBy(1)
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val input = repository.updatedTasks.single().second
+        assertEquals("Ship edited", input.name)
+        assertEquals("Better detail", input.description)
+        assertEquals(listOf("Outline", "Send"), input.subtasks.map { it.name })
+    }
+
+    @Test
+    fun immediateTaskEditSavesOnceAndCancelsPendingTextSave() = runTest(dispatcher) {
+        createViewModel(TaskBoard(lists = listOf(inboxList()), tasks = listOf(taskWithSubtasks())))
+        dispatcher.scheduler.advanceUntilIdle()
+        viewModel.openTask(taskWithSubtasks())
+        viewModel.editCurrentItem()
+
+        viewModel.updateTaskName("Priority pass")
+        viewModel.updateTaskPriority(TaskPriority.High)
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val input = repository.updatedTasks.single().second
+        assertEquals("Priority pass", input.name)
+        assertEquals(TaskPriority.High, input.priority)
+
+        dispatcher.scheduler.advanceTimeBy(600)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(1, repository.updatedTasks.size)
+    }
+
+    @Test
+    fun dismissFlushesPendingTaskTextSave() = runTest(dispatcher) {
+        createViewModel(TaskBoard(lists = listOf(inboxList()), tasks = listOf(taskWithSubtasks())))
+        dispatcher.scheduler.advanceUntilIdle()
+        viewModel.openTask(taskWithSubtasks())
+        viewModel.editCurrentItem()
+
+        viewModel.updateTaskName("Closed task")
+        viewModel.dismissEditor()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val input = repository.updatedTasks.single().second
+        assertEquals("Closed task", input.name)
     }
 
     @Test

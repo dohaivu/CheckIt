@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
@@ -66,8 +65,8 @@ internal fun DailyPlanItemEditorSheet(
     state: DailyPlanItemEditorState,
     availableTags: List<TaskTag>,
     onDismiss: () -> Unit,
-    onDoneTitleChange: (String) -> Unit,
-    onDoneNoteChange: (String) -> Unit,
+    onTitleChange: (String) -> Unit,
+    onNoteChange: (String) -> Unit,
     onStatusChange: (Boolean) -> Unit,
     onSourceChange: (DailyPlanItemSource) -> Unit,
     onStartTimeChange: (Int?) -> Unit,
@@ -106,8 +105,8 @@ internal fun DailyPlanItemEditorSheet(
                     DailyPlanItemFormContent(
                         state = state,
                         availableTags = availableTags,
-                        onDoneTitleChange = onDoneTitleChange,
-                        onDoneNoteChange = onDoneNoteChange,
+                        onTitleChange = onTitleChange,
+                        onNoteChange = onNoteChange,
                         onStatusChange = onStatusChange,
                         onSourceChange = onSourceChange,
                         onStartTimeChange = onStartTimeChange,
@@ -221,8 +220,8 @@ private fun SourceIconBadge(source: DailyPlanItemSource) {
 private fun DailyPlanItemFormContent(
     state: DailyPlanItemEditorState,
     availableTags: List<TaskTag>,
-    onDoneTitleChange: (String) -> Unit,
-    onDoneNoteChange: (String) -> Unit,
+    onTitleChange: (String) -> Unit,
+    onNoteChange: (String) -> Unit,
     onStatusChange: (Boolean) -> Unit,
     onSourceChange: (DailyPlanItemSource) -> Unit,
     onStartTimeChange: (Int?) -> Unit,
@@ -239,7 +238,7 @@ private fun DailyPlanItemFormContent(
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         AppOutlinedTextField(
             value = state.title,
-            onValueChange = onDoneTitleChange,
+            onValueChange = onTitleChange,
             textStyle = MaterialTheme.typography.headlineSmall.copy(
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.SemiBold
@@ -253,7 +252,7 @@ private fun DailyPlanItemFormContent(
 
         AppOutlinedTextField(
             value = state.note,
-            onValueChange = onDoneNoteChange,
+            onValueChange = onNoteChange,
             textStyle = MaterialTheme.typography.bodyLarge.copy(
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Normal

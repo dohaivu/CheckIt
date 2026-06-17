@@ -28,6 +28,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -45,6 +47,7 @@ class MyDayViewModel(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(MyDayUiState())
     val uiState: StateFlow<MyDayUiState> = _uiState.asStateFlow()
+    private var pendingEditorTextSaveJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -78,6 +81,7 @@ class MyDayViewModel(
         endTimeMinutes: Int? = null,
         date: LocalDate = today()
     ) {
+        cancelPendingEditorTextSave()
         _uiState.update {
             it.copy(
                 itemEditor = DailyPlanItemEditorState(
@@ -91,6 +95,7 @@ class MyDayViewModel(
         }
     }
     fun dismissCheckIn() {
+        flushPendingEditorTextSave()
         _uiState.update { it.copy(itemEditor = null) }
     }
 
@@ -232,6 +237,7 @@ class MyDayViewModel(
     }
 
     fun openItemEditor(item: DailyPlanItem, date: LocalDate) {
+        cancelPendingEditorTextSave()
         _uiState.update {
             it.copy(
                 itemEditor = DailyPlanItemEditorState(
@@ -250,8 +256,8 @@ class MyDayViewModel(
             )
         }
     }
-    fun updateDoneTitle(title: String) = updateItemEditor { it.copy(title = title) }
-    fun updateDoneNote(note: String) = updateItemEditor { it.copy(note = note) }
+    fun updateTitle(title: String) = updateItemEditor(saveImmediately = false) { it.copy(title = title) }
+    fun updateNote(note: String) = updateItemEditor(saveImmediately = false) { it.copy(note = note) }
     fun updateStatus(isDone: Boolean) = updateItemEditor {
         it.copy(status = if (isDone) DailyPlanItemStatus.Done else DailyPlanItemStatus.Planned)
     }
@@ -279,6 +285,7 @@ class MyDayViewModel(
     }
 
     fun deleteEditorItem() {
+        cancelPendingEditorTextSave()
         val itemId = _uiState.value.itemEditor?.itemId ?: return
         deleteDailyPlanItem(itemId) {
             it.copy(itemEditor = null, message = "Deleted")
@@ -305,14 +312,51 @@ class MyDayViewModel(
         _uiState.update { it.copy(message = null) }
     }
 
-    private fun updateItemEditor(transform: (DailyPlanItemEditorState) -> DailyPlanItemEditorState) {
+    private fun updateItemEditor(
+        saveImmediately: Boolean = true,
+        transform: (DailyPlanItemEditorState) -> DailyPlanItemEditorState
+    ) {
+        var updatedEditor: DailyPlanItemEditorState? = null
         _uiState.update { state ->
             state.itemEditor?.let {
-                val updatedEditor = transform(it)
-                if (updatedEditor.isEditMode) saveCheckIn(updatedEditor)
+                updatedEditor = transform(it)
                 state.copy(itemEditor = updatedEditor)
             } ?: state
         }
+        val editor = updatedEditor ?: return
+        if (!editor.isEditMode) return
+        if (saveImmediately) {
+            cancelPendingEditorTextSave()
+            saveCheckIn(editor)
+        } else {
+            scheduleEditorTextSave()
+        }
+    }
+
+    private fun scheduleEditorTextSave() {
+        pendingEditorTextSaveJob?.cancel()
+        pendingEditorTextSaveJob = viewModelScope.launch {
+            delay(EditorTextSaveDebounceMillis)
+            pendingEditorTextSaveJob = null
+            saveCurrentEditor()
+        }
+    }
+
+    private fun flushPendingEditorTextSave() {
+        val pendingSave = pendingEditorTextSaveJob ?: return
+        pendingSave.cancel()
+        pendingEditorTextSaveJob = null
+        saveCurrentEditor()
+    }
+
+    private fun cancelPendingEditorTextSave() {
+        pendingEditorTextSaveJob?.cancel()
+        pendingEditorTextSaveJob = null
+    }
+
+    private fun saveCurrentEditor() {
+        val editor = _uiState.value.itemEditor?.takeIf { it.isEditMode } ?: return
+        saveCheckIn(editor)
     }
 }
 
@@ -409,10 +453,7 @@ private fun DailyPlanItemEditorState.saveSource(): DailyPlanItemSource =
     source
 
 private fun DailyPlanItemEditorState.saveStatus(): DailyPlanItemStatus =
-    if (isAddMode) {
-        if (source == DailyPlanItemSource.MyDayNote) DailyPlanItemStatus.Done
-        else source.inferredAddStatus(startTimeMinutes)
-    } else status
+    if (isAddMode) source.inferredAddStatus(startTimeMinutes) else status
 
 private fun DailyPlanItemSource.inferredAddStatus(startTimeMinutes: Int?): DailyPlanItemStatus =
     if (infersAddStatusFromStartTime() && startTimeMinutes != null && startTimeMinutes < currentMyDayTimeMinutes()) {
@@ -438,3 +479,4 @@ private fun currentMyDayTimeMinutes(): Int {
 private const val DefaultTaskDurationMinutes = 45
 private const val MinimumPlanDurationMinutes = 15
 private const val MyDayMinutesPerDay = 24 * 60
+private const val EditorTextSaveDebounceMillis = 600L
