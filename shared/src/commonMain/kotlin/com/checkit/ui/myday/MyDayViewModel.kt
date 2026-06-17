@@ -82,6 +82,8 @@ class MyDayViewModel(
             it.copy(
                 itemEditor = DailyPlanItemEditorState(
                     date = date,
+                    source = DailyPlanItemSource.MyDayNote,
+                    status = DailyPlanItemStatus.Planned,
                     startTimeMinutes = startTimeMinutes,
                     endTimeMinutes = endTimeMinutes
                 )
@@ -103,7 +105,9 @@ class MyDayViewModel(
     fun saveCheckIn(editor: DailyPlanItemEditorState): Boolean {
         val title = editor.title.trim()
         val note = editor.note.trim()
-        when (editor.source) {
+        val source = editor.saveSource()
+        val status = editor.saveStatus()
+        when (source) {
             DailyPlanItemSource.MyDayNote -> {
                 if (title.isBlank() && note.isBlank()) {
                     _uiState.update { it.copy(message = "Add a note") }
@@ -149,15 +153,15 @@ class MyDayViewModel(
                     title,
                     note.takeIf { it.isNotBlank() },
                     editor.startTimeMinutes,
-                    if (editor.source.hasEndTime()) editor.endTimeMinutes else null,
-                    editor.source,
-                    status = editor.status,
+                    if (source.hasEndTime()) editor.endTimeMinutes else null,
+                    source,
+                    status = status,
                     tagIds = editor.selectedTagIds.toList()
                 )
             } else {
                 updateDailyPlanItem(
                     editor.itemId,
-                    editor.toWriteInput(editor.status)
+                    editor.toWriteInput(status, source)
                 )
             }
         }
@@ -254,11 +258,16 @@ class MyDayViewModel(
     fun updateEditorSource(source: DailyPlanItemSource) = updateItemEditor {
         it.copy(
             source = source,
-            status = source.defaultStatus(),
+            status = if (it.isAddMode) source.inferredAddStatus(it.startTimeMinutes) else source.defaultStatus(),
             endTimeMinutes = if (source.hasEndTime()) it.endTimeMinutes else null
         )
     }
-    fun updateStartTime(timeMinutes: Int?) = updateItemEditor { it.copy(startTimeMinutes = timeMinutes) }
+    fun updateStartTime(timeMinutes: Int?) = updateItemEditor {
+        it.copy(
+            startTimeMinutes = timeMinutes,
+            status = if (it.isAddMode) it.source.inferredAddStatus(timeMinutes) else it.status
+        )
+    }
     fun updateEndTime(timeMinutes: Int?) = updateItemEditor { it.copy(endTimeMinutes = timeMinutes) }
     fun toggleTag(tagId: Long) = updateItemEditor {
         val newTagIds = if (it.selectedTagIds.contains(tagId)) {
@@ -396,7 +405,24 @@ private fun DailyPlanItemEditorState.toWriteInput(
     tagIds = selectedTagIds.toList()
 )
 
+private fun DailyPlanItemEditorState.saveSource(): DailyPlanItemSource =
+    source
+
+private fun DailyPlanItemEditorState.saveStatus(): DailyPlanItemStatus =
+    if (isAddMode) source.inferredAddStatus(startTimeMinutes) else status
+
+private fun DailyPlanItemSource.inferredAddStatus(startTimeMinutes: Int?): DailyPlanItemStatus =
+    if (infersAddStatusFromStartTime() && startTimeMinutes != null && startTimeMinutes < currentMyDayTimeMinutes()) {
+        DailyPlanItemStatus.Done
+    } else {
+        DailyPlanItemStatus.Planned
+    }
+
+private fun DailyPlanItemSource.infersAddStatusFromStartTime(): Boolean =
+    this == DailyPlanItemSource.MyDayTask || this == DailyPlanItemSource.MyDayReminder
+
 private fun DailyPlanItemSource.defaultStatus(): DailyPlanItemStatus = when (this) {
+    DailyPlanItemSource.MyDayNote,
     DailyPlanItemSource.MyDayReminder -> DailyPlanItemStatus.Planned
     else -> DailyPlanItemStatus.Done
 }

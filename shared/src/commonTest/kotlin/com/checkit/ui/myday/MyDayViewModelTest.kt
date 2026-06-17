@@ -51,20 +51,38 @@ class MyDayViewModelTest {
     }
 
     @Test
-    fun addCheckInPersistsSelectedStatus() = runTest(dispatcher) {
-        viewModel.openCheckIn(startTimeMinutes = 9 * 60, endTimeMinutes = 10 * 60)
+    fun addCheckInWithoutTimePersistsPlannedNote() = runTest(dispatcher) {
+        viewModel.openCheckIn()
         viewModel.updateDoneTitle("Draft proposal")
-        viewModel.updateStatus(isDone = false)
 
         viewModel.addCheckIn()
         dispatcher.scheduler.advanceUntilIdle()
 
-        assertEquals(DailyPlanItemStatus.Planned, repository.addedManualDailyPlanItems.single().status)
+        val item = repository.addedManualDailyPlanItems.single()
+        assertEquals(DailyPlanItemSource.MyDayNote, item.source)
+        assertEquals(DailyPlanItemStatus.Planned, item.status)
+        assertEquals(null, item.startTimeMinutes)
+        assertEquals(null, item.endTimeMinutes)
+    }
+
+    @Test
+    fun addNoteWithStartTimeDoesNotInferDoneItem() = runTest(dispatcher) {
+        viewModel.openCheckIn(startTimeMinutes = 0, endTimeMinutes = 30)
+        viewModel.updateDoneTitle("Morning thought")
+
+        viewModel.addCheckIn()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val item = repository.addedManualDailyPlanItems.single()
+        assertEquals(DailyPlanItemSource.MyDayNote, item.source)
+        assertEquals(DailyPlanItemStatus.Planned, item.status)
+        assertEquals(0, item.startTimeMinutes)
+        assertEquals(null, item.endTimeMinutes)
     }
 
     @Test
     fun addReminderPersistsStartTimeOnlyAndPlannedStatus() = runTest(dispatcher) {
-        viewModel.openCheckIn(startTimeMinutes = 9 * 60, endTimeMinutes = 10 * 60)
+        viewModel.openCheckIn(startTimeMinutes = 23 * 60 + 59, endTimeMinutes = null)
         viewModel.updateEditorSource(DailyPlanItemSource.MyDayReminder)
         viewModel.updateDoneTitle("Send invoice")
 
@@ -74,7 +92,7 @@ class MyDayViewModelTest {
         val reminder = repository.addedManualDailyPlanItems.single()
         assertEquals(DailyPlanItemSource.MyDayReminder, reminder.source)
         assertEquals(DailyPlanItemStatus.Planned, reminder.status)
-        assertEquals(9 * 60, reminder.startTimeMinutes)
+        assertEquals(23 * 60 + 59, reminder.startTimeMinutes)
         assertEquals(null, reminder.endTimeMinutes)
     }
 }

@@ -35,6 +35,7 @@ fun AppOutlinedTextField(
     onValueChange: (String) -> Unit,
     textStyle: TextStyle = TextStyle.Default,
     placeholder: String? = null,
+    minLines: Int = 1,
     maxLines: Int = Int.MAX_VALUE,
     modifier: Modifier = Modifier.fillMaxWidth(),
     enabled: Boolean = true,
@@ -59,6 +60,7 @@ fun AppOutlinedTextField(
         enabled = enabled,
         interactionSource = interactionSource,
         textStyle = textStyle,
+        minLines = minLines,
         maxLines = maxLines,
         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
         decorationBox = { innerTextField ->
