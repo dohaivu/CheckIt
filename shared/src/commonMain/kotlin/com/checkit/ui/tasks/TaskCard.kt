@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
+import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
@@ -165,7 +166,7 @@ internal fun TaskTimelineCard(
         timeLabel = resolvedTimeLabel,
         color = task.cardColor(),
         leadingContent = {
-            TaskStatusIcon(
+            TaskIcon(
                 completed = completed,
                 color = task.priority.priorityColor()
             )
@@ -217,7 +218,7 @@ internal fun NoteTimelineCard(
         timeLabel = subtitle,
         color = note.cardColor(),
         leadingContent = {
-            Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null, modifier = Modifier.size(18.dp))
+            NoteIcon(status = note.status)
         },
         completedOverlay = completedOverlay,
         onClick = onClick,
@@ -246,7 +247,7 @@ internal fun DailyPlanTimelineCard(
         timeLabel = timeLabel,
         color =  item.cardColor(),
         leadingContent = {
-            Icon(item.source.timelineIcon(), contentDescription = null, modifier = Modifier.size(18.dp))
+            DailyPlanIcon(item.source, item.status == DailyPlanItemStatus.Done)
         },
         completedOverlay = completedOverlay,
         onClick = onClick,
@@ -284,7 +285,7 @@ internal fun TaskAllDayCard(
         title = task.name.ifBlank { "Untitled task" },
         color = task.cardColor(),
         icon = {
-            TaskStatusIcon(
+            TaskIcon(
                 completed = task.status == TaskStatus.Completed,
                 color = task.priority.priorityColor()
             )
@@ -303,7 +304,7 @@ internal fun NoteAllDayCard(
     AllDayTypeCard(
         title = note.title.ifBlank { note.content.ifBlank { "Empty note" } },
         color = note.cardColor(),
-        icon = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null, modifier = Modifier.size(18.dp)) },
+        icon = { NoteIcon(note.status)},
         modifier = modifier,
         completedOverlay = completedOverlay
     )
@@ -319,7 +320,7 @@ internal fun DailyPlanAllDayCard(
     AllDayTypeCard(
         title = title,
         color = item.cardColor(),
-        icon = { Icon(item.source.timelineIcon(), contentDescription = null, modifier = Modifier.size(18.dp)) },
+        icon = { DailyPlanIcon(item.source, item.status == DailyPlanItemStatus.Done)},
         modifier = modifier,
         completedOverlay = completedOverlay
     )
@@ -417,12 +418,6 @@ private fun DailyPlanItemSource.timelineLabel(): String = when (this) {
     DailyPlanItemSource.MyDayTask -> "CheckIn done"
     DailyPlanItemSource.MyDayNote -> "CheckIn note"
     DailyPlanItemSource.MyDayReminder -> "Reminder"
-}
-
-private fun DailyPlanItemSource.timelineIcon() = when (this) {
-    DailyPlanItemSource.MyDayNote -> Icons.AutoMirrored.Filled.EventNote
-    DailyPlanItemSource.MyDayReminder -> Icons.Default.Schedule
-    else -> Icons.Default.EventAvailable
 }
 
 private fun DailyPlanItem.checkInNoteTitle(): String =

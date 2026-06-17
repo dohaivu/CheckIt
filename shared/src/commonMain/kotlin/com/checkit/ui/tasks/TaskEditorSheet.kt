@@ -49,7 +49,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.DailyPlanItem
@@ -402,7 +401,7 @@ private fun TaskFormContent(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            TaskStatusIcon(
+            TaskIcon(
                 completed = form.status == TaskStatus.Completed,
                 color = form.priority.priorityColor()
             )
@@ -570,7 +569,7 @@ private fun NoteFormContent(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            NoteStatusIcon(status = form.status)
+            NoteIcon(status = form.status)
             DatePicker(
                 date = form.date,
                 onDateChange = {

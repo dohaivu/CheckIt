@@ -1,9 +1,19 @@
 package com.checkit.ui.tasks
 
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.EventNote
+import androidx.compose.material.icons.automirrored.filled.Notes
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.ViewAgenda
 import androidx.compose.material.icons.filled.ViewList
+import androidx.compose.material.icons.rounded.CheckBox
+import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
@@ -14,6 +24,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.DailyPlanItem
+import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
@@ -34,6 +45,40 @@ internal fun TaskWorkspaceView.icon(): ImageVector = when (this) {
     TaskWorkspaceView.List -> Icons.Default.ViewList
     TaskWorkspaceView.Agenda -> Icons.Default.ViewAgenda
     TaskWorkspaceView.Timeline -> Icons.Default.Schedule
+}
+
+@Composable
+internal fun NoteIcon(status: TaskStatus) {
+    Icon(
+        imageVector = if (status == TaskStatus.Completed) Icons.Default.CheckCircle else Icons.AutoMirrored.Filled.Notes,
+        contentDescription = null,
+        tint = if (status == TaskStatus.Completed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
+        modifier = Modifier.size(20.dp)
+    )
+}
+
+@Composable
+internal fun TaskIcon(completed: Boolean, color: Color) {
+    Icon(
+        imageVector = if (completed) Icons.Rounded.CheckBox else Icons.Rounded.CheckBoxOutlineBlank,
+        contentDescription = null,
+        tint = if (completed) MaterialTheme.colorScheme.onSurfaceVariant else color,
+        modifier = Modifier.size(20.dp)
+    )
+}
+
+@Composable
+internal fun DailyPlanIcon(source: DailyPlanItemSource, completed: Boolean) {
+    val icon = when (source) {
+        DailyPlanItemSource.MyDayNote -> Icons.AutoMirrored.Filled.EventNote
+        DailyPlanItemSource.MyDayReminder -> Icons.Default.Schedule
+        else -> Icons.Default.EventAvailable
+    }
+    Icon(
+        imageVector = icon,
+        contentDescription = null,
+        modifier = Modifier.size(20.dp)
+    )
 }
 
 internal fun LocalDate.compact(): String {
