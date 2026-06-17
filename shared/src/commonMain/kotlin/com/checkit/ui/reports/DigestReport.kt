@@ -141,13 +141,6 @@ internal fun DigestReport(
                     doneCount = digest.doneItemCount,
                     plannedCount = digest.plannedItemCount
                 )
-                MotivationalSummaryCard(
-                    selectedPeriod = selectedPeriod,
-                    activeDayCount = digest.activeDayCount,
-                    busiestDay = digest.busiestDay,
-                    doneCount = digest.doneItemCount,
-                    totalMinutes = digest.totalMinutes
-                )
                 WeeklyActivityChart(
                     items = digest.weekActivityItems,
                     selectedDate = state.selectedDate,
@@ -256,75 +249,6 @@ private fun HeroSummaryCard(
                 centerText = "$doneCount/$doneTotal",
                 modifier = Modifier.size(118.dp)
             )
-        }
-    }
-}
-
-@Composable
-private fun MotivationalSummaryCard(
-    selectedPeriod: ReportPeriod,
-    activeDayCount: Int,
-    busiestDay: TimeReportItem?,
-    doneCount: Int,
-    totalMinutes: Int,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
-        color = ReportGreen.copy(alpha = 0.08f),
-        border = CardDefaults.outlinedCardBorder().copy(
-            brush = Brush.linearGradient(
-                listOf(
-                    ReportGreen.copy(alpha = 0.42f),
-                    ReportBlue.copy(alpha = 0.14f)
-                )
-            )
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(18.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(CircleShape)
-                    .background(ReportGreenDark),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Star,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    tint = Color.White
-                )
-            }
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = motivationalTitle(doneCount, activeDayCount),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = motivationalBody(
-                        selectedPeriod = selectedPeriod,
-                        activeDayCount = activeDayCount,
-                        busiestDay = busiestDay,
-                        doneCount = doneCount,
-                        totalMinutes = totalMinutes
-                    ),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
         }
     }
 }
@@ -812,94 +736,6 @@ private fun heroEncouragement(
         }
     }
 }
-
-private fun motivationalTitle(doneCount: Int, activeDayCount: Int): AnnotatedString = when {
-    doneCount > 0 -> sectionTitle(prefix = "Look what ", emphasis = "you did", accent = ReportGreenDark)
-    activeDayCount > 0 -> sectionTitle(prefix = "You ", emphasis = "showed up", accent = ReportGreenDark)
-    else -> sectionTitle(prefix = "You made space for ", emphasis = "progress", accent = ReportGreenDark)
-}
-
-private fun motivationalBody(
-    selectedPeriod: ReportPeriod,
-    activeDayCount: Int,
-    busiestDay: TimeReportItem?,
-    doneCount: Int,
-    totalMinutes: Int
-): AnnotatedString =
-    if (selectedPeriod == ReportPeriod.Week) {
-        weeklyMotivationalBody(activeDayCount, busiestDay, doneCount)
-    } else {
-        dailyMotivationalBody(doneCount, totalMinutes)
-    }
-
-private fun weeklyMotivationalBody(
-    activeDayCount: Int,
-    busiestDay: TimeReportItem?,
-    doneCount: Int
-): AnnotatedString =
-    buildAnnotatedString {
-        when (activeDayCount) {
-            0 -> {
-                append("You kept the week open for a ")
-                highlight("reset", ReportGreenDark)
-                append(".")
-            }
-            1 -> {
-                append("You showed up on ")
-                highlight("1 day", ReportGreenDark)
-                append(" this week.")
-            }
-            else -> {
-                append("You showed up on ")
-                highlight("$activeDayCount days", ReportGreenDark)
-                append(" this week.")
-            }
-        }
-        busiestDay?.let {
-            append(" ")
-            highlight(it.startDate.dayOfWeek.shortName(), ReportPurple)
-            append(" was your strongest day with ")
-            highlight(it.totalMinutes.toDurationLabel(), ReportPurple)
-            append(".")
-        }
-        append(" ")
-        if (doneCount > 0) {
-            append("You finished ")
-            highlight(doneCount.itemCountLabel(), ReportBlue)
-            append(".")
-        } else {
-            softEmphasis("Even planning counts when it helps tomorrow feel lighter.")
-        }
-    }
-
-private fun dailyMotivationalBody(doneCount: Int, totalMinutes: Int): AnnotatedString =
-    buildAnnotatedString {
-        when {
-            doneCount > 0 && totalMinutes > 0 -> {
-                append("You finished ")
-                highlight(doneCount.itemCountLabel(), ReportBlue)
-                append(" and gave ")
-                highlight(totalMinutes.toDurationLabel(), ReportPurple)
-                append(" to what mattered.")
-            }
-            doneCount > 0 -> {
-                append("You finished ")
-                highlight(doneCount.itemCountLabel(), ReportBlue)
-                append(" today. ")
-                softEmphasis("Small visible wins still count.")
-            }
-            totalMinutes > 0 -> {
-                append("You gave ")
-                highlight(totalMinutes.toDurationLabel(), ReportPurple)
-                append(" to your day. ")
-                highlight("That effort is visible.", ReportGreenDark, fontStyle = FontStyle.Italic)
-            }
-            else -> {
-                append("You checked in with your day. ")
-                highlight("That is still a start.", ReportGreenDark, fontStyle = FontStyle.Italic)
-            }
-        }
-    }
 
 private fun sectionTitle(
     prefix: String,

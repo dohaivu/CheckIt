@@ -409,7 +409,10 @@ private fun DailyPlanItemEditorState.saveSource(): DailyPlanItemSource =
     source
 
 private fun DailyPlanItemEditorState.saveStatus(): DailyPlanItemStatus =
-    if (isAddMode) source.inferredAddStatus(startTimeMinutes) else status
+    if (isAddMode) {
+        if (source == DailyPlanItemSource.MyDayNote) DailyPlanItemStatus.Done
+        else source.inferredAddStatus(startTimeMinutes)
+    } else status
 
 private fun DailyPlanItemSource.inferredAddStatus(startTimeMinutes: Int?): DailyPlanItemStatus =
     if (infersAddStatusFromStartTime() && startTimeMinutes != null && startTimeMinutes < currentMyDayTimeMinutes()) {
