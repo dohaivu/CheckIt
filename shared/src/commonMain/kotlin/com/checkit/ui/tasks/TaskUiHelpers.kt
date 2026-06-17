@@ -1,9 +1,14 @@
 package com.checkit.ui.tasks
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.EventNote
 import androidx.compose.material.icons.automirrored.filled.Notes
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.Schedule
@@ -14,7 +19,9 @@ import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
@@ -68,17 +75,62 @@ internal fun TaskIcon(completed: Boolean, color: Color) {
 }
 
 @Composable
-internal fun DailyPlanIcon(source: DailyPlanItemSource, completed: Boolean) {
+internal fun DailyPlanIcon(source: DailyPlanItemSource, isDone: Boolean) {
     val icon = when (source) {
         DailyPlanItemSource.MyDayNote -> Icons.AutoMirrored.Filled.EventNote
         DailyPlanItemSource.MyDayReminder -> Icons.Default.Schedule
         else -> Icons.Default.EventAvailable
     }
-    Icon(
-        imageVector = icon,
-        contentDescription = null,
-        modifier = Modifier.size(20.dp)
-    )
+    if (source == DailyPlanItemSource.MyDayNote) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp)
+        )
+    } else {
+        BadgedActionIcon(baseIcon = icon, isDone = isDone)
+    }
+}
+
+@Composable
+fun BadgedActionIcon(
+    baseIcon: ImageVector,
+    isDone: Boolean,
+    modifier: Modifier = Modifier,
+    baseIconSize: Dp = 20.dp,
+    badgeSize: Dp = 10.dp,
+    baseIconTint: Color = MaterialTheme.colorScheme.onSurface,
+    doneColor: Color = MaterialTheme.colorScheme.primary
+) {
+    Box(
+        modifier = modifier.size(baseIconSize),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = baseIcon,
+            contentDescription = null,
+            tint = baseIconTint,
+            modifier = Modifier.size(baseIconSize)
+        )
+
+        Box(
+            modifier = Modifier
+                .size(badgeSize)
+                .align(Alignment.BottomEnd)
+                .offset(x = 1.dp, y = 0.dp)
+                .clip(CircleShape)
+                .background(if (isDone) doneColor else baseIconTint)
+            ,
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Check,
+                contentDescription = if (isDone) "Completed" else "Not Completed",
+                tint = Color.White,
+                modifier = Modifier.size(badgeSize * 0.7f)
+            )
+        }
+    }
 }
 
 internal fun LocalDate.compact(): String {
