@@ -314,7 +314,7 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                 when (item) {
                     is GlanceAgendaItem.Task -> TaskIcon(completed = item.completed, tintColor = item.task.priority.priorityColor())
                     is GlanceAgendaItem.Note -> NoteIcon(item.color)
-                    is GlanceAgendaItem.DailyPlan -> DailyPlanIcon(item.color)
+                    is GlanceAgendaItem.DailyPlan -> DailyPlanIcon(source = item.item.source, completed = item.completed, item.color)
                 }
             }
         )
@@ -385,7 +385,7 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
         Image(
             provider = ImageProvider( if (completed) R.drawable.check_box_24px else R.drawable.check_box_outline_blank_24px),
             contentDescription = "check icon",
-            modifier = GlanceModifier.size(24.dp),
+            modifier = GlanceModifier.size(22.dp),
             colorFilter = ColorFilter.tint(
                 ColorProvider(tintColor)
             )
@@ -405,9 +405,13 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
     }
 
     @Composable
-    private fun DailyPlanIcon(tintColor: Color) {
+    private fun DailyPlanIcon(source: DailyPlanItemSource, completed: Boolean, tintColor: Color) {
         Image(
-            provider = ImageProvider(R.drawable.event_available_24px),
+            provider = ImageProvider(
+                resId = if (source == DailyPlanItemSource.MyDayNote) R.drawable.event_available_24px
+                        else if (completed) R.drawable.check_box_24px
+                        else R.drawable.check_box_outline_blank_24px
+            ),
             contentDescription = "daily plan icon",
             modifier = GlanceModifier.size(22.dp),
             colorFilter = ColorFilter.tint(
