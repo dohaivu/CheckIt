@@ -221,8 +221,8 @@ class RoomCheckItRepository(
                 sortOrder = 0
             )
         )
-        val workId = dao.insertTag(TagEntity(name = "Work", color = "#7C3AED"))
-        val homeId = dao.insertTag(TagEntity(name = "Home", color = "#059669"))
+        val workId = dao.insertTag(TagEntity(name = "work", color = "#7C3AED"))
+        val homeId = dao.insertTag(TagEntity(name = "home", color = "#059669"))
         val todayTaskId = dao.insertTask(
             TaskEntity(
                 listId = inboxId,

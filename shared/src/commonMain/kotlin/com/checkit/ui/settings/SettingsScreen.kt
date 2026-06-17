@@ -215,7 +215,7 @@ private fun ReminderSettingsScreen(
         ) {
             item {
                 ReminderRow(
-                    title = "Plan reminder",
+                    title = "Plan",
                     subtitle = "Start the day by planning My Day",
                     enabled = state.planEnabled,
                     timeMinutes = state.planTimeMinutes,
@@ -225,7 +225,7 @@ private fun ReminderSettingsScreen(
             }
             item {
                 ReminderRow(
-                    title = "Review reminder",
+                    title = "Review",
                     subtitle = "Close the day with a quick review",
                     enabled = state.reviewEnabled,
                     timeMinutes = state.reviewTimeMinutes,
@@ -325,7 +325,7 @@ private fun ScheduleReminderRow(
     onEnabledChange: (Boolean) -> Unit
 ) {
     SwitchSettingsRow(
-        title = "Schedule reminder",
+        title = "Schedule",
         subtitle = "Reminds when timed My Day items start",
         enabled = enabled,
         onEnabledChange = onEnabledChange
@@ -339,7 +339,7 @@ private fun CheckInReminderRow(
     onEnabledChange: (Boolean) -> Unit
 ) {
     SwitchSettingsRow(
-        title = "CheckIn reminder",
+        title = "CheckIn",
         subtitle = "Checks every 30 minutes when My Day has nothing near now",
         enabled = enabled,
         onEnabledChange = onEnabledChange

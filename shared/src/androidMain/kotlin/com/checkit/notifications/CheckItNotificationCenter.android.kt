@@ -49,7 +49,7 @@ class CheckItNotificationCenter(
             notificationId = notificationId,
             requestCode = notificationId,
             title = title,
-            body = if (type == AppReminderType.CheckIn) NotificationText.withActionQuote(body) else body,
+            body = body,
             subText = type.subText,
             bypassDnd = false // App reminders respect DND
         )
@@ -59,7 +59,7 @@ class CheckItNotificationCenter(
         showReminder(
             notificationId = NotificationIds.dailyPlanSchedule(itemId),
             requestCode = NotificationIds.dailyPlanSchedule(itemId),
-            title = title.ifBlank { "My Day item" },
+            title = title.ifBlank { "My Day" },
             body = NotificationText.withActionQuote("Starting now"),
             subText = AppReminderType.Schedule.subText,
             dailyPlanItemId = itemId,
