@@ -11,7 +11,7 @@ import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 
 data class ReportUiState(
-    val selectedPeriod: ReportPeriod = ReportPeriod.Week,
+    val selectedPeriod: ReportPeriod = ReportPeriod.Daily,
     val selectedDate: kotlinx.datetime.LocalDate = today(),
     val dailyPlans: List<DailyPlan> = emptyList(),
     val isLoading: Boolean = true,
