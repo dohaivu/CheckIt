@@ -163,7 +163,6 @@ internal fun CalendarScreen(
             if (selectedContent.showDailyPlan) {
                 DayLinearTimeline(
                     items = selectedContent.dailyPlanItems,
-                    board = state.board,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 4.dp)

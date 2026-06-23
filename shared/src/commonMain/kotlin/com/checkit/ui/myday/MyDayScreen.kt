@@ -120,7 +120,6 @@ internal fun MyDayScreen(
             )
             DayLinearTimeline(
                 items = state.items,
-                board = state.board,
                 modifier = Modifier.fillMaxWidth()
             )
             when (state.selectedView) {
