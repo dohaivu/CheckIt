@@ -1,10 +1,15 @@
 package com.checkit.ui.tasks
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.calculateCentroid
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -29,12 +34,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.PointerInputScope
+import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
@@ -43,8 +51,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.checkit.ui.components.HoursPerDay
 import com.checkit.ui.components.MinutesPerDay
+import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.time.Clock
 
@@ -137,68 +147,143 @@ private fun TimelineGrid(
     modifier: Modifier = Modifier
 ) {
     val density = LocalDensity.current
+    val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
-    val hourHeight = 80.dp
+    var hourHeight by remember { mutableStateOf(DefaultTimelineHourHeight) }
     val axisWidth = 56.dp
-    val totalHeight = hourHeight * HoursPerDay
-    val hourHeightPx = with(density) { hourHeight.toPx() }
     val axisWidthPx = with(density) { axisWidth.toPx() }
     val layouts = remember(items) { buildTimelineLayouts(items) }
     val currentTimeMinutes = remember { currentTimeMinutes() }
     var selectedItemId by remember { mutableStateOf<String?>(null) }
+    var hasScrolledToCurrentTime by remember { mutableStateOf(false) }
+    var isWorkdayZoomed by remember { mutableStateOf(false) }
 
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .verticalScroll(scrollState)
     ) {
+        val minHourHeight = if (maxHeight.value.isFinite() && maxHeight > 0.dp) {
+            (maxHeight / HoursPerDay).coerceAtLeast(MinTimelineHourHeight)
+        } else {
+            MinTimelineHourHeight
+        }
+        val maxHourHeight = MaxTimelineHourHeight.coerceAtLeast(minHourHeight)
+        val timelineHourHeight = hourHeight.coerceIn(minHourHeight, maxHourHeight)
+
+        LaunchedEffect(minHourHeight, maxHourHeight) {
+            hourHeight = hourHeight.coerceIn(minHourHeight, maxHourHeight)
+        }
+
+        val totalHeight = timelineHourHeight * HoursPerDay
+        val hourHeightPx = with(density) { timelineHourHeight.toPx() }
+        val timelineViewportHeight = maxHeight
         val taskAreaWidth = (maxWidth - axisWidth - 14.dp).coerceAtLeast(1.dp)
-        LaunchedEffect(currentTimeMinutes, hourHeightPx) {
-            val targetScroll = (minutesToY(currentTimeMinutes, hourHeightPx) -
-                hourHeightPx * CurrentTimeVisibleHoursBefore).roundToInt().coerceAtLeast(0)
-            scrollState.scrollTo(targetScroll)
+        LaunchedEffect(currentTimeMinutes, hasScrolledToCurrentTime) {
+            if (hasScrolledToCurrentTime) return@LaunchedEffect
+            scrollState.scrollToCurrentTime(currentTimeMinutes, hourHeightPx)
+            hasScrolledToCurrentTime = true
         }
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(totalHeight)
-                .pointerInput(hourHeightPx, axisWidthPx) {
-                    detectTapGestures(
-                        onTap = { selectedItemId = null },
-                        onLongPress = { offset ->
-                            if (offset.x >= axisWidthPx) {
-                                val start = offset.y.toMinutes(hourHeightPx)
-                                    .snapToQuarterHour()
-                                    .coerceIn(0, LastStartMinute)
-                                onCreateRequest(start, start + DefaultDurationMinutes)
+                .verticalScroll(scrollState)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(totalHeight)
+                    .pointerInput(hourHeightPx, minHourHeight, maxHourHeight) {
+                        detectTimelineZoomGestures { centroid, pan, zoom ->
+                            if (abs(zoom - 1f) < TimelineZoomEpsilon) return@detectTimelineZoomGestures
+
+                            val previousHourHeight = timelineHourHeight
+                            val nextHourHeight = (previousHourHeight * zoom)
+                                .coerceIn(minHourHeight, maxHourHeight)
+                            if (nextHourHeight == previousHourHeight) return@detectTimelineZoomGestures
+
+                            val previousHourHeightPx = with(density) { previousHourHeight.toPx() }
+                            val nextHourHeightPx = with(density) { nextHourHeight.toPx() }
+                            val focalMinutes = centroid.y.toMinutes(previousHourHeightPx)
+                                .coerceIn(0, MinutesPerDay)
+                            val previousFocalY = minutesToY(focalMinutes, previousHourHeightPx)
+                            val nextFocalY = minutesToY(focalMinutes, nextHourHeightPx)
+                            val scrollDelta = nextFocalY - previousFocalY - pan.y
+
+                            isWorkdayZoomed = false
+                            hourHeight = nextHourHeight
+                            coroutineScope.launch {
+                                scrollState.scrollTo(
+                                    (scrollState.value + scrollDelta)
+                                        .roundToInt()
+                                        .coerceAtLeast(0)
+                                )
                             }
                         }
+                    }
+                    .pointerInput(hourHeightPx, axisWidthPx) {
+                        detectTapGestures(
+                            onTap = { selectedItemId = null },
+                            onDoubleTap = {
+                                selectedItemId = null
+                                if (isWorkdayZoomed) {
+                                    val nextHourHeight = DefaultTimelineHourHeight
+                                        .coerceIn(minHourHeight, maxHourHeight)
+                                    hourHeight = nextHourHeight
+                                    isWorkdayZoomed = false
+                                    coroutineScope.launch {
+                                        scrollState.scrollToCurrentTime(
+                                            currentTimeMinutes,
+                                            with(density) { nextHourHeight.toPx() }
+                                        )
+                                    }
+                                } else {
+                                    val nextHourHeight = (timelineViewportHeight / WorkdayVisibleHours)
+                                        .coerceIn(minHourHeight, maxHourHeight)
+                                    hourHeight = nextHourHeight
+                                    isWorkdayZoomed = true
+                                    coroutineScope.launch {
+                                        scrollState.scrollToStartMinute(
+                                            WorkdayStartMinutes,
+                                            with(density) { nextHourHeight.toPx() }
+                                        )
+                                    }
+                                }
+                            },
+                            onLongPress = { offset ->
+                                if (offset.x >= axisWidthPx) {
+                                    val start = offset.y.toMinutes(hourHeightPx)
+                                        .snapToQuarterHour()
+                                        .coerceIn(0, LastStartMinute)
+                                    onCreateRequest(start, start + DefaultDurationMinutes)
+                                }
+                            }
+                        )
+                    }
+            ) {
+                HourRows(
+                    hourHeight = timelineHourHeight,
+                    axisWidth = axisWidth
+                )
+                CurrentTimeLine(
+                    currentTimeMinutes = currentTimeMinutes,
+                    hourHeight = timelineHourHeight,
+                    axisWidth = axisWidth
+                )
+                layouts.forEach { layout ->
+                    TimelineItemCard(
+                        layout = layout,
+                        item = layout.item,
+                        axisWidth = axisWidth,
+                        taskAreaWidth = taskAreaWidth,
+                        hourHeight = timelineHourHeight,
+                        hourHeightPx = hourHeightPx,
+                        isSelected = selectedItemId == layout.item.id,
+                        onClick = { onItemClick(layout.item) },
+                        onSelect = { selectedItemId = layout.item.id },
+                        onTimeChange = onTimeChange,
+                        content = itemContent
                     )
                 }
-        ) {
-            HourRows(
-                hourHeight = hourHeight,
-                axisWidth = axisWidth
-            )
-            CurrentTimeLine(
-                currentTimeMinutes = currentTimeMinutes,
-                hourHeight = hourHeight,
-                axisWidth = axisWidth
-            )
-            layouts.forEach { layout ->
-                TimelineItemCard(
-                    layout = layout,
-                    item = layout.item,
-                    axisWidth = axisWidth,
-                    taskAreaWidth = taskAreaWidth,
-                    hourHeight = hourHeight,
-                    hourHeightPx = hourHeightPx,
-                    isSelected = selectedItemId == layout.item.id,
-                    onClick = { onItemClick(layout.item) },
-                    onSelect = { selectedItemId = layout.item.id },
-                    onTimeChange = onTimeChange,
-                    content = itemContent
-                )
             }
         }
     }
@@ -480,11 +565,56 @@ private fun buildClusterLayouts(entries: List<TimelineItem>): List<TimelineItemL
     }
 }
 
+private suspend fun PointerInputScope.detectTimelineZoomGestures(
+    onZoom: (centroid: Offset, pan: Offset, zoom: Float) -> Unit
+) {
+    awaitEachGesture {
+        do {
+            val event = awaitPointerEvent()
+            val pressedPointerCount = event.changes.count { it.pressed }
+            if (pressedPointerCount > 1) {
+                val zoom = event.calculateZoom()
+                if (zoom.isFinite() && abs(zoom - 1f) >= TimelineZoomEpsilon) {
+                    onZoom(
+                        event.calculateCentroid(),
+                        event.calculatePan(),
+                        zoom
+                    )
+                    event.changes.forEach { change ->
+                        if (change.positionChanged()) {
+                            change.consume()
+                        }
+                    }
+                }
+            }
+        } while (event.changes.any { it.pressed })
+    }
+}
+
 private fun Offset.toMinutes(hourHeightPx: Float): Int =
     y.toMinutes(hourHeightPx)
 
 private fun Float.toMinutes(hourHeightPx: Float): Int =
     ((this / hourHeightPx) * 60f).roundToInt()
+
+private suspend fun ScrollState.scrollToCurrentTime(
+    currentTimeMinutes: Int,
+    hourHeightPx: Float
+) {
+    scrollTo(
+        (minutesToY(currentTimeMinutes, hourHeightPx) -
+            hourHeightPx * CurrentTimeVisibleHoursBefore)
+            .roundToInt()
+            .coerceAtLeast(0)
+    )
+}
+
+private suspend fun ScrollState.scrollToStartMinute(
+    startTimeMinutes: Int,
+    hourHeightPx: Float
+) {
+    scrollTo(minutesToY(startTimeMinutes, hourHeightPx).roundToInt().coerceAtLeast(0))
+}
 
 private fun minutesToY(minutes: Int, hourHeightPx: Float): Float =
     (minutes / 60f) * hourHeightPx
@@ -565,5 +695,12 @@ internal const val CurrentTimeVisibleHoursBefore = 2f
 internal const val CollapsedAllDayItemCount = 2
 internal const val DefaultTaskCardAlpha = 0.17f
 internal const val SelectedTaskCardAlpha = 0.28f
+private const val WorkdayStartMinutes = 8 * 60
+private const val WorkdayEndMinutes = 18 * 60
+private const val WorkdayVisibleHours = (WorkdayEndMinutes - WorkdayStartMinutes) / 60
 private val CompactTimelineItemHeight = 48.dp
 private val UltraCompactTimelineItemHeight = 34.dp
+private val MinTimelineHourHeight = 12.dp
+private val DefaultTimelineHourHeight = 80.dp
+private val MaxTimelineHourHeight = 160.dp
+private const val TimelineZoomEpsilon = 0.001f
