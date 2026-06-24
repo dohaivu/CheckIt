@@ -20,9 +20,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.EventNote
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.EventAvailable
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.Card
@@ -146,14 +148,14 @@ internal fun DigestReport(
                     selectedDate = state.selectedDate,
                     selectedPeriod = selectedPeriod
                 )
+                if (digest.topTags.isNotEmpty()) {
+                    TopTagsCard(items = digest.topTags)
+                }
                 if (digest.highlights.isNotEmpty()) {
                     CompletedHighlightsCard(
                         highlights = digest.highlights,
                         selectedPeriod = selectedPeriod
                     )
-                }
-                if (digest.topTags.isNotEmpty()) {
-                    TopTagsCard(items = digest.topTags)
                 }
             }
         }
@@ -707,12 +709,11 @@ private fun EmptyDigestCard(modifier: Modifier = Modifier) {
     }
 }
 
-private fun DigestHighlight.icon(): ImageVector = when {
-    title.contains("code", ignoreCase = true) -> Icons.Default.Code
-    title.contains("anki", ignoreCase = true) ||
-        title.contains("spanish", ignoreCase = true) -> Icons.AutoMirrored.Filled.MenuBook
-    item.source == DailyPlanItemSource.ExistingTask -> Icons.Default.TaskAlt
-    else -> Icons.Default.EventAvailable
+private fun DigestHighlight.icon(): ImageVector = when (item.source) {
+    DailyPlanItemSource.MyDayTask -> Icons.Default.EventAvailable
+    DailyPlanItemSource.MyDayNote -> Icons.AutoMirrored.Filled.EventNote
+    DailyPlanItemSource.MyDayReminder -> Icons.Default.Schedule
+    DailyPlanItemSource.ExistingTask -> Icons.Default.TaskAlt
 }
 
 private fun heroEncouragement(

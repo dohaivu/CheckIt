@@ -7,12 +7,12 @@ androidx-activity = "1.13.0"
 androidx-appcompat = "1.7.1"
 androidx-core = "1.19.0"
 androidx-espresso = "3.7.0"
-androidx-lifecycle = "2.10.0"
+androidx-lifecycle = "2.11.0"
 androidx-testExt = "1.3.0"
 androidx-work = "2.11.2"
 androidx-media3 = "1.10.1"
-jetbrain-adaptive = "1.3.0-beta01"
-jetbrain-androidx-lifecycle = "2.11.0-beta01"
+jetbrain-adaptive = "1.3.0-beta02"
+jetbrain-androidx-lifecycle = "2.11.0-beta02"
 jetbrain-androidx-navigation3 = "1.1.1"
 jetbrain-androidx-navigation-event = "1.1.0"
 jetbrain-androidx-savedstate = "1.4.0"
@@ -27,32 +27,29 @@ ksp = "2.3.5"
 sqlite = "2.6.2"
 coil = "3.5.0"
 ktor = "3.5.0"
-rss-parser = "6.1.5"
 kotlinx-coroutine = "1.11.0"
 kotlinx-serialization = "1.11.0"
 kotlinx-datetime = "0.8.0"
 kotlinx-atomicfu = "0.33.0"
-koin-bom = "4.2.1"
-koin-plugin = "1.0.0"
+koin-bom = "4.2.2"
+koin-plugin = "1.0.1"
 kermit = "2.1.0"
-vico = "3.2.1"
+vico = "3.2.3"
 calendar = "2.10.1"
 androidgitversion = "0.4.14"
 doistx-normalize = "1.3.3"
-markdownRenderer = "0.41.0"
+markdownRenderer = "0.43.0"
 
 mockk = "1.14.11"
 turbine = "1.2.1"
 
-mlkit-translation = "17.0.3"
 paging = "3.5.0"
 glance = "1.1.1"
-google-services-plugin = "4.4.4"
+google-services-plugin = "4.5.0"
 firebase-crashlytics-plugin = "3.0.7"
 firebase-crashlytics = "20.0.6"
-firebase-bom = "34.14.1"
+firebase-bom = "34.15.0"
 firebase-analytics = "23.2.0"
-firebase-ai = "17.12.1"
 play-services-auth = "21.6.0"
 
 [libraries]
@@ -100,9 +97,9 @@ coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" 
 coil-ktor3 = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil" }
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 kermit-io = { module = "co.touchlab:kermit-io", version.ref = "kermit" }
-vico-compose = { group = "com.patrykandpatrick.vico", name = "compose", version.ref = "vico" }
-vico-compose-m3 = { group = "com.patrykandpatrick.vico", name = "compose-m3", version.ref = "vico" }
-calendar-compose = { module = "com.kizitonwose.calendar:compose-multiplatform", version.ref = "calendar" }
+#vico-compose = { group = "com.patrykandpatrick.vico", name = "compose", version.ref = "vico" }
+#vico-compose-m3 = { group = "com.patrykandpatrick.vico", name = "compose-m3", version.ref = "vico" }
+#calendar-compose = { module = "com.kizitonwose.calendar:compose-multiplatform", version.ref = "calendar" }
 doist-normalize = { module = "com.doist.x:normalize", version.ref = "doistx-normalize" }
 markdown-renderer = { module = "com.mikepenz:multiplatform-markdown-renderer-m3", version.ref = "markdownRenderer" }
 
@@ -127,7 +124,7 @@ turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 koin-test = { module = "io.insert-koin:koin-test" }
 koin-test-junit4 = { module = "io.insert-koin:koin-test-junit4" }
 androidx-room-testing = { module = "androidx.room:room-testing", version.ref = "room" }
-androidx-compose-bom = { module = "androidx.compose:compose-bom", version = "2026.05.01" }
+androidx-compose-bom = { module = "androidx.compose:compose-bom", version = "2026.06.00" }
 compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
 compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
 
@@ -144,8 +141,6 @@ koin-core-coroutines = { module = "io.insert-koin:koin-core-coroutines" }
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebase-bom" }
 firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics", version.ref = "firebase-analytics" }
 firebase-crashlytics-lib = { group = "com.google.firebase", name = "firebase-crashlytics", version.ref = "firebase-crashlytics" }
-firebase-ai = { group = "com.google.firebase", name = "firebase-ai", version.ref = "firebase-ai" }
-mlkit-translation = { module = "com.google.mlkit:translate", version.ref = "mlkit-translation" }
 play-services-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "play-services-auth" }
 
 [plugins]

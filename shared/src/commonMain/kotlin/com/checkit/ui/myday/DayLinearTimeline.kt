@@ -31,10 +31,9 @@ import kotlin.math.roundToInt
 @Composable
 internal fun DayLinearTimeline(
     items: List<DailyPlanItem>,
-    board: TaskBoard,
     modifier: Modifier = Modifier
 ) {
-    val blocks = remember(items, board) { items.toDayTimelineBlocks(board) }
+    val blocks = remember(items) { items.toDayTimelineBlocks() }
     val workMinutes = remember(blocks) { blocks.totalOccupiedMinutes() }
     val trackColor = MaterialTheme.colorScheme.surfaceContainerHigh//.copy(alpha = 0.75f)
 
@@ -115,8 +114,7 @@ private data class DayTimelineTick(
         ((minutes - DayTimelineStartMinutes).toFloat() / DayTimelineTotalMinutes).coerceIn(0f, 1f)
 }
 
-private fun List<DailyPlanItem>.toDayTimelineBlocks(board: TaskBoard): List<DayTimelineBlock> {
-    val tasksById = board.tasksById
+private fun List<DailyPlanItem>.toDayTimelineBlocks(): List<DayTimelineBlock> {
     return mapNotNull { item ->
         val start = item.startTimeMinutes ?: return@mapNotNull null
         val end = item.endTimeMinutes ?: return@mapNotNull null
@@ -125,12 +123,10 @@ private fun List<DailyPlanItem>.toDayTimelineBlocks(board: TaskBoard): List<DayT
         if (clippedEnd <= clippedStart) {
             null
         } else {
-            val task = item.taskId?.let { tasksById[it] }
-            val list = task?.list
             DayTimelineBlock(
                 startMinutes = clippedStart,
                 endMinutes = clippedEnd,
-                color = task.cardColor()
+                color = item.cardColor()
             )
         }
     }
