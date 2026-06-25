@@ -48,6 +48,9 @@ import com.checkit.domain.KeyResult
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskList
+import com.checkit.ui.components.icons.AppIcons
+import com.checkit.ui.components.icons.Target
+import com.checkit.ui.theme.toColor
 
 @Composable
 internal fun ObjectiveScreen(
@@ -132,6 +135,7 @@ private fun ObjectiveBranch(
 ) {
     val nodeKey = objective.nodeKey()
     val isExpanded = nodeKey !in collapsedNodeKeys
+    val color = objective.color.toColor()
     TreeNodeRow(
         text = objective.name,
         nodeKey = nodeKey,
@@ -140,11 +144,21 @@ private fun ObjectiveBranch(
         hasChildren = keyResults.isNotEmpty(),
         isExpanded = isExpanded,
         isSelected = selectedNodeKey == nodeKey,
+        color = color,
         onToggleExpanded = onToggleExpanded,
         onSelectNode = onSelectNode,
         onLongClick = { onEditObjective(objective) },
         onAddClick = {
             onAddKeyResult(objective)
+        },
+        leadingContent = {
+            Icon(
+                imageVector = AppIcons.Target,
+                contentDescription = "target",
+                tint = color,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
         }
     )
     AnimatedChildren(visible = isExpanded && keyResults.isNotEmpty()) {
@@ -155,6 +169,7 @@ private fun ObjectiveBranch(
                 collapsedNodeKeys = collapsedNodeKeys,
                 selectedNodeKey = selectedNodeKey,
                 isLast = index == keyResults.lastIndex,
+                color = color,
                 onToggleExpanded = onToggleExpanded,
                 onSelectNode = onSelectNode,
                 onTaskClick = onTaskClick,
@@ -172,6 +187,7 @@ private fun KeyResultBranch(
     collapsedNodeKeys: Set<String>,
     selectedNodeKey: String?,
     isLast: Boolean,
+    color: Color? = null,
     onToggleExpanded: (String) -> Unit,
     onSelectNode: (String) -> Unit,
     onTaskClick: (TaskItem) -> Unit,
@@ -188,6 +204,7 @@ private fun KeyResultBranch(
         hasChildren = tasks.isNotEmpty(),
         isExpanded = isExpanded,
         isSelected = selectedNodeKey == nodeKey,
+        color = color,
         onToggleExpanded = onToggleExpanded,
         onSelectNode = onSelectNode,
         onLongClick = { onEditKeyResult(keyResult) },
@@ -225,6 +242,7 @@ private fun KeyResultBranch(
                 hasChildren = false,
                 isExpanded = false,
                 isSelected = selectedNodeKey == taskNodeKey,
+                color = color,
                 onToggleExpanded = onToggleExpanded,
                 onSelectNode = onSelectNode,
                 onLongClick = { onTaskClick(task) },
@@ -260,11 +278,13 @@ private fun TreeNodeRow(
     hasChildren: Boolean,
     isExpanded: Boolean,
     isSelected: Boolean,
+    color: Color? = null,
     onToggleExpanded: (String) -> Unit,
     onSelectNode: (String) -> Unit,
     onLongClick: (() -> Unit)? = null,
     onAddClick: (()-> Unit)? = null,
     ancestorLines: List<Dp> = emptyList(),
+    leadingContent: @Composable (() -> Unit)? = null,
     trailingContent: @Composable (() -> Unit)? = null
 ) {
     val background = if (isSelected) {
@@ -272,7 +292,7 @@ private fun TreeNodeRow(
     } else {
         Color.Transparent
     }
-    val lineColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f)
+    val lineColor = color ?: MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -360,6 +380,7 @@ private fun TreeNodeRow(
         } else {
             Spacer(Modifier.size(36.dp))
         }
+        leadingContent?.invoke()
         Text(
             text = text,
             maxLines = 1,

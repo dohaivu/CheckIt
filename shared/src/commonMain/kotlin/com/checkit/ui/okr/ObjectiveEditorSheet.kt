@@ -127,14 +127,14 @@ internal fun ObjectiveEditorSheet(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
-//            item {
-//                SectionLabel("Color")
-//                ColorPicker(
-//                    colors = AppIconColorDefaults.ListColors,
-//                    selected = editor.color,
-//                    onSelect = onColorChange
-//                )
-//            }
+            item {
+                SectionLabel("Color")
+                ColorPicker(
+                    colors = AppIconColorDefaults.ListColors,
+                    selected = editor.color,
+                    onSelect = onColorChange
+                )
+            }
 //            item {
 //                SectionLabel("Icon")
 //                IconPicker(

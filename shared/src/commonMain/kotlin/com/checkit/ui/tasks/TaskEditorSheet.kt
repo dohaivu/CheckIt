@@ -418,19 +418,19 @@ private fun TaskFormContent(
             enabled = enabled
         )
 
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            RepeatPicker(selected = form.repeatPreset, onSelect = onRepeatChange, enabled = enabled)
-            ReminderPicker(
-                reminderOffsets = form.reminderOffsets,
-                hasDate = form.doDate != null,
-                startTimeMinutes = form.startTimeMinutes,
-                onReminderToggle = onReminderToggle,
-                enabled = enabled
-            )
-        }
+//        Row(
+//            verticalAlignment = Alignment.CenterVertically,
+//            horizontalArrangement = Arrangement.spacedBy(6.dp),
+//        ) {
+//            RepeatPicker(selected = form.repeatPreset, onSelect = onRepeatChange, enabled = enabled)
+//            ReminderPicker(
+//                reminderOffsets = form.reminderOffsets,
+//                hasDate = form.doDate != null,
+//                startTimeMinutes = form.startTimeMinutes,
+//                onReminderToggle = onReminderToggle,
+//                enabled = enabled
+//            )
+//        }
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
