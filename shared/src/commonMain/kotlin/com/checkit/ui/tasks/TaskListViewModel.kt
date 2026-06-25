@@ -9,6 +9,7 @@ import com.checkit.domain.usecase.DeleteTaskListUseCase
 import com.checkit.domain.usecase.UpdateTaskListUseCase
 import com.checkit.ui.EditorMode
 import com.checkit.ui.ListEditorState
+import kotlinx.datetime.LocalDate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,15 +33,22 @@ class TaskListViewModel(
         _uiState.update { it.copy(editor = ListEditorState(mode = EditorMode.Add)) }
     }
 
+    fun openNewObjective(goalId: Long) {
+        _uiState.update { it.copy(editor = ListEditorState(mode = EditorMode.Add, goalId = goalId)) }
+    }
+
     fun openEditList(list: TaskList) {
         _uiState.update {
             it.copy(
                 editor = ListEditorState(
                     mode = EditorMode.Edit,
                     listId = list.id,
+                    goalId = list.goalId,
                     name = list.name,
                     color = list.color,
-                    icon = list.icon
+                    icon = list.icon,
+                    startDate = list.startDate,
+                    endDate = list.endDate
                 )
             )
         }
@@ -53,17 +61,21 @@ class TaskListViewModel(
     fun updateName(name: String) = updateEditor { it.copy(name = name) }
     fun updateColor(color: String) = updateEditor { it.copy(color = color) }
     fun updateIcon(icon: String) = updateEditor { it.copy(icon = icon) }
+    fun updateDateRange(start: LocalDate?, end: LocalDate?) = updateEditor { it.copy(startDate = start, endDate = end) }
 
     fun saveEditor(onSaved: (Long) -> Unit = {}) {
         val form = _uiState.value.editor ?: return
         if (form.name.isBlank()) {
-            showMessage("Add a list name")
+            showMessage("Add a name")
             return
         }
         val input = TaskListWriteInput(
             name = form.name.trim(),
             color = form.color,
-            icon = form.icon
+            icon = form.icon,
+            goalId = form.goalId,
+            startDate = form.startDate,
+            endDate = form.endDate
         )
         viewModelScope.launch {
             val savedId = if (form.mode == EditorMode.Add) {

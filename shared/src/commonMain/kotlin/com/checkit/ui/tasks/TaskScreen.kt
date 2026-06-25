@@ -26,6 +26,8 @@ import com.checkit.ui.TaskUiState
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.okr.GoalEditorSheet
 import com.checkit.ui.okr.GoalViewModel
+import com.checkit.ui.okr.ObjectiveEditorSheet
+import com.checkit.ui.okr.ObjectiveScreen
 import com.checkit.ui.okr.ObjectiveViewModel
 import kotlinx.coroutines.launch
 
@@ -51,7 +53,7 @@ internal fun TaskScreen(
             ModalDrawerSheet {
                 TaskSidebar(
                     goals = state.board.goals,
-                    lists = state.board.lists,
+                    lists = state.board.lists.filter { it.goalId == null },
                     tags = state.board.tags,
                     isBoardSelected = state.selectedGoalId == null &&
                         state.selectedListId == null &&
@@ -92,7 +94,10 @@ internal fun TaskScreen(
             floatingActionButton = {
                 TaskActionFab(
                     onTaskClick = { viewModel.openNewTask() },
-                    onNoteClick = viewModel::openNewNote
+                    onNoteClick = viewModel::openNewNote,
+                    onObjectiveClick = state.selectedGoalId?.let { goalId ->
+                        { listViewModel.openNewObjective(goalId) }
+                    }
                 )
             },
             topBar = {
@@ -128,10 +133,19 @@ internal fun TaskScreen(
                 )
             }
         ) { padding ->
+            val contentModifier = Modifier.fillMaxSize().padding(top = padding.calculateTopPadding())
             if (state.isLoading) {
                 Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
+            } else if (state.selectedGoal != null) {
+                ObjectiveScreen(
+                    goal = state.selectedGoal,
+                    board = state.board,
+                    viewModel = objectiveViewModel,
+                    onTaskClick = viewModel::openTask,
+                    modifier = contentModifier
+                )
             } else {
                 TaskContent(
                     state = state,
@@ -141,8 +155,7 @@ internal fun TaskScreen(
                     onTimelineCreateTask = viewModel::openNewTaskAt,
                     onTimelineTaskTimeChange = viewModel::updateTaskTime,
                     onTimelineNoteTimeChange = viewModel::updateNoteTime,
-                    objectiveViewModel = objectiveViewModel,
-                    modifier = Modifier.fillMaxSize().padding(top = padding.calculateTopPadding())
+                    modifier = contentModifier
                 )
             }
         }
@@ -161,15 +174,28 @@ internal fun TaskScreen(
     }
 
     listState.editor?.let { listEditor ->
-        TaskListEditorSheet(
-            editor = listEditor,
-            onDismiss = listViewModel::dismissEditor,
-            onSave = { listViewModel.saveEditor(onSaved = viewModel::selectList) },
-            onDelete = { listViewModel.deleteEditorList() },
-            onNameChange = listViewModel::updateName,
-            onColorChange = listViewModel::updateColor,
-            onIconChange = listViewModel::updateIcon
-        )
+        if (listEditor.goalId != null) {
+            ObjectiveEditorSheet(
+                editor = listEditor,
+                onDismiss = listViewModel::dismissEditor,
+                onSave = { listViewModel.saveEditor(onSaved = viewModel::selectList) },
+                onDelete = { listViewModel.deleteEditorList() },
+                onTitleChange = listViewModel::updateName,
+                onDateRangeChange = listViewModel::updateDateRange,
+                onColorChange = listViewModel::updateColor,
+                onIconChange = listViewModel::updateIcon
+            )
+        } else {
+            TaskListEditorSheet(
+                editor = listEditor,
+                onDismiss = listViewModel::dismissEditor,
+                onSave = { listViewModel.saveEditor(onSaved = viewModel::selectList) },
+                onDelete = { listViewModel.deleteEditorList() },
+                onNameChange = listViewModel::updateName,
+                onColorChange = listViewModel::updateColor,
+                onIconChange = listViewModel::updateIcon
+            )
+        }
     }
 
     tagState.editor?.let { tagEditor ->

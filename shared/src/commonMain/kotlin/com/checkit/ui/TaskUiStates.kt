@@ -182,9 +182,12 @@ private fun nextSubTaskEditorKey(): Long = --subTaskEditorKeySeed
 data class ListEditorState(
     val mode: EditorMode,
     val listId: Long? = null,
+    val goalId: Long? = null,
     val name: String = "",
     val color: String = AppIconColorDefaults.ListColors.first(),
-    val icon: String = AppIconColorDefaults.ListIcons.first()
+    val icon: String = AppIconColorDefaults.ListIcons.first(),
+    val startDate: LocalDate? = null,
+    val endDate: LocalDate? = null
 )
 
 data class TagEditorState(

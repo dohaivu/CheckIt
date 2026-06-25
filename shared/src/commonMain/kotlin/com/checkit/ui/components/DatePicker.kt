@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
+import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -27,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -191,6 +193,88 @@ internal fun DatePicker(
                             }
                         }
                     }
+                }
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun DateRangePicker(
+    modifier: Modifier = Modifier,
+    startDate: LocalDate?,
+    endDate: LocalDate?,
+    onRangeChange: (LocalDate?, LocalDate?) -> Unit,
+    enabled: Boolean = true
+) {
+    var showPicker by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        val label = when {
+            startDate == null && endDate == null -> "No date range"
+            startDate != null && endDate != null -> "${startDate} - ${endDate}"
+            startDate != null -> "${startDate} - ..."
+            else -> "... - ${endDate}"
+        }
+        DetailChip(
+            icon = Icons.Default.Event,
+            label = label,
+            onClick = {
+                if (enabled) showPicker = true
+            }
+        )
+    }
+
+    if (enabled && showPicker) {
+        val state = rememberDateRangePickerState(
+            initialSelectedStartDateMillis = startDate?.toUtcStartMillis(),
+            initialSelectedEndDateMillis = endDate?.toUtcStartMillis()
+        )
+        AlertDialog(
+            onDismissRequest = { showPicker = false },
+            confirmButton = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = {
+                        onRangeChange(null, null)
+                        showPicker = false
+                    }) {
+                        Text("Clear", color = MaterialTheme.colorScheme.error)
+                    }
+                    Spacer(Modifier.weight(1f))
+                    TextButton(onClick = { showPicker = false }) {
+                        Text("Cancel")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TextButton(
+                        onClick = {
+                            onRangeChange(
+                                state.selectedStartDateMillis?.toUtcLocalDate(),
+                                state.selectedEndDateMillis?.toUtcLocalDate()
+                            )
+                            showPicker = false
+                        }
+                    ) {
+                        Text("OK")
+                    }
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            text = {
+                Box(modifier = Modifier.height(400.dp)) {
+                    DateRangePicker(
+                        state = state,
+                        title = null,
+                        headline = null,
+                        showModeToggle = false,
+                        colors = DatePickerDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+                    )
                 }
             }
         )

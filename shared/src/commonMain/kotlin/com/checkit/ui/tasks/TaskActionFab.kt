@@ -19,7 +19,8 @@ import androidx.compose.runtime.setValue
 @Composable
 internal fun TaskActionFab(
     onTaskClick: () -> Unit,
-    onNoteClick: () -> Unit
+    onNoteClick: () -> Unit,
+    onObjectiveClick: (() -> Unit)? = null
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
@@ -46,6 +47,16 @@ internal fun TaskActionFab(
                     onNoteClick()
                 }
             )
+            if (onObjectiveClick != null) {
+                DropdownMenuItem(
+                    text = { Text("Objective") },
+                    leadingIcon = { Icon(Icons.Default.Add, contentDescription = null) },
+                    onClick = {
+                        expanded = false
+                        onObjectiveClick()
+                    }
+                )
+            }
         }
     }
 }
