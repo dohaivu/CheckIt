@@ -8,11 +8,9 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -35,6 +33,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -82,7 +82,7 @@ internal fun ObjectiveScreen(
                 objective = objective,
                 keyResults = keyResultsByObjective[objective.id].orEmpty(),
                 tasksByKeyResult = tasksByKeyResult,
-                expandedNodeKeys = state.expandedNodeKeys,
+                collapsedNodeKeys = state.collapsedNodeKeys,
                 selectedNodeKey = state.selectedNodeKey,
                 onToggleExpanded = viewModel::toggleExpanded,
                 onSelectNode = viewModel::selectNode,
@@ -113,7 +113,7 @@ private fun ObjectiveBranch(
     objective: TaskList,
     keyResults: List<KeyResult>,
     tasksByKeyResult: Map<Long?, List<TaskItem>>,
-    expandedNodeKeys: Set<String>,
+    collapsedNodeKeys: Set<String>,
     selectedNodeKey: String?,
     onToggleExpanded: (String) -> Unit,
     onSelectNode: (String) -> Unit,
@@ -122,11 +122,12 @@ private fun ObjectiveBranch(
     onAddTask: (KeyResult) -> Unit
 ) {
     val nodeKey = objective.nodeKey()
-    val isExpanded = nodeKey in expandedNodeKeys
+    val isExpanded = nodeKey !in collapsedNodeKeys
     TreeNodeRow(
         text = objective.name,
         nodeKey = nodeKey,
         depth = 0,
+        isLast = true, // Root objectives are independent
         hasChildren = keyResults.isNotEmpty(),
         isExpanded = isExpanded,
         isSelected = selectedNodeKey == nodeKey,
@@ -136,13 +137,14 @@ private fun ObjectiveBranch(
             onAddKeyResult(objective)
         }
     )
-    AnimatedChildren(visible = isExpanded && keyResults.isNotEmpty(), depth = 1) {
-        keyResults.forEach { keyResult ->
+    AnimatedChildren(visible = isExpanded && keyResults.isNotEmpty()) {
+        keyResults.forEachIndexed { index, keyResult ->
             KeyResultBranch(
                 keyResult = keyResult,
                 tasks = tasksByKeyResult[keyResult.id].orEmpty(),
-                expandedNodeKeys = expandedNodeKeys,
+                collapsedNodeKeys = collapsedNodeKeys,
                 selectedNodeKey = selectedNodeKey,
+                isLast = index == keyResults.lastIndex,
                 onToggleExpanded = onToggleExpanded,
                 onSelectNode = onSelectNode,
                 onTaskClick = onTaskClick,
@@ -156,19 +158,21 @@ private fun ObjectiveBranch(
 private fun KeyResultBranch(
     keyResult: KeyResult,
     tasks: List<TaskItem>,
-    expandedNodeKeys: Set<String>,
+    collapsedNodeKeys: Set<String>,
     selectedNodeKey: String?,
+    isLast: Boolean,
     onToggleExpanded: (String) -> Unit,
     onSelectNode: (String) -> Unit,
     onTaskClick: (TaskItem) -> Unit,
     onAddTask: (KeyResult) -> Unit
 ) {
     val nodeKey = keyResult.nodeKey()
-    val isExpanded = nodeKey in expandedNodeKeys
+    val isExpanded = nodeKey !in collapsedNodeKeys
     TreeNodeRow(
         text = keyResult.title,
         nodeKey = nodeKey,
         depth = 1,
+        isLast = isLast,
         hasChildren = tasks.isNotEmpty(),
         isExpanded = isExpanded,
         isSelected = selectedNodeKey == nodeKey,
@@ -178,13 +182,18 @@ private fun KeyResultBranch(
             onAddTask(keyResult)
         }
     )
-    AnimatedChildren(visible = isExpanded && tasks.isNotEmpty(), depth = 2) {
-        tasks.forEach { task ->
+    
+    // Continue Objective's line through tasks if this KR is not the last one
+    val ancestorLines = if (isLast) emptyList() else listOf(guideLineStart(1))
+    
+    AnimatedChildren(visible = isExpanded && tasks.isNotEmpty()) {
+        tasks.forEachIndexed { index, task ->
             val taskNodeKey = task.nodeKey()
             TreeNodeRow(
                 text = task.name,
                 nodeKey = taskNodeKey,
                 depth = 2,
+                isLast = index == tasks.lastIndex,
                 hasChildren = false,
                 isExpanded = false,
                 isSelected = selectedNodeKey == taskNodeKey,
@@ -192,16 +201,17 @@ private fun KeyResultBranch(
                 onSelectNode = {
                     onSelectNode(it)
                     onTaskClick(task)
-                }
+                },
+                ancestorLines = ancestorLines
             )
         }
     }
 }
 
+
 @Composable
 private fun AnimatedChildren(
     visible: Boolean,
-    depth: Int,
     content: @Composable () -> Unit
 ) {
     AnimatedVisibility(
@@ -209,11 +219,8 @@ private fun AnimatedChildren(
         enter = fadeIn() + expandVertically(),
         exit = shrinkVertically() + fadeOut()
     ) {
-        Row(modifier = Modifier.fillMaxWidth()) {
-            TreeGuideLine(depth = depth)
-            Column(modifier = Modifier.weight(1f)) {
-                content()
-            }
+        Column {
+            content()
         }
     }
 }
@@ -223,21 +230,80 @@ private fun TreeNodeRow(
     text: String,
     nodeKey: String,
     depth: Int,
+    isLast: Boolean,
     hasChildren: Boolean,
     isExpanded: Boolean,
     isSelected: Boolean,
     onToggleExpanded: (String) -> Unit,
     onSelectNode: (String) -> Unit,
-    onAddClick: (()-> Unit)? = null
+    onAddClick: (()-> Unit)? = null,
+    ancestorLines: List<Dp> = emptyList()
 ) {
     val background = if (isSelected) {
         MaterialTheme.colorScheme.secondaryContainer
     } else {
         Color.Transparent
     }
+    val lineColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f)
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .drawBehind {
+                // Draw vertical lines for ancestors
+                ancestorLines.forEach { xDp ->
+                    val x = xDp.toPx()
+                    drawLine(
+                        color = lineColor,
+                        start = Offset(x, 0f),
+                        end = Offset(x, size.height),
+                        strokeWidth = 1.dp.toPx()
+                    )
+                }
+
+                if (depth > 0) {
+                    val x = guideLineStart(depth).toPx()
+                    val yCenter = size.height / 2
+                    
+                    // Vertical line from top to center
+                    drawLine(
+                        color = lineColor,
+                        start = Offset(x, 0f),
+                        end = Offset(x, yCenter),
+                        strokeWidth = 1.dp.toPx()
+                    )
+                    
+                    // Vertical line from center to bottom (if not last)
+                    if (!isLast) {
+                        drawLine(
+                            color = lineColor,
+                            start = Offset(x, yCenter),
+                            end = Offset(x, size.height),
+                            strokeWidth = 1.dp.toPx()
+                        )
+                    }
+                    
+                    // Horizontal line to icon
+                    val xIconCenter = (nodeIndent(depth) + 18.dp).toPx()
+                    drawLine(
+                        color = lineColor,
+                        start = Offset(x, yCenter),
+                        end = Offset(xIconCenter, yCenter),
+                        strokeWidth = 1.dp.toPx()
+                    )
+                }
+                
+                // If expanded, draw the vertical line for children starting from icon center
+                if (isExpanded && hasChildren) {
+                    val x = (nodeIndent(depth) + 18.dp).toPx()
+                    val yCenter = size.height / 2
+                    drawLine(
+                        color = lineColor,
+                        start = Offset(x, yCenter),
+                        end = Offset(x, size.height),
+                        strokeWidth = 1.dp.toPx()
+                    )
+                }
+            }
             .padding(start = nodeIndent(depth), top = 2.dp, bottom = 2.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(background)
@@ -282,17 +348,6 @@ private fun TreeNodeRow(
             }
         }
     }
-}
-
-@Composable
-private fun TreeGuideLine(depth: Int) {
-    Box(
-        modifier = Modifier
-            .padding(start = guideLineStart(depth))
-            .size(width = 1.dp, height = 1.dp)
-            .fillMaxHeight()
-            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f))
-    )
 }
 
 private fun nodeIndent(depth: Int): Dp = (depth * 18).dp

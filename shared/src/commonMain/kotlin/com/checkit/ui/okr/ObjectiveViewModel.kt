@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class ObjectiveUiState(
-    val expandedNodeKeys: Set<String> = emptySet(),
+    val collapsedNodeKeys: Set<String> = emptySet(),
     val selectedNodeKey: String? = null,
     val keyResultEditor: KeyResultEditorState? = null,
     val message: String? = null
@@ -37,12 +37,12 @@ class ObjectiveViewModel(
 
     fun toggleExpanded(nodeKey: String) {
         _uiState.update { state ->
-            val expanded = if (nodeKey in state.expandedNodeKeys) {
-                state.expandedNodeKeys - nodeKey
+            val collapsed = if (nodeKey in state.collapsedNodeKeys) {
+                state.collapsedNodeKeys - nodeKey
             } else {
-                state.expandedNodeKeys + nodeKey
+                state.collapsedNodeKeys + nodeKey
             }
-            state.copy(expandedNodeKeys = expanded)
+            state.copy(collapsedNodeKeys = collapsed)
         }
     }
 
