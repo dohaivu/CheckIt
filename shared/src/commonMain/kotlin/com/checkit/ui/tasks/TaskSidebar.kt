@@ -47,10 +47,14 @@ internal fun TaskSidebar(
     tags: List<TaskTag>,
     isBoardSelected: Boolean,
     selectedListId: Long?,
+    selectedGoalId: Long?,
     selectedTagId: Long?,
     onBoardClick: () -> Unit,
+    onGoalClick: (Long) -> Unit,
     onListClick: (Long) -> Unit,
     onTagClick: (Long) -> Unit,
+    onAddGoalClick: () -> Unit,
+    onEditGoalClick: (Goal) -> Unit,
     onAddListClick: () -> Unit,
     onEditListClick: (TaskList) -> Unit,
     onAddTagClick: () -> Unit,
@@ -76,20 +80,32 @@ internal fun TaskSidebar(
                     onClick = onBoardClick
                 )
             }
-            if (goals.isNotEmpty()) {
-                item {
-                    Spacer(Modifier.height(10.dp))
-                    SidebarHeader("Goals")
-                }
-                items(goals, key = { "goal-${it.id}" }) { goal ->
-                    SidebarItem(
-                        title = goal.title,
-                        icon = materialIcon(goal.icon),
-                        color = goal.color.toColor(),
-                        selected = false,
-                        onClick = {}
-                    )
-                }
+            item {
+                Spacer(Modifier.height(10.dp))
+                SidebarHeader(
+                    text = "Goals",
+                    action = {
+                        IconButton(onClick = onAddGoalClick, modifier = Modifier.size(28.dp)) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Add goal",
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                )
+            }
+            items(goals, key = { "goal-${it.id}" }) { goal ->
+                SidebarItem(
+                    title = goal.title,
+                    icon = materialIcon(goal.icon),
+                    color = goal.color.toColor(),
+                    selected = selectedGoalId == goal.id,
+                    onClick = { onGoalClick(goal.id) },
+                    onLongClick = {
+                        onEditGoalClick(goal)
+                    }
+                )
             }
             item {
                 Spacer(Modifier.height(10.dp))

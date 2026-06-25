@@ -36,6 +36,16 @@ internal class TaskVisibleItemsBuilder(
                 selectTaskBoardItems(board, TaskBoardSelection.FilterSelection(selectedFilter), today)
                     .let { SelectedTaskItems(tasks = it.tasks, notes = it.notes) }
             }
+            selection.selectedGoalId != null -> {
+                val objectiveIds = board.lists
+                    .filter { it.goalId == selection.selectedGoalId }
+                    .map { it.id }
+                    .toSet()
+                SelectedTaskItems(
+                    tasks = board.tasks.filter { task -> !task.isTrashed && task.list.id in objectiveIds },
+                    notes = board.notes.filter { note -> !note.isTrashed && note.list.id in objectiveIds }
+                )
+            }
             selection.selectedListId != null -> {
                 selectTaskBoardItems(board, TaskBoardSelection.ListSelection(selection.selectedListId), today)
                     .let { SelectedTaskItems(tasks = it.tasks, notes = it.notes) }

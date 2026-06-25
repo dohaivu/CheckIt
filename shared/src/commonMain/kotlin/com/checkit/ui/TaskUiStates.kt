@@ -26,6 +26,7 @@ data class TaskUiState(
     val message: String? = null
 ) {
     val selectedListId: Long? get() = selection.selectedListId
+    val selectedGoalId: Long? get() = selection.selectedGoalId
     val selectedFilterId: Long? get() = selection.selectedFilterId
     val selectedTagId: Long? get() = selection.selectedTagId
     val selectedView: TaskWorkspaceView get() = options.selectedView
@@ -37,9 +38,10 @@ data class TaskUiState(
     val visibleNotes: List<NoteItem> get() = visibleItems.notes
     val visibleListItems: List<TaskListEntry> get() = visibleItems.listItems
     val selectedList: TaskList? = board.lists.firstOrNull { it.id == selectedListId }
+    val selectedGoal = board.goals.firstOrNull { it.id == selectedGoalId }
     val selectedFilter: TaskFilter? = board.filters.firstOrNull { it.id == selectedFilterId }
     val selectedTag = board.tags.firstOrNull { it.id == selectedTagId }
-    val title: String = selectedList?.name ?: selectedFilter?.name ?: selectedTag?.name ?: "All tasks"
+    val title: String = selectedGoal?.title ?: selectedList?.name ?: selectedFilter?.name ?: selectedTag?.name ?: "All tasks"
     val dayLimit: Int? = if (selectedFilter?.dueDatePreset == DueDatePreset.Today) 1 else null
     val availableViews: List<TaskWorkspaceView> = if (dayLimit == 1) {
         TaskWorkspaceView.entries
@@ -49,6 +51,7 @@ data class TaskUiState(
 }
 
 data class TaskSelectionState(
+    val selectedGoalId: Long? = null,
     val selectedListId: Long? = null,
     val selectedFilterId: Long? = null,
     val selectedTagId: Long? = null
@@ -125,6 +128,7 @@ sealed interface TaskEditorState {
         val mode: EditorMode,
         val taskId: Long? = null,
         val listId: Long,
+        val keyResultId: Long? = null,
         val name: String = "",
         val description: String = "",
         val doDate: LocalDate? = null,

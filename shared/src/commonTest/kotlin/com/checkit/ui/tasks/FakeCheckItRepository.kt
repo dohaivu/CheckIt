@@ -2,6 +2,8 @@ package com.checkit.ui.tasks
 
 import com.checkit.data.CheckItRepository
 import com.checkit.data.DailyPlanItemWriteInput
+import com.checkit.data.GoalWriteInput
+import com.checkit.data.KeyResultWriteInput
 import com.checkit.data.NoteWriteInput
 import com.checkit.data.SettingsRepository
 import com.checkit.data.TaskListWriteInput
@@ -11,6 +13,8 @@ import com.checkit.data.UserSettings
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
+import com.checkit.domain.Goal
+import com.checkit.domain.KeyResult
 import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
@@ -27,6 +31,12 @@ internal class FakeCheckItRepository(
 ) : CheckItRepository {
     private val boardFlow = MutableStateFlow(initialBoard)
     val addedLists = mutableListOf<TaskListWriteInput>()
+    val addedGoals = mutableListOf<GoalWriteInput>()
+    val updatedGoals = mutableListOf<Pair<Long, GoalWriteInput>>()
+    val deletedGoals = mutableListOf<Long>()
+    val addedKeyResults = mutableListOf<KeyResultWriteInput>()
+    val updatedKeyResults = mutableListOf<Pair<Long, KeyResultWriteInput>>()
+    val deletedKeyResults = mutableListOf<Long>()
     val updatedLists = mutableListOf<Pair<Long, TaskListWriteInput>>()
     val deletedLists = mutableListOf<Long>()
     val addedTags = mutableListOf<TaskTagWriteInput>()
@@ -44,7 +54,9 @@ internal class FakeCheckItRepository(
     var lastAssignedTagId: Long = 0L
         private set
 
+    private var nextGoalId: Long = 50L
     private var nextListId: Long = 100L
+    private var nextKeyResultId: Long = 300L
     private var nextTagId: Long = 500L
     private var nextTaskId: Long = 1_000L
 
@@ -52,6 +64,50 @@ internal class FakeCheckItRepository(
     override fun observeDailyPlans(): Flow<List<DailyPlan>> = MutableStateFlow(emptyList())
 
     override suspend fun ensureDefaultTaskData() = Unit
+
+    override suspend fun addGoal(input: GoalWriteInput): Long {
+        addedGoals.add(input)
+        val id = nextGoalId++
+        boardFlow.update { board ->
+            board.copy(
+                goals = board.goals + Goal(
+                    id = id,
+                    title = input.title,
+                    color = input.color,
+                    icon = input.icon,
+                    sortOrder = board.goals.size
+                )
+            )
+        }
+        return id
+    }
+
+    override suspend fun updateGoal(goalId: Long, input: GoalWriteInput) {
+        updatedGoals.add(goalId to input)
+        boardFlow.update { board ->
+            board.copy(
+                goals = board.goals.map { goal ->
+                    if (goal.id == goalId) {
+                        goal.copy(title = input.title, color = input.color, icon = input.icon)
+                    } else {
+                        goal
+                    }
+                }
+            )
+        }
+    }
+
+    override suspend fun deleteGoal(goalId: Long) {
+        deletedGoals.add(goalId)
+        boardFlow.update { board ->
+            board.copy(
+                goals = board.goals.filterNot { it.id == goalId },
+                lists = board.lists.map { list ->
+                    if (list.goalId == goalId) list.copy(goalId = null) else list
+                }
+            )
+        }
+    }
 
     override suspend fun addList(input: TaskListWriteInput): Long {
         addedLists.add(input)
@@ -97,6 +153,58 @@ internal class FakeCheckItRepository(
                 },
                 notes = board.notes.map { note ->
                     if (note.list.id == listId) note.copy(list = inbox) else note
+                }
+            )
+        }
+    }
+
+    override suspend fun addKeyResult(input: KeyResultWriteInput): Long {
+        addedKeyResults.add(input)
+        val id = nextKeyResultId++
+        boardFlow.update { board ->
+            board.copy(
+                keyResults = board.keyResults + KeyResult(
+                    id = id,
+                    objectiveId = input.objectiveId,
+                    title = input.title,
+                    targetValue = input.targetValue,
+                    currentValue = input.currentValue,
+                    unit = input.unit,
+                    sortOrder = board.keyResults.count { it.objectiveId == input.objectiveId }
+                )
+            )
+        }
+        return id
+    }
+
+    override suspend fun updateKeyResult(keyResultId: Long, input: KeyResultWriteInput) {
+        updatedKeyResults.add(keyResultId to input)
+        boardFlow.update { board ->
+            board.copy(
+                keyResults = board.keyResults.map { keyResult ->
+                    if (keyResult.id == keyResultId) {
+                        keyResult.copy(
+                            objectiveId = input.objectiveId,
+                            title = input.title,
+                            targetValue = input.targetValue,
+                            currentValue = input.currentValue,
+                            unit = input.unit
+                        )
+                    } else {
+                        keyResult
+                    }
+                }
+            )
+        }
+    }
+
+    override suspend fun deleteKeyResult(keyResultId: Long) {
+        deletedKeyResults.add(keyResultId)
+        boardFlow.update { board ->
+            board.copy(
+                keyResults = board.keyResults.filterNot { it.id == keyResultId },
+                tasks = board.tasks.map { task ->
+                    if (task.keyResult?.id == keyResultId) task.copy(keyResult = null) else task
                 }
             )
         }

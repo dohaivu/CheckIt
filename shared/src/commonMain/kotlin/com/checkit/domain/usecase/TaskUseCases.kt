@@ -2,6 +2,7 @@ package com.checkit.domain.usecase
 
 import com.checkit.data.CheckItRepository
 import com.checkit.data.DailyPlanItemWriteInput
+import com.checkit.data.GoalWriteInput
 import com.checkit.data.NoteWriteInput
 import com.checkit.data.SettingsRepository
 import com.checkit.data.TaskListWriteInput
@@ -120,6 +121,24 @@ class AutoAddTodayTasksToMyDayUseCase(
         settingsRepository.setAutoMyDayLastRunEpochDay(todayEpochDay)
         tasksToAdd.size
     }
+}
+
+class AddGoalUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(input: GoalWriteInput): Long = repository.addGoal(input)
+}
+
+class UpdateGoalUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(goalId: Long, input: GoalWriteInput) = repository.updateGoal(goalId, input)
+}
+
+class DeleteGoalUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(goalId: Long) = repository.deleteGoal(goalId)
 }
 
 class AddTaskListUseCase(

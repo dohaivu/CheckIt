@@ -135,6 +135,14 @@ class TaskViewModel(
         }
     }
 
+    fun selectGoal(goalId: Long) {
+        _uiState.update {
+            it.copy(selection = TaskSelectionState(selectedGoalId = goalId))
+                .refreshVisibleItems()
+                .coerceViewToAvailable()
+        }
+    }
+
     fun selectFilter(filterId: Long) {
         _uiState.update { state ->
             val nextFilterId = filterId.takeUnless { state.selectedFilterId == filterId }
@@ -316,6 +324,7 @@ class TaskViewModel(
                     mode = EditorMode.Edit,
                     taskId = task.id,
                     listId = task.list.id,
+                    keyResultId = task.keyResult?.id,
                     name = task.name,
                     description = task.description,
                     doDate = task.doDate,
@@ -620,6 +629,7 @@ class TaskViewModel(
         }
         return TaskWriteInput(
             listId = listId,
+            keyResultId = keyResultId,
             name = name.trim(),
             description = description.trim(),
             status = status,
@@ -650,6 +660,7 @@ class TaskViewModel(
         val duration = calculateDurationMinutes(startTimeMinutes, endTimeMinutes)
         return TaskWriteInput(
             listId = list.id,
+            keyResultId = keyResult?.id,
             name = name,
             description = description,
             status = status,

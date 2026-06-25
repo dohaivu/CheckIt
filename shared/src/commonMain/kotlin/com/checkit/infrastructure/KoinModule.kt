@@ -16,6 +16,7 @@ import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.notifications.AppReminderScheduler
 import com.checkit.domain.usecase.AddNoteUseCase
 import com.checkit.domain.usecase.AddManualDoneToDailyPlanUseCase
+import com.checkit.domain.usecase.AddGoalUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskListUseCase
 import com.checkit.domain.usecase.AddTaskTagUseCase
@@ -26,6 +27,7 @@ import com.checkit.domain.usecase.CompleteNoteUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
+import com.checkit.domain.usecase.DeleteGoalUseCase
 import com.checkit.domain.usecase.DeleteTaskListUseCase
 import com.checkit.domain.usecase.DeleteTaskTagUseCase
 import com.checkit.domain.usecase.IsTagNameTakenUseCase
@@ -40,11 +42,14 @@ import com.checkit.domain.usecase.UpdateNoteUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
+import com.checkit.domain.usecase.UpdateGoalUseCase
 import com.checkit.domain.usecase.UpdateTaskListUseCase
 import com.checkit.domain.usecase.UpdateTaskTagUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
 import com.checkit.ui.calendar.CalendarViewModel
 import com.checkit.ui.myday.MyDayViewModel
+import com.checkit.ui.okr.GoalViewModel
+import com.checkit.ui.okr.ObjectiveViewModel
 import com.checkit.ui.tasks.TaskListViewModel
 import com.checkit.ui.tasks.TaskTagViewModel
 import com.checkit.ui.tasks.TaskViewModel
@@ -82,6 +87,9 @@ val provideInteractorModule = module {
     single { ObserveDailyPlansUseCase(get()) }
     single { EnsureDefaultTaskDataUseCase(get()) }
     single { AutoAddTodayTasksToMyDayUseCase(get(), get()) }
+    single { AddGoalUseCase(get()) }
+    single { UpdateGoalUseCase(get()) }
+    single { DeleteGoalUseCase(get()) }
     single { AddTaskListUseCase(get()) }
     single { UpdateTaskListUseCase(get()) }
     single { DeleteTaskListUseCase(get()) }
@@ -147,6 +155,8 @@ val provideViewModelModule = module {
             settingsRepository = get()
         )
     }
+    viewModel { GoalViewModel(get(), get(), get()) }
+    viewModel { ObjectiveViewModel() }
     viewModel { TaskListViewModel(get(), get(), get()) }
     viewModel { TaskTagViewModel(get(), get(), get(), get()) }
     viewModel { CalendarViewModel(get(), get(), get()) }

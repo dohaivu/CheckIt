@@ -24,18 +24,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import com.checkit.ui.TaskUiState
 import com.checkit.ui.components.TinyTopAppBar
+import com.checkit.ui.okr.GoalEditorSheet
+import com.checkit.ui.okr.GoalViewModel
+import com.checkit.ui.okr.ObjectiveViewModel
 import kotlinx.coroutines.launch
 
 @Composable
 internal fun TaskScreen(
     state: TaskUiState,
     viewModel: TaskViewModel,
+    goalViewModel: GoalViewModel,
+    objectiveViewModel: ObjectiveViewModel,
     listViewModel: TaskListViewModel,
     tagViewModel: TaskTagViewModel,
     modifier: Modifier = Modifier
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    val goalState by goalViewModel.uiState.collectAsState()
     val listState by listViewModel.uiState.collectAsState()
     val tagState by tagViewModel.uiState.collectAsState()
 
@@ -47,8 +53,12 @@ internal fun TaskScreen(
                     goals = state.board.goals,
                     lists = state.board.lists,
                     tags = state.board.tags,
-                    isBoardSelected = state.selectedListId == null && state.selectedFilterId == null && state.selectedTagId == null,
+                    isBoardSelected = state.selectedGoalId == null &&
+                        state.selectedListId == null &&
+                        state.selectedFilterId == null &&
+                        state.selectedTagId == null,
                     selectedListId = state.selectedListId,
+                    selectedGoalId = state.selectedGoalId,
                     selectedTagId = state.selectedTagId,
                     onBoardClick = {
                         viewModel.selectBoard()
@@ -62,6 +72,12 @@ internal fun TaskScreen(
                         viewModel.selectTag(tagId)
                         scope.launch { drawerState.close() }
                     },
+                    onGoalClick = { goalId ->
+                        viewModel.selectGoal(goalId)
+                        scope.launch { drawerState.close() }
+                    },
+                    onAddGoalClick = { goalViewModel.openNewGoal() },
+                    onEditGoalClick = { goal -> goalViewModel.openEditGoal(goal) },
                     onAddListClick = { listViewModel.openNewList() },
                     onEditListClick = { list -> listViewModel.openEditList(list) },
                     onAddTagClick = { tagViewModel.openNewTag() },
@@ -125,10 +141,23 @@ internal fun TaskScreen(
                     onTimelineCreateTask = viewModel::openNewTaskAt,
                     onTimelineTaskTimeChange = viewModel::updateTaskTime,
                     onTimelineNoteTimeChange = viewModel::updateNoteTime,
+                    objectiveViewModel = objectiveViewModel,
                     modifier = Modifier.fillMaxSize().padding(top = padding.calculateTopPadding())
                 )
             }
         }
+    }
+
+    goalState.editor?.let { goalEditor ->
+        GoalEditorSheet(
+            editor = goalEditor,
+            onDismiss = goalViewModel::dismissEditor,
+            onSave = { goalViewModel.saveEditor() },
+            onDelete = { goalViewModel.deleteEditorGoal() },
+            onTitleChange = goalViewModel::updateTitle,
+            onColorChange = goalViewModel::updateColor,
+            onIconChange = goalViewModel::updateIcon
+        )
     }
 
     listState.editor?.let { listEditor ->

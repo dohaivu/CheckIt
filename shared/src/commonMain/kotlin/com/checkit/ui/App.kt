@@ -54,6 +54,8 @@ import com.checkit.ui.calendar.CalendarScreen
 import com.checkit.ui.calendar.CalendarViewModel
 import com.checkit.ui.myday.MyDayScreen
 import com.checkit.ui.myday.MyDayViewModel
+import com.checkit.ui.okr.GoalViewModel
+import com.checkit.ui.okr.ObjectiveViewModel
 import com.checkit.ui.tasks.TaskScreen
 import com.checkit.ui.tasks.TaskListViewModel
 import com.checkit.ui.tasks.TaskTagViewModel
@@ -103,6 +105,8 @@ private data object Routes {
 @Composable
 fun CheckItApp(
     taskViewModel: TaskViewModel = koinViewModel(),
+    goalViewModel: GoalViewModel = koinViewModel(),
+    objectiveViewModel: ObjectiveViewModel = koinViewModel(),
     taskListViewModel: TaskListViewModel = koinViewModel(),
     taskTagViewModel: TaskTagViewModel = koinViewModel(),
     myDayViewModel: MyDayViewModel = koinViewModel(),
@@ -122,6 +126,9 @@ fun CheckItApp(
     }.collectAsState(null)
     val settingsMessage by remember(settingsViewModel) {
         settingsViewModel.uiState.map { it.message }.distinctUntilChanged()
+    }.collectAsState(null)
+    val goalMessage by remember(goalViewModel) {
+        goalViewModel.uiState.map { it.message }.distinctUntilChanged()
     }.collectAsState(null)
     val taskListMessage by remember(taskListViewModel) {
         taskListViewModel.uiState.map { it.message }.distinctUntilChanged()
@@ -173,8 +180,8 @@ fun CheckItApp(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    LaunchedEffect(taskMessage, myDayMessage, settingsMessage, taskListMessage, taskTagMessage) {
-        val message = taskMessage ?: myDayMessage ?: settingsMessage ?: taskListMessage ?: taskTagMessage
+    LaunchedEffect(taskMessage, myDayMessage, settingsMessage, goalMessage, taskListMessage, taskTagMessage) {
+        val message = taskMessage ?: myDayMessage ?: settingsMessage ?: goalMessage ?: taskListMessage ?: taskTagMessage
             ?: return@LaunchedEffect
         snackbarHostState.showSnackbar(message)
 
@@ -183,6 +190,9 @@ fun CheckItApp(
         }
         if (settingsMessage != null) {
             settingsViewModel.consumeMessage()
+        }
+        if (goalMessage != null) {
+            goalViewModel.consumeMessage()
         }
         if (taskListMessage != null) {
             taskListViewModel.consumeMessage()
@@ -294,6 +304,8 @@ fun CheckItApp(
                                     TaskScreen(
                                         state = taskUiState,
                                         viewModel = taskViewModel,
+                                        goalViewModel = goalViewModel,
+                                        objectiveViewModel = objectiveViewModel,
                                         listViewModel = taskListViewModel,
                                         tagViewModel = taskTagViewModel
                                     )

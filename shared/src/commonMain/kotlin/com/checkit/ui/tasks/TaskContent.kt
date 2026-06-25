@@ -22,6 +22,8 @@ import com.checkit.domain.TaskStatus
 import com.checkit.ui.TaskListDisplayType
 import com.checkit.ui.TaskUiState
 import com.checkit.ui.TaskWorkspaceView
+import com.checkit.ui.okr.ObjectiveScreen
+import com.checkit.ui.okr.ObjectiveViewModel
 import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
 
@@ -34,15 +36,17 @@ internal fun TaskContent(
     onTimelineCreateTask: (Int, Int) -> Unit,
     onTimelineTaskTimeChange: (TaskItem, Int, Int) -> Unit,
     onTimelineNoteTimeChange: (NoteItem, Int) -> Unit,
+    objectiveViewModel: ObjectiveViewModel,
     modifier: Modifier = Modifier
 ) {
     val showListName = state.selectedList == null
+    val selectedGoal = state.selectedGoal
     Column(modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 0.dp)) {
         Row(modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.End
         ) {
-            if (state.selectedView == TaskWorkspaceView.List) {
+            if (selectedGoal == null && state.selectedView == TaskWorkspaceView.List) {
                 ListDisplayTypeMenu(selected = state.listDisplayType, onSelect = onListDisplayTypeChange)
                 Spacer(modifier = Modifier.width(4.dp))
             }
@@ -54,7 +58,15 @@ internal fun TaskContent(
             )
         }
         Spacer(Modifier.height(4.dp))
-        when (state.selectedView) {
+        if (selectedGoal != null) {
+            ObjectiveScreen(
+                goal = selectedGoal,
+                board = state.board,
+                viewModel = objectiveViewModel,
+                onTaskClick = onTaskClick,
+                modifier = Modifier.weight(1f)
+            )
+        } else when (state.selectedView) {
             TaskWorkspaceView.List -> TaskListView(
                 items = state.visibleListItems,
                 lists = state.board.lists,
