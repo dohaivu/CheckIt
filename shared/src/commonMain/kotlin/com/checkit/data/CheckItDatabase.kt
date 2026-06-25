@@ -15,15 +15,38 @@ import androidx.sqlite.execSQL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 
-@Entity(
-    tableName = "task_lists",
-)
-data class TaskListEntity(
+@Entity(tableName = "goals")
+data class GoalEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0L,
-    val name: String,
-    val color: String,
+    val title: String,
     val icon: String,
+    val color: String,
+    val sortOrder: Int,
+    val isArchived: Boolean = false
+)
+
+@Entity(
+    tableName = "objectives",
+    foreignKeys = [
+        ForeignKey(
+            entity = GoalEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["goalId"],
+            onDelete = ForeignKey.SET_NULL
+        )
+    ],
+    indices = [Index("goalId")]
+)
+data class ObjectiveEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0L,
+    val title: String,
+    val goalId: Long? = null,
+    val startDateEpochDays: Int? = null,
+    val endDateEpochDays: Int? = null,
+    val color: String? = null,
+    val icon: String? = null,
     val sortOrder: Int,
     val isArchived: Boolean = false
 )
@@ -43,18 +66,31 @@ data class TagEntity(
     tableName = "tasks",
     foreignKeys = [
         ForeignKey(
-            entity = TaskListEntity::class,
+            entity = ObjectiveEntity::class,
             parentColumns = ["id"],
             childColumns = ["listId"],
             onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = KeyResultEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["keyResultId"],
+            onDelete = ForeignKey.SET_NULL
         )
     ],
-    indices = [Index("listId"), Index("status"), Index("priority"), Index("doDateEpochDays")]
+    indices = [
+        Index("listId"),
+        Index("keyResultId"),
+        Index("status"),
+        Index("priority"),
+        Index("doDateEpochDays")
+    ]
 )
 data class TaskEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0L,
     val listId: Long,
+    val keyResultId: Long? = null,
     val name: String,
     val description: String = "",
     val status: String,
@@ -69,6 +105,29 @@ data class TaskEntity(
     val createdAtMillis: Long,
     val updatedAtMillis: Long,
     val trashedAtMillis: Long? = null
+)
+
+@Entity(
+    tableName = "key_results",
+    foreignKeys = [
+        ForeignKey(
+            entity = ObjectiveEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["objectiveId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("objectiveId")]
+)
+data class KeyResultEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0L,
+    val objectiveId: Long,
+    val title: String,
+    val targetValue: Double,
+    val currentValue: Double = 0.0,
+    val unit: String,
+    val sortOrder: Int
 )
 
 @Entity(
@@ -96,7 +155,7 @@ data class SubTaskEntity(
     tableName = "notes",
     foreignKeys = [
         ForeignKey(
-            entity = TaskListEntity::class,
+            entity = ObjectiveEntity::class,
             parentColumns = ["id"],
             childColumns = ["listId"],
             onDelete = ForeignKey.CASCADE
@@ -285,7 +344,9 @@ data class TaskFilterEntity(
 
 @Database(
     entities = [
-        TaskListEntity::class,
+        GoalEntity::class,
+        ObjectiveEntity::class,
+        KeyResultEntity::class,
         TaskEntity::class,
         SubTaskEntity::class,
         NoteEntity::class,
@@ -298,7 +359,7 @@ data class TaskFilterEntity(
         TaskReminderEntity::class,
         TaskFilterEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)

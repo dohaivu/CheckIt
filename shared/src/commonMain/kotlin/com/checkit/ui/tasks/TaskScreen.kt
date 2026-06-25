@@ -44,6 +44,7 @@ internal fun TaskScreen(
         drawerContent = {
             ModalDrawerSheet {
                 TaskSidebar(
+                    goals = state.board.goals,
                     lists = state.board.lists,
                     tags = state.board.tags,
                     isBoardSelected = state.selectedListId == null && state.selectedFilterId == null && state.selectedTagId == null,

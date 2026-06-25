@@ -5,7 +5,9 @@ import kotlinx.datetime.LocalDate
 data class AppConfig(val versionName: String)
 
 data class TaskBoard(
+    val goals: List<Goal> = emptyList(),
     val lists: List<TaskList> = emptyList(),
+    val keyResults: List<KeyResult> = emptyList(),
     val filters: List<TaskFilter> = emptyList(),
     val tasks: List<TaskItem> = emptyList(),
     val notes: List<NoteItem> = emptyList(),
@@ -33,23 +35,53 @@ data class TaskBoard(
     }
 }
 
-data class TaskList(
+data class Goal(
     val id: Long,
+    val title: String,
+    val icon: String,
+    val color: String,
+    val sortOrder: Int,
+    val isArchived: Boolean = false
+)
+
+data class Objective(
+    val id: Long,
+    val goalId: Long? = null,
     val name: String,
+    val startDate: LocalDate? = null,
+    val endDate: LocalDate? = null,
     val color: String,
     val icon: String,
     val sortOrder: Int,
     val isArchived: Boolean = false
 ) {
+    val title: String get() = name
+
     companion object {
-        val None = TaskList(id = -1L, name = "", color = "", icon = "", sortOrder = -1)
-        val MyDay = TaskList(id = -2L, name = "MyDay", color = "0xFF64748B", icon = "Today", sortOrder = -2)
+        val None = Objective(id = -1L, name = "", color = "", icon = "", sortOrder = -1)
+        val MyDay = Objective(id = -2L, name = "MyDay", color = "0xFF64748B", icon = "Today", sortOrder = -2)
     }
+}
+
+typealias TaskList = Objective
+
+data class KeyResult(
+    val id: Long,
+    val objectiveId: Long,
+    val title: String,
+    val targetValue: Double,
+    val currentValue: Double = 0.0,
+    val unit: String,
+    val sortOrder: Int
+) {
+    val progress: Double
+        get() = if (targetValue == 0.0) 0.0 else (currentValue / targetValue).coerceIn(0.0, 1.0)
 }
 
 data class TaskItem(
     val id: Long,
     val list: TaskList,
+    val keyResult: KeyResult? = null,
     val name: String,
     val description: String = "",
     val subtasks: List<SubTaskItem> = emptyList(),

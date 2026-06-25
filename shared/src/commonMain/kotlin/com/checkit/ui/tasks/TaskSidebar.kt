@@ -34,6 +34,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.checkit.domain.Goal
 import com.checkit.domain.TaskList
 import com.checkit.domain.TaskTag
 import com.checkit.ui.theme.materialIcon
@@ -41,6 +42,7 @@ import com.checkit.ui.theme.toColor
 
 @Composable
 internal fun TaskSidebar(
+    goals: List<Goal>,
     lists: List<TaskList>,
     tags: List<TaskTag>,
     isBoardSelected: Boolean,
@@ -73,6 +75,21 @@ internal fun TaskSidebar(
                     selected = isBoardSelected,
                     onClick = onBoardClick
                 )
+            }
+            if (goals.isNotEmpty()) {
+                item {
+                    Spacer(Modifier.height(10.dp))
+                    SidebarHeader("Goals")
+                }
+                items(goals, key = { "goal-${it.id}" }) { goal ->
+                    SidebarItem(
+                        title = goal.title,
+                        icon = materialIcon(goal.icon),
+                        color = goal.color.toColor(),
+                        selected = false,
+                        onClick = {}
+                    )
+                }
             }
             item {
                 Spacer(Modifier.height(10.dp))
