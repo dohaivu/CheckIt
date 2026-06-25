@@ -6,15 +6,17 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,6 +26,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -53,6 +56,7 @@ internal fun ObjectiveScreen(
     viewModel: ObjectiveViewModel,
     onTaskClick: (TaskItem) -> Unit,
     onAddTask: (KeyResult) -> Unit,
+    onEditObjective: (TaskList) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -90,7 +94,9 @@ internal fun ObjectiveScreen(
                 onAddKeyResult = { objective ->
                     viewModel.openNewKeyResult(objective.id)
                 },
-                onAddTask = onAddTask
+                onAddTask = onAddTask,
+                onEditKeyResult = viewModel::openEditKeyResult,
+                onEditObjective = onEditObjective
             )
         }
     }
@@ -100,6 +106,7 @@ internal fun ObjectiveScreen(
             editor = editor,
             onDismiss = viewModel::dismissKeyResultEditor,
             onSave = viewModel::saveKeyResultEditor,
+            onDelete = viewModel::deleteKeyResultEditor,
             onTitleChange = viewModel::updateKeyResultTitle,
             onTargetValueChange = viewModel::updateKeyResultTargetValue,
             onCurrentValueChange = viewModel::updateKeyResultCurrentValue,
@@ -119,7 +126,9 @@ private fun ObjectiveBranch(
     onSelectNode: (String) -> Unit,
     onTaskClick: (TaskItem) -> Unit,
     onAddKeyResult: (TaskList) -> Unit,
-    onAddTask: (KeyResult) -> Unit
+    onAddTask: (KeyResult) -> Unit,
+    onEditKeyResult: (KeyResult) -> Unit,
+    onEditObjective: (TaskList) -> Unit
 ) {
     val nodeKey = objective.nodeKey()
     val isExpanded = nodeKey !in collapsedNodeKeys
@@ -133,6 +142,7 @@ private fun ObjectiveBranch(
         isSelected = selectedNodeKey == nodeKey,
         onToggleExpanded = onToggleExpanded,
         onSelectNode = onSelectNode,
+        onLongClick = { onEditObjective(objective) },
         onAddClick = {
             onAddKeyResult(objective)
         }
@@ -148,7 +158,8 @@ private fun ObjectiveBranch(
                 onToggleExpanded = onToggleExpanded,
                 onSelectNode = onSelectNode,
                 onTaskClick = onTaskClick,
-                onAddTask = onAddTask
+                onAddTask = onAddTask,
+                onEditKeyResult = onEditKeyResult
             )
         }
     }
@@ -164,7 +175,8 @@ private fun KeyResultBranch(
     onToggleExpanded: (String) -> Unit,
     onSelectNode: (String) -> Unit,
     onTaskClick: (TaskItem) -> Unit,
-    onAddTask: (KeyResult) -> Unit
+    onAddTask: (KeyResult) -> Unit,
+    onEditKeyResult: (KeyResult) -> Unit
 ) {
     val nodeKey = keyResult.nodeKey()
     val isExpanded = nodeKey !in collapsedNodeKeys
@@ -178,8 +190,24 @@ private fun KeyResultBranch(
         isSelected = selectedNodeKey == nodeKey,
         onToggleExpanded = onToggleExpanded,
         onSelectNode = onSelectNode,
+        onLongClick = { onEditKeyResult(keyResult) },
         onAddClick = {
             onAddTask(keyResult)
+        },
+        trailingContent = {
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = "${(keyResult.progress * 100).toInt()}%",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                LinearProgressIndicator(
+                    progress = { keyResult.progress.toFloat() },
+                    modifier = Modifier.width(48.dp).height(4.dp).clip(RoundedCornerShape(2.dp)),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            }
         }
     )
     
@@ -198,10 +226,8 @@ private fun KeyResultBranch(
                 isExpanded = false,
                 isSelected = selectedNodeKey == taskNodeKey,
                 onToggleExpanded = onToggleExpanded,
-                onSelectNode = {
-                    onSelectNode(it)
-                    onTaskClick(task)
-                },
+                onSelectNode = onSelectNode,
+                onLongClick = { onTaskClick(task) },
                 ancestorLines = ancestorLines
             )
         }
@@ -236,8 +262,10 @@ private fun TreeNodeRow(
     isSelected: Boolean,
     onToggleExpanded: (String) -> Unit,
     onSelectNode: (String) -> Unit,
+    onLongClick: (() -> Unit)? = null,
     onAddClick: (()-> Unit)? = null,
-    ancestorLines: List<Dp> = emptyList()
+    ancestorLines: List<Dp> = emptyList(),
+    trailingContent: @Composable (() -> Unit)? = null
 ) {
     val background = if (isSelected) {
         MaterialTheme.colorScheme.secondaryContainer
@@ -307,7 +335,10 @@ private fun TreeNodeRow(
             .padding(start = nodeIndent(depth), top = 2.dp, bottom = 2.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(background)
-            .clickable { onSelectNode(nodeKey) }
+            .combinedClickable(
+                onClick = { onSelectNode(nodeKey) },
+                onLongClick = onLongClick
+            )
             .padding(end = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -338,6 +369,7 @@ private fun TreeNodeRow(
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f).padding(vertical = 9.dp)
         )
+        trailingContent?.invoke()
         if (isSelected && onAddClick != null) {
             IconButton(onClick = onAddClick, modifier = Modifier.size(28.dp)) {
                 Icon(

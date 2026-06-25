@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.checkit.data.CheckItRepository
 import com.checkit.data.KeyResultWriteInput
+import com.checkit.domain.KeyResult
 import com.checkit.domain.KeyResultUnit
 import com.checkit.ui.EditorMode
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -56,6 +57,22 @@ class ObjectiveViewModel(
         }
     }
 
+    fun openEditKeyResult(keyResult: KeyResult) {
+        _uiState.update {
+            it.copy(
+                keyResultEditor = KeyResultEditorState(
+                    mode = EditorMode.Edit,
+                    objectiveId = keyResult.objectiveId,
+                    keyResultId = keyResult.id,
+                    title = keyResult.title,
+                    targetValue = keyResult.targetValue,
+                    currentValue = keyResult.currentValue,
+                    unit = KeyResultUnit.fromString(keyResult.unit)
+                )
+            )
+        }
+    }
+
     fun dismissKeyResultEditor() {
         _uiState.update { it.copy(keyResultEditor = null) }
     }
@@ -68,7 +85,7 @@ class ObjectiveViewModel(
     fun saveKeyResultEditor(onSaved: () -> Unit = {}) {
         val form = _uiState.value.keyResultEditor ?: return
         if (form.title.isBlank()) {
-            showMessage("Add a key result title")
+            showMessage("Add a title")
             return
         }
         val input = KeyResultWriteInput(
@@ -87,6 +104,16 @@ class ObjectiveViewModel(
             }
             _uiState.update { it.copy(keyResultEditor = null) }
             onSaved()
+        }
+    }
+
+    fun deleteKeyResultEditor(onDeleted: () -> Unit = {}) {
+        val form = _uiState.value.keyResultEditor ?: return
+        val keyResultId = form.keyResultId ?: return
+        viewModelScope.launch {
+            repository.deleteKeyResult(keyResultId)
+            _uiState.update { it.copy(keyResultEditor = null) }
+            onDeleted()
         }
     }
 

@@ -145,6 +145,7 @@ internal fun TaskScreen(
                     viewModel = objectiveViewModel,
                     onTaskClick = viewModel::openTask,
                     onAddTask = viewModel::openNewTaskOnKeyResult,
+                    onEditObjective = listViewModel::openEditList,
                     modifier = contentModifier
                 )
             } else {
