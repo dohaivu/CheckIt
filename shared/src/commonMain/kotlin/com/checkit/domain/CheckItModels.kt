@@ -78,6 +78,20 @@ data class KeyResult(
         get() = if (targetValue == 0.0) 0.0 else (currentValue / targetValue).coerceIn(0.0, 1.0)
 }
 
+enum class KeyResultUnit(val label: String) {
+    Percentage("%"),
+    Number("#"),
+    Currency("$"),
+    Hours("h"),
+    Days("d"),
+    Points("pts");
+
+    companion object {
+        fun fromString(value: String): KeyResultUnit =
+            entries.firstOrNull { it.name == value || it.label == value } ?: Number
+    }
+}
+
 data class TaskItem(
     val id: Long,
     val list: TaskList,

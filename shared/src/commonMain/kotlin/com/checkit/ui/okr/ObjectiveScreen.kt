@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -84,9 +85,24 @@ internal fun ObjectiveScreen(
                 selectedNodeKey = state.selectedNodeKey,
                 onToggleExpanded = viewModel::toggleExpanded,
                 onSelectNode = viewModel::selectNode,
-                onTaskClick = onTaskClick
+                onTaskClick = onTaskClick,
+                onAddKeyResult = { objective ->
+                    viewModel.openNewKeyResult(objective.id)
+                }
             )
         }
+    }
+
+    state.keyResultEditor?.let { editor ->
+        KeyResultEditorSheet(
+            editor = editor,
+            onDismiss = viewModel::dismissKeyResultEditor,
+            onSave = viewModel::saveKeyResultEditor,
+            onTitleChange = viewModel::updateKeyResultTitle,
+            onTargetValueChange = viewModel::updateKeyResultTargetValue,
+            onCurrentValueChange = viewModel::updateKeyResultCurrentValue,
+            onUnitChange = viewModel::updateKeyResultUnit
+        )
     }
 }
 
@@ -99,7 +115,8 @@ private fun ObjectiveBranch(
     selectedNodeKey: String?,
     onToggleExpanded: (String) -> Unit,
     onSelectNode: (String) -> Unit,
-    onTaskClick: (TaskItem) -> Unit
+    onTaskClick: (TaskItem) -> Unit,
+    onAddKeyResult: (TaskList) -> Unit
 ) {
     val nodeKey = objective.nodeKey()
     val isExpanded = nodeKey in expandedNodeKeys
@@ -111,7 +128,10 @@ private fun ObjectiveBranch(
         isExpanded = isExpanded,
         isSelected = selectedNodeKey == nodeKey,
         onToggleExpanded = onToggleExpanded,
-        onSelectNode = onSelectNode
+        onSelectNode = onSelectNode,
+        onAddClick = {
+            onAddKeyResult(objective)
+        }
     )
     AnimatedChildren(visible = isExpanded && keyResults.isNotEmpty(), depth = 1) {
         keyResults.forEach { keyResult ->
@@ -199,7 +219,8 @@ private fun TreeNodeRow(
     isExpanded: Boolean,
     isSelected: Boolean,
     onToggleExpanded: (String) -> Unit,
-    onSelectNode: (String) -> Unit
+    onSelectNode: (String) -> Unit,
+    onAddClick: (()-> Unit)? = null
 ) {
     val background = if (isSelected) {
         MaterialTheme.colorScheme.secondaryContainer
@@ -241,8 +262,17 @@ private fun TreeNodeRow(
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
             color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(vertical = 9.dp)
+            modifier = Modifier.weight(1f).padding(vertical = 9.dp)
         )
+        if (isSelected && onAddClick != null) {
+            IconButton(onClick = onAddClick, modifier = Modifier.size(28.dp)) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Add",
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
     }
 }
 
