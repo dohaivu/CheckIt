@@ -52,6 +52,7 @@ internal fun ObjectiveScreen(
     board: TaskBoard,
     viewModel: ObjectiveViewModel,
     onTaskClick: (TaskItem) -> Unit,
+    onAddTask: (KeyResult) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -88,7 +89,8 @@ internal fun ObjectiveScreen(
                 onTaskClick = onTaskClick,
                 onAddKeyResult = { objective ->
                     viewModel.openNewKeyResult(objective.id)
-                }
+                },
+                onAddTask = onAddTask
             )
         }
     }
@@ -116,7 +118,8 @@ private fun ObjectiveBranch(
     onToggleExpanded: (String) -> Unit,
     onSelectNode: (String) -> Unit,
     onTaskClick: (TaskItem) -> Unit,
-    onAddKeyResult: (TaskList) -> Unit
+    onAddKeyResult: (TaskList) -> Unit,
+    onAddTask: (KeyResult) -> Unit
 ) {
     val nodeKey = objective.nodeKey()
     val isExpanded = nodeKey in expandedNodeKeys
@@ -142,7 +145,8 @@ private fun ObjectiveBranch(
                 selectedNodeKey = selectedNodeKey,
                 onToggleExpanded = onToggleExpanded,
                 onSelectNode = onSelectNode,
-                onTaskClick = onTaskClick
+                onTaskClick = onTaskClick,
+                onAddTask = onAddTask
             )
         }
     }
@@ -156,7 +160,8 @@ private fun KeyResultBranch(
     selectedNodeKey: String?,
     onToggleExpanded: (String) -> Unit,
     onSelectNode: (String) -> Unit,
-    onTaskClick: (TaskItem) -> Unit
+    onTaskClick: (TaskItem) -> Unit,
+    onAddTask: (KeyResult) -> Unit
 ) {
     val nodeKey = keyResult.nodeKey()
     val isExpanded = nodeKey in expandedNodeKeys
@@ -168,7 +173,10 @@ private fun KeyResultBranch(
         isExpanded = isExpanded,
         isSelected = selectedNodeKey == nodeKey,
         onToggleExpanded = onToggleExpanded,
-        onSelectNode = onSelectNode
+        onSelectNode = onSelectNode,
+        onAddClick = {
+            onAddTask(keyResult)
+        }
     )
     AnimatedChildren(visible = isExpanded && tasks.isNotEmpty(), depth = 2) {
         tasks.forEach { task ->

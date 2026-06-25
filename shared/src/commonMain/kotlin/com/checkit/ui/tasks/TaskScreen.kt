@@ -144,6 +144,7 @@ internal fun TaskScreen(
                     board = state.board,
                     viewModel = objectiveViewModel,
                     onTaskClick = viewModel::openTask,
+                    onAddTask = viewModel::openNewTaskOnKeyResult,
                     modifier = contentModifier
                 )
             } else {

@@ -8,6 +8,7 @@ import com.checkit.data.SubTaskWriteInput
 import com.checkit.data.TaskWriteInput
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
+import com.checkit.domain.KeyResult
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
@@ -240,6 +241,20 @@ class TaskViewModel(
 
     fun openNewTask(addToMyDayOnSave: Boolean = false) {
         openNewTaskOnDate(today(), addToMyDayOnSave)
+    }
+
+    fun openNewTaskOnKeyResult(keyResult: KeyResult) {
+        cancelPendingTaskTextSave()
+        _uiState.update {
+            it.copy(
+                editor = TaskEditorState.TaskForm(
+                    mode = EditorMode.Add,
+                    listId = keyResult.objectiveId,
+                    keyResultId = keyResult.id,
+                    doDate = null,
+                )
+            )
+        }
     }
 
     fun openNewTaskOnDate(date: LocalDate, addToMyDayOnSave: Boolean = false) {
