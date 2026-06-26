@@ -20,13 +20,16 @@ import com.checkit.ui.DailyPlanItemEditorState
 import com.checkit.ui.EditorMode
 import com.checkit.ui.MyDayUiState
 import com.checkit.ui.MyDayView
+import com.checkit.ui.UiEvent
 import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -49,6 +52,9 @@ class MyDayViewModel(
     val uiState: StateFlow<MyDayUiState> = _uiState.asStateFlow()
     private var pendingEditorTextSaveJob: Job? = null
 
+    private val _events = Channel<UiEvent>(Channel.BUFFERED)
+    val events = _events.receiveAsFlow()
+
     init {
         viewModelScope.launch {
             ensureDefaultTaskData()
@@ -57,8 +63,9 @@ class MyDayViewModel(
             }
                 .catch { error ->
                     _uiState.update {
-                        it.copy(isLoading = false, message = error.message ?: "Unable to load My Day")
+                        it.copy(isLoading = false)
                     }
+                    sendEvent(UiEvent.ShowSnackbar(error.message ?: "Unable to load My Day"))
                 }
                 .collect { (board, dailyPlans) ->
                     _uiState.update { it.copy(board = board, dailyPlans = dailyPlans, isLoading = false) }
@@ -104,7 +111,8 @@ class MyDayViewModel(
 
         if (!saveCheckIn(editor)) return
 
-        _uiState.update { it.copy(itemEditor = null, message = "Saved") }
+        _uiState.update { it.copy(itemEditor = null) }
+        sendEvent(UiEvent.ShowSnackbar("Saved"))
     }
 
     fun saveCheckIn(editor: DailyPlanItemEditorState): Boolean {
@@ -115,18 +123,18 @@ class MyDayViewModel(
         when (source) {
             DailyPlanItemSource.MyDayNote -> {
                 if (title.isBlank() && note.isBlank()) {
-                    _uiState.update { it.copy(message = "Add a note") }
+                    sendEvent(UiEvent.ShowSnackbar("Add a note"))
                     return false
                 }
             }
             DailyPlanItemSource.MyDayReminder -> {
                 when {
                     title.isBlank() -> {
-                        _uiState.update { it.copy(message = "Add a reminder") }
+                        sendEvent(UiEvent.ShowSnackbar("Add a reminder"))
                         return false
                     }
                     editor.startTimeMinutes == null -> {
-                        _uiState.update { it.copy(message = "Add reminder time") }
+                        sendEvent(UiEvent.ShowSnackbar("Add reminder time"))
                         return false
                     }
                 }
@@ -136,15 +144,15 @@ class MyDayViewModel(
                 val end = editor.endTimeMinutes
                 when {
                     title.isBlank() -> {
-                        _uiState.update { it.copy(message = "Add a done item") }
+                        sendEvent(UiEvent.ShowSnackbar("Add a done item"))
                         return false
                     }
                     start == null || end == null -> {
-                        _uiState.update { it.copy(message = "Add start and end time") }
+                        sendEvent(UiEvent.ShowSnackbar("Add start and end time"))
                         return false
                     }
                     end <= start -> {
-                        _uiState.update { it.copy(message = "End time must be after start") }
+                        sendEvent(UiEvent.ShowSnackbar("End time must be after start"))
                         return false
                     }
                 }
@@ -218,13 +226,13 @@ class MyDayViewModel(
                     current.copy(
                         showSuggestions = false,
                         suggestionStartTimeMinutes = null,
-                        suggestionEndTimeMinutes = null,
-                        message = "Added to My Day"
+                        suggestionEndTimeMinutes = null
                     )
                 } else {
-                    current.copy(message = "Added to My Day")
+                    current
                 }
             }
+            sendEvent(UiEvent.ShowSnackbar("Added to My Day"))
         }
     }
 
@@ -288,14 +296,16 @@ class MyDayViewModel(
         cancelPendingEditorTextSave()
         val itemId = _uiState.value.itemEditor?.itemId ?: return
         deleteDailyPlanItem(itemId) {
-            it.copy(itemEditor = null, message = "Deleted")
+            it.copy(itemEditor = null)
         }
+        sendEvent(UiEvent.ShowSnackbar("Deleted"))
     }
 
     fun deleteDailyPlanItem(itemId: Long) {
         deleteDailyPlanItem(itemId) {
-            it.copy(message = "Removed from My Day")
+            it
         }
+        sendEvent(UiEvent.ShowSnackbar("Removed from My Day"))
     }
 
     private fun deleteDailyPlanItem(
@@ -308,8 +318,8 @@ class MyDayViewModel(
         }
     }
 
-    fun consumeMessage() {
-        _uiState.update { it.copy(message = null) }
+    private fun sendEvent(event: UiEvent) {
+        viewModelScope.launch { _events.send(event) }
     }
 
     private fun updateItemEditor(

@@ -14,8 +14,7 @@ data class ReportUiState(
     val selectedPeriod: ReportPeriod = ReportPeriod.Daily,
     val selectedDate: kotlinx.datetime.LocalDate = today(),
     val dailyPlans: List<DailyPlan> = emptyList(),
-    val isLoading: Boolean = true,
-    val message: String? = null
+    val isLoading: Boolean = true
 ) {
     private val reportIndex: DailyPlanReportIndex by lazy {
         DailyPlanReportIndex(dailyPlans)

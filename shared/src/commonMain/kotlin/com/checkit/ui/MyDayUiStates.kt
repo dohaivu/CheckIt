@@ -17,8 +17,7 @@ data class MyDayUiState(
     val showSuggestions: Boolean = false,
     val suggestionStartTimeMinutes: Int? = null,
     val suggestionEndTimeMinutes: Int? = null,
-    val isLoading: Boolean = true,
-    val message: String? = null
+    val isLoading: Boolean = true
 ) {
     val today: LocalDate = com.checkit.ui.today()
     val plan: DailyPlan? = dailyPlans.firstOrNull { it.date == today }

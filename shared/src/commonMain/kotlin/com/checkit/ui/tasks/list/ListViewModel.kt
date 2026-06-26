@@ -9,16 +9,18 @@ import com.checkit.domain.usecase.DeleteObjectiveUseCase
 import com.checkit.domain.usecase.UpdateObjectiveUseCase
 import com.checkit.ui.EditorMode
 import com.checkit.ui.ListEditorState
+import com.checkit.ui.UiEvent
 import kotlinx.datetime.LocalDate
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class ListUiState(
-    val editor: ListEditorState? = null,
-    val message: String? = null
+    val editor: ListEditorState? = null
 )
 
 class ListViewModel(
@@ -28,6 +30,9 @@ class ListViewModel(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ListUiState())
     val uiState: StateFlow<ListUiState> = _uiState.asStateFlow()
+
+    private val _events = Channel<UiEvent>(Channel.BUFFERED)
+    val events = _events.receiveAsFlow()
 
     fun openNewList() {
         _uiState.update { it.copy(editor = ListEditorState(mode = EditorMode.Add, goalId = null)) }
@@ -66,12 +71,12 @@ class ListViewModel(
     fun saveEditor(onSaved: (Long) -> Unit = {}) {
         val form = _uiState.value.editor ?: return
         if (form.name.isBlank()) {
-            showMessage("Add a name")
+            sendEvent(UiEvent.ShowSnackbar("Add a name"))
             return
         }
         if (form.goalId != null) {
             if (form.startDate == null || form.endDate == null) {
-                showMessage("Set start and end dates")
+                sendEvent(UiEvent.ShowSnackbar("Set start and end dates"))
                 return
             }
         }
@@ -100,18 +105,15 @@ class ListViewModel(
         val form = _uiState.value.editor ?: return
         val objectiveId = form.objectiveId ?: return
         if (form.name == InboxListName) {
-            showMessage("Inbox can't be deleted")
+            sendEvent(UiEvent.ShowSnackbar("Inbox can't be deleted"))
             return
         }
         viewModelScope.launch {
             deleteObjective(objectiveId)
-            _uiState.update { it.copy(editor = null, message = "List deleted; items moved to Inbox") }
+            _uiState.update { it.copy(editor = null) }
+            sendEvent(UiEvent.ShowSnackbar("List deleted; items moved to Inbox"))
             onDeleted()
         }
-    }
-
-    fun consumeMessage() {
-        _uiState.update { it.copy(message = null) }
     }
 
     private fun updateEditor(transform: (ListEditorState) -> ListEditorState) {
@@ -121,8 +123,8 @@ class ListViewModel(
         }
     }
 
-    private fun showMessage(message: String) {
-        _uiState.update { it.copy(message = message) }
+    private fun sendEvent(event: UiEvent) {
+        viewModelScope.launch { _events.send(event) }
     }
 }
 

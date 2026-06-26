@@ -71,6 +71,7 @@ import com.checkit.ui.myday.DailyPlanItemEditorSheet
 import com.checkit.ui.tasks.TaskEditorSheet
 import com.checkit.ui.theme.AppTheme
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
@@ -121,24 +122,6 @@ fun CheckItApp(
     onWidgetLaunchConsumed: () -> Unit = {}
 ) {
     val backStack = remember { mutableStateListOf<NavKey>(Routes.MyDay) }
-    val taskMessage by remember(taskViewModel) {
-        taskViewModel.uiState.map { it.message }.distinctUntilChanged()
-    }.collectAsState(null)
-    val settingsMessage by remember(settingsViewModel) {
-        settingsViewModel.uiState.map { it.message }.distinctUntilChanged()
-    }.collectAsState(null)
-    val goalMessage by remember(goalViewModel) {
-        goalViewModel.uiState.map { it.message }.distinctUntilChanged()
-    }.collectAsState(null)
-    val taskListMessage by remember(listViewModel) {
-        listViewModel.uiState.map { it.message }.distinctUntilChanged()
-    }.collectAsState(null)
-    val taskTagMessage by remember(tagViewModel) {
-        tagViewModel.uiState.map { it.message }.distinctUntilChanged()
-    }.collectAsState(null)
-    val myDayMessage by remember(myDayViewModel) {
-        myDayViewModel.uiState.map { it.message }.distinctUntilChanged()
-    }.collectAsState(null)
     val appLanguage by remember(settingsViewModel) {
         settingsViewModel.uiState.map { it.language }.distinctUntilChanged()
     }.collectAsState(AppLanguage.English)
@@ -149,6 +132,23 @@ fun CheckItApp(
         settingsViewModel.uiState.map { it.colorSchemeMode }.distinctUntilChanged()
     }.collectAsState(AppColorSchemeMode.Sunset)
     val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(Unit) {
+        merge(
+            taskViewModel.events,
+            goalViewModel.events,
+            keyResultViewModel.events,
+            listViewModel.events,
+            tagViewModel.events,
+            myDayViewModel.events,
+            settingsViewModel.events,
+            reportViewModel.events
+        ).collect { event ->
+            when (event) {
+                is UiEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
+            }
+        }
+    }
 
     val backState = rememberNavigationEventState(NavigationEventInfo.None)
     val currentRoute = backStack.lastOrNull() ?: Routes.MyDay
@@ -178,28 +178,6 @@ fun CheckItApp(
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
-
-    LaunchedEffect(taskMessage, myDayMessage, settingsMessage, goalMessage, taskListMessage, taskTagMessage) {
-        val message = taskMessage ?: myDayMessage ?: settingsMessage ?: goalMessage ?: taskListMessage ?: taskTagMessage
-            ?: return@LaunchedEffect
-        snackbarHostState.showSnackbar(message)
-
-        if (myDayMessage != null) {
-            myDayViewModel.consumeMessage()
-        }
-        if (settingsMessage != null) {
-            settingsViewModel.consumeMessage()
-        }
-        if (goalMessage != null) {
-            goalViewModel.consumeMessage()
-        }
-        if (taskListMessage != null) {
-            listViewModel.consumeMessage()
-        }
-        if (taskTagMessage != null) {
-            tagViewModel.consumeMessage()
-        }
     }
 
     fun resetTo(route: NavKey) {

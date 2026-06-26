@@ -8,16 +8,18 @@ import com.checkit.domain.usecase.AddGoalUseCase
 import com.checkit.domain.usecase.DeleteGoalUseCase
 import com.checkit.domain.usecase.UpdateGoalUseCase
 import com.checkit.ui.EditorMode
+import com.checkit.ui.UiEvent
 import com.checkit.ui.theme.AppIconColorDefaults
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class GoalUiState(
     val editor: GoalEditorState? = null,
-    val message: String? = null,
     val collapsedNodeKeys: Set<String> = emptySet(),
     val selectedNodeKey: String? = null
 )
@@ -37,6 +39,9 @@ class GoalViewModel(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(GoalUiState())
     val uiState: StateFlow<GoalUiState> = _uiState.asStateFlow()
+
+    private val _events = Channel<UiEvent>(Channel.BUFFERED)
+    val events = _events.receiveAsFlow()
 
     fun openNewGoal() {
         _uiState.update { it.copy(editor = GoalEditorState(mode = EditorMode.Add)) }
@@ -67,7 +72,7 @@ class GoalViewModel(
     fun saveEditor(onSaved: (Long) -> Unit = {}) {
         val form = _uiState.value.editor ?: return
         if (form.title.isBlank()) {
-            showMessage("Add a goal title")
+            sendEvent(UiEvent.ShowSnackbar("Add a goal title"))
             return
         }
         val input = GoalWriteInput(
@@ -92,13 +97,10 @@ class GoalViewModel(
         val goalId = _uiState.value.editor?.goalId ?: return
         viewModelScope.launch {
             deleteGoal(goalId)
-            _uiState.update { it.copy(editor = null, message = "Goal deleted") }
+            _uiState.update { it.copy(editor = null) }
+            sendEvent(UiEvent.ShowSnackbar("Goal deleted"))
             onDeleted()
         }
-    }
-
-    fun consumeMessage() {
-        _uiState.update { it.copy(message = null) }
     }
 
     fun toggleExpanded(nodeKey: String) {
@@ -123,7 +125,7 @@ class GoalViewModel(
         }
     }
 
-    private fun showMessage(message: String) {
-        _uiState.update { it.copy(message = message) }
+    private fun sendEvent(event: UiEvent) {
+        viewModelScope.launch { _events.send(event) }
     }
 }

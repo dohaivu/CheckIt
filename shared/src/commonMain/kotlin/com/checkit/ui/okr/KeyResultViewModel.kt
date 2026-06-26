@@ -7,15 +7,17 @@ import com.checkit.data.KeyResultWriteInput
 import com.checkit.domain.KeyResult
 import com.checkit.domain.KeyResultUnit
 import com.checkit.ui.EditorMode
+import com.checkit.ui.UiEvent
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class KeyResultUiState(
-    val keyResultEditor: KeyResultEditorState? = null,
-    val message: String? = null
+    val keyResultEditor: KeyResultEditorState? = null
 )
 
 data class KeyResultEditorState(
@@ -33,6 +35,9 @@ class KeyResultViewModel(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(KeyResultUiState())
     val uiState: StateFlow<KeyResultUiState> = _uiState.asStateFlow()
+
+    private val _events = Channel<UiEvent>(Channel.BUFFERED)
+    val events = _events.receiveAsFlow()
 
     fun openNewKeyResult(objectiveId: Long) {
         _uiState.update {
@@ -68,11 +73,11 @@ class KeyResultViewModel(
     fun saveKeyResultEditor(onSaved: () -> Unit = {}) {
         val form = _uiState.value.keyResultEditor ?: return
         if (form.title.isBlank()) {
-            showMessage("Add a title")
+            sendEvent(UiEvent.ShowSnackbar("Add a title"))
             return
         }
         if (form.targetValue <= 0.0) {
-            showMessage("Set a target value")
+            sendEvent(UiEvent.ShowSnackbar("Set a target value"))
             return
         }
         val input = KeyResultWriteInput(
@@ -104,10 +109,6 @@ class KeyResultViewModel(
         }
     }
 
-    fun consumeMessage() {
-        _uiState.update { it.copy(message = null) }
-    }
-
     private fun updateKeyResultEditor(transform: (KeyResultEditorState) -> KeyResultEditorState) {
         _uiState.update { state ->
             val form = state.keyResultEditor ?: return@update state
@@ -115,7 +116,7 @@ class KeyResultViewModel(
         }
     }
 
-    private fun showMessage(message: String) {
-        _uiState.update { it.copy(message = message) }
+    private fun sendEvent(event: UiEvent) {
+        viewModelScope.launch { _events.send(event) }
     }
 }

@@ -12,9 +12,12 @@ import com.checkit.ui.AppLanguage
 import com.checkit.ui.AppThemeMode
 import com.checkit.ui.ReminderSettingsUiState
 import com.checkit.ui.SettingsUiState
+import com.checkit.ui.UiEvent
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -27,6 +30,9 @@ class SettingsViewModel(
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
     val versionName: String = appConfig.versionName
+
+    private val _events = Channel<UiEvent>(Channel.BUFFERED)
+    val events = _events.receiveAsFlow()
 
     init {
         viewModelScope.launch {
@@ -109,12 +115,8 @@ class SettingsViewModel(
         }
     }
 
-    fun showMessage(message: String) {
-        _uiState.update { it.copy(message = message) }
-    }
-
-    fun consumeMessage() {
-        _uiState.update { it.copy(message = null) }
+    private fun sendEvent(event: UiEvent) {
+        viewModelScope.launch { _events.send(event) }
     }
 
     private companion object {
