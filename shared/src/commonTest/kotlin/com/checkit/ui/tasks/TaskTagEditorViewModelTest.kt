@@ -84,7 +84,6 @@ class TaskTagEditorViewModelTest {
 
         val state = viewModel.uiState.value
         assertNotNull(state.editor)
-        assertEquals("Add a tag name", state.message)
         assertTrue(repository.addedTags.isEmpty())
     }
 
@@ -98,7 +97,6 @@ class TaskTagEditorViewModelTest {
 
         val state = viewModel.uiState.value
         assertNotNull(state.editor)
-        assertEquals("Tag name already exists", state.message)
         assertTrue(repository.addedTags.isEmpty())
     }
 

@@ -12,7 +12,7 @@ import com.checkit.domain.usecase.DeleteTagUseCase
 import com.checkit.domain.usecase.IsTagNameTakenUseCase
 import com.checkit.domain.usecase.UpdateObjectiveUseCase
 import com.checkit.domain.usecase.UpdateTagUseCase
-import com.checkit.ui.tasks.list.ListViewModel
+import com.checkit.ui.okr.ObjectiveViewModel
 import com.checkit.ui.tasks.tag.TagViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -55,7 +55,7 @@ class TaskCollectionDeleteViewModelTest {
             )
         )
         val viewModel = taskListViewModel(repository)
-        viewModel.openEditList(errands)
+        viewModel.openEditObjective(errands)
 
         viewModel.deleteEditorList()
         dispatcher.scheduler.advanceUntilIdle()
@@ -92,7 +92,7 @@ class TaskCollectionDeleteViewModelTest {
         assertNull(viewModel.uiState.value.editor)
     }
 
-    private fun taskListViewModel(repository: FakeCheckItRepository) = ListViewModel(
+    private fun taskListViewModel(repository: FakeCheckItRepository) = ObjectiveViewModel(
         addObjective = AddObjectiveUseCase(repository),
         updateObjective = UpdateObjectiveUseCase(repository),
         deleteObjective = DeleteObjectiveUseCase(repository)

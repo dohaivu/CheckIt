@@ -38,7 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.checkit.ui.EditorMode
-import com.checkit.ui.ListEditorState
+import com.checkit.ui.ObjectiveEditorState
 import com.checkit.ui.components.ColorPicker
 import com.checkit.ui.components.DateRangePicker
 import com.checkit.ui.components.SectionLabel
@@ -48,7 +48,7 @@ import kotlinx.datetime.LocalDate
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ObjectiveEditorSheet(
-    editor: ListEditorState,
+    editor: ObjectiveEditorState,
     onDismiss: () -> Unit,
     onSave: () -> Unit,
     onDelete: () -> Unit,

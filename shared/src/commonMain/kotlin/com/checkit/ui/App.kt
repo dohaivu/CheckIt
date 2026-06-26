@@ -57,7 +57,7 @@ import com.checkit.ui.myday.MyDayViewModel
 import com.checkit.ui.okr.GoalViewModel
 import com.checkit.ui.okr.KeyResultViewModel
 import com.checkit.ui.tasks.TaskScreen
-import com.checkit.ui.tasks.list.ListViewModel
+import com.checkit.ui.okr.ObjectiveViewModel
 import com.checkit.ui.tasks.tag.TagViewModel
 import com.checkit.ui.tasks.TaskViewModel
 import com.checkit.ui.localization.AppLocaleProvider
@@ -108,7 +108,7 @@ fun CheckItApp(
     taskViewModel: TaskViewModel = koinViewModel(),
     goalViewModel: GoalViewModel = koinViewModel(),
     keyResultViewModel: KeyResultViewModel = koinViewModel(),
-    listViewModel: ListViewModel = koinViewModel(),
+    objectiveViewModel: ObjectiveViewModel = koinViewModel(),
     tagViewModel: TagViewModel = koinViewModel(),
     myDayViewModel: MyDayViewModel = koinViewModel(),
     calendarViewModel: CalendarViewModel = koinViewModel(),
@@ -138,7 +138,7 @@ fun CheckItApp(
             taskViewModel.events,
             goalViewModel.events,
             keyResultViewModel.events,
-            listViewModel.events,
+            objectiveViewModel.events,
             tagViewModel.events,
             myDayViewModel.events,
             settingsViewModel.events,
@@ -284,7 +284,7 @@ fun CheckItApp(
                                         viewModel = taskViewModel,
                                         goalViewModel = goalViewModel,
                                         keyResultViewModel = keyResultViewModel,
-                                        listViewModel = listViewModel,
+                                        objectiveViewModel = objectiveViewModel,
                                         tagViewModel = tagViewModel
                                     )
                                 }

@@ -50,7 +50,7 @@ import com.checkit.ui.calendar.CalendarViewModel
 import com.checkit.ui.myday.MyDayViewModel
 import com.checkit.ui.okr.GoalViewModel
 import com.checkit.ui.okr.KeyResultViewModel
-import com.checkit.ui.tasks.list.ListViewModel
+import com.checkit.ui.okr.ObjectiveViewModel
 import com.checkit.ui.tasks.tag.TagViewModel
 import com.checkit.ui.tasks.TaskViewModel
 import com.checkit.ui.reports.ReportViewModel
@@ -157,7 +157,7 @@ val provideViewModelModule = module {
     }
     viewModel { GoalViewModel(get(), get(), get()) }
     viewModel { KeyResultViewModel(get()) }
-    viewModel { ListViewModel(get(), get(), get()) }
+    viewModel { ObjectiveViewModel(get(), get(), get()) }
     viewModel { TagViewModel(get(), get(), get(), get()) }
     viewModel { CalendarViewModel(get(), get(), get()) }
     viewModel {

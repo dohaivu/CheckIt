@@ -178,7 +178,7 @@ private var subTaskEditorKeySeed = 0L
 
 private fun nextSubTaskEditorKey(): Long = --subTaskEditorKeySeed
 
-data class ListEditorState(
+data class ObjectiveEditorState(
     val mode: EditorMode,
     val objectiveId: Long? = null,
     val goalId: Long? = null,

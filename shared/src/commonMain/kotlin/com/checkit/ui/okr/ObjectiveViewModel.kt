@@ -1,4 +1,4 @@
-package com.checkit.ui.tasks.list
+package com.checkit.ui.okr
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -8,7 +8,7 @@ import com.checkit.domain.usecase.AddObjectiveUseCase
 import com.checkit.domain.usecase.DeleteObjectiveUseCase
 import com.checkit.domain.usecase.UpdateObjectiveUseCase
 import com.checkit.ui.EditorMode
-import com.checkit.ui.ListEditorState
+import com.checkit.ui.ObjectiveEditorState
 import com.checkit.ui.UiEvent
 import kotlinx.datetime.LocalDate
 import kotlinx.coroutines.channels.Channel
@@ -19,33 +19,33 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-data class ListUiState(
-    val editor: ListEditorState? = null
+data class ObjectiveUiState(
+    val editor: ObjectiveEditorState? = null
 )
 
-class ListViewModel(
+class ObjectiveViewModel(
     private val addObjective: AddObjectiveUseCase,
     private val updateObjective: UpdateObjectiveUseCase,
     private val deleteObjective: DeleteObjectiveUseCase
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(ListUiState())
-    val uiState: StateFlow<ListUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(ObjectiveUiState())
+    val uiState: StateFlow<ObjectiveUiState> = _uiState.asStateFlow()
 
     private val _events = Channel<UiEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
     fun openNewList() {
-        _uiState.update { it.copy(editor = ListEditorState(mode = EditorMode.Add, goalId = null)) }
+        _uiState.update { it.copy(editor = ObjectiveEditorState(mode = EditorMode.Add, goalId = null)) }
     }
 
     fun openNewObjective(goalId: Long) {
-        _uiState.update { it.copy(editor = ListEditorState(mode = EditorMode.Add, goalId = goalId)) }
+        _uiState.update { it.copy(editor = ObjectiveEditorState(mode = EditorMode.Add, goalId = goalId)) }
     }
 
-    fun openEditList(list: Objective) {
+    fun openEditObjective(list: Objective) {
         _uiState.update {
             it.copy(
-                editor = ListEditorState(
+                editor = ObjectiveEditorState(
                     mode = EditorMode.Edit,
                     objectiveId = list.id,
                     goalId = list.goalId,
@@ -116,7 +116,7 @@ class ListViewModel(
         }
     }
 
-    private fun updateEditor(transform: (ListEditorState) -> ListEditorState) {
+    private fun updateEditor(transform: (ObjectiveEditorState) -> ObjectiveEditorState) {
         _uiState.update { state ->
             val form = state.editor ?: return@update state
             state.copy(editor = transform(form))

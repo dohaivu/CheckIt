@@ -31,7 +31,7 @@ import com.checkit.ui.okr.ObjectiveEditorSheet
 import com.checkit.ui.okr.GoalScreen
 
 import com.checkit.ui.tasks.list.ListEditorSheet
-import com.checkit.ui.tasks.list.ListViewModel
+import com.checkit.ui.okr.ObjectiveViewModel
 import com.checkit.ui.tasks.tag.TagEditorSheet
 import com.checkit.ui.tasks.tag.TagViewModel
 import com.checkit.ui.tasks.views.ViewOptionsMenu
@@ -43,14 +43,14 @@ internal fun TaskScreen(
     viewModel: TaskViewModel,
     goalViewModel: GoalViewModel,
     keyResultViewModel: KeyResultViewModel,
-    listViewModel: ListViewModel,
+    objectiveViewModel: ObjectiveViewModel,
     tagViewModel: TagViewModel,
     modifier: Modifier = Modifier
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val goalState by goalViewModel.uiState.collectAsState()
-    val listState by listViewModel.uiState.collectAsState()
+    val listState by objectiveViewModel.uiState.collectAsState()
     val tagState by tagViewModel.uiState.collectAsState()
 
     ModalNavigationDrawer(
@@ -86,8 +86,8 @@ internal fun TaskScreen(
                     },
                     onAddGoalClick = { goalViewModel.openNewGoal() },
                     onEditGoalClick = { goal -> goalViewModel.openEditGoal(goal) },
-                    onAddListClick = { listViewModel.openNewList() },
-                    onEditListClick = { list -> listViewModel.openEditList(list) },
+                    onAddListClick = { objectiveViewModel.openNewList() },
+                    onEditListClick = { list -> objectiveViewModel.openEditObjective(list) },
                     onAddTagClick = { tagViewModel.openNewTag() },
                     onEditTagClick = { tag -> tagViewModel.openEditTag(tag) }
                 )
@@ -101,7 +101,7 @@ internal fun TaskScreen(
                 if (state.selectedGoalId != null) {
                     TaskActionFab(
                         onObjectiveClick = state.selectedGoalId?.let { goalId ->
-                            { listViewModel.openNewObjective(goalId) }
+                            { objectiveViewModel.openNewObjective(goalId) }
                         }
                     )
                 } else {
@@ -157,7 +157,7 @@ internal fun TaskScreen(
                     keyResultViewModel = keyResultViewModel,
                     onTaskClick = viewModel::openTask,
                     onAddTask = viewModel::openNewTaskOnKeyResult,
-                    onEditObjective = listViewModel::openEditList,
+                    onEditObjective = objectiveViewModel::openEditObjective,
                     modifier = contentModifier
                 )
             } else {
@@ -191,23 +191,23 @@ internal fun TaskScreen(
         if (listEditor.goalId != null) {
             ObjectiveEditorSheet(
                 editor = listEditor,
-                onDismiss = listViewModel::dismissEditor,
-                onSave = { listViewModel.saveEditor(onSaved = viewModel::selectGoal) },
-                onDelete = { listViewModel.deleteEditorList() },
-                onTitleChange = listViewModel::updateName,
-                onDateRangeChange = listViewModel::updateDateRange,
-                onColorChange = listViewModel::updateColor,
-                onIconChange = listViewModel::updateIcon
+                onDismiss = objectiveViewModel::dismissEditor,
+                onSave = { objectiveViewModel.saveEditor(onSaved = viewModel::selectGoal) },
+                onDelete = { objectiveViewModel.deleteEditorList() },
+                onTitleChange = objectiveViewModel::updateName,
+                onDateRangeChange = objectiveViewModel::updateDateRange,
+                onColorChange = objectiveViewModel::updateColor,
+                onIconChange = objectiveViewModel::updateIcon
             )
         } else {
             ListEditorSheet(
                 editor = listEditor,
-                onDismiss = listViewModel::dismissEditor,
-                onSave = { listViewModel.saveEditor(onSaved = viewModel::selectList) },
-                onDelete = { listViewModel.deleteEditorList() },
-                onNameChange = listViewModel::updateName,
-                onColorChange = listViewModel::updateColor,
-                onIconChange = listViewModel::updateIcon
+                onDismiss = objectiveViewModel::dismissEditor,
+                onSave = { objectiveViewModel.saveEditor(onSaved = viewModel::selectList) },
+                onDelete = { objectiveViewModel.deleteEditorList() },
+                onNameChange = objectiveViewModel::updateName,
+                onColorChange = objectiveViewModel::updateColor,
+                onIconChange = objectiveViewModel::updateIcon
             )
         }
     }

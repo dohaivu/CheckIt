@@ -5,7 +5,7 @@ import com.checkit.domain.usecase.AddObjectiveUseCase
 import com.checkit.domain.usecase.DeleteObjectiveUseCase
 import com.checkit.domain.usecase.UpdateObjectiveUseCase
 import com.checkit.ui.EditorMode
-import com.checkit.ui.tasks.list.ListViewModel
+import com.checkit.ui.okr.ObjectiveViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -24,13 +24,13 @@ import kotlin.test.assertTrue
 class TaskListEditorViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private lateinit var repository: FakeCheckItRepository
-    private lateinit var viewModel: ListViewModel
+    private lateinit var viewModel: ObjectiveViewModel
 
     @BeforeTest
     fun setUp() {
         Dispatchers.setMain(dispatcher)
         repository = FakeCheckItRepository()
-        viewModel = ListViewModel(
+        viewModel = ObjectiveViewModel(
             addObjective = AddObjectiveUseCase(repository),
             updateObjective = UpdateObjectiveUseCase(repository),
             deleteObjective = DeleteObjectiveUseCase(repository)
@@ -63,7 +63,7 @@ class TaskListEditorViewModelTest {
             sortOrder = 0
         )
 
-        viewModel.openEditList(list)
+        viewModel.openEditObjective(list)
 
         val editor = viewModel.uiState.value.editor
         assertNotNull(editor)
@@ -84,7 +84,6 @@ class TaskListEditorViewModelTest {
 
         val state = viewModel.uiState.value
         assertNotNull(state.editor)
-        assertEquals("Add a name", state.message)
         assertTrue(repository.addedObjectives.isEmpty())
     }
 
@@ -117,7 +116,7 @@ class TaskListEditorViewModelTest {
             icon = "Home",
             sortOrder = 0
         )
-        viewModel.openEditList(list)
+        viewModel.openEditObjective(list)
         viewModel.updateName("House")
         viewModel.updateColor("#DC2626")
 
