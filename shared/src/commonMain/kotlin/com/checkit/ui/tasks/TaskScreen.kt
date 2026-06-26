@@ -53,7 +53,7 @@ internal fun TaskScreen(
             ModalDrawerSheet {
                 TaskSidebar(
                     goals = state.board.goals,
-                    lists = state.board.lists.filter { it.goalId == null },
+                    lists = state.board.objectives.filter { it.goalId == null },
                     tags = state.board.tags,
                     isBoardSelected = state.selectedGoalId == null &&
                         state.selectedListId == null &&

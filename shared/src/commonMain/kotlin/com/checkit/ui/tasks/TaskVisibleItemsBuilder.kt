@@ -37,13 +37,13 @@ internal class TaskVisibleItemsBuilder(
                     .let { SelectedTaskItems(tasks = it.tasks, notes = it.notes) }
             }
             selection.selectedGoalId != null -> {
-                val objectiveIds = board.lists
+                val objectiveIds = board.objectives
                     .filter { it.goalId == selection.selectedGoalId }
                     .map { it.id }
                     .toSet()
                 SelectedTaskItems(
-                    tasks = board.tasks.filter { task -> !task.isTrashed && task.list.id in objectiveIds },
-                    notes = board.notes.filter { note -> !note.isTrashed && note.list.id in objectiveIds }
+                    tasks = board.tasks.filter { task -> !task.isTrashed && task.objective.id in objectiveIds },
+                    notes = board.notes.filter { note -> !note.isTrashed && note.objective.id in objectiveIds }
                 )
             }
             selection.selectedListId != null -> {

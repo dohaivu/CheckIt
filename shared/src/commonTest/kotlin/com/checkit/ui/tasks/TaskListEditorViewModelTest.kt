@@ -1,9 +1,9 @@
 package com.checkit.ui.tasks
 
-import com.checkit.domain.TaskList
-import com.checkit.domain.usecase.AddTaskListUseCase
-import com.checkit.domain.usecase.DeleteTaskListUseCase
-import com.checkit.domain.usecase.UpdateTaskListUseCase
+import com.checkit.domain.Objective
+import com.checkit.domain.usecase.AddObjectiveUseCase
+import com.checkit.domain.usecase.DeleteObjectiveUseCase
+import com.checkit.domain.usecase.UpdateObjectiveUseCase
 import com.checkit.ui.EditorMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -30,9 +30,9 @@ class TaskListEditorViewModelTest {
         Dispatchers.setMain(dispatcher)
         repository = FakeCheckItRepository()
         viewModel = TaskListViewModel(
-            addTaskList = AddTaskListUseCase(repository),
-            updateTaskList = UpdateTaskListUseCase(repository),
-            deleteTaskList = DeleteTaskListUseCase(repository)
+            addObjective = AddObjectiveUseCase(repository),
+            updateObjective = UpdateObjectiveUseCase(repository),
+            deleteObjective = DeleteObjectiveUseCase(repository)
         )
     }
 
@@ -49,12 +49,12 @@ class TaskListEditorViewModelTest {
         assertNotNull(editor)
         assertEquals(EditorMode.Add, editor.mode)
         assertEquals("", editor.name)
-        assertNull(editor.listId)
+        assertNull(editor.objectiveId)
     }
 
     @Test
     fun openEditListPrefillsExistingValues() = runTest(dispatcher) {
-        val list = TaskList(
+        val list = Objective(
             id = 12L,
             name = "Reading",
             color = "#7C3AED",
@@ -67,7 +67,7 @@ class TaskListEditorViewModelTest {
         val editor = viewModel.uiState.value.editor
         assertNotNull(editor)
         assertEquals(EditorMode.Edit, editor.mode)
-        assertEquals(12L, editor.listId)
+        assertEquals(12L, editor.objectiveId)
         assertEquals("Reading", editor.name)
         assertEquals("#7C3AED", editor.color)
         assertEquals("Notes", editor.icon)
@@ -83,8 +83,8 @@ class TaskListEditorViewModelTest {
 
         val state = viewModel.uiState.value
         assertNotNull(state.editor)
-        assertEquals("Add a list name", state.message)
-        assertTrue(repository.addedLists.isEmpty())
+        assertEquals("Add a name", state.message)
+        assertTrue(repository.addedObjectives.isEmpty())
     }
 
     @Test
@@ -98,18 +98,18 @@ class TaskListEditorViewModelTest {
         viewModel.saveEditor(onSaved = { savedId = it })
         dispatcher.scheduler.advanceUntilIdle()
 
-        assertEquals(1, repository.addedLists.size)
-        val added = repository.addedLists.single()
+        assertEquals(1, repository.addedObjectives.size)
+        val added = repository.addedObjectives.single()
         assertEquals("Reading", added.name)
         assertEquals("#059669", added.color)
         assertEquals("Notes", added.icon)
         assertNull(viewModel.uiState.value.editor)
-        assertEquals(repository.lastAssignedListId, savedId)
+        assertEquals(repository.lastAssignedObjectiveId, savedId)
     }
 
     @Test
     fun saveEditedListWritesUpdateForExistingId() = runTest(dispatcher) {
-        val list = TaskList(
+        val list = Objective(
             id = 7L,
             name = "Home",
             color = "#2563EB",
@@ -123,13 +123,13 @@ class TaskListEditorViewModelTest {
         viewModel.saveEditor()
         dispatcher.scheduler.advanceUntilIdle()
 
-        assertEquals(1, repository.updatedLists.size)
-        val (updatedId, input) = repository.updatedLists.single()
+        assertEquals(1, repository.updatedObjectives.size)
+        val (updatedId, input) = repository.updatedObjectives.single()
         assertEquals(7L, updatedId)
         assertEquals("House", input.name)
         assertEquals("#DC2626", input.color)
         assertEquals("Home", input.icon)
-        assertTrue(repository.addedLists.isEmpty())
+        assertTrue(repository.addedObjectives.isEmpty())
         assertNull(viewModel.uiState.value.editor)
     }
 

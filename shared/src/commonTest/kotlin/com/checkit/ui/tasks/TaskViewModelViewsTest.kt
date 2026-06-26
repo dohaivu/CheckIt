@@ -5,11 +5,9 @@ import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskFilter
 import com.checkit.domain.TaskItem
-import com.checkit.domain.TaskList
+import com.checkit.domain.Objective
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.usecase.AddNoteUseCase
-import com.checkit.domain.usecase.AddTaskListUseCase
-import com.checkit.domain.usecase.AddTaskTagUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
@@ -19,18 +17,13 @@ import com.checkit.domain.usecase.OpenNoteUseCase
 import com.checkit.domain.usecase.RestoreNoteUseCase
 import com.checkit.domain.usecase.RestoreTaskUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
-import com.checkit.domain.usecase.DeleteTaskListUseCase
-import com.checkit.domain.usecase.DeleteTaskTagUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
-import com.checkit.domain.usecase.IsTagNameTakenUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.UpdateNoteUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
-import com.checkit.domain.usecase.UpdateTaskListUseCase
-import com.checkit.domain.usecase.UpdateTaskTagUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
 import com.checkit.ui.TaskListEntry
 import com.checkit.ui.TaskSortOption
@@ -193,17 +186,17 @@ class TaskViewModelViewsTest {
 
     @Test
     fun titleSortBuildsUnifiedTaskAndNoteListOrder() = runTest(dispatcher) {
-        val inbox = TaskList(id = 1L, name = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
+        val inbox = Objective(id = 1L, name = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
         viewModel = createViewModel(
             TaskBoard(
-                lists = listOf(inbox),
+                objectives = listOf(inbox),
                 tasks = listOf(
-                    task(id = 1L, list = inbox, name = "Bravo"),
-                    task(id = 2L, list = inbox, name = "Delta")
+                    task(id = 1L, objective = inbox, name = "Bravo"),
+                    task(id = 2L, objective = inbox, name = "Delta")
                 ),
                 notes = listOf(
-                    note(id = 3L, list = inbox, title = "Alpha"),
-                    note(id = 4L, list = inbox, title = "Charlie")
+                    note(id = 3L, objective = inbox, title = "Alpha"),
+                    note(id = 4L, objective = inbox, title = "Charlie")
                 )
             )
         )
@@ -222,17 +215,17 @@ class TaskViewModelViewsTest {
 
     @Test
     fun searchFiltersTasksAndNotesByTitleAndBody() = runTest(dispatcher) {
-        val inbox = TaskList(id = 1L, name = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
+        val inbox = Objective(id = 1L, name = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
         viewModel = createViewModel(
             TaskBoard(
-                lists = listOf(inbox),
+                objectives = listOf(inbox),
                 tasks = listOf(
-                    task(id = 1L, list = inbox, name = "Budget", description = "Quarterly planning"),
-                    task(id = 2L, list = inbox, name = "Groceries", description = "Milk")
+                    task(id = 1L, objective = inbox, name = "Budget", description = "Quarterly planning"),
+                    task(id = 2L, objective = inbox, name = "Groceries", description = "Milk")
                 ),
                 notes = listOf(
-                    note(id = 3L, list = inbox, title = "Ideas", content = "Quarterly roadmap"),
-                    note(id = 4L, list = inbox, title = "Receipt", content = "Coffee")
+                    note(id = 3L, objective = inbox, title = "Ideas", content = "Quarterly roadmap"),
+                    note(id = 4L, objective = inbox, title = "Receipt", content = "Coffee")
                 )
             )
         )
@@ -276,12 +269,12 @@ class TaskViewModelViewsTest {
 
     private fun task(
         id: Long,
-        list: TaskList,
+        objective: Objective,
         name: String,
         description: String = ""
     ) = TaskItem(
         id = id,
-        list = list,
+        objective = objective,
         name = name,
         description = description,
         sortOrder = id.toInt(),
@@ -291,12 +284,12 @@ class TaskViewModelViewsTest {
 
     private fun note(
         id: Long,
-        list: TaskList,
+        objective: Objective,
         title: String,
         content: String = ""
     ) = NoteItem(
         id = id,
-        list = list,
+        objective = objective,
         title = title,
         content = content,
         date = LocalDate(2026, 6, 14),

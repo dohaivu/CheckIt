@@ -3,10 +3,10 @@ package com.checkit.ui.tasks
 import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
-import com.checkit.domain.TaskList
+import com.checkit.domain.Objective
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.usecase.AddNoteUseCase
-import com.checkit.domain.usecase.AddTaskListUseCase
+import com.checkit.domain.usecase.AddObjectiveUseCase
 import com.checkit.domain.usecase.AddTaskTagUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
@@ -17,7 +17,7 @@ import com.checkit.domain.usecase.OpenNoteUseCase
 import com.checkit.domain.usecase.RestoreNoteUseCase
 import com.checkit.domain.usecase.RestoreTaskUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
-import com.checkit.domain.usecase.DeleteTaskListUseCase
+import com.checkit.domain.usecase.DeleteObjectiveUseCase
 import com.checkit.domain.usecase.DeleteTaskTagUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
@@ -27,7 +27,7 @@ import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.UpdateNoteUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
-import com.checkit.domain.usecase.UpdateTaskListUseCase
+import com.checkit.domain.usecase.UpdateObjectiveUseCase
 import com.checkit.domain.usecase.UpdateTaskTagUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
 import com.checkit.ui.EditorMode
@@ -64,7 +64,7 @@ class TaskSubtaskViewModelTest {
 
     @Test
     fun saveNewTaskPersistsNonBlankSubtasksInOrder() = runTest(dispatcher) {
-        createViewModel(TaskBoard(lists = listOf(inboxList())))
+        createViewModel(TaskBoard(objectives = listOf(inboxList())))
         viewModel.openNewTask()
         viewModel.updateTaskName(" Launch checklist ")
         viewModel.addSubTask()
@@ -86,7 +86,7 @@ class TaskSubtaskViewModelTest {
 
     @Test
     fun toggleSubtaskInViewModePersistsWithoutLeavingEditor() = runTest(dispatcher) {
-        createViewModel(TaskBoard(lists = listOf(inboxList()), tasks = listOf(taskWithSubtasks())))
+        createViewModel(TaskBoard(objectives = listOf(inboxList()), tasks = listOf(taskWithSubtasks())))
         dispatcher.scheduler.advanceUntilIdle()
         viewModel.openTask(taskWithSubtasks())
 
@@ -102,7 +102,7 @@ class TaskSubtaskViewModelTest {
 
     @Test
     fun editModeCanRenameRemoveAndSaveSubtasks() = runTest(dispatcher) {
-        createViewModel(TaskBoard(lists = listOf(inboxList()), tasks = listOf(taskWithSubtasks())))
+        createViewModel(TaskBoard(objectives = listOf(inboxList()), tasks = listOf(taskWithSubtasks())))
         dispatcher.scheduler.advanceUntilIdle()
         viewModel.openTask(taskWithSubtasks())
         viewModel.editCurrentItem()
@@ -120,7 +120,7 @@ class TaskSubtaskViewModelTest {
 
     @Test
     fun editModeCanReorderSubtasks() = runTest(dispatcher) {
-        createViewModel(TaskBoard(lists = listOf(inboxList()), tasks = listOf(taskWithSubtasks())))
+        createViewModel(TaskBoard(objectives = listOf(inboxList()), tasks = listOf(taskWithSubtasks())))
         dispatcher.scheduler.advanceUntilIdle()
         viewModel.openTask(taskWithSubtasks())
         viewModel.editCurrentItem()
@@ -137,7 +137,7 @@ class TaskSubtaskViewModelTest {
 
     @Test
     fun editTaskTextFieldsSaveAfterDebounce() = runTest(dispatcher) {
-        createViewModel(TaskBoard(lists = listOf(inboxList()), tasks = listOf(taskWithSubtasks())))
+        createViewModel(TaskBoard(objectives = listOf(inboxList()), tasks = listOf(taskWithSubtasks())))
         dispatcher.scheduler.advanceUntilIdle()
         viewModel.openTask(taskWithSubtasks())
         viewModel.editCurrentItem()
@@ -163,7 +163,7 @@ class TaskSubtaskViewModelTest {
 
     @Test
     fun immediateTaskEditSavesOnceAndCancelsPendingTextSave() = runTest(dispatcher) {
-        createViewModel(TaskBoard(lists = listOf(inboxList()), tasks = listOf(taskWithSubtasks())))
+        createViewModel(TaskBoard(objectives = listOf(inboxList()), tasks = listOf(taskWithSubtasks())))
         dispatcher.scheduler.advanceUntilIdle()
         viewModel.openTask(taskWithSubtasks())
         viewModel.editCurrentItem()
@@ -183,7 +183,7 @@ class TaskSubtaskViewModelTest {
 
     @Test
     fun dismissFlushesPendingTaskTextSave() = runTest(dispatcher) {
-        createViewModel(TaskBoard(lists = listOf(inboxList()), tasks = listOf(taskWithSubtasks())))
+        createViewModel(TaskBoard(objectives = listOf(inboxList()), tasks = listOf(taskWithSubtasks())))
         dispatcher.scheduler.advanceUntilIdle()
         viewModel.openTask(taskWithSubtasks())
         viewModel.editCurrentItem()
@@ -198,7 +198,7 @@ class TaskSubtaskViewModelTest {
 
     @Test
     fun saveTaskPersistsSelectedReminderOffsets() = runTest(dispatcher) {
-        createViewModel(TaskBoard(lists = listOf(inboxList())))
+        createViewModel(TaskBoard(objectives = listOf(inboxList())))
         viewModel.openNewTask()
         viewModel.updateTaskName("Remind me")
         viewModel.updateTaskStartTime(8 * 60 + 30)
@@ -214,7 +214,7 @@ class TaskSubtaskViewModelTest {
 
     @Test
     fun saveAllDayTaskPersistsAllDayReminderDefault() = runTest(dispatcher) {
-        createViewModel(TaskBoard(lists = listOf(inboxList())))
+        createViewModel(TaskBoard(objectives = listOf(inboxList())))
         viewModel.openNewTask()
         viewModel.updateTaskName("All day reminder")
 
@@ -228,7 +228,7 @@ class TaskSubtaskViewModelTest {
 
     @Test
     fun saveNewTaskAddsTaskToMyDayWhenRequested() = runTest(dispatcher) {
-        createViewModel(TaskBoard(lists = listOf(inboxList())))
+        createViewModel(TaskBoard(objectives = listOf(inboxList())))
         viewModel.openNewTask(addToMyDayOnSave = true)
         viewModel.updateTaskName("Plan from suggestions")
 
@@ -266,7 +266,7 @@ class TaskSubtaskViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
     }
 
-    private fun inboxList() = TaskList(
+    private fun inboxList() = Objective(
         id = 1L,
         name = "Inbox",
         color = "#2563EB",
@@ -276,7 +276,7 @@ class TaskSubtaskViewModelTest {
 
     private fun taskWithSubtasks() = TaskItem(
         id = 42L,
-        list = TaskList.None,
+        objective = Objective.None,
         name = "Ship",
         subtasks = listOf(
             SubTaskItem(id = 10L, taskId = 42L, name = "Draft", isCompleted = false, sortOrder = 0),

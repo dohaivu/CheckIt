@@ -18,7 +18,7 @@ import com.checkit.domain.usecase.AddNoteUseCase
 import com.checkit.domain.usecase.AddManualDoneToDailyPlanUseCase
 import com.checkit.domain.usecase.AddGoalUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
-import com.checkit.domain.usecase.AddTaskListUseCase
+import com.checkit.domain.usecase.AddObjectiveUseCase
 import com.checkit.domain.usecase.AddTaskTagUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
 import com.checkit.domain.usecase.AutoAddTodayTasksToMyDayUseCase
@@ -28,7 +28,7 @@ import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.DeleteGoalUseCase
-import com.checkit.domain.usecase.DeleteTaskListUseCase
+import com.checkit.domain.usecase.DeleteObjectiveUseCase
 import com.checkit.domain.usecase.DeleteTaskTagUseCase
 import com.checkit.domain.usecase.IsTagNameTakenUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
@@ -43,7 +43,7 @@ import com.checkit.domain.usecase.UpdateDailyPlanItemUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.domain.usecase.UpdateGoalUseCase
-import com.checkit.domain.usecase.UpdateTaskListUseCase
+import com.checkit.domain.usecase.UpdateObjectiveUseCase
 import com.checkit.domain.usecase.UpdateTaskTagUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
 import com.checkit.ui.calendar.CalendarViewModel
@@ -90,9 +90,9 @@ val provideInteractorModule = module {
     single { AddGoalUseCase(get()) }
     single { UpdateGoalUseCase(get()) }
     single { DeleteGoalUseCase(get()) }
-    single { AddTaskListUseCase(get()) }
-    single { UpdateTaskListUseCase(get()) }
-    single { DeleteTaskListUseCase(get()) }
+    single { AddObjectiveUseCase(get()) }
+    single { UpdateObjectiveUseCase(get()) }
+    single { DeleteObjectiveUseCase(get()) }
     single { AddTaskTagUseCase(get()) }
     single { UpdateTaskTagUseCase(get()) }
     single { DeleteTaskTagUseCase(get()) }

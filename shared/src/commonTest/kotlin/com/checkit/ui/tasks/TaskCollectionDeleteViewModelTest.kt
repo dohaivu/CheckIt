@@ -3,14 +3,14 @@ package com.checkit.ui.tasks
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
-import com.checkit.domain.TaskList
+import com.checkit.domain.Objective
 import com.checkit.domain.TaskTag
-import com.checkit.domain.usecase.AddTaskListUseCase
+import com.checkit.domain.usecase.AddObjectiveUseCase
 import com.checkit.domain.usecase.AddTaskTagUseCase
-import com.checkit.domain.usecase.DeleteTaskListUseCase
+import com.checkit.domain.usecase.DeleteObjectiveUseCase
 import com.checkit.domain.usecase.DeleteTaskTagUseCase
 import com.checkit.domain.usecase.IsTagNameTakenUseCase
-import com.checkit.domain.usecase.UpdateTaskListUseCase
+import com.checkit.domain.usecase.UpdateObjectiveUseCase
 import com.checkit.domain.usecase.UpdateTaskTagUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -29,8 +29,8 @@ import kotlin.test.assertNull
 class TaskCollectionDeleteViewModelTest {
     private val dispatcher = StandardTestDispatcher()
 
-    private val inbox = TaskList(id = 1L, name = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
-    private val errands = TaskList(id = 2L, name = "Errands", color = "#059669", icon = "List", sortOrder = 1)
+    private val inbox = Objective(id = 1L, name = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
+    private val errands = Objective(id = 2L, name = "Errands", color = "#059669", icon = "List", sortOrder = 1)
     private val tag = TaskTag(id = 10L, name = "Work", color = "#7C3AED")
 
     @BeforeTest
@@ -47,9 +47,9 @@ class TaskCollectionDeleteViewModelTest {
     fun deleteEditorListMovesItemsToInboxAndClearsEditor() = runTest(dispatcher) {
         val repository = FakeCheckItRepository(
             initialBoard = TaskBoard(
-                lists = listOf(inbox, errands),
-                tasks = listOf(task(id = 20L, list = errands)),
-                notes = listOf(note(id = 30L, list = errands))
+                objectives = listOf(inbox, errands),
+                tasks = listOf(task(id = 20L, objective = errands)),
+                notes = listOf(note(id = 30L, objective = errands))
             )
         )
         val viewModel = taskListViewModel(repository)
@@ -59,10 +59,10 @@ class TaskCollectionDeleteViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
 
         val board = repository.currentBoard
-        assertEquals(listOf(errands.id), repository.deletedLists)
-        assertEquals(listOf(inbox), board.lists)
-        assertEquals(inbox.id, board.tasks.single().list.id)
-        assertEquals(inbox.id, board.notes.single().list.id)
+        assertEquals(listOf(errands.id), repository.deletedObjectives)
+        assertEquals(listOf(inbox), board.objectives)
+        assertEquals(inbox.id, board.tasks.single().objective.id)
+        assertEquals(inbox.id, board.notes.single().objective.id)
         assertNull(viewModel.uiState.value.editor)
     }
 
@@ -70,10 +70,10 @@ class TaskCollectionDeleteViewModelTest {
     fun deleteEditorTagRemovesTagAndClearsEditor() = runTest(dispatcher) {
         val repository = FakeCheckItRepository(
             initialBoard = TaskBoard(
-                lists = listOf(inbox),
+                objectives = listOf(inbox),
                 tags = listOf(tag),
-                tasks = listOf(task(id = 20L, list = inbox, tags = listOf(tag))),
-                notes = listOf(note(id = 30L, list = inbox, tags = listOf(tag)))
+                tasks = listOf(task(id = 20L, objective = inbox, tags = listOf(tag))),
+                notes = listOf(note(id = 30L, objective = inbox, tags = listOf(tag)))
             )
         )
         val viewModel = taskTagViewModel(repository)
@@ -91,9 +91,9 @@ class TaskCollectionDeleteViewModelTest {
     }
 
     private fun taskListViewModel(repository: FakeCheckItRepository) = TaskListViewModel(
-        addTaskList = AddTaskListUseCase(repository),
-        updateTaskList = UpdateTaskListUseCase(repository),
-        deleteTaskList = DeleteTaskListUseCase(repository)
+        addObjective = AddObjectiveUseCase(repository),
+        updateObjective = UpdateObjectiveUseCase(repository),
+        deleteObjective = DeleteObjectiveUseCase(repository)
     )
 
     private fun taskTagViewModel(repository: FakeCheckItRepository) = TaskTagViewModel(
@@ -103,9 +103,9 @@ class TaskCollectionDeleteViewModelTest {
         isTagNameTaken = IsTagNameTakenUseCase(repository)
     )
 
-    private fun task(id: Long, list: TaskList, tags: List<TaskTag> = emptyList()) = TaskItem(
+    private fun task(id: Long, objective: Objective, tags: List<TaskTag> = emptyList()) = TaskItem(
         id = id,
-        list = list,
+        objective = objective,
         name = "Task $id",
         tags = tags,
         sortOrder = 0,
@@ -113,9 +113,9 @@ class TaskCollectionDeleteViewModelTest {
         updatedAtMillis = 0L
     )
 
-    private fun note(id: Long, list: TaskList, tags: List<TaskTag> = emptyList()) = NoteItem(
+    private fun note(id: Long, objective: Objective, tags: List<TaskTag> = emptyList()) = NoteItem(
         id = id,
-        list = list,
+        objective = objective,
         content = "Note $id",
         tags = tags,
         date = LocalDate(2026, 6, 13),

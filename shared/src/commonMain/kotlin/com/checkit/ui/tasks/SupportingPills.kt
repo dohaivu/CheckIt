@@ -10,7 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.checkit.domain.TaskList
+import com.checkit.domain.Objective
 import com.checkit.domain.TaskTag
 import com.checkit.ui.components.DetailChip
 import com.checkit.ui.components.TaskTagPill
@@ -21,7 +21,7 @@ import com.checkit.ui.theme.toColor
 
 @Composable
 internal fun SupportingPills(
-    list: TaskList?,
+    list: Objective?,
     tags: List<TaskTag>,
     overflowCount: Int = 0
 ) {

@@ -159,11 +159,11 @@ fun TaskPriority.priorityColor(): Color = when (this) {
 }
 
 fun NoteItem?.cardColor(): Color {
-    return this?.tags?.firstOrNull()?.color?.toColor() ?: this?.list?.color?.toColor() ?: FallbackColor
+    return this?.tags?.firstOrNull()?.color?.toColor() ?: this?.objective?.color?.toColor() ?: FallbackColor
 }
 
 fun TaskItem?.cardColor(): Color {
-    return this?.tags?.firstOrNull()?.color?.toColor() ?: this?.list?.color?.toColor() ?: this?.priority?.priorityColor() ?: FallbackColor
+    return this?.tags?.firstOrNull()?.color?.toColor() ?: this?.objective?.color?.toColor() ?: this?.priority?.priorityColor() ?: FallbackColor
 }
 
 fun DailyPlanItem.cardColor(): Color {

@@ -25,7 +25,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
-import com.checkit.domain.TaskList
+import com.checkit.domain.Objective
 import com.checkit.domain.TaskStatus
 import com.checkit.ui.TaskListDisplayType
 import com.checkit.ui.components.DateTimeRangeDetailChip
@@ -36,7 +36,7 @@ import com.checkit.ui.components.RepeatPill
 internal fun TaskRow(
     task: TaskItem,
     onClick: () -> Unit,
-    list: TaskList? = null,
+    list: Objective? = null,
     displayType: TaskListDisplayType = TaskListDisplayType.Standard
 ) {
     Card(
@@ -70,7 +70,7 @@ internal fun TaskRow(
 internal fun NoteRow(
     note: NoteItem,
     onClick: () -> Unit,
-    list: TaskList? = null,
+    list: Objective? = null,
     displayType: TaskListDisplayType = TaskListDisplayType.Standard
 ) {
     Card(
@@ -125,7 +125,7 @@ private fun BriefTaskRowContent(task: TaskItem) {
 }
 
 @Composable
-private fun StandardTaskRowContent(task: TaskItem, list: TaskList?) {
+private fun StandardTaskRowContent(task: TaskItem, list: Objective?) {
     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         TaskTitleRow(task, descriptionMaxLines = 0)
         DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes, isOverdue = task.isOverdue())
@@ -135,7 +135,7 @@ private fun StandardTaskRowContent(task: TaskItem, list: TaskList?) {
 }
 
 @Composable
-private fun DetailTaskRowContent(task: TaskItem, list: TaskList?) {
+private fun DetailTaskRowContent(task: TaskItem, list: Objective?) {
     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         TaskTitleRow(task, descriptionMaxLines = 3)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -170,12 +170,12 @@ private fun BriefNoteRowContent(note: NoteItem) {
 }
 
 @Composable
-private fun StandardNoteRowContent(note: NoteItem, list: TaskList?) {
+private fun StandardNoteRowContent(note: NoteItem, list: Objective?) {
     NoteRowScaffold(note = note, list = list, contentMaxLines = 2, visibleTagCount = 2)
 }
 
 @Composable
-private fun DetailNoteRowContent(note: NoteItem, list: TaskList?) {
+private fun DetailNoteRowContent(note: NoteItem, list: Objective?) {
     NoteRowScaffold(note = note, list = list, contentMaxLines = 5, visibleTagCount = Int.MAX_VALUE)
 }
 
@@ -220,7 +220,7 @@ internal fun SubtaskProgressText(task: TaskItem) {
 @Composable
 private fun NoteRowScaffold(
     note: NoteItem,
-    list: TaskList?,
+    list: Objective?,
     contentMaxLines: Int,
     visibleTagCount: Int
 ) {

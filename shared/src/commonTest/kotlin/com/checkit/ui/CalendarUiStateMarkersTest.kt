@@ -7,7 +7,7 @@ import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
-import com.checkit.domain.TaskList
+import com.checkit.domain.Objective
 import com.checkit.domain.TaskTag
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
@@ -149,7 +149,7 @@ class CalendarUiStateMarkersTest {
         date: LocalDate
     ) = TaskItem(
         id = id,
-        list = TaskList.None,
+        objective = Objective.None,
         name = "Task $id",
         doDate = date,
         sortOrder = id.toInt(),
@@ -162,7 +162,7 @@ class CalendarUiStateMarkersTest {
         date: LocalDate
     ) = NoteItem(
         id = id,
-        list = TaskList.None,
+        objective = Objective.None,
         content = "Note $id",
         date = date,
         createdAtMillis = 0L,

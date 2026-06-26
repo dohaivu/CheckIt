@@ -6,7 +6,7 @@ import com.checkit.data.GoalWriteInput
 import com.checkit.data.KeyResultWriteInput
 import com.checkit.data.NoteWriteInput
 import com.checkit.data.SettingsRepository
-import com.checkit.data.TaskListWriteInput
+import com.checkit.data.ObjectiveWriteInput
 import com.checkit.data.TaskTagWriteInput
 import com.checkit.data.TaskWriteInput
 import com.checkit.data.UserSettings
@@ -18,7 +18,7 @@ import com.checkit.domain.KeyResult
 import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
-import com.checkit.domain.TaskList
+import com.checkit.domain.Objective
 import com.checkit.domain.TaskReminder
 import com.checkit.domain.TaskTag
 import kotlinx.coroutines.flow.Flow
@@ -30,15 +30,15 @@ internal class FakeCheckItRepository(
     initialBoard: TaskBoard = TaskBoard()
 ) : CheckItRepository {
     private val boardFlow = MutableStateFlow(initialBoard)
-    val addedLists = mutableListOf<TaskListWriteInput>()
+    val addedObjectives = mutableListOf<ObjectiveWriteInput>()
     val addedGoals = mutableListOf<GoalWriteInput>()
     val updatedGoals = mutableListOf<Pair<Long, GoalWriteInput>>()
     val deletedGoals = mutableListOf<Long>()
     val addedKeyResults = mutableListOf<KeyResultWriteInput>()
     val updatedKeyResults = mutableListOf<Pair<Long, KeyResultWriteInput>>()
     val deletedKeyResults = mutableListOf<Long>()
-    val updatedLists = mutableListOf<Pair<Long, TaskListWriteInput>>()
-    val deletedLists = mutableListOf<Long>()
+    val updatedObjectives = mutableListOf<Pair<Long, ObjectiveWriteInput>>()
+    val deletedObjectives = mutableListOf<Long>()
     val addedTags = mutableListOf<TaskTagWriteInput>()
     val updatedTags = mutableListOf<Pair<Long, TaskTagWriteInput>>()
     val deletedTags = mutableListOf<Long>()
@@ -49,13 +49,13 @@ internal class FakeCheckItRepository(
     val updatedDailyPlanItems = mutableListOf<Pair<Long, DailyPlanItemWriteInput>>()
     val currentBoard: TaskBoard get() = boardFlow.value
 
-    var lastAssignedListId: Long = 0L
+    var lastAssignedObjectiveId: Long = 0L
         private set
     var lastAssignedTagId: Long = 0L
         private set
 
     private var nextGoalId: Long = 50L
-    private var nextListId: Long = 100L
+    private var nextObjectiveId: Long = 100L
     private var nextKeyResultId: Long = 300L
     private var nextTagId: Long = 500L
     private var nextTaskId: Long = 1_000L
@@ -102,37 +102,37 @@ internal class FakeCheckItRepository(
         boardFlow.update { board ->
             board.copy(
                 goals = board.goals.filterNot { it.id == goalId },
-                lists = board.lists.map { list ->
+                objectives = board.objectives.map { list ->
                     if (list.goalId == goalId) list.copy(goalId = null) else list
                 }
             )
         }
     }
 
-    override suspend fun addList(input: TaskListWriteInput): Long {
-        addedLists.add(input)
-        val id = nextListId++
-        lastAssignedListId = id
+    override suspend fun addObjective(input: ObjectiveWriteInput): Long {
+        addedObjectives.add(input)
+        val id = nextObjectiveId++
+        lastAssignedObjectiveId = id
         boardFlow.update { board ->
             board.copy(
-                lists = board.lists + TaskList(
+                objectives = board.objectives + Objective(
                     id = id,
                     name = input.name,
                     color = input.color,
                     icon = input.icon,
-                    sortOrder = board.lists.size
+                    sortOrder = board.objectives.size
                 )
             )
         }
         return id
     }
 
-    override suspend fun updateList(listId: Long, input: TaskListWriteInput) {
-        updatedLists.add(listId to input)
+    override suspend fun updateObjective(objectiveId: Long, input: ObjectiveWriteInput) {
+        updatedObjectives.add(objectiveId to input)
         boardFlow.update { board ->
             board.copy(
-                lists = board.lists.map { list ->
-                    if (list.id == listId) {
+                objectives = board.objectives.map { list ->
+                    if (list.id == objectiveId) {
                         list.copy(name = input.name, color = input.color, icon = input.icon)
                     } else {
                         list
@@ -142,17 +142,17 @@ internal class FakeCheckItRepository(
         }
     }
 
-    override suspend fun deleteList(listId: Long) {
-        deletedLists.add(listId)
+    override suspend fun deleteObjective(objectiveId: Long) {
+        deletedObjectives.add(objectiveId)
         boardFlow.update { board ->
-            val inbox = board.lists.firstOrNull { it.name == "Inbox" } ?: return@update board
+            val inbox = board.objectives.firstOrNull { it.name == "Inbox" } ?: return@update board
             board.copy(
-                lists = board.lists.filterNot { it.id == listId },
+                objectives = board.objectives.filterNot { it.id == objectiveId },
                 tasks = board.tasks.map { task ->
-                    if (task.list.id == listId) task.copy(list = inbox) else task
+                    if (task.objective.id == objectiveId) task.copy(objective = inbox) else task
                 },
                 notes = board.notes.map { note ->
-                    if (note.list.id == listId) note.copy(list = inbox) else note
+                    if (note.objective.id == objectiveId) note.copy(objective = inbox) else note
                 }
             )
         }
@@ -413,7 +413,7 @@ private fun TaskWriteInput.toTaskItem(
     updatedAtMillis: Long = 0L
 ) = TaskItem(
     id = taskId,
-    list = TaskList.None,
+        objective = Objective.None,
     name = name,
     description = description,
     subtasks = subtasks.mapIndexed { index, subtask ->

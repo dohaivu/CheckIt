@@ -68,7 +68,7 @@ data class TagEntity(
         ForeignKey(
             entity = ObjectiveEntity::class,
             parentColumns = ["id"],
-            childColumns = ["listId"],
+            childColumns = ["objectiveId"],
             onDelete = ForeignKey.CASCADE
         ),
         ForeignKey(
@@ -79,7 +79,7 @@ data class TagEntity(
         )
     ],
     indices = [
-        Index("listId"),
+        Index("objectiveId"),
         Index("keyResultId"),
         Index("status"),
         Index("priority"),
@@ -89,7 +89,7 @@ data class TagEntity(
 data class TaskEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0L,
-    val listId: Long,
+    val objectiveId: Long,
     val keyResultId: Long? = null,
     val name: String,
     val description: String = "",
@@ -157,16 +157,16 @@ data class SubTaskEntity(
         ForeignKey(
             entity = ObjectiveEntity::class,
             parentColumns = ["id"],
-            childColumns = ["listId"],
+            childColumns = ["objectiveId"],
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("listId")]
+    indices = [Index("objectiveId")]
 )
 data class NoteEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0L,
-    val listId: Long,
+    val objectiveId: Long,
     val title: String = "",
     val content: String,
     val status: String = "Open",

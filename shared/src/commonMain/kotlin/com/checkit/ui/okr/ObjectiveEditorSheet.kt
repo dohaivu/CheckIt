@@ -41,10 +41,8 @@ import com.checkit.ui.EditorMode
 import com.checkit.ui.ListEditorState
 import com.checkit.ui.components.ColorPicker
 import com.checkit.ui.components.DateRangePicker
-import com.checkit.ui.components.IconPicker
 import com.checkit.ui.components.SectionLabel
 import com.checkit.ui.theme.AppIconColorDefaults
-import com.checkit.ui.theme.toColor
 import kotlinx.datetime.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)

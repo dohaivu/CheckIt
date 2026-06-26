@@ -62,7 +62,7 @@ class MyDayViewModelTest {
 
         val item = repository.addedManualDailyPlanItems.single()
         assertEquals(DailyPlanItemSource.MyDayNote, item.source)
-        assertEquals(DailyPlanItemStatus.Planned, item.status)
+        assertEquals(DailyPlanItemStatus.Done, item.status)
         assertEquals(null, item.startTimeMinutes)
         assertEquals(null, item.endTimeMinutes)
     }
@@ -77,7 +77,7 @@ class MyDayViewModelTest {
 
         val item = repository.addedManualDailyPlanItems.single()
         assertEquals(DailyPlanItemSource.MyDayNote, item.source)
-        assertEquals(DailyPlanItemStatus.Planned, item.status)
+        assertEquals(DailyPlanItemStatus.Done, item.status)
         assertEquals(0, item.startTimeMinutes)
         assertEquals(null, item.endTimeMinutes)
     }

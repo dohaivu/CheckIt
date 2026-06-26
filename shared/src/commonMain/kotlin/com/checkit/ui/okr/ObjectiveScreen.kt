@@ -47,7 +47,7 @@ import com.checkit.domain.Goal
 import com.checkit.domain.KeyResult
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
-import com.checkit.domain.TaskList
+import com.checkit.domain.Objective
 import com.checkit.ui.components.icons.AppIcons
 import com.checkit.ui.components.icons.Target
 import com.checkit.ui.theme.toColor
@@ -59,14 +59,14 @@ internal fun ObjectiveScreen(
     viewModel: ObjectiveViewModel,
     onTaskClick: (TaskItem) -> Unit,
     onAddTask: (KeyResult) -> Unit,
-    onEditObjective: (TaskList) -> Unit,
+    onEditObjective: (Objective) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
-    val objectives = remember(board.lists, goal.id) {
-        board.lists
+    val objectives = remember(board.objectives, goal.id) {
+        board.objectives
             .filter { it.goalId == goal.id }
-            .sortedWith(compareBy<TaskList> { it.sortOrder }.thenBy { it.name })
+            .sortedWith(compareBy<Objective> { it.sortOrder }.thenBy { it.name })
     }
     val keyResultsByObjective = remember(board.keyResults) {
         board.keyResults
@@ -120,7 +120,7 @@ internal fun ObjectiveScreen(
 
 @Composable
 private fun ObjectiveBranch(
-    objective: TaskList,
+    objective: Objective,
     keyResults: List<KeyResult>,
     tasksByKeyResult: Map<Long?, List<TaskItem>>,
     collapsedNodeKeys: Set<String>,
@@ -128,10 +128,10 @@ private fun ObjectiveBranch(
     onToggleExpanded: (String) -> Unit,
     onSelectNode: (String) -> Unit,
     onTaskClick: (TaskItem) -> Unit,
-    onAddKeyResult: (TaskList) -> Unit,
+    onAddKeyResult: (Objective) -> Unit,
     onAddTask: (KeyResult) -> Unit,
     onEditKeyResult: (KeyResult) -> Unit,
-    onEditObjective: (TaskList) -> Unit
+    onEditObjective: (Objective) -> Unit
 ) {
     val nodeKey = objective.nodeKey()
     val isExpanded = nodeKey !in collapsedNodeKeys
@@ -407,7 +407,7 @@ private fun nodeIndent(depth: Int): Dp = (depth * 18).dp
 
 private fun guideLineStart(depth: Int): Dp = ((depth - 1).coerceAtLeast(0) * 18 + 18).dp
 
-private fun TaskList.nodeKey(): String = "objective-$id"
+private fun Objective.nodeKey(): String = "objective-$id"
 
 private fun KeyResult.nodeKey(): String = "key-result-$id"
 

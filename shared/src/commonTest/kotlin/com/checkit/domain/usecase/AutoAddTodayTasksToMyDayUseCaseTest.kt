@@ -3,7 +3,7 @@ package com.checkit.domain.usecase
 import com.checkit.data.UserSettings
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
-import com.checkit.domain.TaskList
+import com.checkit.domain.Objective
 import com.checkit.domain.TaskStatus
 import com.checkit.ui.tasks.FakeCheckItRepository
 import com.checkit.ui.tasks.FakeSettingsRepository
@@ -97,7 +97,7 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
         trashedAtMillis: Long? = null
     ) = TaskItem(
         id = id,
-        list = TaskList.None,
+        objective = Objective.None,
         name = "Task $id",
         status = status,
         doDate = doDate,

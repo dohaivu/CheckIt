@@ -12,7 +12,7 @@ import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskFilter
 import com.checkit.domain.TaskItem
-import com.checkit.domain.TaskList
+import com.checkit.domain.Objective
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskReminder
 import com.checkit.domain.TaskReminderWriteInput
@@ -40,9 +40,9 @@ interface CheckItRepository {
     suspend fun addGoal(input: GoalWriteInput): Long
     suspend fun updateGoal(goalId: Long, input: GoalWriteInput)
     suspend fun deleteGoal(goalId: Long)
-    suspend fun addList(input: TaskListWriteInput): Long
-    suspend fun updateList(listId: Long, input: TaskListWriteInput)
-    suspend fun deleteList(listId: Long)
+    suspend fun addObjective(input: ObjectiveWriteInput): Long
+    suspend fun updateObjective(objectiveId: Long, input: ObjectiveWriteInput)
+    suspend fun deleteObjective(objectiveId: Long)
     suspend fun addKeyResult(input: KeyResultWriteInput): Long
     suspend fun updateKeyResult(keyResultId: Long, input: KeyResultWriteInput)
     suspend fun deleteKeyResult(keyResultId: Long)
@@ -85,7 +85,7 @@ data class GoalWriteInput(
     val icon: String
 )
 
-data class TaskListWriteInput(
+data class ObjectiveWriteInput(
     val name: String,
     val color: String,
     val icon: String,
@@ -108,7 +108,7 @@ data class TaskTagWriteInput(
 )
 
 data class TaskWriteInput(
-    val listId: Long,
+    val objectiveId: Long,
     val keyResultId: Long? = null,
     val name: String,
     val description: String,
@@ -130,7 +130,7 @@ data class SubTaskWriteInput(
 )
 
 data class NoteWriteInput(
-    val listId: Long,
+    val objectiveId: Long,
     val title: String,
     val content: String,
     val status: TaskStatus,
@@ -161,12 +161,12 @@ class RoomCheckItRepository(
         combine(
             combine(
                 dao.observeGoals(),
-                dao.observeLists(),
+                dao.observeObjectives(),
                 dao.observeFilters(),
                 dao.observeTasks(),
                 dao.observeNotes()
-            ) { goals, lists, filters, tasks, notes ->
-                TaskBoardRows(goals, lists, filters, tasks, notes)
+            ) { goals, objectives, filters, tasks, notes ->
+                TaskBoardRows(goals, objectives, filters, tasks, notes)
             },
             combine(
                 dao.observeSubTasks(),
@@ -189,16 +189,16 @@ class RoomCheckItRepository(
             val noteTagIds = joins.noteTags.groupBy { it.noteId }.mapValues { entry -> entry.value.map { it.tagId } }
             val subTasksByTask = joins.subTasks.groupBy { it.taskId }
             val remindersByTask = joins.reminders.groupBy { it.taskId }
-            val listsById = rows.lists.associateBy { it.id }.mapValues { (_, entity) -> entity.toDomain() }
+            val objectivesById = rows.objectives.associateBy { it.id }.mapValues { (_, entity) -> entity.toDomain() }
 
             TaskBoard(
                 goals = domainGoals,
-                lists = listsById.values.toList(),
+                objectives = objectivesById.values.toList(),
                 keyResults = domainKeyResults,
                 filters = rows.filters.map { it.toDomain() },
                 tasks = rows.tasks.map { task ->
                     task.toDomain(
-                        list = listsById[task.listId] ?: TaskList.None,
+                        objective = objectivesById[task.objectiveId] ?: Objective.None,
                         keyResult = task.keyResultId?.let { keyResultsById[it] },
                         subtasks = subTasksByTask[task.id].orEmpty().map { it.toDomain() },
                         reminders = remindersByTask[task.id].orEmpty().map { it.toDomain() },
@@ -207,7 +207,7 @@ class RoomCheckItRepository(
                 },
                 notes = rows.notes.map { note ->
                     note.toDomain(
-                        list = listsById[note.listId] ?: TaskList.None,
+                        objective = objectivesById[note.objectiveId] ?: Objective.None,
                         tags = noteTagIds[note.id].orEmpty().mapNotNull { tagsById[it] }
                     )
                 },
@@ -243,12 +243,12 @@ class RoomCheckItRepository(
     override suspend fun ensureDefaultTaskData() = seedMutex.withLock {
         cleanupDuplicateSeedData()
         ensureDefaultFilters()
-        if (dao.listCount() > 0) return@withLock
+        if (dao.objectiveCount() > 0) return@withLock
 
         val instant = Clock.System.now()
         val now = instant.toEpochMilliseconds()
         val today = instant.toLocalDateTime(TimeZone.currentSystemDefault()).date
-        val inboxId = dao.insertList(
+        val inboxId = dao.insertObjective(
             ObjectiveEntity(
                 title = "Inbox",
                 color = "#2563EB",
@@ -260,7 +260,7 @@ class RoomCheckItRepository(
         val homeId = dao.insertTag(TagEntity(name = "home", color = "#059669"))
         val todayTaskId = dao.insertTask(
             TaskEntity(
-                listId = inboxId,
+                objectiveId = inboxId,
                 name = "Plan the day",
                 description = "Review agenda, timeline, and the next task to start.",
                 status = TaskStatus.Open.name,
@@ -288,7 +288,7 @@ class RoomCheckItRepository(
 
         val noteId = dao.insertNote(
             NoteEntity(
-                listId = inboxId,
+                objectiveId = inboxId,
                 title = "Note basics",
                 content = "Ideas, meeting notes, and loose thoughts live beside tasks in each list.",
                 status = TaskStatus.Open.name,
@@ -319,8 +319,8 @@ class RoomCheckItRepository(
         dao.deleteGoal(goalId)
     }
 
-    override suspend fun addList(input: TaskListWriteInput): Long =
-        dao.insertList(
+    override suspend fun addObjective(input: ObjectiveWriteInput): Long =
+        dao.insertObjective(
             ObjectiveEntity(
                 title = input.name,
                 goalId = input.goalId,
@@ -328,13 +328,13 @@ class RoomCheckItRepository(
                 endDateEpochDays = input.endDate?.toEpochDays()?.toInt(),
                 color = input.color,
                 icon = input.icon,
-                sortOrder = dao.nextListSortOrder()
+                sortOrder = dao.nextObjectiveSortOrder()
             )
         )
 
-    override suspend fun updateList(listId: Long, input: TaskListWriteInput) {
-        dao.updateList(
-            listId = listId,
+    override suspend fun updateObjective(objectiveId: Long, input: ObjectiveWriteInput) {
+        dao.updateObjective(
+            objectiveId = objectiveId,
             name = input.name,
             goalId = input.goalId,
             startDateEpochDays = input.startDate?.toEpochDays()?.toInt(),
@@ -344,12 +344,12 @@ class RoomCheckItRepository(
         )
     }
 
-    override suspend fun deleteList(listId: Long) {
-        val inboxId = dao.inboxListId() ?: return
-        if (listId == inboxId) return
-        dao.deleteListMovingContentsToList(
-            listId = listId,
-            targetListId = inboxId,
+    override suspend fun deleteObjective(objectiveId: Long) {
+        val inboxId = dao.inboxObjectiveId() ?: return
+        if (objectiveId == inboxId) return
+        dao.deleteObjectiveMovingContents(
+            objectiveId = objectiveId,
+            targetObjectiveId = inboxId,
             timestampMillis = Clock.System.now().toEpochMilliseconds()
         )
     }
@@ -405,7 +405,7 @@ class RoomCheckItRepository(
         val keyResultId = input.keyResultIdForObjective()
         val taskId = dao.insertTask(
             TaskEntity(
-                listId = input.listId,
+                objectiveId = input.objectiveId,
                 keyResultId = keyResultId,
                 name = input.name,
                 description = input.description,
@@ -416,7 +416,7 @@ class RoomCheckItRepository(
                 endTimeMinutes = input.endTimeMinutes,
                 durationMinutes = input.durationMinutes,
                 repeatRRule = input.repeatRRule,
-                sortOrder = dao.nextTaskSortOrder(input.listId),
+                sortOrder = dao.nextTaskSortOrder(input.objectiveId),
                 createdAtMillis = now,
                 updatedAtMillis = now
             )
@@ -434,7 +434,7 @@ class RoomCheckItRepository(
         val keyResultId = input.keyResultIdForObjective()
         dao.updateTask(
             taskId = taskId,
-            listId = input.listId,
+            objectiveId = input.objectiveId,
             keyResultId = keyResultId,
             name = input.name,
             description = input.description,
@@ -607,7 +607,7 @@ class RoomCheckItRepository(
         val now = Clock.System.now().toEpochMilliseconds()
         val noteId = dao.insertNote(
             NoteEntity(
-                listId = input.listId,
+                objectiveId = input.objectiveId,
                 title = input.title,
                 content = input.content,
                 status = input.status.name,
@@ -615,7 +615,7 @@ class RoomCheckItRepository(
                 startTimeMinutes = input.startTimeMinutes,
                 createdAtMillis = now,
                 editedAtMillis = now,
-                sortOrder = dao.nextNoteSortOrder(input.listId)
+                sortOrder = dao.nextNoteSortOrder(input.objectiveId)
             )
         )
         input.tagIds.forEach { tagId -> dao.insertNoteTagIfParentsExist(noteId, tagId) }
@@ -625,7 +625,7 @@ class RoomCheckItRepository(
     override suspend fun updateNote(noteId: Long, input: NoteWriteInput) {
         dao.updateNote(
             noteId = noteId,
-            listId = input.listId,
+            objectiveId = input.objectiveId,
             title = input.title,
             content = input.content,
             status = input.status.name,
@@ -682,7 +682,7 @@ class RoomCheckItRepository(
     private suspend fun TaskWriteInput.keyResultIdForObjective(): Long? {
         val keyResultId = keyResultId ?: return null
         val keyResult = dao.keyResultById(keyResultId) ?: return null
-        return keyResultId.takeIf { keyResult.objectiveId == listId }
+        return keyResultId.takeIf { keyResult.objectiveId == objectiveId }
     }
 
     private suspend fun ensureDailyPlan(date: LocalDate): Long {
@@ -704,7 +704,7 @@ class RoomCheckItRepository(
         dao.deleteDuplicateSeedNotes()
         dao.deleteDuplicateSeedFilters()
         dao.deleteDuplicateSeedTags()
-        dao.deleteDuplicateEmptySeedLists()
+        dao.deleteDuplicateEmptySeedObjectives()
     }
 
     private suspend fun ensureDefaultFilters() {
@@ -783,7 +783,7 @@ private data class TaskFilterSeed(
 
 private data class TaskBoardRows(
     val goals: List<GoalEntity>,
-    val lists: List<ObjectiveEntity>,
+    val objectives: List<ObjectiveEntity>,
     val filters: List<TaskFilterEntity>,
     val tasks: List<TaskEntity>,
     val notes: List<NoteEntity>
@@ -812,7 +812,7 @@ private fun GoalEntity.toDomain() = Goal(
     isArchived = isArchived
 )
 
-private fun ObjectiveEntity.toDomain() = TaskList(
+private fun ObjectiveEntity.toDomain() = Objective(
     id = id,
     goalId = goalId,
     name = title,
@@ -859,14 +859,14 @@ private fun TaskEntity.hasDifferentScheduleThan(input: TaskWriteInput): Boolean 
         endTimeMinutes != input.endTimeMinutes
 
 private fun TaskEntity.toDomain(
-    list: TaskList,
+    objective: Objective,
     keyResult: KeyResult?,
     subtasks: List<SubTaskItem>,
     reminders: List<TaskReminder>,
     tags: List<TaskTag>
 ) = TaskItem(
     id = id,
-    list = list,
+    objective = objective,
     keyResult = keyResult,
     name = name,
     description = description,
@@ -926,9 +926,9 @@ private fun TaskReminderEntity.toDomain() = TaskReminder(
     label = label
 )
 
-private fun NoteEntity.toDomain(list: TaskList, tags: List<TaskTag>) = NoteItem(
+private fun NoteEntity.toDomain(objective: Objective, tags: List<TaskTag>) = NoteItem(
     id = id,
-    list = list,
+    objective = objective,
     title = title,
     content = content,
     status = enumValueOf(status),

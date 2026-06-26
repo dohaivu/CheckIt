@@ -50,8 +50,8 @@ data class CalendarUiState(
         }
     }
 
-    private val listColors: Map<Long, Color> = board.lists.associateWith { list ->
-        list.color.toColor()
+    private val objectiveColors: Map<Long, Color> = board.objectives.associateWith { objective ->
+        objective.color.toColor()
     }.mapKeys { it.key.id }
 
     fun tasksForDate(date: kotlinx.datetime.LocalDate): List<TaskItem> =
@@ -79,9 +79,9 @@ data class CalendarUiState(
             var i = 0
             while (i < totalSize && size < MarkerCap) {
                 val color = if (i < tasks.size) {
-                    listColors[tasks[i].list.id]
+                    objectiveColors[tasks[i].objective.id]
                 } else {
-                    listColors[notes[i - tasks.size].list.id]
+                    objectiveColors[notes[i - tasks.size].objective.id]
                 }
                 add(color ?: DefaultMarkerColor)
                 i++
@@ -103,7 +103,7 @@ data class CalendarUiState(
 
     private fun dailyItemColor(item: DailyPlanItem): Color =
         item.taskId
-            ?.let { taskId -> listColors[board.tasksById[taskId]?.list?.id] }
+            ?.let { taskId -> objectiveColors[board.tasksById[taskId]?.objective?.id] }
             ?: DefaultMarkerColor
 
     private companion object {

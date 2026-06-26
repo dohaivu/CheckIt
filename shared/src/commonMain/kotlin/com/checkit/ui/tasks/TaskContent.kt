@@ -57,7 +57,6 @@ internal fun TaskContent(
         when (state.selectedView) {
             TaskWorkspaceView.List -> TaskListView(
                 items = state.visibleListItems,
-                lists = state.board.lists,
                 showListName = showListName,
                 displayType = state.listDisplayType,
                 onTaskClick = onTaskClick,

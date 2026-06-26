@@ -372,7 +372,7 @@ fun CheckItApp(
                 taskUiState.editor?.let { editor ->
                     TaskEditorSheet(
                         editor = editor,
-                        availableLists = taskUiState.board.lists,
+                        availableLists = taskUiState.board.objectives,
                         availableTags = taskUiState.board.tags,
                         onDismiss = taskViewModel::dismissEditor,
                         onSave = taskViewModel::saveEditor,

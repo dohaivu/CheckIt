@@ -46,7 +46,7 @@ import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
-import com.checkit.domain.TaskList
+import com.checkit.domain.Objective
 import com.checkit.domain.hasEndTime
 import com.checkit.ui.MyDayUiState
 import com.checkit.ui.MyDayView
@@ -434,7 +434,7 @@ private fun MyDayTaskViewProjection.toTimelineItems(
 @Composable
 private fun SuggestionCard(
     task: TaskItem,
-    list: TaskList?,
+    list: Objective?,
     onClick: () -> Unit,
     onAdd: () -> Unit
 ) {
@@ -499,7 +499,7 @@ private fun SuggestionsSheet(
                     items(tasks, key = { it.id }) { task ->
                         SuggestionCard(
                             task = task,
-                            list = task.list,
+                            list = task.objective,
                             onClick = { onTaskClick(task) },
                             onAdd = { onAddTask(task) }
                         )

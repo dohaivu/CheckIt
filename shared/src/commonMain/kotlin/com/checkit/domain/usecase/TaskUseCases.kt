@@ -5,7 +5,7 @@ import com.checkit.data.DailyPlanItemWriteInput
 import com.checkit.data.GoalWriteInput
 import com.checkit.data.NoteWriteInput
 import com.checkit.data.SettingsRepository
-import com.checkit.data.TaskListWriteInput
+import com.checkit.data.ObjectiveWriteInput
 import com.checkit.data.TaskTagWriteInput
 import com.checkit.data.TaskWriteInput
 import com.checkit.domain.DailyPlan
@@ -141,23 +141,23 @@ class DeleteGoalUseCase(
     suspend operator fun invoke(goalId: Long) = repository.deleteGoal(goalId)
 }
 
-class AddTaskListUseCase(
+class AddObjectiveUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(input: TaskListWriteInput): Long = repository.addList(input)
+    suspend operator fun invoke(input: ObjectiveWriteInput): Long = repository.addObjective(input)
 }
 
-class UpdateTaskListUseCase(
+class UpdateObjectiveUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(listId: Long, input: TaskListWriteInput) =
-        repository.updateList(listId, input)
+    suspend operator fun invoke(objectiveId: Long, input: ObjectiveWriteInput) =
+        repository.updateObjective(objectiveId, input)
 }
 
-class DeleteTaskListUseCase(
+class DeleteObjectiveUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(listId: Long) = repository.deleteList(listId)
+    suspend operator fun invoke(objectiveId: Long) = repository.deleteObjective(objectiveId)
 }
 
 class AddTaskTagUseCase(
@@ -315,11 +315,11 @@ class SelectTaskBoardItemsUseCase {
         today: LocalDate
     ): TaskBoardItems {
         val listFilteredTasks = when (selection) {
-            is TaskBoardSelection.ListSelection -> board.tasks.filter { it.list.id == selection.listId && !it.isTrashed }
+            is TaskBoardSelection.ListSelection -> board.tasks.filter { it.objective.id == selection.listId && !it.isTrashed }
             is TaskBoardSelection.FilterSelection -> board.tasks.filter { it.matches(selection.filter, today) }
         }
         val listFilteredNotes = when (selection) {
-            is TaskBoardSelection.ListSelection -> board.notes.filter { it.list.id == selection.listId && !it.isTrashed }
+            is TaskBoardSelection.ListSelection -> board.notes.filter { it.objective.id == selection.listId && !it.isTrashed }
             is TaskBoardSelection.FilterSelection -> board.notes.filter { it.matches(selection.filter, today) }
         }
 

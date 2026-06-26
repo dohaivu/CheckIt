@@ -6,7 +6,7 @@ data class AppConfig(val versionName: String)
 
 data class TaskBoard(
     val goals: List<Goal> = emptyList(),
-    val lists: List<TaskList> = emptyList(),
+    val objectives: List<Objective> = emptyList(),
     val keyResults: List<KeyResult> = emptyList(),
     val filters: List<TaskFilter> = emptyList(),
     val tasks: List<TaskItem> = emptyList(),
@@ -63,8 +63,6 @@ data class Objective(
     }
 }
 
-typealias TaskList = Objective
-
 data class KeyResult(
     val id: Long,
     val objectiveId: Long,
@@ -94,7 +92,7 @@ enum class KeyResultUnit(val label: String) {
 
 data class TaskItem(
     val id: Long,
-    val list: TaskList,
+    val objective: Objective,
     val keyResult: KeyResult? = null,
     val name: String,
     val description: String = "",
@@ -166,7 +164,7 @@ data class SubTaskItem(
 
 data class NoteItem(
     val id: Long,
-    val list: TaskList,
+    val objective: Objective,
     val title: String = "",
     val content: String,
     val tags: List<TaskTag> = emptyList(),

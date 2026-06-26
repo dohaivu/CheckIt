@@ -7,7 +7,7 @@ import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
-import com.checkit.domain.TaskList
+import com.checkit.domain.Objective
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskTag
 import kotlinx.datetime.LocalDate
@@ -228,7 +228,7 @@ class BuildDailyPlanMarkdownSummaryUseCaseTest {
         subtasks: List<SubTaskItem> = emptyList()
     ) = TaskItem(
         id = id,
-        list = TaskList.None,
+        objective = Objective.None,
         name = name,
         description = description,
         subtasks = subtasks,

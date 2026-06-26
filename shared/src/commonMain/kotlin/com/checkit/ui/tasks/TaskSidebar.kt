@@ -35,7 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.Goal
-import com.checkit.domain.TaskList
+import com.checkit.domain.Objective
 import com.checkit.domain.TaskTag
 import com.checkit.ui.theme.materialIcon
 import com.checkit.ui.theme.toColor
@@ -43,7 +43,7 @@ import com.checkit.ui.theme.toColor
 @Composable
 internal fun TaskSidebar(
     goals: List<Goal>,
-    lists: List<TaskList>,
+    lists: List<Objective>,
     tags: List<TaskTag>,
     isBoardSelected: Boolean,
     selectedListId: Long?,
@@ -56,7 +56,7 @@ internal fun TaskSidebar(
     onAddGoalClick: () -> Unit,
     onEditGoalClick: (Goal) -> Unit,
     onAddListClick: () -> Unit,
-    onEditListClick: (TaskList) -> Unit,
+    onEditListClick: (Objective) -> Unit,
     onAddTagClick: () -> Unit,
     onEditTagClick: (TaskTag) -> Unit
 ) {

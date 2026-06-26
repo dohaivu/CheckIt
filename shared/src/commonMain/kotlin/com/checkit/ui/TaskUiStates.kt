@@ -8,7 +8,7 @@ import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskFilter
 import com.checkit.domain.TaskItem
-import com.checkit.domain.TaskList
+import com.checkit.domain.Objective
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.ui.theme.AppIconColorDefaults
@@ -37,7 +37,7 @@ data class TaskUiState(
     val visibleTasks: List<TaskItem> get() = visibleItems.tasks
     val visibleNotes: List<NoteItem> get() = visibleItems.notes
     val visibleListItems: List<TaskListEntry> get() = visibleItems.listItems
-    val selectedList: TaskList? = board.lists.firstOrNull { it.id == selectedListId }
+    val selectedList: Objective? = board.objectives.firstOrNull { it.id == selectedListId }
     val selectedGoal = board.goals.firstOrNull { it.id == selectedGoalId }
     val selectedFilter: TaskFilter? = board.filters.firstOrNull { it.id == selectedFilterId }
     val selectedTag = board.tags.firstOrNull { it.id == selectedTagId }
@@ -127,7 +127,7 @@ sealed interface TaskEditorState {
     data class TaskForm(
         val mode: EditorMode,
         val taskId: Long? = null,
-        val listId: Long,
+        val objectiveId: Long,
         val keyResultId: Long? = null,
         val name: String = "",
         val description: String = "",
@@ -151,7 +151,7 @@ sealed interface TaskEditorState {
     data class NoteForm(
         val mode: EditorMode,
         val noteId: Long? = null,
-        val listId: Long,
+        val objectiveId: Long,
         val title: String = "",
         val content: String = "",
         val status: TaskStatus = TaskStatus.Open,
@@ -181,7 +181,7 @@ private fun nextSubTaskEditorKey(): Long = --subTaskEditorKeySeed
 
 data class ListEditorState(
     val mode: EditorMode,
-    val listId: Long? = null,
+    val objectiveId: Long? = null,
     val goalId: Long? = null,
     val name: String = "",
     val color: String = AppIconColorDefaults.ListColors.first(),

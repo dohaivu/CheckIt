@@ -2,11 +2,11 @@ package com.checkit.ui.tasks
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.checkit.data.TaskListWriteInput
-import com.checkit.domain.TaskList
-import com.checkit.domain.usecase.AddTaskListUseCase
-import com.checkit.domain.usecase.DeleteTaskListUseCase
-import com.checkit.domain.usecase.UpdateTaskListUseCase
+import com.checkit.data.ObjectiveWriteInput
+import com.checkit.domain.Objective
+import com.checkit.domain.usecase.AddObjectiveUseCase
+import com.checkit.domain.usecase.DeleteObjectiveUseCase
+import com.checkit.domain.usecase.UpdateObjectiveUseCase
 import com.checkit.ui.EditorMode
 import com.checkit.ui.ListEditorState
 import kotlinx.datetime.LocalDate
@@ -22,9 +22,9 @@ data class TaskListUiState(
 )
 
 class TaskListViewModel(
-    private val addTaskList: AddTaskListUseCase,
-    private val updateTaskList: UpdateTaskListUseCase,
-    private val deleteTaskList: DeleteTaskListUseCase
+    private val addObjective: AddObjectiveUseCase,
+    private val updateObjective: UpdateObjectiveUseCase,
+    private val deleteObjective: DeleteObjectiveUseCase
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(TaskListUiState())
     val uiState: StateFlow<TaskListUiState> = _uiState.asStateFlow()
@@ -37,12 +37,12 @@ class TaskListViewModel(
         _uiState.update { it.copy(editor = ListEditorState(mode = EditorMode.Add, goalId = goalId)) }
     }
 
-    fun openEditList(list: TaskList) {
+    fun openEditList(list: Objective) {
         _uiState.update {
             it.copy(
                 editor = ListEditorState(
                     mode = EditorMode.Edit,
-                    listId = list.id,
+                    objectiveId = list.id,
                     goalId = list.goalId,
                     name = list.name,
                     color = list.color,
@@ -69,7 +69,7 @@ class TaskListViewModel(
             showMessage("Add a name")
             return
         }
-        val input = TaskListWriteInput(
+        val input = ObjectiveWriteInput(
             name = form.name.trim(),
             color = form.color,
             icon = form.icon,
@@ -79,11 +79,11 @@ class TaskListViewModel(
         )
         viewModelScope.launch {
             val savedId = if (form.mode == EditorMode.Add) {
-                addTaskList(input)
+                addObjective(input)
             } else {
-                val listId = form.listId ?: return@launch
-                updateTaskList(listId, input)
-                listId
+                val objectiveId = form.objectiveId ?: return@launch
+                updateObjective(objectiveId, input)
+                objectiveId
             }
             _uiState.update { it.copy(editor = null) }
             onSaved(savedId)
@@ -92,13 +92,13 @@ class TaskListViewModel(
 
     fun deleteEditorList(onDeleted: () -> Unit = {}) {
         val form = _uiState.value.editor ?: return
-        val listId = form.listId ?: return
+        val objectiveId = form.objectiveId ?: return
         if (form.name == InboxListName) {
             showMessage("Inbox can't be deleted")
             return
         }
         viewModelScope.launch {
-            deleteTaskList(listId)
+            deleteObjective(objectiveId)
             _uiState.update { it.copy(editor = null, message = "List deleted; items moved to Inbox") }
             onDeleted()
         }
