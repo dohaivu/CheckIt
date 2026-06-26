@@ -78,11 +78,12 @@ data class KeyResult(
 
 enum class KeyResultUnit(val label: String) {
     Percentage("%"),
-    Number("#"),
+    Number("#"), // quantity, count
     Currency("$"),
     Hours("h"),
     Days("d"),
-    Points("pts");
+    Points("pts"),
+    Binary("completed"); // yes-1, no-0
 
     companion object {
         fun fromString(value: String): KeyResultUnit =

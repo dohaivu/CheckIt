@@ -114,8 +114,11 @@ class GoalViewModel(
         }
     }
 
-    fun selectNode(nodeKey: String) {
-        _uiState.update { it.copy(selectedNodeKey = nodeKey) }
+    fun selectNode(nodeKey: String?) {
+        _uiState.update { 
+            val nextKey = if (it.selectedNodeKey == nodeKey) null else nodeKey
+            it.copy(selectedNodeKey = nextKey)
+        }
     }
 
     private fun updateEditor(transform: (GoalEditorState) -> GoalEditorState) {

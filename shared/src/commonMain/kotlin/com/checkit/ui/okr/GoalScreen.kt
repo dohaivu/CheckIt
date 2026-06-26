@@ -5,9 +5,11 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,9 +23,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -39,6 +40,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -295,51 +300,66 @@ private fun TreeNodeRow(
         Color.Transparent
     }
     val lineColor = color ?: MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f)
+    val rotation by animateFloatAsState(if (isExpanded) 90f else 0f)
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .drawBehind {
+                val strokePx = 1.2.dp.toPx() // Slightly thinner for more elegance
+                val curveRadius = 12.dp.toPx() // Larger radius for more organic feel
+                val dashColor = lineColor.copy(alpha = 0.4f)
+
                 // Draw vertical lines for ancestors
                 ancestorLines.forEach { xDp ->
                     val x = xDp.toPx()
                     drawLine(
-                        color = lineColor,
+                        color = dashColor,
                         start = Offset(x, 0f),
                         end = Offset(x, size.height),
-                        strokeWidth = 1.dp.toPx()
+                        strokeWidth = strokePx,
+                        cap = StrokeCap.Round
                     )
                 }
 
                 if (depth > 0) {
                     val x = guideLineStart(depth).toPx()
                     val yCenter = size.height / 2
+                    val xIconCenter = (nodeIndent(depth) + 18.dp).toPx()
                     
-                    // Vertical line from top to center
-                    drawLine(
-                        color = lineColor,
-                        start = Offset(x, 0f),
-                        end = Offset(x, yCenter),
-                        strokeWidth = 1.dp.toPx()
-                    )
-                    
-                    // Vertical line from center to bottom (if not last)
-                    if (!isLast) {
+                    if (isLast) {
+                        // Rounded L-shape connector
+                        val path = Path().apply {
+                            moveTo(x, 0f)
+                            lineTo(x, yCenter - curveRadius)
+                            quadraticTo(x, yCenter, x + curveRadius, yCenter)
+                            lineTo(xIconCenter, yCenter)
+                        }
+                        drawPath(
+                            path = path,
+                            color = dashColor,
+                            style = Stroke(width = strokePx, cap = StrokeCap.Round)
+                        )
+                    } else {
+                        // Vertical line passing through
                         drawLine(
-                            color = lineColor,
-                            start = Offset(x, yCenter),
+                            color = dashColor,
+                            start = Offset(x, 0f),
                             end = Offset(x, size.height),
-                            strokeWidth = 1.dp.toPx()
+                            strokeWidth = strokePx,
+                            cap = StrokeCap.Round
+                        )
+                        // Rounded branch connector
+                        val path = Path().apply {
+                            moveTo(x, yCenter - curveRadius)
+                            quadraticTo(x, yCenter, x + curveRadius, yCenter)
+                            lineTo(xIconCenter, yCenter)
+                        }
+                        drawPath(
+                            path = path,
+                            color = dashColor,
+                            style = Stroke(width = strokePx, cap = StrokeCap.Round)
                         )
                     }
-                    
-                    // Horizontal line to icon
-                    val xIconCenter = (nodeIndent(depth) + 18.dp).toPx()
-                    drawLine(
-                        color = lineColor,
-                        start = Offset(x, yCenter),
-                        end = Offset(xIconCenter, yCenter),
-                        strokeWidth = 1.dp.toPx()
-                    )
                 }
                 
                 // If expanded, draw the vertical line for children starting from icon center
@@ -347,10 +367,11 @@ private fun TreeNodeRow(
                     val x = (nodeIndent(depth) + 18.dp).toPx()
                     val yCenter = size.height / 2
                     drawLine(
-                        color = lineColor,
+                        color = dashColor,
                         start = Offset(x, yCenter),
                         end = Offset(x, size.height),
-                        strokeWidth = 1.dp.toPx()
+                        strokeWidth = strokePx,
+                        cap = StrokeCap.Round
                     )
                 }
             }
@@ -365,18 +386,23 @@ private fun TreeNodeRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (hasChildren) {
-            IconButton(
-                onClick = { onToggleExpanded(nodeKey) },
-                modifier = Modifier.size(36.dp)
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = 4.dp)
+                    .size(28.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .combinedClickable(
+                        onClick = { onToggleExpanded(nodeKey) }
+                    ),
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = if (isExpanded) {
-                        Icons.Default.KeyboardArrowDown
-                    } else {
-                        Icons.AutoMirrored.Filled.KeyboardArrowRight
-                    },
+                    imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                     contentDescription = if (isExpanded) "Collapse" else "Expand",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    modifier = Modifier.size(20.dp).graphicsLayer {
+                        this.rotationZ = rotation
+                    }
                 )
             }
         } else {
