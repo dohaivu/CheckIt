@@ -19,7 +19,7 @@ import com.checkit.domain.usecase.AddManualDoneToDailyPlanUseCase
 import com.checkit.domain.usecase.AddGoalUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.AddObjectiveUseCase
-import com.checkit.domain.usecase.AddTaskTagUseCase
+import com.checkit.domain.usecase.AddTagUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
 import com.checkit.domain.usecase.AutoAddTodayTasksToMyDayUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
@@ -29,7 +29,7 @@ import com.checkit.domain.usecase.DeleteTaskUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.DeleteGoalUseCase
 import com.checkit.domain.usecase.DeleteObjectiveUseCase
-import com.checkit.domain.usecase.DeleteTaskTagUseCase
+import com.checkit.domain.usecase.DeleteTagUseCase
 import com.checkit.domain.usecase.IsTagNameTakenUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
@@ -44,14 +44,14 @@ import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.domain.usecase.UpdateGoalUseCase
 import com.checkit.domain.usecase.UpdateObjectiveUseCase
-import com.checkit.domain.usecase.UpdateTaskTagUseCase
+import com.checkit.domain.usecase.UpdateTagUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
 import com.checkit.ui.calendar.CalendarViewModel
 import com.checkit.ui.myday.MyDayViewModel
 import com.checkit.ui.okr.GoalViewModel
 import com.checkit.ui.okr.ObjectiveViewModel
-import com.checkit.ui.tasks.TaskListViewModel
-import com.checkit.ui.tasks.TaskTagViewModel
+import com.checkit.ui.tasks.list.ListViewModel
+import com.checkit.ui.tasks.tag.TagViewModel
 import com.checkit.ui.tasks.TaskViewModel
 import com.checkit.ui.reports.ReportViewModel
 import com.checkit.ui.settings.SettingsViewModel
@@ -93,9 +93,9 @@ val provideInteractorModule = module {
     single { AddObjectiveUseCase(get()) }
     single { UpdateObjectiveUseCase(get()) }
     single { DeleteObjectiveUseCase(get()) }
-    single { AddTaskTagUseCase(get()) }
-    single { UpdateTaskTagUseCase(get()) }
-    single { DeleteTaskTagUseCase(get()) }
+    single { AddTagUseCase(get()) }
+    single { UpdateTagUseCase(get()) }
+    single { DeleteTagUseCase(get()) }
     single { IsTagNameTakenUseCase(get()) }
     single { AddTaskUseCase(get()) }
     single { UpdateTaskUseCase(get()) }
@@ -157,8 +157,8 @@ val provideViewModelModule = module {
     }
     viewModel { GoalViewModel(get(), get(), get()) }
     viewModel { ObjectiveViewModel(get()) }
-    viewModel { TaskListViewModel(get(), get(), get()) }
-    viewModel { TaskTagViewModel(get(), get(), get(), get()) }
+    viewModel { ListViewModel(get(), get(), get()) }
+    viewModel { TagViewModel(get(), get(), get(), get()) }
     viewModel { CalendarViewModel(get(), get(), get()) }
     viewModel {
         MyDayViewModel(

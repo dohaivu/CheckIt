@@ -6,12 +6,14 @@ import com.checkit.domain.TaskItem
 import com.checkit.domain.Objective
 import com.checkit.domain.TaskTag
 import com.checkit.domain.usecase.AddObjectiveUseCase
-import com.checkit.domain.usecase.AddTaskTagUseCase
+import com.checkit.domain.usecase.AddTagUseCase
 import com.checkit.domain.usecase.DeleteObjectiveUseCase
-import com.checkit.domain.usecase.DeleteTaskTagUseCase
+import com.checkit.domain.usecase.DeleteTagUseCase
 import com.checkit.domain.usecase.IsTagNameTakenUseCase
 import com.checkit.domain.usecase.UpdateObjectiveUseCase
-import com.checkit.domain.usecase.UpdateTaskTagUseCase
+import com.checkit.domain.usecase.UpdateTagUseCase
+import com.checkit.ui.tasks.list.ListViewModel
+import com.checkit.ui.tasks.tag.TagViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -90,16 +92,16 @@ class TaskCollectionDeleteViewModelTest {
         assertNull(viewModel.uiState.value.editor)
     }
 
-    private fun taskListViewModel(repository: FakeCheckItRepository) = TaskListViewModel(
+    private fun taskListViewModel(repository: FakeCheckItRepository) = ListViewModel(
         addObjective = AddObjectiveUseCase(repository),
         updateObjective = UpdateObjectiveUseCase(repository),
         deleteObjective = DeleteObjectiveUseCase(repository)
     )
 
-    private fun taskTagViewModel(repository: FakeCheckItRepository) = TaskTagViewModel(
-        addTaskTag = AddTaskTagUseCase(repository),
-        updateTaskTag = UpdateTaskTagUseCase(repository),
-        deleteTaskTag = DeleteTaskTagUseCase(repository),
+    private fun taskTagViewModel(repository: FakeCheckItRepository) = TagViewModel(
+        addTaskTag = AddTagUseCase(repository),
+        updateTaskTag = UpdateTagUseCase(repository),
+        deleteTaskTag = DeleteTagUseCase(repository),
         isTagNameTaken = IsTagNameTakenUseCase(repository)
     )
 

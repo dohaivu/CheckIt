@@ -22,12 +22,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.TaskPriority
-import com.checkit.ui.tasks.ContentAlpha
-import com.checkit.ui.tasks.ContentContainerAlpha
+import com.checkit.ui.tasks.views.ContentAlpha
+import com.checkit.ui.tasks.views.ContentContainerAlpha
 import com.checkit.ui.tasks.priorityColor
 
 @Composable

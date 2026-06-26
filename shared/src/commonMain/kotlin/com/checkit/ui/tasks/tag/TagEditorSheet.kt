@@ -1,4 +1,4 @@
-package com.checkit.ui.tasks
+package com.checkit.ui.tasks.tag
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,23 +38,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.checkit.ui.EditorMode
-import com.checkit.ui.ListEditorState
+import com.checkit.ui.TagEditorState
 import com.checkit.ui.components.ColorPicker
-import com.checkit.ui.components.IconPicker
-import com.checkit.ui.components.SectionLabel
 import com.checkit.ui.theme.AppIconColorDefaults
-import com.checkit.ui.theme.toColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun TaskListEditorSheet(
-    editor: ListEditorState,
+internal fun TagEditorSheet(
+    editor: TagEditorState,
     onDismiss: () -> Unit,
     onSave: () -> Unit,
     onDelete: () -> Unit,
     onNameChange: (String) -> Unit,
-    onColorChange: (String) -> Unit,
-    onIconChange: (String) -> Unit
+    onColorChange: (String) -> Unit
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
@@ -73,7 +69,7 @@ internal fun TaskListEditorSheet(
                         Icon(Icons.Default.Close, contentDescription = "Close")
                     }
                     Text(
-                        text = if (editor.mode == EditorMode.Add) "New list" else "Edit list",
+                        text = if (editor.mode == EditorMode.Add) "New tag" else "Edit tag",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -81,20 +77,20 @@ internal fun TaskListEditorSheet(
                     Button(onClick = onSave) {
                         Text("Save")
                     }
-                    if (editor.mode == EditorMode.Edit && editor.name != InboxListName) {
+                    if (editor.mode == EditorMode.Edit) {
                         Box(
                             modifier = Modifier
                                 .wrapContentSize(Alignment.TopEnd)
                         ) {
                             IconButton(onClick = { menuExpanded = true }) {
-                                Icon(Icons.Default.MoreVert, contentDescription = "List options")
+                                Icon(Icons.Default.MoreVert, contentDescription = "Tag options")
                             }
                             DropdownMenu(
                                 expanded = menuExpanded,
                                 onDismissRequest = { menuExpanded = false }
                             ) {
                                 DropdownMenuItem(
-                                    text = { Text("Delete list") },
+                                    text = { Text("Delete tag") },
                                     leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
                                     onClick = {
                                         menuExpanded = false
@@ -116,20 +112,10 @@ internal fun TaskListEditorSheet(
                 )
             }
             item {
-                SectionLabel("Color")
                 ColorPicker(
                     colors = AppIconColorDefaults.ListColors,
                     selected = editor.color,
                     onSelect = onColorChange
-                )
-            }
-            item {
-                SectionLabel("Icon")
-                IconPicker(
-                    icons = AppIconColorDefaults.ListIcons,
-                    selected = editor.icon,
-                    tint = editor.color.toColor(),
-                    onSelect = onIconChange
                 )
             }
             item { Spacer(Modifier.height(24.dp)) }
@@ -139,8 +125,8 @@ internal fun TaskListEditorSheet(
     if (showDeleteConfirmation) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmation = false },
-            title = { Text("Delete list?") },
-            text = { Text("Tasks and notes in ${editor.name} will move to Inbox.") },
+            title = { Text("Delete tag?") },
+            text = { Text("${editor.name} will be removed from tasks and notes.") },
             confirmButton = {
                 TextButton(
                     onClick = {

@@ -1,4 +1,4 @@
-package com.checkit.ui.tasks
+package com.checkit.ui.tasks.views
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
@@ -29,7 +29,6 @@ import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.PriorityHigh
 import androidx.compose.material.icons.filled.SortByAlpha
 import androidx.compose.material.icons.filled.TaskAlt
-import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -57,6 +56,7 @@ import com.checkit.domain.TaskFilter
 import com.checkit.ui.TaskSortOption
 import com.checkit.ui.TaskWorkspaceView
 import com.checkit.ui.components.AppOutlinedTextField
+import com.checkit.ui.tasks.icon
 import com.checkit.ui.theme.materialIcon
 
 

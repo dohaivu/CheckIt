@@ -46,8 +46,8 @@ interface CheckItRepository {
     suspend fun addKeyResult(input: KeyResultWriteInput): Long
     suspend fun updateKeyResult(keyResultId: Long, input: KeyResultWriteInput)
     suspend fun deleteKeyResult(keyResultId: Long)
-    suspend fun addTag(input: TaskTagWriteInput): Long
-    suspend fun updateTag(tagId: Long, input: TaskTagWriteInput)
+    suspend fun addTag(input: TagWriteInput): Long
+    suspend fun updateTag(tagId: Long, input: TagWriteInput)
     suspend fun deleteTag(tagId: Long)
     suspend fun isTagNameTaken(name: String, excludeTagId: Long? = null): Boolean
     suspend fun addTask(input: TaskWriteInput): Long
@@ -102,7 +102,7 @@ data class KeyResultWriteInput(
     val unit: String
 )
 
-data class TaskTagWriteInput(
+data class TagWriteInput(
     val name: String,
     val color: String
 )
@@ -381,7 +381,7 @@ class RoomCheckItRepository(
         dao.deleteKeyResult(keyResultId)
     }
 
-    override suspend fun addTag(input: TaskTagWriteInput): Long =
+    override suspend fun addTag(input: TagWriteInput): Long =
         dao.insertTag(
             TagEntity(
                 name = input.name,
@@ -389,7 +389,7 @@ class RoomCheckItRepository(
             )
         )
 
-    override suspend fun updateTag(tagId: Long, input: TaskTagWriteInput) {
+    override suspend fun updateTag(tagId: Long, input: TagWriteInput) {
         dao.updateTag(tagId = tagId, name = input.name, color = input.color)
     }
 

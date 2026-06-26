@@ -1,4 +1,4 @@
-package com.checkit.ui.tasks
+package com.checkit.ui.tasks.views
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,8 +21,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Today
-import androidx.compose.material3.ButtonColors
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -38,6 +36,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.checkit.ui.shortName
 import com.checkit.ui.shortMonthName
+import com.checkit.ui.tasks.TimelineItem
+import com.checkit.ui.tasks.toClockLabel
 import com.checkit.ui.today
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DateTimeUnit
@@ -45,6 +45,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
 
 @Composable
 internal fun AgendaView(
@@ -61,7 +62,7 @@ internal fun AgendaView(
     val initialIndex = if (boundedDayCount == null) TodayIndex else 0
     val state = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
     val scope = rememberCoroutineScope()
-    val now = kotlin.time.Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+    val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
     val nowMinutes = now.hour * 60 + now.minute
 
     LaunchedEffect(focusedDate, initialIndex) {

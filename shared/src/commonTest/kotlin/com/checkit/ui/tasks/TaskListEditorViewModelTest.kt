@@ -5,6 +5,7 @@ import com.checkit.domain.usecase.AddObjectiveUseCase
 import com.checkit.domain.usecase.DeleteObjectiveUseCase
 import com.checkit.domain.usecase.UpdateObjectiveUseCase
 import com.checkit.ui.EditorMode
+import com.checkit.ui.tasks.list.ListViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -23,13 +24,13 @@ import kotlin.test.assertTrue
 class TaskListEditorViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private lateinit var repository: FakeCheckItRepository
-    private lateinit var viewModel: TaskListViewModel
+    private lateinit var viewModel: ListViewModel
 
     @BeforeTest
     fun setUp() {
         Dispatchers.setMain(dispatcher)
         repository = FakeCheckItRepository()
-        viewModel = TaskListViewModel(
+        viewModel = ListViewModel(
             addObjective = AddObjectiveUseCase(repository),
             updateObjective = UpdateObjectiveUseCase(repository),
             deleteObjective = DeleteObjectiveUseCase(repository)

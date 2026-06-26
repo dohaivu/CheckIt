@@ -1,4 +1,4 @@
-package com.checkit.ui.tasks
+package com.checkit.ui.tasks.views
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.ScrollState
@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.checkit.ui.components.HoursPerDay
 import com.checkit.ui.components.MinutesPerDay
+import com.checkit.ui.tasks.TimelineItem
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime

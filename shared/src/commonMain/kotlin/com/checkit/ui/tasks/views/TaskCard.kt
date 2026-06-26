@@ -1,4 +1,4 @@
-package com.checkit.ui.tasks
+package com.checkit.ui.tasks.views
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -37,6 +37,14 @@ import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
+import com.checkit.ui.tasks.DailyPlanIcon
+import com.checkit.ui.tasks.NoteIcon
+import com.checkit.ui.tasks.TaskIcon
+import com.checkit.ui.tasks.cardColor
+import com.checkit.ui.tasks.isOverdue
+import com.checkit.ui.tasks.priorityColor
+import com.checkit.ui.tasks.timeRangeLabel
+import com.checkit.ui.tasks.toClockLabel
 
 @Composable
 internal fun TaskCard(
@@ -308,7 +316,7 @@ internal fun NoteAllDayCard(
     AllDayTypeCard(
         title = note.title.ifBlank { note.content.ifBlank { "Empty note" } },
         color = note.cardColor(),
-        icon = { NoteIcon(note.status)},
+        icon = { NoteIcon(note.status) },
         modifier = modifier,
         completedOverlay = completedOverlay
     )
@@ -324,7 +332,7 @@ internal fun DailyPlanAllDayCard(
     AllDayTypeCard(
         title = title,
         color = item.cardColor(),
-        icon = { DailyPlanIcon(item.source, item.status == DailyPlanItemStatus.Done)},
+        icon = { DailyPlanIcon(item.source, item.status == DailyPlanItemStatus.Done) },
         modifier = modifier,
         completedOverlay = completedOverlay
     )

@@ -29,6 +29,11 @@ import com.checkit.ui.okr.GoalViewModel
 import com.checkit.ui.okr.ObjectiveEditorSheet
 import com.checkit.ui.okr.ObjectiveScreen
 import com.checkit.ui.okr.ObjectiveViewModel
+import com.checkit.ui.tasks.list.ListEditorSheet
+import com.checkit.ui.tasks.list.ListViewModel
+import com.checkit.ui.tasks.tag.TagEditorSheet
+import com.checkit.ui.tasks.tag.TagViewModel
+import com.checkit.ui.tasks.views.ViewOptionsMenu
 import kotlinx.coroutines.launch
 
 @Composable
@@ -37,8 +42,8 @@ internal fun TaskScreen(
     viewModel: TaskViewModel,
     goalViewModel: GoalViewModel,
     objectiveViewModel: ObjectiveViewModel,
-    listViewModel: TaskListViewModel,
-    tagViewModel: TaskTagViewModel,
+    listViewModel: ListViewModel,
+    tagViewModel: TagViewModel,
     modifier: Modifier = Modifier
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -193,7 +198,7 @@ internal fun TaskScreen(
                 onIconChange = listViewModel::updateIcon
             )
         } else {
-            TaskListEditorSheet(
+            ListEditorSheet(
                 editor = listEditor,
                 onDismiss = listViewModel::dismissEditor,
                 onSave = { listViewModel.saveEditor(onSaved = viewModel::selectList) },
@@ -206,7 +211,7 @@ internal fun TaskScreen(
     }
 
     tagState.editor?.let { tagEditor ->
-        TaskTagEditorSheet(
+        TagEditorSheet(
             editor = tagEditor,
             onDismiss = tagViewModel::dismissEditor,
             onSave = { tagViewModel.saveEditor(onSaved = viewModel::selectTag) },

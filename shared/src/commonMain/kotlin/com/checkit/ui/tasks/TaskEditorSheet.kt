@@ -58,10 +58,9 @@ import com.checkit.ui.components.DatePicker
 import com.checkit.ui.components.DeleteOverflowMenu
 import com.checkit.ui.components.ListPicker
 import com.checkit.ui.components.PriorityPicker
-import com.checkit.ui.components.ReminderPicker
-import com.checkit.ui.components.RepeatPicker
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.components.TimeRangePicker
+import com.checkit.ui.tasks.views.ContentAlpha
 import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
 

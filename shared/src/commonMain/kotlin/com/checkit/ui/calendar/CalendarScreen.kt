@@ -61,7 +61,7 @@ import com.checkit.ui.localizedShortMonthName
 import com.checkit.ui.myday.DayLinearTimeline
 import com.checkit.ui.myday.MyDayAgenda
 import com.checkit.ui.shortName
-import com.checkit.ui.tasks.ContentContainerAlpha
+import com.checkit.ui.tasks.views.ContentContainerAlpha
 import com.checkit.ui.tasks.TaskAgendaView
 import com.checkit.ui.tasks.toDurationLabel
 import com.checkit.ui.today

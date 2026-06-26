@@ -1,4 +1,4 @@
-package com.checkit.ui.tasks
+package com.checkit.ui.tasks.views
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -31,6 +31,13 @@ import com.checkit.ui.TaskListDisplayType
 import com.checkit.ui.components.DateTimeRangeDetailChip
 import com.checkit.ui.components.DetailChip
 import com.checkit.ui.components.RepeatPill
+import com.checkit.ui.tasks.NoteIcon
+import com.checkit.ui.tasks.SupportingPills
+import com.checkit.ui.tasks.TaskIcon
+import com.checkit.ui.tasks.compact
+import com.checkit.ui.tasks.isOverdue
+import com.checkit.ui.tasks.priorityColor
+import com.checkit.ui.tasks.toDurationLabel
 
 @Composable
 internal fun TaskRow(

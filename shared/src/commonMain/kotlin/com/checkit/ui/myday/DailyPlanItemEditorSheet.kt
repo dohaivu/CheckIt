@@ -45,7 +45,7 @@ import com.checkit.ui.components.DeleteOverflowMenu
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.components.TimePicker
 import com.checkit.ui.components.TimeRangePicker
-import com.checkit.ui.tasks.currentTimeMinutes
+import com.checkit.ui.tasks.views.currentTimeMinutes
 import com.checkit.ui.today
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.minus

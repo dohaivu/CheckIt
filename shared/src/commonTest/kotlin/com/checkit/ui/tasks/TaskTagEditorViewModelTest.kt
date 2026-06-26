@@ -2,11 +2,12 @@ package com.checkit.ui.tasks
 
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskTag
-import com.checkit.domain.usecase.AddTaskTagUseCase
-import com.checkit.domain.usecase.DeleteTaskTagUseCase
+import com.checkit.domain.usecase.AddTagUseCase
+import com.checkit.domain.usecase.DeleteTagUseCase
 import com.checkit.domain.usecase.IsTagNameTakenUseCase
-import com.checkit.domain.usecase.UpdateTaskTagUseCase
+import com.checkit.domain.usecase.UpdateTagUseCase
 import com.checkit.ui.EditorMode
+import com.checkit.ui.tasks.tag.TagViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -25,7 +26,7 @@ import kotlin.test.assertTrue
 class TaskTagEditorViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private lateinit var repository: FakeCheckItRepository
-    private lateinit var viewModel: TaskTagViewModel
+    private lateinit var viewModel: TagViewModel
 
     private val existingTag = TaskTag(
         id = 42L,
@@ -37,10 +38,10 @@ class TaskTagEditorViewModelTest {
     fun setUp() {
         Dispatchers.setMain(dispatcher)
         repository = FakeCheckItRepository(initialBoard = TaskBoard(tags = listOf(existingTag)))
-        viewModel = TaskTagViewModel(
-            addTaskTag = AddTaskTagUseCase(repository),
-            updateTaskTag = UpdateTaskTagUseCase(repository),
-            deleteTaskTag = DeleteTaskTagUseCase(repository),
+        viewModel = TagViewModel(
+            addTaskTag = AddTagUseCase(repository),
+            updateTaskTag = UpdateTagUseCase(repository),
+            deleteTaskTag = DeleteTagUseCase(repository),
             isTagNameTaken = IsTagNameTakenUseCase(repository)
         )
     }

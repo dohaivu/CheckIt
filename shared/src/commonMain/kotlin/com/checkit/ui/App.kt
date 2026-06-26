@@ -57,8 +57,8 @@ import com.checkit.ui.myday.MyDayViewModel
 import com.checkit.ui.okr.GoalViewModel
 import com.checkit.ui.okr.ObjectiveViewModel
 import com.checkit.ui.tasks.TaskScreen
-import com.checkit.ui.tasks.TaskListViewModel
-import com.checkit.ui.tasks.TaskTagViewModel
+import com.checkit.ui.tasks.list.ListViewModel
+import com.checkit.ui.tasks.tag.TagViewModel
 import com.checkit.ui.tasks.TaskViewModel
 import com.checkit.ui.localization.AppLocaleProvider
 import com.checkit.ui.reports.ReportScreen
@@ -107,8 +107,8 @@ fun CheckItApp(
     taskViewModel: TaskViewModel = koinViewModel(),
     goalViewModel: GoalViewModel = koinViewModel(),
     objectiveViewModel: ObjectiveViewModel = koinViewModel(),
-    taskListViewModel: TaskListViewModel = koinViewModel(),
-    taskTagViewModel: TaskTagViewModel = koinViewModel(),
+    listViewModel: ListViewModel = koinViewModel(),
+    tagViewModel: TagViewModel = koinViewModel(),
     myDayViewModel: MyDayViewModel = koinViewModel(),
     calendarViewModel: CalendarViewModel = koinViewModel(),
     reportViewModel: ReportViewModel = koinViewModel(),
@@ -130,11 +130,11 @@ fun CheckItApp(
     val goalMessage by remember(goalViewModel) {
         goalViewModel.uiState.map { it.message }.distinctUntilChanged()
     }.collectAsState(null)
-    val taskListMessage by remember(taskListViewModel) {
-        taskListViewModel.uiState.map { it.message }.distinctUntilChanged()
+    val taskListMessage by remember(listViewModel) {
+        listViewModel.uiState.map { it.message }.distinctUntilChanged()
     }.collectAsState(null)
-    val taskTagMessage by remember(taskTagViewModel) {
-        taskTagViewModel.uiState.map { it.message }.distinctUntilChanged()
+    val taskTagMessage by remember(tagViewModel) {
+        tagViewModel.uiState.map { it.message }.distinctUntilChanged()
     }.collectAsState(null)
     val myDayMessage by remember(myDayViewModel) {
         myDayViewModel.uiState.map { it.message }.distinctUntilChanged()
@@ -195,10 +195,10 @@ fun CheckItApp(
             goalViewModel.consumeMessage()
         }
         if (taskListMessage != null) {
-            taskListViewModel.consumeMessage()
+            listViewModel.consumeMessage()
         }
         if (taskTagMessage != null) {
-            taskTagViewModel.consumeMessage()
+            tagViewModel.consumeMessage()
         }
     }
 
@@ -306,8 +306,8 @@ fun CheckItApp(
                                         viewModel = taskViewModel,
                                         goalViewModel = goalViewModel,
                                         objectiveViewModel = objectiveViewModel,
-                                        listViewModel = taskListViewModel,
-                                        tagViewModel = taskTagViewModel
+                                        listViewModel = listViewModel,
+                                        tagViewModel = tagViewModel
                                     )
                                 }
                                 Routes.MyDay -> {

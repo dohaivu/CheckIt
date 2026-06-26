@@ -7,7 +7,7 @@ import com.checkit.data.KeyResultWriteInput
 import com.checkit.data.NoteWriteInput
 import com.checkit.data.SettingsRepository
 import com.checkit.data.ObjectiveWriteInput
-import com.checkit.data.TaskTagWriteInput
+import com.checkit.data.TagWriteInput
 import com.checkit.data.TaskWriteInput
 import com.checkit.data.UserSettings
 import com.checkit.domain.DailyPlan
@@ -39,8 +39,8 @@ internal class FakeCheckItRepository(
     val deletedKeyResults = mutableListOf<Long>()
     val updatedObjectives = mutableListOf<Pair<Long, ObjectiveWriteInput>>()
     val deletedObjectives = mutableListOf<Long>()
-    val addedTags = mutableListOf<TaskTagWriteInput>()
-    val updatedTags = mutableListOf<Pair<Long, TaskTagWriteInput>>()
+    val addedTags = mutableListOf<TagWriteInput>()
+    val updatedTags = mutableListOf<Pair<Long, TagWriteInput>>()
     val deletedTags = mutableListOf<Long>()
     val addedTasks = mutableListOf<TaskWriteInput>()
     val updatedTasks = mutableListOf<Pair<Long, TaskWriteInput>>()
@@ -210,7 +210,7 @@ internal class FakeCheckItRepository(
         }
     }
 
-    override suspend fun addTag(input: TaskTagWriteInput): Long {
+    override suspend fun addTag(input: TagWriteInput): Long {
         addedTags.add(input)
         val id = nextTagId++
         lastAssignedTagId = id
@@ -226,7 +226,7 @@ internal class FakeCheckItRepository(
         return id
     }
 
-    override suspend fun updateTag(tagId: Long, input: TaskTagWriteInput) {
+    override suspend fun updateTag(tagId: Long, input: TagWriteInput) {
         updatedTags.add(tagId to input)
         boardFlow.update { board ->
             board.copy(

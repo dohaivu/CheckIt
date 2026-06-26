@@ -4,8 +4,6 @@ import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.Objective
 import com.checkit.domain.usecase.AddNoteUseCase
-import com.checkit.domain.usecase.AddObjectiveUseCase
-import com.checkit.domain.usecase.AddTaskTagUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
@@ -15,18 +13,13 @@ import com.checkit.domain.usecase.OpenNoteUseCase
 import com.checkit.domain.usecase.RestoreNoteUseCase
 import com.checkit.domain.usecase.RestoreTaskUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
-import com.checkit.domain.usecase.DeleteObjectiveUseCase
-import com.checkit.domain.usecase.DeleteTaskTagUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
-import com.checkit.domain.usecase.IsTagNameTakenUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.UpdateNoteUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
-import com.checkit.domain.usecase.UpdateObjectiveUseCase
-import com.checkit.domain.usecase.UpdateTaskTagUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
 import com.checkit.ui.EditorMode
 import com.checkit.ui.TaskEditorState

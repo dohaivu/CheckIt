@@ -22,6 +22,14 @@ import com.checkit.domain.TaskStatus
 import com.checkit.ui.TaskListDisplayType
 import com.checkit.ui.TaskUiState
 import com.checkit.ui.TaskWorkspaceView
+import com.checkit.ui.tasks.views.AgendaView
+import com.checkit.ui.tasks.views.ListDisplayTypeMenu
+import com.checkit.ui.tasks.views.NoteAllDayCard
+import com.checkit.ui.tasks.views.NoteTimelineCard
+import com.checkit.ui.tasks.views.TaskAllDayCard
+import com.checkit.ui.tasks.views.TaskListView
+import com.checkit.ui.tasks.views.TaskTimelineCard
+import com.checkit.ui.tasks.views.TimelineView
 import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
 
@@ -115,6 +123,7 @@ internal fun TaskAgendaView(
                 } else {
                     TaskTimelineCard(tag, completedOverlay = tag.status == TaskStatus.Completed)
                 }
+
                 is NoteItem -> if (item.startTimeMinutes == null) {
                     NoteAllDayCard(tag, completedOverlay = tag.status == TaskStatus.Completed)
                 } else {
@@ -168,6 +177,7 @@ internal fun TaskTimelineView(
                     modifier = Modifier.matchParentSize(),
                     displayMode = displayMode
                 )
+
                 is NoteItem -> NoteTimelineCard(
                     note = tag,
                     selected = isSelected,

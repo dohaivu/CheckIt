@@ -1,4 +1,4 @@
-package com.checkit.ui.tasks
+package com.checkit.ui.tasks.list
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -16,18 +16,18 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-data class TaskListUiState(
+data class ListUiState(
     val editor: ListEditorState? = null,
     val message: String? = null
 )
 
-class TaskListViewModel(
+class ListViewModel(
     private val addObjective: AddObjectiveUseCase,
     private val updateObjective: UpdateObjectiveUseCase,
     private val deleteObjective: DeleteObjectiveUseCase
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(TaskListUiState())
-    val uiState: StateFlow<TaskListUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(ListUiState())
+    val uiState: StateFlow<ListUiState> = _uiState.asStateFlow()
 
     fun openNewList() {
         _uiState.update { it.copy(editor = ListEditorState(mode = EditorMode.Add)) }

@@ -31,7 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.TaskTag
-import com.checkit.ui.tasks.ContentAlpha
+import com.checkit.ui.tasks.views.ContentAlpha
 import com.checkit.ui.theme.toColor
 
 @OptIn(ExperimentalLayoutApi::class)

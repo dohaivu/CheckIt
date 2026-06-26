@@ -1,13 +1,13 @@
-package com.checkit.ui.tasks
+package com.checkit.ui.tasks.tag
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.checkit.data.TaskTagWriteInput
+import com.checkit.data.TagWriteInput
 import com.checkit.domain.TaskTag
-import com.checkit.domain.usecase.AddTaskTagUseCase
-import com.checkit.domain.usecase.DeleteTaskTagUseCase
+import com.checkit.domain.usecase.AddTagUseCase
+import com.checkit.domain.usecase.DeleteTagUseCase
 import com.checkit.domain.usecase.IsTagNameTakenUseCase
-import com.checkit.domain.usecase.UpdateTaskTagUseCase
+import com.checkit.domain.usecase.UpdateTagUseCase
 import com.checkit.ui.EditorMode
 import com.checkit.ui.TagEditorState
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,19 +16,19 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-data class TaskTagUiState(
+data class TagUiState(
     val editor: TagEditorState? = null,
     val message: String? = null
 )
 
-class TaskTagViewModel(
-    private val addTaskTag: AddTaskTagUseCase,
-    private val updateTaskTag: UpdateTaskTagUseCase,
-    private val deleteTaskTag: DeleteTaskTagUseCase,
+class TagViewModel(
+    private val addTaskTag: AddTagUseCase,
+    private val updateTaskTag: UpdateTagUseCase,
+    private val deleteTaskTag: DeleteTagUseCase,
     private val isTagNameTaken: IsTagNameTakenUseCase
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(TaskTagUiState())
-    val uiState: StateFlow<TaskTagUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(TagUiState())
+    val uiState: StateFlow<TagUiState> = _uiState.asStateFlow()
 
     fun openNewTag() {
         _uiState.update { it.copy(editor = TagEditorState(mode = EditorMode.Add)) }
@@ -66,7 +66,7 @@ class TaskTagViewModel(
                 showMessage("Tag name already exists")
                 return@launch
             }
-            val input = TaskTagWriteInput(
+            val input = TagWriteInput(
                 name = trimmedName,
                 color = form.color
             )

@@ -56,7 +56,6 @@ import com.checkit.ui.tasks.cardColor
 import com.checkit.ui.tasks.isOverdue
 import com.checkit.ui.tasks.priorityColor
 import com.checkit.ui.tasks.toClockLabel
-import com.checkit.ui.theme.AppIconColorDefaults.FallbackColor
 import com.checkit.ui.today
 import kotlinx.coroutines.flow.first
 import kotlinx.datetime.TimeZone
