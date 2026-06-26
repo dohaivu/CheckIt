@@ -15,11 +15,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.checkit.ui.components.icons.AppIcons
+import com.checkit.ui.components.icons.Target
 
 @Composable
 internal fun TaskActionFab(
-    onTaskClick: () -> Unit,
-    onNoteClick: () -> Unit,
+    onTaskClick: (() -> Unit)? = null,
+    onNoteClick: (() -> Unit)? = null,
     onObjectiveClick: (() -> Unit)? = null
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -31,26 +33,30 @@ internal fun TaskActionFab(
             expanded = expanded,
             onDismissRequest = { expanded = false }
         ) {
-            DropdownMenuItem(
-                text = { Text("Task") },
-                leadingIcon = { Icon(Icons.Default.TaskAlt, contentDescription = null) },
-                onClick = {
-                    expanded = false
-                    onTaskClick()
-                }
-            )
-            DropdownMenuItem(
-                text = { Text("Note") },
-                leadingIcon = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null) },
-                onClick = {
-                    expanded = false
-                    onNoteClick()
-                }
-            )
+            if (onTaskClick != null) {
+                DropdownMenuItem(
+                    text = { Text("Task") },
+                    leadingIcon = { Icon(Icons.Default.TaskAlt, contentDescription = null) },
+                    onClick = {
+                        expanded = false
+                        onTaskClick()
+                    }
+                )
+            }
+            if (onNoteClick != null) {
+                DropdownMenuItem(
+                    text = { Text("Note") },
+                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null) },
+                    onClick = {
+                        expanded = false
+                        onNoteClick()
+                    }
+                )
+            }
             if (onObjectiveClick != null) {
                 DropdownMenuItem(
                     text = { Text("Objective") },
-                    leadingIcon = { Icon(Icons.Default.Add, contentDescription = null) },
+                    leadingIcon = { Icon(AppIcons.Target, contentDescription = null) },
                     onClick = {
                         expanded = false
                         onObjectiveClick()

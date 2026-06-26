@@ -92,13 +92,18 @@ internal fun TaskScreen(
             modifier = modifier.fillMaxSize(),
             containerColor = MaterialTheme.colorScheme.background,
             floatingActionButton = {
-                TaskActionFab(
-                    onTaskClick = { viewModel.openNewTask() },
-                    onNoteClick = viewModel::openNewNote,
-                    onObjectiveClick = state.selectedGoalId?.let { goalId ->
-                        { listViewModel.openNewObjective(goalId) }
-                    }
-                )
+                if (state.selectedGoalId != null) {
+                    TaskActionFab(
+                        onObjectiveClick = state.selectedGoalId?.let { goalId ->
+                            { listViewModel.openNewObjective(goalId) }
+                        }
+                    )
+                } else {
+                    TaskActionFab(
+                        onTaskClick = { viewModel.openNewTask() },
+                        onNoteClick = viewModel::openNewNote,
+                    )
+                }
             },
             topBar = {
                 TinyTopAppBar(
