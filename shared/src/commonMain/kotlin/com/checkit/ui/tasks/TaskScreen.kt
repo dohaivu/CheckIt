@@ -26,9 +26,10 @@ import com.checkit.ui.TaskUiState
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.okr.GoalEditorSheet
 import com.checkit.ui.okr.GoalViewModel
+import com.checkit.ui.okr.KeyResultViewModel
 import com.checkit.ui.okr.ObjectiveEditorSheet
-import com.checkit.ui.okr.ObjectiveScreen
-import com.checkit.ui.okr.ObjectiveViewModel
+import com.checkit.ui.okr.GoalScreen
+
 import com.checkit.ui.tasks.list.ListEditorSheet
 import com.checkit.ui.tasks.list.ListViewModel
 import com.checkit.ui.tasks.tag.TagEditorSheet
@@ -41,7 +42,7 @@ internal fun TaskScreen(
     state: TaskUiState,
     viewModel: TaskViewModel,
     goalViewModel: GoalViewModel,
-    objectiveViewModel: ObjectiveViewModel,
+    keyResultViewModel: KeyResultViewModel,
     listViewModel: ListViewModel,
     tagViewModel: TagViewModel,
     modifier: Modifier = Modifier
@@ -149,10 +150,11 @@ internal fun TaskScreen(
                     CircularProgressIndicator()
                 }
             } else if (state.selectedGoal != null) {
-                ObjectiveScreen(
+                GoalScreen(
                     goal = state.selectedGoal,
                     board = state.board,
-                    viewModel = objectiveViewModel,
+                    goalViewModel = goalViewModel,
+                    keyResultViewModel = keyResultViewModel,
                     onTaskClick = viewModel::openTask,
                     onAddTask = viewModel::openNewTaskOnKeyResult,
                     onEditObjective = listViewModel::openEditList,

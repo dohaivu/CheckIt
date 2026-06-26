@@ -13,9 +13,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-data class ObjectiveUiState(
-    val collapsedNodeKeys: Set<String> = emptySet(),
-    val selectedNodeKey: String? = null,
+data class KeyResultUiState(
     val keyResultEditor: KeyResultEditorState? = null,
     val message: String? = null
 )
@@ -30,26 +28,11 @@ data class KeyResultEditorState(
     val unit: KeyResultUnit = KeyResultUnit.Number
 )
 
-class ObjectiveViewModel(
+class KeyResultViewModel(
     private val repository: CheckItRepository
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(ObjectiveUiState())
-    val uiState: StateFlow<ObjectiveUiState> = _uiState.asStateFlow()
-
-    fun toggleExpanded(nodeKey: String) {
-        _uiState.update { state ->
-            val collapsed = if (nodeKey in state.collapsedNodeKeys) {
-                state.collapsedNodeKeys - nodeKey
-            } else {
-                state.collapsedNodeKeys + nodeKey
-            }
-            state.copy(collapsedNodeKeys = collapsed)
-        }
-    }
-
-    fun selectNode(nodeKey: String) {
-        _uiState.update { it.copy(selectedNodeKey = nodeKey) }
-    }
+    private val _uiState = MutableStateFlow(KeyResultUiState())
+    val uiState: StateFlow<KeyResultUiState> = _uiState.asStateFlow()
 
     fun openNewKeyResult(objectiveId: Long) {
         _uiState.update {
@@ -86,6 +69,10 @@ class ObjectiveViewModel(
         val form = _uiState.value.keyResultEditor ?: return
         if (form.title.isBlank()) {
             showMessage("Add a title")
+            return
+        }
+        if (form.targetValue <= 0.0) {
+            showMessage("Set a target value")
             return
         }
         val input = KeyResultWriteInput(

@@ -55,7 +55,7 @@ import com.checkit.ui.calendar.CalendarViewModel
 import com.checkit.ui.myday.MyDayScreen
 import com.checkit.ui.myday.MyDayViewModel
 import com.checkit.ui.okr.GoalViewModel
-import com.checkit.ui.okr.ObjectiveViewModel
+import com.checkit.ui.okr.KeyResultViewModel
 import com.checkit.ui.tasks.TaskScreen
 import com.checkit.ui.tasks.list.ListViewModel
 import com.checkit.ui.tasks.tag.TagViewModel
@@ -106,7 +106,7 @@ private data object Routes {
 fun CheckItApp(
     taskViewModel: TaskViewModel = koinViewModel(),
     goalViewModel: GoalViewModel = koinViewModel(),
-    objectiveViewModel: ObjectiveViewModel = koinViewModel(),
+    keyResultViewModel: KeyResultViewModel = koinViewModel(),
     listViewModel: ListViewModel = koinViewModel(),
     tagViewModel: TagViewModel = koinViewModel(),
     myDayViewModel: MyDayViewModel = koinViewModel(),
@@ -305,7 +305,7 @@ fun CheckItApp(
                                         state = taskUiState,
                                         viewModel = taskViewModel,
                                         goalViewModel = goalViewModel,
-                                        objectiveViewModel = objectiveViewModel,
+                                        keyResultViewModel = keyResultViewModel,
                                         listViewModel = listViewModel,
                                         tagViewModel = tagViewModel
                                     )

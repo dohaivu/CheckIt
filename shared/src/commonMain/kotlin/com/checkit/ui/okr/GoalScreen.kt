@@ -53,16 +53,18 @@ import com.checkit.ui.components.icons.Target
 import com.checkit.ui.theme.toColor
 
 @Composable
-internal fun ObjectiveScreen(
+internal fun GoalScreen(
     goal: Goal,
     board: TaskBoard,
-    viewModel: ObjectiveViewModel,
+    goalViewModel: GoalViewModel,
+    keyResultViewModel: KeyResultViewModel,
     onTaskClick: (TaskItem) -> Unit,
     onAddTask: (KeyResult) -> Unit,
     onEditObjective: (Objective) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val state by viewModel.uiState.collectAsState()
+    val goalState by goalViewModel.uiState.collectAsState()
+    val keyResultState by keyResultViewModel.uiState.collectAsState()
     val objectives = remember(board.objectives, goal.id) {
         board.objectives
             .filter { it.goalId == goal.id }
@@ -89,31 +91,31 @@ internal fun ObjectiveScreen(
                 objective = objective,
                 keyResults = keyResultsByObjective[objective.id].orEmpty(),
                 tasksByKeyResult = tasksByKeyResult,
-                collapsedNodeKeys = state.collapsedNodeKeys,
-                selectedNodeKey = state.selectedNodeKey,
-                onToggleExpanded = viewModel::toggleExpanded,
-                onSelectNode = viewModel::selectNode,
+                collapsedNodeKeys = goalState.collapsedNodeKeys,
+                selectedNodeKey = goalState.selectedNodeKey,
+                onToggleExpanded = goalViewModel::toggleExpanded,
+                onSelectNode = goalViewModel::selectNode,
                 onTaskClick = onTaskClick,
                 onAddKeyResult = { objective ->
-                    viewModel.openNewKeyResult(objective.id)
+                    keyResultViewModel.openNewKeyResult(objective.id)
                 },
                 onAddTask = onAddTask,
-                onEditKeyResult = viewModel::openEditKeyResult,
+                onEditKeyResult = keyResultViewModel::openEditKeyResult,
                 onEditObjective = onEditObjective
             )
         }
     }
 
-    state.keyResultEditor?.let { editor ->
+    keyResultState.keyResultEditor?.let { editor ->
         KeyResultEditorSheet(
             editor = editor,
-            onDismiss = viewModel::dismissKeyResultEditor,
-            onSave = viewModel::saveKeyResultEditor,
-            onDelete = viewModel::deleteKeyResultEditor,
-            onTitleChange = viewModel::updateKeyResultTitle,
-            onTargetValueChange = viewModel::updateKeyResultTargetValue,
-            onCurrentValueChange = viewModel::updateKeyResultCurrentValue,
-            onUnitChange = viewModel::updateKeyResultUnit
+            onDismiss = keyResultViewModel::dismissKeyResultEditor,
+            onSave = keyResultViewModel::saveKeyResultEditor,
+            onDelete = keyResultViewModel::deleteKeyResultEditor,
+            onTitleChange = keyResultViewModel::updateKeyResultTitle,
+            onTargetValueChange = keyResultViewModel::updateKeyResultTargetValue,
+            onCurrentValueChange = keyResultViewModel::updateKeyResultCurrentValue,
+            onUnitChange = keyResultViewModel::updateKeyResultUnit
         )
     }
 }

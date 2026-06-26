@@ -17,7 +17,9 @@ import kotlinx.coroutines.launch
 
 data class GoalUiState(
     val editor: GoalEditorState? = null,
-    val message: String? = null
+    val message: String? = null,
+    val collapsedNodeKeys: Set<String> = emptySet(),
+    val selectedNodeKey: String? = null
 )
 
 data class GoalEditorState(
@@ -97,6 +99,21 @@ class GoalViewModel(
 
     fun consumeMessage() {
         _uiState.update { it.copy(message = null) }
+    }
+
+    fun toggleExpanded(nodeKey: String) {
+        _uiState.update { state ->
+            val collapsed = if (nodeKey in state.collapsedNodeKeys) {
+                state.collapsedNodeKeys - nodeKey
+            } else {
+                state.collapsedNodeKeys + nodeKey
+            }
+            state.copy(collapsedNodeKeys = collapsed)
+        }
+    }
+
+    fun selectNode(nodeKey: String) {
+        _uiState.update { it.copy(selectedNodeKey = nodeKey) }
     }
 
     private fun updateEditor(transform: (GoalEditorState) -> GoalEditorState) {

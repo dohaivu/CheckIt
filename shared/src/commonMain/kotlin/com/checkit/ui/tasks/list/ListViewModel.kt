@@ -69,6 +69,12 @@ class ListViewModel(
             showMessage("Add a name")
             return
         }
+        if (form.goalId != null) {
+            if (form.startDate == null || form.endDate == null) {
+                showMessage("Set start and end dates")
+                return
+            }
+        }
         val input = ObjectiveWriteInput(
             name = form.name.trim(),
             color = form.color,
