@@ -190,7 +190,7 @@ internal fun TaskScreen(
             ObjectiveEditorSheet(
                 editor = listEditor,
                 onDismiss = listViewModel::dismissEditor,
-                onSave = { listViewModel.saveEditor(onSaved = viewModel::selectList) },
+                onSave = { listViewModel.saveEditor(onSaved = viewModel::selectGoal) },
                 onDelete = { listViewModel.deleteEditorList() },
                 onTitleChange = listViewModel::updateName,
                 onDateRangeChange = listViewModel::updateDateRange,

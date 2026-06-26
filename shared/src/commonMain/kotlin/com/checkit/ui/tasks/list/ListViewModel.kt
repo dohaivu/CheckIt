@@ -30,7 +30,7 @@ class ListViewModel(
     val uiState: StateFlow<ListUiState> = _uiState.asStateFlow()
 
     fun openNewList() {
-        _uiState.update { it.copy(editor = ListEditorState(mode = EditorMode.Add)) }
+        _uiState.update { it.copy(editor = ListEditorState(mode = EditorMode.Add, goalId = null)) }
     }
 
     fun openNewObjective(goalId: Long) {
@@ -86,7 +86,7 @@ class ListViewModel(
                 objectiveId
             }
             _uiState.update { it.copy(editor = null) }
-            onSaved(savedId)
+            onSaved(if (form.goalId != null) form.goalId else savedId)
         }
     }
 

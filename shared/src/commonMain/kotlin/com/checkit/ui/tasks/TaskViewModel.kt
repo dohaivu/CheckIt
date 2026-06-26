@@ -783,12 +783,14 @@ class TaskViewModel(
         val nextListId = selectedListId?.takeIf { selectedId -> board.objectives.any { it.id == selectedId } }
         val nextFilterId = selectedFilterId?.takeIf { selectedId -> board.filters.any { it.id == selectedId } }
         val nextTagId = selectedTagId?.takeIf { selectedId -> board.tags.any { it.id == selectedId } }
+        val nextGoalId = selectedGoalId?.takeIf { selectedId -> board.goals.any { it.id == selectedId } }
         return copy(
             board = board,
             selection = TaskSelectionState(
                 selectedListId = if (nextFilterId == null && nextTagId == null) nextListId else null,
                 selectedFilterId = nextFilterId,
-                selectedTagId = nextTagId
+                selectedTagId = nextTagId,
+                selectedGoalId = nextGoalId
             ),
             isLoading = false
         ).refreshVisibleItems().coerceViewToAvailable()
