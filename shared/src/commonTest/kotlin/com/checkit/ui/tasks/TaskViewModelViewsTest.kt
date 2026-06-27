@@ -139,7 +139,6 @@ class TaskViewModelViewsTest {
 
         val state = viewModel.uiState.value
         assertNull(state.selectedFilterId)
-        assertEquals("All tasks", state.title)
     }
 
     @Test
