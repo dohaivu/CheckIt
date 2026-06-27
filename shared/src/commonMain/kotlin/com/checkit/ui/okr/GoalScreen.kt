@@ -1,11 +1,11 @@
 package com.checkit.ui.okr
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -29,7 +29,6 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -52,12 +51,13 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.Goal
 import com.checkit.domain.KeyResult
+import com.checkit.domain.Objective
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
-import com.checkit.domain.Objective
+import com.checkit.ui.components.DonutProgressIndicator
+import com.checkit.ui.components.TimeframePill
 import com.checkit.ui.components.icons.AppIcons
 import com.checkit.ui.components.icons.Target
-import com.checkit.ui.components.TimeframePill
 import com.checkit.ui.tasks.views.OKRTaskContent
 import com.checkit.ui.theme.toColor
 
@@ -184,7 +184,6 @@ private fun ObjectiveBranch(
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f).padding(vertical = 8.dp)
             )
         }
@@ -249,30 +248,29 @@ private fun KeyResultBranch(
             Spacer(modifier = Modifier.width(4.dp))
         },
         trailingContent = {
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    text = "${(keyResult.progress * 100).toInt()}%",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                LinearProgressIndicator(
-                    progress = { keyResult.progress.toFloat() },
-                    modifier = Modifier.width(48.dp).height(4.dp).clip(RoundedCornerShape(2.dp)),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-            }
+            DonutProgressIndicator(
+                progress = keyResult.progress.toFloat(),
+                size = 24.dp,
+                color = color
+            )
         },
         content = {
-            Text(
-                text = keyResult.title,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                color = MaterialTheme.colorScheme.onSurface,
+            Column(
                 modifier = Modifier.weight(1f).padding(vertical = 8.dp)
-            )
+            ) {
+                Text(
+                    text = keyResult.title,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                )
+                Box(modifier = Modifier.height(3.dp)
+                    .fillMaxWidth(keyResult.progress.toFloat())
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(color.copy(alpha = 0.30f))
+                )
+            }
         }
     )
     
