@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -89,8 +90,8 @@ internal fun GoalScreen(
     }
 
     LazyColumn(
-        modifier = modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+        modifier = modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         items(objectives, key = { "objective-${it.id}" }) { objective ->
             ObjectiveBranch(
@@ -302,7 +303,7 @@ private fun TreeNodeRow(
     trailingContent: @Composable (() -> Unit)? = null
 ) {
     val background = if (isSelected) {
-        MaterialTheme.colorScheme.secondaryContainer
+        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.65f)
     } else {
         Color.Transparent
     }
@@ -331,7 +332,7 @@ private fun TreeNodeRow(
                 if (depth > 0) {
                     val x = guideLineStart(depth).toPx()
                     val yCenter = size.height / 2
-                    val xIconCenter = (nodeIndent(depth) + 18.dp).toPx()
+                    val xIconCenter = (nodeIndent(depth) + 16.dp).toPx()
                     
                     if (isLast) {
                         // Rounded L-shape connector
@@ -371,7 +372,7 @@ private fun TreeNodeRow(
                 
                 // If expanded, draw the vertical line for children starting from icon center
                 if (isExpanded && hasChildren) {
-                    val x = (nodeIndent(depth) + 18.dp).toPx()
+                    val x = (nodeIndent(depth) + 16.dp).toPx()
                     val yCenter = size.height / 2
                     drawLine(
                         color = dashColor,
@@ -389,14 +390,14 @@ private fun TreeNodeRow(
                 onClick = { onSelectNode(nodeKey) },
                 onLongClick = onLongClick
             )
-            .padding(end = 10.dp),
+            .padding(end = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (hasChildren) {
             Box(
                 modifier = Modifier
-                    .padding(horizontal = 4.dp)
-                    .size(28.dp)
+                    .padding(start = 6.dp)
+                    .size(20.dp)
                     .clip(RoundedCornerShape(6.dp))
                     .combinedClickable(
                         onClick = { onToggleExpanded(nodeKey) }
@@ -413,7 +414,7 @@ private fun TreeNodeRow(
                 )
             }
         } else {
-            Spacer(Modifier.size(36.dp))
+            Spacer(Modifier.size(20.dp))
         }
         leadingContent?.invoke()
         Text(
@@ -423,11 +424,11 @@ private fun TreeNodeRow(
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
             color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f).padding(vertical = 9.dp)
+            modifier = Modifier.weight(1f).padding(vertical = 8.dp)
         )
         trailingContent?.invoke()
         if (isSelected && onAddClick != null) {
-            IconButton(onClick = onAddClick, modifier = Modifier.size(28.dp)) {
+            IconButton(onClick = onAddClick, modifier = Modifier.size(20.dp)) {
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = "Add",
@@ -440,7 +441,7 @@ private fun TreeNodeRow(
 
 private fun nodeIndent(depth: Int): Dp = (depth * 18).dp
 
-private fun guideLineStart(depth: Int): Dp = ((depth - 1).coerceAtLeast(0) * 18 + 18).dp
+private fun guideLineStart(depth: Int): Dp = ((depth - 1).coerceAtLeast(0) * 18 + 16).dp
 
 private fun Objective.nodeKey(): String = "objective-$id"
 
