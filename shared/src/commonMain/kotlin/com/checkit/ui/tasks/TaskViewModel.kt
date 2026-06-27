@@ -153,8 +153,8 @@ class TaskViewModel(
 
     fun selectFilter(filterId: Long) {
         _uiState.update { state ->
-            val nextFilterId = filterId.takeUnless { state.selectedFilterId == filterId }
-            state.copy(selection = TaskSelectionState(selectedFilterId = nextFilterId))
+            val nextFilterId = filterId.takeUnless { state.options.selectedFilterId == filterId }
+            state.copy(options = state.options.copy(selectedFilterId = nextFilterId))
                 .refreshVisibleItems()
                 .coerceViewToAvailable()
         }
@@ -792,17 +792,17 @@ class TaskViewModel(
 
     private fun TaskUiState.withBoard(board: TaskBoard): TaskUiState {
         val nextListId = selectedListId?.takeIf { selectedId -> board.objectives.any { it.id == selectedId } }
-        val nextFilterId = selectedFilterId?.takeIf { selectedId -> board.filters.any { it.id == selectedId } }
+        val nextFilterId = options.selectedFilterId?.takeIf { selectedId -> board.filters.any { it.id == selectedId } }
         val nextTagId = selectedTagId?.takeIf { selectedId -> board.tags.any { it.id == selectedId } }
         val nextGoalId = selectedGoalId?.takeIf { selectedId -> board.goals.any { it.id == selectedId } }
         return copy(
             board = board,
             selection = TaskSelectionState(
-                selectedListId = if (nextFilterId == null && nextTagId == null) nextListId else null,
-                selectedFilterId = nextFilterId,
+                selectedListId = nextListId,
                 selectedTagId = nextTagId,
                 selectedGoalId = nextGoalId
             ),
+            options = options.copy(selectedFilterId = nextFilterId),
             isLoading = false
         ).refreshVisibleItems().coerceViewToAvailable()
     }

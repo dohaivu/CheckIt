@@ -23,18 +23,14 @@ internal class TaskVisibleItemsBuilder(
         options: TaskViewOptionsState,
         today: LocalDate
     ): TaskVisibleItemsState {
-        val selectedFilter = board.filters.firstOrNull { it.id == selection.selectedFilterId }
-        val selectedItems = when {
+        val selectedFilter = board.filters.firstOrNull { it.id == options.selectedFilterId }
+        val baseItems = when {
             selection.selectedTagId != null -> {
                 val tagId = selection.selectedTagId
                 SelectedTaskItems(
                     tasks = board.tasks.filter { task -> !task.isTrashed && task.tags.any { it.id == tagId } },
                     notes = board.notes.filter { note -> !note.isTrashed && note.tags.any { it.id == tagId } }
                 )
-            }
-            selectedFilter != null -> {
-                selectTaskBoardItems(board, TaskBoardSelection.FilterSelection(selectedFilter), today)
-                    .let { SelectedTaskItems(tasks = it.tasks, notes = it.notes) }
             }
             selection.selectedGoalId != null -> {
                 val objectiveIds = board.objectives
@@ -54,6 +50,17 @@ internal class TaskVisibleItemsBuilder(
                 tasks = board.tasks.filter { task -> !task.isTrashed },
                 notes = board.notes.filter { note -> !note.isTrashed }
             )
+        }
+        val selectedItems = if (selectedFilter != null) {
+            val filterResult = selectTaskBoardItems(board, TaskBoardSelection.FilterSelection(selectedFilter), today)
+            val filterTaskIds = filterResult.tasks.map { it.id }.toSet()
+            val filterNoteIds = filterResult.notes.map { it.id }.toSet()
+            SelectedTaskItems(
+                tasks = baseItems.tasks.filter { it.id in filterTaskIds },
+                notes = baseItems.notes.filter { it.id in filterNoteIds }
+            )
+        } else {
+            baseItems
         }
 
         val visibleEntries = mutableListOf<TaskListEntry>()

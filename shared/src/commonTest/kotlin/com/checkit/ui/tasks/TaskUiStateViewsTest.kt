@@ -6,6 +6,7 @@ import com.checkit.domain.TaskFilter
 import com.checkit.domain.TaskPriority
 import com.checkit.ui.TaskSelectionState
 import com.checkit.ui.TaskUiState
+import com.checkit.ui.TaskViewOptionsState
 import com.checkit.ui.TaskWorkspaceView
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -55,7 +56,7 @@ class TaskUiStateViewsTest {
     @Test
     fun availableViewsExcludesTimelineForNonTodayFilter() {
         val board = TaskBoard(filters = listOf(highPriorityFilter()))
-        val state = TaskUiState(board = board, selection = TaskSelectionState(selectedFilterId = 2L))
+        val state = TaskUiState(board = board, options = TaskViewOptionsState(selectedFilterId = 2L))
 
         assertNull(state.dayLimit)
         assertFalse(TaskWorkspaceView.Timeline in state.availableViews)
@@ -64,7 +65,7 @@ class TaskUiStateViewsTest {
     @Test
     fun availableViewsIncludesTimelineForTodayFilter() {
         val board = TaskBoard(filters = listOf(todayFilter(), highPriorityFilter()))
-        val state = TaskUiState(board = board, selection = TaskSelectionState(selectedFilterId = 1L))
+        val state = TaskUiState(board = board, options = TaskViewOptionsState(selectedFilterId = 1L))
 
         assertEquals(1, state.dayLimit)
         assertEquals(TaskWorkspaceView.entries, state.availableViews)
@@ -73,7 +74,7 @@ class TaskUiStateViewsTest {
     @Test
     fun availableViewsExcludesTimelineForAllFilter() {
         val board = TaskBoard(filters = listOf(allFilter(), todayFilter(), highPriorityFilter()))
-        val state = TaskUiState(board = board, selection = TaskSelectionState(selectedFilterId = 0L))
+        val state = TaskUiState(board = board, options = TaskViewOptionsState(selectedFilterId = 0L))
 
         assertNull(state.dayLimit)
         assertEquals(
@@ -83,7 +84,7 @@ class TaskUiStateViewsTest {
     }
 
     @Test
-    fun availableViewsIsTimelineOnlyForListOrTagSelection() {
+    fun availableViewsExcludesTimelineForListOrTagSelection() {
         val board = TaskBoard(filters = listOf(todayFilter(), highPriorityFilter()))
         val state = TaskUiState(board = board, selection = TaskSelectionState(selectedListId = 99L))
 

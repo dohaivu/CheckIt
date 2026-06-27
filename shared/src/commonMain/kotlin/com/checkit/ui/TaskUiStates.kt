@@ -26,7 +26,7 @@ data class TaskUiState(
 ) {
     val selectedListId: Long? get() = selection.selectedListId
     val selectedGoalId: Long? get() = selection.selectedGoalId
-    val selectedFilterId: Long? get() = selection.selectedFilterId
+    val selectedFilterId: Long? get() = options.selectedFilterId
     val selectedTagId: Long? get() = selection.selectedTagId
     val selectedView: TaskWorkspaceView get() = options.selectedView
     val listDisplayType: TaskListDisplayType get() = options.listDisplayType
@@ -40,7 +40,7 @@ data class TaskUiState(
     val selectedGoal = board.goals.firstOrNull { it.id == selectedGoalId }
     val selectedFilter: TaskFilter? = board.filters.firstOrNull { it.id == selectedFilterId }
     val selectedTag = board.tags.firstOrNull { it.id == selectedTagId }
-    val title: String = selectedGoal?.title ?: selectedList?.name ?: selectedFilter?.name ?: selectedTag?.name ?: "All tasks"
+    val title: String = selectedGoal?.title ?: selectedList?.name ?: selectedTag?.name ?: "All tasks"
     val dayLimit: Int? = if (selectedFilter?.dueDatePreset == DueDatePreset.Today) 1 else null
     val availableViews: List<TaskWorkspaceView> = if (dayLimit == 1) {
         TaskWorkspaceView.entries
@@ -52,7 +52,6 @@ data class TaskUiState(
 data class TaskSelectionState(
     val selectedGoalId: Long? = null,
     val selectedListId: Long? = null,
-    val selectedFilterId: Long? = null,
     val selectedTagId: Long? = null
 )
 
@@ -61,7 +60,8 @@ data class TaskViewOptionsState(
     val listDisplayType: TaskListDisplayType = TaskListDisplayType.Standard,
     val showCompleted: Boolean = false,
     val searchText: String = "",
-    val sortOption: TaskSortOption = TaskSortOption.Custom
+    val sortOption: TaskSortOption = TaskSortOption.Custom,
+    val selectedFilterId: Long? = null
 )
 
 data class TaskVisibleItemsState(

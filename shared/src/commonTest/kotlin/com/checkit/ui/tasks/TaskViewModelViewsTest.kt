@@ -163,25 +163,27 @@ class TaskViewModelViewsTest {
     }
 
     @Test
-    fun selectingListAlsoCoercesTimelineAway() = runTest(dispatcher) {
+    fun filterPersistsWhenSelectingList() = runTest(dispatcher) {
         viewModel.selectFilter(1L)
         viewModel.selectView(TaskWorkspaceView.Timeline)
         viewModel.selectList(99L)
 
         val state = viewModel.uiState.value
-        assertNull(state.dayLimit)
-        assertEquals(TaskWorkspaceView.List, state.selectedView)
+        assertEquals(1, state.dayLimit)
+        assertEquals(TaskWorkspaceView.Timeline, state.selectedView)
+        assertEquals(99L, state.selectedListId)
     }
 
     @Test
-    fun selectingTagCoercesTimelineAway() = runTest(dispatcher) {
+    fun filterPersistsWhenSelectingTag() = runTest(dispatcher) {
         viewModel.selectFilter(1L)
         viewModel.selectView(TaskWorkspaceView.Timeline)
         viewModel.selectTag(7L)
 
         val state = viewModel.uiState.value
-        assertNull(state.dayLimit)
-        assertEquals(TaskWorkspaceView.List, state.selectedView)
+        assertEquals(1, state.dayLimit)
+        assertEquals(TaskWorkspaceView.Timeline, state.selectedView)
+        assertEquals(7L, state.selectedTagId)
     }
 
     @Test
