@@ -108,7 +108,51 @@ internal fun NoteRow(
 }
 
 @Composable
-private fun BriefTaskRowContent(task: TaskItem) {
+internal fun OKRTaskContent(task: TaskItem) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        TaskIcon(
+            completed = task.status == TaskStatus.Completed,
+            color = task.priority.priorityColor()
+        )
+        Text(
+            text = task.name,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Normal,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        task.doDate?.let { DetailChip(Icons.Default.Event, it.compact(), isHighlighted = task.isOverdue()) }
+    }
+}
+
+@Composable
+internal fun OKRNoteContent(note: NoteItem) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 9.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        NoteIcon(note.status)
+        Text(
+            text = note.title.ifBlank { note.content },
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = if (note.title.isNotBlank()) FontWeight.SemiBold else FontWeight.Normal,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        DetailChip(Icons.Default.Event, note.date.compact())
+    }
+}
+
+@Composable
+internal fun BriefTaskRowContent(task: TaskItem) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 9.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -132,7 +176,7 @@ private fun BriefTaskRowContent(task: TaskItem) {
 }
 
 @Composable
-private fun StandardTaskRowContent(task: TaskItem, list: Objective?) {
+internal fun StandardTaskRowContent(task: TaskItem, list: Objective?) {
     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         TaskTitleRow(task, descriptionMaxLines = 0)
         DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes, isOverdue = task.isOverdue())
@@ -142,7 +186,7 @@ private fun StandardTaskRowContent(task: TaskItem, list: Objective?) {
 }
 
 @Composable
-private fun DetailTaskRowContent(task: TaskItem, list: Objective?) {
+internal fun DetailTaskRowContent(task: TaskItem, list: Objective?) {
     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         TaskTitleRow(task, descriptionMaxLines = 3)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -157,7 +201,7 @@ private fun DetailTaskRowContent(task: TaskItem, list: Objective?) {
 }
 
 @Composable
-private fun BriefNoteRowContent(note: NoteItem) {
+internal fun BriefNoteRowContent(note: NoteItem) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 9.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -177,17 +221,17 @@ private fun BriefNoteRowContent(note: NoteItem) {
 }
 
 @Composable
-private fun StandardNoteRowContent(note: NoteItem, list: Objective?) {
+internal fun StandardNoteRowContent(note: NoteItem, list: Objective?) {
     NoteRowScaffold(note = note, list = list, contentMaxLines = 2, visibleTagCount = 2)
 }
 
 @Composable
-private fun DetailNoteRowContent(note: NoteItem, list: Objective?) {
+internal fun DetailNoteRowContent(note: NoteItem, list: Objective?) {
     NoteRowScaffold(note = note, list = list, contentMaxLines = 5, visibleTagCount = Int.MAX_VALUE)
 }
 
 @Composable
-private fun TaskTitleRow(
+internal fun TaskTitleRow(
     task: TaskItem,
     descriptionMaxLines: Int,
 ) {
@@ -225,7 +269,7 @@ internal fun SubtaskProgressText(task: TaskItem) {
 }
 
 @Composable
-private fun NoteRowScaffold(
+internal fun NoteRowScaffold(
     note: NoteItem,
     list: Objective?,
     contentMaxLines: Int,

@@ -7,12 +7,12 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Icon
@@ -57,6 +58,7 @@ import com.checkit.domain.Objective
 import com.checkit.ui.components.icons.AppIcons
 import com.checkit.ui.components.icons.Target
 import com.checkit.ui.components.TimeframePill
+import com.checkit.ui.tasks.views.OKRTaskContent
 import com.checkit.ui.theme.toColor
 
 @Composable
@@ -144,15 +146,15 @@ private fun ObjectiveBranch(
 ) {
     val nodeKey = objective.nodeKey()
     val isExpanded = nodeKey !in collapsedNodeKeys
+    val isSelected = selectedNodeKey == nodeKey
     val color = objective.color.toColor()
     TreeNodeRow(
-        text = objective.name,
         nodeKey = nodeKey,
         depth = 0,
         isLast = true, // Root objectives are independent
         hasChildren = keyResults.isNotEmpty(),
         isExpanded = isExpanded,
-        isSelected = selectedNodeKey == nodeKey,
+        isSelected = isSelected,
         color = color,
         onToggleExpanded = onToggleExpanded,
         onSelectNode = onSelectNode,
@@ -173,6 +175,17 @@ private fun ObjectiveBranch(
             TimeframePill(
                 startDate = objective.startDate,
                 endDate = objective.endDate
+            )
+        },
+        content = {
+            Text(
+                text = objective.name,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f).padding(vertical = 8.dp)
             )
         }
     )
@@ -202,7 +215,7 @@ private fun KeyResultBranch(
     collapsedNodeKeys: Set<String>,
     selectedNodeKey: String?,
     isLast: Boolean,
-    color: Color? = null,
+    color: Color,
     onToggleExpanded: (String) -> Unit,
     onSelectNode: (String) -> Unit,
     onTaskClick: (TaskItem) -> Unit,
@@ -211,20 +224,29 @@ private fun KeyResultBranch(
 ) {
     val nodeKey = keyResult.nodeKey()
     val isExpanded = nodeKey !in collapsedNodeKeys
+    val isSelected = selectedNodeKey == nodeKey
     TreeNodeRow(
-        text = keyResult.title,
         nodeKey = nodeKey,
         depth = 1,
         isLast = isLast,
         hasChildren = tasks.isNotEmpty(),
         isExpanded = isExpanded,
-        isSelected = selectedNodeKey == nodeKey,
+        isSelected = isSelected,
         color = color,
         onToggleExpanded = onToggleExpanded,
         onSelectNode = onSelectNode,
         onLongClick = { onEditKeyResult(keyResult) },
         onAddClick = {
             onAddTask(keyResult)
+        },
+        leadingContent = {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.TrendingUp,
+                contentDescription = "target",
+                tint = color,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
         },
         trailingContent = {
             Column(horizontalAlignment = Alignment.End) {
@@ -240,6 +262,17 @@ private fun KeyResultBranch(
                     trackColor = MaterialTheme.colorScheme.surfaceVariant
                 )
             }
+        },
+        content = {
+            Text(
+                text = keyResult.title,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f).padding(vertical = 8.dp)
+            )
         }
     )
     
@@ -250,7 +283,6 @@ private fun KeyResultBranch(
         tasks.forEachIndexed { index, task ->
             val taskNodeKey = task.nodeKey()
             TreeNodeRow(
-                text = task.name,
                 nodeKey = taskNodeKey,
                 depth = 2,
                 isLast = index == tasks.lastIndex,
@@ -261,7 +293,10 @@ private fun KeyResultBranch(
                 onToggleExpanded = onToggleExpanded,
                 onSelectNode = onSelectNode,
                 onLongClick = { onTaskClick(task) },
-                ancestorLines = ancestorLines
+                ancestorLines = ancestorLines,
+                content = {
+                    OKRTaskContent(task)
+                }
             )
         }
     }
@@ -286,7 +321,6 @@ private fun AnimatedChildren(
 
 @Composable
 private fun TreeNodeRow(
-    text: String,
     nodeKey: String,
     depth: Int,
     isLast: Boolean,
@@ -300,7 +334,8 @@ private fun TreeNodeRow(
     onAddClick: (()-> Unit)? = null,
     ancestorLines: List<Dp> = emptyList(),
     leadingContent: @Composable (() -> Unit)? = null,
-    trailingContent: @Composable (() -> Unit)? = null
+    trailingContent: @Composable (() -> Unit)? = null,
+    content: @Composable (RowScope.() -> Unit),
 ) {
     val background = if (isSelected) {
         MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.65f)
@@ -417,15 +452,7 @@ private fun TreeNodeRow(
             Spacer(Modifier.size(20.dp))
         }
         leadingContent?.invoke()
-        Text(
-            text = text,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f).padding(vertical = 8.dp)
-        )
+        content.invoke(this)
         trailingContent?.invoke()
         if (isSelected && onAddClick != null) {
             IconButton(onClick = onAddClick, modifier = Modifier.size(20.dp)) {
