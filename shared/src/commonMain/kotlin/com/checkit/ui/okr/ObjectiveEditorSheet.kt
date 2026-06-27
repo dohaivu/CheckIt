@@ -40,7 +40,7 @@ import androidx.compose.ui.unit.dp
 import com.checkit.ui.EditorMode
 import com.checkit.ui.ObjectiveEditorState
 import com.checkit.ui.components.ColorPicker
-import com.checkit.ui.components.DateRangePicker
+import com.checkit.ui.components.PeriodPicker
 import com.checkit.ui.components.SectionLabel
 import com.checkit.ui.theme.AppIconColorDefaults
 import kotlinx.datetime.LocalDate
@@ -117,8 +117,7 @@ internal fun ObjectiveEditorSheet(
                 )
             }
             item {
-                SectionLabel("Schedule")
-                DateRangePicker(
+                PeriodPicker(
                     startDate = editor.startDate,
                     endDate = editor.endDate,
                     onRangeChange = onDateRangeChange,

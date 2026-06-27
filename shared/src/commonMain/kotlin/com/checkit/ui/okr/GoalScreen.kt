@@ -55,6 +55,7 @@ import com.checkit.domain.TaskItem
 import com.checkit.domain.Objective
 import com.checkit.ui.components.icons.AppIcons
 import com.checkit.ui.components.icons.Target
+import com.checkit.ui.components.TimeframePill
 import com.checkit.ui.theme.toColor
 
 @Composable
@@ -166,6 +167,12 @@ private fun ObjectiveBranch(
                 modifier = Modifier.size(20.dp)
             )
             Spacer(modifier = Modifier.width(4.dp))
+        },
+        trailingContent = {
+            TimeframePill(
+                startDate = objective.startDate,
+                endDate = objective.endDate
+            )
         }
     )
     AnimatedChildren(visible = isExpanded && keyResults.isNotEmpty()) {
