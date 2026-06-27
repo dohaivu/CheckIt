@@ -197,7 +197,7 @@ internal fun ViewOptionsMenu(
                                 onClick = { onShowCompletedChange(!showCompleted) }
                             )
 
-                            if (selectedView == TaskWorkspaceView.List) {
+                            if (selectedView == TaskWorkspaceView.List || selectedView == TaskWorkspaceView.Goal) {
                                 OptionSectionLabel("Sort")
                                 FlowRow(
                                     horizontalArrangement = Arrangement.spacedBy(6.dp),

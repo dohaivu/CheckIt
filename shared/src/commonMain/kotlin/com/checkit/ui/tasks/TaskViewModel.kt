@@ -108,8 +108,14 @@ class TaskViewModel(
         viewModelScope.launch {
             settingsRepository.settings.collect { settings ->
                 _uiState.update { state ->
+                    val persistedView = TaskWorkspaceView.fromCode(settings.taskWorkspaceViewCode)
+                    val effectiveView = if (state.selectedView == TaskWorkspaceView.Goal) {
+                        state.selectedView
+                    } else {
+                        persistedView
+                    }
                     val nextOptions = state.options.copy(
-                        selectedView = TaskWorkspaceView.fromCode(settings.taskWorkspaceViewCode),
+                        selectedView = effectiveView,
                         listDisplayType = TaskListDisplayType.fromCode(settings.taskListDisplayTypeCode),
                         showCompleted = settings.taskShowCompleted,
                         sortOption = TaskSortOption.fromCode(settings.taskSortOptionCode)
