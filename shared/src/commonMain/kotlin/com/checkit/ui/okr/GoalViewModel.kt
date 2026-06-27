@@ -18,10 +18,18 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+sealed interface GoalItemType {
+    data class Objective(val objectiveId: Long) : GoalItemType
+    data class KeyResult(val keyResultId: Long) : GoalItemType
+    data class Task(val taskId: Long) : GoalItemType
+    data class Note(val noteId: Long) : GoalItemType
+}
+
 data class GoalUiState(
     val editor: GoalEditorState? = null,
     val collapsedNodeKeys: Set<String> = emptySet(),
-    val selectedNodeKey: String? = null
+    val selectedNodeKey: String? = null,
+    val selectedItemType: GoalItemType? = null
 )
 
 data class GoalEditorState(
@@ -115,9 +123,23 @@ class GoalViewModel(
     }
 
     fun selectNode(nodeKey: String?) {
-        _uiState.update { 
+        _uiState.update {
             val nextKey = if (it.selectedNodeKey == nodeKey) null else nodeKey
-            it.copy(selectedNodeKey = nextKey)
+            it.copy(
+                selectedNodeKey = nextKey,
+                selectedItemType = nextKey?.let(::parseItemType)
+            )
+        }
+    }
+
+    private fun parseItemType(nodeKey: String): GoalItemType? {
+        val id = nodeKey.substringAfterLast("-").toLongOrNull() ?: return null
+        return when {
+            nodeKey.startsWith("objective-") -> GoalItemType.Objective(id)
+            nodeKey.startsWith("key-result-") -> GoalItemType.KeyResult(id)
+            nodeKey.startsWith("task-") -> GoalItemType.Task(id)
+            nodeKey.startsWith("note-") -> GoalItemType.Note(id)
+            else -> null
         }
     }
 

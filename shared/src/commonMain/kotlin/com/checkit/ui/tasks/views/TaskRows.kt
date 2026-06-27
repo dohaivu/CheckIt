@@ -143,7 +143,7 @@ internal fun OKRNoteContent(note: NoteItem) {
             text = note.title.ifBlank { note.content },
             modifier = Modifier.weight(1f),
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = if (note.title.isNotBlank()) FontWeight.SemiBold else FontWeight.Normal,
+            fontWeight = FontWeight.Normal,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )

@@ -30,7 +30,7 @@ internal fun DetailChip(
     icon: ImageVector,
     label: String,
     modifier: Modifier = Modifier,
-    iconTint: Color = MaterialTheme.colorScheme.primary,
+    iconTint: Color = Color.Unspecified,
     isHighlighted: Boolean = false,
     onClick: (() -> Unit)? = null
 ) {
@@ -52,7 +52,7 @@ internal fun DetailChip(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = iconTint,
+            tint = if (isHighlighted) MaterialTheme.colorScheme.error else iconTint,
             modifier = Modifier.size(16.dp)
         )
         Text(

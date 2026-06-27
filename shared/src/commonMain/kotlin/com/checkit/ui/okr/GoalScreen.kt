@@ -26,9 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -71,7 +69,6 @@ internal fun GoalScreen(
     keyResultViewModel: KeyResultViewModel,
     onTaskClick: (TaskItem) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
-    onAddTask: (KeyResult) -> Unit,
     onEditObjective: (Objective) -> Unit,
     visibleTasks: List<TaskItem>,
     visibleNotes: List<NoteItem>,
@@ -114,10 +111,6 @@ internal fun GoalScreen(
                 onSelectNode = goalViewModel::selectNode,
                 onTaskClick = onTaskClick,
                 onNoteClick = onNoteClick,
-                onAddKeyResult = { objective ->
-                    keyResultViewModel.openNewKeyResult(objective.id)
-                },
-                onAddTask = onAddTask,
                 onEditKeyResult = keyResultViewModel::openEditKeyResult,
                 onEditObjective = onEditObjective
             )
@@ -150,8 +143,6 @@ private fun ObjectiveBranch(
     onSelectNode: (String) -> Unit,
     onTaskClick: (TaskItem) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
-    onAddKeyResult: (Objective) -> Unit,
-    onAddTask: (KeyResult) -> Unit,
     onEditKeyResult: (KeyResult) -> Unit,
     onEditObjective: (Objective) -> Unit
 ) {
@@ -171,9 +162,6 @@ private fun ObjectiveBranch(
         onToggleExpanded = onToggleExpanded,
         onSelectNode = onSelectNode,
         onLongClick = { onEditObjective(objective) },
-        onAddClick = {
-            onAddKeyResult(objective)
-        },
         leadingContent = {
             Icon(
                 imageVector = AppIcons.Target,
@@ -235,7 +223,6 @@ private fun ObjectiveBranch(
                 onToggleExpanded = onToggleExpanded,
                 onSelectNode = onSelectNode,
                 onTaskClick = onTaskClick,
-                onAddTask = onAddTask,
                 onEditKeyResult = onEditKeyResult
             )
             childIndex++
@@ -254,7 +241,6 @@ private fun KeyResultBranch(
     onToggleExpanded: (String) -> Unit,
     onSelectNode: (String) -> Unit,
     onTaskClick: (TaskItem) -> Unit,
-    onAddTask: (KeyResult) -> Unit,
     onEditKeyResult: (KeyResult) -> Unit
 ) {
     val nodeKey = keyResult.nodeKey()
@@ -271,9 +257,6 @@ private fun KeyResultBranch(
         onToggleExpanded = onToggleExpanded,
         onSelectNode = onSelectNode,
         onLongClick = { onEditKeyResult(keyResult) },
-        onAddClick = {
-            onAddTask(keyResult)
-        },
         leadingContent = {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.TrendingUp,
@@ -365,7 +348,6 @@ private fun TreeNodeRow(
     onToggleExpanded: (String) -> Unit,
     onSelectNode: (String) -> Unit,
     onLongClick: (() -> Unit)? = null,
-    onAddClick: (()-> Unit)? = null,
     ancestorLines: List<Dp> = emptyList(),
     leadingContent: @Composable (() -> Unit)? = null,
     trailingContent: @Composable (() -> Unit)? = null,
@@ -488,15 +470,6 @@ private fun TreeNodeRow(
         leadingContent?.invoke()
         content.invoke(this)
         trailingContent?.invoke()
-        if (isSelected && onAddClick != null) {
-            IconButton(onClick = onAddClick, modifier = Modifier.size(20.dp)) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Add",
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-        }
     }
 }
 

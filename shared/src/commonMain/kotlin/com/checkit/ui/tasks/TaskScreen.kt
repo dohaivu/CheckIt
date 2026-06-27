@@ -26,6 +26,7 @@ import com.checkit.ui.TaskUiState
 import com.checkit.ui.TaskWorkspaceView
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.okr.GoalEditorSheet
+import com.checkit.ui.okr.GoalItemType
 import com.checkit.ui.okr.GoalViewModel
 import com.checkit.ui.okr.KeyResultViewModel
 import com.checkit.ui.okr.ObjectiveEditorSheet
@@ -99,11 +100,28 @@ internal fun TaskScreen(
             modifier = modifier.fillMaxSize(),
             containerColor = MaterialTheme.colorScheme.background,
             floatingActionButton = {
-                if (state.selectedGoalId != null) {
-                    TaskActionFab(
-                        onObjectiveClick = state.selectedGoalId?.let { goalId ->
-                            { objectiveViewModel.openNewObjective(goalId) }
+                val goalSelection = goalState.selectedItemType
+                if (goalSelection != null) {
+                    when (goalSelection) {
+                        is GoalItemType.Objective -> TaskActionFab(
+                            onKeyResultClick = { keyResultViewModel.openNewKeyResult(goalSelection.objectiveId) },
+                            onNoteClick = {
+                                viewModel.openNewNote(goalSelection.objectiveId)
+                            },
+                        )
+                        is GoalItemType.KeyResult -> {
+                            val keyResult = state.board.keyResults.find { it.id == goalSelection.keyResultId }
+                            if (keyResult != null) {
+                                TaskActionFab(
+                                    onTaskClick = { viewModel.openNewTaskOnKeyResult(keyResult) }
+                                )
+                            }
                         }
+                        is GoalItemType.Task, is GoalItemType.Note -> Unit
+                    }
+                } else if (state.selectedGoalId != null) {
+                    TaskActionFab(
+                        onObjectiveClick = { state.selectedGoalId?.let(objectiveViewModel::openNewObjective) }
                     )
                 } else {
                     TaskActionFab(
@@ -158,7 +176,6 @@ internal fun TaskScreen(
                     keyResultViewModel = keyResultViewModel,
                     onTaskClick = viewModel::openTask,
                     onNoteClick = viewModel::openNote,
-                    onAddTask = viewModel::openNewTaskOnKeyResult,
                     onEditObjective = objectiveViewModel::openEditObjective,
                     visibleTasks = state.visibleItems.tasks,
                     visibleNotes = state.visibleItems.notes,

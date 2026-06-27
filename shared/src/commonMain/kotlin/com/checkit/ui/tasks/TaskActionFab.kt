@@ -3,6 +3,7 @@ package com.checkit.ui.tasks
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.DropdownMenu
@@ -22,7 +23,8 @@ import com.checkit.ui.components.icons.Target
 internal fun TaskActionFab(
     onTaskClick: (() -> Unit)? = null,
     onNoteClick: (() -> Unit)? = null,
-    onObjectiveClick: (() -> Unit)? = null
+    onObjectiveClick: (() -> Unit)? = null,
+    onKeyResultClick: (() -> Unit)? = null
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
@@ -60,6 +62,16 @@ internal fun TaskActionFab(
                     onClick = {
                         expanded = false
                         onObjectiveClick()
+                    }
+                )
+            }
+            if (onKeyResultClick != null) {
+                DropdownMenuItem(
+                    text = { Text("Key result") },
+                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.TrendingUp, contentDescription = null) },
+                    onClick = {
+                        expanded = false
+                        onKeyResultClick()
                     }
                 )
             }

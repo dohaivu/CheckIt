@@ -1,5 +1,6 @@
 package com.checkit.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -22,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.checkit.ui.today
@@ -142,34 +144,31 @@ internal fun TimeframePill(
 
     val period = remember(startDate, endDate) { Period.fromRange(startDate, endDate) }
     val label = if (period is Period.Custom) {
-        val startStr = startDate?.let { "${it.month.name.take(3)} ${it.dayOfMonth}" } ?: "..."
-        val endStr = endDate?.let { "${it.month.name.take(3)} ${it.dayOfMonth}" } ?: "..."
+        val startStr = startDate?.let { "${it.month.name.take(3)} ${it.day}" } ?: "..."
+        val endStr = endDate?.let { "${it.month.name.take(3)} ${it.day}" } ?: "..."
         "$startStr - $endStr"
     } else {
         period.label
     }
 
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
-        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        shape = RoundedCornerShape(4.dp),
+    Row(
         modifier = modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f))
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+        ,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.DateRange,
-                contentDescription = null,
-                modifier = Modifier.size(12.dp)
-            )
-            Spacer(Modifier.width(4.dp))
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Medium
-            )
-        }
+        Icon(
+            imageVector = Icons.Default.DateRange,
+            contentDescription = null,
+            modifier = Modifier.size(12.dp)
+        )
+        Spacer(Modifier.width(4.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Medium
+        )
     }
 }

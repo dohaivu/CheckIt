@@ -10,6 +10,7 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.KeyResult
 import com.checkit.domain.NoteItem
+import com.checkit.domain.Objective
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskPriority
@@ -292,6 +293,13 @@ class TaskViewModel(
                     endTimeMinutes = endTimeMinutes.coerceIn(MinimumTimelineDurationMinutes, MinutesPerDay)
                 )
             )
+        }
+    }
+
+    fun openNewNote(objectiveId: Long) {
+        cancelPendingTaskTextSave()
+        _uiState.update {
+            it.copy(editor = TaskEditorState.NoteForm(mode = EditorMode.Add, objectiveId = objectiveId, date = today()))
         }
     }
 
