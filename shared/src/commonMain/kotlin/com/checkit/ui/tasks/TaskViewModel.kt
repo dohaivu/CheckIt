@@ -19,6 +19,7 @@ import com.checkit.domain.TaskReminderPreset
 import com.checkit.domain.usecase.AddNoteUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
+import com.checkit.domain.usecase.AutoUpdateKeyResultCurrentValueUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
 import com.checkit.domain.usecase.CompleteNoteUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
@@ -81,6 +82,7 @@ class TaskViewModel(
     private val restoreNote: RestoreNoteUseCase,
     private val updateDailyPlanItemTime: UpdateDailyPlanItemTimeUseCase,
     private val updateDailyPlanItemStatus: UpdateDailyPlanItemStatusUseCase,
+    private val autoUpdateKeyResultCurrentValue: AutoUpdateKeyResultCurrentValueUseCase,
     private val settingsRepository: SettingsRepository
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(TaskUiState())
@@ -562,7 +564,8 @@ class TaskViewModel(
     fun updateDailyPlanStatus() {
         val form = _uiState.value.editor as? TaskEditorState.TaskForm ?: return
         val item = form.dailyPlanItem ?: return
-        val nextStatus = when (item.status) {
+        val previousStatus = item.status
+        val nextStatus = when (previousStatus) {
             DailyPlanItemStatus.Planned -> DailyPlanItemStatus.Done
             DailyPlanItemStatus.Done -> DailyPlanItemStatus.Planned
         }
@@ -573,6 +576,7 @@ class TaskViewModel(
         }
         viewModelScope.launch {
             updateDailyPlanItemStatus(item.id, nextStatus)
+            autoUpdateKeyResultCurrentValue(item, previousStatus, nextStatus, _uiState.value.board)
         }
     }
 

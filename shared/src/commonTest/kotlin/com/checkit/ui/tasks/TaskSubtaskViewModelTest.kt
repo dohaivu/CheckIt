@@ -8,6 +8,7 @@ import com.checkit.domain.TaskPriority
 import com.checkit.domain.usecase.AddNoteUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
+import com.checkit.domain.usecase.AutoUpdateKeyResultCurrentValueUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
 import com.checkit.domain.usecase.CompleteNoteUseCase
 import com.checkit.domain.usecase.OpenTaskUseCase
@@ -253,6 +254,7 @@ class TaskSubtaskViewModelTest {
             restoreNote = RestoreNoteUseCase(repository),
             updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository),
             updateDailyPlanItemStatus = UpdateDailyPlanItemStatusUseCase(repository),
+            autoUpdateKeyResultCurrentValue = AutoUpdateKeyResultCurrentValueUseCase(repository),
             settingsRepository = FakeSettingsRepository()
         )
         dispatcher.scheduler.advanceUntilIdle()
