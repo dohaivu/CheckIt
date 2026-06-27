@@ -399,7 +399,7 @@ private fun TreeNodeRow(
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                     contentDescription = if (isExpanded) "Collapse" else "Expand",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    tint = lineColor,
                     modifier = Modifier.size(20.dp).graphicsLayer {
                         this.rotationZ = rotation
                     }

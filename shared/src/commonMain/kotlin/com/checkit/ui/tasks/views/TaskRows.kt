@@ -32,7 +32,7 @@ import com.checkit.ui.components.DateTimeRangeDetailChip
 import com.checkit.ui.components.DetailChip
 import com.checkit.ui.components.RepeatPill
 import com.checkit.ui.tasks.NoteIcon
-import com.checkit.ui.tasks.SupportingPills
+import com.checkit.ui.components.SupportingPills
 import com.checkit.ui.tasks.TaskIcon
 import com.checkit.ui.tasks.compact
 import com.checkit.ui.tasks.isOverdue

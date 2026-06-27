@@ -1,4 +1,4 @@
-package com.checkit.ui.tasks
+package com.checkit.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.FlowRow
@@ -12,8 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.Objective
 import com.checkit.domain.TaskTag
-import com.checkit.ui.components.DetailChip
-import com.checkit.ui.components.TaskTagPill
 import com.checkit.ui.components.icons.AppIcons
 import com.checkit.ui.components.icons.Target
 import com.checkit.ui.theme.materialIcon
