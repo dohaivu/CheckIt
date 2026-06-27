@@ -1,5 +1,6 @@
 package com.checkit.ui.tasks.views
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -47,6 +48,7 @@ import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun AgendaView(
     items: List<TimelineItem>,
@@ -72,13 +74,33 @@ internal fun AgendaView(
         }
     }
 
-    val initialIndex = remember(visibleDates, focusedDate) {
-        val exactIndex = visibleDates.indexOf(focusedDate)
+    val agendaListItems: List<AgendaListItem> = remember(visibleDates, boundedDayCount) {
+        if (boundedDayCount != null) {
+            visibleDates.map { AgendaListItem.Day(it) }
+        } else {
+            buildList {
+                var lastMonthYear: Pair<Int, kotlinx.datetime.Month>? = null
+                for (date in visibleDates) {
+                    val currentMonthYear = Pair(date.year, date.month)
+                    if (currentMonthYear != lastMonthYear) {
+                        val monthName = date.month.name.lowercase().replaceFirstChar { it.uppercase() }
+                        val label = "$monthName ${date.year}"
+                        add(AgendaListItem.MonthHeader(label = label, key = "month-${date.year}-${date.month.ordinal + 1}"))
+                        lastMonthYear = currentMonthYear
+                    }
+                    add(AgendaListItem.Day(date))
+                }
+            }
+        }
+    }
+
+    val initialIndex = remember(agendaListItems, focusedDate) {
+        val exactIndex = agendaListItems.indexOfFirst { it is AgendaListItem.Day && it.date == focusedDate }
         if (exactIndex != -1) {
             exactIndex
         } else {
-            val index = visibleDates.indexOfFirst { it > focusedDate }
-            if (index != -1) index else (visibleDates.size - 1).coerceAtLeast(0)
+            val index = agendaListItems.indexOfFirst { it is AgendaListItem.Day && it.date > focusedDate }
+            if (index != -1) index else (agendaListItems.size - 1).coerceAtLeast(0)
         }
     }
 
@@ -88,7 +110,7 @@ internal fun AgendaView(
     val nowMinutes = now.hour * 60 + now.minute
 
     LaunchedEffect(focusedDate, initialIndex) {
-        if (initialIndex in visibleDates.indices) {
+        if (initialIndex in agendaListItems.indices) {
             state.scrollToItem(initialIndex)
         }
     }
@@ -99,26 +121,39 @@ internal fun AgendaView(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
-            items(
-                count = visibleDates.size,
-                key = { index -> "agenda-day-${visibleDates[index]}" }
-            ) { index ->
-                val date = visibleDates[index]
-                AgendaDaySection(
-                    date = date,
-                    today = today,
-                    items = itemsByDate[date] ?: AgendaDayItems.Empty,
-                    nowMinutes = nowMinutes,
-                    showHeader = boundedDayCount != 1,
-                    onItemClick = onItemClick,
-                    itemContent = itemContent
-                )
+            agendaListItems.forEach { item ->
+                when (item) {
+                    is AgendaListItem.MonthHeader -> {
+                        stickyHeader(
+                            key = item.key,
+                            contentType = "MonthHeader"
+                        ) {
+                            AgendaMonthHeader(label = item.label)
+                        }
+                    }
+                    is AgendaListItem.Day -> {
+                        item(
+                            key = "agenda-day-${item.date}",
+                            contentType = "Day"
+                        ) {
+                            AgendaDaySection(
+                                date = item.date,
+                                today = today,
+                                items = itemsByDate[item.date] ?: AgendaDayItems.Empty,
+                                nowMinutes = nowMinutes,
+                                showHeader = boundedDayCount != 1,
+                                onItemClick = onItemClick,
+                                itemContent = itemContent
+                            )
+                        }
+                    }
+                }
             }
         }
 
         if (boundedDayCount != 1) {
-            val todayIndex = remember(visibleDates, today) {
-                visibleDates.indexOf(today).coerceAtLeast(0)
+            val todayIndex = remember(agendaListItems, today) {
+                agendaListItems.indexOfFirst { it is AgendaListItem.Day && it.date == today }.coerceAtLeast(0)
             }
             FilledTonalButton(
                 onClick = { scope.launch { state.animateScrollToItem(todayIndex) } },
@@ -412,4 +447,23 @@ private fun AgendaAxisMarker(
 
 private fun LocalDate.agendaDateLabel(): String =
     "${dayOfWeek.shortName()}, ${shortMonthName()} $day"
+
+private sealed class AgendaListItem {
+    data class MonthHeader(val label: String, val key: String) : AgendaListItem()
+    data class Day(val date: LocalDate) : AgendaListItem()
+}
+
+@Composable
+private fun AgendaMonthHeader(label: String, modifier: Modifier = Modifier) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    )
+}
 
