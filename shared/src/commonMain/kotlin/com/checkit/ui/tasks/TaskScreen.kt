@@ -156,8 +156,11 @@ internal fun TaskScreen(
                     goalViewModel = goalViewModel,
                     keyResultViewModel = keyResultViewModel,
                     onTaskClick = viewModel::openTask,
+                    onNoteClick = viewModel::openNote,
                     onAddTask = viewModel::openNewTaskOnKeyResult,
                     onEditObjective = objectiveViewModel::openEditObjective,
+                    visibleTasks = state.visibleItems.tasks,
+                    visibleNotes = state.visibleItems.notes,
                     modifier = contentModifier
                 )
             } else {
