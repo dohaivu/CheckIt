@@ -59,14 +59,38 @@ internal fun AgendaView(
     val today = today()
     val itemsByDate = remember(items) { items.groupedByAgendaDate() }
     val boundedDayCount = dayLimit?.coerceAtLeast(1)
-    val initialIndex = if (boundedDayCount == null) TodayIndex else 0
+
+    val visibleDates = remember(itemsByDate, today, focusedDate, boundedDayCount) {
+        if (boundedDayCount != null) {
+            val initialIndex = 0
+            List(boundedDayCount) { index ->
+                focusedDate.plus(index - initialIndex, DateTimeUnit.DAY)
+            }
+        } else {
+            val tomorrow = today.plus(1, DateTimeUnit.DAY)
+            (itemsByDate.keys + today + tomorrow).distinct().sorted()
+        }
+    }
+
+    val initialIndex = remember(visibleDates, focusedDate) {
+        val exactIndex = visibleDates.indexOf(focusedDate)
+        if (exactIndex != -1) {
+            exactIndex
+        } else {
+            val index = visibleDates.indexOfFirst { it > focusedDate }
+            if (index != -1) index else (visibleDates.size - 1).coerceAtLeast(0)
+        }
+    }
+
     val state = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
     val scope = rememberCoroutineScope()
     val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
     val nowMinutes = now.hour * 60 + now.minute
 
     LaunchedEffect(focusedDate, initialIndex) {
-        state.scrollToItem(initialIndex)
+        if (initialIndex in visibleDates.indices) {
+            state.scrollToItem(initialIndex)
+        }
     }
 
     Box(modifier.fillMaxSize()) {
@@ -76,10 +100,10 @@ internal fun AgendaView(
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             items(
-                count = boundedDayCount ?: AgendaDayCount,
-                key = { index -> "agenda-day-${focusedDate.plus(index - initialIndex, DateTimeUnit.DAY)}" }
+                count = visibleDates.size,
+                key = { index -> "agenda-day-${visibleDates[index]}" }
             ) { index ->
-                val date = focusedDate.plus(index - initialIndex, DateTimeUnit.DAY)
+                val date = visibleDates[index]
                 AgendaDaySection(
                     date = date,
                     today = today,
@@ -93,8 +117,11 @@ internal fun AgendaView(
         }
 
         if (boundedDayCount != 1) {
+            val todayIndex = remember(visibleDates, today) {
+                visibleDates.indexOf(today).coerceAtLeast(0)
+            }
             FilledTonalButton(
-                onClick = { scope.launch { state.animateScrollToItem(initialIndex) } },
+                onClick = { scope.launch { state.animateScrollToItem(todayIndex) } },
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(16.dp)
@@ -386,5 +413,3 @@ private fun AgendaAxisMarker(
 private fun LocalDate.agendaDateLabel(): String =
     "${dayOfWeek.shortName()}, ${shortMonthName()} $day"
 
-private const val AgendaDayCount = 20_001
-private const val TodayIndex = AgendaDayCount / 2
