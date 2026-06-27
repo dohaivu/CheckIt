@@ -42,11 +42,9 @@ data class TaskUiState(
     val selectedTag = board.tags.firstOrNull { it.id == selectedTagId }
     val title: String = selectedGoal?.title ?: selectedList?.name ?: selectedTag?.name ?: "All tasks"
     val dayLimit: Int? = if (selectedFilter?.dueDatePreset == DueDatePreset.Today) 1 else null
-    val availableViews: List<TaskWorkspaceView> = if (dayLimit == 1) {
-        TaskWorkspaceView.entries
-    } else {
-        TaskWorkspaceView.entries.filter { it != TaskWorkspaceView.Timeline }
-    }
+    val availableViews: List<TaskWorkspaceView> = TaskWorkspaceView.entries
+        .filter { it != TaskWorkspaceView.Timeline || dayLimit == 1 }
+        .filter { it != TaskWorkspaceView.Goal || selectedGoal != null }
 }
 
 data class TaskSelectionState(
@@ -85,6 +83,7 @@ sealed interface TaskListEntry {
 enum class TaskWorkspaceView {
     List,
     Agenda,
+    Goal,
     Timeline;
 
     companion object {

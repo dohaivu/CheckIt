@@ -145,7 +145,7 @@ class TaskViewModel(
 
     fun selectGoal(goalId: Long) {
         _uiState.update {
-            it.copy(selection = TaskSelectionState(selectedGoalId = goalId))
+            it.copy(selection = TaskSelectionState(selectedGoalId = goalId), options = it.options.copy(selectedView = TaskWorkspaceView.Goal))
                 .refreshVisibleItems()
                 .coerceViewToAvailable()
         }
@@ -178,7 +178,7 @@ class TaskViewModel(
                 it.copy(options = it.options.copy(selectedView = view))
             }
         }
-        if (shouldPersist) {
+        if (shouldPersist && view != TaskWorkspaceView.Goal) {
             viewModelScope.launch {
                 settingsRepository.setTaskWorkspaceViewCode(view.name)
             }

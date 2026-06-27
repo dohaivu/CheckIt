@@ -68,7 +68,10 @@ class TaskUiStateViewsTest {
         val state = TaskUiState(board = board, options = TaskViewOptionsState(selectedFilterId = 1L))
 
         assertEquals(1, state.dayLimit)
-        assertEquals(TaskWorkspaceView.entries, state.availableViews)
+        assertEquals(
+            listOf(TaskWorkspaceView.List, TaskWorkspaceView.Agenda, TaskWorkspaceView.Timeline),
+            state.availableViews
+        )
     }
 
     @Test

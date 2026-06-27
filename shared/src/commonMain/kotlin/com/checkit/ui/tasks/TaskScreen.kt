@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import com.checkit.ui.TaskUiState
+import com.checkit.ui.TaskWorkspaceView
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.okr.GoalEditorSheet
 import com.checkit.ui.okr.GoalViewModel
@@ -149,7 +150,7 @@ internal fun TaskScreen(
                 Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
-            } else if (state.selectedGoal != null) {
+            } else if (state.selectedView == TaskWorkspaceView.Goal && state.selectedGoal != null) {
                 GoalScreen(
                     goal = state.selectedGoal,
                     board = state.board,

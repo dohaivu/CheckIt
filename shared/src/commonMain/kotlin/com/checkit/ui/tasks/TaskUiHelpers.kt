@@ -12,6 +12,7 @@ import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.EventAvailable
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.ViewAgenda
 import androidx.compose.material.icons.rounded.CheckBox
@@ -38,6 +39,8 @@ import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.ui.TaskWorkspaceView
+import com.checkit.ui.components.icons.AppIcons
+import com.checkit.ui.components.icons.Target
 import com.checkit.ui.shortMonthName
 import com.checkit.ui.shortName
 import com.checkit.ui.tasks.views.currentTimeMinutes
@@ -52,6 +55,7 @@ import kotlinx.datetime.plus
 internal fun TaskWorkspaceView.icon(): ImageVector = when (this) {
     TaskWorkspaceView.List -> Icons.AutoMirrored.Filled.ViewList
     TaskWorkspaceView.Agenda -> Icons.Default.ViewAgenda
+    TaskWorkspaceView.Goal -> AppIcons.Target
     TaskWorkspaceView.Timeline -> Icons.Default.Schedule
 }
 
