@@ -61,6 +61,29 @@ class BuildDailyPlanMarkdownSummaryUseCase {
     }
 }
 
+class AddTaskToDailyPlanUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(date: LocalDate, task: TaskItem): Long =
+        repository.addTaskToDailyPlan(date, task)
+}
+
+class AddDailyPlanItemUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(
+        date: LocalDate,
+        title: String,
+        note: String?,
+        startTimeMinutes: Int?,
+        endTimeMinutes: Int?,
+        source: DailyPlanItemSource = DailyPlanItemSource.MyDayTask,
+        status: DailyPlanItemStatus = DailyPlanItemStatus.Done,
+        tagIds: List<Long> = emptyList()
+    ): Long =
+        repository.addDailyPlanItem(date, title, note, startTimeMinutes, endTimeMinutes, source, status, tagIds)
+}
+
 class UpdateDailyPlanItemTimeUseCase(
     private val repository: CheckItRepository
 ) {

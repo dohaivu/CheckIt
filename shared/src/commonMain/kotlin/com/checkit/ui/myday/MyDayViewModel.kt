@@ -8,7 +8,7 @@ import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.TaskItem
 import com.checkit.domain.hasEndTime
-import com.checkit.domain.usecase.AddManualDoneToDailyPlanUseCase
+import com.checkit.domain.usecase.AddDailyPlanItemUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
@@ -43,7 +43,7 @@ class MyDayViewModel(
     private val observeDailyPlans: ObserveDailyPlansUseCase,
     private val ensureDefaultTaskData: EnsureDefaultTaskDataUseCase,
     private val addTaskToDailyPlan: AddTaskToDailyPlanUseCase,
-    private val addManualDoneToDailyPlan: AddManualDoneToDailyPlanUseCase,
+    private val addDailyPlanItem: AddDailyPlanItemUseCase,
     private val updateDailyPlanItemTime: UpdateDailyPlanItemTimeUseCase,
     private val updateDailyPlanItem: UpdateDailyPlanItemUseCase,
     private val deleteDailyPlanItemUseCase: DeleteDailyPlanItemUseCase
@@ -161,7 +161,7 @@ class MyDayViewModel(
         }
         viewModelScope.launch {
             if (editor.itemId == null) {
-                addManualDoneToDailyPlan(
+                addDailyPlanItem(
                     editor.date,
                     title,
                     note.takeIf { it.isNotBlank() },

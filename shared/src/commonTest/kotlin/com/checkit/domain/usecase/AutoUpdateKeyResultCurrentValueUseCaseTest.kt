@@ -57,7 +57,7 @@ class AutoUpdateKeyResultCurrentValueUseCaseTest {
     )
 
     @Test
-    fun `number unit increments currentValue by 1 when marking done`() = runTest {
+    fun `number unit skips update`() = runTest {
         val obj = objective(1L)
         val kr = keyResult(id = 1L, objectiveId = 1L, currentValue = 3.0, unit = "Number")
         val t = task(id = 10L, objective = obj, keyResult = kr)
@@ -67,27 +67,11 @@ class AutoUpdateKeyResultCurrentValueUseCaseTest {
 
         useCase(dailyPlanItem(id = 100L, taskId = 10L), DailyPlanItemStatus.Planned, DailyPlanItemStatus.Done, board)
 
-        assertEquals(1, repository.updatedKeyResults.size)
-        assertEquals(4.0, repository.updatedKeyResults[0].second.currentValue)
+        assertTrue(repository.updatedKeyResults.isEmpty())
     }
 
     @Test
-    fun `number unit decrements currentValue by 1 when unmarking done`() = runTest {
-        val obj = objective(1L)
-        val kr = keyResult(id = 1L, objectiveId = 1L, currentValue = 5.0, unit = "Number")
-        val t = task(id = 10L, objective = obj, keyResult = kr)
-        val board = TaskBoard(objectives = listOf(obj), tasks = listOf(t), keyResults = listOf(kr))
-        val repository = FakeCheckItRepository(initialBoard = board)
-        val useCase = AutoUpdateKeyResultCurrentValueUseCase(repository)
-
-        useCase(dailyPlanItem(id = 100L, taskId = 10L, status = DailyPlanItemStatus.Done), DailyPlanItemStatus.Done, DailyPlanItemStatus.Planned, board)
-
-        assertEquals(1, repository.updatedKeyResults.size)
-        assertEquals(4.0, repository.updatedKeyResults[0].second.currentValue)
-    }
-
-    @Test
-    fun `binary unit sets currentValue to 1 when marking done`() = runTest {
+    fun `binary unit skips update`() = runTest {
         val obj = objective(1L)
         val kr = keyResult(id = 1L, objectiveId = 1L, currentValue = 0.0, unit = "Binary")
         val t = task(id = 10L, objective = obj, keyResult = kr)
@@ -97,23 +81,7 @@ class AutoUpdateKeyResultCurrentValueUseCaseTest {
 
         useCase(dailyPlanItem(id = 100L, taskId = 10L), DailyPlanItemStatus.Planned, DailyPlanItemStatus.Done, board)
 
-        assertEquals(1, repository.updatedKeyResults.size)
-        assertEquals(1.0, repository.updatedKeyResults[0].second.currentValue)
-    }
-
-    @Test
-    fun `binary unit sets currentValue to 0 when unmarking done`() = runTest {
-        val obj = objective(1L)
-        val kr = keyResult(id = 1L, objectiveId = 1L, currentValue = 1.0, unit = "Binary")
-        val t = task(id = 10L, objective = obj, keyResult = kr)
-        val board = TaskBoard(objectives = listOf(obj), tasks = listOf(t), keyResults = listOf(kr))
-        val repository = FakeCheckItRepository(initialBoard = board)
-        val useCase = AutoUpdateKeyResultCurrentValueUseCase(repository)
-
-        useCase(dailyPlanItem(id = 100L, taskId = 10L, status = DailyPlanItemStatus.Done), DailyPlanItemStatus.Done, DailyPlanItemStatus.Planned, board)
-
-        assertEquals(1, repository.updatedKeyResults.size)
-        assertEquals(0.0, repository.updatedKeyResults[0].second.currentValue)
+        assertTrue(repository.updatedKeyResults.isEmpty())
     }
 
     @Test
@@ -226,15 +194,18 @@ class AutoUpdateKeyResultCurrentValueUseCaseTest {
     }
 
     @Test
-    fun `currentValue never goes below zero`() = runTest {
+    fun `currentValue never goes below zero for hours unit`() = runTest {
         val obj = objective(1L)
-        val kr = keyResult(id = 1L, objectiveId = 1L, currentValue = 0.0, unit = "Number")
+        val kr = keyResult(id = 1L, objectiveId = 1L, currentValue = 0.5, unit = "Hours")
         val t = task(id = 10L, objective = obj, keyResult = kr)
         val board = TaskBoard(objectives = listOf(obj), tasks = listOf(t), keyResults = listOf(kr))
         val repository = FakeCheckItRepository(initialBoard = board)
         val useCase = AutoUpdateKeyResultCurrentValueUseCase(repository)
 
-        useCase(dailyPlanItem(id = 100L, taskId = 10L, status = DailyPlanItemStatus.Done), DailyPlanItemStatus.Done, DailyPlanItemStatus.Planned, board)
+        useCase(
+            dailyPlanItem(id = 100L, taskId = 10L, status = DailyPlanItemStatus.Done, startTimeMinutes = 9 * 60, endTimeMinutes = 11 * 60),
+            DailyPlanItemStatus.Done, DailyPlanItemStatus.Planned, board
+        )
 
         assertEquals(1, repository.updatedKeyResults.size)
         assertEquals(0.0, repository.updatedKeyResults[0].second.currentValue)

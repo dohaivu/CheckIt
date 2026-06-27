@@ -130,29 +130,6 @@ class OpenTaskUseCase(
     suspend operator fun invoke(taskId: Long) = repository.openTask(taskId)
 }
 
-class AddTaskToDailyPlanUseCase(
-    private val repository: CheckItRepository
-) {
-    suspend operator fun invoke(date: LocalDate, task: TaskItem): Long =
-        repository.addTaskToDailyPlan(date, task)
-}
-
-class AddManualDoneToDailyPlanUseCase(
-    private val repository: CheckItRepository
-) {
-    suspend operator fun invoke(
-        date: LocalDate,
-        title: String,
-        note: String?,
-        startTimeMinutes: Int?,
-        endTimeMinutes: Int?,
-        source: DailyPlanItemSource = DailyPlanItemSource.MyDayTask,
-        status: DailyPlanItemStatus = DailyPlanItemStatus.Done,
-        tagIds: List<Long> = emptyList()
-    ): Long =
-        repository.addManualDoneToDailyPlan(date, title, note, startTimeMinutes, endTimeMinutes, source, status, tagIds)
-}
-
 class AddNoteUseCase(
     private val repository: CheckItRepository
 ) {

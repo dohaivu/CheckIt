@@ -57,7 +57,7 @@ interface CheckItRepository {
     suspend fun completeTask(taskId: Long)
     suspend fun openTask(taskId: Long)
     suspend fun addTaskToDailyPlan(date: LocalDate, task: TaskItem): Long
-    suspend fun addManualDoneToDailyPlan(
+    suspend fun addDailyPlanItem(
         date: LocalDate,
         title: String,
         note: String?,
@@ -522,7 +522,7 @@ class RoomCheckItRepository(
         return itemId
     }
 
-    override suspend fun addManualDoneToDailyPlan(
+    override suspend fun addDailyPlanItem(
         date: LocalDate,
         title: String,
         note: String?,

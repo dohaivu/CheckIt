@@ -304,7 +304,7 @@ internal class FakeCheckItRepository(
         addedDailyPlanTasks.add(date to task)
         return addedDailyPlanTasks.size.toLong()
     }
-    override suspend fun addManualDoneToDailyPlan(
+    override suspend fun addDailyPlanItem(
         date: LocalDate,
         title: String,
         note: String?,

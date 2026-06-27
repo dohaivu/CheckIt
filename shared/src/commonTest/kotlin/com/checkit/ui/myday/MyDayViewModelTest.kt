@@ -3,7 +3,7 @@ package com.checkit.ui.myday
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DailyPlanItemSource
-import com.checkit.domain.usecase.AddManualDoneToDailyPlanUseCase
+import com.checkit.domain.usecase.AddDailyPlanItemUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
@@ -39,7 +39,7 @@ class MyDayViewModelTest {
             observeDailyPlans = ObserveDailyPlansUseCase(repository),
             ensureDefaultTaskData = EnsureDefaultTaskDataUseCase(repository),
             addTaskToDailyPlan = AddTaskToDailyPlanUseCase(repository),
-            addManualDoneToDailyPlan = AddManualDoneToDailyPlanUseCase(repository),
+            addDailyPlanItem = AddDailyPlanItemUseCase(repository),
             updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository),
             updateDailyPlanItem = UpdateDailyPlanItemUseCase(repository),
             deleteDailyPlanItemUseCase = DeleteDailyPlanItemUseCase(repository)

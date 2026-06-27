@@ -15,7 +15,7 @@ import com.checkit.domain.DailyPlanScheduleReminderPolicy
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.notifications.AppReminderScheduler
 import com.checkit.domain.usecase.AddNoteUseCase
-import com.checkit.domain.usecase.AddManualDoneToDailyPlanUseCase
+import com.checkit.domain.usecase.AddDailyPlanItemUseCase
 import com.checkit.domain.usecase.AddGoalUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.AddObjectiveUseCase
@@ -107,7 +107,7 @@ val provideInteractorModule = module {
     single { OpenTaskUseCase(get()) }
     single { OpenNoteUseCase(get()) }
     single { AddTaskToDailyPlanUseCase(get()) }
-    single { AddManualDoneToDailyPlanUseCase(get()) }
+    single { AddDailyPlanItemUseCase(get()) }
     single { UpdateDailyPlanItemTimeUseCase(get()) }
     single { UpdateDailyPlanItemStatusUseCase(get()) }
     single { AutoUpdateKeyResultCurrentValueUseCase(get()) }

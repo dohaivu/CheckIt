@@ -97,8 +97,11 @@ class AutoUpdateKeyResultCurrentValueUseCase(
                 }
             }
             KeyResultUnit.Days -> 1.0
-            KeyResultUnit.Binary -> 1.0
-            KeyResultUnit.Number, KeyResultUnit.Percentage, KeyResultUnit.Currency, KeyResultUnit.Points -> 1.0
+            KeyResultUnit.Binary,
+            KeyResultUnit.Number,
+            KeyResultUnit.Percentage,
+            KeyResultUnit.Currency,
+            KeyResultUnit.Points -> 0.0
         }
     }
 }
