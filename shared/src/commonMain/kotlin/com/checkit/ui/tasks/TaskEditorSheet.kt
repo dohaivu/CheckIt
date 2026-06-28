@@ -96,7 +96,7 @@ internal fun TaskEditorSheet(
     onNoteTitleChange: (String) -> Unit,
     onNoteContentChange: (String) -> Unit,
     onNoteListChange: (Long) -> Unit,
-    onNoteDateChange: (LocalDate) -> Unit,
+    onNoteDateChange: (LocalDate?) -> Unit,
     onNoteStartTimeChange: (Int?) -> Unit,
     onNoteTagToggle: (Long) -> Unit,
     onSwitchAddModeToTask: () -> Unit,
@@ -519,7 +519,7 @@ private fun NoteFormContent(
     onTitleChange: (String) -> Unit,
     onContentChange: (String) -> Unit,
     onListChange: (Long) -> Unit,
-    onDateChange: (LocalDate) -> Unit,
+    onDateChange: (LocalDate?) -> Unit,
     onStartTimeChange: (Int?) -> Unit,
     onTagToggle: (Long) -> Unit,
     enabled: Boolean = true
@@ -532,9 +532,7 @@ private fun NoteFormContent(
             NoteIcon(status = form.status)
             DatePicker(
                 date = form.date,
-                onDateChange = {
-                    it?.let {onDateChange.invoke(it)  }
-                },
+                onDateChange = onDateChange,
                 startTimeMinutes = form.startTimeMinutes,
                 endTimeMinutes = null,
                 onStartTimeChange = onStartTimeChange,

@@ -138,7 +138,7 @@ data class NoteWriteInput(
     val title: String,
     val content: String,
     val status: TaskStatus,
-    val date: LocalDate,
+    val date: LocalDate?,
     val startTimeMinutes: Int?,
     val tagIds: List<Long>
 )
@@ -632,7 +632,7 @@ class RoomCheckItRepository(
                 title = input.title,
                 content = input.content,
                 status = input.status.name,
-                dateEpochDays = input.date.toEpochDays().toInt(),
+                dateEpochDays = input.date?.toEpochDays()?.toInt(),
                 startTimeMinutes = input.startTimeMinutes,
                 createdAtMillis = now,
                 editedAtMillis = now,
@@ -650,7 +650,7 @@ class RoomCheckItRepository(
             title = input.title,
             content = input.content,
             status = input.status.name,
-            dateEpochDays = input.date.toEpochDays().toInt(),
+            dateEpochDays = input.date?.toEpochDays()?.toInt(),
             startTimeMinutes = input.startTimeMinutes,
             editedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
@@ -931,7 +931,7 @@ private fun NoteEntity.toDomain(objective: Objective, tags: List<TaskTag>) = Not
     content = content,
     status = enumValueOf(status),
     tags = tags,
-    date = LocalDate.fromEpochDays(dateEpochDays),
+    date = dateEpochDays?.let { LocalDate.fromEpochDays(it) },
     startTimeMinutes = startTimeMinutes,
     createdAtMillis = createdAtMillis,
     editedAtMillis = editedAtMillis,

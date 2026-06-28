@@ -474,7 +474,7 @@ class TaskViewModel(
     fun updateNoteTitle(title: String) = updateNoteForm { it.copy(title = title) }
     fun updateNoteContent(content: String) = updateNoteForm { it.copy(content = content) }
     fun updateNoteListId(listId: Long) = updateNoteForm { it.copy(objectiveId = listId) }
-    fun updateNoteDate(date: LocalDate) = updateNoteForm { it.copy(date = date) }
+    fun updateNoteDate(date: LocalDate?) = updateNoteForm { it.copy(date = date) }
     fun updateNoteStartTime(timeMinutes: Int?) = updateNoteForm { it.copy(startTimeMinutes = timeMinutes) }
     fun toggleNoteTag(tagId: Long) = updateNoteForm { form ->
         form.copy(selectedTagIds = form.selectedTagIds.toggle(tagId))

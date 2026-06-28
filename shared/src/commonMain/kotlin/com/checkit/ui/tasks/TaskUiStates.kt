@@ -149,7 +149,7 @@ sealed interface TaskEditorState {
         val title: String = "",
         val content: String = "",
         val status: TaskStatus = TaskStatus.Open,
-        val date: LocalDate,
+        val date: LocalDate? = null,
         val startTimeMinutes: Int? = null,
         val selectedTagIds: Set<Long> = emptySet(),
         val trashedAtMillis: Long? = null

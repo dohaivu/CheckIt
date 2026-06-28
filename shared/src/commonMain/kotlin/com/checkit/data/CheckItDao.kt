@@ -576,7 +576,7 @@ interface CheckItDao {
         title: String,
         content: String,
         status: String,
-        dateEpochDays: Int,
+        dateEpochDays: Int?,
         startTimeMinutes: Int?,
         editedAtMillis: Long
     )

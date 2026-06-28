@@ -15,8 +15,8 @@ data class TaskBoard(
 ) {
     val tasksById: Map<Long, TaskItem> by lazy { tasks.associateBy { it.id } }
     val notesById: Map<Long, NoteItem> by lazy { notes.associateBy { it.id } }
-    val tasksByDate: Map<kotlinx.datetime.LocalDate, List<TaskItem>> by lazy {
-        val map = mutableMapOf<kotlinx.datetime.LocalDate, MutableList<TaskItem>>()
+    val tasksByDate: Map<LocalDate, List<TaskItem>> by lazy {
+        val map = mutableMapOf<LocalDate, MutableList<TaskItem>>()
         for (task in tasks) {
             if (!task.isTrashed && task.status != TaskStatus.Completed) {
                 task.doDate?.let { date -> map.getOrPut(date) { mutableListOf() }.add(task) }
@@ -24,11 +24,11 @@ data class TaskBoard(
         }
         map
     }
-    val notesByDate: Map<kotlinx.datetime.LocalDate, List<NoteItem>> by lazy {
-        val map = mutableMapOf<kotlinx.datetime.LocalDate, MutableList<NoteItem>>()
+    val notesByDate: Map<LocalDate, List<NoteItem>> by lazy {
+        val map = mutableMapOf<LocalDate, MutableList<NoteItem>>()
         for (note in notes) {
             if (!note.isTrashed && note.status != TaskStatus.Completed) {
-                map.getOrPut(note.date) { mutableListOf() }.add(note)
+                note.date?.let { date -> map.getOrPut(date) { mutableListOf() }.add(note) }
             }
         }
         map
@@ -166,7 +166,7 @@ data class NoteItem(
     val content: String,
     val tags: List<TaskTag> = emptyList(),
     val status: TaskStatus = TaskStatus.Open,
-    val date: LocalDate,
+    val date: LocalDate? = null,
     val startTimeMinutes: Int? = null,
     val createdAtMillis: Long,
     val editedAtMillis: Long,

@@ -148,7 +148,7 @@ internal fun OKRNoteContent(note: NoteItem) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
-        DetailChip(Icons.Default.Event, note.date.compact())
+        note.date?.let { DetailChip(Icons.Default.Event, it.compact()) }
     }
 }
 
@@ -217,7 +217,7 @@ internal fun BriefNoteRowContent(note: NoteItem) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
-        DetailChip(Icons.Default.Event, note.date.compact())
+        note.date?.let { DetailChip(Icons.Default.Event, it.compact()) }
     }
 }
 
@@ -297,7 +297,7 @@ internal fun NoteRowScaffold(
             }
         }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            DetailChip(Icons.Default.Event, note.date.compact())
+            note.date?.let { DetailChip(Icons.Default.Event, it.compact()) }
         }
         SupportingPills(
             list = list,

@@ -169,7 +169,7 @@ data class NoteEntity(
     val title: String = "",
     val content: String,
     val status: String = "Open",
-    val dateEpochDays: Int,
+    val dateEpochDays: Int? = null,
     val startTimeMinutes: Int? = null,
     val createdAtMillis: Long,
     val editedAtMillis: Long,

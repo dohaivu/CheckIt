@@ -228,11 +228,11 @@ private fun NoteItem.matches(filter: TaskFilter, today: LocalDate): Boolean {
     return true
 }
 
-private fun matchesNoteDate(preset: DueDatePreset, date: LocalDate, today: LocalDate): Boolean =
+private fun matchesNoteDate(preset: DueDatePreset, date: LocalDate?, today: LocalDate): Boolean =
     when (preset) {
         DueDatePreset.Today -> date == today
-        DueDatePreset.Upcoming -> date >= today && date <= today.plus(7, DateTimeUnit.DAY)
-        DueDatePreset.Overdue -> date < today
-        DueDatePreset.NoDate -> false
-        DueDatePreset.Someday -> false
+        DueDatePreset.Upcoming -> date != null && date >= today && date <= today.plus(7, DateTimeUnit.DAY)
+        DueDatePreset.Overdue -> date != null && date < today
+        DueDatePreset.NoDate -> date == null
+        DueDatePreset.Someday -> date == null
     }
