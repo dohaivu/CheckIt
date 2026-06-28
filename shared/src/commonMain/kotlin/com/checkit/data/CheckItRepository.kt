@@ -217,27 +217,26 @@ class RoomCheckItRepository(
 
     override fun observeDailyPlans(): Flow<List<DailyPlan>> =
         combine(
-            dao.observeDailyPlans(),
             dao.observeDailyPlanItems(),
             dao.observeDailyPlanItemTags(),
             dao.observeTags()
-        ) { plans, items, itemTags, tags ->
+        ) { items, itemTags, tags ->
             val domainTags = tags.map { it.toDomain() }
             val tagsById = domainTags.associateBy { it.id }
             val itemTagIds = itemTags.groupBy { it.itemId }.mapValues { it.value.map { it.tagId } }
 
-            val itemsByPlan = items.groupBy { it.dailyPlanId }
-            plans.map { plan ->
-                plan.toDomain(
-                    items = itemsByPlan[plan.id].orEmpty()
-                        .map { item ->
+            items.groupBy { it.dateEpochDays }
+                .map { (dateEpochDays, itemEntities) ->
+                    DailyPlan(
+                        date = LocalDate.fromEpochDays(dateEpochDays),
+                        items = itemEntities.map { item ->
                             item.toDomain(
                                 tags = itemTagIds[item.id].orEmpty().mapNotNull { tagsById[it] }
                             )
-                        }
-                        .sortedWith(compareBy<DailyPlanItem> { it.startTimeMinutes }.thenBy { it.sortOrder })
-                )
-            }
+                        }.sortedWith(compareBy<DailyPlanItem> { it.startTimeMinutes }.thenBy { it.sortOrder })
+                    )
+                }
+                .sortedByDescending { it.date }
         }
 
     override suspend fun ensureDefaultTaskData() = seedMutex.withLock {
@@ -497,11 +496,11 @@ class RoomCheckItRepository(
     }
 
     override suspend fun addTaskToDailyPlan(date: LocalDate, task: TaskItem): Long {
-        val planId = ensureDailyPlan(date)
+        val dateEpochDays = date.toEpochDays().toInt()
         val now = Clock.System.now().toEpochMilliseconds()
         val itemId = dao.insertDailyPlanItem(
             DailyPlanItemEntity(
-                dailyPlanId = planId,
+                dateEpochDays = dateEpochDays,
                 taskId = task.id,
                 title = task.name.ifBlank { "Untitled task" },
                 source = DailyPlanItemSource.ExistingTask.name,
@@ -510,7 +509,7 @@ class RoomCheckItRepository(
                 } else {
                     DailyPlanItemStatus.Planned.name
                 },
-                sortOrder = dao.nextDailyPlanItemSortOrder(planId),
+                sortOrder = dao.nextDailyPlanItemSortOrder(dateEpochDays),
                 startTimeMinutes = task.startTimeMinutes,
                 endTimeMinutes = task.endTimeMinutes,
                 addedAtMillis = now,
@@ -532,16 +531,16 @@ class RoomCheckItRepository(
         status: DailyPlanItemStatus,
         tagIds: List<Long>
     ): Long {
-        val planId = ensureDailyPlan(date)
+        val dateEpochDays = date.toEpochDays().toInt()
         val now = Clock.System.now().toEpochMilliseconds()
         val itemId = dao.insertDailyPlanItem(
             DailyPlanItemEntity(
-                dailyPlanId = planId,
+                dateEpochDays = dateEpochDays,
                 title = title.trim(),
                 note = note?.trim()?.takeIf { it.isNotBlank() },
                 source = source.name,
                 status = status.name,
-                sortOrder = dao.nextDailyPlanItemSortOrder(planId),
+                sortOrder = dao.nextDailyPlanItemSortOrder(dateEpochDays),
                 startTimeMinutes = startTimeMinutes,
                 endTimeMinutes = if (source.hasEndTime()) endTimeMinutes else null,
                 addedAtMillis = now,
@@ -683,20 +682,6 @@ class RoomCheckItRepository(
         val keyResultId = keyResultId ?: return null
         val keyResult = dao.keyResultById(keyResultId) ?: return null
         return keyResultId.takeIf { keyResult.objectiveId == objectiveId }
-    }
-
-    private suspend fun ensureDailyPlan(date: LocalDate): Long {
-        val dateEpochDays = date.toEpochDays().toInt()
-        val existing = dao.dailyPlanForDate(dateEpochDays)
-        if (existing != null) return existing.id
-        val now = Clock.System.now().toEpochMilliseconds()
-        return dao.insertDailyPlan(
-            DailyPlanEntity(
-                dateEpochDays = dateEpochDays,
-                createdAtMillis = now,
-                updatedAtMillis = now
-            )
-        )
     }
 
     private suspend fun cleanupDuplicateSeedData() {
@@ -887,17 +872,9 @@ private fun TaskEntity.toDomain(
     trashedAtMillis = trashedAtMillis
 )
 
-private fun DailyPlanEntity.toDomain(items: List<DailyPlanItem>) = DailyPlan(
-    id = id,
-    date = LocalDate.fromEpochDays(dateEpochDays),
-    items = items,
-    createdAtMillis = createdAtMillis,
-    updatedAtMillis = updatedAtMillis
-)
-
 private fun DailyPlanItemEntity.toDomain(tags: List<TaskTag> = emptyList()) = DailyPlanItem(
     id = id,
-    dailyPlanId = dailyPlanId,
+    dateEpochDays = dateEpochDays,
     taskId = taskId,
     title = title,
     note = note,

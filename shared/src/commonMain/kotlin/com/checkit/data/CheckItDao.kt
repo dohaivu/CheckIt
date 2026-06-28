@@ -32,9 +32,6 @@ interface CheckItDao {
     suspend fun insertNote(note: NoteEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertDailyPlan(plan: DailyPlanEntity): Long
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertDailyPlanItem(item: DailyPlanItemEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -237,27 +234,14 @@ interface CheckItDao {
     @Query("SELECT * FROM notes ORDER BY sortOrder ASC, editedAtMillis DESC")
     fun observeNotes(): Flow<List<NoteEntity>>
 
-    @Query("SELECT * FROM daily_plans ORDER BY dateEpochDays DESC")
-    fun observeDailyPlans(): Flow<List<DailyPlanEntity>>
-
     @Query("SELECT * FROM daily_plan_items ORDER BY sortOrder ASC, addedAtMillis ASC")
     fun observeDailyPlanItems(): Flow<List<DailyPlanItemEntity>>
 
     @Query("SELECT * FROM daily_plan_items WHERE id = :itemId LIMIT 1")
     suspend fun dailyPlanItemById(itemId: Long): DailyPlanItemEntity?
 
-    @Query(
-        """
-        SELECT daily_plan_items.*
-        FROM daily_plan_items
-        INNER JOIN daily_plans ON daily_plans.id = daily_plan_items.dailyPlanId
-        WHERE daily_plans.dateEpochDays = :dateEpochDays
-        """
-    )
+    @Query("SELECT * FROM daily_plan_items WHERE dateEpochDays = :dateEpochDays ORDER BY sortOrder ASC, addedAtMillis ASC")
     suspend fun dailyPlanItemsForDate(dateEpochDays: Int): List<DailyPlanItemEntity>
-
-    @Query("SELECT * FROM daily_plans WHERE dateEpochDays = :dateEpochDays LIMIT 1")
-    suspend fun dailyPlanForDate(dateEpochDays: Int): DailyPlanEntity?
 
     @Query("SELECT * FROM sub_tasks ORDER BY sortOrder ASC, id ASC")
     fun observeSubTasks(): Flow<List<SubTaskEntity>>
@@ -280,8 +264,8 @@ interface CheckItDao {
     @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM notes WHERE objectiveId = :objectiveId")
     suspend fun nextNoteSortOrder(objectiveId: Long): Int
 
-    @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM daily_plan_items WHERE dailyPlanId = :dailyPlanId")
-    suspend fun nextDailyPlanItemSortOrder(dailyPlanId: Long): Int
+    @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM daily_plan_items WHERE dateEpochDays = :dateEpochDays")
+    suspend fun nextDailyPlanItemSortOrder(dateEpochDays: Int): Int
 
     @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM goals")
     suspend fun nextGoalSortOrder(): Int

@@ -117,16 +117,13 @@ data class TaskItem(
 }
 
 data class DailyPlan(
-    val id: Long,
     val date: LocalDate,
-    val items: List<DailyPlanItem> = emptyList(),
-    val createdAtMillis: Long,
-    val updatedAtMillis: Long
+    val items: List<DailyPlanItem> = emptyList()
 )
 
 data class DailyPlanItem(
     val id: Long,
-    val dailyPlanId: Long,
+    val dateEpochDays: Int,
     val taskId: Long? = null,
     val title: String,
     val note: String? = null,

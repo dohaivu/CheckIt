@@ -179,26 +179,8 @@ data class NoteEntity(
 )
 
 @Entity(
-    tableName = "daily_plans",
-    indices = [Index(value = ["dateEpochDays"], unique = true)]
-)
-data class DailyPlanEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0L,
-    val dateEpochDays: Int,
-    val createdAtMillis: Long,
-    val updatedAtMillis: Long
-)
-
-@Entity(
     tableName = "daily_plan_items",
     foreignKeys = [
-        ForeignKey(
-            entity = DailyPlanEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["dailyPlanId"],
-            onDelete = ForeignKey.CASCADE
-        ),
         ForeignKey(
             entity = TaskEntity::class,
             parentColumns = ["id"],
@@ -206,12 +188,12 @@ data class DailyPlanEntity(
             onDelete = ForeignKey.SET_NULL
         )
     ],
-    indices = [Index("dailyPlanId"), Index("taskId"), Index("status")]
+    indices = [Index("dateEpochDays"), Index("taskId"), Index("status")]
 )
 data class DailyPlanItemEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0L,
-    val dailyPlanId: Long,
+    val dateEpochDays: Int,
     val taskId: Long? = null,
     val title: String,
     val note: String? = null,
@@ -350,7 +332,6 @@ data class TaskFilterEntity(
         TaskEntity::class,
         SubTaskEntity::class,
         NoteEntity::class,
-        DailyPlanEntity::class,
         DailyPlanItemEntity::class,
         TagEntity::class,
         TaskTagEntity::class,
