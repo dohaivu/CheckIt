@@ -384,11 +384,11 @@ private fun TaskFormContent(
         AppOutlinedTextField(
             value = form.name,
             onValueChange = onNameChange,
-            textStyle = MaterialTheme.typography.headlineSmall.copy(
+            textStyle = MaterialTheme.typography.titleLarge.copy(
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.SemiBold
             ),
-            maxLines = 1,
+            maxLines = 3,
             placeholder = "What would you like to do?",
             enabled = enabled
         )
@@ -543,11 +543,11 @@ private fun NoteFormContent(
         AppOutlinedTextField(
             value = form.title,
             onValueChange = onTitleChange,
-            textStyle = MaterialTheme.typography.headlineSmall.copy(
+            textStyle = MaterialTheme.typography.titleLarge.copy(
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.SemiBold
             ),
-            maxLines = 1,
+            maxLines = 3,
             placeholder = "Note title",
             enabled = enabled,
             modifier = Modifier.fillMaxWidth()
@@ -559,8 +559,9 @@ private fun NoteFormContent(
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Normal
             ),
+            minLines = 5,
             maxLines = 10,
-            placeholder = "Write something",
+            placeholder = "Add more details",
             enabled = enabled,
             modifier = Modifier.fillMaxWidth().height(130.dp)
         )

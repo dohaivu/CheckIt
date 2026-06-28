@@ -180,7 +180,7 @@ private fun ObjectiveBranch(
         content = {
             Text(
                 text = objective.name,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
@@ -279,7 +279,7 @@ private fun KeyResultBranch(
             ) {
                 Text(
                     text = keyResult.title,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,

@@ -205,12 +205,12 @@ private fun DailyPlanItemFormContent(
         AppOutlinedTextField(
             value = state.title,
             onValueChange = onTitleChange,
-            textStyle = MaterialTheme.typography.headlineSmall.copy(
+            textStyle = MaterialTheme.typography.titleLarge.copy(
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.SemiBold
             ),
-            minLines = if (state.isAddMode) 2 else 1,
-            maxLines = 2,
+            minLines = 1,
+            maxLines = 3,
             placeholder = displaySource.titlePlaceholder(),
             enabled = enabled,
             modifier = Modifier.fillMaxWidth()
@@ -219,14 +219,14 @@ private fun DailyPlanItemFormContent(
         AppOutlinedTextField(
             value = state.note,
             onValueChange = onNoteChange,
-            textStyle = MaterialTheme.typography.bodyLarge.copy(
+            textStyle = MaterialTheme.typography.bodyMedium.copy(
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Normal
             ),
-            maxLines = 5,
+            minLines = 5,
+            maxLines = 10,
             placeholder = displaySource.notePlaceholder(),
-            enabled = enabled,
-            modifier = Modifier.heightIn(min = 120.dp)
+            enabled = enabled
         )
 
         if (sourceLocked) {

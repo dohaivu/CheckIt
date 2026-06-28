@@ -124,7 +124,7 @@ internal fun OKRTaskContent(task: TaskItem) {
             modifier = Modifier.weight(1f),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Normal,
-            maxLines = 1,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
 
@@ -145,7 +145,7 @@ internal fun OKRNoteContent(note: NoteItem) {
             modifier = Modifier.weight(1f),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Normal,
-            maxLines = 1,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
         note.date?.let { DetailChip(Icons.Default.Event, it.compact()) }
