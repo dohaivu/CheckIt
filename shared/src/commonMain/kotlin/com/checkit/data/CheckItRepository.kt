@@ -26,6 +26,7 @@ import com.checkit.notifications.ScheduledTaskReminder
 import com.checkit.notifications.TaskReminderNotificationScheduler
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.LocalDate
@@ -71,6 +72,10 @@ interface CheckItRepository {
     suspend fun updateDailyPlanItemStatus(itemId: Long, status: DailyPlanItemStatus)
     suspend fun updateDailyPlanItem(itemId: Long, input: DailyPlanItemWriteInput)
     suspend fun deleteDailyPlanItem(itemId: Long)
+    suspend fun getDailyPlanItem(itemId: Long): DailyPlanItem?
+    suspend fun countDoneDailyPlanItemsForTaskOnDate(taskId: Long, dateEpochDays: Int, excludeItemId: Long): Int
+    suspend fun adjustKeyResultValue(keyResultId: Long, delta: Double)
+    suspend fun getKeyResultForTask(taskId: Long): KeyResult?
     suspend fun addNote(input: NoteWriteInput): Long
     suspend fun updateNote(noteId: Long, input: NoteWriteInput)
     suspend fun completeNote(noteId: Long)
@@ -600,6 +605,27 @@ class RoomCheckItRepository(
     override suspend fun deleteDailyPlanItem(itemId: Long) {
         dao.deleteDailyPlanItem(itemId)
         dailyPlanScheduleReminderScheduler.rescheduleNext()
+    }
+
+    override suspend fun getDailyPlanItem(itemId: Long): DailyPlanItem? {
+        val item = dao.dailyPlanItemById(itemId) ?: return null
+        val tagIds = dao.tagIdsForItem(itemId)
+        val tags = if (tagIds.isNotEmpty()) dao.tagsByIds(tagIds).map { it.toDomain() } else emptyList()
+        return item.toDomain(tags)
+    }
+
+    override suspend fun countDoneDailyPlanItemsForTaskOnDate(
+        taskId: Long,
+        dateEpochDays: Int,
+        excludeItemId: Long
+    ): Int = dao.countDoneDailyPlanItemsForTaskOnDate(taskId, dateEpochDays, excludeItemId)
+
+    override suspend fun adjustKeyResultValue(keyResultId: Long, delta: Double) {
+        dao.adjustKeyResultValue(keyResultId, delta)
+    }
+
+    override suspend fun getKeyResultForTask(taskId: Long): KeyResult? {
+        return dao.keyResultByTaskId(taskId)?.toDomain()
     }
 
     override suspend fun addNote(input: NoteWriteInput): Long {

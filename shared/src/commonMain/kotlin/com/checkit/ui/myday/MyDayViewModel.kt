@@ -14,6 +14,7 @@ import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
+import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.ui.tasks.EditorMode
@@ -43,6 +44,7 @@ class MyDayViewModel(
     private val addDailyPlanItem: AddDailyPlanItemUseCase,
     private val updateDailyPlanItemTime: UpdateDailyPlanItemTimeUseCase,
     private val updateDailyPlanItem: UpdateDailyPlanItemUseCase,
+    private val syncKeyResultFromDailyPlan: SyncKeyResultFromDailyPlanUseCase,
     private val deleteDailyPlanItemUseCase: DeleteDailyPlanItemUseCase
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(MyDayUiState())
@@ -75,8 +77,10 @@ class MyDayViewModel(
     }
 
     fun updateItemTime(item: DailyPlanItem, startTimeMinutes: Int, endTimeMinutes: Int) {
+        val nextEndTime = if (item.source.hasEndTime()) endTimeMinutes else null
         viewModelScope.launch {
-            updateDailyPlanItemTime(item.id, startTimeMinutes, if (item.source.hasEndTime()) endTimeMinutes else null)
+            syncKeyResultFromDailyPlan(itemId = item.id, proposedStartTime = startTimeMinutes, proposedEndTime = nextEndTime)
+            updateDailyPlanItemTime(item.id, startTimeMinutes, nextEndTime)
         }
     }
 
@@ -158,7 +162,7 @@ class MyDayViewModel(
         }
         viewModelScope.launch {
             if (editor.itemId == null) {
-                addDailyPlanItem(
+                val itemId = addDailyPlanItem(
                     editor.date,
                     title,
                     note.takeIf { it.isNotBlank() },
@@ -168,7 +172,15 @@ class MyDayViewModel(
                     status = status,
                     tagIds = editor.selectedTagIds.toList()
                 )
+                // New item added as Done should potentially sync, 
+                // but currently addDailyPlanItem doesn't return taskId and it's mostly manual items.
             } else {
+                syncKeyResultFromDailyPlan(
+                    itemId = editor.itemId,
+                    proposedStatus = status,
+                    proposedStartTime = editor.startTimeMinutes,
+                    proposedEndTime = if (source.hasEndTime()) editor.endTimeMinutes else null
+                )
                 updateDailyPlanItem(
                     editor.itemId,
                     editor.toWriteInput(status, source)

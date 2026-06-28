@@ -118,11 +118,8 @@ class CalendarUiStateMarkersTest {
         date: LocalDate,
         items: List<DailyPlanItem>
     ) = DailyPlan(
-        id = 1L,
         date = date,
-        items = items,
-        createdAtMillis = 0L,
-        updatedAtMillis = 0L
+        items = items
     )
 
     private fun dailyPlanItem(
@@ -131,7 +128,7 @@ class CalendarUiStateMarkersTest {
         tags: List<TaskTag> = emptyList()
     ) = DailyPlanItem(
         id = id,
-        dailyPlanId = 1L,
+        dateEpochDays = 1,
         title = "Item $id",
         source = source,
         status = DailyPlanItemStatus.Planned,

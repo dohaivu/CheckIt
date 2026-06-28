@@ -1,16 +1,16 @@
 package com.checkit.ui.tasks
 
 import com.checkit.domain.DueDatePreset
-import com.checkit.domain.NoteItem
+import com.checkit.domain.Objective
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskFilter
 import com.checkit.domain.TaskItem
-import com.checkit.domain.Objective
+import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.usecase.AddNoteUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
-import com.checkit.domain.usecase.AutoUpdateKeyResultCurrentValueUseCase
+import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
 import com.checkit.domain.usecase.CompleteNoteUseCase
 import com.checkit.domain.usecase.OpenTaskUseCase
@@ -20,11 +20,12 @@ import com.checkit.domain.usecase.RestoreTaskUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
+import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
-import com.checkit.domain.usecase.UpdateNoteUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
+import com.checkit.domain.usecase.UpdateNoteUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -51,30 +52,13 @@ class TaskViewModelViewsTest {
     fun setUp() {
         Dispatchers.setMain(dispatcher)
         val board = TaskBoard(
+            objectives = listOf(
+                Objective(id = 1L, name = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
+            ),
             filters = listOf(
-                TaskFilter(
-                    id = 0L,
-                    name = "All",
-                    icon = "AllInclusive",
-                    color = "#475569",
-                    sortOrder = -1
-                ),
-                TaskFilter(
-                    id = 1L,
-                    name = "Today",
-                    icon = "Today",
-                    color = "#2563EB",
-                    dueDatePreset = DueDatePreset.Today,
-                    sortOrder = 0
-                ),
-                TaskFilter(
-                    id = 2L,
-                    name = "High priority",
-                    icon = "PriorityHigh",
-                    color = "#DC2626",
-                    priority = TaskPriority.High,
-                    sortOrder = 2
-                )
+                todayFilter(1L),
+                highPriorityFilter(2L),
+                allFilter(0L)
             )
         )
         repository = FakeCheckItRepository(initialBoard = board)
@@ -97,7 +81,7 @@ class TaskViewModelViewsTest {
             restoreNote = RestoreNoteUseCase(repository),
             updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository),
             updateDailyPlanItemStatus = UpdateDailyPlanItemStatusUseCase(repository),
-            autoUpdateKeyResultCurrentValue = AutoUpdateKeyResultCurrentValueUseCase(repository),
+            syncKeyResultFromDailyPlan = SyncKeyResultFromDailyPlanUseCase(repository),
             settingsRepository = FakeSettingsRepository()
         )
         dispatcher.scheduler.advanceUntilIdle()
@@ -263,7 +247,7 @@ class TaskViewModelViewsTest {
             restoreNote = RestoreNoteUseCase(repository),
             updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository),
             updateDailyPlanItemStatus = UpdateDailyPlanItemStatusUseCase(repository),
-            autoUpdateKeyResultCurrentValue = AutoUpdateKeyResultCurrentValueUseCase(repository),
+            syncKeyResultFromDailyPlan = SyncKeyResultFromDailyPlanUseCase(repository),
             settingsRepository = FakeSettingsRepository()
         )
     }
@@ -297,5 +281,31 @@ class TaskViewModelViewsTest {
         createdAtMillis = 0L,
         editedAtMillis = 0L,
         sortOrder = id.toInt()
+    )
+
+    private fun todayFilter(id: Long = 1L) = TaskFilter(
+        id = id,
+        name = "Today",
+        icon = "Today",
+        color = "#2563EB",
+        dueDatePreset = DueDatePreset.Today,
+        sortOrder = 0
+    )
+
+    private fun allFilter(id: Long = 0L) = TaskFilter(
+        id = id,
+        name = "All",
+        icon = "AllInclusive",
+        color = "#475569",
+        sortOrder = -1
+    )
+
+    private fun highPriorityFilter(id: Long = 2L) = TaskFilter(
+        id = id,
+        name = "High priority",
+        icon = "PriorityHigh",
+        color = "#DC2626",
+        priority = TaskPriority.High,
+        sortOrder = 2
     )
 }

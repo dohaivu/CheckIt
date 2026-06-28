@@ -22,7 +22,7 @@ import com.checkit.domain.usecase.AddObjectiveUseCase
 import com.checkit.domain.usecase.AddTagUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
 import com.checkit.domain.usecase.AutoAddTodayTasksToMyDayUseCase
-import com.checkit.domain.usecase.AutoUpdateKeyResultCurrentValueUseCase
+import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
 import com.checkit.domain.usecase.CompleteNoteUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
@@ -110,7 +110,7 @@ val provideInteractorModule = module {
     single { AddDailyPlanItemUseCase(get()) }
     single { UpdateDailyPlanItemTimeUseCase(get()) }
     single { UpdateDailyPlanItemStatusUseCase(get()) }
-    single { AutoUpdateKeyResultCurrentValueUseCase(get()) }
+    single { SyncKeyResultFromDailyPlanUseCase(get()) }
     single { UpdateDailyPlanItemUseCase(get()) }
     single { DeleteDailyPlanItemUseCase(get()) }
     single { AddNoteUseCase(get()) }
@@ -154,7 +154,7 @@ val provideViewModelModule = module {
             restoreNote = get(),
             updateDailyPlanItemTime = get(),
             updateDailyPlanItemStatus = get(),
-            autoUpdateKeyResultCurrentValue = get(),
+            syncKeyResultFromDailyPlan = get(),
             settingsRepository = get()
         )
     }
@@ -165,7 +165,7 @@ val provideViewModelModule = module {
     viewModel { CalendarViewModel(get(), get(), get()) }
     viewModel {
         MyDayViewModel(
-            get(), get(), get(), get(), get(), get(), get(), get()
+            get(), get(), get(), get(), get(), get(), get(), get(), get()
         )
     }
     viewModel { ReportViewModel(get()) }

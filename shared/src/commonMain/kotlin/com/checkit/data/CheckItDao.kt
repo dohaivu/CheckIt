@@ -276,6 +276,33 @@ interface CheckItDao {
     @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM key_results WHERE objectiveId = :objectiveId")
     suspend fun nextKeyResultSortOrder(objectiveId: Long): Int
 
+    @Query("UPDATE key_results SET currentValue = currentValue + :delta WHERE id = :keyResultId")
+    suspend fun adjustKeyResultValue(keyResultId: Long, delta: Double)
+
+    @Query("SELECT COUNT(*) FROM daily_plan_items WHERE taskId = :taskId AND dateEpochDays = :dateEpochDays AND status = 'Done' AND id != :excludeItemId")
+    suspend fun countDoneDailyPlanItemsForTaskOnDate(taskId: Long, dateEpochDays: Int, excludeItemId: Long): Int
+
+    @Query("SELECT tagId FROM daily_plan_item_tags WHERE itemId = :itemId")
+    suspend fun tagIdsForItem(itemId: Long): List<Long>
+
+    @Query("SELECT tagId FROM task_tags WHERE taskId = :taskId")
+    suspend fun tagIdsForTask(taskId: Long): List<Long>
+
+    @Query("SELECT * FROM tags WHERE id IN (:tagIds)")
+    suspend fun tagsByIds(tagIds: List<Long>): List<TagEntity>
+
+    @Query("SELECT * FROM sub_tasks WHERE taskId = :taskId ORDER BY sortOrder ASC")
+    suspend fun subTasksForTask(taskId: Long): List<SubTaskEntity>
+
+    @Query("SELECT * FROM task_reminders WHERE taskId = :taskId ORDER BY remindAtMillis ASC")
+    suspend fun remindersForTask(taskId: Long): List<TaskReminderEntity>
+
+    @Query("SELECT * FROM objectives WHERE id = :id LIMIT 1")
+    suspend fun objectiveById(id: Long): ObjectiveEntity?
+
+    @Query("SELECT kr.* FROM key_results kr JOIN tasks t ON kr.id = t.keyResultId WHERE t.id = :taskId LIMIT 1")
+    suspend fun keyResultByTaskId(taskId: Long): KeyResultEntity?
+
     @Query("SELECT id FROM objectives WHERE title = 'Inbox' ORDER BY sortOrder ASC, id ASC LIMIT 1")
     suspend fun inboxObjectiveId(): Long?
 

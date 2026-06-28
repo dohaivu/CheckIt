@@ -11,6 +11,7 @@ import com.checkit.data.TagWriteInput
 import com.checkit.data.TaskWriteInput
 import com.checkit.data.UserSettings
 import com.checkit.domain.DailyPlan
+import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.Goal
@@ -44,9 +45,11 @@ internal class FakeCheckItRepository(
     val deletedTags = mutableListOf<Long>()
     val addedTasks = mutableListOf<TaskWriteInput>()
     val updatedTasks = mutableListOf<Pair<Long, TaskWriteInput>>()
+    val deletedTasks = mutableListOf<Long>()
     val addedDailyPlanTasks = mutableListOf<Pair<LocalDate, TaskItem>>()
     val addedManualDailyPlanItems = mutableListOf<DailyPlanItemWriteInput>()
     val updatedDailyPlanItems = mutableListOf<Pair<Long, DailyPlanItemWriteInput>>()
+    val adjustedKeyResults = mutableListOf<Pair<Long, Double>>()
     val currentBoard: TaskBoard get() = boardFlow.value
 
     var lastAssignedObjectiveId: Long = 0L
@@ -333,6 +336,25 @@ internal class FakeCheckItRepository(
         updatedDailyPlanItems.add(itemId to input)
     }
     override suspend fun deleteDailyPlanItem(itemId: Long) = Unit
+
+    val addedDailyPlanItems = mutableListOf<DailyPlanItem>()
+
+    override suspend fun getDailyPlanItem(itemId: Long): DailyPlanItem? = addedDailyPlanItems.find { it.id == itemId }
+
+    override suspend fun countDoneDailyPlanItemsForTaskOnDate(
+        taskId: Long,
+        dateEpochDays: Int,
+        excludeItemId: Long
+    ): Int = addedDailyPlanItems.count { it.taskId == taskId && it.dateEpochDays == dateEpochDays && it.status == DailyPlanItemStatus.Done && it.id != excludeItemId }
+
+    override suspend fun adjustKeyResultValue(keyResultId: Long, delta: Double) {
+        adjustedKeyResults.add(keyResultId to delta)
+    }
+
+    override suspend fun getKeyResultForTask(taskId: Long): KeyResult? {
+        return currentBoard.tasksById[taskId]?.keyResult
+    }
+
     override suspend fun addNote(input: NoteWriteInput): Long = 0L
     override suspend fun updateNote(noteId: Long, input: NoteWriteInput) = Unit
     override suspend fun trashNote(noteId: Long) = Unit

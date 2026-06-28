@@ -9,6 +9,7 @@ import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
+import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemUseCase
 import com.checkit.ui.tasks.FakeCheckItRepository
@@ -42,6 +43,7 @@ class MyDayViewModelTest {
             addDailyPlanItem = AddDailyPlanItemUseCase(repository),
             updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository),
             updateDailyPlanItem = UpdateDailyPlanItemUseCase(repository),
+            syncKeyResultFromDailyPlan = SyncKeyResultFromDailyPlanUseCase(repository),
             deleteDailyPlanItemUseCase = DeleteDailyPlanItemUseCase(repository)
         )
         dispatcher.scheduler.advanceUntilIdle()
@@ -163,7 +165,7 @@ class MyDayViewModelTest {
         endTimeMinutes: Int? = null
     ) = DailyPlanItem(
         id = 42L,
-        dailyPlanId = 7L,
+        dateEpochDays = 1,
         title = "Original",
         note = "Old note",
         source = source,

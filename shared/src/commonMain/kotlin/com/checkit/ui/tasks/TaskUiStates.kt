@@ -1,6 +1,7 @@
 package com.checkit.ui.tasks
 
 import com.checkit.domain.ActiveTagToken
+import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DueDatePreset
 import com.checkit.domain.NoteItem

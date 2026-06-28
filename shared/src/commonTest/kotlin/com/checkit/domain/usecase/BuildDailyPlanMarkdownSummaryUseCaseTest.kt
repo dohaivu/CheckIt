@@ -188,11 +188,8 @@ class BuildDailyPlanMarkdownSummaryUseCaseTest {
     }
 
     private fun dailyPlan(items: List<DailyPlanItem>) = DailyPlan(
-        id = 1L,
         date = date,
-        items = items,
-        createdAtMillis = 0L,
-        updatedAtMillis = 0L
+        items = items
     )
 
     private fun item(
@@ -207,7 +204,7 @@ class BuildDailyPlanMarkdownSummaryUseCaseTest {
         tags: List<TaskTag> = emptyList()
     ) = DailyPlanItem(
         id = id,
-        dailyPlanId = 1L,
+        dateEpochDays = date.toEpochDays().toInt(),
         taskId = taskId,
         title = title,
         note = note,

@@ -2,12 +2,9 @@ package com.checkit.domain.usecase
 
 import com.checkit.data.CheckItRepository
 import com.checkit.data.GoalWriteInput
-import com.checkit.data.KeyResultWriteInput
 import com.checkit.data.ObjectiveWriteInput
-import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.KeyResultUnit
-import com.checkit.domain.TaskBoard
 
 class AddGoalUseCase(
     private val repository: CheckItRepository
@@ -46,62 +43,94 @@ class DeleteObjectiveUseCase(
     suspend operator fun invoke(objectiveId: Long) = repository.deleteObjective(objectiveId)
 }
 
-class AutoUpdateKeyResultCurrentValueUseCase(
+class SyncKeyResultFromDailyPlanUseCase(
     private val repository: CheckItRepository
 ) {
     suspend operator fun invoke(
-        dailyPlanItem: DailyPlanItem,
-        previousStatus: DailyPlanItemStatus,
-        nextStatus: DailyPlanItemStatus,
-        board: TaskBoard
+        itemId: Long,
+        proposedStatus: DailyPlanItemStatus? = null,
+        proposedStartTime: Int? = null,
+        proposedEndTime: Int? = null
     ) {
-        if (previousStatus == nextStatus) return
+        val item = repository.getDailyPlanItem(itemId) ?: return
+        val taskId = item.taskId ?: return
+        val keyResult = repository.getKeyResultForTask(taskId) ?: return
 
-        val taskId = dailyPlanItem.taskId ?: return
-        val task = board.tasksById[taskId] ?: return
-        val keyResult = task.keyResult ?: return
+        val nextStatus = proposedStatus ?: item.status
+        val nextStartTime = proposedStartTime ?: item.startTimeMinutes
+        val nextEndTime = proposedEndTime ?: item.endTimeMinutes
 
-        val delta = calculateDelta(keyResult.unit, dailyPlanItem.startTimeMinutes, dailyPlanItem.endTimeMinutes)
-        if (delta == 0.0) return
-
-        val signedDelta = when {
-            previousStatus != DailyPlanItemStatus.Done && nextStatus == DailyPlanItemStatus.Done -> delta
-            previousStatus == DailyPlanItemStatus.Done && nextStatus != DailyPlanItemStatus.Done -> -delta
-            else -> return
-        }
-
-        val newCurrentValue = (keyResult.currentValue + signedDelta).coerceAtLeast(0.0)
-        repository.updateKeyResult(
-            keyResult.id,
-            KeyResultWriteInput(
-                objectiveId = keyResult.objectiveId,
-                title = keyResult.title,
-                targetValue = keyResult.targetValue,
-                currentValue = newCurrentValue,
-                unit = keyResult.unit
-            )
+        val unit = KeyResultUnit.fromString(keyResult.unit)
+        val delta = calculateDelta(
+            unit = unit,
+            taskId = taskId,
+            dateEpochDays = item.dateEpochDays,
+            itemId = item.id,
+            oldStatus = item.status,
+            nextStatus = nextStatus,
+            oldStartTime = item.startTimeMinutes,
+            nextStartTime = nextStartTime,
+            oldEndTime = item.endTimeMinutes,
+            nextEndTime = nextEndTime
         )
+
+        if (delta != 0.0) {
+            repository.adjustKeyResultValue(keyResult.id, delta)
+        }
     }
 
-    private fun calculateDelta(
-        unit: String,
-        startTimeMinutes: Int?,
-        endTimeMinutes: Int?
+    private suspend fun calculateDelta(
+        unit: KeyResultUnit,
+        taskId: Long,
+        dateEpochDays: Int,
+        itemId: Long,
+        oldStatus: DailyPlanItemStatus,
+        nextStatus: DailyPlanItemStatus,
+        oldStartTime: Int?,
+        nextStartTime: Int?,
+        oldEndTime: Int?,
+        nextEndTime: Int?
     ): Double {
-        return when (KeyResultUnit.fromString(unit)) {
+        return when (unit) {
             KeyResultUnit.Hours -> {
-                if (startTimeMinutes != null && endTimeMinutes != null) {
-                    (endTimeMinutes - startTimeMinutes).coerceAtLeast(0) / 60.0
+                val oldHours = if (oldStatus == DailyPlanItemStatus.Done) hoursFor(oldStartTime, oldEndTime) else 0.0
+                val nextHours = if (nextStatus == DailyPlanItemStatus.Done) hoursFor(nextStartTime, nextEndTime) else 0.0
+                nextHours - oldHours
+            }
+            KeyResultUnit.Days -> {
+                val wasDone = oldStatus == DailyPlanItemStatus.Done
+                val willBeDone = nextStatus == DailyPlanItemStatus.Done
+                if (wasDone == willBeDone) return 0.0
+
+                if (willBeDone) {
+                    val alreadyDone = repository.countDoneDailyPlanItemsForTaskOnDate(taskId, dateEpochDays, itemId) > 0
+                    if (alreadyDone) 0.0 else 1.0
                 } else {
-                    1.0
+                    val stillDone = repository.countDoneDailyPlanItemsForTaskOnDate(taskId, dateEpochDays, itemId) > 0
+                    if (stillDone) 0.0 else -1.0
                 }
             }
-            KeyResultUnit.Days -> 1.0
+            KeyResultUnit.Number -> {
+                val wasDone = oldStatus == DailyPlanItemStatus.Done
+                val willBeDone = nextStatus == DailyPlanItemStatus.Done
+                when {
+                    !wasDone && willBeDone -> 1.0
+                    wasDone && !willBeDone -> -1.0
+                    else -> 0.0
+                }
+            }
             KeyResultUnit.Binary,
-            KeyResultUnit.Number,
             KeyResultUnit.Percentage,
             KeyResultUnit.Currency,
             KeyResultUnit.Points -> 0.0
+        }
+    }
+
+    private fun hoursFor(start: Int?, end: Int?): Double {
+        return if (start != null && end != null) {
+            (end - start).coerceAtLeast(0) / 60.0
+        } else {
+            1.0
         }
     }
 }

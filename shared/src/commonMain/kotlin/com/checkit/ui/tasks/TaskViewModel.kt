@@ -18,7 +18,7 @@ import com.checkit.domain.TaskReminderPreset
 import com.checkit.domain.usecase.AddNoteUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
-import com.checkit.domain.usecase.AutoUpdateKeyResultCurrentValueUseCase
+import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
 import com.checkit.domain.usecase.CompleteNoteUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
@@ -70,7 +70,7 @@ class TaskViewModel(
     private val restoreNote: RestoreNoteUseCase,
     private val updateDailyPlanItemTime: UpdateDailyPlanItemTimeUseCase,
     private val updateDailyPlanItemStatus: UpdateDailyPlanItemStatusUseCase,
-    private val autoUpdateKeyResultCurrentValue: AutoUpdateKeyResultCurrentValueUseCase,
+    private val syncKeyResultFromDailyPlan: SyncKeyResultFromDailyPlanUseCase,
     private val settingsRepository: SettingsRepository
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(TaskUiState())
@@ -563,8 +563,8 @@ class TaskViewModel(
             state.copy(editor = currentForm.copy(dailyPlanItem = updatedItem))
         }
         viewModelScope.launch {
+            syncKeyResultFromDailyPlan(itemId = item.id, proposedStatus = nextStatus)
             updateDailyPlanItemStatus(item.id, nextStatus)
-            autoUpdateKeyResultCurrentValue(item, previousStatus, nextStatus, _uiState.value.board)
         }
     }
 
@@ -759,6 +759,11 @@ class TaskViewModel(
             state.copy(editor = form.copy(dailyPlanItem = updatedItem))
         }
         viewModelScope.launch {
+            syncKeyResultFromDailyPlan(
+                itemId = updatedItem.id,
+                proposedStartTime = updatedItem.startTimeMinutes,
+                proposedEndTime = updatedItem.endTimeMinutes
+            )
             updateDailyPlanItemTime(updatedItem.id, updatedItem.startTimeMinutes, updatedItem.endTimeMinutes)
         }
     }
