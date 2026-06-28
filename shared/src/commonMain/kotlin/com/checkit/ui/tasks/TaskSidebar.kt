@@ -60,107 +60,102 @@ internal fun TaskSidebar(
     onAddTagClick: () -> Unit,
     onEditTagClick: (TaskTag) -> Unit
 ) {
-    Surface(
-        modifier = Modifier.width(260.dp).fillMaxHeight(),
-        color = MaterialTheme.colorScheme.surface
+    LazyColumn(
+        modifier = Modifier.width(260.dp).fillMaxHeight().padding(horizontal = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(10.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            item {
-                SidebarHeader("Board")
-            }
-            item {
-                SidebarItem(
-                    title = "All tasks",
-                    icon = materialIcon("AllInclusive"),
-                    color = MaterialTheme.colorScheme.primary,
-                    selected = isBoardSelected,
-                    onClick = onBoardClick
-                )
-            }
-            item {
-                Spacer(Modifier.height(10.dp))
-                SidebarHeader(
-                    text = "Goals",
-                    action = {
-                        IconButton(onClick = onAddGoalClick, modifier = Modifier.size(28.dp)) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = "Add goal",
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
+        item {
+            SidebarHeader("Board")
+        }
+        item {
+            SidebarItem(
+                title = "All tasks",
+                icon = materialIcon("AllInclusive"),
+                color = MaterialTheme.colorScheme.primary,
+                selected = isBoardSelected,
+                onClick = onBoardClick
+            )
+        }
+        item {
+            Spacer(Modifier.height(10.dp))
+            SidebarHeader(
+                text = "Goals",
+                action = {
+                    IconButton(onClick = onAddGoalClick, modifier = Modifier.size(28.dp)) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Add goal",
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
-                )
-            }
-            items(goals, key = { "goal-${it.id}" }) { goal ->
-                SidebarItem(
-                    title = goal.title,
-                    icon = materialIcon(goal.icon),
-                    color = goal.color.toColor(),
-                    selected = selectedGoalId == goal.id,
-                    onClick = { onGoalClick(goal.id) },
-                    onLongClick = {
-                        onEditGoalClick(goal)
+                }
+            )
+        }
+        items(goals, key = { "goal-${it.id}" }) { goal ->
+            SidebarItem(
+                title = goal.title,
+                icon = materialIcon(goal.icon),
+                color = goal.color.toColor(),
+                selected = selectedGoalId == goal.id,
+                onClick = { onGoalClick(goal.id) },
+                onLongClick = {
+                    onEditGoalClick(goal)
+                }
+            )
+        }
+        item {
+            Spacer(Modifier.height(10.dp))
+            SidebarHeader(
+                text = "Lists",
+                action = {
+                    IconButton(onClick = onAddListClick, modifier = Modifier.size(28.dp)) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Add list",
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
-                )
-            }
-            item {
-                Spacer(Modifier.height(10.dp))
-                SidebarHeader(
-                    text = "Lists",
-                    action = {
-                        IconButton(onClick = onAddListClick, modifier = Modifier.size(28.dp)) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = "Add list",
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
+                }
+            )
+        }
+        items(lists, key = { "list-${it.id}" }) { list ->
+            SidebarItem(
+                title = list.name,
+                icon = materialIcon(list.icon),
+                color = list.color.toColor(),
+                selected = selectedListId == list.id,
+                onClick = { onListClick(list.id) },
+                onLongClick = {
+                    onEditListClick(list)
+                }
+            )
+        }
+        item {
+            Spacer(Modifier.height(10.dp))
+            SidebarHeader(
+                text = "Tags",
+                action = {
+                    IconButton(onClick = onAddTagClick, modifier = Modifier.size(28.dp)) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Add tag",
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
-                )
-            }
-            items(lists, key = { "list-${it.id}" }) { list ->
-                SidebarItem(
-                    title = list.name,
-                    icon = materialIcon(list.icon),
-                    color = list.color.toColor(),
-                    selected = selectedListId == list.id,
-                    onClick = { onListClick(list.id) },
-                    onLongClick = {
-                        onEditListClick(list)
-                    }
-                )
-            }
-            item {
-                Spacer(Modifier.height(10.dp))
-                SidebarHeader(
-                    text = "Tags",
-                    action = {
-                        IconButton(onClick = onAddTagClick, modifier = Modifier.size(28.dp)) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = "Add tag",
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-                )
-            }
-            items(tags, key = { "tag-${it.id}" }) { tag ->
-                SidebarItem(
-                    title = tag.name,
-                    icon = null,
-                    color = tag.color.toColor(),
-                    selected = selectedTagId == tag.id,
-                    onClick = { onTagClick(tag.id) },
-                    onLongClick = {
-                        onEditTagClick(tag)
-                    }
-                )
-            }
+                }
+            )
+        }
+        items(tags, key = { "tag-${it.id}" }) { tag ->
+            SidebarItem(
+                title = tag.name,
+                icon = null,
+                color = tag.color.toColor(),
+                selected = selectedTagId == tag.id,
+                onClick = { onTagClick(tag.id) },
+                onLongClick = {
+                    onEditTagClick(tag)
+                }
+            )
         }
     }
 }

@@ -57,7 +57,9 @@ internal fun TaskScreen(
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            ModalDrawerSheet {
+            ModalDrawerSheet(
+                drawerContainerColor = MaterialTheme.colorScheme.surface
+            ) {
                 TaskSidebar(
                     goals = state.board.goals,
                     lists = state.board.objectives.filter { it.goalId == null },

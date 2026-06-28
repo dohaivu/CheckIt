@@ -167,13 +167,12 @@ internal fun TaskTimelineCard(
     isOverdue: Boolean? = null,
     displayMode: TimelineItemDisplayMode = TimelineItemDisplayMode.Comfortable
 ) {
-    val resolvedTimeLabel = timeLabel
-    val compact = displayMode != TimelineItemDisplayMode.Comfortable && !resolvedTimeLabel.isNullOrBlank()
+    val compact = displayMode != TimelineItemDisplayMode.Comfortable && !timeLabel.isNullOrBlank()
     val ultraCompact = displayMode == TimelineItemDisplayMode.UltraCompact
     val highlighted = isOverdue ?: task.isOverdue()
     TaskCard(
         title = task.name.ifBlank { "Untitled task" },
-        timeLabel = resolvedTimeLabel,
+        timeLabel = timeLabel,
         color = task.cardColor(),
         leadingContent = {
             TaskIcon(
@@ -191,10 +190,10 @@ internal fun TaskTimelineCard(
         } else {
             PaddingValues(horizontal = 10.dp, vertical = 8.dp)
         },
-        titleMaxLines = 1,
+        titleMaxLines = 2,
         isHighlighted = highlighted,
         showSupportingText = !compact,
-        inlineSupportingText = resolvedTimeLabel.takeIf { compact },
+        inlineSupportingText = timeLabel.takeIf { compact },
         titleTextStyle = if (ultraCompact) MaterialTheme.typography.bodyMedium else null,
         inlineSupportingTextStyle = if (ultraCompact) {
             SpanStyle(
@@ -235,7 +234,7 @@ internal fun NoteTimelineCard(
         modifier = modifier,
         containerAlpha = if (selected) SelectedTaskCardAlpha else DefaultTaskCardAlpha,
         minHeight = 36.dp,
-        titleMaxLines = 1,
+        titleMaxLines = 2,
     )
 }
 
@@ -270,7 +269,7 @@ internal fun DailyPlanTimelineCard(
         } else {
             PaddingValues(horizontal = 10.dp, vertical = 8.dp)
         },
-        titleMaxLines = 1,
+        titleMaxLines = 2,
         isHighlighted = isOverdue,
         showSupportingText = !compact,
         inlineSupportingText = timeLabel.takeIf { compact },
