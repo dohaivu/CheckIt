@@ -123,7 +123,6 @@ data class TaskWriteInput(
     val doDate: LocalDate?,
     val startTimeMinutes: Int?,
     val endTimeMinutes: Int?,
-    val durationMinutes: Int?,
     val repeatRRule: String?,
     val reminders: List<TaskReminderWriteInput>,
     val tagIds: List<Long>
@@ -272,7 +271,6 @@ class RoomCheckItRepository(
                 doDateEpochDays = today.toEpochDays().toInt(),
                 startTimeMinutes = 9 * 60,
                 endTimeMinutes = 9 * 60 + 30,
-                durationMinutes = 30,
                 repeatRRule = "FREQ=DAILY;INTERVAL=1",
                 sortOrder = 0,
                 createdAtMillis = now,
@@ -418,7 +416,6 @@ class RoomCheckItRepository(
                 doDateEpochDays = input.doDate?.toEpochDays()?.toInt(),
                 startTimeMinutes = input.startTimeMinutes,
                 endTimeMinutes = input.endTimeMinutes,
-                durationMinutes = input.durationMinutes,
                 repeatRRule = input.repeatRRule,
                 sortOrder = dao.nextTaskSortOrder(input.objectiveId),
                 createdAtMillis = now,
@@ -447,7 +444,6 @@ class RoomCheckItRepository(
             doDateEpochDays = input.doDate?.toEpochDays()?.toInt(),
             startTimeMinutes = input.startTimeMinutes,
             endTimeMinutes = input.endTimeMinutes,
-            durationMinutes = input.durationMinutes,
             repeatRRule = input.repeatRRule,
             updatedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
@@ -889,7 +885,6 @@ private fun TaskEntity.toDomain(
     completedDate = completedDateEpochDays?.let { LocalDate.fromEpochDays(it) },
     startTimeMinutes = startTimeMinutes,
     endTimeMinutes = endTimeMinutes,
-    durationMinutes = durationMinutes,
     reminders = reminders,
     repeatRRule = repeatRRule,
     sortOrder = sortOrder,

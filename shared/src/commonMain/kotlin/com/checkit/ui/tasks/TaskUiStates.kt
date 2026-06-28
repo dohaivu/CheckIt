@@ -13,6 +13,7 @@ import com.checkit.domain.Objective
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.ui.components.MinutesPerDay
+import com.checkit.ui.components.duration
 import com.checkit.ui.theme.AppIconColorDefaults
 import kotlinx.datetime.LocalDate
 
@@ -142,10 +143,7 @@ sealed interface TaskEditorState {
         val addToMyDayOnSave: Boolean = false,
         val dailyPlanItem: DailyPlanItem? = null,
         val trashedAtMillis: Long? = null
-    ) : TaskEditorState {
-        val durationMinutes: Int?
-            get() = calculateDurationMinutes(startTimeMinutes, endTimeMinutes)
-    }
+    ) : TaskEditorState
 
     data class NoteForm(
         val mode: EditorMode,
@@ -208,15 +206,5 @@ enum class RepeatPreset(
     companion object {
         fun fromRRule(rrule: String?): RepeatPreset =
             entries.firstOrNull { it.rrule == rrule } ?: None
-    }
-}
-
-internal fun calculateDurationMinutes(startTimeMinutes: Int?, endTimeMinutes: Int?): Int? {
-    val start = startTimeMinutes ?: return null
-    val end = endTimeMinutes ?: return null
-    return if (end >= start) {
-        end - start
-    } else {
-        MinutesPerDay - start + end
     }
 }

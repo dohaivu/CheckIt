@@ -452,7 +452,6 @@ private fun TaskWriteInput.toTaskItem(
     doDate = doDate,
     startTimeMinutes = startTimeMinutes,
     endTimeMinutes = endTimeMinutes,
-    durationMinutes = durationMinutes,
     reminders = reminders.mapIndexed { index, reminder ->
         TaskReminder(
             id = index + 1L,

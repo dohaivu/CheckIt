@@ -18,9 +18,8 @@ import com.checkit.domain.TaskReminderPreset
 import com.checkit.domain.usecase.AddNoteUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
-import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
-import com.checkit.domain.usecase.CompleteTaskUseCase
 import com.checkit.domain.usecase.CompleteNoteUseCase
+import com.checkit.domain.usecase.CompleteTaskUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
@@ -30,14 +29,18 @@ import com.checkit.domain.usecase.OpenTaskUseCase
 import com.checkit.domain.usecase.RestoreNoteUseCase
 import com.checkit.domain.usecase.RestoreTaskUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
-import com.checkit.domain.usecase.UpdateNoteUseCase
+import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
+import com.checkit.domain.usecase.UpdateNoteUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
 import com.checkit.ui.UiEvent
 import com.checkit.ui.components.MinutesPerDay
+import com.checkit.ui.components.duration
 import com.checkit.ui.today
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,8 +49,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 
@@ -669,7 +670,6 @@ class TaskViewModel(
             doDate = doDate,
             startTimeMinutes = startTimeMinutes,
             endTimeMinutes = endTimeMinutes,
-            durationMinutes = durationMinutes,
             repeatRRule = repeatPreset.rrule,
             subtasks = subtasks
                 .map { it.copy(name = it.name.trim()) }
@@ -689,7 +689,6 @@ class TaskViewModel(
         endTimeMinutes: Int?,
         reminderOffsets: Set<Int>
     ): TaskWriteInput {
-        val duration = calculateDurationMinutes(startTimeMinutes, endTimeMinutes)
         return TaskWriteInput(
             objectiveId = objective.id,
             keyResultId = keyResult?.id,
@@ -700,7 +699,6 @@ class TaskViewModel(
             doDate = doDate,
             startTimeMinutes = startTimeMinutes,
             endTimeMinutes = endTimeMinutes,
-            durationMinutes = duration,
             repeatRRule = repeatRRule,
             subtasks = subtasks.map { SubTaskWriteInput(name = it.name, isCompleted = it.isCompleted) },
             reminders = TaskReminderPlanner.buildReminderInputs(

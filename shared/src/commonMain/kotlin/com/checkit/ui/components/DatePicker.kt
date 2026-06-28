@@ -54,7 +54,6 @@ internal fun DatePicker(
     date: LocalDate?,
     startTimeMinutes: Int?,
     endTimeMinutes: Int?,
-    durationMinutes: Int?,
     onDateChange: (LocalDate?) -> Unit,
     onStartTimeChange: ((Int?) -> Unit),
     onEndTimeChange: ((Int?) -> Unit)?,
@@ -64,6 +63,7 @@ internal fun DatePicker(
     var showPicker by remember { mutableStateOf(false) }
     var startTime by remember { mutableStateOf(startTimeMinutes) }
     var endTime by remember { mutableStateOf(validTimeRangeEnd(startTimeMinutes, endTimeMinutes)) }
+    val durationMinutes = duration(startTime, endTime)
 
     Column(
         modifier = modifier,
@@ -332,7 +332,6 @@ internal fun TimePicker(
 internal fun TimeRangePicker(
     startTimeMinutes: Int?,
     endTimeMinutes: Int?,
-    durationMinutes: Int?,
     onStartTimeChange: ((Int?) -> Unit),
     onEndTimeChange: ((Int?) -> Unit)?,
     enabled: Boolean = true,
@@ -342,6 +341,7 @@ internal fun TimeRangePicker(
     var showPicker by remember { mutableStateOf(false) }
     var startTime by remember { mutableStateOf(startTimeMinutes) }
     var endTime by remember { mutableStateOf(validTimeRangeEnd(startTimeMinutes, endTimeMinutes)) }
+    val durationMinutes = duration(startTime, endTime)
 
     Column(
         modifier = modifier,
@@ -535,6 +535,16 @@ internal fun validTimeRangeEnd(startTime: Int?, endTime: Int?): Int? =
         startTime > endTime -> null
         else -> endTime
     }
+
+internal fun duration(startTimeMinutes: Int?, endTimeMinutes: Int?): Int? {
+    val start = startTimeMinutes ?: return null
+    val end = endTimeMinutes ?: return null
+    return if (end >= start) {
+        end - start
+    } else {
+        MinutesPerDay - start + end
+    }
+}
 
 internal const val HoursPerDay = 24
 internal const val MinutesPerDay = 24 * 60

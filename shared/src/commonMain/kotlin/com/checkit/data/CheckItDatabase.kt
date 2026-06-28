@@ -99,7 +99,6 @@ data class TaskEntity(
     val completedDateEpochDays: Int? = null,
     val startTimeMinutes: Int? = null,
     val endTimeMinutes: Int? = null,
-    val durationMinutes: Int? = null,
     val repeatRRule: String? = null,
     val sortOrder: Int,
     val createdAtMillis: Long,

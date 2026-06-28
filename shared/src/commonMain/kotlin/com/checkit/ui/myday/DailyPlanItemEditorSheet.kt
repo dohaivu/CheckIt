@@ -269,7 +269,6 @@ private fun DailyPlanItemFormContent(
             isEditMode = state.isEditMode,
             startTimeMinutes = state.startTimeMinutes,
             endTimeMinutes = state.endTimeMinutes,
-            durationMinutes = state.durationMinutes(),
             onStartTimeChange = { timeMinutes ->
                 onStartTimeChange(timeMinutes)
                 if (!sourceLocked) {
@@ -346,7 +345,6 @@ private fun TimeSection(
     isEditMode: Boolean,
     startTimeMinutes: Int?,
     endTimeMinutes: Int?,
-    durationMinutes: Int?,
     onStartTimeChange: (Int?) -> Unit,
     onEndTimeChange: (Int?) -> Unit,
     enabled: Boolean
@@ -370,7 +368,6 @@ private fun TimeSection(
             TimeRangePicker(
                 startTimeMinutes = startTimeMinutes,
                 endTimeMinutes = endTimeMinutes,
-                durationMinutes = durationMinutes,
                 onStartTimeChange = onStartTimeChange,
                 onEndTimeChange = onEndTimeChange,
                 enabled = enabled
@@ -532,12 +529,6 @@ private fun DailyPlanItemSource.infersAddStatusFromStartTime(): Boolean =
 
 private fun DailyPlanItemEditorState.isEditableByDate(): Boolean =
     date > today().minus(2, DateTimeUnit.DAY)
-
-private fun DailyPlanItemEditorState.durationMinutes(): Int? {
-    val start = startTimeMinutes ?: return null
-    val end = endTimeMinutes ?: return null
-    return (end - start).takeIf { it >= 0 }
-}
 
 private fun DailyPlanItemSource.titlePlaceholder(): String = when (this) {
     DailyPlanItemSource.ExistingTask -> "Give this plan a clear little name"

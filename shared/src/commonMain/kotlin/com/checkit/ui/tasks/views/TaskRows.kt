@@ -24,16 +24,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.NoteItem
-import com.checkit.domain.TaskItem
 import com.checkit.domain.Objective
+import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
-import com.checkit.ui.tasks.TaskListDisplayType
 import com.checkit.ui.components.DateTimeRangeDetailChip
 import com.checkit.ui.components.DetailChip
 import com.checkit.ui.components.RepeatPill
-import com.checkit.ui.tasks.NoteIcon
 import com.checkit.ui.components.SupportingPills
+import com.checkit.ui.components.duration
+import com.checkit.ui.tasks.NoteIcon
 import com.checkit.ui.tasks.TaskIcon
+import com.checkit.ui.tasks.TaskListDisplayType
 import com.checkit.ui.tasks.compact
 import com.checkit.ui.tasks.isOverdue
 import com.checkit.ui.tasks.priorityColor
@@ -191,7 +192,7 @@ internal fun DetailTaskRowContent(task: TaskItem, list: Objective?) {
         TaskTitleRow(task, descriptionMaxLines = 3)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes, isOverdue = task.isOverdue())
-            task.durationMinutes?.let { DetailChip(Icons.Default.Schedule, it.toDurationLabel()) }
+            duration(task.startTimeMinutes, task.endTimeMinutes)?.let { DetailChip(Icons.Default.Schedule, it.toDurationLabel()) }
             RepeatPill(task.repeatRRule)
             if (task.reminders.isNotEmpty()) DetailChip(Icons.Default.Notifications, "${task.reminders.size} reminders")
         }

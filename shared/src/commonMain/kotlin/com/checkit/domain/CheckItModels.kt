@@ -105,7 +105,6 @@ data class TaskItem(
     val completedDate: LocalDate? = null,
     val startTimeMinutes: Int? = null,
     val endTimeMinutes: Int? = null,
-    val durationMinutes: Int? = null,
     val reminders: List<TaskReminder> = emptyList(),
     val repeatRRule: String? = null,
     val sortOrder: Int,

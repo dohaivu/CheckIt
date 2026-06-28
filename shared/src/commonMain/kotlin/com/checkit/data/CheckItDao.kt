@@ -394,7 +394,6 @@ interface CheckItDao {
             doDateEpochDays = :doDateEpochDays,
             startTimeMinutes = :startTimeMinutes,
             endTimeMinutes = :endTimeMinutes,
-            durationMinutes = :durationMinutes,
             repeatRRule = :repeatRRule,
             updatedAtMillis = :updatedAtMillis
         WHERE id = :taskId
@@ -411,7 +410,6 @@ interface CheckItDao {
         doDateEpochDays: Int?,
         startTimeMinutes: Int?,
         endTimeMinutes: Int?,
-        durationMinutes: Int?,
         repeatRRule: String?,
         updatedAtMillis: Long
     )
@@ -565,7 +563,6 @@ interface CheckItDao {
         UPDATE tasks
         SET startTimeMinutes = NULL,
             endTimeMinutes = NULL,
-            durationMinutes = NULL,
             updatedAtMillis = :updatedAtMillis
         WHERE id = :taskId
         """

@@ -97,7 +97,6 @@ class TaskTimelineViewModelTest {
         assertEquals(task.id, taskId)
         assertEquals(12 * 60, input.startTimeMinutes)
         assertEquals(13 * 60 + 15, input.endTimeMinutes)
-        assertEquals(75, input.durationMinutes)
     }
 
     private fun inboxList() = Objective(
@@ -114,7 +113,6 @@ class TaskTimelineViewModelTest {
         name = "Focus",
         startTimeMinutes = 9 * 60,
         endTimeMinutes = 10 * 60,
-        durationMinutes = 60,
         sortOrder = 0,
         createdAtMillis = 0L,
         updatedAtMillis = 0L

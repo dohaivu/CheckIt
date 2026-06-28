@@ -19,6 +19,7 @@ import com.checkit.domain.usecase.UpdateDailyPlanItemUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.ui.tasks.EditorMode
 import com.checkit.ui.UiEvent
+import com.checkit.ui.components.duration
 import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
 import kotlinx.coroutines.channels.Channel
@@ -162,7 +163,7 @@ class MyDayViewModel(
         }
         viewModelScope.launch {
             if (editor.itemId == null) {
-                val itemId = addDailyPlanItem(
+                addDailyPlanItem(
                     editor.date,
                     title,
                     note.takeIf { it.isNotBlank() },
@@ -172,8 +173,6 @@ class MyDayViewModel(
                     status = status,
                     tagIds = editor.selectedTagIds.toList()
                 )
-                // New item added as Done should potentially sync, 
-                // but currently addDailyPlanItem doesn't return taskId and it's mostly manual items.
             } else {
                 syncKeyResultFromDailyPlan(
                     itemId = editor.itemId,
@@ -386,7 +385,7 @@ private fun MyDayUiState.selectedSuggestionTimeRangeFor(task: TaskItem): Pair<In
         }
     }
     val durationMinutes = selectedDuration
-        ?: task.durationMinutes()
+        ?: duration(task.startTimeMinutes, task.endTimeMinutes)
         ?: DefaultTaskDurationMinutes
     val preferredStart = suggestionStartTimeMinutes ?: task.preferredMyDayStartTime()
     return nextAvailableTimeRange(preferredStart, durationMinutes)
@@ -400,12 +399,6 @@ private fun TaskItem.preferredMyDayStartTime(): Int {
     } else {
         start
     }
-}
-
-private fun TaskItem.durationMinutes(): Int? {
-    val start = startTimeMinutes ?: return null
-    val end = endTimeMinutes ?: return null
-    return (end - start).takeIf { it > 0 }
 }
 
 private fun MyDayUiState.nextAvailableTimeRange(

@@ -57,6 +57,7 @@ import com.checkit.ui.components.ListPicker
 import com.checkit.ui.components.PriorityPicker
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.components.TimeRangePicker
+import com.checkit.ui.components.duration
 import com.checkit.ui.tasks.views.ContentAlpha
 import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
@@ -373,7 +374,6 @@ private fun TaskFormContent(
                 onDateChange = onDoDateChange,
                 startTimeMinutes = form.startTimeMinutes,
                 endTimeMinutes = form.endTimeMinutes,
-                durationMinutes = form.durationMinutes,
                 onStartTimeChange = onStartTimeChange,
                 onEndTimeChange = onEndTimeChange,
                 enabled = enabled,
@@ -475,7 +475,6 @@ private fun DailyPlanSection(
             TimeRangePicker(
                 startTimeMinutes = item.startTimeMinutes,
                 endTimeMinutes = item.endTimeMinutes,
-                durationMinutes = item.durationMinutes(),
                 onStartTimeChange = onStartTimeChange,
                 onEndTimeChange = onEndTimeChange,
                 modifier = Modifier,
@@ -526,7 +525,6 @@ private fun NoteFormContent(
     enabled: Boolean = true
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -539,7 +537,6 @@ private fun NoteFormContent(
                 },
                 startTimeMinutes = form.startTimeMinutes,
                 endTimeMinutes = null,
-                durationMinutes = null,
                 onStartTimeChange = onStartTimeChange,
                 onEndTimeChange = null,
                 enabled = enabled
@@ -627,10 +624,4 @@ private fun TaskEditorState.isOpenableView(): Boolean = when (this) {
 
 private fun TaskEditorState.TaskForm.isOverdue(): Boolean {
     return doDate.isOverdue(today(), endTimeMinutes ?: startTimeMinutes, status == TaskStatus.Completed )
-}
-
-private fun DailyPlanItem.durationMinutes(): Int? {
-    val start = startTimeMinutes ?: return null
-    val end = endTimeMinutes ?: return null
-    return (end - start).takeIf { it >= 0 }
 }
