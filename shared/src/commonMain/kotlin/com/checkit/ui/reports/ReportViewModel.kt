@@ -3,7 +3,6 @@ package com.checkit.ui.reports
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.checkit.data.CheckItRepository
-import com.checkit.ui.ReportUiState
 import com.checkit.ui.UiEvent
 import com.checkit.ui.components.ReportPeriod
 import com.checkit.ui.firstDayOfMonth

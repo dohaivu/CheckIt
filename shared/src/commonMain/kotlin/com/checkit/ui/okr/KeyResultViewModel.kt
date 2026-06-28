@@ -6,7 +6,7 @@ import com.checkit.data.CheckItRepository
 import com.checkit.data.KeyResultWriteInput
 import com.checkit.domain.KeyResult
 import com.checkit.domain.KeyResultUnit
-import com.checkit.ui.EditorMode
+import com.checkit.ui.tasks.EditorMode
 import com.checkit.ui.UiEvent
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow

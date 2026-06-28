@@ -48,9 +48,6 @@ import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.usecase.BuildDailyPlanMarkdownSummaryUseCase
-import com.checkit.ui.CalendarDateMarkers
-import com.checkit.ui.CalendarDisplayMode
-import com.checkit.ui.CalendarUiState
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.firstDayOfMonth

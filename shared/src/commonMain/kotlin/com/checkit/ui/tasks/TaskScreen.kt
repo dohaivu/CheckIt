@@ -22,8 +22,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import com.checkit.ui.TaskUiState
-import com.checkit.ui.TaskWorkspaceView
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.okr.GoalEditorSheet
 import com.checkit.ui.okr.GoalItemType

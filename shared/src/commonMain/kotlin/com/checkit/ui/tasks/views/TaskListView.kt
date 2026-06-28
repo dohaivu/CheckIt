@@ -43,8 +43,8 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
-import com.checkit.ui.TaskListEntry
-import com.checkit.ui.TaskListDisplayType
+import com.checkit.ui.tasks.TaskListEntry
+import com.checkit.ui.tasks.TaskListDisplayType
 
 @Composable
 internal fun TaskListView(

@@ -53,8 +53,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import com.checkit.domain.TaskFilter
-import com.checkit.ui.TaskSortOption
-import com.checkit.ui.TaskWorkspaceView
+import com.checkit.ui.tasks.TaskSortOption
+import com.checkit.ui.tasks.TaskWorkspaceView
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.tasks.icon
 import com.checkit.ui.theme.materialIcon

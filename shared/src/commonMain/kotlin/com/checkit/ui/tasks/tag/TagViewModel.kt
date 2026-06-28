@@ -8,8 +8,8 @@ import com.checkit.domain.usecase.AddTagUseCase
 import com.checkit.domain.usecase.DeleteTagUseCase
 import com.checkit.domain.usecase.IsTagNameTakenUseCase
 import com.checkit.domain.usecase.UpdateTagUseCase
-import com.checkit.ui.EditorMode
-import com.checkit.ui.TagEditorState
+import com.checkit.ui.tasks.EditorMode
+import com.checkit.ui.tasks.TagEditorState
 import com.checkit.ui.UiEvent
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow

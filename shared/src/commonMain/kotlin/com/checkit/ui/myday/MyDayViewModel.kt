@@ -16,10 +16,7 @@ import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
-import com.checkit.ui.DailyPlanItemEditorState
-import com.checkit.ui.EditorMode
-import com.checkit.ui.MyDayUiState
-import com.checkit.ui.MyDayView
+import com.checkit.ui.tasks.EditorMode
 import com.checkit.ui.UiEvent
 import com.checkit.ui.today
 import kotlinx.datetime.LocalDate

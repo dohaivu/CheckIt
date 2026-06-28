@@ -7,8 +7,8 @@ import com.checkit.domain.Objective
 import com.checkit.domain.usecase.AddObjectiveUseCase
 import com.checkit.domain.usecase.DeleteObjectiveUseCase
 import com.checkit.domain.usecase.UpdateObjectiveUseCase
-import com.checkit.ui.EditorMode
-import com.checkit.ui.ObjectiveEditorState
+import com.checkit.ui.tasks.EditorMode
+import com.checkit.ui.tasks.ObjectiveEditorState
 import com.checkit.ui.UiEvent
 import kotlinx.datetime.LocalDate
 import kotlinx.coroutines.channels.Channel

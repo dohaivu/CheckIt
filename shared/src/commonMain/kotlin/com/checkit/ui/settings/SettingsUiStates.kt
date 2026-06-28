@@ -1,4 +1,8 @@
-package com.checkit.ui
+package com.checkit.ui.settings
+
+import com.checkit.ui.AppColorSchemeMode
+import com.checkit.ui.AppLanguage
+import com.checkit.ui.AppThemeMode
 
 data class ReminderSettingsUiState(
     val planEnabled: Boolean = true,

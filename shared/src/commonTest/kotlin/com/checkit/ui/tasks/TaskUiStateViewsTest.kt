@@ -4,15 +4,10 @@ import com.checkit.domain.DueDatePreset
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskFilter
 import com.checkit.domain.TaskPriority
-import com.checkit.ui.TaskSelectionState
-import com.checkit.ui.TaskUiState
-import com.checkit.ui.TaskViewOptionsState
-import com.checkit.ui.TaskWorkspaceView
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 class TaskUiStateViewsTest {
 

@@ -7,11 +7,6 @@ import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.TaskBoardSelection
-import com.checkit.ui.TaskListEntry
-import com.checkit.ui.TaskSelectionState
-import com.checkit.ui.TaskSortOption
-import com.checkit.ui.TaskViewOptionsState
-import com.checkit.ui.TaskVisibleItemsState
 import kotlinx.datetime.LocalDate
 
 internal class TaskVisibleItemsBuilder(

@@ -48,9 +48,6 @@ import com.checkit.domain.Objective
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskTag
-import com.checkit.ui.EditorMode
-import com.checkit.ui.RepeatPreset
-import com.checkit.ui.TaskEditorState
 import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField

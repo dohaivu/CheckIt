@@ -4,7 +4,6 @@ import com.checkit.domain.Objective
 import com.checkit.domain.usecase.AddObjectiveUseCase
 import com.checkit.domain.usecase.DeleteObjectiveUseCase
 import com.checkit.domain.usecase.UpdateObjectiveUseCase
-import com.checkit.ui.EditorMode
 import com.checkit.ui.okr.ObjectiveViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

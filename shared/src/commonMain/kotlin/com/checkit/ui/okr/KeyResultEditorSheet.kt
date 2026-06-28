@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.text.KeyboardOptions
@@ -42,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.KeyResultUnit
+import com.checkit.ui.tasks.EditorMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,7 +71,7 @@ internal fun KeyResultEditorSheet(
                     Icon(Icons.Default.Close, contentDescription = "Close")
                 }
                 Text(
-                    text = if (editor.mode == com.checkit.ui.EditorMode.Add) "New key result" else "Edit key result",
+                    text = if (editor.mode == EditorMode.Add) "New key result" else "Edit key result",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -79,7 +79,7 @@ internal fun KeyResultEditorSheet(
                 Button(onClick = onSave) {
                     Text("Save")
                 }
-                if (editor.mode == com.checkit.ui.EditorMode.Edit) {
+                if (editor.mode == EditorMode.Edit) {
                     Box(modifier = Modifier.wrapContentSize(Alignment.TopEnd)) {
                         IconButton(onClick = { menuExpanded = true }) {
                             Icon(Icons.Default.MoreVert, contentDescription = "Options")

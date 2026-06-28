@@ -38,7 +38,6 @@ import androidx.compose.ui.unit.dp
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.TaskTag
-import com.checkit.ui.DailyPlanItemEditorState
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DeleteOverflowMenu

@@ -31,8 +31,6 @@ import androidx.compose.ui.unit.dp
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.time_report_empty
 import checkit.shared.generated.resources.time_report_title
-import com.checkit.ui.ReportUiState
-import com.checkit.ui.TimeReportItem
 import com.checkit.ui.components.ReportPeriod
 import com.checkit.ui.components.ReportPeriodHeader
 import com.checkit.ui.components.TinyTopAppBar

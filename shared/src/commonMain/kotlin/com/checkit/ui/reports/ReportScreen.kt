@@ -24,7 +24,6 @@ import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.tab_report
 import checkit.shared.generated.resources.tags_report_title
 import checkit.shared.generated.resources.time_report_title
-import com.checkit.ui.ReportUiState
 import com.checkit.ui.components.TinyTopAppBar
 import org.jetbrains.compose.resources.stringResource
 

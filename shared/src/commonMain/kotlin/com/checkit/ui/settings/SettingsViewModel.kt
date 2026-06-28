@@ -10,8 +10,6 @@ import com.checkit.notifications.AppReminderScheduler
 import com.checkit.ui.AppColorSchemeMode
 import com.checkit.ui.AppLanguage
 import com.checkit.ui.AppThemeMode
-import com.checkit.ui.ReminderSettingsUiState
-import com.checkit.ui.SettingsUiState
 import com.checkit.ui.UiEvent
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow

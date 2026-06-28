@@ -7,7 +7,7 @@ import com.checkit.domain.Goal
 import com.checkit.domain.usecase.AddGoalUseCase
 import com.checkit.domain.usecase.DeleteGoalUseCase
 import com.checkit.domain.usecase.UpdateGoalUseCase
-import com.checkit.ui.EditorMode
+import com.checkit.ui.tasks.EditorMode
 import com.checkit.ui.UiEvent
 import com.checkit.ui.theme.AppIconColorDefaults
 import kotlinx.coroutines.channels.Channel

@@ -47,8 +47,6 @@ import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.Objective
 import com.checkit.domain.hasEndTime
-import com.checkit.ui.MyDayUiState
-import com.checkit.ui.MyDayView
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.tasks.views.DailyPlanAllDayCard

@@ -22,8 +22,6 @@ import com.checkit.domain.usecase.UpdateNoteUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
-import com.checkit.ui.EditorMode
-import com.checkit.ui.TaskEditorState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher

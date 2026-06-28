@@ -6,7 +6,6 @@ import com.checkit.domain.usecase.AddTagUseCase
 import com.checkit.domain.usecase.DeleteTagUseCase
 import com.checkit.domain.usecase.IsTagNameTakenUseCase
 import com.checkit.domain.usecase.UpdateTagUseCase
-import com.checkit.ui.EditorMode
 import com.checkit.ui.tasks.tag.TagViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

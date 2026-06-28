@@ -37,8 +37,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.checkit.ui.EditorMode
-import com.checkit.ui.ObjectiveEditorState
+import com.checkit.ui.tasks.EditorMode
+import com.checkit.ui.tasks.ObjectiveEditorState
 import com.checkit.ui.components.ColorPicker
 import com.checkit.ui.components.PeriodPicker
 import com.checkit.ui.components.SectionLabel

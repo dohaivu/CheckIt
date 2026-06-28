@@ -1,4 +1,4 @@
-package com.checkit.ui
+package com.checkit.ui.tasks
 
 import com.checkit.domain.ActiveTagToken
 import com.checkit.domain.DailyPlanItem
@@ -11,6 +11,7 @@ import com.checkit.domain.TaskItem
 import com.checkit.domain.Objective
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
+import com.checkit.ui.components.MinutesPerDay
 import com.checkit.ui.theme.AppIconColorDefaults
 import kotlinx.datetime.LocalDate
 
@@ -209,12 +210,12 @@ enum class RepeatPreset(
     }
 }
 
-private fun calculateDurationMinutes(startTimeMinutes: Int?, endTimeMinutes: Int?): Int? {
+internal fun calculateDurationMinutes(startTimeMinutes: Int?, endTimeMinutes: Int?): Int? {
     val start = startTimeMinutes ?: return null
     val end = endTimeMinutes ?: return null
     return if (end >= start) {
         end - start
     } else {
-        24 * 60 - start + end
+        MinutesPerDay - start + end
     }
 }

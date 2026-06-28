@@ -27,7 +27,7 @@ import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.Objective
 import com.checkit.domain.TaskStatus
-import com.checkit.ui.TaskListDisplayType
+import com.checkit.ui.tasks.TaskListDisplayType
 import com.checkit.ui.components.DateTimeRangeDetailChip
 import com.checkit.ui.components.DetailChip
 import com.checkit.ui.components.RepeatPill

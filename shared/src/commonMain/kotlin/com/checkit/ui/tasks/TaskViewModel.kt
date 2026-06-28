@@ -10,7 +10,6 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.KeyResult
 import com.checkit.domain.NoteItem
-import com.checkit.domain.Objective
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskPriority
@@ -35,19 +34,8 @@ import com.checkit.domain.usecase.UpdateNoteUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
-import com.checkit.ui.EditorMode
-import com.checkit.ui.RepeatPreset
-import com.checkit.ui.SubTaskEditorState
-import com.checkit.ui.TaskListDisplayType
-import com.checkit.ui.TaskEditorState
-import com.checkit.ui.TaskSelectionState
-import com.checkit.ui.TaskSortOption
-import com.checkit.ui.TaskUiState
-import com.checkit.ui.TaskViewOptionsState
-import com.checkit.ui.TaskWorkspaceView
 import com.checkit.ui.UiEvent
 import com.checkit.ui.components.MinutesPerDay
-import com.checkit.ui.toEditorState
 import com.checkit.ui.today
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -860,13 +848,3 @@ private fun TaskViewOptionsState.hasSameVisibleItemsAs(other: TaskViewOptionsSta
 private const val MinimumTimelineDurationMinutes = 15
 private const val LastTimelineStartMinute = MinutesPerDay - MinimumTimelineDurationMinutes
 private const val TaskTextSaveDebounceMillis = 600L
-
-private fun calculateDurationMinutes(startTimeMinutes: Int?, endTimeMinutes: Int?): Int? {
-    val start = startTimeMinutes ?: return null
-    val end = endTimeMinutes ?: return null
-    return if (end >= start) {
-        end - start
-    } else {
-        MinutesPerDay - start + end
-    }
-}

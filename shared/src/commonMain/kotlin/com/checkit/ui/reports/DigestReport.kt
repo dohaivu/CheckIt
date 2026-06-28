@@ -21,8 +21,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.EventNote
-import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
@@ -62,10 +60,6 @@ import checkit.shared.generated.resources.weekly_digest_empty
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
-import com.checkit.ui.DigestHighlight
-import com.checkit.ui.ReportUiState
-import com.checkit.ui.TagReportItem
-import com.checkit.ui.TimeReportItem
 import com.checkit.ui.components.ReportPeriod
 import com.checkit.ui.components.ReportPeriodHeader
 import com.checkit.ui.localizedCompactDateWithDayName

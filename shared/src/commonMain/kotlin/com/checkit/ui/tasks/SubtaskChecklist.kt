@@ -48,7 +48,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import com.checkit.ui.SubTaskEditorState
 import com.checkit.ui.tasks.views.ContentAlpha
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
