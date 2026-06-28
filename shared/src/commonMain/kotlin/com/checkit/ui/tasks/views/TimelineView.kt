@@ -49,8 +49,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import com.checkit.ui.components.HoursPerDay
-import com.checkit.ui.components.MinutesPerDay
+import com.checkit.ui.HoursPerDay
+import com.checkit.ui.MinutesPerDay
 import com.checkit.ui.tasks.TimelineItem
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone

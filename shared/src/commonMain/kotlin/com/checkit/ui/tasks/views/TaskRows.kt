@@ -31,7 +31,7 @@ import com.checkit.ui.components.DateTimeRangeDetailChip
 import com.checkit.ui.components.DetailChip
 import com.checkit.ui.components.RepeatPill
 import com.checkit.ui.components.SupportingPills
-import com.checkit.ui.components.duration
+import com.checkit.ui.duration
 import com.checkit.ui.tasks.NoteIcon
 import com.checkit.ui.tasks.TaskIcon
 import com.checkit.ui.tasks.TaskListDisplayType

@@ -48,8 +48,8 @@ import com.checkit.domain.Objective
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskTag
-import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.AppEditorBottomSheet
+import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DatePicker
 import com.checkit.ui.components.DeleteOverflowMenu
@@ -57,7 +57,6 @@ import com.checkit.ui.components.ListPicker
 import com.checkit.ui.components.PriorityPicker
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.components.TimeRangePicker
-import com.checkit.ui.components.duration
 import com.checkit.ui.tasks.views.ContentAlpha
 import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
@@ -479,7 +478,8 @@ private fun DailyPlanSection(
                 onEndTimeChange = onEndTimeChange,
                 modifier = Modifier,
                 enabled = enabled,
-                isOverdue = item.isOverdue(today())
+                isOverdue = item.isOverdue(today()),
+                clearEnabled = false
             )
 
             if (enabled) {

@@ -19,7 +19,7 @@ import com.checkit.domain.usecase.UpdateDailyPlanItemUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.ui.tasks.EditorMode
 import com.checkit.ui.UiEvent
-import com.checkit.ui.components.duration
+import com.checkit.ui.duration
 import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
 import kotlinx.coroutines.channels.Channel

@@ -34,9 +34,8 @@ import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.domain.usecase.UpdateNoteUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
+import com.checkit.ui.MinutesPerDay
 import com.checkit.ui.UiEvent
-import com.checkit.ui.components.MinutesPerDay
-import com.checkit.ui.components.duration
 import com.checkit.ui.today
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel

@@ -1,19 +1,16 @@
 package com.checkit.ui.tasks
 
 import com.checkit.domain.ActiveTagToken
-import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DueDatePreset
 import com.checkit.domain.NoteItem
+import com.checkit.domain.Objective
 import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskFilter
 import com.checkit.domain.TaskItem
-import com.checkit.domain.Objective
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
-import com.checkit.ui.components.MinutesPerDay
-import com.checkit.ui.components.duration
 import com.checkit.ui.theme.AppIconColorDefaults
 import kotlinx.datetime.LocalDate
 
