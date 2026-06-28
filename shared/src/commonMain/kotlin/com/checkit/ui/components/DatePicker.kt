@@ -111,9 +111,10 @@ internal fun DatePicker(
                     Spacer(modifier = Modifier.width(8.dp))
                     TextButton(
                         onClick = {
-                            onDateChange(datePickerState.selectedDateMillis?.toUtcLocalDate())
-                            onStartTimeChange.invoke(startTime)
-                            onEndTimeChange?.invoke(endTime)
+                            val nextDate = datePickerState.selectedDateMillis?.toUtcLocalDate()
+                            if (nextDate != date) onDateChange(nextDate)
+                            if (startTime != startTimeMinutes) onStartTimeChange.invoke(startTime)
+                            if (endTime != validTimeRangeEnd(startTimeMinutes, endTimeMinutes)) onEndTimeChange?.invoke(endTime)
 
                             showPicker = false
                         }
@@ -254,10 +255,11 @@ internal fun DateRangePicker(
                     Spacer(modifier = Modifier.width(8.dp))
                     TextButton(
                         onClick = {
-                            onRangeChange(
-                                state.selectedStartDateMillis?.toUtcLocalDate(),
-                                state.selectedEndDateMillis?.toUtcLocalDate()
-                            )
+                            val nextStart = state.selectedStartDateMillis?.toUtcLocalDate()
+                            val nextEnd = state.selectedEndDateMillis?.toUtcLocalDate()
+                            if (nextStart != startDate || nextEnd != endDate) {
+                                onRangeChange(nextStart, nextEnd)
+                            }
                             showPicker = false
                         }
                     ) {
@@ -311,7 +313,8 @@ internal fun TimePicker(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        onTimeChange(timePickerState.hour * 60 + timePickerState.minute)
+                        val nextTime = timePickerState.hour * 60 + timePickerState.minute
+                        if (nextTime != timeMinutes) onTimeChange(nextTime)
                         showPicker = false
                     }
                 ) {
@@ -387,8 +390,8 @@ internal fun TimeRangePicker(
                     Spacer(modifier = Modifier.width(8.dp))
                     TextButton(
                         onClick = {
-                            onStartTimeChange.invoke(startTime)
-                            onEndTimeChange?.invoke(endTime)
+                            if (startTime != startTimeMinutes) onStartTimeChange.invoke(startTime)
+                            if (endTime != validTimeRangeEnd(startTimeMinutes, endTimeMinutes)) onEndTimeChange?.invoke(endTime)
 
                             showPicker = false
                         }
