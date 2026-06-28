@@ -386,7 +386,7 @@ private fun AllDayTypeCard(
 }
 
 @Composable
-private fun CardStripe(color: Color) {
+internal fun CardStripe(color: Color) {
     Box(
         modifier = Modifier
             .fillMaxHeight()
@@ -396,7 +396,7 @@ private fun CardStripe(color: Color) {
 }
 
 @Composable
-private fun BoxScope.CompletedOverlay() {
+internal fun BoxScope.CompletedOverlay() {
     Box(
         modifier = Modifier
             .matchParentSize()
@@ -404,34 +404,34 @@ private fun BoxScope.CompletedOverlay() {
     )
 }
 
-private fun DailyPlanItem.timelineTimeLabel(): String? {
+internal fun DailyPlanItem.timelineTimeLabel(): String? {
     val start = startTimeMinutes ?: return null
     val end = endTimeMinutes
     return if (end == null) start.toClockLabel() else "${start.toClockLabel()} - ${end.toClockLabel()}"
 }
 
-private fun DailyPlanItem.timelineTitle(): String =
+internal fun DailyPlanItem.timelineTitle(): String =
     when (source) {
         DailyPlanItemSource.MyDayNote,
         DailyPlanItemSource.MyDayReminder -> checkInNoteTitle()
         else -> title.ifBlank { "Untitled item" }
     }
 
-private fun DailyPlanItem.timelineSupportingText(): String =
+internal fun DailyPlanItem.timelineSupportingText(): String =
     when {
         source == DailyPlanItemSource.MyDayNote || source == DailyPlanItemSource.MyDayReminder -> source.timelineLabel()
         !note.isNullOrBlank() -> note.orEmpty()
         else -> source.timelineLabel()
     }
 
-private fun DailyPlanItemSource.timelineLabel(): String = when (this) {
+internal fun DailyPlanItemSource.timelineLabel(): String = when (this) {
     DailyPlanItemSource.ExistingTask -> "Task"
     DailyPlanItemSource.MyDayTask -> "CheckIn done"
     DailyPlanItemSource.MyDayNote -> "CheckIn note"
     DailyPlanItemSource.MyDayReminder -> "Reminder"
 }
 
-private fun DailyPlanItem.checkInNoteTitle(): String =
+internal fun DailyPlanItem.checkInNoteTitle(): String =
     title
         .ifBlank { note.orEmpty() }
         .ifBlank { "Empty note" }

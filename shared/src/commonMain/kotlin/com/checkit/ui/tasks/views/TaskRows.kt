@@ -35,6 +35,7 @@ import com.checkit.ui.duration
 import com.checkit.ui.tasks.NoteIcon
 import com.checkit.ui.tasks.TaskIcon
 import com.checkit.ui.tasks.TaskListDisplayType
+import com.checkit.ui.tasks.cardColor
 import com.checkit.ui.tasks.compact
 import com.checkit.ui.tasks.isOverdue
 import com.checkit.ui.tasks.priorityColor
@@ -178,11 +179,16 @@ internal fun BriefTaskRowContent(task: TaskItem) {
 
 @Composable
 internal fun StandardTaskRowContent(task: TaskItem, list: Objective?) {
-    Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
         TaskTitleRow(task, descriptionMaxLines = 0)
         DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes, isOverdue = task.isOverdue())
         task.subtasks.takeIf { it.isNotEmpty() }?.let { SubtaskProgressText(task) }
-        SupportingPills(list = list, tags = task.tags.take(2), overflowCount = (task.tags.size - 2).coerceAtLeast(0))
+//        SupportingPills(list = list, tags = task.tags.take(2), overflowCount = (task.tags.size - 2).coerceAtLeast(0))
     }
 }
 
@@ -223,12 +229,65 @@ internal fun BriefNoteRowContent(note: NoteItem) {
 
 @Composable
 internal fun StandardNoteRowContent(note: NoteItem, list: Objective?) {
-    NoteRowScaffold(note = note, list = list, contentMaxLines = 2, visibleTagCount = 2)
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+            NoteIcon(note.status)
+            Column(Modifier.weight(1f)) {
+                if (note.title.isNotBlank()) {
+                    Text(note.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                }
+                if (note.content.isNotBlank()) {
+                    Text(
+                        note.content,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+        note.date?.let { DetailChip(Icons.Default.Event, it.compact()) }
+//        SupportingPills(
+//            list = list,
+//            tags = note.tags.take(2),
+//            overflowCount = (note.tags.size - 2).coerceAtLeast(0)
+//        )
+    }
 }
 
 @Composable
 internal fun DetailNoteRowContent(note: NoteItem, list: Objective?) {
-    NoteRowScaffold(note = note, list = list, contentMaxLines = 5, visibleTagCount = Int.MAX_VALUE)
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+            NoteIcon(note.status)
+            Column(Modifier.weight(1f)) {
+                if (note.title.isNotBlank()) {
+                    Text(note.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                }
+                if (note.content.isNotBlank()) {
+                    Text(
+                        note.content,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 5,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+        note.date?.let { DetailChip(Icons.Default.Event, it.compact()) }
+
+        SupportingPills(
+            list = list,
+            tags = note.tags,
+            overflowCount = 0
+        )
+    }
 }
 
 @Composable
@@ -267,44 +326,6 @@ internal fun SubtaskProgressText(task: TaskItem) {
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
-}
-
-@Composable
-internal fun NoteRowScaffold(
-    note: NoteItem,
-    list: Objective?,
-    contentMaxLines: Int,
-    visibleTagCount: Int
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
-            NoteIcon(note.status)
-            Column(Modifier.weight(1f)) {
-                if (note.title.isNotBlank()) {
-                    Text(note.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                }
-                if (note.content.isNotBlank()) {
-                    Text(
-                        note.content,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = contentMaxLines,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-        }
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            note.date?.let { DetailChip(Icons.Default.Event, it.compact()) }
-        }
-        SupportingPills(
-            list = list,
-            tags = note.tags.take(visibleTagCount),
-            overflowCount = (note.tags.size - visibleTagCount).coerceAtLeast(0)
-        )
-    }
 }
 
 private const val DefaultNoteRowBackgroundAlpha = 0.55f
