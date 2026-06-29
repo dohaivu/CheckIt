@@ -6,8 +6,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -68,10 +70,7 @@ internal fun TaskCard(
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val typography = MaterialTheme.typography
-    val shape = remember { RoundedCornerShape(8.dp) }
-    val clickableModifier = if (onClick == null) Modifier else Modifier.clickable(onClick = onClick)
-    val resolvedTitleTextStyle = titleTextStyle ?: typography.bodyLarge
-    val defaultInlineSupportingTextStyle = remember(isHighlighted, colorScheme, typography) {
+    val resolvedInlineSupportingTextStyle = inlineSupportingTextStyle ?: remember(isHighlighted, colorScheme, typography) {
         SpanStyle(
             color = if (isHighlighted) {
                 colorScheme.error
@@ -82,7 +81,6 @@ internal fun TaskCard(
             fontWeight = FontWeight.Medium
         )
     }
-    val resolvedInlineSupportingTextStyle = inlineSupportingTextStyle ?: defaultInlineSupportingTextStyle
     val titleText = remember(title, inlineSupportingText, resolvedInlineSupportingTextStyle) {
         buildAnnotatedString {
             append(title)
@@ -95,59 +93,80 @@ internal fun TaskCard(
             }
         }
     }
+    BaseTaskCard(
+        color = color,
+        modifier = modifier,
+        onClick = onClick,
+        minHeight = minHeight,
+        containerAlpha = containerAlpha,
+        completedOverlay = completedOverlay
+    ) {
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .padding(contentPadding),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            if (leadingContent != null) {
+                Box(
+                    modifier = Modifier.padding(top = 2.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    leadingContent()
+                }
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(0.dp)
+            ) {
+                Text(
+                    text = titleText,
+                    style = titleTextStyle ?: typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = titleMaxLines,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (showSupportingText) {
+                    Text(
+                        text = timeLabel ?: supportingText.orEmpty(),
+                        style = typography.labelMedium,
+                        color = if (isHighlighted) colorScheme.error else colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BaseTaskCard(
+    color: Color,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    minHeight: Dp = Dp.Unspecified,
+    containerAlpha: Float = 0.11f,
+    completedOverlay: Boolean = false,
+    content: @Composable RowScope.() -> Unit
+) {
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = minHeight)
-            .clip(shape)
+            .height(IntrinsicSize.Min)
+            .then(if (minHeight != Dp.Unspecified) Modifier.heightIn(min = minHeight) else Modifier)
+            .clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.surface)
-            .then(clickableModifier)
+            .background(color.copy(alpha = containerAlpha))
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
     ) {
-        CardStripe(color = color)
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = minHeight)
-                .background(color.copy(alpha = containerAlpha))
+            modifier = Modifier.fillMaxHeight(),
+            verticalAlignment = Alignment.Top
         ) {
-            Box(modifier = Modifier.width(4.dp).fillMaxHeight())
-            Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(contentPadding),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.Top
-            ) {
-                if (leadingContent != null) {
-                    Box(
-                        modifier = Modifier.padding(top = 2.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        leadingContent()
-                    }
-                }
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(0.dp)
-                ) {
-                    Text(
-                        text = titleText,
-                        style = resolvedTitleTextStyle,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = titleMaxLines,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    if (showSupportingText) {
-                        Text(
-                            text = timeLabel ?: supportingText.orEmpty(),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = if (isHighlighted) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-            }
+            CardStripe(color = color)
+            content()
         }
         if (completedOverlay) {
             CompletedOverlay()
@@ -345,42 +364,29 @@ private fun AllDayTypeCard(
     modifier: Modifier = Modifier,
     completedOverlay: Boolean = false
 ) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(32.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(color.copy(alpha = DefaultTaskCardAlpha))
+    BaseTaskCard(
+        color = color,
+        modifier = modifier.height(32.dp),
+        containerAlpha = DefaultTaskCardAlpha,
+        completedOverlay = completedOverlay
     ) {
-        CardStripe(color = color)
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(),
-            horizontalArrangement = Arrangement.Start,
+                .weight(1f)
+                .fillMaxHeight()
+                .padding(horizontal = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(modifier = Modifier.width(4.dp).fillMaxHeight())
-            Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                icon()
-                Text(
-                    text = title,
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-        if (completedOverlay) {
-            CompletedOverlay()
+            icon()
+            Text(
+                text = title,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }

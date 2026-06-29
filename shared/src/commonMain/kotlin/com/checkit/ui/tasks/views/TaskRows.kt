@@ -5,8 +5,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -20,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -48,28 +53,17 @@ internal fun TaskRow(
     list: Objective? = null,
     displayType: TaskListDisplayType = TaskListDisplayType.Standard
 ) {
-    Card(
+    BaseTaskRow(
+        color = task.cardColor(),
+        isCompleted = task.status == TaskStatus.Completed,
         onClick = onClick,
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = if (task.status == TaskStatus.Completed) 0.dp else 2.dp,
-            pressedElevation = 8.dp,
-            focusedElevation = 4.dp
-        )
+        elevation = if (task.status == TaskStatus.Completed) 0.dp else 2.dp
     ) {
-        Box {
+        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
             when (displayType) {
                 TaskListDisplayType.Brief -> BriefTaskRowContent(task)
                 TaskListDisplayType.Standard -> StandardTaskRowContent(task, list)
                 TaskListDisplayType.Detail -> DetailTaskRowContent(task, list)
-            }
-            if (task.status == TaskStatus.Completed) {
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .background(MaterialTheme.colorScheme.surface.copy(alpha = CompletedRowCoverAlpha))
-                )
             }
         }
     }
@@ -82,28 +76,55 @@ internal fun NoteRow(
     list: Objective? = null,
     displayType: TaskListDisplayType = TaskListDisplayType.Standard
 ) {
-    Card(
+    BaseTaskRow(
+        color = note.cardColor(),
+        isCompleted = note.status == TaskStatus.Completed,
         onClick = onClick,
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 2.dp,
-            pressedElevation = 8.dp,
-            focusedElevation = 4.dp
-        )
+        elevation = if (note.status == TaskStatus.Completed) 0.dp else 2.dp
     ) {
-        Box {
+        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
             when (displayType) {
                 TaskListDisplayType.Brief -> BriefNoteRowContent(note)
                 TaskListDisplayType.Standard -> StandardNoteRowContent(note, list)
                 TaskListDisplayType.Detail -> DetailNoteRowContent(note, list)
             }
-            if (note.status == TaskStatus.Completed) {
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .background(MaterialTheme.colorScheme.surface.copy(alpha = CompletedRowCoverAlpha))
-                )
+        }
+    }
+}
+
+@Composable
+private fun BaseTaskRow(
+    color: Color,
+    isCompleted: Boolean,
+    onClick: () -> Unit,
+    elevation: androidx.compose.ui.unit.Dp,
+    content: @Composable RowScope.() -> Unit
+) {
+    Card(
+        onClick = onClick,
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = elevation,
+            pressedElevation = 8.dp,
+            focusedElevation = 4.dp
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min)
+                .background(color.copy(alpha = DefaultTaskCardAlpha))
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().fillMaxHeight(),
+                verticalAlignment = Alignment.Top
+            ) {
+                CardStripe(color = color)
+                content()
+            }
+            if (isCompleted) {
+                CompletedOverlay()
             }
         }
     }
@@ -156,7 +177,7 @@ internal fun OKRNoteContent(note: NoteItem) {
 @Composable
 internal fun BriefTaskRowContent(task: TaskItem) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 9.dp),
+        modifier = Modifier.fillMaxWidth().fillMaxHeight().padding(horizontal = 10.dp, vertical = 9.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -210,7 +231,7 @@ internal fun DetailTaskRowContent(task: TaskItem, list: Objective?) {
 @Composable
 internal fun BriefNoteRowContent(note: NoteItem) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 9.dp),
+        modifier = Modifier.fillMaxWidth().fillMaxHeight().padding(horizontal = 10.dp, vertical = 9.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
