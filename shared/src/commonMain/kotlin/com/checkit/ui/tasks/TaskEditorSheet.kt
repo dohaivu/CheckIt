@@ -105,7 +105,7 @@ internal fun TaskEditorSheet(
     AppEditorBottomSheet(
         onDismiss = onDismiss,
         modifier = Modifier
-            .fillMaxHeight(0.7f)
+            .fillMaxHeight(0.8f)
             .windowInsetsPadding(WindowInsets.ime)
     ) {
         SheetHeader(
