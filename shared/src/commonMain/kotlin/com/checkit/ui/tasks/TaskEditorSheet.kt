@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.RestoreFromTrash
 import androidx.compose.material.icons.filled.TaskAlt
+import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -42,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.Objective
@@ -57,7 +59,6 @@ import com.checkit.ui.components.ListPicker
 import com.checkit.ui.components.PriorityPicker
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.components.TimeRangePicker
-import com.checkit.ui.tasks.views.ContentAlpha
 import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
 
@@ -466,53 +467,84 @@ private fun DailyPlanSection(
     enabled: Boolean = true
 ) {
     if (item == null) return
-    Column(
-        modifier = Modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = ContentAlpha), RoundedCornerShape(16.dp))
-            .padding(start = 8.dp, top = 8.dp, bottom = 8.dp, end = 8.dp)
-        ,
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
+    val colorScheme = MaterialTheme.colorScheme
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(horizontal = 4.dp)
         ) {
-            TimeRangePicker(
-                startTimeMinutes = item.startTimeMinutes,
-                endTimeMinutes = item.endTimeMinutes,
-                onStartTimeChange = onStartTimeChange,
-                onEndTimeChange = onEndTimeChange,
-                modifier = Modifier,
-                enabled = enabled,
-                isOverdue = item.isOverdue(today()),
-                clearEnabled = false
+            Icon(
+                imageVector = Icons.Default.WbSunny,
+                contentDescription = null,
+                modifier = Modifier.size(14.dp),
+                tint = colorScheme.primary
             )
+            Text(
+                text = "MY DAY",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = colorScheme.primary,
+                letterSpacing = 0.5.sp
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(colorScheme.primaryContainer.copy(alpha = 0.2f))
+                .border(
+                    width = 1.dp,
+                    color = colorScheme.primary.copy(alpha = 0.2f),
+                    shape = RoundedCornerShape(16.dp)
+                )
+                .padding(horizontal = 12.dp, vertical = 8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TimeRangePicker(
+                    startTimeMinutes = item.startTimeMinutes,
+                    endTimeMinutes = item.endTimeMinutes,
+                    onStartTimeChange = onStartTimeChange,
+                    onEndTimeChange = onEndTimeChange,
+                    modifier = Modifier.weight(1f),
+                    enabled = enabled,
+                    isOverdue = item.isOverdue(today()),
+                    clearEnabled = false
+                )
 
-            if (enabled) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(0.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                if (enabled) {
+                    Row(
+                        modifier = Modifier.padding(start = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = { onDelete(item.id) },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete from My Day",
+                                modifier = Modifier.size(18.dp),
+                                tint = colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            )
+                        }
 
-                    IconButton(onClick = {onDelete(item.id)}) {
-                        Icon(
-                            Icons.Default.Delete,
-                            contentDescription = "Delete from My Day",
-                            modifier = Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    IconButton(onClick = onStatusChange) {
-                        Icon(
-                            imageVector = if (item.status == DailyPlanItemStatus.Done) Icons.AutoMirrored.Filled.Undo else Icons.Default.Check,
-                            contentDescription = "Done from My Day",
-                            modifier = Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
+                        IconButton(
+                            onClick = onStatusChange,
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (item.status == DailyPlanItemStatus.Done) Icons.AutoMirrored.Filled.Undo else Icons.Default.Check,
+                                contentDescription = "Done from My Day",
+                                modifier = Modifier.size(18.dp),
+                                tint = colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                            )
+                        }
                     }
                 }
             }
