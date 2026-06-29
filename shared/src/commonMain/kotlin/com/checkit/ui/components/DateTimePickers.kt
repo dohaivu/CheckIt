@@ -1,5 +1,8 @@
 package com.checkit.ui.components
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,12 +13,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.AlertDialog
@@ -23,6 +29,7 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -39,6 +46,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.checkit.ui.MinutesPerDay
 import com.checkit.ui.TimeRangeShortcutDurations
@@ -364,10 +376,13 @@ private fun TimeRangeSelectionRow(
     onEndTimeChange: ((Int?) -> Unit)?,
     enabled: Boolean
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp, alignment = Alignment.Start),
+            horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
             TimePicker(
@@ -377,13 +392,34 @@ private fun TimeRangeSelectionRow(
                 onTimeChange = onStartTimeChange,
                 enabled = enabled
             )
+            
             if (onEndTimeChange != null) {
-                durationMinutes?.let { duration ->
-                    DurationText(
-                        duration = duration,
-                        modifier = Modifier.align(Alignment.CenterVertically)
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(20.dp)
+                            .height(1.dp)
+                            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    )
+                    
+                    durationMinutes?.let { duration ->
+                        DurationText(
+                            duration = duration,
+                            modifier = Modifier.padding(horizontal = 4.dp)
+                        )
+                    }
+
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                        modifier = Modifier.size(16.dp)
                     )
                 }
+                
                 TimePicker(
                     label = "End",
                     timeMinutes = endTime,
@@ -393,6 +429,7 @@ private fun TimeRangeSelectionRow(
                 )
             }
         }
+        
         if (enabled && onEndTimeChange != null) {
             PickerShortcutRow {
                 TimeRangeShortcutDurations.forEach { duration ->
@@ -427,24 +464,29 @@ private fun PickerShortcut(
     enabled: Boolean = true,
     onClick: () -> Unit
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     Surface(
-        shape = RoundedCornerShape(8.dp),
+        shape = CircleShape,
         color = if (enabled) {
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.26f)
+            colorScheme.surface.copy(alpha = 0.5f)
         } else {
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.12f)
+            colorScheme.surface.copy(alpha = 0.2f)
         },
         contentColor = if (enabled) {
-            MaterialTheme.colorScheme.onSurfaceVariant
+            colorScheme.onSurfaceVariant
         } else {
-            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = ContentContainerAlpha)
+            colorScheme.onSurfaceVariant.copy(alpha = ContentContainerAlpha)
         },
+        border = BorderStroke(
+            width = 1.dp,
+            color = colorScheme.outlineVariant.copy(alpha = 0.5f)
+        ),
         modifier = Modifier
-            .height(30.dp)
+            .height(32.dp)
             .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier.Companion)
     ) {
         Box(
-            modifier = Modifier.padding(horizontal = 10.dp),
+            modifier = Modifier.padding(horizontal = 12.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(text = text, style = MaterialTheme.typography.labelMedium)
@@ -457,10 +499,44 @@ internal fun DurationText(
     duration: Int,
     modifier: Modifier = Modifier.Companion
 ) {
-    Text(
-        text = duration.toDurationLabel(),
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    val hours = duration / 60
+    val minutes = duration % 60
+    
+    val typography = MaterialTheme.typography
+    val color = MaterialTheme.colorScheme.primary
+    
+    val text = remember(hours, minutes) {
+        buildAnnotatedString {
+            if (hours > 0) {
+                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                    append(hours.toString())
+                }
+                withStyle(SpanStyle(fontSize = typography.labelSmall.fontSize, fontWeight = FontWeight.Medium)) {
+                    append("h")
+                }
+                if (minutes > 0) append(" ")
+            }
+            if (minutes > 0 || hours == 0) {
+                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                    append(minutes.toString())
+                }
+                withStyle(SpanStyle(fontSize = typography.labelSmall.fontSize, fontWeight = FontWeight.Medium)) {
+                    append("m")
+                }
+            }
+        }
+    }
+    
+    Box(
         modifier = modifier
-    )
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f))
+    ) {
+        Text(
+            text = text,
+            style = typography.labelMedium,
+            color = color,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+        )
+    }
 }
