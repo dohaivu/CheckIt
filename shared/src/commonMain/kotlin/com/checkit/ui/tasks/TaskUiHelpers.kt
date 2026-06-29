@@ -182,11 +182,12 @@ fun TaskItem.timeRangeLabel(): String {
 fun TaskItem.isOverdue(): Boolean {
     return doDate.isOverdue(today(), endTimeMinutes, status == TaskStatus.Completed)
 }
-
+fun NoteItem.isOverdue(): Boolean {
+    return date.isOverdue(today(), null,status == TaskStatus.Completed)
+}
 fun DailyPlanItem.isOverdue(date: LocalDate): Boolean {
     return date.isOverdue(today(), endTimeMinutes ?: startTimeMinutes, status == DailyPlanItemStatus.Done)
 }
-
 fun LocalDate?.isOverdue(today: LocalDate, deadline: Int?, isCompleted: Boolean): Boolean =
     when {
         isCompleted || this == null -> false

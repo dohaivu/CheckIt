@@ -464,7 +464,7 @@ private fun DailyPlanSection(
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = ContentAlpha), RoundedCornerShape(16.dp))
-            .padding(top = 8.dp, bottom = 8.dp, end = 8.dp)
+            .padding(start = 8.dp, top = 8.dp, bottom = 8.dp, end = 8.dp)
         ,
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {

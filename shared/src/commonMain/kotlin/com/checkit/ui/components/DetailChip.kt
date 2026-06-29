@@ -1,6 +1,7 @@
 package com.checkit.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -31,6 +32,8 @@ internal fun DetailChip(
     label: String,
     modifier: Modifier = Modifier,
     iconTint: Color = Color.Unspecified,
+    backgroundColor: Color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+    borderColor: Color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
     isHighlighted: Boolean = false,
     onClick: (() -> Unit)? = null
 ) {
@@ -44,16 +47,17 @@ internal fun DetailChip(
                     Modifier
                 }
             )
-            .background( MaterialTheme.colorScheme.surfaceContainerHigh)
-            .padding(horizontal = 10.dp, vertical = 7.dp),
+            .background(if (isHighlighted) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f) else backgroundColor)
+            .border(1.dp, if (isHighlighted) MaterialTheme.colorScheme.error.copy(alpha = 0.5f) else borderColor, CircleShape)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = if (isHighlighted) MaterialTheme.colorScheme.error else iconTint,
-            modifier = Modifier.size(16.dp)
+            tint = if (isHighlighted) MaterialTheme.colorScheme.error else if (iconTint != Color.Unspecified) iconTint else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(14.dp)
         )
         Text(
             text = label,

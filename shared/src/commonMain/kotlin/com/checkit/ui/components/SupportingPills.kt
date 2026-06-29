@@ -37,7 +37,7 @@ internal fun SupportingPills(
                 iconTint = it.color.toColor()
             )
         }
-        tags.forEach { tag -> TaskTagPill(tag = tag) }
+        tags.forEach { tag -> TagPill(tag = tag) }
         if (overflowCount > 0) {
             Text(
                 text = "+$overflowCount",
