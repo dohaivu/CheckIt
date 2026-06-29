@@ -1,6 +1,5 @@
 package com.checkit.ui.components
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -465,32 +464,33 @@ private fun PickerShortcut(
     onClick: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    Surface(
-        shape = CircleShape,
-        color = if (enabled) {
-            colorScheme.surface.copy(alpha = 0.5f)
-        } else {
-            colorScheme.surface.copy(alpha = 0.2f)
-        },
-        contentColor = if (enabled) {
-            colorScheme.onSurfaceVariant
-        } else {
-            colorScheme.onSurfaceVariant.copy(alpha = ContentContainerAlpha)
-        },
-        border = BorderStroke(
-            width = 1.dp,
-            color = colorScheme.outlineVariant.copy(alpha = 0.5f)
-        ),
+    val contentColor = if (enabled) {
+        colorScheme.onSurfaceVariant
+    } else {
+        colorScheme.onSurfaceVariant.copy(alpha = ContentContainerAlpha)
+    }
+    Box(
         modifier = Modifier
             .height(32.dp)
+            .clip(CircleShape)
             .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier.Companion)
+            .background(
+                if (enabled) colorScheme.surface.copy(alpha = 0.5f)
+                else colorScheme.surface.copy(alpha = 0.2f)
+            )
+            .border(
+                width = 1.dp,
+                color = colorScheme.outlineVariant.copy(alpha = 0.5f),
+                shape = CircleShape
+            )
+            .padding(horizontal = 12.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Box(
-            modifier = Modifier.padding(horizontal = 12.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(text = text, style = MaterialTheme.typography.labelMedium)
-        }
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            color = contentColor
+        )
     }
 }
 

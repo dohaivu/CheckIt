@@ -35,7 +35,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -261,23 +260,31 @@ private fun TrashedStatusSection(
     modifier: Modifier = Modifier
 ) {
     if (!isTrashed) return
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.errorContainer,
-        contentColor = MaterialTheme.colorScheme.onErrorContainer
+    val colorScheme = MaterialTheme.colorScheme
+    val contentColor = colorScheme.onErrorContainer
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(colorScheme.errorContainer)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Default.RestoreFromTrash, contentDescription = null, modifier = Modifier.size(20.dp))
+            Icon(
+                imageVector = Icons.Default.RestoreFromTrash,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = contentColor
+            )
             Text(
                 text = "This item is in trash",
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                color = contentColor
             )
             OutlinedButton(onClick = onRestore) {
                 Text("Restore")

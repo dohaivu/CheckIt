@@ -5,17 +5,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Event
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -34,7 +32,6 @@ import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
 import com.checkit.ui.components.DateTimeRangeDetailChip
 import com.checkit.ui.components.DetailChip
-import com.checkit.ui.components.RepeatPill
 import com.checkit.ui.components.SupportingPills
 import com.checkit.ui.duration
 import com.checkit.ui.tasks.NoteIcon
@@ -113,16 +110,25 @@ private fun BaseTaskRow(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(IntrinsicSize.Min)
                 .background(color.copy(alpha = DefaultTaskCardAlpha))
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth().fillMaxHeight(),
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Top
             ) {
-                CardStripe(color = color)
+                Box(Modifier.width(4.dp))
                 content()
             }
+
+            Box(Modifier.matchParentSize()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(4.dp)
+                        .background(color)
+                )
+            }
+
             if (isCompleted) {
                 CompletedOverlay()
             }
@@ -220,8 +226,8 @@ internal fun DetailTaskRowContent(task: TaskItem, list: Objective?) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes, isOverdue = task.isOverdue())
             duration(task.startTimeMinutes, task.endTimeMinutes)?.let { DetailChip(Icons.Default.Schedule, it.toDurationLabel()) }
-            RepeatPill(task.repeatRRule)
-            if (task.reminders.isNotEmpty()) DetailChip(Icons.Default.Notifications, "${task.reminders.size} reminders")
+//            RepeatPill(task.repeatRRule)
+//            if (task.reminders.isNotEmpty()) DetailChip(Icons.Default.Notifications, "${task.reminders.size} reminders")
         }
         task.subtasks.takeIf { it.isNotEmpty() }?.let { SubtaskProgressText(task) }
         SupportingPills(list = list, tags = task.tags)

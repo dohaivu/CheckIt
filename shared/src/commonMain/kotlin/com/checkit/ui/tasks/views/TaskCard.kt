@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -154,7 +153,6 @@ private fun BaseTaskCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(IntrinsicSize.Min)
             .then(if (minHeight != Dp.Unspecified) Modifier.heightIn(min = minHeight) else Modifier)
             .clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.surface)
@@ -162,12 +160,22 @@ private fun BaseTaskCard(
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
     ) {
         Row(
-            modifier = Modifier.fillMaxHeight(),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.Top
         ) {
-            CardStripe(color = color)
+            Box(Modifier.width(4.dp))
             content()
         }
+
+        Box(Modifier.matchParentSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(4.dp)
+                    .background(color)
+            )
+        }
+
         if (completedOverlay) {
             CompletedOverlay()
         }

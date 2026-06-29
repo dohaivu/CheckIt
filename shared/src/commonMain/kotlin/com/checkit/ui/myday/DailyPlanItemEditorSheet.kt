@@ -1,6 +1,7 @@
 package com.checkit.ui.myday
 
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -166,19 +168,19 @@ private fun DailyPlanItemSheetFooter(
 
 @Composable
 private fun SourceIconBadge(source: DailyPlanItemSource) {
-    Surface(
-        modifier = Modifier.size(44.dp),
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.primaryContainer
+    Box(
+        modifier = Modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.primaryContainer),
+        contentAlignment = Alignment.Center
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                imageVector = source.icon(),
-                contentDescription = null,
-                modifier = Modifier.size(22.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-        }
+        Icon(
+            imageVector = source.icon(),
+            contentDescription = null,
+            modifier = Modifier.size(22.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
     }
 }
 
@@ -298,14 +300,16 @@ private fun FixedTypeControls(
     onDoneChange: (Boolean) -> Unit,
     enabled: Boolean
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f))
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f), RoundedCornerShape(20.dp))
+            .padding(12.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             TypeSummary(source = source, label = "Saved as ${source.shortLabel().lowercase()}")
@@ -386,14 +390,16 @@ private fun AddModeIntentControls(
     onReminderChange: (Boolean) -> Unit,
     enabled: Boolean
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f))
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f), RoundedCornerShape(20.dp))
+            .padding(12.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Row(
@@ -485,12 +491,14 @@ private fun LabeledTagPicker(
 
 @Composable
 private fun TypeSummary(source: DailyPlanItemSource, label: String) {
-    Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.56f)
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.56f))
+            .padding(horizontal = 12.dp, vertical = 9.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 9.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {

@@ -64,7 +64,7 @@ private fun ColorSwatch(
         modifier = Modifier
             .size(36.dp)
             .clip(CircleShape)
-            .background(color, CircleShape)
+            .background(color)
             .border(
                 width = 0.dp,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -101,13 +101,13 @@ internal fun IconPicker(
             Box(
                 modifier = Modifier
                     .size(48.dp)
+                    .clip(RoundedCornerShape(10.dp))
                     .background(
                         color = if (isSelected) {
                             MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
                         } else {
                             Color.Unspecified
-                        },
-                        shape = RoundedCornerShape(10.dp)
+                        }
                     )
                     .clickable { onSelect(iconName) },
                 contentAlignment = Alignment.Center
