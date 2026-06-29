@@ -15,8 +15,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,6 +30,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.NoteItem
 import com.checkit.domain.Objective
+import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
 import com.checkit.ui.components.DateTimeRangeDetailChip
@@ -35,6 +38,7 @@ import com.checkit.ui.components.DetailChip
 import com.checkit.ui.components.SupportingPills
 import com.checkit.ui.duration
 import com.checkit.ui.tasks.NoteIcon
+import com.checkit.ui.tasks.SubtaskBriefList
 import com.checkit.ui.tasks.TaskIcon
 import com.checkit.ui.tasks.TaskListDisplayType
 import com.checkit.ui.tasks.cardColor
@@ -229,7 +233,7 @@ internal fun DetailTaskRowContent(task: TaskItem, list: Objective?) {
 //            RepeatPill(task.repeatRRule)
 //            if (task.reminders.isNotEmpty()) DetailChip(Icons.Default.Notifications, "${task.reminders.size} reminders")
         }
-        task.subtasks.takeIf { it.isNotEmpty() }?.let { SubtaskProgressText(task) }
+        SubtaskBriefList(task.subtasks)
         SupportingPills(list = list, tags = task.tags)
     }
 }
