@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.NoteItem
@@ -143,64 +144,99 @@ private fun BaseTaskRow(
 }
 
 @Composable
-internal fun OKRTaskContent(task: TaskItem) {
+internal fun OKRTaskContent(
+    task: TaskItem,
+    color: Color = MaterialTheme.colorScheme.primary
+) {
+    val isCompleted = task.status == TaskStatus.Completed
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f))
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                shape = RoundedCornerShape(8.dp)
-            )
-            .padding(8.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+            .background(color.copy(alpha = 0.06f))
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         TaskIcon(
-            completed = task.status == TaskStatus.Completed,
-            color = task.priority.priorityColor()
+            completed = isCompleted,
+            color = if (isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f) else task.priority.priorityColor()
         )
-        Text(
-            text = task.name,
-            modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Normal,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = task.name,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    textDecoration = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None
+                ),
+                color = if (isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (task.subtasks.isNotEmpty()) {
+                Text(
+                    text = "${task.subtasks.count { it.isCompleted }}/${task.subtasks.size} subtasks",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = color.copy(alpha = 0.7f)
+                )
+            }
+        }
 
-        task.doDate?.let { DetailChip(Icons.Default.Event, it.compact(), isHighlighted = task.isOverdue()) }
+        task.doDate?.let {
+            DetailChip(
+                icon = Icons.Default.Event,
+                label = it.compact(),
+                isHighlighted = task.isOverdue(),
+                backgroundColor = Color.Transparent
+            )
+        }
     }
 }
 
 @Composable
-internal fun OKRNoteContent(note: NoteItem) {
+internal fun OKRNoteContent(
+    note: NoteItem,
+    color: Color = MaterialTheme.colorScheme.primary
+) {
+    val isCompleted = note.status == TaskStatus.Completed
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f))
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                shape = RoundedCornerShape(8.dp)
-            )
-            .padding(8.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+            .background(color.copy(alpha = 0.04f))
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         NoteIcon(note.status)
-        Text(
-            text = note.title.ifBlank { note.content },
-            modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Normal,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
-        )
-        note.date?.let { DetailChip(Icons.Default.Event, it.compact(), isHighlighted = note.isOverdue()) }
+        Column(modifier = Modifier.weight(1f)) {
+            if (note.title.isNotBlank()) {
+                Text(
+                    text = note.title,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        textDecoration = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None
+                    ),
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Text(
+                text = note.content,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (isCompleted) 0.5f else 0.7f),
+                maxLines = if (note.title.isBlank()) 2 else 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        note.date?.let {
+            DetailChip(
+                icon = Icons.Default.Event,
+                label = it.compact(),
+                isHighlighted = note.isOverdue(),
+                backgroundColor = Color.Transparent
+            )
+        }
     }
 }
 

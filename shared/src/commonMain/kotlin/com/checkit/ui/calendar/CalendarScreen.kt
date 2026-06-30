@@ -44,6 +44,7 @@ import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.calendar_title
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
+import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
@@ -159,7 +160,7 @@ internal fun CalendarScreen(
             )
             if (selectedContent.showDailyPlan) {
                 DayLinearTimeline(
-                    items = selectedContent.dailyPlanItems,
+                    items = selectedContent.dailyPlanItems.filter { it.status == DailyPlanItemStatus.Done },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 4.dp)

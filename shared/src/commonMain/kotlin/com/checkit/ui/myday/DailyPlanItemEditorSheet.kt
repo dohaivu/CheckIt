@@ -72,7 +72,7 @@ internal fun DailyPlanItemEditorSheet(
     AppEditorBottomSheet(
         onDismiss = onDismiss,
         modifier = Modifier
-            .fillMaxHeight()
+            .fillMaxHeight(0.85f)
             .padding(bottom = 24.dp)
             .windowInsetsPadding(WindowInsets.ime)
     ) {

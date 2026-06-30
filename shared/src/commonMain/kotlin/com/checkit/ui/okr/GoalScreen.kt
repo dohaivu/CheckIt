@@ -22,11 +22,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -176,15 +178,16 @@ private fun ObjectiveBranch(
                 startDate = objective.startDate,
                 endDate = objective.endDate
             )
+            Spacer(modifier = Modifier.width(4.dp))
         },
         content = {
             Text(
                 text = objective.name,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                modifier = Modifier.weight(1f).padding(vertical = 8.dp)
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f).padding(vertical = 12.dp)
             )
         }
     )
@@ -205,7 +208,7 @@ private fun ObjectiveBranch(
                 onSelectNode = onSelectNode,
                 onLongClick = { onNoteClick(note) },
                 content = {
-                    OKRNoteContent(note)
+                    OKRNoteContent(note, color = color)
                 }
             )
             childIndex++
@@ -272,22 +275,28 @@ private fun KeyResultBranch(
                 size = 24.dp,
                 color = color
             )
+            Spacer(modifier = Modifier.width(4.dp))
         },
         content = {
             Column(
-                modifier = Modifier.weight(1f).padding(vertical = 8.dp)
+                modifier = Modifier.weight(1f).padding(vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Text(
                     text = keyResult.title,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
                 )
-                Box(modifier = Modifier.height(3.dp)
-                    .fillMaxWidth(keyResult.progress.toFloat())
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(color.copy(alpha = 0.30f))
+                LinearProgressIndicator(
+                    progress = { keyResult.progress.toFloat() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(5.dp)
+                        .clip(CircleShape),
+                    color = color,
+                    trackColor = color.copy(alpha = 0.15f),
                 )
             }
         }
@@ -312,7 +321,7 @@ private fun KeyResultBranch(
                 onLongClick = { onTaskClick(task) },
                 ancestorLines = ancestorLines,
                 content = {
-                    OKRTaskContent(task)
+                    OKRTaskContent(task, color = color)
                 }
             )
         }
@@ -353,10 +362,10 @@ private fun TreeNodeRow(
     trailingContent: @Composable (() -> Unit)? = null,
     content: @Composable (RowScope.() -> Unit),
 ) {
-    val background = if (isSelected) {
-        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.65f)
-    } else {
-        Color.Transparent
+    val background = when {
+        isSelected -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f)
+        depth == 0 -> color?.copy(alpha = 0.08f) ?: Color.Transparent
+        else -> Color.Transparent
     }
     val lineColor = color ?: MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f)
     val rotation by animateFloatAsState(if (isExpanded) 90f else 0f)
@@ -364,8 +373,8 @@ private fun TreeNodeRow(
         modifier = Modifier
             .fillMaxWidth()
             .drawBehind {
-                val strokePx = 1.2.dp.toPx() // Slightly thinner for more elegance
-                val curveRadius = 12.dp.toPx() // Larger radius for more organic feel
+                val strokePx = 1.2.dp.toPx()
+                val curveRadius = 12.dp.toPx()
                 val dashColor = lineColor.copy(alpha = 0.4f)
 
                 // Draw vertical lines for ancestors
@@ -440,34 +449,48 @@ private fun TreeNodeRow(
             .combinedClickable(
                 onClick = { onSelectNode(nodeKey) },
                 onLongClick = onLongClick
-            )
-            .padding(end = 8.dp),
+            ),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        if (hasChildren) {
-            Box(
-                modifier = Modifier
-                    .padding(start = 6.dp)
-                    .size(20.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .combinedClickable(
-                        onClick = { onToggleExpanded(nodeKey) }
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                    contentDescription = if (isExpanded) "Collapse" else "Expand",
-                    tint = lineColor,
-                    modifier = Modifier.size(20.dp).graphicsLayer {
-                        this.rotationZ = rotation
-                    }
+        Box(
+            modifier = Modifier
+                .padding(start = 6.dp)
+                .size(20.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            if (hasChildren) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .combinedClickable(
+                            onClick = { onToggleExpanded(nodeKey) }
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                        contentDescription = if (isExpanded) "Collapse" else "Expand",
+                        tint = lineColor,
+                        modifier = Modifier.size(20.dp).graphicsLayer {
+                            this.rotationZ = rotation
+                        }
+                    )
+                }
+            } else if (depth > 0) {
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .background(lineColor.copy(alpha = 0.5f), CircleShape)
                 )
             }
-        } else {
-            Spacer(Modifier.size(20.dp))
         }
-        leadingContent?.invoke()
+        
+        if (leadingContent != null) {
+            leadingContent()
+        } else if (depth > 0) {
+            Spacer(Modifier.width(12.dp))
+        }
+
         content.invoke(this)
         trailingContent?.invoke()
     }
