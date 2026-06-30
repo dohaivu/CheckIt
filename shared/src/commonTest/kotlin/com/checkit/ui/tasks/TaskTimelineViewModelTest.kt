@@ -2,12 +2,11 @@ package com.checkit.ui.tasks
 
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
-import com.checkit.domain.TaskList
+import com.checkit.domain.Objective
 import com.checkit.domain.usecase.AddNoteUseCase
-import com.checkit.domain.usecase.AddTaskListUseCase
-import com.checkit.domain.usecase.AddTaskTagUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
+import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
 import com.checkit.domain.usecase.CompleteNoteUseCase
 import com.checkit.domain.usecase.OpenTaskUseCase
@@ -15,21 +14,16 @@ import com.checkit.domain.usecase.OpenNoteUseCase
 import com.checkit.domain.usecase.RestoreNoteUseCase
 import com.checkit.domain.usecase.RestoreTaskUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
-import com.checkit.domain.usecase.DeleteTaskListUseCase
-import com.checkit.domain.usecase.DeleteTaskTagUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
-import com.checkit.domain.usecase.IsTagNameTakenUseCase
+import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
-import com.checkit.domain.usecase.UpdateNoteUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
-import com.checkit.domain.usecase.UpdateTaskListUseCase
-import com.checkit.domain.usecase.UpdateTaskTagUseCase
+import com.checkit.domain.usecase.UpdateNoteUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
-import com.checkit.ui.EditorMode
-import com.checkit.ui.TaskEditorState
+import com.checkit.ui.today
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -50,12 +44,8 @@ class TaskTimelineViewModelTest {
     @BeforeTest
     fun setUp() {
         Dispatchers.setMain(dispatcher)
-        repository = FakeCheckItRepository(
-            initialBoard = TaskBoard(
-                lists = listOf(inboxList()),
-                tasks = listOf(timedTask())
-            )
-        )
+        val inbox = Objective(id = 1L, name = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
+        repository = FakeCheckItRepository(initialBoard = TaskBoard(objectives = listOf(inbox)))
         viewModel = TaskViewModel(
             observeTaskBoard = ObserveTaskBoardUseCase(repository),
             ensureDefaultTaskData = EnsureDefaultTaskDataUseCase(repository),
@@ -75,6 +65,7 @@ class TaskTimelineViewModelTest {
             restoreNote = RestoreNoteUseCase(repository),
             updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository),
             updateDailyPlanItemStatus = UpdateDailyPlanItemStatusUseCase(repository),
+            syncKeyResultFromDailyPlan = SyncKeyResultFromDailyPlanUseCase(repository),
             settingsRepository = FakeSettingsRepository()
         )
         dispatcher.scheduler.advanceUntilIdle()
@@ -106,10 +97,9 @@ class TaskTimelineViewModelTest {
         assertEquals(task.id, taskId)
         assertEquals(12 * 60, input.startTimeMinutes)
         assertEquals(13 * 60 + 15, input.endTimeMinutes)
-        assertEquals(75, input.durationMinutes)
     }
 
-    private fun inboxList() = TaskList(
+    private fun inboxList() = Objective(
         id = 1L,
         name = "Inbox",
         color = "#2563EB",
@@ -119,11 +109,10 @@ class TaskTimelineViewModelTest {
 
     private fun timedTask() = TaskItem(
         id = 7L,
-        list = TaskList.None,
+        objective = Objective.None,
         name = "Focus",
         startTimeMinutes = 9 * 60,
         endTimeMinutes = 10 * 60,
-        durationMinutes = 60,
         sortOrder = 0,
         createdAtMillis = 0L,
         updatedAtMillis = 0L

@@ -1,10 +1,14 @@
-package com.checkit.ui
+package com.checkit.ui.reports
 
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.ui.components.ReportPeriod
+import com.checkit.ui.myday.doneWorkMinutes
+import com.checkit.ui.firstDayOfMonth
+import com.checkit.ui.today
+import com.checkit.ui.myday.workMinutes
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
@@ -12,10 +16,9 @@ import kotlinx.datetime.plus
 
 data class ReportUiState(
     val selectedPeriod: ReportPeriod = ReportPeriod.Daily,
-    val selectedDate: kotlinx.datetime.LocalDate = today(),
+    val selectedDate: LocalDate = today(),
     val dailyPlans: List<DailyPlan> = emptyList(),
-    val isLoading: Boolean = true,
-    val message: String? = null
+    val isLoading: Boolean = true
 ) {
     private val reportIndex: DailyPlanReportIndex by lazy {
         DailyPlanReportIndex(dailyPlans)
@@ -68,18 +71,6 @@ data class DigestHighlight(
     val totalMinutes: Int
 )
 
-private fun DailyPlanItem.workMinutes(): Int {
-    val start = startTimeMinutes ?: return 0
-    val end = endTimeMinutes ?: return 0
-    return (end - start).coerceAtLeast(0)
-}
-
-private fun DailyPlan?.doneWorkMinutes(): Int =
-    this
-        ?.items
-        .orEmpty()
-        .filter { it.status == DailyPlanItemStatus.Done }
-        .sumOf { it.workMinutes() }
 
 private class DailyPlanReportIndex(
     private val plans: List<DailyPlan>

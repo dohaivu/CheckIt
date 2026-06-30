@@ -1,4 +1,4 @@
-package com.checkit.ui.tasks
+package com.checkit.ui.tasks.views
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.ScrollState
@@ -49,8 +49,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import com.checkit.ui.components.HoursPerDay
-import com.checkit.ui.components.MinutesPerDay
+import com.checkit.ui.HoursPerDay
+import com.checkit.ui.MinutesPerDay
+import com.checkit.ui.tasks.TimelineItem
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -693,7 +694,7 @@ internal const val MinimumDurationMinutes = 15
 internal const val LastStartMinute = MinutesPerDay - MinimumDurationMinutes
 internal const val CurrentTimeVisibleHoursBefore = 2f
 internal const val CollapsedAllDayItemCount = 2
-internal const val DefaultTaskCardAlpha = 0.17f
+internal const val DefaultTaskCardAlpha = 0.15f
 internal const val SelectedTaskCardAlpha = 0.28f
 private const val WorkdayStartMinutes = 8 * 60
 private const val WorkdayEndMinutes = 18 * 60

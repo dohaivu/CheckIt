@@ -19,9 +19,14 @@ import androidx.compose.ui.unit.dp
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
-import com.checkit.ui.TaskListDisplayType
-import com.checkit.ui.TaskUiState
-import com.checkit.ui.TaskWorkspaceView
+import com.checkit.ui.tasks.views.AgendaView
+import com.checkit.ui.tasks.views.ListDisplayTypeMenu
+import com.checkit.ui.tasks.views.NoteAllDayCard
+import com.checkit.ui.tasks.views.NoteTimelineCard
+import com.checkit.ui.tasks.views.TaskAllDayCard
+import com.checkit.ui.tasks.views.TaskListView
+import com.checkit.ui.tasks.views.TaskTimelineCard
+import com.checkit.ui.tasks.views.TimelineView
 import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
 
@@ -55,9 +60,9 @@ internal fun TaskContent(
         }
         Spacer(Modifier.height(4.dp))
         when (state.selectedView) {
+            TaskWorkspaceView.Goal,
             TaskWorkspaceView.List -> TaskListView(
                 items = state.visibleListItems,
-                lists = state.board.lists,
                 showListName = showListName,
                 displayType = state.listDisplayType,
                 onTaskClick = onTaskClick,
@@ -116,6 +121,7 @@ internal fun TaskAgendaView(
                 } else {
                     TaskTimelineCard(tag, completedOverlay = tag.status == TaskStatus.Completed)
                 }
+
                 is NoteItem -> if (item.startTimeMinutes == null) {
                     NoteAllDayCard(tag, completedOverlay = tag.status == TaskStatus.Completed)
                 } else {
@@ -169,6 +175,7 @@ internal fun TaskTimelineView(
                     modifier = Modifier.matchParentSize(),
                     displayMode = displayMode
                 )
+
                 is NoteItem -> NoteTimelineCard(
                     note = tag,
                     selected = isSelected,

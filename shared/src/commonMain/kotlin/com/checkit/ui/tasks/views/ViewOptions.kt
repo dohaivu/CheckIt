@@ -1,4 +1,4 @@
-package com.checkit.ui.tasks
+package com.checkit.ui.tasks.views
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
@@ -8,7 +8,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,23 +28,19 @@ import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.PriorityHigh
 import androidx.compose.material.icons.filled.SortByAlpha
 import androidx.compose.material.icons.filled.TaskAlt
-import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -54,9 +49,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import com.checkit.domain.TaskFilter
-import com.checkit.ui.TaskSortOption
-import com.checkit.ui.TaskWorkspaceView
+import com.checkit.ui.components.DetailChip
+import com.checkit.ui.tasks.TaskSortOption
+import com.checkit.ui.tasks.TaskWorkspaceView
 import com.checkit.ui.components.AppOutlinedTextField
+import com.checkit.ui.tasks.icon
 import com.checkit.ui.theme.materialIcon
 
 
@@ -197,7 +194,7 @@ internal fun ViewOptionsMenu(
                                 onClick = { onShowCompletedChange(!showCompleted) }
                             )
 
-                            if (selectedView == TaskWorkspaceView.List) {
+                            if (selectedView == TaskWorkspaceView.List || selectedView == TaskWorkspaceView.Goal) {
                                 OptionSectionLabel("Sort")
                                 FlowRow(
                                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -246,48 +243,20 @@ internal fun ViewOptionChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val primaryContainer = MaterialTheme.colorScheme.primaryContainer
-    val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
-    val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
-    val onSurface = MaterialTheme.colorScheme.onSurface
-    val primary = MaterialTheme.colorScheme.primary
-    val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+    val colorScheme = MaterialTheme.colorScheme
+    val backgroundColor = if (selected) colorScheme.primaryContainer else colorScheme.surface.copy(alpha = 0.5f)
+    val borderColor = if (selected) colorScheme.primary.copy(alpha = 0.5f) else colorScheme.outlineVariant.copy(alpha = 0.5f)
+    val iconTint = if (selected) colorScheme.primary else colorScheme.onSurfaceVariant
 
-    val backgroundColor = remember(selected, primaryContainer, surfaceVariant) {
-        if (selected) primaryContainer else surfaceVariant.copy(alpha = ContentContainerAlpha)
-    }
-
-    val contentColor = remember(selected, onPrimaryContainer, onSurface) {
-        if (selected) onPrimaryContainer else onSurface
-    }
-
-    val iconTint = remember(selected, primary, onSurfaceVariant) {
-        if (selected) primary else onSurfaceVariant
-    }
-
-    CompositionLocalProvider(LocalContentColor provides contentColor) {
-        Row(
-            modifier = modifier
-                .clip(CircleShape)
-                .clickable(onClick = onClick)
-                .background(backgroundColor)
-                .padding(horizontal = 10.dp, vertical = 7.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = iconTint,
-                modifier = Modifier.size(16.dp)
-            )
-            Text(
-                text = label,
-                maxLines = 1,
-                style = MaterialTheme.typography.labelMedium
-            )
-        }
-    }
+    DetailChip(
+        icon = icon,
+        label = label,
+        modifier = modifier,
+        onClick = onClick,
+        backgroundColor = backgroundColor,
+        borderColor = borderColor,
+        iconTint = iconTint
+    )
 }
 
 private fun TaskSortOption.icon(): ImageVector =

@@ -1,4 +1,4 @@
-package com.checkit.ui
+package com.checkit.ui.calendar
 
 import androidx.compose.ui.graphics.Color
 import com.checkit.domain.DailyPlan
@@ -7,13 +7,18 @@ import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.ui.components.ReportPeriod
+import com.checkit.ui.myday.doneWorkMinutes
+import com.checkit.ui.firstDayOfMonth
 import com.checkit.ui.theme.AppIconColorDefaults
 import com.checkit.ui.theme.toColor
+import com.checkit.ui.today
+import kotlinx.datetime.LocalDate
+import kotlin.collections.get
 
 data class CalendarUiState(
     val selectedPeriod: ReportPeriod = ReportPeriod.Month,
-    val selectedMonth: kotlinx.datetime.LocalDate = today().firstDayOfMonth(),
-    val selectedDate: kotlinx.datetime.LocalDate = today(),
+    val selectedMonth: LocalDate = today().firstDayOfMonth(),
+    val selectedDate: LocalDate = today(),
     val board: TaskBoard = TaskBoard(),
     val dailyPlans: List<DailyPlan> = emptyList(),
     val showDailyPlanSummary: Boolean = false,
@@ -31,17 +36,17 @@ data class CalendarUiState(
         }
     }
 
-    val dailyPlanByDate: Map<kotlinx.datetime.LocalDate, DailyPlan> = filteredDailyPlans.associateBy { it.date }
+    val dailyPlanByDate: Map<LocalDate, DailyPlan> = filteredDailyPlans.associateBy { it.date }
 
-    private val dailyPlanMarkersByDate: Map<kotlinx.datetime.LocalDate, CalendarDateMarkers> by lazy {
+    private val dailyPlanMarkersByDate: Map<LocalDate, CalendarDateMarkers> by lazy {
         filteredDailyPlans.associate { plan -> plan.date to CalendarDateMarkers(totalCount = plan.items.size) }
     }
 
-    private val dailyPlanWorkMinutesByDate: Map<kotlinx.datetime.LocalDate, Int> by lazy {
-        filteredDailyPlans.associate { plan -> plan.date to plan.items.sumOf { it.workMinutes() } }
+    private val dailyPlanWorkMinutesByDate: Map<LocalDate, Int> by lazy {
+        filteredDailyPlans.associate { plan -> plan.date to plan.doneWorkMinutes()}
     }
 
-    private val futureMarkersByDate: Map<kotlinx.datetime.LocalDate, CalendarDateMarkers> by lazy {
+    private val futureMarkersByDate: Map<LocalDate, CalendarDateMarkers> by lazy {
         val dates = board.tasksByDate.keys + board.notesByDate.keys
         dates.associateWith { date ->
             CalendarDateMarkers(
@@ -50,17 +55,17 @@ data class CalendarUiState(
         }
     }
 
-    private val listColors: Map<Long, Color> = board.lists.associateWith { list ->
-        list.color.toColor()
+    private val objectiveColors: Map<Long, Color> = board.objectives.associateWith { objective ->
+        objective.color.toColor()
     }.mapKeys { it.key.id }
 
-    fun tasksForDate(date: kotlinx.datetime.LocalDate): List<TaskItem> =
+    fun tasksForDate(date: LocalDate): List<TaskItem> =
         board.tasksByDate[date].orEmpty()
 
-    fun notesForDate(date: kotlinx.datetime.LocalDate): List<NoteItem> =
+    fun notesForDate(date: LocalDate): List<NoteItem> =
         board.notesByDate[date].orEmpty()
 
-    fun markerColorsForDate(date: kotlinx.datetime.LocalDate): List<Color> {
+    fun markerColorsForDate(date: LocalDate): List<Color> {
         if (date <= today()) {
             val dailyItems = dailyPlanByDate[date]?.items.orEmpty()
             return if (dailyItems.isNotEmpty()) {
@@ -79,9 +84,9 @@ data class CalendarUiState(
             var i = 0
             while (i < totalSize && size < MarkerCap) {
                 val color = if (i < tasks.size) {
-                    listColors[tasks[i].list.id]
+                    objectiveColors[tasks[i].objective.id]
                 } else {
-                    listColors[notes[i - tasks.size].list.id]
+                    objectiveColors[notes[i - tasks.size].objective.id]
                 }
                 add(color ?: DefaultMarkerColor)
                 i++
@@ -89,21 +94,21 @@ data class CalendarUiState(
         }
     }
 
-    fun markersForDate(date: kotlinx.datetime.LocalDate): CalendarDateMarkers =
+    fun markersForDate(date: LocalDate): CalendarDateMarkers =
         if (date <= today()) {
             dailyPlanMarkersByDate[date] ?: CalendarDateMarkers.Empty
         } else {
             futureMarkersByDate[date] ?: CalendarDateMarkers.Empty
         }
 
-    fun dailyPlanWorkMinutesForDate(date: kotlinx.datetime.LocalDate): Int =
+    fun dailyPlanWorkMinutesForDate(date: LocalDate): Int =
         dailyPlanWorkMinutesByDate[date] ?: 0
 
-    fun dailyPlanForDate(date: kotlinx.datetime.LocalDate): DailyPlan? = dailyPlanByDate[date]
+    fun dailyPlanForDate(date: LocalDate): DailyPlan? = dailyPlanByDate[date]
 
     private fun dailyItemColor(item: DailyPlanItem): Color =
         item.taskId
-            ?.let { taskId -> listColors[board.tasksById[taskId]?.list?.id] }
+            ?.let { taskId -> objectiveColors[board.tasksById[taskId]?.objective?.id] }
             ?: DefaultMarkerColor
 
     private companion object {
@@ -128,10 +133,4 @@ data class CalendarDateMarkers(
 enum class CalendarDisplayMode {
     Month,
     Week
-}
-
-private fun DailyPlanItem.workMinutes(): Int {
-    val start = startTimeMinutes ?: return 0
-    val end = endTimeMinutes ?: return 0
-    return (end - start).coerceAtLeast(0)
 }

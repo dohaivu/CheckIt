@@ -3,12 +3,13 @@ package com.checkit.ui.myday
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DailyPlanItemSource
-import com.checkit.domain.usecase.AddManualDoneToDailyPlanUseCase
+import com.checkit.domain.usecase.AddDailyPlanItemUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
+import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemUseCase
 import com.checkit.ui.tasks.FakeCheckItRepository
@@ -39,9 +40,10 @@ class MyDayViewModelTest {
             observeDailyPlans = ObserveDailyPlansUseCase(repository),
             ensureDefaultTaskData = EnsureDefaultTaskDataUseCase(repository),
             addTaskToDailyPlan = AddTaskToDailyPlanUseCase(repository),
-            addManualDoneToDailyPlan = AddManualDoneToDailyPlanUseCase(repository),
+            addDailyPlanItem = AddDailyPlanItemUseCase(repository),
             updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository),
             updateDailyPlanItem = UpdateDailyPlanItemUseCase(repository),
+            syncKeyResultFromDailyPlan = SyncKeyResultFromDailyPlanUseCase(repository),
             deleteDailyPlanItemUseCase = DeleteDailyPlanItemUseCase(repository)
         )
         dispatcher.scheduler.advanceUntilIdle()
@@ -62,7 +64,7 @@ class MyDayViewModelTest {
 
         val item = repository.addedManualDailyPlanItems.single()
         assertEquals(DailyPlanItemSource.MyDayNote, item.source)
-        assertEquals(DailyPlanItemStatus.Planned, item.status)
+        assertEquals(DailyPlanItemStatus.Done, item.status)
         assertEquals(null, item.startTimeMinutes)
         assertEquals(null, item.endTimeMinutes)
     }
@@ -77,7 +79,7 @@ class MyDayViewModelTest {
 
         val item = repository.addedManualDailyPlanItems.single()
         assertEquals(DailyPlanItemSource.MyDayNote, item.source)
-        assertEquals(DailyPlanItemStatus.Planned, item.status)
+        assertEquals(DailyPlanItemStatus.Done, item.status)
         assertEquals(0, item.startTimeMinutes)
         assertEquals(null, item.endTimeMinutes)
     }
@@ -163,7 +165,7 @@ class MyDayViewModelTest {
         endTimeMinutes: Int? = null
     ) = DailyPlanItem(
         id = 42L,
-        dailyPlanId = 7L,
+        dateEpochDays = 1,
         title = "Original",
         note = "Old note",
         source = source,

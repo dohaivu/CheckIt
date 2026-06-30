@@ -40,7 +40,7 @@ class TaskReminderPlannerTest {
     fun selectedOffsetsForTaskInfersPersistedReminderOffsets() {
         val task = TaskItem(
             id = 1L,
-            list = TaskList.None,
+            objective = Objective.None,
             name = "Review",
             doDate = LocalDate(2026, 6, 5),
             startTimeMinutes = 8 * 60 + 30,

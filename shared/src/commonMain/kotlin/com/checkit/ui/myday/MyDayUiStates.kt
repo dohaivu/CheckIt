@@ -1,4 +1,4 @@
-package com.checkit.ui
+package com.checkit.ui.myday
 
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
@@ -7,6 +7,8 @@ import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
+import com.checkit.ui.tasks.EditorMode
+import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
 
 data class MyDayUiState(
@@ -17,10 +19,9 @@ data class MyDayUiState(
     val showSuggestions: Boolean = false,
     val suggestionStartTimeMinutes: Int? = null,
     val suggestionEndTimeMinutes: Int? = null,
-    val isLoading: Boolean = true,
-    val message: String? = null
+    val isLoading: Boolean = true
 ) {
-    val today: LocalDate = com.checkit.ui.today()
+    val today: LocalDate = today()
     val plan: DailyPlan? = dailyPlans.firstOrNull { it.date == today }
     val items: List<DailyPlanItem> = plan?.items.orEmpty()
     val plannedItems: List<DailyPlanItem> = items.filter { it.status != DailyPlanItemStatus.Done }
@@ -56,3 +57,16 @@ data class DailyPlanItemEditorState(
     val isEditMode: Boolean get() = mode == EditorMode.Edit
     val canDelete: Boolean get() = itemId != null
 }
+
+internal fun DailyPlanItem.workMinutes(): Int {
+    val start = startTimeMinutes ?: return 0
+    val end = endTimeMinutes ?: return 0
+    return (end - start).coerceAtLeast(0)
+}
+
+internal fun DailyPlan?.doneWorkMinutes(): Int =
+    this
+        ?.items
+        .orEmpty()
+        .filter { it.status == DailyPlanItemStatus.Done }
+        .sumOf { it.workMinutes() }

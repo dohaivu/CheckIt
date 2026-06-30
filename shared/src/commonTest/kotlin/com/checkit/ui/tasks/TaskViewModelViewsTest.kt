@@ -1,17 +1,16 @@
 package com.checkit.ui.tasks
 
 import com.checkit.domain.DueDatePreset
-import com.checkit.domain.NoteItem
+import com.checkit.domain.Objective
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskFilter
 import com.checkit.domain.TaskItem
-import com.checkit.domain.TaskList
+import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.usecase.AddNoteUseCase
-import com.checkit.domain.usecase.AddTaskListUseCase
-import com.checkit.domain.usecase.AddTaskTagUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
+import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
 import com.checkit.domain.usecase.CompleteNoteUseCase
 import com.checkit.domain.usecase.OpenTaskUseCase
@@ -19,22 +18,15 @@ import com.checkit.domain.usecase.OpenNoteUseCase
 import com.checkit.domain.usecase.RestoreNoteUseCase
 import com.checkit.domain.usecase.RestoreTaskUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
-import com.checkit.domain.usecase.DeleteTaskListUseCase
-import com.checkit.domain.usecase.DeleteTaskTagUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
-import com.checkit.domain.usecase.IsTagNameTakenUseCase
+import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
-import com.checkit.domain.usecase.UpdateNoteUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
-import com.checkit.domain.usecase.UpdateTaskListUseCase
-import com.checkit.domain.usecase.UpdateTaskTagUseCase
+import com.checkit.domain.usecase.UpdateNoteUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
-import com.checkit.ui.TaskListEntry
-import com.checkit.ui.TaskSortOption
-import com.checkit.ui.TaskWorkspaceView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -60,30 +52,13 @@ class TaskViewModelViewsTest {
     fun setUp() {
         Dispatchers.setMain(dispatcher)
         val board = TaskBoard(
+            objectives = listOf(
+                Objective(id = 1L, name = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
+            ),
             filters = listOf(
-                TaskFilter(
-                    id = 0L,
-                    name = "All",
-                    icon = "AllInclusive",
-                    color = "#475569",
-                    sortOrder = -1
-                ),
-                TaskFilter(
-                    id = 1L,
-                    name = "Today",
-                    icon = "Today",
-                    color = "#2563EB",
-                    dueDatePreset = DueDatePreset.Today,
-                    sortOrder = 0
-                ),
-                TaskFilter(
-                    id = 2L,
-                    name = "High priority",
-                    icon = "PriorityHigh",
-                    color = "#DC2626",
-                    priority = TaskPriority.High,
-                    sortOrder = 2
-                )
+                todayFilter(1L),
+                highPriorityFilter(2L),
+                allFilter(0L)
             )
         )
         repository = FakeCheckItRepository(initialBoard = board)
@@ -106,6 +81,7 @@ class TaskViewModelViewsTest {
             restoreNote = RestoreNoteUseCase(repository),
             updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository),
             updateDailyPlanItemStatus = UpdateDailyPlanItemStatusUseCase(repository),
+            syncKeyResultFromDailyPlan = SyncKeyResultFromDailyPlanUseCase(repository),
             settingsRepository = FakeSettingsRepository()
         )
         dispatcher.scheduler.advanceUntilIdle()
@@ -146,7 +122,6 @@ class TaskViewModelViewsTest {
 
         val state = viewModel.uiState.value
         assertNull(state.selectedFilterId)
-        assertEquals("All tasks", state.title)
     }
 
     @Test
@@ -170,40 +145,42 @@ class TaskViewModelViewsTest {
     }
 
     @Test
-    fun selectingListAlsoCoercesTimelineAway() = runTest(dispatcher) {
+    fun filterPersistsWhenSelectingList() = runTest(dispatcher) {
         viewModel.selectFilter(1L)
         viewModel.selectView(TaskWorkspaceView.Timeline)
         viewModel.selectList(99L)
 
         val state = viewModel.uiState.value
-        assertNull(state.dayLimit)
-        assertEquals(TaskWorkspaceView.List, state.selectedView)
+        assertEquals(1, state.dayLimit)
+        assertEquals(TaskWorkspaceView.Timeline, state.selectedView)
+        assertEquals(99L, state.selectedListId)
     }
 
     @Test
-    fun selectingTagCoercesTimelineAway() = runTest(dispatcher) {
+    fun filterPersistsWhenSelectingTag() = runTest(dispatcher) {
         viewModel.selectFilter(1L)
         viewModel.selectView(TaskWorkspaceView.Timeline)
         viewModel.selectTag(7L)
 
         val state = viewModel.uiState.value
-        assertNull(state.dayLimit)
-        assertEquals(TaskWorkspaceView.List, state.selectedView)
+        assertEquals(1, state.dayLimit)
+        assertEquals(TaskWorkspaceView.Timeline, state.selectedView)
+        assertEquals(7L, state.selectedTagId)
     }
 
     @Test
     fun titleSortBuildsUnifiedTaskAndNoteListOrder() = runTest(dispatcher) {
-        val inbox = TaskList(id = 1L, name = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
+        val inbox = Objective(id = 1L, name = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
         viewModel = createViewModel(
             TaskBoard(
-                lists = listOf(inbox),
+                objectives = listOf(inbox),
                 tasks = listOf(
-                    task(id = 1L, list = inbox, name = "Bravo"),
-                    task(id = 2L, list = inbox, name = "Delta")
+                    task(id = 1L, objective = inbox, name = "Bravo"),
+                    task(id = 2L, objective = inbox, name = "Delta")
                 ),
                 notes = listOf(
-                    note(id = 3L, list = inbox, title = "Alpha"),
-                    note(id = 4L, list = inbox, title = "Charlie")
+                    note(id = 3L, objective = inbox, title = "Alpha"),
+                    note(id = 4L, objective = inbox, title = "Charlie")
                 )
             )
         )
@@ -222,17 +199,17 @@ class TaskViewModelViewsTest {
 
     @Test
     fun searchFiltersTasksAndNotesByTitleAndBody() = runTest(dispatcher) {
-        val inbox = TaskList(id = 1L, name = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
+        val inbox = Objective(id = 1L, name = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
         viewModel = createViewModel(
             TaskBoard(
-                lists = listOf(inbox),
+                objectives = listOf(inbox),
                 tasks = listOf(
-                    task(id = 1L, list = inbox, name = "Budget", description = "Quarterly planning"),
-                    task(id = 2L, list = inbox, name = "Groceries", description = "Milk")
+                    task(id = 1L, objective = inbox, name = "Budget", description = "Quarterly planning"),
+                    task(id = 2L, objective = inbox, name = "Groceries", description = "Milk")
                 ),
                 notes = listOf(
-                    note(id = 3L, list = inbox, title = "Ideas", content = "Quarterly roadmap"),
-                    note(id = 4L, list = inbox, title = "Receipt", content = "Coffee")
+                    note(id = 3L, objective = inbox, title = "Ideas", content = "Quarterly roadmap"),
+                    note(id = 4L, objective = inbox, title = "Receipt", content = "Coffee")
                 )
             )
         )
@@ -270,18 +247,19 @@ class TaskViewModelViewsTest {
             restoreNote = RestoreNoteUseCase(repository),
             updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository),
             updateDailyPlanItemStatus = UpdateDailyPlanItemStatusUseCase(repository),
+            syncKeyResultFromDailyPlan = SyncKeyResultFromDailyPlanUseCase(repository),
             settingsRepository = FakeSettingsRepository()
         )
     }
 
     private fun task(
         id: Long,
-        list: TaskList,
+        objective: Objective,
         name: String,
         description: String = ""
     ) = TaskItem(
         id = id,
-        list = list,
+        objective = objective,
         name = name,
         description = description,
         sortOrder = id.toInt(),
@@ -291,17 +269,43 @@ class TaskViewModelViewsTest {
 
     private fun note(
         id: Long,
-        list: TaskList,
+        objective: Objective,
         title: String,
         content: String = ""
     ) = NoteItem(
         id = id,
-        list = list,
+        objective = objective,
         title = title,
         content = content,
         date = LocalDate(2026, 6, 14),
         createdAtMillis = 0L,
         editedAtMillis = 0L,
         sortOrder = id.toInt()
+    )
+
+    private fun todayFilter(id: Long = 1L) = TaskFilter(
+        id = id,
+        name = "Today",
+        icon = "Today",
+        color = "#2563EB",
+        dueDatePreset = DueDatePreset.Today,
+        sortOrder = 0
+    )
+
+    private fun allFilter(id: Long = 0L) = TaskFilter(
+        id = id,
+        name = "All",
+        icon = "AllInclusive",
+        color = "#475569",
+        sortOrder = -1
+    )
+
+    private fun highPriorityFilter(id: Long = 2L) = TaskFilter(
+        id = id,
+        name = "High priority",
+        icon = "PriorityHigh",
+        color = "#DC2626",
+        priority = TaskPriority.High,
+        sortOrder = 2
     )
 }

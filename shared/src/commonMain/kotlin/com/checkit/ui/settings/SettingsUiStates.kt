@@ -1,4 +1,8 @@
-package com.checkit.ui
+package com.checkit.ui.settings
+
+import com.checkit.ui.AppColorSchemeMode
+import com.checkit.ui.AppLanguage
+import com.checkit.ui.AppThemeMode
 
 data class ReminderSettingsUiState(
     val planEnabled: Boolean = true,
@@ -15,8 +19,7 @@ data class SettingsUiState(
     val themeMode: AppThemeMode = AppThemeMode.System,
     val colorSchemeMode: AppColorSchemeMode = AppColorSchemeMode.Sunset,
     val reminders: ReminderSettingsUiState = ReminderSettingsUiState(),
-    val tagUsageSort: TagUsageSort = TagUsageSort.MostUsed,
-    val message: String? = null
+    val tagUsageSort: TagUsageSort = TagUsageSort.MostUsed
 )
 
 enum class TagUsageSort {

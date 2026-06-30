@@ -44,13 +44,11 @@ import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.calendar_title
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
+import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.usecase.BuildDailyPlanMarkdownSummaryUseCase
-import com.checkit.ui.CalendarDateMarkers
-import com.checkit.ui.CalendarDisplayMode
-import com.checkit.ui.CalendarUiState
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.firstDayOfMonth
@@ -61,7 +59,7 @@ import com.checkit.ui.localizedShortMonthName
 import com.checkit.ui.myday.DayLinearTimeline
 import com.checkit.ui.myday.MyDayAgenda
 import com.checkit.ui.shortName
-import com.checkit.ui.tasks.ContentContainerAlpha
+import com.checkit.ui.tasks.views.ContentContainerAlpha
 import com.checkit.ui.tasks.TaskAgendaView
 import com.checkit.ui.tasks.toDurationLabel
 import com.checkit.ui.today
@@ -162,7 +160,7 @@ internal fun CalendarScreen(
             )
             if (selectedContent.showDailyPlan) {
                 DayLinearTimeline(
-                    items = selectedContent.dailyPlanItems,
+                    items = selectedContent.dailyPlanItems.filter { it.status == DailyPlanItemStatus.Done },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 4.dp)

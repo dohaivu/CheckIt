@@ -15,19 +15,22 @@ import com.checkit.domain.DailyPlanScheduleReminderPolicy
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.notifications.AppReminderScheduler
 import com.checkit.domain.usecase.AddNoteUseCase
-import com.checkit.domain.usecase.AddManualDoneToDailyPlanUseCase
+import com.checkit.domain.usecase.AddDailyPlanItemUseCase
+import com.checkit.domain.usecase.AddGoalUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
-import com.checkit.domain.usecase.AddTaskListUseCase
-import com.checkit.domain.usecase.AddTaskTagUseCase
+import com.checkit.domain.usecase.AddObjectiveUseCase
+import com.checkit.domain.usecase.AddTagUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
 import com.checkit.domain.usecase.AutoAddTodayTasksToMyDayUseCase
+import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
 import com.checkit.domain.usecase.CompleteNoteUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
-import com.checkit.domain.usecase.DeleteTaskListUseCase
-import com.checkit.domain.usecase.DeleteTaskTagUseCase
+import com.checkit.domain.usecase.DeleteGoalUseCase
+import com.checkit.domain.usecase.DeleteObjectiveUseCase
+import com.checkit.domain.usecase.DeleteTagUseCase
 import com.checkit.domain.usecase.IsTagNameTakenUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
@@ -40,13 +43,16 @@ import com.checkit.domain.usecase.UpdateNoteUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
-import com.checkit.domain.usecase.UpdateTaskListUseCase
-import com.checkit.domain.usecase.UpdateTaskTagUseCase
+import com.checkit.domain.usecase.UpdateGoalUseCase
+import com.checkit.domain.usecase.UpdateObjectiveUseCase
+import com.checkit.domain.usecase.UpdateTagUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
 import com.checkit.ui.calendar.CalendarViewModel
 import com.checkit.ui.myday.MyDayViewModel
-import com.checkit.ui.tasks.TaskListViewModel
-import com.checkit.ui.tasks.TaskTagViewModel
+import com.checkit.ui.okr.GoalViewModel
+import com.checkit.ui.okr.KeyResultViewModel
+import com.checkit.ui.okr.ObjectiveViewModel
+import com.checkit.ui.tasks.tag.TagViewModel
 import com.checkit.ui.tasks.TaskViewModel
 import com.checkit.ui.reports.ReportViewModel
 import com.checkit.ui.settings.SettingsViewModel
@@ -82,12 +88,15 @@ val provideInteractorModule = module {
     single { ObserveDailyPlansUseCase(get()) }
     single { EnsureDefaultTaskDataUseCase(get()) }
     single { AutoAddTodayTasksToMyDayUseCase(get(), get()) }
-    single { AddTaskListUseCase(get()) }
-    single { UpdateTaskListUseCase(get()) }
-    single { DeleteTaskListUseCase(get()) }
-    single { AddTaskTagUseCase(get()) }
-    single { UpdateTaskTagUseCase(get()) }
-    single { DeleteTaskTagUseCase(get()) }
+    single { AddGoalUseCase(get()) }
+    single { UpdateGoalUseCase(get()) }
+    single { DeleteGoalUseCase(get()) }
+    single { AddObjectiveUseCase(get()) }
+    single { UpdateObjectiveUseCase(get()) }
+    single { DeleteObjectiveUseCase(get()) }
+    single { AddTagUseCase(get()) }
+    single { UpdateTagUseCase(get()) }
+    single { DeleteTagUseCase(get()) }
     single { IsTagNameTakenUseCase(get()) }
     single { AddTaskUseCase(get()) }
     single { UpdateTaskUseCase(get()) }
@@ -98,9 +107,10 @@ val provideInteractorModule = module {
     single { OpenTaskUseCase(get()) }
     single { OpenNoteUseCase(get()) }
     single { AddTaskToDailyPlanUseCase(get()) }
-    single { AddManualDoneToDailyPlanUseCase(get()) }
+    single { AddDailyPlanItemUseCase(get()) }
     single { UpdateDailyPlanItemTimeUseCase(get()) }
     single { UpdateDailyPlanItemStatusUseCase(get()) }
+    single { SyncKeyResultFromDailyPlanUseCase(get()) }
     single { UpdateDailyPlanItemUseCase(get()) }
     single { DeleteDailyPlanItemUseCase(get()) }
     single { AddNoteUseCase(get()) }
@@ -144,15 +154,18 @@ val provideViewModelModule = module {
             restoreNote = get(),
             updateDailyPlanItemTime = get(),
             updateDailyPlanItemStatus = get(),
+            syncKeyResultFromDailyPlan = get(),
             settingsRepository = get()
         )
     }
-    viewModel { TaskListViewModel(get(), get(), get()) }
-    viewModel { TaskTagViewModel(get(), get(), get(), get()) }
+    viewModel { GoalViewModel(get(), get(), get()) }
+    viewModel { KeyResultViewModel(get()) }
+    viewModel { ObjectiveViewModel(get(), get(), get()) }
+    viewModel { TagViewModel(get(), get(), get(), get()) }
     viewModel { CalendarViewModel(get(), get(), get()) }
     viewModel {
         MyDayViewModel(
-            get(), get(), get(), get(), get(), get(), get(), get()
+            get(), get(), get(), get(), get(), get(), get(), get(), get()
         )
     }
     viewModel { ReportViewModel(get()) }

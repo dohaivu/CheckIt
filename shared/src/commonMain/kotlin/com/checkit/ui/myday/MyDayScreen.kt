@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -41,28 +42,24 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.DailyPlanItem
-import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
-import com.checkit.domain.TaskList
+import com.checkit.domain.Objective
 import com.checkit.domain.hasEndTime
-import com.checkit.ui.MyDayUiState
-import com.checkit.ui.MyDayView
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.localizedCompactDateWithDayName
-import com.checkit.ui.tasks.DailyPlanAllDayCard
-import com.checkit.ui.tasks.NoteAllDayCard
-import com.checkit.ui.tasks.TaskAllDayCard
-import com.checkit.ui.tasks.AgendaView
-import com.checkit.ui.tasks.DailyPlanTimelineCard
-import com.checkit.ui.tasks.DefaultDurationMinutes
-import com.checkit.ui.tasks.NoteTimelineCard
-import com.checkit.ui.tasks.TimelineView
+import com.checkit.ui.tasks.views.DailyPlanAllDayCard
+import com.checkit.ui.tasks.views.NoteAllDayCard
+import com.checkit.ui.tasks.views.TaskAllDayCard
+import com.checkit.ui.tasks.views.AgendaView
+import com.checkit.ui.tasks.views.DailyPlanTimelineCard
+import com.checkit.ui.tasks.views.NoteTimelineCard
+import com.checkit.ui.tasks.views.TimelineView
 import com.checkit.ui.tasks.TimelineItem
 import com.checkit.ui.tasks.TimelineItemType
-import com.checkit.ui.tasks.TaskTimelineCard
+import com.checkit.ui.tasks.views.TaskTimelineCard
 import com.checkit.ui.tasks.isOverdue
 import com.checkit.ui.tasks.timeRangeLabel
 import com.checkit.ui.tasks.toClockLabel
@@ -434,7 +431,7 @@ private fun MyDayTaskViewProjection.toTimelineItems(
 @Composable
 private fun SuggestionCard(
     task: TaskItem,
-    list: TaskList?,
+    list: Objective?,
     onClick: () -> Unit,
     onAdd: () -> Unit
 ) {
@@ -467,10 +464,13 @@ private fun SuggestionsSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss, 
         sheetState = sheetState,
-        sheetGesturesEnabled = false
+        sheetGesturesEnabled = true
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.8f)
+                .padding(horizontal = 12.dp, vertical = 4.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Row(
@@ -499,7 +499,7 @@ private fun SuggestionsSheet(
                     items(tasks, key = { it.id }) { task ->
                         SuggestionCard(
                             task = task,
-                            list = task.list,
+                            list = task.objective,
                             onClick = { onTaskClick(task) },
                             onAdd = { onAddTask(task) }
                         )

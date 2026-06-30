@@ -54,9 +54,11 @@ import com.checkit.ui.calendar.CalendarScreen
 import com.checkit.ui.calendar.CalendarViewModel
 import com.checkit.ui.myday.MyDayScreen
 import com.checkit.ui.myday.MyDayViewModel
+import com.checkit.ui.okr.GoalViewModel
+import com.checkit.ui.okr.KeyResultViewModel
 import com.checkit.ui.tasks.TaskScreen
-import com.checkit.ui.tasks.TaskListViewModel
-import com.checkit.ui.tasks.TaskTagViewModel
+import com.checkit.ui.okr.ObjectiveViewModel
+import com.checkit.ui.tasks.tag.TagViewModel
 import com.checkit.ui.tasks.TaskViewModel
 import com.checkit.ui.localization.AppLocaleProvider
 import com.checkit.ui.reports.ReportScreen
@@ -66,9 +68,13 @@ import com.checkit.ui.reports.TimeReport
 import com.checkit.ui.settings.SettingsScreen
 import com.checkit.ui.settings.SettingsViewModel
 import com.checkit.ui.myday.DailyPlanItemEditorSheet
+import com.checkit.ui.myday.MyDayUiState
 import com.checkit.ui.tasks.TaskEditorSheet
+import com.checkit.ui.tasks.TaskEditorState
+import com.checkit.ui.tasks.TaskUiState
 import com.checkit.ui.theme.AppTheme
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
@@ -103,8 +109,10 @@ private data object Routes {
 @Composable
 fun CheckItApp(
     taskViewModel: TaskViewModel = koinViewModel(),
-    taskListViewModel: TaskListViewModel = koinViewModel(),
-    taskTagViewModel: TaskTagViewModel = koinViewModel(),
+    goalViewModel: GoalViewModel = koinViewModel(),
+    keyResultViewModel: KeyResultViewModel = koinViewModel(),
+    objectiveViewModel: ObjectiveViewModel = koinViewModel(),
+    tagViewModel: TagViewModel = koinViewModel(),
     myDayViewModel: MyDayViewModel = koinViewModel(),
     calendarViewModel: CalendarViewModel = koinViewModel(),
     reportViewModel: ReportViewModel = koinViewModel(),
@@ -117,21 +125,6 @@ fun CheckItApp(
     onWidgetLaunchConsumed: () -> Unit = {}
 ) {
     val backStack = remember { mutableStateListOf<NavKey>(Routes.MyDay) }
-    val taskMessage by remember(taskViewModel) {
-        taskViewModel.uiState.map { it.message }.distinctUntilChanged()
-    }.collectAsState(null)
-    val settingsMessage by remember(settingsViewModel) {
-        settingsViewModel.uiState.map { it.message }.distinctUntilChanged()
-    }.collectAsState(null)
-    val taskListMessage by remember(taskListViewModel) {
-        taskListViewModel.uiState.map { it.message }.distinctUntilChanged()
-    }.collectAsState(null)
-    val taskTagMessage by remember(taskTagViewModel) {
-        taskTagViewModel.uiState.map { it.message }.distinctUntilChanged()
-    }.collectAsState(null)
-    val myDayMessage by remember(myDayViewModel) {
-        myDayViewModel.uiState.map { it.message }.distinctUntilChanged()
-    }.collectAsState(null)
     val appLanguage by remember(settingsViewModel) {
         settingsViewModel.uiState.map { it.language }.distinctUntilChanged()
     }.collectAsState(AppLanguage.English)
@@ -142,6 +135,23 @@ fun CheckItApp(
         settingsViewModel.uiState.map { it.colorSchemeMode }.distinctUntilChanged()
     }.collectAsState(AppColorSchemeMode.Sunset)
     val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(Unit) {
+        merge(
+            taskViewModel.events,
+            goalViewModel.events,
+            keyResultViewModel.events,
+            objectiveViewModel.events,
+            tagViewModel.events,
+            myDayViewModel.events,
+            settingsViewModel.events,
+            reportViewModel.events
+        ).collect { event ->
+            when (event) {
+                is UiEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
+            }
+        }
+    }
 
     val backState = rememberNavigationEventState(NavigationEventInfo.None)
     val currentRoute = backStack.lastOrNull() ?: Routes.MyDay
@@ -171,25 +181,6 @@ fun CheckItApp(
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
-
-    LaunchedEffect(taskMessage, myDayMessage, settingsMessage, taskListMessage, taskTagMessage) {
-        val message = taskMessage ?: myDayMessage ?: settingsMessage ?: taskListMessage ?: taskTagMessage
-            ?: return@LaunchedEffect
-        snackbarHostState.showSnackbar(message)
-
-        if (myDayMessage != null) {
-            myDayViewModel.consumeMessage()
-        }
-        if (settingsMessage != null) {
-            settingsViewModel.consumeMessage()
-        }
-        if (taskListMessage != null) {
-            taskListViewModel.consumeMessage()
-        }
-        if (taskTagMessage != null) {
-            taskTagViewModel.consumeMessage()
-        }
     }
 
     fun resetTo(route: NavKey) {
@@ -294,8 +285,10 @@ fun CheckItApp(
                                     TaskScreen(
                                         state = taskUiState,
                                         viewModel = taskViewModel,
-                                        listViewModel = taskListViewModel,
-                                        tagViewModel = taskTagViewModel
+                                        goalViewModel = goalViewModel,
+                                        keyResultViewModel = keyResultViewModel,
+                                        objectiveViewModel = objectiveViewModel,
+                                        tagViewModel = tagViewModel
                                     )
                                 }
                                 Routes.MyDay -> {
@@ -360,7 +353,7 @@ fun CheckItApp(
                 taskUiState.editor?.let { editor ->
                     TaskEditorSheet(
                         editor = editor,
-                        availableLists = taskUiState.board.lists,
+                        availableLists = taskUiState.board.objectives,
                         availableTags = taskUiState.board.tags,
                         onDismiss = taskViewModel::dismissEditor,
                         onSave = taskViewModel::saveEditor,

@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.checkit.ui.theme.materialIcon
@@ -62,7 +63,8 @@ private fun ColorSwatch(
     Box(
         modifier = Modifier
             .size(36.dp)
-            .background(color, CircleShape)
+            .clip(CircleShape)
+            .background(color)
             .border(
                 width = 0.dp,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -99,13 +101,13 @@ internal fun IconPicker(
             Box(
                 modifier = Modifier
                     .size(48.dp)
+                    .clip(RoundedCornerShape(10.dp))
                     .background(
                         color = if (isSelected) {
                             MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
                         } else {
                             Color.Unspecified
-                        },
-                        shape = RoundedCornerShape(10.dp)
+                        }
                     )
                     .clickable { onSelect(iconName) },
                 contentAlignment = Alignment.Center

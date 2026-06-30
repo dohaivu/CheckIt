@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.RestoreFromTrash
 import androidx.compose.material.icons.filled.TaskAlt
+import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -34,7 +36,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -42,24 +43,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
-import com.checkit.domain.TaskList
+import com.checkit.domain.Objective
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskTag
-import com.checkit.ui.EditorMode
-import com.checkit.ui.RepeatPreset
-import com.checkit.ui.TaskEditorState
-import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.AppEditorBottomSheet
+import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DatePicker
 import com.checkit.ui.components.DeleteOverflowMenu
 import com.checkit.ui.components.ListPicker
 import com.checkit.ui.components.PriorityPicker
-import com.checkit.ui.components.ReminderPicker
-import com.checkit.ui.components.RepeatPicker
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.components.TimeRangePicker
 import com.checkit.ui.today
@@ -69,7 +66,7 @@ import kotlinx.datetime.LocalDate
 @Composable
 internal fun TaskEditorSheet(
     editor: TaskEditorState,
-    availableLists: List<TaskList>,
+    availableLists: List<Objective>,
     availableTags: List<TaskTag>,
     onDismiss: () -> Unit,
     onSave: () -> Unit,
@@ -100,7 +97,7 @@ internal fun TaskEditorSheet(
     onNoteTitleChange: (String) -> Unit,
     onNoteContentChange: (String) -> Unit,
     onNoteListChange: (Long) -> Unit,
-    onNoteDateChange: (LocalDate) -> Unit,
+    onNoteDateChange: (LocalDate?) -> Unit,
     onNoteStartTimeChange: (Int?) -> Unit,
     onNoteTagToggle: (Long) -> Unit,
     onSwitchAddModeToTask: () -> Unit,
@@ -109,7 +106,7 @@ internal fun TaskEditorSheet(
     AppEditorBottomSheet(
         onDismiss = onDismiss,
         modifier = Modifier
-            .fillMaxHeight(0.7f)
+            .fillMaxHeight(0.8f)
             .windowInsetsPadding(WindowInsets.ime)
     ) {
         SheetHeader(
@@ -264,23 +261,31 @@ private fun TrashedStatusSection(
     modifier: Modifier = Modifier
 ) {
     if (!isTrashed) return
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.errorContainer,
-        contentColor = MaterialTheme.colorScheme.onErrorContainer
+    val colorScheme = MaterialTheme.colorScheme
+    val contentColor = colorScheme.onErrorContainer
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(colorScheme.errorContainer)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Default.RestoreFromTrash, contentDescription = null, modifier = Modifier.size(20.dp))
+            Icon(
+                imageVector = Icons.Default.RestoreFromTrash,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = contentColor
+            )
             Text(
                 text = "This item is in trash",
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                color = contentColor
             )
             OutlinedButton(onClick = onRestore) {
                 Text("Restore")
@@ -343,7 +348,7 @@ private fun SheetFooter(
 @Composable
 private fun TaskFormContent(
     form: TaskEditorState.TaskForm,
-    availableLists: List<TaskList>,
+    availableLists: List<Objective>,
     availableTags: List<TaskTag>,
     onNameChange: (String) -> Unit,
     onListChange: (Long) -> Unit,
@@ -377,7 +382,6 @@ private fun TaskFormContent(
                 onDateChange = onDoDateChange,
                 startTimeMinutes = form.startTimeMinutes,
                 endTimeMinutes = form.endTimeMinutes,
-                durationMinutes = form.durationMinutes,
                 onStartTimeChange = onStartTimeChange,
                 onEndTimeChange = onEndTimeChange,
                 enabled = enabled,
@@ -389,11 +393,11 @@ private fun TaskFormContent(
         AppOutlinedTextField(
             value = form.name,
             onValueChange = onNameChange,
-            textStyle = MaterialTheme.typography.headlineSmall.copy(
+            textStyle = MaterialTheme.typography.titleLarge.copy(
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.SemiBold
             ),
-            maxLines = 1,
+            maxLines = 3,
             placeholder = "What would you like to do?",
             enabled = enabled
         )
@@ -418,26 +422,27 @@ private fun TaskFormContent(
             enabled = enabled
         )
 
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            RepeatPicker(selected = form.repeatPreset, onSelect = onRepeatChange, enabled = enabled)
-            ReminderPicker(
-                reminderOffsets = form.reminderOffsets,
-                hasDate = form.doDate != null,
-                startTimeMinutes = form.startTimeMinutes,
-                onReminderToggle = onReminderToggle,
-                enabled = enabled
-            )
-        }
+//        Row(
+//            verticalAlignment = Alignment.CenterVertically,
+//            horizontalArrangement = Arrangement.spacedBy(6.dp),
+//        ) {
+//            RepeatPicker(selected = form.repeatPreset, onSelect = onRepeatChange, enabled = enabled)
+//            ReminderPicker(
+//                reminderOffsets = form.reminderOffsets,
+//                hasDate = form.doDate != null,
+//                startTimeMinutes = form.startTimeMinutes,
+//                onReminderToggle = onReminderToggle,
+//                enabled = enabled
+//            )
+//        }
 
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             ListPicker(
-                selectedListId = form.listId,
+                selectedListId = form.objectiveId,
                 lists = availableLists,
                 onListChange = onListChange,
                 enabled = enabled
@@ -462,53 +467,84 @@ private fun DailyPlanSection(
     enabled: Boolean = true
 ) {
     if (item == null) return
-    Column(
-        modifier = Modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = ContentAlpha), RoundedCornerShape(16.dp))
-            .padding(top = 8.dp, bottom = 8.dp, end = 8.dp)
-        ,
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
+    val colorScheme = MaterialTheme.colorScheme
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(horizontal = 4.dp)
         ) {
-            TimeRangePicker(
-                startTimeMinutes = item.startTimeMinutes,
-                endTimeMinutes = item.endTimeMinutes,
-                durationMinutes = item.durationMinutes(),
-                onStartTimeChange = onStartTimeChange,
-                onEndTimeChange = onEndTimeChange,
-                modifier = Modifier,
-                enabled = enabled,
-                isOverdue = item.isOverdue(today())
+            Icon(
+                imageVector = Icons.Default.WbSunny,
+                contentDescription = null,
+                modifier = Modifier.size(14.dp),
+                tint = colorScheme.primary
             )
+            Text(
+                text = "MY DAY",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = colorScheme.primary,
+                letterSpacing = 0.5.sp
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(colorScheme.primaryContainer.copy(alpha = 0.2f))
+                .border(
+                    width = 1.dp,
+                    color = colorScheme.primary.copy(alpha = 0.2f),
+                    shape = RoundedCornerShape(16.dp)
+                )
+                .padding(horizontal = 12.dp, vertical = 8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TimeRangePicker(
+                    startTimeMinutes = item.startTimeMinutes,
+                    endTimeMinutes = item.endTimeMinutes,
+                    onStartTimeChange = onStartTimeChange,
+                    onEndTimeChange = onEndTimeChange,
+                    modifier = Modifier.weight(1f),
+                    enabled = enabled,
+                    isOverdue = item.isOverdue(today()),
+                    clearEnabled = false
+                )
 
-            if (enabled) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(0.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                if (enabled) {
+                    Row(
+                        modifier = Modifier.padding(start = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = { onDelete(item.id) },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete from My Day",
+                                modifier = Modifier.size(18.dp),
+                                tint = colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            )
+                        }
 
-                    IconButton(onClick = {onDelete(item.id)}) {
-                        Icon(
-                            Icons.Default.Delete,
-                            contentDescription = "Delete from My Day",
-                            modifier = Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    IconButton(onClick = onStatusChange) {
-                        Icon(
-                            imageVector = if (item.status == DailyPlanItemStatus.Done) Icons.AutoMirrored.Filled.Undo else Icons.Default.Check,
-                            contentDescription = "Done from My Day",
-                            modifier = Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
+                        IconButton(
+                            onClick = onStatusChange,
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (item.status == DailyPlanItemStatus.Done) Icons.AutoMirrored.Filled.Undo else Icons.Default.Check,
+                                contentDescription = "Done from My Day",
+                                modifier = Modifier.size(18.dp),
+                                tint = colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                            )
+                        }
                     }
                 }
             }
@@ -519,18 +555,17 @@ private fun DailyPlanSection(
 @Composable
 private fun NoteFormContent(
     form: TaskEditorState.NoteForm,
-    availableLists: List<TaskList>,
+    availableLists: List<Objective>,
     availableTags: List<TaskTag>,
     onTitleChange: (String) -> Unit,
     onContentChange: (String) -> Unit,
     onListChange: (Long) -> Unit,
-    onDateChange: (LocalDate) -> Unit,
+    onDateChange: (LocalDate?) -> Unit,
     onStartTimeChange: (Int?) -> Unit,
     onTagToggle: (Long) -> Unit,
     enabled: Boolean = true
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -538,12 +573,9 @@ private fun NoteFormContent(
             NoteIcon(status = form.status)
             DatePicker(
                 date = form.date,
-                onDateChange = {
-                    it?.let {onDateChange.invoke(it)  }
-                },
+                onDateChange = onDateChange,
                 startTimeMinutes = form.startTimeMinutes,
                 endTimeMinutes = null,
-                durationMinutes = null,
                 onStartTimeChange = onStartTimeChange,
                 onEndTimeChange = null,
                 enabled = enabled
@@ -552,11 +584,11 @@ private fun NoteFormContent(
         AppOutlinedTextField(
             value = form.title,
             onValueChange = onTitleChange,
-            textStyle = MaterialTheme.typography.headlineSmall.copy(
+            textStyle = MaterialTheme.typography.titleLarge.copy(
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.SemiBold
             ),
-            maxLines = 1,
+            maxLines = 3,
             placeholder = "Note title",
             enabled = enabled,
             modifier = Modifier.fillMaxWidth()
@@ -568,18 +600,20 @@ private fun NoteFormContent(
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Normal
             ),
+            minLines = 5,
             maxLines = 10,
-            placeholder = "Write something",
+            placeholder = "Add more details",
             enabled = enabled,
             modifier = Modifier.fillMaxWidth().height(130.dp)
         )
 
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             ListPicker(
-                selectedListId = form.listId,
+                selectedListId = form.objectiveId,
                 lists = availableLists,
                 onListChange = onListChange,
                 enabled = enabled
@@ -631,10 +665,4 @@ private fun TaskEditorState.isOpenableView(): Boolean = when (this) {
 
 private fun TaskEditorState.TaskForm.isOverdue(): Boolean {
     return doDate.isOverdue(today(), endTimeMinutes ?: startTimeMinutes, status == TaskStatus.Completed )
-}
-
-private fun DailyPlanItem.durationMinutes(): Int? {
-    val start = startTimeMinutes ?: return null
-    val end = endTimeMinutes ?: return null
-    return (end - start).takeIf { it >= 0 }
 }

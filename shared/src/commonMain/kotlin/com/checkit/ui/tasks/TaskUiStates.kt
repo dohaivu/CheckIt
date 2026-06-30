@@ -1,14 +1,14 @@
-package com.checkit.ui
+package com.checkit.ui.tasks
 
 import com.checkit.domain.ActiveTagToken
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DueDatePreset
 import com.checkit.domain.NoteItem
+import com.checkit.domain.Objective
 import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskFilter
 import com.checkit.domain.TaskItem
-import com.checkit.domain.TaskList
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.ui.theme.AppIconColorDefaults
@@ -22,11 +22,11 @@ data class TaskUiState(
     val options: TaskViewOptionsState = TaskViewOptionsState(),
     val visibleItems: TaskVisibleItemsState = TaskVisibleItemsState(),
     val editor: TaskEditorState? = null,
-    val isLoading: Boolean = true,
-    val message: String? = null
+    val isLoading: Boolean = true
 ) {
     val selectedListId: Long? get() = selection.selectedListId
-    val selectedFilterId: Long? get() = selection.selectedFilterId
+    val selectedGoalId: Long? get() = selection.selectedGoalId
+    val selectedFilterId: Long? get() = options.selectedFilterId
     val selectedTagId: Long? get() = selection.selectedTagId
     val selectedView: TaskWorkspaceView get() = options.selectedView
     val listDisplayType: TaskListDisplayType get() = options.listDisplayType
@@ -36,21 +36,19 @@ data class TaskUiState(
     val visibleTasks: List<TaskItem> get() = visibleItems.tasks
     val visibleNotes: List<NoteItem> get() = visibleItems.notes
     val visibleListItems: List<TaskListEntry> get() = visibleItems.listItems
-    val selectedList: TaskList? = board.lists.firstOrNull { it.id == selectedListId }
+    val selectedList: Objective? = board.objectives.firstOrNull { it.id == selectedListId }
+    val selectedGoal = board.goals.firstOrNull { it.id == selectedGoalId }
     val selectedFilter: TaskFilter? = board.filters.firstOrNull { it.id == selectedFilterId }
     val selectedTag = board.tags.firstOrNull { it.id == selectedTagId }
-    val title: String = selectedList?.name ?: selectedFilter?.name ?: selectedTag?.name ?: "All tasks"
     val dayLimit: Int? = if (selectedFilter?.dueDatePreset == DueDatePreset.Today) 1 else null
-    val availableViews: List<TaskWorkspaceView> = if (dayLimit == 1) {
-        TaskWorkspaceView.entries
-    } else {
-        TaskWorkspaceView.entries.filter { it != TaskWorkspaceView.Timeline }
-    }
+    val availableViews: List<TaskWorkspaceView> = TaskWorkspaceView.entries
+        .filter { it != TaskWorkspaceView.Timeline || dayLimit == 1 }
+        .filter { it != TaskWorkspaceView.Goal || selectedGoal != null }
 }
 
 data class TaskSelectionState(
+    val selectedGoalId: Long? = null,
     val selectedListId: Long? = null,
-    val selectedFilterId: Long? = null,
     val selectedTagId: Long? = null
 )
 
@@ -59,7 +57,8 @@ data class TaskViewOptionsState(
     val listDisplayType: TaskListDisplayType = TaskListDisplayType.Standard,
     val showCompleted: Boolean = false,
     val searchText: String = "",
-    val sortOption: TaskSortOption = TaskSortOption.Custom
+    val sortOption: TaskSortOption = TaskSortOption.Custom,
+    val selectedFilterId: Long? = null
 )
 
 data class TaskVisibleItemsState(
@@ -83,6 +82,7 @@ sealed interface TaskListEntry {
 enum class TaskWorkspaceView {
     List,
     Agenda,
+    Goal,
     Timeline;
 
     companion object {
@@ -124,7 +124,8 @@ sealed interface TaskEditorState {
     data class TaskForm(
         val mode: EditorMode,
         val taskId: Long? = null,
-        val listId: Long,
+        val objectiveId: Long,
+        val keyResultId: Long? = null,
         val name: String = "",
         val description: String = "",
         val doDate: LocalDate? = null,
@@ -139,19 +140,16 @@ sealed interface TaskEditorState {
         val addToMyDayOnSave: Boolean = false,
         val dailyPlanItem: DailyPlanItem? = null,
         val trashedAtMillis: Long? = null
-    ) : TaskEditorState {
-        val durationMinutes: Int?
-            get() = calculateDurationMinutes(startTimeMinutes, endTimeMinutes)
-    }
+    ) : TaskEditorState
 
     data class NoteForm(
         val mode: EditorMode,
         val noteId: Long? = null,
-        val listId: Long,
+        val objectiveId: Long,
         val title: String = "",
         val content: String = "",
         val status: TaskStatus = TaskStatus.Open,
-        val date: LocalDate,
+        val date: LocalDate? = null,
         val startTimeMinutes: Int? = null,
         val selectedTagIds: Set<Long> = emptySet(),
         val trashedAtMillis: Long? = null
@@ -175,12 +173,15 @@ private var subTaskEditorKeySeed = 0L
 
 private fun nextSubTaskEditorKey(): Long = --subTaskEditorKeySeed
 
-data class ListEditorState(
+data class ObjectiveEditorState(
     val mode: EditorMode,
-    val listId: Long? = null,
+    val objectiveId: Long? = null,
+    val goalId: Long? = null,
     val name: String = "",
     val color: String = AppIconColorDefaults.ListColors.first(),
-    val icon: String = AppIconColorDefaults.ListIcons.first()
+    val icon: String = AppIconColorDefaults.ListIcons.first(),
+    val startDate: LocalDate? = null,
+    val endDate: LocalDate? = null
 )
 
 data class TagEditorState(
@@ -202,15 +203,5 @@ enum class RepeatPreset(
     companion object {
         fun fromRRule(rrule: String?): RepeatPreset =
             entries.firstOrNull { it.rrule == rrule } ?: None
-    }
-}
-
-private fun calculateDurationMinutes(startTimeMinutes: Int?, endTimeMinutes: Int?): Int? {
-    val start = startTimeMinutes ?: return null
-    val end = endTimeMinutes ?: return null
-    return if (end >= start) {
-        end - start
-    } else {
-        24 * 60 - start + end
     }
 }

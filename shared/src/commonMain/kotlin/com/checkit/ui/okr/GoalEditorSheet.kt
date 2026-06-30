@@ -1,10 +1,11 @@
-package com.checkit.ui.tasks
+package com.checkit.ui.okr
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
@@ -28,6 +29,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,28 +39,33 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.checkit.ui.EditorMode
-import com.checkit.ui.TagEditorState
+import com.checkit.ui.tasks.EditorMode
 import com.checkit.ui.components.ColorPicker
+import com.checkit.ui.components.IconPicker
+import com.checkit.ui.components.SectionLabel
 import com.checkit.ui.theme.AppIconColorDefaults
+import com.checkit.ui.theme.toColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun TaskTagEditorSheet(
-    editor: TagEditorState,
+internal fun GoalEditorSheet(
+    editor: GoalEditorState,
     onDismiss: () -> Unit,
     onSave: () -> Unit,
     onDelete: () -> Unit,
-    onNameChange: (String) -> Unit,
-    onColorChange: (String) -> Unit
+    onTitleChange: (String) -> Unit,
+    onColorChange: (String) -> Unit,
+    onIconChange: (String) -> Unit
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
+                .fillMaxHeight(0.7f)
                 .windowInsetsPadding(WindowInsets.ime)
                 .padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -69,7 +76,7 @@ internal fun TaskTagEditorSheet(
                         Icon(Icons.Default.Close, contentDescription = "Close")
                     }
                     Text(
-                        text = if (editor.mode == EditorMode.Add) "New tag" else "Edit tag",
+                        text = if (editor.mode == EditorMode.Add) "New goal" else "Edit goal",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -78,19 +85,16 @@ internal fun TaskTagEditorSheet(
                         Text("Save")
                     }
                     if (editor.mode == EditorMode.Edit) {
-                        Box(
-                            modifier = Modifier
-                                .wrapContentSize(Alignment.TopEnd)
-                        ) {
+                        Box(modifier = Modifier.wrapContentSize(Alignment.TopEnd)) {
                             IconButton(onClick = { menuExpanded = true }) {
-                                Icon(Icons.Default.MoreVert, contentDescription = "Tag options")
+                                Icon(Icons.Default.MoreVert, contentDescription = "Goal options")
                             }
                             DropdownMenu(
                                 expanded = menuExpanded,
                                 onDismissRequest = { menuExpanded = false }
                             ) {
                                 DropdownMenuItem(
-                                    text = { Text("Delete tag") },
+                                    text = { Text("Delete goal") },
                                     leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
                                     onClick = {
                                         menuExpanded = false
@@ -104,18 +108,28 @@ internal fun TaskTagEditorSheet(
             }
             item {
                 OutlinedTextField(
-                    value = editor.name,
-                    onValueChange = onNameChange,
+                    value = editor.title,
+                    onValueChange = onTitleChange,
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Name") },
+                    label = { Text("Title") },
                     singleLine = true
                 )
             }
             item {
+                SectionLabel("Color")
                 ColorPicker(
                     colors = AppIconColorDefaults.ListColors,
                     selected = editor.color,
                     onSelect = onColorChange
+                )
+            }
+            item {
+                SectionLabel("Icon")
+                IconPicker(
+                    icons = AppIconColorDefaults.ListIcons,
+                    selected = editor.icon,
+                    tint = editor.color.toColor(),
+                    onSelect = onIconChange
                 )
             }
             item { Spacer(Modifier.height(24.dp)) }
@@ -125,8 +139,8 @@ internal fun TaskTagEditorSheet(
     if (showDeleteConfirmation) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmation = false },
-            title = { Text("Delete tag?") },
-            text = { Text("${editor.name} will be removed from tasks and notes.") },
+            title = { Text("Delete goal?") },
+            text = { Text("Objectives in ${editor.title} will become normal lists.") },
             confirmButton = {
                 TextButton(
                     onClick = {

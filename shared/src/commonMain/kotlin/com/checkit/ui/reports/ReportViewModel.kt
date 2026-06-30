@@ -3,14 +3,16 @@ package com.checkit.ui.reports
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.checkit.data.CheckItRepository
-import com.checkit.ui.ReportUiState
+import com.checkit.ui.UiEvent
 import com.checkit.ui.components.ReportPeriod
 import com.checkit.ui.firstDayOfMonth
 import com.checkit.ui.today
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DateTimeUnit
@@ -23,23 +25,23 @@ class ReportViewModel(
     private val _uiState = MutableStateFlow(ReportUiState())
     val uiState: StateFlow<ReportUiState> = _uiState.asStateFlow()
 
+    private val _events = Channel<UiEvent>(Channel.BUFFERED)
+    val events = _events.receiveAsFlow()
+
     init {
         viewModelScope.launch {
             repository.observeDailyPlans()
                 .catch { error ->
                     _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            message = error.message ?: "Unable to load reports"
-                        )
+                        it.copy(isLoading = false)
                     }
+                    sendEvent(UiEvent.ShowSnackbar(error.message ?: "Unable to load reports"))
                 }
                 .collect { dailyPlans ->
                     _uiState.update {
                         it.copy(
                             dailyPlans = dailyPlans,
-                            isLoading = false,
-                            message = null
+                            isLoading = false
                         )
                     }
                 }
@@ -66,6 +68,9 @@ class ReportViewModel(
         _uiState.update { it.copy(selectedDate = today()) }
     }
 
+    private fun sendEvent(event: UiEvent) {
+        viewModelScope.launch { _events.send(event) }
+    }
 }
 
 private fun ReportPeriod.move(date: LocalDate, amount: Int): LocalDate = when (this) {

@@ -1,4 +1,4 @@
-package com.checkit.ui.tasks
+package com.checkit.ui.tasks.views
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
@@ -43,14 +43,12 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
-import com.checkit.domain.TaskList
-import com.checkit.ui.TaskListEntry
-import com.checkit.ui.TaskListDisplayType
+import com.checkit.ui.tasks.TaskListEntry
+import com.checkit.ui.tasks.TaskListDisplayType
 
 @Composable
 internal fun TaskListView(
     items: List<TaskListEntry>,
-    lists: List<TaskList>,
     showListName: Boolean,
     displayType: TaskListDisplayType = TaskListDisplayType.Standard,
     onTaskClick: (TaskItem) -> Unit,
@@ -72,7 +70,7 @@ internal fun TaskListView(
                     TaskRow(
                         task = task,
                         onClick = { onTaskClick(task) },
-                        list = if (showListName) task.list else null,
+                        list = if (showListName) task.objective else null,
                         displayType = displayType
                     )
                 }
@@ -81,7 +79,7 @@ internal fun TaskListView(
                     NoteRow(
                         note = note,
                         onClick = { onNoteClick(note) },
-                        list = if (showListName) note.list else null,
+                        list = if (showListName) note.objective else null,
                         displayType = displayType
                     )
                 }

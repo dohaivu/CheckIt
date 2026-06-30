@@ -5,7 +5,7 @@ import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskFilter
 import com.checkit.domain.TaskItem
-import com.checkit.domain.TaskList
+import com.checkit.domain.Objective
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskTag
@@ -260,7 +260,7 @@ class UseCaseTest {
         trashedAtMillis: Long? = null
     ) = TaskItem(
         id = id,
-        list = TaskList.None,
+        objective = Objective.None,
         name = "Task $id",
         tags = tags,
         priority = priority,
@@ -279,7 +279,7 @@ class UseCaseTest {
         trashedAtMillis: Long? = null
     ) = NoteItem(
         id = id,
-        list = TaskList.None,
+        objective = Objective.None,
         content = "Note $id",
         tags = tags,
         date = date,

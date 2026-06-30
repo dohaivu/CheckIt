@@ -5,7 +5,9 @@ import kotlinx.datetime.LocalDate
 data class AppConfig(val versionName: String)
 
 data class TaskBoard(
-    val lists: List<TaskList> = emptyList(),
+    val goals: List<Goal> = emptyList(),
+    val objectives: List<Objective> = emptyList(),
+    val keyResults: List<KeyResult> = emptyList(),
     val filters: List<TaskFilter> = emptyList(),
     val tasks: List<TaskItem> = emptyList(),
     val notes: List<NoteItem> = emptyList(),
@@ -13,8 +15,8 @@ data class TaskBoard(
 ) {
     val tasksById: Map<Long, TaskItem> by lazy { tasks.associateBy { it.id } }
     val notesById: Map<Long, NoteItem> by lazy { notes.associateBy { it.id } }
-    val tasksByDate: Map<kotlinx.datetime.LocalDate, List<TaskItem>> by lazy {
-        val map = mutableMapOf<kotlinx.datetime.LocalDate, MutableList<TaskItem>>()
+    val tasksByDate: Map<LocalDate, List<TaskItem>> by lazy {
+        val map = mutableMapOf<LocalDate, MutableList<TaskItem>>()
         for (task in tasks) {
             if (!task.isTrashed && task.status != TaskStatus.Completed) {
                 task.doDate?.let { date -> map.getOrPut(date) { mutableListOf() }.add(task) }
@@ -22,34 +24,77 @@ data class TaskBoard(
         }
         map
     }
-    val notesByDate: Map<kotlinx.datetime.LocalDate, List<NoteItem>> by lazy {
-        val map = mutableMapOf<kotlinx.datetime.LocalDate, MutableList<NoteItem>>()
+    val notesByDate: Map<LocalDate, List<NoteItem>> by lazy {
+        val map = mutableMapOf<LocalDate, MutableList<NoteItem>>()
         for (note in notes) {
             if (!note.isTrashed && note.status != TaskStatus.Completed) {
-                map.getOrPut(note.date) { mutableListOf() }.add(note)
+                note.date?.let { date -> map.getOrPut(date) { mutableListOf() }.add(note) }
             }
         }
         map
     }
 }
 
-data class TaskList(
+data class Goal(
     val id: Long,
+    val title: String,
+    val icon: String,
+    val color: String,
+    val sortOrder: Int,
+    val isArchived: Boolean = false
+)
+
+data class Objective(
+    val id: Long,
+    val goalId: Long? = null,
     val name: String,
+    val startDate: LocalDate? = null,
+    val endDate: LocalDate? = null,
     val color: String,
     val icon: String,
     val sortOrder: Int,
     val isArchived: Boolean = false
 ) {
+    val title: String get() = name
+
     companion object {
-        val None = TaskList(id = -1L, name = "", color = "", icon = "", sortOrder = -1)
-        val MyDay = TaskList(id = -2L, name = "MyDay", color = "0xFF64748B", icon = "Today", sortOrder = -2)
+        val None = Objective(id = -1L, name = "", color = "", icon = "", sortOrder = -1)
+        val MyDay = Objective(id = -2L, name = "MyDay", color = "0xFF64748B", icon = "Today", sortOrder = -2)
+    }
+}
+
+data class KeyResult(
+    val id: Long,
+    val objectiveId: Long,
+    val title: String,
+    val targetValue: Double,
+    val currentValue: Double = 0.0,
+    val unit: String,
+    val sortOrder: Int
+) {
+    val progress: Double
+        get() = if (targetValue == 0.0) 0.0 else (currentValue / targetValue).coerceIn(0.0, 1.0)
+}
+
+enum class KeyResultUnit(val label: String) {
+    Percentage("%"),
+    Number("#"), // quantity, count
+    Currency("$"),
+    Hours("h"),
+    Days("d"),
+    Points("pts"),
+    Binary("completed"); // yes-1, no-0
+
+    companion object {
+        fun fromString(value: String): KeyResultUnit =
+            entries.firstOrNull { it.name == value || it.label == value } ?: Number
     }
 }
 
 data class TaskItem(
     val id: Long,
-    val list: TaskList,
+    val objective: Objective,
+    val keyResult: KeyResult? = null,
     val name: String,
     val description: String = "",
     val subtasks: List<SubTaskItem> = emptyList(),
@@ -60,7 +105,6 @@ data class TaskItem(
     val completedDate: LocalDate? = null,
     val startTimeMinutes: Int? = null,
     val endTimeMinutes: Int? = null,
-    val durationMinutes: Int? = null,
     val reminders: List<TaskReminder> = emptyList(),
     val repeatRRule: String? = null,
     val sortOrder: Int,
@@ -72,16 +116,13 @@ data class TaskItem(
 }
 
 data class DailyPlan(
-    val id: Long,
     val date: LocalDate,
-    val items: List<DailyPlanItem> = emptyList(),
-    val createdAtMillis: Long,
-    val updatedAtMillis: Long
+    val items: List<DailyPlanItem> = emptyList()
 )
 
 data class DailyPlanItem(
     val id: Long,
-    val dailyPlanId: Long,
+    val dateEpochDays: Int,
     val taskId: Long? = null,
     val title: String,
     val note: String? = null,
@@ -120,12 +161,12 @@ data class SubTaskItem(
 
 data class NoteItem(
     val id: Long,
-    val list: TaskList,
+    val objective: Objective,
     val title: String = "",
     val content: String,
     val tags: List<TaskTag> = emptyList(),
     val status: TaskStatus = TaskStatus.Open,
-    val date: LocalDate,
+    val date: LocalDate? = null,
     val startTimeMinutes: Int? = null,
     val createdAtMillis: Long,
     val editedAtMillis: Long,

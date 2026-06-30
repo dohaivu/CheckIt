@@ -15,15 +15,38 @@ import androidx.sqlite.execSQL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 
-@Entity(
-    tableName = "task_lists",
-)
-data class TaskListEntity(
+@Entity(tableName = "goals")
+data class GoalEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0L,
-    val name: String,
-    val color: String,
+    val title: String,
     val icon: String,
+    val color: String,
+    val sortOrder: Int,
+    val isArchived: Boolean = false
+)
+
+@Entity(
+    tableName = "objectives",
+    foreignKeys = [
+        ForeignKey(
+            entity = GoalEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["goalId"],
+            onDelete = ForeignKey.SET_NULL
+        )
+    ],
+    indices = [Index("goalId")]
+)
+data class ObjectiveEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0L,
+    val title: String,
+    val goalId: Long? = null,
+    val startDateEpochDays: Int? = null,
+    val endDateEpochDays: Int? = null,
+    val color: String? = null,
+    val icon: String? = null,
     val sortOrder: Int,
     val isArchived: Boolean = false
 )
@@ -43,18 +66,31 @@ data class TagEntity(
     tableName = "tasks",
     foreignKeys = [
         ForeignKey(
-            entity = TaskListEntity::class,
+            entity = ObjectiveEntity::class,
             parentColumns = ["id"],
-            childColumns = ["listId"],
+            childColumns = ["objectiveId"],
             onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = KeyResultEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["keyResultId"],
+            onDelete = ForeignKey.SET_NULL
         )
     ],
-    indices = [Index("listId"), Index("status"), Index("priority"), Index("doDateEpochDays")]
+    indices = [
+        Index("objectiveId"),
+        Index("keyResultId"),
+        Index("status"),
+        Index("priority"),
+        Index("doDateEpochDays")
+    ]
 )
 data class TaskEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0L,
-    val listId: Long,
+    val objectiveId: Long,
+    val keyResultId: Long? = null,
     val name: String,
     val description: String = "",
     val status: String,
@@ -63,12 +99,34 @@ data class TaskEntity(
     val completedDateEpochDays: Int? = null,
     val startTimeMinutes: Int? = null,
     val endTimeMinutes: Int? = null,
-    val durationMinutes: Int? = null,
     val repeatRRule: String? = null,
     val sortOrder: Int,
     val createdAtMillis: Long,
     val updatedAtMillis: Long,
     val trashedAtMillis: Long? = null
+)
+
+@Entity(
+    tableName = "key_results",
+    foreignKeys = [
+        ForeignKey(
+            entity = ObjectiveEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["objectiveId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("objectiveId")]
+)
+data class KeyResultEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0L,
+    val objectiveId: Long,
+    val title: String,
+    val targetValue: Double,
+    val currentValue: Double = 0.0,
+    val unit: String,
+    val sortOrder: Int
 )
 
 @Entity(
@@ -96,22 +154,22 @@ data class SubTaskEntity(
     tableName = "notes",
     foreignKeys = [
         ForeignKey(
-            entity = TaskListEntity::class,
+            entity = ObjectiveEntity::class,
             parentColumns = ["id"],
-            childColumns = ["listId"],
+            childColumns = ["objectiveId"],
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("listId")]
+    indices = [Index("objectiveId")]
 )
 data class NoteEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0L,
-    val listId: Long,
+    val objectiveId: Long,
     val title: String = "",
     val content: String,
     val status: String = "Open",
-    val dateEpochDays: Int,
+    val dateEpochDays: Int? = null,
     val startTimeMinutes: Int? = null,
     val createdAtMillis: Long,
     val editedAtMillis: Long,
@@ -120,26 +178,8 @@ data class NoteEntity(
 )
 
 @Entity(
-    tableName = "daily_plans",
-    indices = [Index(value = ["dateEpochDays"], unique = true)]
-)
-data class DailyPlanEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0L,
-    val dateEpochDays: Int,
-    val createdAtMillis: Long,
-    val updatedAtMillis: Long
-)
-
-@Entity(
     tableName = "daily_plan_items",
     foreignKeys = [
-        ForeignKey(
-            entity = DailyPlanEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["dailyPlanId"],
-            onDelete = ForeignKey.CASCADE
-        ),
         ForeignKey(
             entity = TaskEntity::class,
             parentColumns = ["id"],
@@ -147,12 +187,12 @@ data class DailyPlanEntity(
             onDelete = ForeignKey.SET_NULL
         )
     ],
-    indices = [Index("dailyPlanId"), Index("taskId"), Index("status")]
+    indices = [Index("dateEpochDays"), Index("taskId"), Index("status")]
 )
 data class DailyPlanItemEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0L,
-    val dailyPlanId: Long,
+    val dateEpochDays: Int,
     val taskId: Long? = null,
     val title: String,
     val note: String? = null,
@@ -285,11 +325,12 @@ data class TaskFilterEntity(
 
 @Database(
     entities = [
-        TaskListEntity::class,
+        GoalEntity::class,
+        ObjectiveEntity::class,
+        KeyResultEntity::class,
         TaskEntity::class,
         SubTaskEntity::class,
         NoteEntity::class,
-        DailyPlanEntity::class,
         DailyPlanItemEntity::class,
         TagEntity::class,
         TaskTagEntity::class,
@@ -298,7 +339,7 @@ data class TaskFilterEntity(
         TaskReminderEntity::class,
         TaskFilterEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)

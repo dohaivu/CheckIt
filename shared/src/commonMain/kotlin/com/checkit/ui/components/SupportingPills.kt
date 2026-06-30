@@ -1,4 +1,4 @@
-package com.checkit.ui.tasks
+package com.checkit.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.FlowRow
@@ -7,18 +7,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.checkit.domain.TaskList
+import com.checkit.domain.Objective
 import com.checkit.domain.TaskTag
-import com.checkit.ui.components.DetailChip
-import com.checkit.ui.components.TaskTagPill
+import com.checkit.ui.components.icons.AppIcons
+import com.checkit.ui.components.icons.Target
 import com.checkit.ui.theme.materialIcon
 import com.checkit.ui.theme.toColor
 
 @Composable
 internal fun SupportingPills(
-    list: TaskList?,
+    list: Objective?,
     tags: List<TaskTag>,
     overflowCount: Int = 0
 ) {
@@ -29,13 +30,14 @@ internal fun SupportingPills(
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         list?.let {
+            val isObjective = remember {  (list.goalId != null)}
             DetailChip(
-                icon = materialIcon(it.icon),
+                icon = if (isObjective) AppIcons.Target else materialIcon(it.icon),
                 label = it.name,
                 iconTint = it.color.toColor()
             )
         }
-        tags.forEach { tag -> TaskTagPill(tag = tag) }
+        tags.forEach { tag -> TagPill(tag = tag) }
         if (overflowCount > 0) {
             Text(
                 text = "+$overflowCount",

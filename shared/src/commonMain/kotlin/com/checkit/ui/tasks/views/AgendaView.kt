@@ -1,5 +1,6 @@
-package com.checkit.ui.tasks
+package com.checkit.ui.tasks.views
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -21,8 +22,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Today
-import androidx.compose.material3.ButtonColors
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -38,6 +37,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.checkit.ui.shortName
 import com.checkit.ui.shortMonthName
+import com.checkit.ui.tasks.TimelineItem
+import com.checkit.ui.tasks.toClockLabel
 import com.checkit.ui.today
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DateTimeUnit
@@ -45,7 +46,9 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun AgendaView(
     items: List<TimelineItem>,
@@ -58,14 +61,58 @@ internal fun AgendaView(
     val today = today()
     val itemsByDate = remember(items) { items.groupedByAgendaDate() }
     val boundedDayCount = dayLimit?.coerceAtLeast(1)
-    val initialIndex = if (boundedDayCount == null) TodayIndex else 0
+
+    val visibleDates = remember(itemsByDate, today, focusedDate, boundedDayCount) {
+        if (boundedDayCount != null) {
+            val initialIndex = 0
+            List(boundedDayCount) { index ->
+                focusedDate.plus(index - initialIndex, DateTimeUnit.DAY)
+            }
+        } else {
+            val tomorrow = today.plus(1, DateTimeUnit.DAY)
+            (itemsByDate.keys + today + tomorrow).distinct().sorted()
+        }
+    }
+
+    val agendaListItems: List<AgendaListItem> = remember(visibleDates, boundedDayCount) {
+        if (boundedDayCount != null) {
+            visibleDates.map { AgendaListItem.Day(it) }
+        } else {
+            buildList {
+                var lastMonthYear: Pair<Int, kotlinx.datetime.Month>? = null
+                for (date in visibleDates) {
+                    val currentMonthYear = Pair(date.year, date.month)
+                    if (currentMonthYear != lastMonthYear) {
+                        val monthName = date.month.name.lowercase().replaceFirstChar { it.uppercase() }
+                        val label = "$monthName ${date.year}"
+                        add(AgendaListItem.MonthHeader(label = label, key = "month-${date.year}-${date.month.ordinal + 1}"))
+                        lastMonthYear = currentMonthYear
+                    }
+                    add(AgendaListItem.Day(date))
+                }
+            }
+        }
+    }
+
+    val initialIndex = remember(agendaListItems, focusedDate) {
+        val exactIndex = agendaListItems.indexOfFirst { it is AgendaListItem.Day && it.date == focusedDate }
+        if (exactIndex != -1) {
+            exactIndex
+        } else {
+            val index = agendaListItems.indexOfFirst { it is AgendaListItem.Day && it.date > focusedDate }
+            if (index != -1) index else (agendaListItems.size - 1).coerceAtLeast(0)
+        }
+    }
+
     val state = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
     val scope = rememberCoroutineScope()
-    val now = kotlin.time.Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+    val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
     val nowMinutes = now.hour * 60 + now.minute
 
     LaunchedEffect(focusedDate, initialIndex) {
-        state.scrollToItem(initialIndex)
+        if (initialIndex in agendaListItems.indices) {
+            state.scrollToItem(initialIndex)
+        }
     }
 
     Box(modifier.fillMaxSize()) {
@@ -74,26 +121,42 @@ internal fun AgendaView(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
-            items(
-                count = boundedDayCount ?: AgendaDayCount,
-                key = { index -> "agenda-day-${focusedDate.plus(index - initialIndex, DateTimeUnit.DAY)}" }
-            ) { index ->
-                val date = focusedDate.plus(index - initialIndex, DateTimeUnit.DAY)
-                AgendaDaySection(
-                    date = date,
-                    today = today,
-                    items = itemsByDate[date] ?: AgendaDayItems.Empty,
-                    nowMinutes = nowMinutes,
-                    showHeader = boundedDayCount != 1,
-                    onItemClick = onItemClick,
-                    itemContent = itemContent
-                )
+            agendaListItems.forEach { item ->
+                when (item) {
+                    is AgendaListItem.MonthHeader -> {
+                        stickyHeader(
+                            key = item.key,
+                            contentType = "MonthHeader"
+                        ) {
+                            AgendaMonthHeader(label = item.label)
+                        }
+                    }
+                    is AgendaListItem.Day -> {
+                        item(
+                            key = "agenda-day-${item.date}",
+                            contentType = "Day"
+                        ) {
+                            AgendaDaySection(
+                                date = item.date,
+                                today = today,
+                                items = itemsByDate[item.date] ?: AgendaDayItems.Empty,
+                                nowMinutes = nowMinutes,
+                                showHeader = boundedDayCount != 1,
+                                onItemClick = onItemClick,
+                                itemContent = itemContent
+                            )
+                        }
+                    }
+                }
             }
         }
 
         if (boundedDayCount != 1) {
+            val todayIndex = remember(agendaListItems, today) {
+                agendaListItems.indexOfFirst { it is AgendaListItem.Day && it.date == today }.coerceAtLeast(0)
+            }
             FilledTonalButton(
-                onClick = { scope.launch { state.animateScrollToItem(initialIndex) } },
+                onClick = { scope.launch { state.animateScrollToItem(todayIndex) } },
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(16.dp)
@@ -385,5 +448,22 @@ private fun AgendaAxisMarker(
 private fun LocalDate.agendaDateLabel(): String =
     "${dayOfWeek.shortName()}, ${shortMonthName()} $day"
 
-private const val AgendaDayCount = 20_001
-private const val TodayIndex = AgendaDayCount / 2
+private sealed class AgendaListItem {
+    data class MonthHeader(val label: String, val key: String) : AgendaListItem()
+    data class Day(val date: LocalDate) : AgendaListItem()
+}
+
+@Composable
+private fun AgendaMonthHeader(label: String, modifier: Modifier = Modifier) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    )
+}
+

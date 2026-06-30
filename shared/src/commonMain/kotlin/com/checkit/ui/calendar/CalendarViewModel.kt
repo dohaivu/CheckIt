@@ -5,8 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
-import com.checkit.ui.CalendarDisplayMode
-import com.checkit.ui.CalendarUiState
 import com.checkit.ui.firstDayOfMonth
 import com.checkit.ui.today
 import kotlinx.coroutines.flow.MutableStateFlow

@@ -1,6 +1,7 @@
 package com.checkit.ui.myday
 
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -38,14 +40,13 @@ import androidx.compose.ui.unit.dp
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.TaskTag
-import com.checkit.ui.DailyPlanItemEditorState
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DeleteOverflowMenu
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.components.TimePicker
 import com.checkit.ui.components.TimeRangePicker
-import com.checkit.ui.tasks.currentTimeMinutes
+import com.checkit.ui.tasks.views.currentTimeMinutes
 import com.checkit.ui.today
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.minus
@@ -71,7 +72,7 @@ internal fun DailyPlanItemEditorSheet(
     AppEditorBottomSheet(
         onDismiss = onDismiss,
         modifier = Modifier
-            .fillMaxHeight()
+            .fillMaxHeight(0.85f)
             .padding(bottom = 24.dp)
             .windowInsetsPadding(WindowInsets.ime)
     ) {
@@ -167,19 +168,19 @@ private fun DailyPlanItemSheetFooter(
 
 @Composable
 private fun SourceIconBadge(source: DailyPlanItemSource) {
-    Surface(
-        modifier = Modifier.size(44.dp),
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.primaryContainer
+    Box(
+        modifier = Modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.primaryContainer),
+        contentAlignment = Alignment.Center
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                imageVector = source.icon(),
-                contentDescription = null,
-                modifier = Modifier.size(22.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-        }
+        Icon(
+            imageVector = source.icon(),
+            contentDescription = null,
+            modifier = Modifier.size(22.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
     }
 }
 
@@ -206,12 +207,12 @@ private fun DailyPlanItemFormContent(
         AppOutlinedTextField(
             value = state.title,
             onValueChange = onTitleChange,
-            textStyle = MaterialTheme.typography.headlineSmall.copy(
+            textStyle = MaterialTheme.typography.titleLarge.copy(
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.SemiBold
             ),
-            minLines = if (state.isAddMode) 2 else 1,
-            maxLines = 2,
+            minLines = 1,
+            maxLines = 3,
             placeholder = displaySource.titlePlaceholder(),
             enabled = enabled,
             modifier = Modifier.fillMaxWidth()
@@ -220,14 +221,14 @@ private fun DailyPlanItemFormContent(
         AppOutlinedTextField(
             value = state.note,
             onValueChange = onNoteChange,
-            textStyle = MaterialTheme.typography.bodyLarge.copy(
+            textStyle = MaterialTheme.typography.bodyMedium.copy(
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Normal
             ),
-            maxLines = 5,
+            minLines = 5,
+            maxLines = 10,
             placeholder = displaySource.notePlaceholder(),
-            enabled = enabled,
-            modifier = Modifier.heightIn(min = 120.dp)
+            enabled = enabled
         )
 
         if (sourceLocked) {
@@ -270,7 +271,6 @@ private fun DailyPlanItemFormContent(
             isEditMode = state.isEditMode,
             startTimeMinutes = state.startTimeMinutes,
             endTimeMinutes = state.endTimeMinutes,
-            durationMinutes = state.durationMinutes(),
             onStartTimeChange = { timeMinutes ->
                 onStartTimeChange(timeMinutes)
                 if (!sourceLocked) {
@@ -300,14 +300,16 @@ private fun FixedTypeControls(
     onDoneChange: (Boolean) -> Unit,
     enabled: Boolean
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f))
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f), RoundedCornerShape(20.dp))
+            .padding(12.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             TypeSummary(source = source, label = "Saved as ${source.shortLabel().lowercase()}")
@@ -347,7 +349,6 @@ private fun TimeSection(
     isEditMode: Boolean,
     startTimeMinutes: Int?,
     endTimeMinutes: Int?,
-    durationMinutes: Int?,
     onStartTimeChange: (Int?) -> Unit,
     onEndTimeChange: (Int?) -> Unit,
     enabled: Boolean
@@ -371,7 +372,6 @@ private fun TimeSection(
             TimeRangePicker(
                 startTimeMinutes = startTimeMinutes,
                 endTimeMinutes = endTimeMinutes,
-                durationMinutes = durationMinutes,
                 onStartTimeChange = onStartTimeChange,
                 onEndTimeChange = onEndTimeChange,
                 enabled = enabled
@@ -390,14 +390,16 @@ private fun AddModeIntentControls(
     onReminderChange: (Boolean) -> Unit,
     enabled: Boolean
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f))
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f), RoundedCornerShape(20.dp))
+            .padding(12.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Row(
@@ -489,12 +491,14 @@ private fun LabeledTagPicker(
 
 @Composable
 private fun TypeSummary(source: DailyPlanItemSource, label: String) {
-    Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.56f)
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.56f))
+            .padding(horizontal = 12.dp, vertical = 9.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 9.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -533,12 +537,6 @@ private fun DailyPlanItemSource.infersAddStatusFromStartTime(): Boolean =
 
 private fun DailyPlanItemEditorState.isEditableByDate(): Boolean =
     date > today().minus(2, DateTimeUnit.DAY)
-
-private fun DailyPlanItemEditorState.durationMinutes(): Int? {
-    val start = startTimeMinutes ?: return null
-    val end = endTimeMinutes ?: return null
-    return (end - start).takeIf { it >= 0 }
-}
 
 private fun DailyPlanItemSource.titlePlaceholder(): String = when (this) {
     DailyPlanItemSource.ExistingTask -> "Give this plan a clear little name"

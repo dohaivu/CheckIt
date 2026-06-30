@@ -37,9 +37,11 @@ import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
-import com.checkit.ui.TaskWorkspaceView
+import com.checkit.ui.components.icons.AppIcons
+import com.checkit.ui.components.icons.Target
 import com.checkit.ui.shortMonthName
 import com.checkit.ui.shortName
+import com.checkit.ui.tasks.views.currentTimeMinutes
 import com.checkit.ui.theme.AppIconColorDefaults
 import com.checkit.ui.theme.AppIconColorDefaults.FallbackColor
 import com.checkit.ui.theme.toColor
@@ -51,6 +53,7 @@ import kotlinx.datetime.plus
 internal fun TaskWorkspaceView.icon(): ImageVector = when (this) {
     TaskWorkspaceView.List -> Icons.AutoMirrored.Filled.ViewList
     TaskWorkspaceView.Agenda -> Icons.Default.ViewAgenda
+    TaskWorkspaceView.Goal -> AppIcons.Target
     TaskWorkspaceView.Timeline -> Icons.Default.Schedule
 }
 
@@ -159,11 +162,11 @@ fun TaskPriority.priorityColor(): Color = when (this) {
 }
 
 fun NoteItem?.cardColor(): Color {
-    return this?.tags?.firstOrNull()?.color?.toColor() ?: this?.list?.color?.toColor() ?: FallbackColor
+    return this?.tags?.firstOrNull()?.color?.toColor() ?: this?.objective?.color?.toColor() ?: FallbackColor
 }
 
 fun TaskItem?.cardColor(): Color {
-    return this?.tags?.firstOrNull()?.color?.toColor() ?: this?.list?.color?.toColor() ?: this?.priority?.priorityColor() ?: FallbackColor
+    return this?.tags?.firstOrNull()?.color?.toColor() ?: this?.objective?.color?.toColor() ?: this?.priority?.priorityColor() ?: FallbackColor
 }
 
 fun DailyPlanItem.cardColor(): Color {
@@ -179,11 +182,12 @@ fun TaskItem.timeRangeLabel(): String {
 fun TaskItem.isOverdue(): Boolean {
     return doDate.isOverdue(today(), endTimeMinutes, status == TaskStatus.Completed)
 }
-
+fun NoteItem.isOverdue(): Boolean {
+    return date.isOverdue(today(), null,status == TaskStatus.Completed)
+}
 fun DailyPlanItem.isOverdue(date: LocalDate): Boolean {
     return date.isOverdue(today(), endTimeMinutes ?: startTimeMinutes, status == DailyPlanItemStatus.Done)
 }
-
 fun LocalDate?.isOverdue(today: LocalDate, deadline: Int?, isCompleted: Boolean): Boolean =
     when {
         isCompleted || this == null -> false

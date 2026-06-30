@@ -1,5 +1,6 @@
 package com.checkit.ui.components
 
+import com.checkit.ui.validTimeRangeEnd
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
