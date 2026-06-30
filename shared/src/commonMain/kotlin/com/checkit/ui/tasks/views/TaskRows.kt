@@ -200,7 +200,7 @@ internal fun OKRNoteContent(note: NoteItem) {
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
-        note.date?.let { DetailChip(Icons.Default.Event, it.compact()) }
+        note.date?.let { DetailChip(Icons.Default.Event, it.compact(), isHighlighted = note.isOverdue()) }
     }
 }
 
