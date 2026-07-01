@@ -71,7 +71,7 @@ internal fun ObjectiveEditorSheet(
     AppEditorBottomSheet(
         onDismiss = onDismiss,
         modifier = Modifier
-            .fillMaxHeight(0.7f)
+            .fillMaxHeight()
             .windowInsetsPadding(WindowInsets.ime)
             .padding(horizontal = 20.dp, vertical = 8.dp)
     ) {

@@ -1,7 +1,6 @@
 package com.checkit.ui.okr
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -70,19 +69,21 @@ internal fun KeyResultEditorSheet(
     val focusManager = LocalFocusManager.current
 
     LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
+        if (editor.mode == EditorMode.Add && editor.title.isEmpty()) {
+            focusRequester.requestFocus()
+        }
     }
 
     AppEditorBottomSheet(
         onDismiss = onDismiss,
         modifier = Modifier
-            .fillMaxHeight(0.7f)
+            .fillMaxHeight()
             .windowInsetsPadding(WindowInsets.ime)
             .padding(horizontal = 20.dp, vertical = 8.dp)
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -90,14 +91,14 @@ internal fun KeyResultEditorSheet(
                         Icon(Icons.Default.Close, contentDescription = "Close")
                     }
                     Text(
-                        text = if (editor.mode == EditorMode.Add) "New key result" else "Edit key result",
+                        text = if (editor.mode == EditorMode.Add) "New Key Result" else "Edit Key Result",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
                     Spacer(Modifier.weight(1f))
                     Button(
                         onClick = onSave,
-                        enabled = editor.title.isNotBlank() && editor.targetValue > 0
+                        enabled = editor.title.isNotBlank() && (editor.unit == KeyResultUnit.Binary || editor.targetValue > 0)
                     ) {
                         Text("Save")
                     }
@@ -110,18 +111,15 @@ internal fun KeyResultEditorSheet(
                     }
                 }
             }
+
+            // STEP 1
             item {
-                Column {
-                    Text(
-                        text = "Title",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(4.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StepHeader("STEP 1: What are you doing?")
                     AppOutlinedTextField(
                         value = editor.title,
                         onValueChange = onTitleChange,
-                        placeholder = "e.g. Increase monthly revenue",
+                        placeholder = "e.g. Learn Spanish vocabulary",
                         textStyle = MaterialTheme.typography.bodyLarge,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                         keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
@@ -129,83 +127,116 @@ internal fun KeyResultEditorSheet(
                     )
                 }
             }
+
+            // STEP 2
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Target",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        AppOutlinedTextField(
-                            value = if (editor.targetValue == 0.0) "" else editor.targetValue.toString(),
-                            onValueChange = { onTargetValueChange(it.toDoubleOrNull() ?: 0.0) },
-                            placeholder = "0.0",
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Decimal,
-                                imeAction = ImeAction.Next
-                            ),
-                            keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Right) })
-                        )
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Current",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        AppOutlinedTextField(
-                            value = if (editor.currentValue == 0.0) "" else editor.currentValue.toString(),
-                            onValueChange = { onCurrentValueChange(it.toDoubleOrNull() ?: 0.0) },
-                            placeholder = "0.0",
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Decimal,
-                                imeAction = ImeAction.Done
-                            ),
-                            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
-                        )
-                    }
-                }
-            }
-            item {
-                val progress = if (editor.targetValue > 0) (editor.currentValue / editor.targetValue).toFloat() else 0f
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "Progress",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "${(progress * 100).toInt()}%",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    LinearProgressIndicator(
-                        progress = { progress.coerceIn(0f, 1f) },
-                        modifier = Modifier.fillMaxWidth(),
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StepHeader("STEP 2: How are you measuring progress?")
+                    MeasurementCategorySelector(
+                        selectedUnit = editor.unit,
+                        onUnitSelect = onUnitChange
                     )
                 }
             }
+
+            // STEP 3
+            if (editor.unit != KeyResultUnit.Binary) {
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        StepHeader("STEP 3: Enter your target number")
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            AppOutlinedTextField(
+                                value = if (editor.targetValue == 0.0) "" else editor.targetValue.toString(),
+                                onValueChange = { onTargetValueChange(it.toDoubleOrNull() ?: 0.0) },
+                                modifier = Modifier.weight(1f),
+                                placeholder = "Target",
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Decimal,
+                                    imeAction = ImeAction.Next
+                                ),
+                                keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
+                            )
+                            Text(
+                                text = editor.unit.label,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Optional: Current progress
             item {
                 AppHorizontalDivider()
-                UnitDropdown(
-                    selected = editor.unit,
-                    onSelect = onUnitChange,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Current Status",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        if (editor.unit != KeyResultUnit.Binary) {
+                            AppOutlinedTextField(
+                                value = if (editor.currentValue == 0.0) "" else editor.currentValue.toString(),
+                                onValueChange = { onCurrentValueChange(it.toDoubleOrNull() ?: 0.0) },
+                                modifier = Modifier.size(width = 80.dp, height = 40.dp),
+                                placeholder = "0",
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Decimal,
+                                    imeAction = ImeAction.Done
+                                ),
+                                keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
+                            )
+                        } else {
+                            TextButton(
+                                onClick = { onCurrentValueChange(if (editor.currentValue >= 1.0) 0.0 else 1.0) }
+                            ) {
+                                Text(if (editor.currentValue >= 1.0) "Completed" else "Not started")
+                            }
+                        }
+                    }
+
+                    val progress = if (editor.unit == KeyResultUnit.Binary) {
+                        if (editor.currentValue >= 1.0) 1f else 0f
+                    } else if (editor.targetValue > 0) {
+                        (editor.currentValue / editor.targetValue).toFloat()
+                    } else 0f
+
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Progress",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "${(progress * 100).toInt()}%",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        LinearProgressIndicator(
+                            progress = { progress.coerceIn(0f, 1f) },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
             }
-            item { Spacer(Modifier.height(24.dp)) }
+
+            item { Spacer(Modifier.height(32.dp)) }
         }
     }
 
@@ -234,53 +265,75 @@ internal fun KeyResultEditorSheet(
 }
 
 @Composable
-private fun UnitDropdown(
-    selected: KeyResultUnit,
-    onSelect: (KeyResultUnit) -> Unit,
-    modifier: Modifier = Modifier
+private fun StepHeader(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary
+    )
+}
+
+private enum class MeasurementCategory(
+    val title: String,
+    val description: String,
+    val unit: KeyResultUnit
+) {
+    Items("By counting items", "number, things, pages, words", KeyResultUnit.Number),
+    Time("By tracking time", "hours, minutes", KeyResultUnit.Hours),
+    Consistency("By counting successful days", "consistency", KeyResultUnit.Days),
+    Milestone("By a binary milestone", "Yes/No", KeyResultUnit.Binary),
+    Percentage("By percentage", "% completion", KeyResultUnit.Percentage),
+    Money("By money", "revenue, cost", KeyResultUnit.Currency),
+    Points("By points", "scores, weight", KeyResultUnit.Points)
+}
+
+@Composable
+private fun MeasurementCategorySelector(
+    selectedUnit: KeyResultUnit,
+    onUnitSelect: (KeyResultUnit) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
-
-    Column(modifier = modifier) {
-        Text(
-            text = "Unit",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+    val selectedCategory = MeasurementCategory.entries.find { it.unit == selectedUnit } ?: MeasurementCategory.Items
+    
+    Box {
+        AppOutlinedTextField(
+            value = selectedCategory.title,
+            onValueChange = {},
+            readOnly = true,
+            modifier = Modifier.fillMaxWidth(),
+            trailingIcon = {
+                Icon(
+                    imageVector = Icons.Default.ArrowDropDown,
+                    contentDescription = "Select category",
+                    modifier = Modifier.size(24.dp)
+                )
+            }
         )
-        Spacer(Modifier.height(4.dp))
-        Box {
-            AppOutlinedTextField(
-                value = "${selected.label} (${selected.name})",
-                onValueChange = {},
-                readOnly = true,
-                modifier = Modifier.fillMaxWidth(),
-                trailingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.ArrowDropDown,
-                        contentDescription = "Select unit",
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            )
-            // Overlay box to capture clicks since BasicTextField can intercept them
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .clickable { expanded = true }
-            )
-            DropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
-            ) {
-                KeyResultUnit.entries.forEach { unit ->
-                    DropdownMenuItem(
-                        text = { Text("${unit.label} (${unit.name})") },
-                        onClick = {
-                            onSelect(unit)
-                            expanded = false
+        // Overlay box to capture clicks
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clickable { expanded = true }
+        )
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.fillMaxWidth(0.9f)
+        ) {
+            MeasurementCategory.entries.forEach { category ->
+                DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text(category.title, style = MaterialTheme.typography.bodyLarge)
+                            Text(category.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                    )
-                }
+                    },
+                    onClick = {
+                        onUnitSelect(category.unit)
+                        expanded = false
+                    }
+                )
             }
         }
     }
