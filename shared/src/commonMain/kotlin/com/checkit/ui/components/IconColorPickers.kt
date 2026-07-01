@@ -25,15 +25,6 @@ import com.checkit.ui.theme.materialIcon
 import com.checkit.ui.theme.toColor
 
 @Composable
-internal fun SectionLabel(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
-    )
-}
-
-@Composable
 internal fun ColorPicker(
     colors: List<String>,
     selected: String,

@@ -1,13 +1,5 @@
 package com.checkit.ui
 
-enum class CheckItTab {
-    Task,
-    MyDay,
-    Calendar,
-    Report,
-    Settings
-}
-
 enum class AppLanguage(val label: String) {
     English("English"),
     Vietnamese("Tiếng Việt"),

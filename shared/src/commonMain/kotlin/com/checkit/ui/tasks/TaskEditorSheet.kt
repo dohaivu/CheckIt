@@ -68,41 +68,43 @@ internal fun TaskEditorSheet(
     editor: TaskEditorState,
     availableLists: List<Objective>,
     availableTags: List<TaskTag>,
-    onDismiss: () -> Unit,
-    onSave: () -> Unit,
-    onDelete: () -> Unit,
-    onRestore: () -> Unit,
-    onComplete: () -> Unit,
-    onOpen: () -> Unit,
-    onAddToMyDay: () -> Unit,
-    onTaskNameChange: (String) -> Unit,
-    onTaskListChange: (Long) -> Unit,
-    onTaskDescriptionChange: (String) -> Unit,
-    onTaskDoDateChange: (LocalDate?) -> Unit,
-    onTaskStartTimeChange: (Int?) -> Unit,
-    onTaskEndTimeChange: (Int?) -> Unit,
-    onDailyPlanStartTimeChange: (Int?) -> Unit,
-    onDailyPlanEndTimeChange: (Int?) -> Unit,
-    onDailyPlanStatus: () -> Unit,
-    onDailyPlanDelete: (Long) -> Unit,
-    onTaskRepeatChange: (RepeatPreset) -> Unit,
-    onTaskPriorityChange: (TaskPriority) -> Unit,
-    onTaskReminderToggle: (Int) -> Unit,
-    onSubTaskToggle: (Int) -> Unit,
-    onSubTaskAdd: () -> Unit,
-    onSubTaskNameChange: (Int, String) -> Unit,
-    onSubTaskRemove: (Int) -> Unit,
-    onSubTaskMove: (Int, Int) -> Unit,
-    onTaskTagToggle: (Long) -> Unit,
-    onNoteTitleChange: (String) -> Unit,
-    onNoteContentChange: (String) -> Unit,
-    onNoteListChange: (Long) -> Unit,
-    onNoteDateChange: (LocalDate?) -> Unit,
-    onNoteStartTimeChange: (Int?) -> Unit,
-    onNoteTagToggle: (Long) -> Unit,
-    onSwitchAddModeToTask: () -> Unit,
-    onSwitchAddModeToNote: () -> Unit
+    actions: TaskEditorActions
 ) {
+    val onDismiss = actions.onDismiss
+    val onSave = actions.onSave
+    val onDelete = actions.onDelete
+    val onRestore = actions.onRestore
+    val onComplete = actions.onComplete
+    val onOpen = actions.onOpen
+    val onAddToMyDay = actions.onAddToMyDay
+    val onTaskNameChange = actions.onTaskNameChange
+    val onTaskListChange = actions.onTaskListChange
+    val onTaskDescriptionChange = actions.onTaskDescriptionChange
+    val onTaskDoDateChange = actions.onTaskDoDateChange
+    val onTaskStartTimeChange = actions.onTaskStartTimeChange
+    val onTaskEndTimeChange = actions.onTaskEndTimeChange
+    val onDailyPlanStartTimeChange = actions.onDailyPlanStartTimeChange
+    val onDailyPlanEndTimeChange = actions.onDailyPlanEndTimeChange
+    val onDailyPlanStatus = actions.onDailyPlanStatus
+    val onDailyPlanDelete = actions.onDailyPlanDelete
+    val onTaskRepeatChange = actions.onTaskRepeatChange
+    val onTaskPriorityChange = actions.onTaskPriorityChange
+    val onTaskReminderToggle = actions.onTaskReminderToggle
+    val onSubTaskToggle = actions.onSubTaskToggle
+    val onSubTaskAdd = actions.onSubTaskAdd
+    val onSubTaskNameChange = actions.onSubTaskNameChange
+    val onSubTaskRemove = actions.onSubTaskRemove
+    val onSubTaskMove = actions.onSubTaskMove
+    val onTaskTagToggle = actions.onTaskTagToggle
+    val onNoteTitleChange = actions.onNoteTitleChange
+    val onNoteContentChange = actions.onNoteContentChange
+    val onNoteListChange = actions.onNoteListChange
+    val onNoteDateChange = actions.onNoteDateChange
+    val onNoteStartTimeChange = actions.onNoteStartTimeChange
+    val onNoteTagToggle = actions.onNoteTagToggle
+    val onSwitchAddModeToTask = actions.onSwitchAddModeToTask
+    val onSwitchAddModeToNote = actions.onSwitchAddModeToNote
+
     AppEditorBottomSheet(
         onDismiss = onDismiss,
         modifier = Modifier
