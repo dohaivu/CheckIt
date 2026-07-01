@@ -51,6 +51,7 @@ import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DeleteOverflowMenu
+import com.checkit.ui.components.StepHeader
 import com.checkit.ui.tasks.EditorMode
 
 @Composable
@@ -262,16 +263,6 @@ internal fun KeyResultEditorSheet(
             }
         )
     }
-}
-
-@Composable
-private fun StepHeader(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelLarge,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.primary
-    )
 }
 
 private enum class MeasurementCategory(
