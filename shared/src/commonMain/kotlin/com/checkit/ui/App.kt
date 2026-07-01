@@ -20,9 +20,9 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -69,6 +69,7 @@ import com.checkit.ui.settings.SettingsScreen
 import com.checkit.ui.settings.SettingsViewModel
 import com.checkit.ui.myday.DailyPlanItemEditorSheet
 import com.checkit.ui.myday.MyDayUiState
+import com.checkit.ui.components.LocalSnackbarHostState
 import com.checkit.ui.tasks.TaskEditorSheet
 import com.checkit.ui.tasks.TaskEditorState
 import com.checkit.ui.tasks.TaskUiState
@@ -239,187 +240,188 @@ fun CheckItApp(
         onBackCompleted = { onBack() }
     )
 
-    AppLocaleProvider(appLanguage.code) {
-        AppTheme(themeMode = appThemeMode, colorSchemeMode = appColorSchemeMode) {
-            Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            Scaffold(
-                containerColor = MaterialTheme.colorScheme.background,
-                snackbarHost = { SnackbarHost(snackbarHostState) },
-                bottomBar = {
-                    NavigationBar(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        tonalElevation = NavigationBarDefaults.Elevation
-                    ) {
-                        CheckItTab.entries.forEach { tab ->
-                            val route = tab.route()
-                            NavigationBarItem(
-                                selected = selectedTab == tab,
-                                onClick = {
-                                    resetTo(route)
-                                },
-                                icon = { Icon(tab.icon(), contentDescription = tab.label()) },
-                                label = { Text(tab.label()) },
-                                colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    selectedTextColor = MaterialTheme.colorScheme.primary,
-                                    indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+    CompositionLocalProvider(LocalSnackbarHostState provides snackbarHostState) {
+        AppLocaleProvider(appLanguage.code) {
+            AppTheme(themeMode = appThemeMode, colorSchemeMode = appColorSchemeMode) {
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    containerColor = MaterialTheme.colorScheme.background,
+                    snackbarHost = { SnackbarHost(snackbarHostState) },
+                    bottomBar = {
+                        NavigationBar(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            tonalElevation = NavigationBarDefaults.Elevation
+                        ) {
+                            CheckItTab.entries.forEach { tab ->
+                                val route = tab.route()
+                                NavigationBarItem(
+                                    selected = selectedTab == tab,
+                                    onClick = {
+                                        resetTo(route)
+                                    },
+                                    icon = { Icon(tab.icon(), contentDescription = tab.label()) },
+                                    label = { Text(tab.label()) },
+                                    colors = NavigationBarItemDefaults.colors(
+                                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        selectedTextColor = MaterialTheme.colorScheme.primary,
+                                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 )
-                            )
+                            }
                         }
                     }
-                }
-            ) { padding ->
-                NavDisplay(
-                    modifier = Modifier.fillMaxSize().padding(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding()),
-                    backStack = backStack,
-                    onBack = { onBack() },
-                    transitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
-                    popTransitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
-                    predictivePopTransitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
-                    entryProvider = { key ->
-                        NavEntry(key) {
-                            when (key) {
-                                Routes.Task -> {
-                                    TaskScreen(
-                                        state = taskUiState,
-                                        viewModel = taskViewModel,
-                                        goalViewModel = goalViewModel,
-                                        keyResultViewModel = keyResultViewModel,
-                                        objectiveViewModel = objectiveViewModel,
-                                        tagViewModel = tagViewModel
-                                    )
-                                }
-                                Routes.MyDay -> {
-                                    MyDayScreen(
-                                        viewModel = myDayViewModel,
-                                        onTaskClick = taskViewModel::openTask,
-                                        onNoteClick = taskViewModel::openNote,
-                                        onNoteTimeChange = taskViewModel::updateNoteTime,
-                                        onCreateTask = taskViewModel::openNewTask
-                                    )
-                                }
-                                Routes.Calendar -> {
-                                    CalendarScreen(
-                                        state = calendarUiState,
-                                        calendarViewModel = calendarViewModel,
-                                        onDateDoubleClick = { date -> taskViewModel.openNewTaskOnDate(date) },
-                                        onDailyPlanItemClick = myDayViewModel::openItemEditor,
-                                        onAddDailyPlanItem = { date -> myDayViewModel.openCheckIn(date = date) },
-                                        onTaskClick = taskViewModel::openTask,
-                                        onNoteClick = taskViewModel::openNote
-                                    )
-                                }
-                                Routes.Report -> {
-                                    val reportState by reportViewModel.uiState.collectAsState()
-                                    ReportScreen(
-                                        state = reportState,
-                                        reportViewModel = reportViewModel,
-                                        onShowTagsReport = { push(Routes.TagsReport) },
-                                        onShowTimeReport = { push(Routes.TimeReport) },
-                                    )
-                                }
-                                Routes.TagsReport -> {
-                                    val reportState by reportViewModel.uiState.collectAsState()
-                                    TagsReport(
-                                        state = reportState,
-                                        onPeriodSelected = reportViewModel::selectPeriod,
-                                        onPreviousPeriod = reportViewModel::previousPeriod,
-                                        onNextPeriod = reportViewModel::nextPeriod,
-                                        onCurrentPeriod = reportViewModel::resetToCurrentPeriod,
-                                        onNavigateBack = { onBack() },
-                                    )
-                                }
-                                Routes.TimeReport -> {
-                                    val reportState by reportViewModel.uiState.collectAsState()
-                                    TimeReport(
-                                        state = reportState,
-                                        onPeriodSelected = reportViewModel::selectPeriod,
-                                        onPreviousPeriod = reportViewModel::previousPeriod,
-                                        onNextPeriod = reportViewModel::nextPeriod,
-                                        onCurrentPeriod = reportViewModel::resetToCurrentPeriod,
-                                        onNavigateBack = { onBack() },
-                                    )
-                                }
+                ) { padding ->
+                    NavDisplay(
+                        modifier = Modifier.fillMaxSize().padding(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding()),
+                        backStack = backStack,
+                        onBack = { onBack() },
+                        transitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
+                        popTransitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
+                        predictivePopTransitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
+                        entryProvider = { key ->
+                            NavEntry(key) {
+                                when (key) {
+                                    Routes.Task -> {
+                                        TaskScreen(
+                                            state = taskUiState,
+                                            viewModel = taskViewModel,
+                                            goalViewModel = goalViewModel,
+                                            keyResultViewModel = keyResultViewModel,
+                                            objectiveViewModel = objectiveViewModel,
+                                            tagViewModel = tagViewModel
+                                        )
+                                    }
+                                    Routes.MyDay -> {
+                                        MyDayScreen(
+                                            viewModel = myDayViewModel,
+                                            onTaskClick = taskViewModel::openTask,
+                                            onNoteClick = taskViewModel::openNote,
+                                            onNoteTimeChange = taskViewModel::updateNoteTime,
+                                            onCreateTask = taskViewModel::openNewTask
+                                        )
+                                    }
+                                    Routes.Calendar -> {
+                                        CalendarScreen(
+                                            state = calendarUiState,
+                                            calendarViewModel = calendarViewModel,
+                                            onDateDoubleClick = { date -> taskViewModel.openNewTaskOnDate(date) },
+                                            onDailyPlanItemClick = myDayViewModel::openItemEditor,
+                                            onAddDailyPlanItem = { date -> myDayViewModel.openCheckIn(date = date) },
+                                            onTaskClick = taskViewModel::openTask,
+                                            onNoteClick = taskViewModel::openNote
+                                        )
+                                    }
+                                    Routes.Report -> {
+                                        val reportState by reportViewModel.uiState.collectAsState()
+                                        ReportScreen(
+                                            state = reportState,
+                                            reportViewModel = reportViewModel,
+                                            onShowTagsReport = { push(Routes.TagsReport) },
+                                            onShowTimeReport = { push(Routes.TimeReport) },
+                                        )
+                                    }
+                                    Routes.TagsReport -> {
+                                        val reportState by reportViewModel.uiState.collectAsState()
+                                        TagsReport(
+                                            state = reportState,
+                                            onPeriodSelected = reportViewModel::selectPeriod,
+                                            onPreviousPeriod = reportViewModel::previousPeriod,
+                                            onNextPeriod = reportViewModel::nextPeriod,
+                                            onCurrentPeriod = reportViewModel::resetToCurrentPeriod,
+                                            onNavigateBack = { onBack() },
+                                        )
+                                    }
+                                    Routes.TimeReport -> {
+                                        val reportState by reportViewModel.uiState.collectAsState()
+                                        TimeReport(
+                                            state = reportState,
+                                            onPeriodSelected = reportViewModel::selectPeriod,
+                                            onPreviousPeriod = reportViewModel::previousPeriod,
+                                            onNextPeriod = reportViewModel::nextPeriod,
+                                            onCurrentPeriod = reportViewModel::resetToCurrentPeriod,
+                                            onNavigateBack = { onBack() },
+                                        )
+                                    }
 
-                                Routes.Settings -> SettingsScreen(
-                                    settingsViewModel = settingsViewModel
-                                )
+                                    Routes.Settings -> SettingsScreen(
+                                        settingsViewModel = settingsViewModel
+                                    )
+                                }
                             }
                         }
+                    )
+                    taskUiState.editor?.let { editor ->
+                        TaskEditorSheet(
+                            editor = editor,
+                            availableLists = taskUiState.board.objectives,
+                            availableTags = taskUiState.board.tags,
+                            onDismiss = taskViewModel::dismissEditor,
+                            onSave = taskViewModel::saveEditor,
+                            onDelete = taskViewModel::deleteEditorItem,
+                            onRestore = taskViewModel::restoreCurrentItem,
+                            onComplete = taskViewModel::completeCurrentItem,
+                            onOpen = taskViewModel::openCurrentItem,
+                            onAddToMyDay = {
+                                val taskId = (editor as? TaskEditorState.TaskForm)?.taskId
+                                val task = taskUiState.board.tasks.firstOrNull { it.id == taskId }
+                                task?.let { selectedTask ->
+                                    myDayViewModel.addTaskToMyDay(selectedTask)
+                                    taskViewModel.dismissEditor()
+                                }
+                            },
+                            onTaskNameChange = taskViewModel::updateTaskName,
+                            onTaskListChange = taskViewModel::updateTaskListId,
+                            onTaskDescriptionChange = taskViewModel::updateTaskDescription,
+                            onTaskDoDateChange = taskViewModel::updateTaskDoDate,
+                            onTaskStartTimeChange = taskViewModel::updateTaskStartTime,
+                            onTaskEndTimeChange = taskViewModel::updateTaskEndTime,
+                            onDailyPlanStartTimeChange = taskViewModel::updateDailyPlanStartTime,
+                            onDailyPlanEndTimeChange = taskViewModel::updateDailyPlanEndTime,
+                            onDailyPlanStatus = taskViewModel::updateDailyPlanStatus,
+                            onDailyPlanDelete = { itemId ->
+                                myDayViewModel.deleteDailyPlanItem(itemId)
+                                taskViewModel.removeDailyPlanItemFromEditor(itemId)
+                            },
+                            onTaskRepeatChange = taskViewModel::updateTaskRepeat,
+                            onTaskPriorityChange = taskViewModel::updateTaskPriority,
+                            onTaskReminderToggle = taskViewModel::toggleTaskReminder,
+                            onSubTaskToggle = taskViewModel::toggleSubTask,
+                            onSubTaskAdd = taskViewModel::addSubTask,
+                            onSubTaskNameChange = taskViewModel::updateSubTaskName,
+                            onSubTaskRemove = taskViewModel::removeSubTask,
+                            onSubTaskMove = taskViewModel::moveSubTask,
+                            onTaskTagToggle = taskViewModel::toggleTaskTag,
+                            onNoteTitleChange = taskViewModel::updateNoteTitle,
+                            onNoteContentChange = taskViewModel::updateNoteContent,
+                            onNoteListChange = taskViewModel::updateNoteListId,
+                            onNoteDateChange = taskViewModel::updateNoteDate,
+                            onNoteStartTimeChange = taskViewModel::updateNoteStartTime,
+                            onNoteTagToggle = taskViewModel::toggleNoteTag,
+                            onSwitchAddModeToTask = taskViewModel::switchAddEditorToTask,
+                            onSwitchAddModeToNote = taskViewModel::switchAddEditorToNote
+                        )
                     }
-                )
-                taskUiState.editor?.let { editor ->
-                    TaskEditorSheet(
-                        editor = editor,
-                        availableLists = taskUiState.board.objectives,
-                        availableTags = taskUiState.board.tags,
-                        onDismiss = taskViewModel::dismissEditor,
-                        onSave = taskViewModel::saveEditor,
-                        onDelete = taskViewModel::deleteEditorItem,
-                        onRestore = taskViewModel::restoreCurrentItem,
-                        onComplete = taskViewModel::completeCurrentItem,
-                        onOpen = taskViewModel::openCurrentItem,
-                        onAddToMyDay = {
-                            val taskId = (editor as? TaskEditorState.TaskForm)?.taskId
-                            val task = taskUiState.board.tasks.firstOrNull { it.id == taskId }
-                            task?.let { selectedTask ->
-                                myDayViewModel.addTaskToMyDay(selectedTask)
-                                taskViewModel.dismissEditor()
-                            }
-                        },
-                        onTaskNameChange = taskViewModel::updateTaskName,
-                        onTaskListChange = taskViewModel::updateTaskListId,
-                        onTaskDescriptionChange = taskViewModel::updateTaskDescription,
-                        onTaskDoDateChange = taskViewModel::updateTaskDoDate,
-                        onTaskStartTimeChange = taskViewModel::updateTaskStartTime,
-                        onTaskEndTimeChange = taskViewModel::updateTaskEndTime,
-                        onDailyPlanStartTimeChange = taskViewModel::updateDailyPlanStartTime,
-                        onDailyPlanEndTimeChange = taskViewModel::updateDailyPlanEndTime,
-                        onDailyPlanStatus = taskViewModel::updateDailyPlanStatus,
-                        onDailyPlanDelete = { itemId ->
-                            myDayViewModel.deleteDailyPlanItem(itemId)
-                            taskViewModel.removeDailyPlanItemFromEditor(itemId)
-                        },
-                        onTaskRepeatChange = taskViewModel::updateTaskRepeat,
-                        onTaskPriorityChange = taskViewModel::updateTaskPriority,
-                        onTaskReminderToggle = taskViewModel::toggleTaskReminder,
-                        onSubTaskToggle = taskViewModel::toggleSubTask,
-                        onSubTaskAdd = taskViewModel::addSubTask,
-                        onSubTaskNameChange = taskViewModel::updateSubTaskName,
-                        onSubTaskRemove = taskViewModel::removeSubTask,
-                        onSubTaskMove = taskViewModel::moveSubTask,
-                        onTaskTagToggle = taskViewModel::toggleTaskTag,
-                        onNoteTitleChange = taskViewModel::updateNoteTitle,
-                        onNoteContentChange = taskViewModel::updateNoteContent,
-                        onNoteListChange = taskViewModel::updateNoteListId,
-                        onNoteDateChange = taskViewModel::updateNoteDate,
-                        onNoteStartTimeChange = taskViewModel::updateNoteStartTime,
-                        onNoteTagToggle = taskViewModel::toggleNoteTag,
-                        onSwitchAddModeToTask = taskViewModel::switchAddEditorToTask,
-                        onSwitchAddModeToNote = taskViewModel::switchAddEditorToNote
-                    )
-                }
-                myDayUiState.itemEditor?.let { editor ->
-                    DailyPlanItemEditorSheet(
-                        state = editor,
-                        availableTags = myDayUiState.board.tags,
-                        onDismiss = myDayViewModel::dismissCheckIn,
-                        onTitleChange = myDayViewModel::updateTitle,
-                        onNoteChange = myDayViewModel::updateNote,
-                        onStatusChange = myDayViewModel::updateStatus,
-                        onSourceChange = myDayViewModel::updateEditorSource,
-                        onStartTimeChange = myDayViewModel::updateStartTime,
-                        onEndTimeChange = myDayViewModel::updateEndTime,
-                        onTagToggle = myDayViewModel::toggleTag,
-                        onAdd = myDayViewModel::addCheckIn,
-                        onDelete = myDayViewModel::deleteEditorItem
-                    )
+                    myDayUiState.itemEditor?.let { editor ->
+                        DailyPlanItemEditorSheet(
+                            state = editor,
+                            availableTags = myDayUiState.board.tags,
+                            onDismiss = myDayViewModel::dismissCheckIn,
+                            onTitleChange = myDayViewModel::updateTitle,
+                            onNoteChange = myDayViewModel::updateNote,
+                            onStatusChange = myDayViewModel::updateStatus,
+                            onSourceChange = myDayViewModel::updateEditorSource,
+                            onStartTimeChange = myDayViewModel::updateStartTime,
+                            onEndTimeChange = myDayViewModel::updateEndTime,
+                            onTagToggle = myDayViewModel::toggleTag,
+                            onAdd = myDayViewModel::addCheckIn,
+                            onDelete = myDayViewModel::deleteEditorItem
+                        )
+                    }
                 }
             }
         }
-    }
     }
 }
 
