@@ -16,6 +16,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -40,9 +41,11 @@ fun AppOutlinedTextField(
     modifier: Modifier = Modifier.fillMaxWidth(),
     enabled: Boolean = true,
     clearEnabled: Boolean = false,
+    readOnly: Boolean = false,
+    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    trailingIcon: @Composable (() -> Unit)? = null,
     contentPadding: PaddingValues = PaddingValues(horizontal = 0.dp, vertical = 0.dp)
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
     val colors = OutlinedTextFieldDefaults.colors(
         focusedContainerColor = Color.Transparent,
         unfocusedContainerColor = Color.Transparent,
@@ -58,6 +61,7 @@ fun AppOutlinedTextField(
         onValueChange = onValueChange,
         modifier = modifier,
         enabled = enabled,
+        readOnly = readOnly,
         interactionSource = interactionSource,
         textStyle = textStyle,
         minLines = minLines,
@@ -69,8 +73,8 @@ fun AppOutlinedTextField(
             OutlinedTextFieldDefaults.DecorationBox(
                 value = value,
                 innerTextField = innerTextField,
-                enabled = true,
-                singleLine = false,
+                enabled = enabled,
+                singleLine = maxLines == 1,
                 placeholder = if (placeholder != null) {
                         {
                             Text(
@@ -82,7 +86,7 @@ fun AppOutlinedTextField(
                             )
                         }
                     } else null,
-                trailingIcon = if (clearEnabled) {
+                trailingIcon = trailingIcon ?: if (clearEnabled) {
                     {
                         if (value.isNotEmpty()) {
                             IconButton(

@@ -1,6 +1,7 @@
 package com.checkit.ui.okr
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -11,6 +12,8 @@ import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
@@ -21,15 +24,21 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.checkit.ui.components.AppEditorBottomSheet
+import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.ColorPicker
 import com.checkit.ui.components.DeleteOverflowMenu
@@ -52,6 +61,12 @@ internal fun ObjectiveEditorSheet(
     onIconChange: (String) -> Unit
 ) {
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
 
     AppEditorBottomSheet(
         onDismiss = onDismiss,
@@ -75,7 +90,10 @@ internal fun ObjectiveEditorSheet(
                         fontWeight = FontWeight.SemiBold
                     )
                     Spacer(Modifier.weight(1f))
-                    Button(onClick = onSave) {
+                    Button(
+                        onClick = onSave,
+                        enabled = editor.name.isNotBlank()
+                    ) {
                         Text("Save")
                     }
                     if (editor.mode == EditorMode.Edit) {
@@ -88,12 +106,23 @@ internal fun ObjectiveEditorSheet(
                 }
             }
             item {
-                AppOutlinedTextField(
-                    value = editor.name,
-                    onValueChange = onTitleChange,
-                    placeholder = "Title",
-                    textStyle = MaterialTheme.typography.bodyLarge
-                )
+                Column {
+                    Text(
+                        text = "Title",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    AppOutlinedTextField(
+                        value = editor.name,
+                        onValueChange = onTitleChange,
+                        placeholder = "e.g. Annual Revenue Growth",
+                        textStyle = MaterialTheme.typography.bodyLarge,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                        modifier = Modifier.focusRequester(focusRequester)
+                    )
+                }
             }
             item {
                 PeriodPicker(
@@ -104,6 +133,7 @@ internal fun ObjectiveEditorSheet(
                 )
             }
             item {
+                AppHorizontalDivider()
                 SectionLabel("Color")
                 ColorPicker(
                     colors = AppIconColorDefaults.ListColors,
@@ -128,7 +158,7 @@ internal fun ObjectiveEditorSheet(
         AlertDialog(
             onDismissRequest = { showDeleteConfirmation = false },
             title = { Text("Delete objective?") },
-            text = { Text("All key results and tasks in this objective will be permanently deleted.") },
+            text = { Text("All key results and tasks in \"${editor.name}\" will be permanently deleted.") },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -136,7 +166,7 @@ internal fun ObjectiveEditorSheet(
                         onDelete()
                     }
                 ) {
-                    Text("Delete")
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
