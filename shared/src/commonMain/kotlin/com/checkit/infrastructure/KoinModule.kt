@@ -1,6 +1,6 @@
 package com.checkit.infrastructure
 
-import androidx.room.RoomDatabase
+import androidx.room3.RoomDatabase
 import com.checkit.data.AppDataStore
 import com.checkit.data.CheckItRepository
 import com.checkit.data.RoomCheckItRepository

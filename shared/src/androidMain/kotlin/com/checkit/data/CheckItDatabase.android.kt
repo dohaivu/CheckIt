@@ -1,8 +1,8 @@
 package com.checkit.data
 
 import android.content.Context
-import androidx.room.Room
-import androidx.room.RoomDatabase
+import androidx.room3.Room
+import androidx.room3.RoomDatabase
 import com.checkit.infrastructure.AndroidContextProvider
 
 fun getCheckItDatabaseBuilder(context: Context): RoomDatabase.Builder<CheckItDatabase> {
