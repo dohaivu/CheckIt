@@ -1,6 +1,7 @@
 package com.checkit.domain.usecase
 
 import com.checkit.data.CheckItRepository
+import com.checkit.data.DailyPlanItemWriteInput
 import com.checkit.data.SettingsRepository
 import com.checkit.domain.CarryOverResult
 import com.checkit.domain.CarryOverTimePolicy
@@ -12,6 +13,7 @@ import com.checkit.domain.DayReviewConfirmInput
 import com.checkit.domain.DayReviewConfirmResult
 import com.checkit.domain.DayReviewSummary
 import com.checkit.domain.DayReviewTagMinutes
+import com.checkit.domain.DayReviewWinNote
 import com.checkit.domain.LeftoverAction
 import com.checkit.domain.planWorkMinutes
 import kotlinx.datetime.DateTimeUnit
@@ -21,7 +23,9 @@ import kotlinx.datetime.plus
 /** Pure builder for evening review summary (no IO). */
 class BuildDayReviewSummaryUseCase {
     operator fun invoke(date: LocalDate, plan: DailyPlan?): DayReviewSummary {
-        val items = plan?.items.orEmpty()
+        val winItem = DayReviewWinNote.findItem(plan)
+        val winItemId = winItem?.id
+        val items = plan?.items.orEmpty().filterNot { it.id == winItemId }
         val doneItems = items
             .filter { it.status == DailyPlanItemStatus.Done }
             .sortedBy { it.startTimeMinutes ?: Int.MAX_VALUE }
@@ -58,7 +62,9 @@ class BuildDayReviewSummaryUseCase {
             doneMinutes = doneMinutes,
             plannedItems = plannedItems,
             doneItems = doneItems,
-            topTags = topTags
+            topTags = topTags,
+            winNoteItemId = winItemId,
+            winNote = DayReviewWinNote.textOf(winItem)
         )
     }
 
@@ -148,22 +154,12 @@ class CompleteDayReviewUseCase(
             )
         }
 
-        val winNote = input.winNote?.trim().orEmpty()
-        val winNoteAdded = if (winNote.isNotEmpty()) {
-            repository.addDailyPlanItem(
-                date = input.date,
-                title = WinNoteTitle,
-                note = winNote,
-                startTimeMinutes = null,
-                endTimeMinutes = null,
-                source = DailyPlanItemSource.MyDayNote,
-                status = DailyPlanItemStatus.Done,
-                tagIds = emptyList()
-            )
-            true
-        } else {
-            false
-        }
+        val winNoteSaved = upsertWinNote(
+            plan = plan,
+            date = input.date,
+            winNoteItemId = input.winNoteItemId,
+            winNoteText = input.winNote
+        )
 
         settingsRepository.setLastDayReviewEpochDay(input.date.toEpochDays().toInt())
 
@@ -171,11 +167,54 @@ class CompleteDayReviewUseCase(
             markedDoneCount = markedDone,
             carriedCount = carryResult.carriedCount,
             droppedCount = dropped,
-            winNoteAdded = winNoteAdded
+            winNoteSaved = winNoteSaved
         )
     }
 
-    private companion object {
-        const val WinNoteTitle = "Win"
+    private suspend fun upsertWinNote(
+        plan: DailyPlan?,
+        date: LocalDate,
+        winNoteItemId: Long?,
+        winNoteText: String?
+    ): Boolean {
+        val text = winNoteText?.trim().orEmpty()
+        val existingId = winNoteItemId
+            ?: DayReviewWinNote.findItem(plan)?.id
+
+        return when {
+            existingId != null && text.isNotEmpty() -> {
+                repository.updateDailyPlanItem(
+                    existingId,
+                    DailyPlanItemWriteInput(
+                        title = DayReviewWinNote.Title,
+                        note = text,
+                        source = DailyPlanItemSource.MyDayNote,
+                        status = DailyPlanItemStatus.Done,
+                        startTimeMinutes = null,
+                        endTimeMinutes = null,
+                        tagIds = emptyList()
+                    )
+                )
+                true
+            }
+            existingId != null && text.isEmpty() -> {
+                repository.deleteDailyPlanItem(existingId)
+                true
+            }
+            existingId == null && text.isNotEmpty() -> {
+                repository.addDailyPlanItem(
+                    date = date,
+                    title = DayReviewWinNote.Title,
+                    note = text,
+                    startTimeMinutes = null,
+                    endTimeMinutes = null,
+                    source = DailyPlanItemSource.MyDayNote,
+                    status = DailyPlanItemStatus.Done,
+                    tagIds = emptyList()
+                )
+                true
+            }
+            else -> false
+        }
     }
 }

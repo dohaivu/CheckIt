@@ -45,6 +45,7 @@ data class DayReviewUiState(
     val summary: DayReviewSummary,
     val leftoverActions: Map<Long, LeftoverAction> = emptyMap(),
     val winNote: String = "",
+    val winNoteItemId: Long? = null,
     val isSubmitting: Boolean = false
 ) {
     fun actionFor(itemId: Long): LeftoverAction =

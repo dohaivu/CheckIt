@@ -39,21 +39,40 @@ data class DayReviewSummary(
     val doneMinutes: Int,
     val plannedItems: List<DailyPlanItem>,
     val doneItems: List<DailyPlanItem>,
-    val topTags: List<DayReviewTagMinutes>
+    val topTags: List<DayReviewTagMinutes>,
+    /** Existing win-of-day note on this plan, if any. */
+    val winNoteItemId: Long? = null,
+    val winNote: String = ""
 )
 
 data class DayReviewConfirmInput(
     val date: LocalDate,
     val leftoverActions: Map<Long, LeftoverAction>,
-    val winNote: String? = null
+    val winNote: String? = null,
+    val winNoteItemId: Long? = null
 )
 
 data class DayReviewConfirmResult(
     val markedDoneCount: Int,
     val carriedCount: Int,
     val droppedCount: Int,
-    val winNoteAdded: Boolean
+    val winNoteSaved: Boolean
 )
+
+/** Win-of-day note stored as a My Day note with a fixed title. */
+object DayReviewWinNote {
+    const val Title = "Win"
+
+    fun findItem(plan: DailyPlan?): DailyPlanItem? =
+        plan?.items
+            .orEmpty()
+            .asSequence()
+            .filter { it.source == DailyPlanItemSource.MyDayNote && it.title == Title }
+            .maxByOrNull { it.addedAtMillis }
+
+    fun textOf(item: DailyPlanItem?): String =
+        item?.note?.trim().orEmpty()
+}
 
 data class CarryOverResult(
     val carriedCount: Int,

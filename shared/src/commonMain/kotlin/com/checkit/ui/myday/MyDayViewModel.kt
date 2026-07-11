@@ -124,7 +124,9 @@ class MyDayViewModel(
             it.copy(
                 dayReview = DayReviewUiState(
                     summary = summary,
-                    leftoverActions = defaults
+                    leftoverActions = defaults,
+                    winNote = summary.winNote,
+                    winNoteItemId = summary.winNoteItemId
                 ),
                 showDayReviewBanner = false,
                 showSuggestions = false,
@@ -167,7 +169,8 @@ class MyDayViewModel(
                     input = DayReviewConfirmInput(
                         date = review.summary.date,
                         leftoverActions = review.leftoverActions,
-                        winNote = review.winNote
+                        winNote = review.winNote,
+                        winNoteItemId = review.winNoteItemId
                     )
                 )
             }.onSuccess { result ->
@@ -176,7 +179,7 @@ class MyDayViewModel(
                     if (result.carriedCount > 0) add("${result.carriedCount} carried to tomorrow")
                     if (result.markedDoneCount > 0) add("${result.markedDoneCount} marked done")
                     if (result.droppedCount > 0) add("${result.droppedCount} left unfinished")
-                    if (result.winNoteAdded) add("win saved")
+                    if (result.winNoteSaved) add("win saved")
                 }
                 sendEvent(
                     UiEvent.ShowSnackbar(

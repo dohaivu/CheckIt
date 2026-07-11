@@ -354,8 +354,36 @@ internal class FakeCheckItRepository(
     }
     override suspend fun updateDailyPlanItem(itemId: Long, input: DailyPlanItemWriteInput) {
         updatedDailyPlanItems.add(itemId to input)
+        dailyPlansFlow.update { plans ->
+            plans.map { plan ->
+                plan.copy(
+                    items = plan.items.map { item ->
+                        if (item.id == itemId) {
+                            item.copy(
+                                title = input.title,
+                                note = input.note,
+                                source = input.source,
+                                status = input.status,
+                                startTimeMinutes = input.startTimeMinutes,
+                                endTimeMinutes = input.endTimeMinutes
+                            )
+                        } else {
+                            item
+                        }
+                    }
+                )
+            }
+        }
     }
-    override suspend fun deleteDailyPlanItem(itemId: Long) = Unit
+    val deletedDailyPlanItemIds = mutableListOf<Long>()
+    override suspend fun deleteDailyPlanItem(itemId: Long) {
+        deletedDailyPlanItemIds.add(itemId)
+        dailyPlansFlow.update { plans ->
+            plans.map { plan ->
+                plan.copy(items = plan.items.filterNot { it.id == itemId })
+            }
+        }
+    }
 
     val addedDailyPlanItems = mutableListOf<DailyPlanItem>()
 
