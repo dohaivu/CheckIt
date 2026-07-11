@@ -407,7 +407,8 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
     private fun DailyPlanIcon(source: DailyPlanItemSource, completed: Boolean, tintColor: Color) {
         Image(
             provider = ImageProvider(
-                resId = if (source == DailyPlanItemSource.MyDayNote) R.drawable.event_available_24px
+                resId = if (source == DailyPlanItemSource.MyDayNote) R.drawable.event_note_24px
+                        else if (source == DailyPlanItemSource.MyDayReminder) R.drawable.schedule_24px
                         else if (completed) R.drawable.check_box_24px
                         else R.drawable.check_box_outline_blank_24px
             ),
