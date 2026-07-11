@@ -9,12 +9,18 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -43,7 +49,11 @@ import checkit.shared.generated.resources.day_review_win_note_placeholder
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.LeftoverAction
 import com.checkit.ui.components.AppEditorBottomSheet
+import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.AppOutlinedTextField
+import com.checkit.ui.tasks.isOverdue
+import com.checkit.ui.tasks.views.DailyPlanTimelineCard
+import com.checkit.ui.today
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -64,7 +74,7 @@ internal fun DayReviewSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
@@ -88,18 +98,19 @@ internal fun DayReviewSheet(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f, fill = false)
-                        .height(280.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(bottom = 4.dp)
+                        .weight(1f, fill = true),
+                    contentPadding = PaddingValues(bottom = 8.dp)
                 ) {
-                    items(state.summary.plannedItems, key = { it.id }) { item ->
+                    itemsIndexed(state.summary.plannedItems, key = { _, item -> item.id }) { index, item ->
                         LeftoverReviewRow(
                             item = item,
                             action = state.actionFor(item.id),
                             enabled = !state.isSubmitting,
                             onAction = { onLeftoverAction(item.id, it) }
                         )
+                        if (index < state.summary.plannedItems.lastIndex) {
+                            AppHorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                        }
                     }
                 }
             }
@@ -114,12 +125,12 @@ internal fun DayReviewSheet(
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = stringResource(Res.string.day_review_win_note_placeholder),
                 minLines = 2,
-                maxLines = 4,
+                maxLines = 5,
                 enabled = !state.isSubmitting
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 TextButton(
@@ -195,18 +206,17 @@ private fun LeftoverReviewRow(
         shape = MaterialTheme.shapes.medium
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
-            Text(
-                text = item.title.ifBlank { "Untitled" },
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Medium,
-                maxLines = 2
+            DailyPlanTimelineCard(
+                item = item,
+                isOverdue = item.isOverdue(today())
             )
             FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                modifier = Modifier.padding(start = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
                 LeftoverAction.entries.forEach { option ->
                     FilterChip(
@@ -224,7 +234,16 @@ private fun LeftoverReviewRow(
                                         stringResource(Res.string.day_review_action_drop)
                                 }
                             )
-                        }
+                        },
+                        leadingIcon = if (action == option) {
+                            {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        } else null
                     )
                 }
             }
