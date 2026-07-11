@@ -116,7 +116,8 @@ internal fun DayReviewSheet(
             }
             Text(
                 text = stringResource(Res.string.day_review_win_note_label),
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             AppOutlinedTextField(
