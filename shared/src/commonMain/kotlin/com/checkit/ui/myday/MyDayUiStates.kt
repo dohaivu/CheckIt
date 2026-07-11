@@ -4,6 +4,8 @@ import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
+import com.checkit.domain.DayReviewSummary
+import com.checkit.domain.LeftoverAction
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
@@ -16,6 +18,11 @@ data class MyDayUiState(
     val dailyPlans: List<DailyPlan> = emptyList(),
     val selectedView: MyDayView = MyDayView.Timeline,
     val itemEditor: DailyPlanItemEditorState? = null,
+    val dayReview: DayReviewUiState? = null,
+    val showDayReviewBanner: Boolean = false,
+    val reviewReminderEnabled: Boolean = true,
+    val reviewReminderTimeMinutes: Int = 21 * 60,
+    val lastDayReviewEpochDay: Int? = null,
     val showSuggestions: Boolean = false,
     val suggestionStartTimeMinutes: Int? = null,
     val suggestionEndTimeMinutes: Int? = null,
@@ -32,6 +39,16 @@ data class MyDayUiState(
                 task.status != TaskStatus.Completed
         }
         .sortedWith(compareBy<TaskItem> { it.doDate ?: LocalDate.fromEpochDays(Int.MAX_VALUE) }.thenBy { it.sortOrder })
+}
+
+data class DayReviewUiState(
+    val summary: DayReviewSummary,
+    val leftoverActions: Map<Long, LeftoverAction> = emptyMap(),
+    val winNote: String = "",
+    val isSubmitting: Boolean = false
+) {
+    fun actionFor(itemId: Long): LeftoverAction =
+        leftoverActions[itemId] ?: LeftoverAction.CarryOver
 }
 
 enum class MyDayView {

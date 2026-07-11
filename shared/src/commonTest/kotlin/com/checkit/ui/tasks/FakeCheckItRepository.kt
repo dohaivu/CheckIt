@@ -62,9 +62,18 @@ internal class FakeCheckItRepository(
     private var nextKeyResultId: Long = 300L
     private var nextTagId: Long = 500L
     private var nextTaskId: Long = 1_000L
+    private var nextDailyPlanItemId: Long = 10_000L
+
+    private val dailyPlansFlow = MutableStateFlow<List<DailyPlan>>(emptyList())
+    val copiedDailyPlanItems = mutableListOf<DailyPlanItem>()
+    val statusUpdates = mutableListOf<Pair<Long, DailyPlanItemStatus>>()
 
     override fun observeTaskBoard(): Flow<TaskBoard> = boardFlow
-    override fun observeDailyPlans(): Flow<List<DailyPlan>> = MutableStateFlow(emptyList())
+    override fun observeDailyPlans(): Flow<List<DailyPlan>> = dailyPlansFlow
+
+    fun setDailyPlans(plans: List<DailyPlan>) {
+        dailyPlansFlow.value = plans
+    }
 
     override suspend fun ensureDefaultTaskData() = Unit
 
@@ -331,7 +340,18 @@ internal class FakeCheckItRepository(
         return addedManualDailyPlanItems.size.toLong()
     }
     override suspend fun updateDailyPlanItemTime(itemId: Long, startTimeMinutes: Int?, endTimeMinutes: Int?) = Unit
-    override suspend fun updateDailyPlanItemStatus(itemId: Long, status: DailyPlanItemStatus) = Unit
+    override suspend fun updateDailyPlanItemStatus(itemId: Long, status: DailyPlanItemStatus) {
+        statusUpdates.add(itemId to status)
+        dailyPlansFlow.update { plans ->
+            plans.map { plan ->
+                plan.copy(
+                    items = plan.items.map { item ->
+                        if (item.id == itemId) item.copy(status = status) else item
+                    }
+                )
+            }
+        }
+    }
     override suspend fun updateDailyPlanItem(itemId: Long, input: DailyPlanItemWriteInput) {
         updatedDailyPlanItems.add(itemId to input)
     }
@@ -339,7 +359,46 @@ internal class FakeCheckItRepository(
 
     val addedDailyPlanItems = mutableListOf<DailyPlanItem>()
 
-    override suspend fun getDailyPlanItem(itemId: Long): DailyPlanItem? = addedDailyPlanItems.find { it.id == itemId }
+    override suspend fun getDailyPlanItem(itemId: Long): DailyPlanItem? =
+        addedDailyPlanItems.find { it.id == itemId }
+            ?: dailyPlansFlow.value.flatMap { it.items }.find { it.id == itemId }
+
+    override suspend fun copyDailyPlanItemToDate(
+        source: DailyPlanItem,
+        targetDate: LocalDate,
+        clearTimes: Boolean
+    ): Long? {
+        val targetEpoch = targetDate.toEpochDays().toInt()
+        val taskId = source.taskId
+        if (taskId != null) {
+            val exists = dailyPlansFlow.value
+                .firstOrNull { it.date == targetDate }
+                ?.items
+                ?.any { it.taskId == taskId } == true
+            if (exists) return null
+        }
+        val newId = nextDailyPlanItemId++
+        val copy = source.copy(
+            id = newId,
+            dateEpochDays = targetEpoch,
+            status = DailyPlanItemStatus.Planned,
+            startTimeMinutes = if (clearTimes) null else source.startTimeMinutes,
+            endTimeMinutes = if (clearTimes) null else source.endTimeMinutes,
+            completedAtMillis = null
+        )
+        copiedDailyPlanItems.add(copy)
+        dailyPlansFlow.update { plans ->
+            val existing = plans.firstOrNull { it.date == targetDate }
+            if (existing == null) {
+                plans + DailyPlan(date = targetDate, items = listOf(copy))
+            } else {
+                plans.map { plan ->
+                    if (plan.date == targetDate) plan.copy(items = plan.items + copy) else plan
+                }
+            }
+        }
+        return newId
+    }
 
     override suspend fun countDoneDailyPlanItemsForTaskOnDate(
         taskId: Long,
@@ -426,6 +485,12 @@ internal class FakeSettingsRepository(
     override suspend fun setAutoMyDayLastRunEpochDay(epochDay: Int) {
         settingsFlow.update { it.copy(autoMyDayLastRunEpochDay = epochDay) }
     }
+
+    override suspend fun setLastDayReviewEpochDay(epochDay: Int) {
+        settingsFlow.update { it.copy(lastDayReviewEpochDay = epochDay) }
+    }
+
+    fun currentSettings(): UserSettings = settingsFlow.value
 }
 
 private fun TaskWriteInput.toTaskItem(

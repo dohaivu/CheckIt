@@ -3,13 +3,19 @@ package com.checkit.ui.myday
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.checkit.data.DailyPlanItemWriteInput
+import com.checkit.data.SettingsRepository
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
+import com.checkit.domain.DayReviewBannerPolicy
+import com.checkit.domain.DayReviewConfirmInput
+import com.checkit.domain.LeftoverAction
 import com.checkit.domain.TaskItem
 import com.checkit.domain.hasEndTime
 import com.checkit.domain.usecase.AddDailyPlanItemUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
+import com.checkit.domain.usecase.BuildDayReviewSummaryUseCase
+import com.checkit.domain.usecase.CompleteDayReviewUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
@@ -46,7 +52,10 @@ class MyDayViewModel(
     private val updateDailyPlanItemTime: UpdateDailyPlanItemTimeUseCase,
     private val updateDailyPlanItem: UpdateDailyPlanItemUseCase,
     private val syncKeyResultFromDailyPlan: SyncKeyResultFromDailyPlanUseCase,
-    private val deleteDailyPlanItemUseCase: DeleteDailyPlanItemUseCase
+    private val deleteDailyPlanItemUseCase: DeleteDailyPlanItemUseCase,
+    private val settingsRepository: SettingsRepository,
+    private val buildDayReviewSummary: BuildDayReviewSummaryUseCase,
+    private val completeDayReview: CompleteDayReviewUseCase
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(MyDayUiState())
     val uiState: StateFlow<MyDayUiState> = _uiState.asStateFlow()
@@ -58,8 +67,12 @@ class MyDayViewModel(
     init {
         viewModelScope.launch {
             ensureDefaultTaskData()
-            combine(observeTaskBoard(), observeDailyPlans()) { board, dailyPlans ->
-                board to dailyPlans
+            combine(
+                observeTaskBoard(),
+                observeDailyPlans(),
+                settingsRepository.settings
+            ) { board, dailyPlans, settings ->
+                Triple(board, dailyPlans, settings)
             }
                 .catch { error ->
                     _uiState.update {
@@ -67,9 +80,120 @@ class MyDayViewModel(
                     }
                     sendEvent(UiEvent.ShowSnackbar(error.message ?: "Unable to load My Day"))
                 }
-                .collect { (board, dailyPlans) ->
-                    _uiState.update { it.copy(board = board, dailyPlans = dailyPlans, isLoading = false) }
+                .collect { (board, dailyPlans, settings) ->
+                    val date = today()
+                    val plan = dailyPlans.firstOrNull { it.date == date }
+                    val showBanner = DayReviewBannerPolicy.shouldShow(
+                        hasPlanItems = plan?.items?.isNotEmpty() == true,
+                        reviewReminderEnabled = settings.reviewReminderEnabled,
+                        reviewReminderTimeMinutes = settings.reviewReminderTimeMinutes,
+                        lastDayReviewEpochDay = settings.lastDayReviewEpochDay,
+                        todayEpochDay = date.toEpochDays().toInt(),
+                        nowMinutes = currentMyDayTimeMinutes()
+                    )
+                    _uiState.update { state ->
+                        val review = state.dayReview?.let { existing ->
+                            val summary = buildDayReviewSummary(date, plan)
+                            val validIds = summary.plannedItems.map { it.id }.toSet()
+                            existing.copy(
+                                summary = summary,
+                                leftoverActions = existing.leftoverActions.filterKeys { it in validIds }
+                            )
+                        }
+                        state.copy(
+                            board = board,
+                            dailyPlans = dailyPlans,
+                            dayReview = review,
+                            showDayReviewBanner = showBanner && review == null,
+                            reviewReminderEnabled = settings.reviewReminderEnabled,
+                            reviewReminderTimeMinutes = settings.reviewReminderTimeMinutes,
+                            lastDayReviewEpochDay = settings.lastDayReviewEpochDay,
+                            isLoading = false
+                        )
+                    }
                 }
+        }
+    }
+
+    fun openDayReview() {
+        val state = _uiState.value
+        val date = state.today
+        val summary = buildDayReviewSummary(date, state.plan)
+        val defaults = summary.plannedItems.associate { it.id to LeftoverAction.CarryOver }
+        _uiState.update {
+            it.copy(
+                dayReview = DayReviewUiState(
+                    summary = summary,
+                    leftoverActions = defaults
+                ),
+                showDayReviewBanner = false,
+                showSuggestions = false,
+                itemEditor = null
+            )
+        }
+    }
+
+    fun dismissDayReview() {
+        _uiState.update { it.copy(dayReview = null) }
+    }
+
+    fun setLeftoverAction(itemId: Long, action: LeftoverAction) {
+        _uiState.update { state ->
+            val review = state.dayReview ?: return@update state
+            state.copy(
+                dayReview = review.copy(
+                    leftoverActions = review.leftoverActions + (itemId to action)
+                )
+            )
+        }
+    }
+
+    fun updateWinNote(note: String) {
+        _uiState.update { state ->
+            val review = state.dayReview ?: return@update state
+            state.copy(dayReview = review.copy(winNote = note))
+        }
+    }
+
+    fun confirmDayReview(openReportAfter: Boolean = false) {
+        val state = _uiState.value
+        val review = state.dayReview ?: return
+        if (review.isSubmitting) return
+        _uiState.update { it.copy(dayReview = review.copy(isSubmitting = true)) }
+        viewModelScope.launch {
+            runCatching {
+                completeDayReview(
+                    plan = state.plan,
+                    input = DayReviewConfirmInput(
+                        date = review.summary.date,
+                        leftoverActions = review.leftoverActions,
+                        winNote = review.winNote
+                    )
+                )
+            }.onSuccess { result ->
+                _uiState.update { it.copy(dayReview = null, showDayReviewBanner = false) }
+                val parts = buildList {
+                    if (result.carriedCount > 0) add("${result.carriedCount} carried to tomorrow")
+                    if (result.markedDoneCount > 0) add("${result.markedDoneCount} marked done")
+                    if (result.droppedCount > 0) add("${result.droppedCount} left unfinished")
+                    if (result.winNoteAdded) add("win saved")
+                }
+                sendEvent(
+                    UiEvent.ShowSnackbar(
+                        if (parts.isEmpty()) "Day reviewed" else parts.joinToString(" · ")
+                    )
+                )
+                if (openReportAfter) {
+                    sendEvent(UiEvent.OpenReport)
+                }
+            }.onFailure { error ->
+                _uiState.update { current ->
+                    current.copy(
+                        dayReview = current.dayReview?.copy(isSubmitting = false)
+                    )
+                }
+                sendEvent(UiEvent.ShowSnackbar(error.message ?: "Unable to finish review"))
+            }
         }
     }
 

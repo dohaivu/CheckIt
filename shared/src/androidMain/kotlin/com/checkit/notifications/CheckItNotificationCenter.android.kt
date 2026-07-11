@@ -15,6 +15,7 @@ import com.checkit.MainActivity
 import com.checkit.domain.NotificationDoNotDisturbPolicy
 import com.checkit.shared.R
 import com.checkit.widget.ExtraDailyPlanItemId
+import com.checkit.widget.ExtraOpenDayReview
 import java.time.LocalTime
 
 class CheckItNotificationCenter(
@@ -51,6 +52,7 @@ class CheckItNotificationCenter(
             title = title,
             body = body,
             subText = type.subText,
+            openDayReview = type == AppReminderType.Review,
             bypassDnd = false // App reminders respect DND
         )
     }
@@ -82,6 +84,28 @@ class CheckItNotificationCenter(
             body = body,
             subText = subText,
             dailyPlanItemId = null,
+            openDayReview = false,
+            bypassDnd = bypassDnd
+        )
+    }
+
+    private fun showReminder(
+        notificationId: Int,
+        requestCode: Int,
+        title: String,
+        body: String,
+        subText: String?,
+        openDayReview: Boolean,
+        bypassDnd: Boolean
+    ) {
+        showReminder(
+            notificationId = notificationId,
+            requestCode = requestCode,
+            title = title,
+            body = body,
+            subText = subText,
+            dailyPlanItemId = null,
+            openDayReview = openDayReview,
             bypassDnd = bypassDnd
         )
     }
@@ -95,6 +119,28 @@ class CheckItNotificationCenter(
         dailyPlanItemId: Long?,
         bypassDnd: Boolean
     ) {
+        showReminder(
+            notificationId = notificationId,
+            requestCode = requestCode,
+            title = title,
+            body = body,
+            subText = subText,
+            dailyPlanItemId = dailyPlanItemId,
+            openDayReview = false,
+            bypassDnd = bypassDnd
+        )
+    }
+
+    private fun showReminder(
+        notificationId: Int,
+        requestCode: Int,
+        title: String,
+        body: String,
+        subText: String?,
+        dailyPlanItemId: Long?,
+        openDayReview: Boolean,
+        bypassDnd: Boolean
+    ) {
         if (!canPostNotifications()) return
         if (!bypassDnd && !canNotifyNow()) return
 
@@ -102,6 +148,7 @@ class CheckItNotificationCenter(
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             dailyPlanItemId?.let { putExtra(ExtraDailyPlanItemId, it) }
+            if (openDayReview) putExtra(ExtraOpenDayReview, true)
         }
         val pendingIntent = PendingIntent.getActivity(
             context,

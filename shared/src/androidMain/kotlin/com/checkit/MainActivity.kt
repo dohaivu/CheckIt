@@ -15,6 +15,7 @@ import com.checkit.notifications.CheckItNotificationCenter
 import com.checkit.ui.CheckItApp
 import com.checkit.widget.ExtraDailyPlanItemId
 import com.checkit.widget.ExtraNoteId
+import com.checkit.widget.ExtraOpenDayReview
 import com.checkit.widget.ExtraOpenMyDaySuggestions
 import com.checkit.widget.ExtraTaskId
 
@@ -24,6 +25,7 @@ class MainActivity : ComponentActivity() {
     private val taskLaunchId = mutableStateOf<Long?>(null)
     private val noteLaunchId = mutableStateOf<Long?>(null)
     private val openMyDaySuggestionsLaunch = mutableStateOf(false)
+    private val openDayReviewLaunch = mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -44,6 +46,7 @@ class MainActivity : ComponentActivity() {
                 taskLaunchId = taskLaunchId.value,
                 noteLaunchId = noteLaunchId.value,
                 openMyDaySuggestionsLaunch = openMyDaySuggestionsLaunch.value,
+                openDayReviewLaunch = openDayReviewLaunch.value,
                 onWidgetLaunchConsumed = ::clearWidgetLaunch
             )
         }
@@ -74,6 +77,7 @@ class MainActivity : ComponentActivity() {
         taskLaunchId.value = intent.longExtraOrNull(ExtraTaskId)
         noteLaunchId.value = intent.longExtraOrNull(ExtraNoteId)
         openMyDaySuggestionsLaunch.value = intent.getBooleanExtra(ExtraOpenMyDaySuggestions, false)
+        openDayReviewLaunch.value = intent.getBooleanExtra(ExtraOpenDayReview, false)
     }
 
     private fun clearWidgetLaunch() {
@@ -81,6 +85,7 @@ class MainActivity : ComponentActivity() {
         taskLaunchId.value = null
         noteLaunchId.value = null
         openMyDaySuggestionsLaunch.value = false
+        openDayReviewLaunch.value = false
     }
 }
 

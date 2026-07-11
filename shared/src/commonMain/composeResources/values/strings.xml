@@ -78,4 +78,22 @@
     <string name="color_scheme_sunset">Sunset</string>
     <string name="color_scheme_sky_blue">Sky Blue</string>
     <string name="color_scheme_system_default">System default</string>
+
+    <string name="day_review_open">Review day</string>
+    <string name="day_review_title">Review your day</string>
+    <string name="day_review_banner_title">Time to review</string>
+    <string name="day_review_banner_subtitle">Close out today and plan leftovers for tomorrow.</string>
+    <string name="day_review_banner_action">Review</string>
+    <string name="day_review_done_count">%1$d done</string>
+    <string name="day_review_planned_count">%1$d left</string>
+    <string name="day_review_done_minutes">%1$d min done</string>
+    <string name="day_review_leftovers_title">Unfinished items</string>
+    <string name="day_review_leftovers_empty">Nothing left planned — nice work.</string>
+    <string name="day_review_action_done">Done</string>
+    <string name="day_review_action_carry">Tomorrow</string>
+    <string name="day_review_action_drop">Leave</string>
+    <string name="day_review_win_note_label">Win of the day (optional)</string>
+    <string name="day_review_win_note_placeholder">What went well today?</string>
+    <string name="day_review_finish">Finish review</string>
+    <string name="day_review_finish_and_report">Finish &amp; report</string>
 </resources>

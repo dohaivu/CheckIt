@@ -61,6 +61,7 @@ fun CheckItApp(
     taskLaunchId: Long? = null,
     noteLaunchId: Long? = null,
     openMyDaySuggestionsLaunch: Boolean = false,
+    openDayReviewLaunch: Boolean = false,
     onWidgetLaunchConsumed: () -> Unit = {}
 ) {
     val navState = rememberAppNavigationState()
@@ -88,6 +89,7 @@ fun CheckItApp(
         ).collect { event ->
             when (event) {
                 is UiEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
+                is UiEvent.OpenReport -> navState.resetTo(AppRoute.Report)
             }
         }
     }
@@ -125,6 +127,13 @@ fun CheckItApp(
         if (!openMyDaySuggestionsLaunch) return@LaunchedEffect
         navState.resetTo(AppRoute.MyDay)
         viewModels.myDay.openSuggestions()
+        onWidgetLaunchConsumed()
+    }
+
+    LaunchedEffect(openDayReviewLaunch) {
+        if (!openDayReviewLaunch) return@LaunchedEffect
+        navState.resetTo(AppRoute.MyDay)
+        viewModels.myDay.openDayReview()
         onWidgetLaunchConsumed()
     }
 

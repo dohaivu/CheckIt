@@ -12,6 +12,7 @@ The app is designed around blending the calendar aspect with the completion aspe
 - Planned / Done status with optional start and end times (time tracking)
 - Views: Timeline, Agenda, and Board
 - Suggest open tasks and auto-add tasks due today onto My Day
+- Evening day review: summary, leftover actions (done / carry to tomorrow / leave), optional win note
 - Markdown-style summary of completed work for the day
 
 ### Tasks

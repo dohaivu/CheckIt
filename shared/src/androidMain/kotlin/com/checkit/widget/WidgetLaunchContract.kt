@@ -6,8 +6,10 @@ internal const val ExtraDailyPlanItemId: String = "com.checkit.extra.DAILY_PLAN_
 internal const val ExtraTaskId: String = "com.checkit.extra.TASK_ID"
 internal const val ExtraNoteId: String = "com.checkit.extra.NOTE_ID"
 internal const val ExtraOpenMyDaySuggestions: String = "com.checkit.extra.OPEN_MY_DAY_SUGGESTIONS"
+internal const val ExtraOpenDayReview: String = "com.checkit.extra.OPEN_DAY_REVIEW"
 
 internal val DailyPlanItemIdParameterKey = ActionParameters.Key<Long>(ExtraDailyPlanItemId)
 internal val TaskIdParameterKey = ActionParameters.Key<Long>(ExtraTaskId)
 internal val NoteIdParameterKey = ActionParameters.Key<Long>(ExtraNoteId)
 internal val OpenMyDaySuggestionsParameterKey = ActionParameters.Key<Boolean>(ExtraOpenMyDaySuggestions)
+internal val OpenDayReviewParameterKey = ActionParameters.Key<Boolean>(ExtraOpenDayReview)

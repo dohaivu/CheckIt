@@ -17,7 +17,9 @@ data class UserSettings(
     val checkInReminderEnabled: Boolean = true,
     val scheduleReminderEnabled: Boolean = true,
     val checkInReminderLastShownAtMillis: Long? = null,
-    val autoMyDayLastRunEpochDay: Int? = null
+    val autoMyDayLastRunEpochDay: Int? = null,
+    /** Epoch day of the last completed evening day review; suppresses re-prompts. */
+    val lastDayReviewEpochDay: Int? = null
 )
 
 interface SettingsRepository {
@@ -37,4 +39,5 @@ interface SettingsRepository {
     suspend fun setScheduleReminderEnabled(enabled: Boolean)
     suspend fun setCheckInReminderLastShownAtMillis(millis: Long)
     suspend fun setAutoMyDayLastRunEpochDay(epochDay: Int)
+    suspend fun setLastDayReviewEpochDay(epochDay: Int)
 }

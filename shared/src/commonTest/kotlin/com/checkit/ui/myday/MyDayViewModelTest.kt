@@ -5,6 +5,9 @@ import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.usecase.AddDailyPlanItemUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
+import com.checkit.domain.usecase.BuildDayReviewSummaryUseCase
+import com.checkit.domain.usecase.CarryOverDailyPlanItemsUseCase
+import com.checkit.domain.usecase.CompleteDayReviewUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
@@ -13,6 +16,7 @@ import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemUseCase
 import com.checkit.ui.tasks.FakeCheckItRepository
+import com.checkit.ui.tasks.FakeSettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -29,12 +33,15 @@ import kotlin.test.assertEquals
 class MyDayViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private lateinit var repository: FakeCheckItRepository
+    private lateinit var settingsRepository: FakeSettingsRepository
     private lateinit var viewModel: MyDayViewModel
 
     @BeforeTest
     fun setUp() {
         Dispatchers.setMain(dispatcher)
         repository = FakeCheckItRepository()
+        settingsRepository = FakeSettingsRepository()
+        val buildSummary = BuildDayReviewSummaryUseCase()
         viewModel = MyDayViewModel(
             observeTaskBoard = ObserveTaskBoardUseCase(repository),
             observeDailyPlans = ObserveDailyPlansUseCase(repository),
@@ -44,7 +51,15 @@ class MyDayViewModelTest {
             updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository),
             updateDailyPlanItem = UpdateDailyPlanItemUseCase(repository),
             syncKeyResultFromDailyPlan = SyncKeyResultFromDailyPlanUseCase(repository),
-            deleteDailyPlanItemUseCase = DeleteDailyPlanItemUseCase(repository)
+            deleteDailyPlanItemUseCase = DeleteDailyPlanItemUseCase(repository),
+            settingsRepository = settingsRepository,
+            buildDayReviewSummary = buildSummary,
+            completeDayReview = CompleteDayReviewUseCase(
+                repository = repository,
+                settingsRepository = settingsRepository,
+                carryOverDailyPlanItems = CarryOverDailyPlanItemsUseCase(repository),
+                buildSummary = buildSummary
+            )
         )
         dispatcher.scheduler.advanceUntilIdle()
     }
