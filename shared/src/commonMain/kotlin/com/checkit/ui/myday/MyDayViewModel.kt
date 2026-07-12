@@ -97,7 +97,9 @@ class MyDayViewModel(
                             val validIds = summary.plannedItems.map { it.id }.toSet()
                             existing.copy(
                                 summary = summary,
-                                leftoverActions = existing.leftoverActions.filterKeys { it in validIds }
+                                leftoverActions = existing.leftoverActions.filterKeys { it in validIds },
+                                // Keep the editor text; only backfill id if we discover an existing win note.
+                                winNoteItemId = existing.winNoteItemId ?: summary.winNoteItemId
                             )
                         }
                         state.copy(
