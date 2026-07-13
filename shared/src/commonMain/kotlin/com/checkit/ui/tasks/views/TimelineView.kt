@@ -1,15 +1,15 @@
 package com.checkit.ui.tasks.views
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.calculateCentroid
 import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -42,8 +42,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerInputScope
-import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -151,7 +151,7 @@ private fun TimelineGrid(
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
     var hourHeight by remember { mutableStateOf(DefaultTimelineHourHeight) }
-    val axisWidth = 56.dp
+    val axisWidth = 44.dp
     val axisWidthPx = with(density) { axisWidth.toPx() }
     val layouts = remember(items) { buildTimelineLayouts(items) }
     val currentTimeMinutes = remember { currentTimeMinutes() }
@@ -307,7 +307,7 @@ private fun HourRows(
                         .offset(y = (-12).dp)
                         .width(axisWidth)
                         .height(24.dp)
-                        .padding(end = 8.dp),
+                        .padding(end = 4.dp),
                     contentAlignment = Alignment.CenterEnd
                 ) {
                     Text(
@@ -318,7 +318,7 @@ private fun HourRows(
                 }
                 Box(
                     modifier = Modifier
-                        .offset(x = axisWidth)
+                        .padding(start = axisWidth)
                         .fillMaxWidth()
                         .height(1.dp)
                         .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.75f))
@@ -326,10 +326,8 @@ private fun HourRows(
                 repeat(3) { quarter ->
                     Box(
                         modifier = Modifier
-                            .offset(
-                                x = axisWidth,
-                                y = hourHeight * ((quarter + 1) / 4f)
-                            )
+                            .padding(start = axisWidth)
+                            .offset(y = hourHeight * ((quarter + 1) / 4f))
                             .fillMaxWidth()
                             .height(1.dp)
                             .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
@@ -364,7 +362,8 @@ private fun CurrentTimeLine(
         )
         Box(
             modifier = Modifier
-                .offset(x = axisWidth, y = 4.dp)
+                .padding(start = axisWidth)
+                .offset(y = 4.dp)
                 .fillMaxWidth()
                 .height(1.5.dp)
                 .background(color)
