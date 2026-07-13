@@ -110,6 +110,18 @@ class CarryOverDailyPlanItemsUseCase(
             newItemIds = newIds
         )
     }
+
+    /** Carry every item in [items] onto [toDate]. */
+    suspend fun carryAll(
+        items: List<DailyPlanItem>,
+        toDate: LocalDate,
+        timePolicy: CarryOverTimePolicy = CarryOverTimePolicy.ClearTimes
+    ): CarryOverResult = invoke(
+        items = items,
+        itemIds = items.map { it.id },
+        toDate = toDate,
+        timePolicy = timePolicy
+    )
 }
 
 /** Applies leftover decisions, optional win note, and marks the day as reviewed. */

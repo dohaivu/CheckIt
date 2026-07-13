@@ -13,6 +13,8 @@ The app is designed around blending the calendar aspect with the completion aspe
 - Views: Timeline, Agenda, and Board
 - Suggest open tasks and auto-add tasks due today onto My Day
 - Evening day review: summary, leftover actions (done / carry to tomorrow / leave), optional win note
+- Morning leftovers: carry unfinished yesterday items into today (manual or auto-carry setting)
+- Plan assist banner when My Day is empty after plan reminder time
 - Markdown-style summary of completed work for the day
 
 ### Tasks

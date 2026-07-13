@@ -15,7 +15,9 @@ import com.checkit.MainActivity
 import com.checkit.domain.NotificationDoNotDisturbPolicy
 import com.checkit.shared.R
 import com.checkit.widget.ExtraDailyPlanItemId
+import com.checkit.widget.ExtraOpenCheckIn
 import com.checkit.widget.ExtraOpenDayReview
+import com.checkit.widget.ExtraOpenPlanAssist
 import java.time.LocalTime
 
 class CheckItNotificationCenter(
@@ -52,7 +54,9 @@ class CheckItNotificationCenter(
             title = title,
             body = body,
             subText = type.subText,
+            openPlanAssist = type == AppReminderType.Plan,
             openDayReview = type == AppReminderType.Review,
+            openCheckIn = type == AppReminderType.CheckIn,
             bypassDnd = false // App reminders respect DND
         )
     }
@@ -84,7 +88,9 @@ class CheckItNotificationCenter(
             body = body,
             subText = subText,
             dailyPlanItemId = null,
+            openPlanAssist = false,
             openDayReview = false,
+            openCheckIn = false,
             bypassDnd = bypassDnd
         )
     }
@@ -95,7 +101,9 @@ class CheckItNotificationCenter(
         title: String,
         body: String,
         subText: String?,
+        openPlanAssist: Boolean,
         openDayReview: Boolean,
+        openCheckIn: Boolean,
         bypassDnd: Boolean
     ) {
         showReminder(
@@ -105,7 +113,9 @@ class CheckItNotificationCenter(
             body = body,
             subText = subText,
             dailyPlanItemId = null,
+            openPlanAssist = openPlanAssist,
             openDayReview = openDayReview,
+            openCheckIn = openCheckIn,
             bypassDnd = bypassDnd
         )
     }
@@ -126,7 +136,9 @@ class CheckItNotificationCenter(
             body = body,
             subText = subText,
             dailyPlanItemId = dailyPlanItemId,
+            openPlanAssist = false,
             openDayReview = false,
+            openCheckIn = false,
             bypassDnd = bypassDnd
         )
     }
@@ -138,7 +150,9 @@ class CheckItNotificationCenter(
         body: String,
         subText: String?,
         dailyPlanItemId: Long?,
-        openDayReview: Boolean,
+        openPlanAssist: Boolean = false,
+        openDayReview: Boolean = false,
+        openCheckIn: Boolean = false,
         bypassDnd: Boolean
     ) {
         if (!canPostNotifications()) return
@@ -148,7 +162,9 @@ class CheckItNotificationCenter(
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             dailyPlanItemId?.let { putExtra(ExtraDailyPlanItemId, it) }
+            if (openPlanAssist) putExtra(ExtraOpenPlanAssist, true)
             if (openDayReview) putExtra(ExtraOpenDayReview, true)
+            if (openCheckIn) putExtra(ExtraOpenCheckIn, true)
         }
         val pendingIntent = PendingIntent.getActivity(
             context,

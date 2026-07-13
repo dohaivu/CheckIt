@@ -95,4 +95,20 @@
     <string name="day_review_win_note_placeholder">今天有什么顺利的事？</string>
     <string name="day_review_finish">完成回顾</string>
     <string name="day_review_finish_and_report">完成并查看报告</string>
+
+    <string name="leftovers_banner_title">昨天还有 %1$d 项未完成</string>
+    <string name="leftovers_banner_subtitle">可全部带到今天，或逐项处理。</string>
+    <string name="leftovers_banner_carry_all">全部带到今天</string>
+    <string name="leftovers_banner_review">查看</string>
+    <string name="leftovers_banner_dismiss">稍后</string>
+    <string name="leftovers_sheet_title">昨天未完成</string>
+    <string name="leftovers_sheet_empty">没有需要转移的项。</string>
+    <string name="leftovers_item_carry">带到今天</string>
+    <string name="leftovers_section_title">来自昨天</string>
+    <string name="plan_assist_banner_title">规划今天</string>
+    <string name="plan_assist_banner_subtitle">在忙碌之前把重要事项排进今天。</string>
+    <string name="plan_assist_banner_action">开始规划</string>
+    <string name="plan_assist_banner_dismiss">稍后</string>
+    <string name="settings_auto_carry_title">自动转移未完成项</string>
+    <string name="settings_auto_carry_subtitle">自动把昨天未完成的项带到今天</string>
 </resources>

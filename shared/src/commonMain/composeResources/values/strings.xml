@@ -96,4 +96,20 @@
     <string name="day_review_win_note_placeholder">What went well today?</string>
     <string name="day_review_finish">Finish review</string>
     <string name="day_review_finish_and_report">Finish &amp; report</string>
+
+    <string name="leftovers_banner_title">%1$d unfinished from yesterday</string>
+    <string name="leftovers_banner_subtitle">Carry them into today, or review one by one.</string>
+    <string name="leftovers_banner_carry_all">Carry all</string>
+    <string name="leftovers_banner_review">Review</string>
+    <string name="leftovers_banner_dismiss">Not now</string>
+    <string name="leftovers_sheet_title">Yesterday leftovers</string>
+    <string name="leftovers_sheet_empty">No leftovers left to carry.</string>
+    <string name="leftovers_item_carry">Carry</string>
+    <string name="leftovers_section_title">From yesterday</string>
+    <string name="plan_assist_banner_title">Plan your day</string>
+    <string name="plan_assist_banner_subtitle">Add what matters before the day fills up.</string>
+    <string name="plan_assist_banner_action">Plan</string>
+    <string name="plan_assist_banner_dismiss">Later</string>
+    <string name="settings_auto_carry_title">Auto-carry leftovers</string>
+    <string name="settings_auto_carry_subtitle">Automatically move unfinished yesterday items into today</string>
 </resources>

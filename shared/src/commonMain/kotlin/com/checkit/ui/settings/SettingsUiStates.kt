@@ -12,6 +12,7 @@ data class ReminderSettingsUiState(
     val checkInEnabled: Boolean = true,
     val scheduleEnabled: Boolean = true,
     val checkInLastShownAtMillis: Long? = null,
+    val autoCarryOverLeftovers: Boolean = false,
 )
 
 data class SettingsUiState(

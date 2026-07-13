@@ -518,6 +518,22 @@ internal class FakeSettingsRepository(
         settingsFlow.update { it.copy(lastDayReviewEpochDay = epochDay) }
     }
 
+    override suspend fun setAutoCarryOverLeftovers(enabled: Boolean) {
+        settingsFlow.update { it.copy(autoCarryOverLeftovers = enabled) }
+    }
+
+    override suspend fun setAutoCarryOverLastRunEpochDay(epochDay: Int) {
+        settingsFlow.update { it.copy(autoCarryOverLastRunEpochDay = epochDay) }
+    }
+
+    override suspend fun setLeftoversBannerDismissedEpochDay(epochDay: Int) {
+        settingsFlow.update { it.copy(leftoversBannerDismissedEpochDay = epochDay) }
+    }
+
+    override suspend fun setLastDayPlanDismissedEpochDay(epochDay: Int) {
+        settingsFlow.update { it.copy(lastDayPlanDismissedEpochDay = epochDay) }
+    }
+
     fun currentSettings(): UserSettings = settingsFlow.value
 }
 

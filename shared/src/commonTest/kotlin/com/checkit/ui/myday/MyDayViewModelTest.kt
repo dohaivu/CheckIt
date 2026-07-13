@@ -63,7 +63,8 @@ class MyDayViewModelTest {
                 settingsRepository = settingsRepository,
                 carryOverDailyPlanItems = CarryOverDailyPlanItemsUseCase(repository),
                 buildSummary = buildSummary
-            )
+            ),
+            carryOverDailyPlanItems = CarryOverDailyPlanItemsUseCase(repository)
         )
         dispatcher.scheduler.advanceUntilIdle()
     }

@@ -62,6 +62,8 @@ fun CheckItApp(
     noteLaunchId: Long? = null,
     openMyDaySuggestionsLaunch: Boolean = false,
     openDayReviewLaunch: Boolean = false,
+    openPlanAssistLaunch: Boolean = false,
+    openCheckInLaunch: Boolean = false,
     onWidgetLaunchConsumed: () -> Unit = {}
 ) {
     val navState = rememberAppNavigationState()
@@ -134,6 +136,20 @@ fun CheckItApp(
         if (!openDayReviewLaunch) return@LaunchedEffect
         navState.resetTo(AppRoute.MyDay)
         viewModels.myDay.openDayReview()
+        onWidgetLaunchConsumed()
+    }
+
+    LaunchedEffect(openPlanAssistLaunch) {
+        if (!openPlanAssistLaunch) return@LaunchedEffect
+        navState.resetTo(AppRoute.MyDay)
+        viewModels.myDay.openPlanAssist()
+        onWidgetLaunchConsumed()
+    }
+
+    LaunchedEffect(openCheckInLaunch) {
+        if (!openCheckInLaunch) return@LaunchedEffect
+        navState.resetTo(AppRoute.MyDay)
+        viewModels.myDay.openCheckInAtFreeSlot()
         onWidgetLaunchConsumed()
     }
 

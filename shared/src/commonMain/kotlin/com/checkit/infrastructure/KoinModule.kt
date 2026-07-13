@@ -182,7 +182,8 @@ val provideViewModelModule = module {
             deleteDailyPlanItemUseCase = get(),
             settingsRepository = get(),
             buildDayReviewSummary = get(),
-            completeDayReview = get()
+            completeDayReview = get(),
+            carryOverDailyPlanItems = get()
         )
     }
     viewModel { ReportViewModel(get()) }
