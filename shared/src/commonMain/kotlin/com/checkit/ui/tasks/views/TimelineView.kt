@@ -178,7 +178,7 @@ private fun TimelineGrid(
         val totalHeight = timelineHourHeight * HoursPerDay
         val hourHeightPx = with(density) { timelineHourHeight.toPx() }
         val timelineViewportHeight = maxHeight
-        val taskAreaWidth = (maxWidth - axisWidth - 14.dp).coerceAtLeast(1.dp)
+        val taskAreaWidth = (maxWidth - axisWidth - 8.dp).coerceAtLeast(1.dp)
         LaunchedEffect(currentTimeMinutes, hasScrolledToCurrentTime) {
             if (hasScrolledToCurrentTime) return@LaunchedEffect
             scrollState.scrollToCurrentTime(currentTimeMinutes, hourHeightPx)
