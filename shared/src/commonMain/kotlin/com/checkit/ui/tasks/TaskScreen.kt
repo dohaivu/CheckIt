@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.checkit.ui.components.HelpContent
 import com.checkit.ui.components.HelpTooltip
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.okr.GoalEditorSheet
@@ -173,7 +174,7 @@ internal fun TaskScreen(
                     },
                     actions = {
                         if (state.selectedGoal != null) {
-                            HelpTooltip()
+                            HelpTooltip(markdownContent = HelpContent.okrTips)
                         }
                         ViewOptionsMenu(
                             showCompleted = state.showCompleted,

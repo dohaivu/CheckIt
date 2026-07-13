@@ -22,25 +22,15 @@ import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownTypography
 import kotlinx.coroutines.launch
 
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun HelpTooltip(
-    modifier: Modifier = Modifier,
-) {
-    val tooltipState = rememberTooltipState(isPersistent = true)
-    val coroutineScope = rememberCoroutineScope()
-    val scrollState = rememberScrollState()
-
-    val title = "OKR Tips"
-    val helpContent = """
+data object HelpContent {
+    val okrTips: String = """
         #### __1. Work Backwards (The "How" Rule)__
 
-        *Dream:* I want to understand intermediate Spanish. ➔ *How?* ➔ **Objective:** Learn a ton of vocabulary.
+        - *Dream:* I want to understand intermediate Spanish. ➔ *How?* ➔ **Objective:** Learn a ton of vocabulary.
         
-        *Objective:* Learn vocabulary. ➔ *How do I measure that?* ➔ **Key Result:** Get 1,000 words into my deck.
+        - *Objective:* Learn vocabulary. ➔ *How do I measure that?* ➔ **Key Result:** Get 1,000 words into my deck.
         
-        *Key Result:* 1,000 words. ➔ *How do I execute that today?* ➔ **Task:** Open the app for 15 minutes.
+        - *Key Result:* 1,000 words. ➔ *How do I execute that today?* ➔ **Task:** Open the app for 15 minutes.
         
         #### __2. If It Doesn't Have a Number, It's Not a Key Result__
         
@@ -48,6 +38,19 @@ fun HelpTooltip(
         
         ✅ *Good KR*: "Read 15 chapters of Spanish book."
     """.trimIndent()
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HelpTooltip(
+    modifier: Modifier = Modifier,
+    markdownContent: String
+) {
+    val tooltipState = rememberTooltipState(isPersistent = true)
+    val coroutineScope = rememberCoroutineScope()
+    val scrollState = rememberScrollState()
+
+    val title = "OKR Tips"
 
     TooltipBox(
         modifier = modifier,
@@ -59,7 +62,7 @@ fun HelpTooltip(
             ) {
                 Markdown(
                     modifier = modifier.verticalScroll(scrollState),
-                    content = helpContent,
+                    content = markdownContent,
                     typography = markdownTypography(
                         h1 = MaterialTheme.typography.headlineSmall,
                         h2 = MaterialTheme.typography.titleLarge,
