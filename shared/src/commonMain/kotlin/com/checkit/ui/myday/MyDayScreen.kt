@@ -1,33 +1,33 @@
 package com.checkit.ui.myday
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddTask
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.RateReview
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.ViewAgenda
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
@@ -36,7 +36,6 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -47,7 +46,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import checkit.shared.generated.resources.Res
-import checkit.shared.generated.resources.day_review_banner_action
 import checkit.shared.generated.resources.day_review_banner_subtitle
 import checkit.shared.generated.resources.day_review_banner_title
 import checkit.shared.generated.resources.day_review_open
@@ -58,34 +56,31 @@ import checkit.shared.generated.resources.leftovers_banner_subtitle
 import checkit.shared.generated.resources.leftovers_banner_title
 import checkit.shared.generated.resources.leftovers_item_carry
 import checkit.shared.generated.resources.leftovers_section_title
-import checkit.shared.generated.resources.leftovers_sheet_empty
-import checkit.shared.generated.resources.leftovers_sheet_title
-import checkit.shared.generated.resources.plan_assist_banner_action
 import checkit.shared.generated.resources.plan_assist_banner_dismiss
 import checkit.shared.generated.resources.plan_assist_banner_subtitle
 import checkit.shared.generated.resources.plan_assist_banner_title
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.NoteItem
+import com.checkit.domain.Objective
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
-import com.checkit.domain.Objective
 import com.checkit.domain.hasEndTime
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.localizedCompactDateWithDayName
-import com.checkit.ui.tasks.views.DailyPlanAllDayCard
-import com.checkit.ui.tasks.views.NoteAllDayCard
-import com.checkit.ui.tasks.views.TaskAllDayCard
-import com.checkit.ui.tasks.views.AgendaView
-import com.checkit.ui.tasks.views.DailyPlanTimelineCard
-import com.checkit.ui.tasks.views.NoteTimelineCard
-import com.checkit.ui.tasks.views.TimelineView
 import com.checkit.ui.tasks.TimelineItem
 import com.checkit.ui.tasks.TimelineItemType
-import com.checkit.ui.tasks.views.TaskTimelineCard
 import com.checkit.ui.tasks.isOverdue
 import com.checkit.ui.tasks.timeRangeLabel
 import com.checkit.ui.tasks.toClockLabel
+import com.checkit.ui.tasks.views.AgendaView
+import com.checkit.ui.tasks.views.DailyPlanAllDayCard
+import com.checkit.ui.tasks.views.DailyPlanTimelineCard
+import com.checkit.ui.tasks.views.NoteAllDayCard
+import com.checkit.ui.tasks.views.NoteTimelineCard
+import com.checkit.ui.tasks.views.TaskAllDayCard
+import com.checkit.ui.tasks.views.TaskTimelineCard
+import com.checkit.ui.tasks.views.TimelineView
 import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.stringResource
@@ -249,24 +244,41 @@ private fun DayReviewBanner(onClick: () -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(MaterialTheme.colorScheme.primary, MaterialTheme.shapes.small),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.RateReview,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = stringResource(Res.string.day_review_banner_title),
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = stringResource(Res.string.day_review_banner_subtitle),
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                 )
             }
-            TextButton(onClick = onClick) {
-                Text(stringResource(Res.string.day_review_banner_action))
-            }
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
+            )
         }
     }
 }
@@ -287,31 +299,53 @@ private fun LeftoversBanner(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                text = stringResource(Res.string.leftovers_banner_title, count),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = stringResource(Res.string.leftovers_banner_subtitle),
-                style = MaterialTheme.typography.bodySmall
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    Icons.Default.Schedule,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp)
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(Res.string.leftovers_banner_title, count),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = stringResource(Res.string.leftovers_banner_subtitle),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f)
+                    )
+                }
+                IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = stringResource(Res.string.leftovers_banner_dismiss),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                TextButton(onClick = onDismiss) {
-                    Text(stringResource(Res.string.leftovers_banner_dismiss))
-                }
-                Spacer(modifier = Modifier.weight(1f))
-                OutlinedButton(onClick = onReview) {
+                TextButton(onClick = onReview) {
                     Text(stringResource(Res.string.leftovers_banner_review))
                 }
-                TextButton(onClick = onCarryAll) {
+                FilledTonalButton(
+                    onClick = onCarryAll,
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.tertiary,
+                        contentColor = MaterialTheme.colorScheme.onTertiary
+                    )
+                ) {
                     Text(stringResource(Res.string.leftovers_banner_carry_all))
                 }
             }
@@ -335,107 +369,41 @@ private fun PlanAssistBanner(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(MaterialTheme.colorScheme.secondary, MaterialTheme.shapes.small),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Lightbulb,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = stringResource(Res.string.plan_assist_banner_title),
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = stringResource(Res.string.plan_assist_banner_subtitle),
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
                 )
             }
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(Res.string.plan_assist_banner_dismiss))
-            }
-            TextButton(onClick = onPlan) {
-                Text(stringResource(Res.string.plan_assist_banner_action))
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun LeftoversSheet(
-    items: List<DailyPlanItem>,
-    onDismiss: () -> Unit,
-    onCarry: (DailyPlanItem) -> Unit,
-    onCarryAll: () -> Unit
-) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        sheetGesturesEnabled = true
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.75f)
-                .padding(horizontal = 12.dp, vertical = 4.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(
-                    text = stringResource(Res.string.leftovers_sheet_title),
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold
+            IconButton(onClick = onDismiss) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = stringResource(Res.string.plan_assist_banner_dismiss),
+                    modifier = Modifier.size(18.dp)
                 )
-                if (items.isNotEmpty()) {
-                    TextButton(onClick = onCarryAll) {
-                        Text(stringResource(Res.string.leftovers_banner_carry_all))
-                    }
-                }
-            }
-            if (items.isEmpty()) {
-                Text(
-                    text = stringResource(Res.string.leftovers_sheet_empty),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                    contentPadding = PaddingValues(bottom = 20.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(items, key = { it.id }) { item ->
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                            shape = MaterialTheme.shapes.medium
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Text(
-                                    text = item.title.ifBlank { "Untitled" },
-                                    modifier = Modifier.weight(1f),
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                TextButton(onClick = { onCarry(item) }) {
-                                    Text(stringResource(Res.string.leftovers_item_carry))
-                                }
-                            }
-                        }
-                    }
-                }
             }
         }
     }
@@ -700,155 +668,6 @@ private fun MyDayTaskViewProjection.toTimelineItems(
     }
     return (tasks + noteItems + checkInItems)
         .sortedWith(compareBy<TimelineItem> { it.startTimeMinutes ?: -1 }.thenBy { it.sortOrder })
-}
-
-@Composable
-private fun SuggestionCard(
-    task: TaskItem,
-    list: Objective?,
-    onClick: () -> Unit,
-    onAdd: () -> Unit
-) {
-    Box(modifier = Modifier.fillMaxWidth()) {
-        TaskTimelineCard(
-            task = task,
-            timeLabel = task.timeRangeLabel().takeIf { it.isNotBlank() } ?: task.doDate?.localizedCompactDateWithDayName() ?: list?.name,
-            onClick = onClick,
-            modifier = Modifier.fillMaxWidth()
-        )
-        IconButton(
-            onClick = onAdd,
-            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 8.dp)
-        ) {
-            Icon(Icons.Default.Add, contentDescription = null)
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SuggestionsSheet(
-    tasks: List<TaskItem>,
-    leftovers: List<DailyPlanItem>,
-    onDismiss: () -> Unit,
-    onTaskClick: (TaskItem) -> Unit,
-    onAddTask: (TaskItem) -> Unit,
-    onCarryLeftover: (DailyPlanItem) -> Unit,
-    onCarryAllLeftovers: () -> Unit,
-    onCreateTask: () -> Unit
-) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        sheetGesturesEnabled = true
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.8f)
-                .padding(horizontal = 12.dp, vertical = 4.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(
-                    text = "Add to My Day",
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold
-                )
-                OutlinedButton(onClick = onCreateTask) {
-                    Text("New Task")
-                }
-            }
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                contentPadding = PaddingValues(bottom = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                if (leftovers.isNotEmpty()) {
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = stringResource(Res.string.leftovers_section_title),
-                                modifier = Modifier.weight(1f),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            TextButton(onClick = onCarryAllLeftovers) {
-                                Text(stringResource(Res.string.leftovers_banner_carry_all))
-                            }
-                        }
-                    }
-                    items(leftovers, key = { "leftover-${it.id}" }) { item ->
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.55f),
-                            shape = MaterialTheme.shapes.medium
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = item.title.ifBlank { "Untitled" },
-                                    modifier = Modifier.weight(1f),
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                TextButton(onClick = { onCarryLeftover(item) }) {
-                                    Text(stringResource(Res.string.leftovers_item_carry))
-                                }
-                            }
-                        }
-                    }
-                }
-                if (tasks.isEmpty() && leftovers.isEmpty()) {
-                    item { EmptyStateText("No suggested tasks") }
-                } else if (tasks.isNotEmpty()) {
-                    items(tasks, key = { it.id }) { task ->
-                        SuggestionCard(
-                            task = task,
-                            list = task.objective,
-                            onClick = { onTaskClick(task) },
-                            onAdd = { onAddTask(task) }
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SectionLabel(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelLarge,
-        fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(top = 4.dp)
-    )
-}
-
-@Composable
-private fun EmptyStateText(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(vertical = 8.dp)
-    )
 }
 
 private fun MyDayView.icon(): ImageVector = when (this) {
