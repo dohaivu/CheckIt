@@ -17,7 +17,16 @@ data class UserSettings(
     val checkInReminderEnabled: Boolean = true,
     val scheduleReminderEnabled: Boolean = true,
     val checkInReminderLastShownAtMillis: Long? = null,
-    val autoMyDayLastRunEpochDay: Int? = null
+    val autoMyDayLastRunEpochDay: Int? = null,
+    /** Epoch day of the last completed evening day review; suppresses re-prompts. */
+    val lastDayReviewEpochDay: Int? = null,
+    /** When true, unfinished yesterday items are auto-carried onto today once per day. */
+    val autoCarryOverLeftovers: Boolean = false,
+    val autoCarryOverLastRunEpochDay: Int? = null,
+    /** Suppresses the morning leftovers banner for this epoch day. */
+    val leftoversBannerDismissedEpochDay: Int? = null,
+    /** Suppresses the morning plan-assist banner for this epoch day. */
+    val lastDayPlanDismissedEpochDay: Int? = null
 )
 
 interface SettingsRepository {
@@ -37,4 +46,9 @@ interface SettingsRepository {
     suspend fun setScheduleReminderEnabled(enabled: Boolean)
     suspend fun setCheckInReminderLastShownAtMillis(millis: Long)
     suspend fun setAutoMyDayLastRunEpochDay(epochDay: Int)
+    suspend fun setLastDayReviewEpochDay(epochDay: Int)
+    suspend fun setAutoCarryOverLeftovers(enabled: Boolean)
+    suspend fun setAutoCarryOverLastRunEpochDay(epochDay: Int)
+    suspend fun setLeftoversBannerDismissedEpochDay(epochDay: Int)
+    suspend fun setLastDayPlanDismissedEpochDay(epochDay: Int)
 }

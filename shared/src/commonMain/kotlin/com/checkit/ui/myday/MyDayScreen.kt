@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,11 +14,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddTask
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.RateReview
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.ViewAgenda
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -30,7 +33,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -41,6 +46,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import checkit.shared.generated.resources.Res
+import checkit.shared.generated.resources.day_review_banner_action
+import checkit.shared.generated.resources.day_review_banner_subtitle
+import checkit.shared.generated.resources.day_review_banner_title
+import checkit.shared.generated.resources.day_review_open
+import checkit.shared.generated.resources.leftovers_banner_carry_all
+import checkit.shared.generated.resources.leftovers_banner_dismiss
+import checkit.shared.generated.resources.leftovers_banner_review
+import checkit.shared.generated.resources.leftovers_banner_subtitle
+import checkit.shared.generated.resources.leftovers_banner_title
+import checkit.shared.generated.resources.leftovers_item_carry
+import checkit.shared.generated.resources.leftovers_section_title
+import checkit.shared.generated.resources.leftovers_sheet_empty
+import checkit.shared.generated.resources.leftovers_sheet_title
+import checkit.shared.generated.resources.plan_assist_banner_action
+import checkit.shared.generated.resources.plan_assist_banner_dismiss
+import checkit.shared.generated.resources.plan_assist_banner_subtitle
+import checkit.shared.generated.resources.plan_assist_banner_title
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.NoteItem
@@ -65,6 +88,7 @@ import com.checkit.ui.tasks.timeRangeLabel
 import com.checkit.ui.tasks.toClockLabel
 import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
+import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,6 +117,12 @@ internal fun MyDayScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = viewModel::openDayReview) {
+                        Icon(
+                            Icons.Default.RateReview,
+                            contentDescription = stringResource(Res.string.day_review_open)
+                        )
+                    }
                     IconButton(onClick = viewModel::openSuggestions) {
                         Icon(Icons.Default.Lightbulb, contentDescription = "Add to My Day")
                     }
@@ -111,6 +141,23 @@ internal fun MyDayScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            if (state.showLeftoversBanner) {
+                LeftoversBanner(
+                    count = state.pendingYesterdayLeftovers.size,
+                    onCarryAll = viewModel::carryAllYesterdayLeftovers,
+                    onReview = viewModel::openLeftoversSheet,
+                    onDismiss = viewModel::dismissLeftoversBanner
+                )
+            }
+            if (state.showPlanAssistBanner) {
+                PlanAssistBanner(
+                    onPlan = viewModel::openPlanAssist,
+                    onDismiss = viewModel::dismissPlanAssist
+                )
+            }
+            if (state.showDayReviewBanner) {
+                DayReviewBanner(onClick = viewModel::openDayReview)
+            }
             MyDayViewSelector(
                 selectedView = state.selectedView,
                 onSelect = viewModel::selectView
@@ -154,16 +201,243 @@ internal fun MyDayScreen(
     if (state.showSuggestions) {
         SuggestionsSheet(
             tasks = state.suggestedTasks,
+            leftovers = state.pendingYesterdayLeftovers,
             onDismiss = viewModel::dismissSuggestions,
             onTaskClick = {
                 onTaskClick.invoke(it, null)
             },
             onAddTask = viewModel::addTaskFromSuggestion,
+            onCarryLeftover = viewModel::carryYesterdayLeftover,
+            onCarryAllLeftovers = viewModel::carryAllYesterdayLeftovers,
             onCreateTask = {
                 viewModel.dismissSuggestions()
                 onCreateTask(true)
             }
         )
+    }
+
+    if (state.showLeftoversSheet) {
+        LeftoversSheet(
+            items = state.pendingYesterdayLeftovers,
+            onDismiss = viewModel::dismissLeftoversSheet,
+            onCarry = viewModel::carryYesterdayLeftover,
+            onCarryAll = viewModel::carryAllYesterdayLeftovers
+        )
+    }
+
+    state.dayReview?.let { review ->
+        DayReviewSheet(
+            state = review,
+            onDismiss = viewModel::dismissDayReview,
+            onLeftoverAction = viewModel::setLeftoverAction,
+            onWinNoteChange = viewModel::updateWinNote,
+            onConfirm = viewModel::confirmDayReview
+        )
+    }
+}
+
+@Composable
+private fun DayReviewBanner(onClick: () -> Unit) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        color = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(Res.string.day_review_banner_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = stringResource(Res.string.day_review_banner_subtitle),
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            TextButton(onClick = onClick) {
+                Text(stringResource(Res.string.day_review_banner_action))
+            }
+        }
+    }
+}
+
+@Composable
+private fun LeftoversBanner(
+    count: Int,
+    onCarryAll: () -> Unit,
+    onReview: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.tertiaryContainer,
+        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = stringResource(Res.string.leftovers_banner_title, count),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = stringResource(Res.string.leftovers_banner_subtitle),
+                style = MaterialTheme.typography.bodySmall
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(Res.string.leftovers_banner_dismiss))
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                OutlinedButton(onClick = onReview) {
+                    Text(stringResource(Res.string.leftovers_banner_review))
+                }
+                TextButton(onClick = onCarryAll) {
+                    Text(stringResource(Res.string.leftovers_banner_carry_all))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlanAssistBanner(
+    onPlan: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onPlan),
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(Res.string.plan_assist_banner_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = stringResource(Res.string.plan_assist_banner_subtitle),
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(Res.string.plan_assist_banner_dismiss))
+            }
+            TextButton(onClick = onPlan) {
+                Text(stringResource(Res.string.plan_assist_banner_action))
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LeftoversSheet(
+    items: List<DailyPlanItem>,
+    onDismiss: () -> Unit,
+    onCarry: (DailyPlanItem) -> Unit,
+    onCarryAll: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        sheetGesturesEnabled = true
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.75f)
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = stringResource(Res.string.leftovers_sheet_title),
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+                if (items.isNotEmpty()) {
+                    TextButton(onClick = onCarryAll) {
+                        Text(stringResource(Res.string.leftovers_banner_carry_all))
+                    }
+                }
+            }
+            if (items.isEmpty()) {
+                Text(
+                    text = stringResource(Res.string.leftovers_sheet_empty),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    contentPadding = PaddingValues(bottom = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(items, key = { it.id }) { item ->
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            shape = MaterialTheme.shapes.medium
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = item.title.ifBlank { "Untitled" },
+                                    modifier = Modifier.weight(1f),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                TextButton(onClick = { onCarry(item) }) {
+                                    Text(stringResource(Res.string.leftovers_item_carry))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -455,14 +729,17 @@ private fun SuggestionCard(
 @Composable
 private fun SuggestionsSheet(
     tasks: List<TaskItem>,
+    leftovers: List<DailyPlanItem>,
     onDismiss: () -> Unit,
     onTaskClick: (TaskItem) -> Unit,
     onAddTask: (TaskItem) -> Unit,
+    onCarryLeftover: (DailyPlanItem) -> Unit,
+    onCarryAllLeftovers: () -> Unit,
     onCreateTask: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(
-        onDismissRequest = onDismiss, 
+        onDismissRequest = onDismiss,
         sheetState = sheetState,
         sheetGesturesEnabled = true
     ) {
@@ -488,14 +765,57 @@ private fun SuggestionsSheet(
                     Text("New Task")
                 }
             }
-            if (tasks.isEmpty()) {
-                EmptyStateText("No suggested tasks")
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp),
-                    contentPadding = PaddingValues(bottom = 20.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                contentPadding = PaddingValues(bottom = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                if (leftovers.isNotEmpty()) {
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = stringResource(Res.string.leftovers_section_title),
+                                modifier = Modifier.weight(1f),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            TextButton(onClick = onCarryAllLeftovers) {
+                                Text(stringResource(Res.string.leftovers_banner_carry_all))
+                            }
+                        }
+                    }
+                    items(leftovers, key = { "leftover-${it.id}" }) { item ->
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.55f),
+                            shape = MaterialTheme.shapes.medium
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = item.title.ifBlank { "Untitled" },
+                                    modifier = Modifier.weight(1f),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                TextButton(onClick = { onCarryLeftover(item) }) {
+                                    Text(stringResource(Res.string.leftovers_item_carry))
+                                }
+                            }
+                        }
+                    }
+                }
+                if (tasks.isEmpty() && leftovers.isEmpty()) {
+                    item { EmptyStateText("No suggested tasks") }
+                } else if (tasks.isNotEmpty()) {
                     items(tasks, key = { it.id }) { task ->
                         SuggestionCard(
                             task = task,

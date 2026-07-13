@@ -3,13 +3,26 @@ package com.checkit.ui.myday
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.checkit.data.DailyPlanItemWriteInput
+import com.checkit.data.SettingsRepository
+import com.checkit.data.UserSettings
+import com.checkit.domain.CarryOverTimePolicy
+import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
+import com.checkit.domain.DayReviewBannerPolicy
+import com.checkit.domain.DayReviewConfirmInput
+import com.checkit.domain.LeftoverAction
+import com.checkit.domain.LeftoversBannerPolicy
+import com.checkit.domain.PlanAssistBannerPolicy
 import com.checkit.domain.TaskItem
+import com.checkit.domain.YesterdayLeftovers
 import com.checkit.domain.hasEndTime
 import com.checkit.domain.usecase.AddDailyPlanItemUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
+import com.checkit.domain.usecase.BuildDayReviewSummaryUseCase
+import com.checkit.domain.usecase.CarryOverDailyPlanItemsUseCase
+import com.checkit.domain.usecase.CompleteDayReviewUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
@@ -33,6 +46,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
@@ -46,11 +61,16 @@ class MyDayViewModel(
     private val updateDailyPlanItemTime: UpdateDailyPlanItemTimeUseCase,
     private val updateDailyPlanItem: UpdateDailyPlanItemUseCase,
     private val syncKeyResultFromDailyPlan: SyncKeyResultFromDailyPlanUseCase,
-    private val deleteDailyPlanItemUseCase: DeleteDailyPlanItemUseCase
+    private val deleteDailyPlanItemUseCase: DeleteDailyPlanItemUseCase,
+    private val settingsRepository: SettingsRepository,
+    private val buildDayReviewSummary: BuildDayReviewSummaryUseCase,
+    private val completeDayReview: CompleteDayReviewUseCase,
+    private val carryOverDailyPlanItems: CarryOverDailyPlanItemsUseCase
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(MyDayUiState())
     val uiState: StateFlow<MyDayUiState> = _uiState.asStateFlow()
     private var pendingEditorTextSaveJob: Job? = null
+    private val autoCarryMutex = Mutex()
 
     private val _events = Channel<UiEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
@@ -58,8 +78,12 @@ class MyDayViewModel(
     init {
         viewModelScope.launch {
             ensureDefaultTaskData()
-            combine(observeTaskBoard(), observeDailyPlans()) { board, dailyPlans ->
-                board to dailyPlans
+            combine(
+                observeTaskBoard(),
+                observeDailyPlans(),
+                settingsRepository.settings
+            ) { board, dailyPlans, settings ->
+                Triple(board, dailyPlans, settings)
             }
                 .catch { error ->
                     _uiState.update {
@@ -67,9 +91,307 @@ class MyDayViewModel(
                     }
                     sendEvent(UiEvent.ShowSnackbar(error.message ?: "Unable to load My Day"))
                 }
-                .collect { (board, dailyPlans) ->
-                    _uiState.update { it.copy(board = board, dailyPlans = dailyPlans, isLoading = false) }
+                .collect { (board, dailyPlans, settings) ->
+                    val date = today()
+                    val todayEpoch = date.toEpochDays().toInt()
+                    val nowMinutes = currentMyDayTimeMinutes()
+                    val plan = dailyPlans.firstOrNull { it.date == date }
+                    val leftovers = YesterdayLeftovers.items(dailyPlans, date)
+                    val pendingLeftovers = YesterdayLeftovers.pendingForToday(leftovers, plan)
+                    val showReviewBanner = DayReviewBannerPolicy.shouldShow(
+                        hasPlanItems = plan?.items?.isNotEmpty() == true,
+                        reviewReminderEnabled = settings.reviewReminderEnabled,
+                        reviewReminderTimeMinutes = settings.reviewReminderTimeMinutes,
+                        lastDayReviewEpochDay = settings.lastDayReviewEpochDay,
+                        todayEpochDay = todayEpoch,
+                        nowMinutes = nowMinutes
+                    )
+                    val showLeftoversBanner = LeftoversBannerPolicy.shouldShow(
+                        pendingCount = pendingLeftovers.size,
+                        leftoversBannerDismissedEpochDay = settings.leftoversBannerDismissedEpochDay,
+                        todayEpochDay = todayEpoch
+                    )
+                    val showPlanAssist = PlanAssistBannerPolicy.shouldShow(
+                        todayPlanItemCount = plan?.items?.size ?: 0,
+                        planReminderEnabled = settings.planReminderEnabled,
+                        planReminderTimeMinutes = settings.planReminderTimeMinutes,
+                        reviewReminderTimeMinutes = settings.reviewReminderTimeMinutes,
+                        lastDayPlanDismissedEpochDay = settings.lastDayPlanDismissedEpochDay,
+                        todayEpochDay = todayEpoch,
+                        nowMinutes = nowMinutes
+                    )
+                    maybeAutoCarryOver(settings, pendingLeftovers, date)
+                    _uiState.update { state ->
+                        val review = state.dayReview?.let { existing ->
+                            val summary = buildDayReviewSummary(date, plan)
+                            val validIds = summary.plannedItems.map { it.id }.toSet()
+                            existing.copy(
+                                summary = summary,
+                                leftoverActions = existing.leftoverActions.filterKeys { it in validIds },
+                                winNoteItemId = existing.winNoteItemId ?: summary.winNoteItemId
+                            )
+                        }
+                        state.copy(
+                            board = board,
+                            dailyPlans = dailyPlans,
+                            dayReview = review,
+                            showDayReviewBanner = showReviewBanner && review == null,
+                            reviewReminderEnabled = settings.reviewReminderEnabled,
+                            reviewReminderTimeMinutes = settings.reviewReminderTimeMinutes,
+                            planReminderEnabled = settings.planReminderEnabled,
+                            planReminderTimeMinutes = settings.planReminderTimeMinutes,
+                            lastDayReviewEpochDay = settings.lastDayReviewEpochDay,
+                            lastDayPlanDismissedEpochDay = settings.lastDayPlanDismissedEpochDay,
+                            leftoversBannerDismissedEpochDay = settings.leftoversBannerDismissedEpochDay,
+                            autoCarryOverLeftovers = settings.autoCarryOverLeftovers,
+                            yesterdayLeftovers = leftovers,
+                            pendingYesterdayLeftovers = pendingLeftovers,
+                            showLeftoversBanner = showLeftoversBanner &&
+                                review == null &&
+                                !state.showLeftoversSheet,
+                            showPlanAssistBanner = showPlanAssist &&
+                                review == null &&
+                                !state.showSuggestions,
+                            isLoading = false
+                        )
+                    }
                 }
+        }
+    }
+
+    private fun maybeAutoCarryOver(
+        settings: UserSettings,
+        pendingLeftovers: List<DailyPlanItem>,
+        today: LocalDate
+    ) {
+        if (!settings.autoCarryOverLeftovers) return
+        if (pendingLeftovers.isEmpty()) return
+        val todayEpoch = today.toEpochDays().toInt()
+        if (settings.autoCarryOverLastRunEpochDay == todayEpoch) return
+        viewModelScope.launch {
+            autoCarryMutex.withLock {
+                runCatching {
+                    val result = carryOverDailyPlanItems.carryAll(
+                        items = pendingLeftovers,
+                        toDate = today,
+                        timePolicy = CarryOverTimePolicy.ClearTimes
+                    )
+                    settingsRepository.setAutoCarryOverLastRunEpochDay(todayEpoch)
+                    settingsRepository.setLeftoversBannerDismissedEpochDay(todayEpoch)
+                    if (result.carriedCount > 0) {
+                        sendEvent(UiEvent.ShowSnackbar("${result.carriedCount} carried from yesterday"))
+                    }
+                }
+            }
+        }
+    }
+
+    fun openDayReview() {
+        val state = _uiState.value
+        val date = state.today
+        val summary = buildDayReviewSummary(date, state.plan)
+        val defaults = summary.plannedItems.associate { it.id to LeftoverAction.CarryOver }
+        _uiState.update {
+            it.copy(
+                dayReview = DayReviewUiState(
+                    summary = summary,
+                    leftoverActions = defaults,
+                    winNote = summary.winNote,
+                    winNoteItemId = summary.winNoteItemId
+                ),
+                showDayReviewBanner = false,
+                showLeftoversSheet = false,
+                showSuggestions = false,
+                itemEditor = null
+            )
+        }
+    }
+
+    fun dismissDayReview() {
+        _uiState.update { it.copy(dayReview = null) }
+    }
+
+    fun openLeftoversSheet() {
+        _uiState.update {
+            it.copy(
+                showLeftoversSheet = true,
+                showLeftoversBanner = false,
+                showSuggestions = false,
+                itemEditor = null
+            )
+        }
+    }
+
+    fun dismissLeftoversSheet() {
+        _uiState.update { it.copy(showLeftoversSheet = false) }
+    }
+
+    fun dismissLeftoversBanner() {
+        val todayEpoch = today().toEpochDays().toInt()
+        viewModelScope.launch {
+            settingsRepository.setLeftoversBannerDismissedEpochDay(todayEpoch)
+        }
+        _uiState.update {
+            it.copy(
+                showLeftoversBanner = false,
+                leftoversBannerDismissedEpochDay = todayEpoch
+            )
+        }
+    }
+
+    fun carryAllYesterdayLeftovers() {
+        val state = _uiState.value
+        val items = state.pendingYesterdayLeftovers
+        if (items.isEmpty()) return
+        viewModelScope.launch {
+            runCatching {
+                carryOverDailyPlanItems.carryAll(
+                    items = items,
+                    toDate = state.today,
+                    timePolicy = CarryOverTimePolicy.ClearTimes
+                )
+            }.onSuccess { result ->
+                val todayEpoch = state.today.toEpochDays().toInt()
+                settingsRepository.setLeftoversBannerDismissedEpochDay(todayEpoch)
+                settingsRepository.setAutoCarryOverLastRunEpochDay(todayEpoch)
+                _uiState.update {
+                    it.copy(
+                        showLeftoversBanner = false,
+                        showLeftoversSheet = false
+                    )
+                }
+                sendEvent(
+                    UiEvent.ShowSnackbar(
+                        when {
+                            result.carriedCount > 0 && result.skippedCount > 0 ->
+                                "${result.carriedCount} carried · ${result.skippedCount} already on today"
+                            result.carriedCount > 0 ->
+                                "${result.carriedCount} carried from yesterday"
+                            else -> "Nothing new to carry"
+                        }
+                    )
+                )
+            }.onFailure { error ->
+                sendEvent(UiEvent.ShowSnackbar(error.message ?: "Unable to carry leftovers"))
+            }
+        }
+    }
+
+    fun carryYesterdayLeftover(item: DailyPlanItem) {
+        viewModelScope.launch {
+            runCatching {
+                carryOverDailyPlanItems(
+                    items = listOf(item),
+                    itemIds = listOf(item.id),
+                    toDate = today(),
+                    timePolicy = CarryOverTimePolicy.ClearTimes
+                )
+            }.onSuccess { result ->
+                sendEvent(
+                    UiEvent.ShowSnackbar(
+                        if (result.carriedCount > 0) "Carried to today" else "Already on today"
+                    )
+                )
+            }.onFailure { error ->
+                sendEvent(UiEvent.ShowSnackbar(error.message ?: "Unable to carry item"))
+            }
+        }
+    }
+
+    fun openPlanAssist() {
+        _uiState.update {
+            it.copy(
+                showPlanAssistBanner = false,
+                showSuggestions = true,
+                showLeftoversSheet = false,
+                suggestionStartTimeMinutes = null,
+                suggestionEndTimeMinutes = null,
+                itemEditor = null,
+                dayReview = null
+            )
+        }
+    }
+
+    fun dismissPlanAssist() {
+        val todayEpoch = today().toEpochDays().toInt()
+        viewModelScope.launch {
+            settingsRepository.setLastDayPlanDismissedEpochDay(todayEpoch)
+        }
+        _uiState.update {
+            it.copy(
+                showPlanAssistBanner = false,
+                lastDayPlanDismissedEpochDay = todayEpoch
+            )
+        }
+    }
+
+    /** PR3: open check-in with a free time slot around now (notification deep link). */
+    fun openCheckInAtFreeSlot() {
+        val state = _uiState.value
+        val duration = DefaultTaskDurationMinutes
+        val preferredStart = currentMyDayTimeMinutes()
+        val (start, end) = state.nextAvailableTimeRange(preferredStart, duration)
+        openCheckIn(startTimeMinutes = start, endTimeMinutes = end)
+    }
+
+    fun setLeftoverAction(itemId: Long, action: LeftoverAction) {
+        _uiState.update { state ->
+            val review = state.dayReview ?: return@update state
+            state.copy(
+                dayReview = review.copy(
+                    leftoverActions = review.leftoverActions + (itemId to action)
+                )
+            )
+        }
+    }
+
+    fun updateWinNote(note: String) {
+        _uiState.update { state ->
+            val review = state.dayReview ?: return@update state
+            state.copy(dayReview = review.copy(winNote = note))
+        }
+    }
+
+    fun confirmDayReview(openReportAfter: Boolean = false) {
+        val state = _uiState.value
+        val review = state.dayReview ?: return
+        if (review.isSubmitting) return
+        _uiState.update { it.copy(dayReview = review.copy(isSubmitting = true)) }
+        viewModelScope.launch {
+            runCatching {
+                completeDayReview(
+                    plan = state.plan,
+                    input = DayReviewConfirmInput(
+                        date = review.summary.date,
+                        leftoverActions = review.leftoverActions,
+                        winNote = review.winNote,
+                        winNoteItemId = review.winNoteItemId
+                    )
+                )
+            }.onSuccess { result ->
+                _uiState.update { it.copy(dayReview = null, showDayReviewBanner = false) }
+                val parts = buildList {
+                    if (result.carriedCount > 0) add("${result.carriedCount} carried to tomorrow")
+                    if (result.markedDoneCount > 0) add("${result.markedDoneCount} marked done")
+                    if (result.droppedCount > 0) add("${result.droppedCount} left unfinished")
+                    if (result.winNoteSaved) add("win saved")
+                }
+                sendEvent(
+                    UiEvent.ShowSnackbar(
+                        if (parts.isEmpty()) "Day reviewed" else parts.joinToString(" · ")
+                    )
+                )
+                if (openReportAfter) {
+                    sendEvent(UiEvent.OpenReport)
+                }
+            }.onFailure { error ->
+                _uiState.update { current ->
+                    current.copy(
+                        dayReview = current.dayReview?.copy(isSubmitting = false)
+                    )
+                }
+                sendEvent(UiEvent.ShowSnackbar(error.message ?: "Unable to finish review"))
+            }
         }
     }
 
@@ -196,6 +518,7 @@ class MyDayViewModel(
         _uiState.update {
             it.copy(
                 showSuggestions = true,
+                showPlanAssistBanner = false,
                 suggestionStartTimeMinutes = startTimeMinutes,
                 suggestionEndTimeMinutes = endTimeMinutes
             )

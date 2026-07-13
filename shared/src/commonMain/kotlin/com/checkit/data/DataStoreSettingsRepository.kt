@@ -67,4 +67,24 @@ class DataStoreSettingsRepository(
     override suspend fun setAutoMyDayLastRunEpochDay(epochDay: Int) {
         dataStore.setAutoMyDayLastRunEpochDay(epochDay)
     }
+
+    override suspend fun setLastDayReviewEpochDay(epochDay: Int) {
+        dataStore.setLastDayReviewEpochDay(epochDay)
+    }
+
+    override suspend fun setAutoCarryOverLeftovers(enabled: Boolean) {
+        dataStore.setAutoCarryOverLeftovers(enabled)
+    }
+
+    override suspend fun setAutoCarryOverLastRunEpochDay(epochDay: Int) {
+        dataStore.setAutoCarryOverLastRunEpochDay(epochDay)
+    }
+
+    override suspend fun setLeftoversBannerDismissedEpochDay(epochDay: Int) {
+        dataStore.setLeftoversBannerDismissedEpochDay(epochDay)
+    }
+
+    override suspend fun setLastDayPlanDismissedEpochDay(epochDay: Int) {
+        dataStore.setLastDayPlanDismissedEpochDay(epochDay)
+    }
 }

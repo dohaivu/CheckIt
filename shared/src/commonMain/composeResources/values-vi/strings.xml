@@ -77,4 +77,38 @@
     <string name="color_scheme_sunset">Hoàng hôn</string>
     <string name="color_scheme_sky_blue">Xanh da trời</string>
     <string name="color_scheme_system_default">Mặc định hệ thống</string>
+
+    <string name="day_review_open">Tổng kết ngày</string>
+    <string name="day_review_title">Tổng kết ngày của bạn</string>
+    <string name="day_review_banner_title">Đến lúc tổng kết</string>
+    <string name="day_review_banner_subtitle">Khép lại hôm nay và chuyển việc còn lại sang ngày mai.</string>
+    <string name="day_review_banner_action">Tổng kết</string>
+    <string name="day_review_done_count">%1$d xong</string>
+    <string name="day_review_planned_count">%1$d còn lại</string>
+    <string name="day_review_done_minutes">%1$d phút đã làm</string>
+    <string name="day_review_leftovers_title">Việc chưa xong</string>
+    <string name="day_review_leftovers_empty">Không còn việc kế hoạch — tuyệt vời.</string>
+    <string name="day_review_action_done">Xong</string>
+    <string name="day_review_action_carry">Ngày mai</string>
+    <string name="day_review_action_drop">Để lại</string>
+    <string name="day_review_win_note_label">Chiến thắng trong ngày (tuỳ chọn)</string>
+    <string name="day_review_win_note_placeholder">Hôm nay điều gì suôn sẻ?</string>
+    <string name="day_review_finish">Hoàn tất</string>
+    <string name="day_review_finish_and_report">Hoàn tất &amp; báo cáo</string>
+
+    <string name="leftovers_banner_title">%1$d việc chưa xong từ hôm qua</string>
+    <string name="leftovers_banner_subtitle">Chuyển sang hôm nay, hoặc xem từng mục.</string>
+    <string name="leftovers_banner_carry_all">Chuyển hết</string>
+    <string name="leftovers_banner_review">Xem lại</string>
+    <string name="leftovers_banner_dismiss">Để sau</string>
+    <string name="leftovers_sheet_title">Việc còn lại hôm qua</string>
+    <string name="leftovers_sheet_empty">Không còn việc cần chuyển.</string>
+    <string name="leftovers_item_carry">Chuyển</string>
+    <string name="leftovers_section_title">Từ hôm qua</string>
+    <string name="plan_assist_banner_title">Lên kế hoạch ngày</string>
+    <string name="plan_assist_banner_subtitle">Thêm việc quan trọng trước khi ngày bận rộn.</string>
+    <string name="plan_assist_banner_action">Lên kế hoạch</string>
+    <string name="plan_assist_banner_dismiss">Để sau</string>
+    <string name="settings_auto_carry_title">Tự chuyển việc còn lại</string>
+    <string name="settings_auto_carry_subtitle">Tự động đưa việc chưa xong hôm qua sang hôm nay</string>
 </resources>

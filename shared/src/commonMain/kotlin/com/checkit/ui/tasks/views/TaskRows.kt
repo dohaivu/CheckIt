@@ -107,7 +107,7 @@ private fun BaseTaskRow(
     Card(
         onClick = onClick,
         shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         elevation = CardDefaults.cardElevation(
             defaultElevation = elevation,
             pressedElevation = 8.dp,
@@ -117,7 +117,7 @@ private fun BaseTaskRow(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(color.copy(alpha = DefaultTaskCardAlpha))
+//                .background(color.copy(alpha = DefaultTaskCardAlpha))
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),

@@ -73,6 +73,15 @@ interface CheckItRepository {
     suspend fun updateDailyPlanItem(itemId: Long, input: DailyPlanItemWriteInput)
     suspend fun deleteDailyPlanItem(itemId: Long)
     suspend fun getDailyPlanItem(itemId: Long): DailyPlanItem?
+    /**
+     * Copies a plan item onto [targetDate] as Planned.
+     * @return new item id, or null if skipped (same taskId already on that date).
+     */
+    suspend fun copyDailyPlanItemToDate(
+        source: DailyPlanItem,
+        targetDate: LocalDate,
+        clearTimes: Boolean
+    ): Long?
     suspend fun countDoneDailyPlanItemsForTaskOnDate(taskId: Long, dateEpochDays: Int, excludeItemId: Long): Int
     suspend fun adjustKeyResultValue(keyResultId: Long, delta: Double)
     suspend fun getKeyResultForTask(taskId: Long): KeyResult?
@@ -608,6 +617,44 @@ class RoomCheckItRepository(
         val tagIds = dao.tagIdsForItem(itemId)
         val tags = if (tagIds.isNotEmpty()) dao.tagsByIds(tagIds).map { it.toDomain() } else emptyList()
         return item.toDomain(tags)
+    }
+
+    override suspend fun copyDailyPlanItemToDate(
+        source: DailyPlanItem,
+        targetDate: LocalDate,
+        clearTimes: Boolean
+    ): Long? {
+        val targetEpochDays = targetDate.toEpochDays().toInt()
+        val taskId = source.taskId
+        if (taskId != null) {
+            val alreadyPresent = dao.dailyPlanItemsForDate(targetEpochDays).any { it.taskId == taskId }
+            if (alreadyPresent) return null
+        }
+        val now = Clock.System.now().toEpochMilliseconds()
+        val startTime = if (clearTimes) null else source.startTimeMinutes
+        val endTime = when {
+            clearTimes -> null
+            source.source.hasEndTime() -> source.endTimeMinutes
+            else -> null
+        }
+        val itemId = dao.insertDailyPlanItem(
+            DailyPlanItemEntity(
+                dateEpochDays = targetEpochDays,
+                taskId = taskId,
+                title = source.title.ifBlank { "Untitled" },
+                note = source.note,
+                source = source.source.name,
+                status = DailyPlanItemStatus.Planned.name,
+                sortOrder = dao.nextDailyPlanItemSortOrder(targetEpochDays),
+                startTimeMinutes = startTime,
+                endTimeMinutes = endTime,
+                addedAtMillis = now,
+                completedAtMillis = null
+            )
+        )
+        source.tags.forEach { tag -> dao.insertDailyPlanItemTagIfParentsExist(itemId, tag.id) }
+        dailyPlanScheduleReminderScheduler.rescheduleNext()
+        return itemId
     }
 
     override suspend fun countDoneDailyPlanItemsForTaskOnDate(

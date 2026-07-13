@@ -6,6 +6,60 @@ The app is designed around blending the calendar aspect with the completion aspe
 
 ## Features
 
+### My Day
+- Plan a single day with a daily plan of timed items
+- Item sources: existing tasks, My Day tasks, notes, and reminders
+- Planned / Done status with optional start and end times (time tracking)
+- Views: Timeline, Agenda, and Board
+- Suggest open tasks and auto-add tasks due today onto My Day
+- Evening day review: summary, leftover actions (done / carry to tomorrow / leave), optional win note
+- Morning leftovers: carry unfinished yesterday items into today (manual or auto-carry setting)
+- Plan assist banner when My Day is empty after plan reminder time
+- Markdown-style summary of completed work for the day
+
+### Tasks
+- Tasks with description, subtasks, priority, do date, and optional time range
+- Per-task reminders
+- Recurrence support via RRULE (data model and editor; next-instance generation on complete is still limited)
+- Notes alongside tasks in the same workspace
+- Tags with color, plus inline `#tag` parsing and suggestions
+- Lists (objectives) with icon and color
+- Soft trash and restore for tasks and notes
+- Search, sort (custom / priority / title / date), and list density (Brief / Standard / Detail)
+- Workspace views: List, Agenda, Timeline, and Goal
+- Built-in filters: All, Today, Upcoming, Overdue, No date, Completed
+
+### Goals and OKRs
+- Goals → Objectives (lists) → Key Results hierarchy
+- Key result units: percentage, number, currency, hours, days, points, binary
+- Progress from current vs target value
+- Sync key-result progress from completed daily-plan work where applicable
+
+### Calendar
+- Month calendar with activity markers
+- Past days reflect daily-plan activity; future days show scheduled tasks and notes
+- Filter calendar markers by tags
+- Daily plan summary for a selected date
+
+### Reports
+- Digest report: totals, done vs planned, trends, and highlights
+- Time report: minutes worked across periods
+- Tags report: time spent by tag
+- Period selection (daily and longer ranges)
+
+### Notifications and reminders
+- Plan-the-day, evening review, check-in, and next-scheduled-item reminders
+- Configurable enablement and times in Settings
+- Quiet hours (approx. 22:00–06:00) for notification policy
+- Android workers for app, task, and schedule reminders
+
+### Settings and platform
+- Language: English, Vietnamese, Chinese
+- Theme: System, Light, Dark
+- Color schemes: Sunset, Sky Blue, System default
+- Local persistence (Room) and preferences (DataStore)
+- Android home-screen widgets (daily plan agenda, check-in) with deep links into the app
+- Shared Compose UI for Android and iOS via Kotlin Multiplatform
 
 ## Project Structure
 

@@ -4,9 +4,12 @@ import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
+import com.checkit.domain.DayReviewSummary
+import com.checkit.domain.LeftoverAction
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
+import com.checkit.domain.YesterdayLeftovers
 import com.checkit.ui.tasks.EditorMode
 import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
@@ -16,6 +19,21 @@ data class MyDayUiState(
     val dailyPlans: List<DailyPlan> = emptyList(),
     val selectedView: MyDayView = MyDayView.Timeline,
     val itemEditor: DailyPlanItemEditorState? = null,
+    val dayReview: DayReviewUiState? = null,
+    val showDayReviewBanner: Boolean = false,
+    val reviewReminderEnabled: Boolean = true,
+    val reviewReminderTimeMinutes: Int = 21 * 60,
+    val planReminderEnabled: Boolean = true,
+    val planReminderTimeMinutes: Int = 7 * 60,
+    val lastDayReviewEpochDay: Int? = null,
+    val lastDayPlanDismissedEpochDay: Int? = null,
+    val leftoversBannerDismissedEpochDay: Int? = null,
+    val autoCarryOverLeftovers: Boolean = false,
+    val yesterdayLeftovers: List<DailyPlanItem> = emptyList(),
+    val pendingYesterdayLeftovers: List<DailyPlanItem> = emptyList(),
+    val showLeftoversBanner: Boolean = false,
+    val showLeftoversSheet: Boolean = false,
+    val showPlanAssistBanner: Boolean = false,
     val showSuggestions: Boolean = false,
     val suggestionStartTimeMinutes: Int? = null,
     val suggestionEndTimeMinutes: Int? = null,
@@ -31,7 +49,28 @@ data class MyDayUiState(
             !task.isTrashed &&
                 task.status != TaskStatus.Completed
         }
-        .sortedWith(compareBy<TaskItem> { it.doDate ?: LocalDate.fromEpochDays(Int.MAX_VALUE) }.thenBy { it.sortOrder })
+        .sortedWith(
+            compareBy<TaskItem> { task ->
+                // Prefer tasks that appear as yesterday leftovers (linked).
+                val leftoverTaskIds = pendingYesterdayLeftovers.mapNotNull { it.taskId }.toSet()
+                if (task.id in leftoverTaskIds) 0 else 1
+            }
+                .thenBy { it.doDate ?: LocalDate.fromEpochDays(Int.MAX_VALUE) }
+                .thenBy { it.sortOrder }
+        )
+
+    val yesterdayDate: LocalDate get() = YesterdayLeftovers.sourceDate(today)
+}
+
+data class DayReviewUiState(
+    val summary: DayReviewSummary,
+    val leftoverActions: Map<Long, LeftoverAction> = emptyMap(),
+    val winNote: String = "",
+    val winNoteItemId: Long? = null,
+    val isSubmitting: Boolean = false
+) {
+    fun actionFor(itemId: Long): LeftoverAction =
+        leftoverActions[itemId] ?: LeftoverAction.CarryOver
 }
 
 enum class MyDayView {

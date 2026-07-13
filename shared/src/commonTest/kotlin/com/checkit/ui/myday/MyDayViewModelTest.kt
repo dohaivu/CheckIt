@@ -1,10 +1,15 @@
 package com.checkit.ui.myday
 
+import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DailyPlanItemSource
+import com.checkit.domain.DayReviewWinNote
 import com.checkit.domain.usecase.AddDailyPlanItemUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
+import com.checkit.domain.usecase.BuildDayReviewSummaryUseCase
+import com.checkit.domain.usecase.CarryOverDailyPlanItemsUseCase
+import com.checkit.domain.usecase.CompleteDayReviewUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
@@ -13,6 +18,8 @@ import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemUseCase
 import com.checkit.ui.tasks.FakeCheckItRepository
+import com.checkit.ui.tasks.FakeSettingsRepository
+import com.checkit.ui.today
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -24,17 +31,21 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MyDayViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private lateinit var repository: FakeCheckItRepository
+    private lateinit var settingsRepository: FakeSettingsRepository
     private lateinit var viewModel: MyDayViewModel
 
     @BeforeTest
     fun setUp() {
         Dispatchers.setMain(dispatcher)
         repository = FakeCheckItRepository()
+        settingsRepository = FakeSettingsRepository()
+        val buildSummary = BuildDayReviewSummaryUseCase()
         viewModel = MyDayViewModel(
             observeTaskBoard = ObserveTaskBoardUseCase(repository),
             observeDailyPlans = ObserveDailyPlansUseCase(repository),
@@ -44,7 +55,16 @@ class MyDayViewModelTest {
             updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository),
             updateDailyPlanItem = UpdateDailyPlanItemUseCase(repository),
             syncKeyResultFromDailyPlan = SyncKeyResultFromDailyPlanUseCase(repository),
-            deleteDailyPlanItemUseCase = DeleteDailyPlanItemUseCase(repository)
+            deleteDailyPlanItemUseCase = DeleteDailyPlanItemUseCase(repository),
+            settingsRepository = settingsRepository,
+            buildDayReviewSummary = buildSummary,
+            completeDayReview = CompleteDayReviewUseCase(
+                repository = repository,
+                settingsRepository = settingsRepository,
+                carryOverDailyPlanItems = CarryOverDailyPlanItemsUseCase(repository),
+                buildSummary = buildSummary
+            ),
+            carryOverDailyPlanItems = CarryOverDailyPlanItemsUseCase(repository)
         )
         dispatcher.scheduler.advanceUntilIdle()
     }
@@ -52,6 +72,39 @@ class MyDayViewModelTest {
     @AfterTest
     fun tearDown() {
         Dispatchers.resetMain()
+    }
+
+    @Test
+    fun openDayReviewPrefillsExistingWinNote() = runTest(dispatcher) {
+        val today = today()
+        repository.setDailyPlans(
+            listOf(
+                DailyPlan(
+                    date = today,
+                    items = listOf(
+                        DailyPlanItem(
+                            id = 50L,
+                            dateEpochDays = today.toEpochDays().toInt(),
+                            title = DayReviewWinNote.Title,
+                            note = "Shipped the review loop",
+                            source = DailyPlanItemSource.MyDayNote,
+                            status = DailyPlanItemStatus.Done,
+                            sortOrder = 0,
+                            addedAtMillis = 1L
+                        )
+                    )
+                )
+            )
+        )
+        dispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.openDayReview()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val review = viewModel.uiState.value.dayReview
+        assertNotNull(review)
+        assertEquals(50L, review.winNoteItemId)
+        assertEquals("Shipped the review loop", review.winNote)
     }
 
     @Test

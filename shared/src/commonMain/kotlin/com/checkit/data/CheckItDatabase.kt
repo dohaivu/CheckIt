@@ -1,14 +1,14 @@
 package com.checkit.data
 
-import androidx.room.ConstructedBy
-import androidx.room.Database
-import androidx.room.Entity
-import androidx.room.ForeignKey
-import androidx.room.Index
-import androidx.room.PrimaryKey
-import androidx.room.RoomDatabase
-import androidx.room.RoomDatabaseConstructor
-import androidx.room.migration.Migration
+import androidx.room3.ConstructedBy
+import androidx.room3.Database
+import androidx.room3.Entity
+import androidx.room3.ForeignKey
+import androidx.room3.Index
+import androidx.room3.PrimaryKey
+import androidx.room3.RoomDatabase
+import androidx.room3.RoomDatabaseConstructor
+import androidx.room3.migration.Migration
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.sqlite.execSQL

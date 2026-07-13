@@ -1,6 +1,6 @@
 package com.checkit.infrastructure
 
-import androidx.room.RoomDatabase
+import androidx.room3.RoomDatabase
 import com.checkit.data.AppDataStore
 import com.checkit.data.CheckItRepository
 import com.checkit.data.RoomCheckItRepository
@@ -22,6 +22,9 @@ import com.checkit.domain.usecase.AddObjectiveUseCase
 import com.checkit.domain.usecase.AddTagUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
 import com.checkit.domain.usecase.AutoAddTodayTasksToMyDayUseCase
+import com.checkit.domain.usecase.BuildDayReviewSummaryUseCase
+import com.checkit.domain.usecase.CarryOverDailyPlanItemsUseCase
+import com.checkit.domain.usecase.CompleteDayReviewUseCase
 import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
 import com.checkit.domain.usecase.CompleteNoteUseCase
@@ -113,6 +116,9 @@ val provideInteractorModule = module {
     single { SyncKeyResultFromDailyPlanUseCase(get()) }
     single { UpdateDailyPlanItemUseCase(get()) }
     single { DeleteDailyPlanItemUseCase(get()) }
+    single { BuildDayReviewSummaryUseCase() }
+    single { CarryOverDailyPlanItemsUseCase(get()) }
+    single { CompleteDayReviewUseCase(get(), get(), get(), get()) }
     single { AddNoteUseCase(get()) }
     single { UpdateNoteUseCase(get()) }
     single { DeleteNoteUseCase(get()) }
@@ -165,7 +171,19 @@ val provideViewModelModule = module {
     viewModel { CalendarViewModel(get(), get(), get()) }
     viewModel {
         MyDayViewModel(
-            get(), get(), get(), get(), get(), get(), get(), get(), get()
+            observeTaskBoard = get(),
+            observeDailyPlans = get(),
+            ensureDefaultTaskData = get(),
+            addTaskToDailyPlan = get(),
+            addDailyPlanItem = get(),
+            updateDailyPlanItemTime = get(),
+            updateDailyPlanItem = get(),
+            syncKeyResultFromDailyPlan = get(),
+            deleteDailyPlanItemUseCase = get(),
+            settingsRepository = get(),
+            buildDayReviewSummary = get(),
+            completeDayReview = get(),
+            carryOverDailyPlanItems = get()
         )
     }
     viewModel { ReportViewModel(get()) }
