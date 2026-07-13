@@ -70,6 +70,7 @@ interface CheckItRepository {
     ): Long
     suspend fun updateDailyPlanItemTime(itemId: Long, startTimeMinutes: Int?, endTimeMinutes: Int?)
     suspend fun updateDailyPlanItemStatus(itemId: Long, status: DailyPlanItemStatus)
+    suspend fun updateDailyPlanItemsStatus(itemIds: List<Long>, status: DailyPlanItemStatus)
     suspend fun updateDailyPlanItem(itemId: Long, input: DailyPlanItemWriteInput)
     suspend fun deleteDailyPlanItem(itemId: Long)
     suspend fun getDailyPlanItem(itemId: Long): DailyPlanItem?
@@ -577,6 +578,23 @@ class RoomCheckItRepository(
     override suspend fun updateDailyPlanItemStatus(itemId: Long, status: DailyPlanItemStatus) {
         dao.updateDailyPlanItemStatus(
             itemId = itemId,
+            status = status.name,
+            completedAtMillis = if (status == DailyPlanItemStatus.Done) {
+                Clock.System.now().toEpochMilliseconds()
+            } else {
+                null
+            }
+        )
+        dailyPlanScheduleReminderScheduler.rescheduleNext()
+    }
+
+    override suspend fun updateDailyPlanItemsStatus(
+        itemIds: List<Long>,
+        status: DailyPlanItemStatus
+    ) {
+        if (itemIds.isEmpty()) return
+        dao.updateDailyPlanItemsStatus(
+            itemIds = itemIds,
             status = status.name,
             completedAtMillis = if (status == DailyPlanItemStatus.Done) {
                 Clock.System.now().toEpochMilliseconds()

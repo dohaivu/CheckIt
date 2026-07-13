@@ -352,6 +352,20 @@ internal class FakeCheckItRepository(
             }
         }
     }
+    override suspend fun updateDailyPlanItemsStatus(itemIds: List<Long>, status: DailyPlanItemStatus) {
+        itemIds.forEach { itemId ->
+            statusUpdates.add(itemId to status)
+        }
+        dailyPlansFlow.update { plans ->
+            plans.map { plan ->
+                plan.copy(
+                    items = plan.items.map { item ->
+                        if (item.id in itemIds) item.copy(status = status) else item
+                    }
+                )
+            }
+        }
+    }
     override suspend fun updateDailyPlanItem(itemId: Long, input: DailyPlanItemWriteInput) {
         updatedDailyPlanItems.add(itemId to input)
         dailyPlansFlow.update { plans ->

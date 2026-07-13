@@ -24,6 +24,7 @@ import com.checkit.domain.usecase.AddTaskUseCase
 import com.checkit.domain.usecase.AutoAddTodayTasksToMyDayUseCase
 import com.checkit.domain.usecase.BuildDayReviewSummaryUseCase
 import com.checkit.domain.usecase.CarryOverDailyPlanItemsUseCase
+import com.checkit.domain.usecase.UpsertDayReviewWinNoteUseCase
 import com.checkit.domain.usecase.CompleteDayReviewUseCase
 import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
@@ -50,6 +51,8 @@ import com.checkit.domain.usecase.UpdateGoalUseCase
 import com.checkit.domain.usecase.UpdateObjectiveUseCase
 import com.checkit.domain.usecase.UpdateTagUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import com.checkit.ui.calendar.CalendarViewModel
 import com.checkit.ui.myday.MyDayViewModel
 import com.checkit.ui.okr.GoalViewModel
@@ -77,12 +80,17 @@ fun initKoin(config: KoinAppDeclaration? = null) =
         config?.invoke(this)
         modules(
             platformModule(),
+            provideCommonModule,
             provideDatabaseModule,
             provideInteractorModule,
             provideLocalServiceModule,
             provideViewModelModule
         )
     }
+
+val provideCommonModule = module {
+    single<CoroutineDispatcher> { Dispatchers.Default }
+}
 
 val provideInteractorModule = module {
     single { HttpClient() }
@@ -116,9 +124,10 @@ val provideInteractorModule = module {
     single { SyncKeyResultFromDailyPlanUseCase(get()) }
     single { UpdateDailyPlanItemUseCase(get()) }
     single { DeleteDailyPlanItemUseCase(get()) }
-    single { BuildDayReviewSummaryUseCase() }
-    single { CarryOverDailyPlanItemsUseCase(get()) }
-    single { CompleteDayReviewUseCase(get(), get(), get(), get()) }
+    single { BuildDayReviewSummaryUseCase(get()) }
+    single { CarryOverDailyPlanItemsUseCase(get(), get()) }
+    single { UpsertDayReviewWinNoteUseCase(get(), get()) }
+    single { CompleteDayReviewUseCase(get(), get(), get(), get(), get(), get()) }
     single { AddNoteUseCase(get()) }
     single { UpdateNoteUseCase(get()) }
     single { DeleteNoteUseCase(get()) }

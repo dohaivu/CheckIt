@@ -16,13 +16,18 @@ import com.checkit.domain.DayReviewTagMinutes
 import com.checkit.domain.DayReviewWinNote
 import com.checkit.domain.LeftoverAction
 import com.checkit.domain.planWorkMinutes
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.plus
 
-/** Pure builder for evening review summary (no IO). */
-class BuildDayReviewSummaryUseCase {
-    operator fun invoke(date: LocalDate, plan: DailyPlan?): DayReviewSummary {
+/** Pure builder for evening review summary. */
+class BuildDayReviewSummaryUseCase(
+    private val dispatcher: CoroutineDispatcher = Dispatchers.Default
+) {
+    suspend operator fun invoke(date: LocalDate, plan: DailyPlan?): DayReviewSummary = withContext(dispatcher) {
         val winItem = DayReviewWinNote.findItem(plan)
         val winItemId = winItem?.id
         val items = plan?.items.orEmpty().filterNot { it.id == winItemId }
@@ -55,7 +60,7 @@ class BuildDayReviewSummaryUseCase {
             )
             .take(TopTagLimit)
 
-        return DayReviewSummary(
+        DayReviewSummary(
             date = date,
             doneCount = doneItems.size,
             plannedCount = plannedItems.size,
@@ -76,21 +81,20 @@ class BuildDayReviewSummaryUseCase {
 /**
  * Copies plan items onto a target date.
  * Shared by day review (PR1) and morning leftovers (PR2).
- *
- * Idempotent for task-linked items: skips when the same taskId already exists on [toDate].
  */
 class CarryOverDailyPlanItemsUseCase(
-    private val repository: CheckItRepository
+    private val repository: CheckItRepository,
+    private val dispatcher: CoroutineDispatcher = Dispatchers.Default
 ) {
     suspend operator fun invoke(
         items: List<DailyPlanItem>,
-        itemIds: Collection<Long>,
+        itemIds: Set<Long>,
         toDate: LocalDate,
         timePolicy: CarryOverTimePolicy = CarryOverTimePolicy.ClearTimes
-    ): CarryOverResult {
+    ): CarryOverResult = withContext(dispatcher) {
         val selected = items.filter { it.id in itemIds }
         if (selected.isEmpty()) {
-            return CarryOverResult(carriedCount = 0, skippedCount = 0, newItemIds = emptyList())
+            return@withContext CarryOverResult(carriedCount = 0, skippedCount = 0, newItemIds = emptyList())
         }
 
         val clearTimes = timePolicy == CarryOverTimePolicy.ClearTimes
@@ -104,7 +108,7 @@ class CarryOverDailyPlanItemsUseCase(
             )
             if (newId == null) skipped += 1 else newIds += newId
         }
-        return CarryOverResult(
+        CarryOverResult(
             carriedCount = newIds.size,
             skippedCount = skipped,
             newItemIds = newIds
@@ -118,82 +122,27 @@ class CarryOverDailyPlanItemsUseCase(
         timePolicy: CarryOverTimePolicy = CarryOverTimePolicy.ClearTimes
     ): CarryOverResult = invoke(
         items = items,
-        itemIds = items.map { it.id },
+        itemIds = items.map { it.id }.toSet(),
         toDate = toDate,
         timePolicy = timePolicy
     )
 }
 
-/** Applies leftover decisions, optional win note, and marks the day as reviewed. */
-class CompleteDayReviewUseCase(
+/** Specific logic for upserting or deleting the "Win of the Day" note. */
+class UpsertDayReviewWinNoteUseCase(
     private val repository: CheckItRepository,
-    private val settingsRepository: SettingsRepository,
-    private val carryOverDailyPlanItems: CarryOverDailyPlanItemsUseCase,
-    private val buildSummary: BuildDayReviewSummaryUseCase = BuildDayReviewSummaryUseCase()
+    private val dispatcher: CoroutineDispatcher = Dispatchers.Default
 ) {
     suspend operator fun invoke(
-        plan: DailyPlan?,
-        input: DayReviewConfirmInput
-    ): DayReviewConfirmResult {
-        val summary = buildSummary(input.date, plan)
-        val plannedById = summary.plannedItems.associateBy { it.id }
-
-        var markedDone = 0
-        var dropped = 0
-        val carryIds = mutableListOf<Long>()
-
-        for ((itemId, action) in input.leftoverActions) {
-            val item = plannedById[itemId] ?: continue
-            when (action) {
-                LeftoverAction.MarkDone -> {
-                    repository.updateDailyPlanItemStatus(itemId, DailyPlanItemStatus.Done)
-                    markedDone += 1
-                }
-                LeftoverAction.CarryOver -> carryIds += item.id
-                LeftoverAction.Drop -> dropped += 1
-            }
-        }
-
-        val tomorrow = input.date.plus(1, DateTimeUnit.DAY)
-        val carryResult = if (carryIds.isEmpty()) {
-            CarryOverResult(carriedCount = 0, skippedCount = 0, newItemIds = emptyList())
-        } else {
-            carryOverDailyPlanItems(
-                items = summary.plannedItems,
-                itemIds = carryIds,
-                toDate = tomorrow,
-                timePolicy = CarryOverTimePolicy.ClearTimes
-            )
-        }
-
-        val winNoteSaved = upsertWinNote(
-            plan = plan,
-            date = input.date,
-            winNoteItemId = input.winNoteItemId,
-            winNoteText = input.winNote
-        )
-
-        settingsRepository.setLastDayReviewEpochDay(input.date.toEpochDays().toInt())
-
-        return DayReviewConfirmResult(
-            markedDoneCount = markedDone,
-            carriedCount = carryResult.carriedCount,
-            droppedCount = dropped,
-            winNoteSaved = winNoteSaved
-        )
-    }
-
-    private suspend fun upsertWinNote(
         plan: DailyPlan?,
         date: LocalDate,
         winNoteItemId: Long?,
         winNoteText: String?
-    ): Boolean {
+    ): Boolean = withContext(dispatcher) {
         val text = winNoteText?.trim().orEmpty()
-        val existingId = winNoteItemId
-            ?: DayReviewWinNote.findItem(plan)?.id
+        val existingId = winNoteItemId ?: DayReviewWinNote.findItem(plan)?.id
 
-        return when {
+        when {
             existingId != null && text.isNotEmpty() -> {
                 repository.updateDailyPlanItem(
                     existingId,
@@ -227,6 +176,71 @@ class CompleteDayReviewUseCase(
                 true
             }
             else -> false
+        }
+    }
+}
+
+/** Applies leftover decisions, optional win note, and marks the day as reviewed. */
+class CompleteDayReviewUseCase(
+    private val repository: CheckItRepository,
+    private val settingsRepository: SettingsRepository,
+    private val carryOverDailyPlanItems: CarryOverDailyPlanItemsUseCase,
+    private val upsertWinNote: UpsertDayReviewWinNoteUseCase,
+    private val buildSummary: BuildDayReviewSummaryUseCase,
+    private val dispatcher: CoroutineDispatcher = Dispatchers.Default
+) {
+    suspend operator fun invoke(
+        plan: DailyPlan?,
+        input: DayReviewConfirmInput
+    ): Result<DayReviewConfirmResult> = runCatching {
+        withContext(dispatcher) {
+            val summary = buildSummary(input.date, plan)
+            val plannedById = summary.plannedItems.associateBy { it.id }
+
+            val markDoneIds = mutableListOf<Long>()
+            var dropped = 0
+            val carryIds = mutableSetOf<Long>()
+
+            for ((itemId, action) in input.leftoverActions) {
+                val item = plannedById[itemId] ?: continue
+                when (action) {
+                    LeftoverAction.MarkDone -> markDoneIds += itemId
+                    LeftoverAction.CarryOver -> carryIds += item.id
+                    LeftoverAction.Drop -> dropped += 1
+                }
+            }
+
+            if (markDoneIds.isNotEmpty()) {
+                repository.updateDailyPlanItemsStatus(markDoneIds, DailyPlanItemStatus.Done)
+            }
+
+            val tomorrow = input.date.plus(1, DateTimeUnit.DAY)
+            val carryResult = if (carryIds.isEmpty()) {
+                CarryOverResult(carriedCount = 0, skippedCount = 0, newItemIds = emptyList())
+            } else {
+                carryOverDailyPlanItems(
+                    items = summary.plannedItems,
+                    itemIds = carryIds,
+                    toDate = tomorrow,
+                    timePolicy = CarryOverTimePolicy.ClearTimes
+                )
+            }
+
+            val winNoteSaved = upsertWinNote(
+                plan = plan,
+                date = input.date,
+                winNoteItemId = input.winNoteItemId,
+                winNoteText = input.winNote
+            )
+
+            settingsRepository.setLastDayReviewEpochDay(input.date.toEpochDays().toInt())
+
+            DayReviewConfirmResult(
+                markedDoneCount = markDoneIds.size,
+                carriedCount = carryResult.carriedCount,
+                droppedCount = dropped,
+                winNoteSaved = winNoteSaved
+            )
         }
     }
 }
