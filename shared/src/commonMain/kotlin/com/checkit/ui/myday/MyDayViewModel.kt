@@ -362,7 +362,7 @@ class MyDayViewModel(
         }
     }
 
-    fun confirmDayReview(openReportAfter: Boolean = false) {
+    fun confirmDayReview() {
         val state = _uiState.value
         val review = state.dayReview ?: return
         if (review.isSubmitting) return
@@ -394,9 +394,6 @@ class MyDayViewModel(
                         if (parts.isEmpty()) "Day reviewed" else parts.joinToString(" · ")
                     )
                 )
-                if (openReportAfter) {
-                    sendEvent(UiEvent.OpenReport)
-                }
             }.onFailure { error ->
                 _uiState.update { current ->
                     current.copy(

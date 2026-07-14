@@ -21,7 +21,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -41,7 +40,6 @@ import checkit.shared.generated.resources.day_review_action_drop
 import checkit.shared.generated.resources.day_review_done_count
 import checkit.shared.generated.resources.day_review_done_minutes
 import checkit.shared.generated.resources.day_review_finish
-import checkit.shared.generated.resources.day_review_finish_and_report
 import checkit.shared.generated.resources.day_review_leftovers_empty
 import checkit.shared.generated.resources.day_review_leftovers_title
 import checkit.shared.generated.resources.day_review_planned_count
@@ -69,7 +67,7 @@ internal fun DayReviewSheet(
     onLeftoverAction: (Long, LeftoverAction) -> Unit,
     onWinNoteChange: (String) -> Unit,
     onTomorrowGoalChange: (String) -> Unit,
-    onConfirm: (openReportAfter: Boolean) -> Unit
+    onConfirm: () -> Unit
 ) {
     AppEditorBottomSheet(
         onDismiss = onDismiss,
@@ -159,14 +157,8 @@ internal fun DayReviewSheet(
                 Text(stringResource(Res.string.cancel))
             }
             Spacer(Modifier.weight(1f))
-            OutlinedButton(
-                onClick = { onConfirm(true) },
-                enabled = !state.isSubmitting
-            ) {
-                Text(stringResource(Res.string.day_review_finish_and_report))
-            }
             Button(
-                onClick = { onConfirm(false) },
+                onClick = onConfirm,
                 enabled = !state.isSubmitting
             ) {
                 Text(stringResource(Res.string.day_review_finish))
