@@ -35,6 +35,7 @@ data class MyDayUiState(
     val showLeftoversSheet: Boolean = false,
     val showPlanAssistBanner: Boolean = false,
     val showSuggestions: Boolean = false,
+    val showCelebration: Boolean = false,
     val suggestionStartTimeMinutes: Int? = null,
     val suggestionEndTimeMinutes: Int? = null,
     val isLoading: Boolean = true

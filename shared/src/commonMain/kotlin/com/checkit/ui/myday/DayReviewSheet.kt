@@ -89,123 +89,96 @@ internal fun DayReviewSheet(
             .fillMaxHeight(0.9f)
             .padding(bottom = 16.dp)
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp)
-                    .alpha(if (state.isSubmitting) 0.5f else 1f),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp)
+                .alpha(if (state.isSubmitting) 0.5f else 1f),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = stringResource(Res.string.day_review_title),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+            ReviewSummaryRow(state)
+
+            if (state.summary.topTags.isNotEmpty()) {
+                TagInsightsRow(state.summary.topTags)
+            }
+
+            Text(
+                text = stringResource(Res.string.day_review_leftovers_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            if (state.summary.plannedItems.isEmpty()) {
                 Text(
-                    text = stringResource(Res.string.day_review_title),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold
+                    text = stringResource(Res.string.day_review_leftovers_empty),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                ReviewSummaryRow(state)
-
-                if (state.summary.topTags.isNotEmpty()) {
-                    TagInsightsRow(state.summary.topTags)
-                }
-
-                Text(
-                    text = stringResource(Res.string.day_review_leftovers_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                if (state.summary.plannedItems.isEmpty()) {
-                    Text(
-                        text = stringResource(Res.string.day_review_leftovers_empty),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                } else {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f, fill = true),
-                        contentPadding = PaddingValues(bottom = 8.dp)
-                    ) {
-                        itemsIndexed(
-                            state.summary.plannedItems,
-                            key = { _, item -> item.id }) { index, item ->
-                            LeftoverReviewRow(
-                                item = item,
-                                action = state.actionFor(item.id),
-                                enabled = !state.isSubmitting,
-                                onAction = { onLeftoverAction(item.id, it) }
-                            )
-                            if (index < state.summary.plannedItems.lastIndex) {
-                                AppHorizontalDivider(
-                                    modifier = Modifier.padding(vertical = 12.dp),
-                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                                )
-                            }
-                        }
-                    }
-                }
-
-                ReflectionSection(
-                    value = state.winNote,
-                    onValueChange = onWinNoteChange,
-                    enabled = !state.isSubmitting
-                )
-
-                TomorrowGoalSection(
-                    value = state.tomorrowGoal,
-                    onValueChange = onTomorrowGoalChange,
-                    enabled = !state.isSubmitting
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f, fill = true),
+                    contentPadding = PaddingValues(bottom = 8.dp)
                 ) {
-                    TextButton(
-                        onClick = onDismiss,
-                        enabled = !state.isSubmitting
-                    ) {
-                        Text(stringResource(Res.string.cancel))
-                    }
-                    Spacer(Modifier.weight(1f))
-                    OutlinedButton(
-                        onClick = { onConfirm(true) },
-                        enabled = !state.isSubmitting
-                    ) {
-                        Text(stringResource(Res.string.day_review_finish_and_report))
-                    }
-                    Button(
-                        onClick = { onConfirm(false) },
-                        enabled = !state.isSubmitting
-                    ) {
-                        Text(stringResource(Res.string.day_review_finish))
+                    itemsIndexed(
+                        state.summary.plannedItems,
+                        key = { _, item -> item.id }) { index, item ->
+                        LeftoverReviewRow(
+                            item = item,
+                            action = state.actionFor(item.id),
+                            enabled = !state.isSubmitting,
+                            onAction = { onLeftoverAction(item.id, it) }
+                        )
+                        if (index < state.summary.plannedItems.lastIndex) {
+                            AppHorizontalDivider(
+                                modifier = Modifier.padding(vertical = 12.dp),
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                            )
+                        }
                     }
                 }
             }
 
-            if (state.isSubmitting) {
-                Box(
-                    modifier = Modifier.matchParentSize().background(Color.Transparent),
-                    contentAlignment = Alignment.Center
+            ReflectionSection(
+                value = state.winNote,
+                onValueChange = onWinNoteChange,
+                enabled = !state.isSubmitting
+            )
+
+            TomorrowGoalSection(
+                value = state.tomorrowGoal,
+                onValueChange = onTomorrowGoalChange,
+                enabled = !state.isSubmitting
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(
+                    onClick = onDismiss,
+                    enabled = !state.isSubmitting
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Celebration,
-                            contentDescription = null,
-                            modifier = Modifier.size(48.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            "Great work today!",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                    Text(stringResource(Res.string.cancel))
+                }
+                Spacer(Modifier.weight(1f))
+                OutlinedButton(
+                    onClick = { onConfirm(true) },
+                    enabled = !state.isSubmitting
+                ) {
+                    Text(stringResource(Res.string.day_review_finish_and_report))
+                }
+                Button(
+                    onClick = { onConfirm(false) },
+                    enabled = !state.isSubmitting
+                ) {
+                    Text(stringResource(Res.string.day_review_finish))
                 }
             }
         }

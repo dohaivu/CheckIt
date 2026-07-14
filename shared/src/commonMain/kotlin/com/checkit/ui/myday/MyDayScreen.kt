@@ -1,5 +1,10 @@
 package com.checkit.ui.myday
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,7 +19,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.AddTask
+import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Dashboard
@@ -229,6 +236,42 @@ internal fun MyDayScreen(
             onTomorrowGoalChange = viewModel::updateTomorrowGoal,
             onConfirm = viewModel::confirmDayReview
         )
+    }
+
+    CelebrationOverlay(visible = state.showCelebration)
+}
+
+@Composable
+private fun CelebrationOverlay(visible: Boolean) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn() + scaleIn(),
+        exit = fadeOut() + scaleOut()
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background.copy(alpha = 0.8f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Celebration,
+                    contentDescription = null,
+                    modifier = Modifier.size(80.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "Great work today!",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
     }
 }
 
@@ -672,7 +715,7 @@ private fun MyDayTaskViewProjection.toTimelineItems(
 }
 
 private fun MyDayView.icon(): ImageVector = when (this) {
-    MyDayView.Agenda -> Icons.Default.ViewAgenda
+    MyDayView.Agenda -> Icons.AutoMirrored.Filled.ViewList
     MyDayView.Timeline -> Icons.Default.Schedule
     MyDayView.Board -> Icons.Default.Dashboard
 }

@@ -51,6 +51,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.milliseconds
 
 class MyDayViewModel(
     private val observeTaskBoard: ObserveTaskBoardUseCase,
@@ -377,7 +378,11 @@ class MyDayViewModel(
                     tomorrowGoal = review.tomorrowGoal
                 )
             ).onSuccess { result ->
-                _uiState.update { it.copy(dayReview = null, showDayReviewBanner = false) }
+                _uiState.update { it.copy(dayReview = null, showDayReviewBanner = false, showCelebration = true) }
+                viewModelScope.launch {
+                    delay(3000.milliseconds)
+                    _uiState.update { it.copy(showCelebration = false) }
+                }
                 val parts = buildList {
                     if (result.carriedCount > 0) add("${result.carriedCount} carried to tomorrow")
                     if (result.markedDoneCount > 0) add("${result.markedDoneCount} marked done")
