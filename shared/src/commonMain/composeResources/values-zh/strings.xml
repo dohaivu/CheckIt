@@ -91,7 +91,7 @@
     <string name="day_review_action_done">完成</string>
     <string name="day_review_action_carry">明天</string>
     <string name="day_review_action_drop">保留</string>
-    <string name="day_review_win_note_label">今日亮点（可选）</string>
+    <string name="day_review_win_note_label">今日亮点</string>
     <string name="day_review_win_note_placeholder">今天有什么顺利的事？</string>
     <string name="day_review_finish">完成回顾</string>
     <string name="day_review_finish_and_report">完成并查看报告</string>

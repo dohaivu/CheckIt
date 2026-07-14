@@ -91,7 +91,7 @@
     <string name="day_review_action_done">Xong</string>
     <string name="day_review_action_carry">Ngày mai</string>
     <string name="day_review_action_drop">Để lại</string>
-    <string name="day_review_win_note_label">Chiến thắng trong ngày (tuỳ chọn)</string>
+    <string name="day_review_win_note_label">Chiến thắng trong ngày</string>
     <string name="day_review_win_note_placeholder">Hôm nay điều gì suôn sẻ?</string>
     <string name="day_review_finish">Hoàn tất</string>
     <string name="day_review_finish_and_report">Hoàn tất &amp; báo cáo</string>

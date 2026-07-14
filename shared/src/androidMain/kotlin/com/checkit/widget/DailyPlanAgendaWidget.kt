@@ -235,7 +235,7 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                     )
                 )
             }
-            Spacer(modifier = GlanceModifier.width(10.dp))
+            Spacer(modifier = GlanceModifier.width(8.dp))
 
             // Marker & Vertical Line
             Box(
@@ -291,7 +291,7 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                     }
                 }
             }
-            Spacer(modifier = GlanceModifier.width(10.dp))
+            Spacer(modifier = GlanceModifier.width(8.dp))
 
             // Content
             Box(modifier = GlanceModifier.defaultWeight().padding(bottom = 8.dp)) {

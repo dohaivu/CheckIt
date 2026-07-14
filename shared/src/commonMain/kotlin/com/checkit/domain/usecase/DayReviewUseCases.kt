@@ -233,6 +233,19 @@ class CompleteDayReviewUseCase(
                 winNoteText = input.winNote
             )
 
+            if (!input.tomorrowGoal.isNullOrBlank()) {
+                repository.addDailyPlanItem(
+                    date = tomorrow,
+                    title = input.tomorrowGoal,
+                    note = null,
+                    startTimeMinutes = null,
+                    endTimeMinutes = null,
+                    source = DailyPlanItemSource.MyDayTask,
+                    status = DailyPlanItemStatus.Planned,
+                    tagIds = emptyList()
+                )
+            }
+
             settingsRepository.setLastDayReviewEpochDay(input.date.toEpochDays().toInt())
 
             DayReviewConfirmResult(

@@ -354,6 +354,13 @@ class MyDayViewModel(
         }
     }
 
+    fun updateTomorrowGoal(goal: String) {
+        _uiState.update { state ->
+            val review = state.dayReview ?: return@update state
+            state.copy(dayReview = review.copy(tomorrowGoal = goal))
+        }
+    }
+
     fun confirmDayReview(openReportAfter: Boolean = false) {
         val state = _uiState.value
         val review = state.dayReview ?: return
@@ -366,7 +373,8 @@ class MyDayViewModel(
                     date = review.summary.date,
                     leftoverActions = review.leftoverActions,
                     winNote = review.winNote,
-                    winNoteItemId = review.winNoteItemId
+                    winNoteItemId = review.winNoteItemId,
+                    tomorrowGoal = review.tomorrowGoal
                 )
             ).onSuccess { result ->
                 _uiState.update { it.copy(dayReview = null, showDayReviewBanner = false) }
