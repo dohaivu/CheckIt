@@ -36,6 +36,7 @@ val LocalSnackbarHostState = staticCompositionLocalOf<SnackbarHostState> {
 internal fun AppEditorBottomSheet(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    sheetGesturesEnabled: Boolean = true,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -44,7 +45,7 @@ internal fun AppEditorBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        sheetGesturesEnabled = true
+        sheetGesturesEnabled = sheetGesturesEnabled
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
             Column(
