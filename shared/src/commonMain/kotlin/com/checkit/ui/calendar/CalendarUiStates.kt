@@ -15,6 +15,9 @@ import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
 import kotlin.collections.get
 
+import com.checkit.domain.DayReviewWinNote
+import com.checkit.ui.isSameMonth
+
 data class CalendarUiState(
     val selectedPeriod: ReportPeriod = ReportPeriod.Month,
     val selectedMonth: LocalDate = today().firstDayOfMonth(),
@@ -23,8 +26,19 @@ data class CalendarUiState(
     val dailyPlans: List<DailyPlan> = emptyList(),
     val showDailyPlanSummary: Boolean = false,
     val calendarDisplayMode: CalendarDisplayMode = CalendarDisplayMode.Month,
-    val selectedTagIds: Set<Long> = emptySet()
+    val selectedTagIds: Set<Long> = emptySet(),
+    val isMonthlyWinsExpanded: Boolean = false
 ) {
+    val monthlyWins: List<Pair<LocalDate, DailyPlanItem>> by lazy {
+        dailyPlans
+            .filter { it.date.isSameMonth(selectedMonth) }
+            .flatMap { plan ->
+                plan.items
+                    .filter { it.title == DayReviewWinNote.Title }
+                    .map { plan.date to it }
+            }
+            .sortedByDescending { it.first }
+    }
     private val filteredDailyPlans: List<DailyPlan> by lazy {
         if (selectedTagIds.isEmpty()) {
             dailyPlans
