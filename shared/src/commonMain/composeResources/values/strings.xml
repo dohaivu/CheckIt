@@ -119,7 +119,7 @@
     <string name="sprint_pause">Pause</string>
     <string name="sprint_resume">Resume</string>
     <string name="sprint_finish_title">Awesome! You broke the inertia.</string>
-    <string name="sprint_finish_subtitle">You did the hardest part: starting. What\'s next?</string>
+    <string name="sprint_finish_subtitle">You did the hardest part: starting. What's next?</string>
     <string name="sprint_action_save">Stop &amp; Save Win</string>
     <string name="sprint_action_pomodoro">Keep Going (25m Pomodoro)</string>
     <string name="sprint_action_log_task">Log as Task</string>

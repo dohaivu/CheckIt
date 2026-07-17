@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.milliseconds
 
 sealed interface SprintState {
     object Idle : SprintState
@@ -31,7 +32,9 @@ sealed interface SprintState {
     data class Finished(
         val taskId: Long?,
         val description: String,
-        val totalSeconds: Int,
+        val durationSeconds: Int,
+        val elapsedSeconds: Int,
+        val startTimeEpochMillis: Long,
         val isPomodoro: Boolean
     ) : SprintState
 }
@@ -84,9 +87,10 @@ class SprintManager(
     }
 
     fun completeSprintManually() {
-        val current = _state.value
-        if (current is SprintState.Running) {
-            finish(current)
+        when (val current = _state.value) {
+            is SprintState.Running -> finish(current)
+            is SprintState.Paused -> finish(current.runningState)
+            else -> Unit
         }
     }
 
@@ -94,7 +98,7 @@ class SprintManager(
         timerJob?.cancel()
         timerJob = scope.launch {
             while (true) {
-                delay(1000)
+                delay(1000.milliseconds)
                 val current = _state.value
                 if (current is SprintState.Running) {
                     val remaining = current.remainingSeconds - 1
@@ -115,10 +119,14 @@ class SprintManager(
 
     private fun finish(running: SprintState.Running) {
         timerJob?.cancel()
+        val now = Clock.System.now().toEpochMilliseconds()
+        val elapsed = ((now - running.startTimeEpochMillis) / 1000).toInt().coerceAtMost(running.totalSeconds)
         _state.value = SprintState.Finished(
             taskId = running.taskId,
             description = running.description,
-            totalSeconds = running.totalSeconds,
+            durationSeconds = running.totalSeconds,
+            elapsedSeconds = elapsed,
+            startTimeEpochMillis = running.startTimeEpochMillis,
             isPomodoro = running.isPomodoro
         )
         notificationScheduler.showFinishedNotification(running.description, running.isPomodoro)

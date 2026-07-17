@@ -99,8 +99,8 @@ import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material3.TextFieldDefaults
 import com.checkit.domain.SprintState
 import com.checkit.ui.components.AppOutlinedTextField
+import com.checkit.ui.components.SprintBar
 import com.checkit.ui.components.SprintCompletionDialog
-import com.checkit.ui.components.SprintTimerOverlay
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
@@ -175,7 +175,23 @@ internal fun MyDayScreen(
                 DayReviewBanner(onClick = viewModel::openDayReview)
             }
             
-            AdHocSprintBar(onStartSprint = viewModel::startSprint)
+            val activeSprint = when (val s = sprintState) {
+                is SprintState.Running -> s
+                is SprintState.Paused -> s.runningState
+                else -> null
+            }
+
+            if (activeSprint != null) {
+                SprintBar(
+                    state = activeSprint,
+                    isPaused = sprintState is SprintState.Paused,
+                    onPause = viewModel::pauseSprint,
+                    onResume = viewModel::resumeSprint,
+                    onStop = viewModel::completeSprint
+                )
+            } else {
+                AdHocSprintBar(onStartSprint = viewModel::startSprint)
+            }
 
             MyDayViewSelector(
                 selectedView = state.selectedView,
@@ -218,22 +234,6 @@ internal fun MyDayScreen(
                 )
             }
         }
-    }
-
-    val currentSprint = when (val s = sprintState) {
-        is SprintState.Running -> s
-        is SprintState.Paused -> s.runningState
-        else -> null
-    }
-
-    currentSprint?.let {
-        SprintTimerOverlay(
-            state = it,
-            isPaused = sprintState is SprintState.Paused,
-            onPause = viewModel::pauseSprint,
-            onResume = viewModel::resumeSprint,
-            onStop = viewModel::stopSprint
-        )
     }
 
     if (sprintState is SprintState.Finished) {

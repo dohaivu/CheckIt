@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import checkit.shared.generated.resources.Res
@@ -176,4 +177,84 @@ fun SprintCompletionDialog(
             }
         }
     )
+}
+
+@Composable
+fun SprintBar(
+    state: SprintState.Running,
+    isPaused: Boolean,
+    onPause: () -> Unit,
+    onResume: () -> Unit,
+    onStop: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val minutes = state.remainingSeconds / 60
+    val seconds = state.remainingSeconds % 60
+    val timeLabel = "${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}"
+
+    val backgroundColor = if (state.isPomodoro) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else {
+        MaterialTheme.colorScheme.tertiaryContainer
+    }
+
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = backgroundColor,
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = state.description,
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = if (isPaused) "Paused" else if (state.isPomodoro) "Deep Focus" else "Quick Sprint",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Text(
+                text = timeLabel,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Medium,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+            )
+
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                IconButton(
+                    onClick = if (isPaused) onResume else onPause,
+                    modifier = Modifier.size(36.dp).background(MaterialTheme.colorScheme.primary, CircleShape)
+                ) {
+                    Icon(
+                        if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                        contentDescription = if (isPaused) "Resume" else "Pause",
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+                
+                IconButton(
+                    onClick = onStop,
+                    modifier = Modifier.size(36.dp).background(MaterialTheme.colorScheme.errorContainer, CircleShape)
+                ) {
+                    Icon(
+                        Icons.Default.Close, 
+                        contentDescription = "Stop", 
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
+            }
+        }
+    }
 }

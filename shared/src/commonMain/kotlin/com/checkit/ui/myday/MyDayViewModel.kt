@@ -647,6 +647,7 @@ class MyDayViewModel(
     fun pauseSprint() = sprintManager.pauseSprint()
     fun resumeSprint() = sprintManager.resumeSprint()
     fun stopSprint() = sprintManager.stopSprint()
+    fun completeSprint() = sprintManager.completeSprintManually()
 
     fun upgradeToPomodoro() {
         val current = sprintManager.state.value
@@ -667,32 +668,19 @@ class MyDayViewModel(
         val current = sprintManager.state.value
         if (current is SprintState.Finished) {
             viewModelScope.launch {
-                val inbox = _uiState.value.board.objectives.firstOrNull { it.name == "Inbox" } ?: Objective.None
-                addTask(
-                    TaskWriteInput(
-                        objectiveId = inbox.id,
-                        keyResultId = null,
-                        name = current.description,
-                        description = "Sprint session (${current.totalSeconds / 60}m)",
-                        subtasks = emptyList(),
-                        status = TaskStatus.Completed,
-                        priority = TaskPriority.None,
-                        doDate = today(),
-                        startTimeMinutes = null,
-                        endTimeMinutes = null,
-                        repeatRRule = null,
-                        reminders = emptyList(),
-                        tagIds = emptyList()
-                    )
-                )
-                
+                val startInstant = kotlinx.datetime.Instant.fromEpochMilliseconds(current.startTimeEpochMillis)
+                val startDateTime = startInstant.toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
+                val startMinutes = startDateTime.hour * 60 + startDateTime.minute
+                val durationMinutes = (current.elapsedSeconds / 60).coerceAtLeast(1)
+                val endMinutes = startMinutes + durationMinutes
+
                 // Add to daily plan so it shows up in "Done" list today
                 addDailyPlanItem(
                     date = today(),
                     title = current.description,
-                    note = "Sprint session (${current.totalSeconds / 60}m)",
-                    startTimeMinutes = null,
-                    endTimeMinutes = null,
+                    note = "Sprint session (${durationMinutes}m)",
+                    startTimeMinutes = startMinutes,
+                    endTimeMinutes = endMinutes,
                     source = DailyPlanItemSource.MyDayTask,
                     status = DailyPlanItemStatus.Done,
                     tagIds = emptyList()
