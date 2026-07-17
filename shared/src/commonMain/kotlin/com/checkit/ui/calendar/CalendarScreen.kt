@@ -256,7 +256,7 @@ private fun SelectedDateContent(
                 onItemClick = { onDailyPlanItemClick(it, content.date) },
                 onTaskClick = onTaskClick,
                 onNoteClick = onNoteClick,
-                onSprintClick = {},
+                onSprintClick = { _, _ -> },
                 modifier = modifier
             )
         } else {

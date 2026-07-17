@@ -209,7 +209,7 @@ internal fun MyDayScreen(
                     onItemClick = { viewModel.openItemEditor(it, state.today) },
                     onTaskClick = onTaskClick,
                     onNoteClick = onNoteClick,
-                    onSprintClick = { viewModel.startSprint(it.id, it.name) },
+                    onSprintClick = viewModel::startSprint,
                     modifier = Modifier.weight(1f)
                 )
                 MyDayView.Timeline -> MyDayTimeline(
@@ -219,7 +219,7 @@ internal fun MyDayScreen(
                     onItemClick = { viewModel.openItemEditor(it, state.today) },
                     onTaskClick = onTaskClick,
                     onNoteClick = onNoteClick,
-                    onSprintClick = { viewModel.startSprint(it.id, it.name) },
+                    onSprintClick = viewModel::startSprint,
                     onCreateTask = viewModel::createFromTimelineRange,
                     onItemTimeChange = viewModel::updateItemTime,
                     onNoteTimeChange = onNoteTimeChange,
@@ -229,7 +229,7 @@ internal fun MyDayScreen(
                     state = state,
                     onItemClick = { viewModel.openItemEditor(it, state.today) },
                     onTaskClick = onTaskClick,
-                    onSprintClick = { viewModel.startSprint(it.id, it.name) },
+                    onSprintClick = viewModel::startSprint,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -526,7 +526,7 @@ internal fun MyDayAgenda(
     onItemClick: (DailyPlanItem) -> Unit,
     onTaskClick: (TaskItem, DailyPlanItem?) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
-    onSprintClick: (TaskItem) -> Unit,
+    onSprintClick: (Long, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val projection = remember(items, board, date) { items.toTaskViewProjection(board = board, date = date) }
@@ -548,22 +548,22 @@ internal fun MyDayAgenda(
         itemContent = { item ->
             when (val tag = item.tag) {
                 is DailyPlanItem -> if (item.startTimeMinutes == null) {
-                    DailyPlanAllDayCard(tag, onSprintClick = tag.taskId?.let { board.tasksById[it] }?.let { task -> { onSprintClick(task) } })
+                    DailyPlanAllDayCard(tag, onSprintClick = { onSprintClick(tag.id, tag.title) })
                 } else {
-                    DailyPlanTimelineCard(tag, isOverdue = tag.isOverdue(date), onSprintClick = tag.taskId?.let { board.tasksById[it] }?.let { task -> { onSprintClick(task) } })
+                    DailyPlanTimelineCard(tag, isOverdue = tag.isOverdue(date), onSprintClick = { onSprintClick(tag.id, tag.title) })
                 }
                 is NoteItem -> if (item.startTimeMinutes == null) NoteAllDayCard(tag) else NoteTimelineCard(tag)
                 is PlannedTaskProjection -> {
                     val task = tag.task
                     if (item.startTimeMinutes == null) {
-                        TaskAllDayCard(task, onSprintClick = { onSprintClick(task) })
+                        TaskAllDayCard(task, onSprintClick = { onSprintClick(tag.dailyPlanItem.id, task.name) })
                     } else {
                         TaskTimelineCard(
                             task = task,
                             timeLabel = tag.dailyPlanItem.dailyPlanTimeLabel(),
                             completed = tag.dailyPlanItem.isDone(),
                             isOverdue = tag.dailyPlanItem.isOverdue(date),
-                            onSprintClick = { onSprintClick(task) }
+                            onSprintClick = { onSprintClick(tag.dailyPlanItem.id, task.name) }
                         )
                     }
                 }
@@ -581,7 +581,7 @@ private fun MyDayTimeline(
     onItemClick: (DailyPlanItem) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
     onTaskClick: (TaskItem, DailyPlanItem?) -> Unit,
-    onSprintClick: (TaskItem) -> Unit,
+    onSprintClick: (Long, String) -> Unit,
     onCreateTask: (Int, Int) -> Unit,
     onItemTimeChange: (DailyPlanItem, Int, Int) -> Unit,
     onNoteTimeChange: (NoteItem, Int) -> Unit,
@@ -613,9 +613,9 @@ private fun MyDayTimeline(
         },
         allDayItemContent = { item ->
             when (val tag = item.tag) {
-                is DailyPlanItem -> DailyPlanAllDayCard(tag, onSprintClick = tag.taskId?.let { board.tasksById[it] }?.let { task -> { onSprintClick(task) } })
+                is DailyPlanItem -> DailyPlanAllDayCard(tag, onSprintClick = { onSprintClick(tag.id, tag.title) })
                 is NoteItem -> NoteAllDayCard(tag)
-                is PlannedTaskProjection -> TaskAllDayCard(tag.task, onSprintClick = { onSprintClick(tag.task) })
+                is PlannedTaskProjection -> TaskAllDayCard(tag.task, onSprintClick = { onSprintClick(tag.dailyPlanItem.id, tag.task.name) })
             }
         },
         timedItemContent = { item, isSelected, displayMode ->
@@ -626,7 +626,7 @@ private fun MyDayTimeline(
                     modifier = Modifier.matchParentSize(),
                     displayMode = displayMode,
                     isOverdue = tag.isOverdue(date),
-                    onSprintClick = tag.taskId?.let { board.tasksById[it] }?.let { task -> { onSprintClick(task) } }
+                    onSprintClick = { onSprintClick(tag.id, tag.title) }
                 )
                 is NoteItem -> NoteTimelineCard(tag, selected = isSelected, modifier = Modifier.matchParentSize())
                 is PlannedTaskProjection -> TaskTimelineCard(
@@ -637,7 +637,7 @@ private fun MyDayTimeline(
                     modifier = Modifier.matchParentSize(),
                     isOverdue = tag.dailyPlanItem.isOverdue(date),
                     displayMode = displayMode,
-                    onSprintClick = { onSprintClick(tag.task) }
+                    onSprintClick = { onSprintClick(tag.dailyPlanItem.id, tag.task.name) }
                 )
             }
         },
@@ -650,7 +650,7 @@ private fun MyDayBoard(
     state: MyDayUiState,
     onItemClick: (DailyPlanItem) -> Unit,
     onTaskClick: (TaskItem, DailyPlanItem?) -> Unit,
-    onSprintClick: (TaskItem) -> Unit,
+    onSprintClick: (Long, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val plannedTasksByDailyItemId = remember(state.items, state.board, state.today) {
@@ -672,7 +672,6 @@ private fun MyDayBoard(
                 MyDayBoardItem(
                     item = item,
                     plannedTask = plannedTasksByDailyItemId[item.id],
-                    board = state.board,
                     onItemClick = onItemClick,
                     onTaskClick = onTaskClick,
                     onSprintClick = onSprintClick
@@ -687,7 +686,6 @@ private fun MyDayBoard(
                 MyDayBoardItem(
                     item = item,
                     plannedTask = plannedTasksByDailyItemId[item.id],
-                    board = state.board,
                     onItemClick = onItemClick,
                     onTaskClick = onTaskClick,
                     onSprintClick = onSprintClick
@@ -701,10 +699,9 @@ private fun MyDayBoard(
 private fun MyDayBoardItem(
     item: DailyPlanItem,
     plannedTask: PlannedTaskProjection?,
-    board: TaskBoard,
     onItemClick: (DailyPlanItem) -> Unit,
     onTaskClick: (TaskItem, DailyPlanItem?) -> Unit,
-    onSprintClick: (TaskItem) -> Unit
+    onSprintClick: (Long, String) -> Unit
 ) {
     if (plannedTask != null) {
         val task = plannedTask.task
@@ -713,14 +710,14 @@ private fun MyDayBoardItem(
             timeLabel = plannedTask.dailyPlanItem.dailyPlanTimeLabel(),
             completed = plannedTask.dailyPlanItem.isDone(),
             onClick = { onTaskClick(task, plannedTask.dailyPlanItem) },
-            onSprintClick = { onSprintClick(task) }
+            onSprintClick = { onSprintClick(plannedTask.dailyPlanItem.id, task.name) }
         )
     } else {
         DailyPlanTimelineCard(
             item = item,
             onClick = { onItemClick(item) },
             isOverdue = item.isOverdue(today()),
-            onSprintClick = item.taskId?.let { board.tasksById[it] }?.let { task -> { onSprintClick(task) } }
+            onSprintClick = { onSprintClick(item.id, item.title) }
         )
     }
 }

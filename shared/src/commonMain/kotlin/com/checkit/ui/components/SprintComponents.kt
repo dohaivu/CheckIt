@@ -141,7 +141,7 @@ fun SprintCompletionDialog(
         text = {
             Column {
                 Text(stringResource(Res.string.sprint_finish_subtitle))
-                if (state.taskId == null) {
+                if (state.dailyPlanItemId == null) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "Goal: ${state.description}",
@@ -164,10 +164,10 @@ fun SprintCompletionDialog(
                 }
                 
                 OutlinedButton(
-                    onClick = if (state.taskId != null) onSaveWin else onLogTask,
+                    onClick = if (state.dailyPlanItemId != null) onSaveWin else onLogTask,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(stringResource(if (state.taskId != null) Res.string.sprint_action_save else Res.string.sprint_action_log_task))
+                    Text(stringResource(if (state.dailyPlanItemId != null) Res.string.sprint_action_save else Res.string.sprint_action_log_task))
                 }
             }
         },
