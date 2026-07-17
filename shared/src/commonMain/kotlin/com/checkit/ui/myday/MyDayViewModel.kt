@@ -42,7 +42,6 @@ class MyDayViewModel(
     private val updateDailyPlanItem: UpdateDailyPlanItemUseCase,
     private val syncKeyResultFromDailyPlan: SyncKeyResultFromDailyPlanUseCase,
     private val deleteDailyPlanItemUseCase: DeleteDailyPlanItemUseCase,
-    private val addTask: AddTaskUseCase,
     private val settingsRepository: SettingsRepository,
     private val buildDayReviewSummary: BuildDayReviewSummaryUseCase,
     private val completeDayReview: CompleteDayReviewUseCase,
@@ -646,7 +645,6 @@ class MyDayViewModel(
 
     fun pauseSprint() = sprintManager.pauseSprint()
     fun resumeSprint() = sprintManager.resumeSprint()
-    fun stopSprint() = sprintManager.stopSprint()
     fun completeSprint() = sprintManager.completeSprintManually()
 
     fun upgradeToPomodoro() {

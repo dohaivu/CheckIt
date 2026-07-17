@@ -80,12 +80,6 @@ class SprintManager(
         }
     }
 
-    fun stopSprint() {
-        timerJob?.cancel()
-        _state.value = SprintState.Idle
-        notificationScheduler.cancelNotification()
-    }
-
     fun completeSprintManually() {
         when (val current = _state.value) {
             is SprintState.Running -> finish(current)
