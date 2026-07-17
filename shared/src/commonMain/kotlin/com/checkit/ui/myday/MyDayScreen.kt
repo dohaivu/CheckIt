@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.AddTask
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
@@ -28,14 +29,14 @@ import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.RateReview
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.ViewAgenda
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -46,7 +47,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -61,26 +64,24 @@ import checkit.shared.generated.resources.leftovers_banner_dismiss
 import checkit.shared.generated.resources.leftovers_banner_review
 import checkit.shared.generated.resources.leftovers_banner_subtitle
 import checkit.shared.generated.resources.leftovers_banner_title
-import checkit.shared.generated.resources.leftovers_item_carry
-import checkit.shared.generated.resources.leftovers_section_title
 import checkit.shared.generated.resources.plan_assist_banner_dismiss
 import checkit.shared.generated.resources.plan_assist_banner_subtitle
 import checkit.shared.generated.resources.plan_assist_banner_title
-import checkit.shared.generated.resources.sprint_adhoc_placeholder
-import checkit.shared.generated.resources.sprint_start
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.NoteItem
-import com.checkit.domain.Objective
+import com.checkit.domain.SprintState
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.hasEndTime
+import com.checkit.ui.components.QuickSprintSheet
+import com.checkit.ui.components.SprintBar
+import com.checkit.ui.components.SprintCompletionDialog
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.tasks.TimelineItem
 import com.checkit.ui.tasks.TimelineItemType
 import com.checkit.ui.tasks.isOverdue
-import com.checkit.ui.tasks.timeRangeLabel
 import com.checkit.ui.tasks.toClockLabel
 import com.checkit.ui.tasks.views.AgendaView
 import com.checkit.ui.tasks.views.DailyPlanAllDayCard
@@ -94,16 +95,6 @@ import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.stringResource
 
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material3.TextFieldDefaults
-import com.checkit.domain.SprintState
-import com.checkit.ui.components.AppOutlinedTextField
-import com.checkit.ui.components.SprintBar
-import com.checkit.ui.components.SprintCompletionDialog
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun MyDayScreen(
@@ -116,6 +107,7 @@ internal fun MyDayScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val sprintState by viewModel.sprintManager.state.collectAsState()
+    var showQuickSprintSheet by remember { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -147,6 +139,17 @@ internal fun MyDayScreen(
                     }
                 }
             )
+        },
+        floatingActionButton = {
+            if (sprintState is SprintState.Idle) {
+                FloatingActionButton(
+                    onClick = { showQuickSprintSheet = true },
+                    containerColor = MaterialTheme.colorScheme.tertiary,
+                    contentColor = MaterialTheme.colorScheme.onTertiary
+                ) {
+                    Icon(Icons.Default.Bolt, contentDescription = "Quick Sprint")
+                }
+            }
         }
     ) { padding ->
         Column(
@@ -189,8 +192,6 @@ internal fun MyDayScreen(
                     onResume = viewModel::resumeSprint,
                     onStop = viewModel::completeSprint
                 )
-            } else {
-                AdHocSprintBar(onStartSprint = viewModel::startSprint)
             }
 
             MyDayViewSelector(
@@ -234,6 +235,13 @@ internal fun MyDayScreen(
                 )
             }
         }
+    }
+
+    if (showQuickSprintSheet) {
+        QuickSprintSheet(
+            onStartSprint = viewModel::startSprint,
+            onDismiss = { showQuickSprintSheet = false }
+        )
     }
 
     if (sprintState is SprintState.Finished) {
@@ -719,45 +727,6 @@ private fun MyDayBoardItem(
             isOverdue = item.isOverdue(today()),
             onSprintClick = { onSprintClick(item.id, item.title) }
         )
-    }
-}
-
-@Composable
-private fun AdHocSprintBar(
-    onStartSprint: (taskId: Long?, description: String) -> Unit
-) {
-    var text by remember { mutableStateOf("") }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        AppOutlinedTextField(
-            value = text,
-            onValueChange = { text = it },
-            placeholder = stringResource(Res.string.sprint_adhoc_placeholder),
-            modifier = Modifier.weight(1f),
-            maxLines = 1,
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
-        )
-        IconButton(
-            onClick = {
-                onStartSprint(null, text)
-                text = ""
-            },
-            modifier = Modifier
-                .size(40.dp)
-                .background(MaterialTheme.colorScheme.tertiary, CircleShape)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Bolt,
-                contentDescription = stringResource(Res.string.sprint_start),
-                tint = MaterialTheme.colorScheme.onTertiary,
-                modifier = Modifier.size(24.dp)
-            )
-        }
     }
 }
 
