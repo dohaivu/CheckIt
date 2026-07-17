@@ -16,6 +16,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,6 +35,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
@@ -56,6 +61,7 @@ internal fun TaskCard(
     timeLabel: String? = null,
     supportingText: String? = null,
     leadingContent: (@Composable () -> Unit)? = null,
+    trailingContent: (@Composable () -> Unit)? = null,
     minHeight: Dp = 64.dp,
     contentPadding: PaddingValues = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
     titleMaxLines: Int = 2,
@@ -136,6 +142,14 @@ internal fun TaskCard(
                     )
                 }
             }
+            if (trailingContent != null) {
+                Box(
+                    modifier = Modifier.padding(top = 2.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    trailingContent()
+                }
+            }
         }
     }
 }
@@ -187,6 +201,7 @@ internal fun TaskTimelineCard(
     task: TaskItem,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    onSprintClick: (() -> Unit)? = null,
     timeLabel: String? = task.timeRangeLabel(),
     selected: Boolean = false,
     completed: Boolean = task.status == TaskStatus.Completed,
@@ -207,6 +222,11 @@ internal fun TaskTimelineCard(
                 color = task.priority.priorityColor()
             )
         },
+        trailingContent = if (onSprintClick != null && !completed) {
+            {
+                SprintButton(onClick = onSprintClick)
+            }
+        } else null,
         completedOverlay = completedOverlay,
         onClick = onClick,
         modifier = modifier,
@@ -270,6 +290,7 @@ internal fun DailyPlanTimelineCard(
     item: DailyPlanItem,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    onSprintClick: (() -> Unit)? = null,
     title: String = item.timelineTitle(),
     timeLabel: String? = item.timelineTimeLabel() ?: item.timelineSupportingText(),
     selected: Boolean = false,
@@ -286,6 +307,11 @@ internal fun DailyPlanTimelineCard(
         leadingContent = {
             DailyPlanIcon(item.source, item.status == DailyPlanItemStatus.Done)
         },
+        trailingContent = if (onSprintClick != null && item.status != DailyPlanItemStatus.Done) {
+            {
+                SprintButton(onClick = onSprintClick)
+            }
+        } else null,
         completedOverlay = completedOverlay,
         onClick = onClick,
         modifier = modifier,
@@ -317,6 +343,7 @@ internal fun DailyPlanTimelineCard(
 internal fun TaskAllDayCard(
     task: TaskItem,
     modifier: Modifier = Modifier,
+    onSprintClick: (() -> Unit)? = null,
     completedOverlay: Boolean = false
 ) {
     AllDayTypeCard(
@@ -328,6 +355,7 @@ internal fun TaskAllDayCard(
                 color = task.priority.priorityColor()
             )
         },
+        onSprintClick = onSprintClick.takeIf { task.status != TaskStatus.Completed },
         modifier = modifier,
         completedOverlay = completedOverlay
     )
@@ -352,6 +380,7 @@ internal fun NoteAllDayCard(
 internal fun DailyPlanAllDayCard(
     item: DailyPlanItem,
     modifier: Modifier = Modifier,
+    onSprintClick: (() -> Unit)? = null,
     title: String = item.timelineTitle(),
     completedOverlay: Boolean = false
 ) {
@@ -359,6 +388,7 @@ internal fun DailyPlanAllDayCard(
         title = title,
         color = item.cardColor(),
         icon = { DailyPlanIcon(item.source, item.status == DailyPlanItemStatus.Done) },
+        onSprintClick = onSprintClick.takeIf { item.status != DailyPlanItemStatus.Done },
         modifier = modifier,
         completedOverlay = completedOverlay
     )
@@ -369,6 +399,7 @@ private fun AllDayTypeCard(
     title: String,
     color: Color,
     icon: @Composable () -> Unit,
+    onSprintClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     completedOverlay: Boolean = false
 ) {
@@ -395,7 +426,28 @@ private fun AllDayTypeCard(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+            if (onSprintClick != null) {
+                SprintButton(onClick = onSprintClick)
+            }
         }
+    }
+}
+
+@Composable
+internal fun SprintButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    IconButton(
+        onClick = onClick,
+        modifier = modifier.size(32.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Default.Bolt,
+            contentDescription = "Start Sprint",
+            tint = MaterialTheme.colorScheme.tertiary,
+            modifier = Modifier.size(20.dp)
+        )
     }
 }
 

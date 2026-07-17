@@ -2,34 +2,9 @@ package com.checkit.ui.myday
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.checkit.data.DailyPlanItemWriteInput
-import com.checkit.data.SettingsRepository
-import com.checkit.data.UserSettings
-import com.checkit.domain.CarryOverTimePolicy
-import com.checkit.domain.DailyPlan
-import com.checkit.domain.DailyPlanItem
-import com.checkit.domain.DailyPlanItemSource
-import com.checkit.domain.DailyPlanItemStatus
-import com.checkit.domain.DayReviewBannerPolicy
-import com.checkit.domain.DayReviewConfirmInput
-import com.checkit.domain.LeftoverAction
-import com.checkit.domain.LeftoversBannerPolicy
-import com.checkit.domain.PlanAssistBannerPolicy
-import com.checkit.domain.TaskItem
-import com.checkit.domain.YesterdayLeftovers
-import com.checkit.domain.hasEndTime
-import com.checkit.domain.usecase.AddDailyPlanItemUseCase
-import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
-import com.checkit.domain.usecase.BuildDayReviewSummaryUseCase
-import com.checkit.domain.usecase.CarryOverDailyPlanItemsUseCase
-import com.checkit.domain.usecase.CompleteDayReviewUseCase
-import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
-import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
-import com.checkit.domain.usecase.ObserveDailyPlansUseCase
-import com.checkit.domain.usecase.ObserveTaskBoardUseCase
-import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
-import com.checkit.domain.usecase.UpdateDailyPlanItemUseCase
-import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
+import com.checkit.domain.*
+import com.checkit.domain.usecase.*
+import com.checkit.data.*
 import com.checkit.ui.tasks.EditorMode
 import com.checkit.ui.UiEvent
 import com.checkit.ui.duration
@@ -47,6 +22,10 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import com.checkit.domain.SprintManager
+import com.checkit.domain.usecase.AddTaskUseCase
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -63,10 +42,12 @@ class MyDayViewModel(
     private val updateDailyPlanItem: UpdateDailyPlanItemUseCase,
     private val syncKeyResultFromDailyPlan: SyncKeyResultFromDailyPlanUseCase,
     private val deleteDailyPlanItemUseCase: DeleteDailyPlanItemUseCase,
+    private val addTask: AddTaskUseCase,
     private val settingsRepository: SettingsRepository,
     private val buildDayReviewSummary: BuildDayReviewSummaryUseCase,
     private val completeDayReview: CompleteDayReviewUseCase,
-    private val carryOverDailyPlanItems: CarryOverDailyPlanItemsUseCase
+    private val carryOverDailyPlanItems: CarryOverDailyPlanItemsUseCase,
+    val sprintManager: SprintManager
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(MyDayUiState())
     val uiState: StateFlow<MyDayUiState> = _uiState.asStateFlow()
@@ -658,6 +639,71 @@ class MyDayViewModel(
             _uiState.update(updateState)
         }
     }
+
+    fun startSprint(taskId: Long? = null, description: String = "") {
+        sprintManager.startSprint(taskId, description)
+    }
+
+    fun pauseSprint() = sprintManager.pauseSprint()
+    fun resumeSprint() = sprintManager.resumeSprint()
+    fun stopSprint() = sprintManager.stopSprint()
+
+    fun upgradeToPomodoro() {
+        val current = sprintManager.state.value
+        if (current is SprintState.Finished) {
+            sprintManager.startSprint(current.taskId, current.description, durationSeconds = 1500, isPomodoro = true)
+        }
+    }
+
+    fun saveSprintAsWin() {
+        val current = sprintManager.state.value
+        if (current is SprintState.Finished) {
+            // Future: could automatically add to winNote if empty
+            sprintManager.dismissFinished()
+        }
+    }
+
+    fun logSprintAsTask() {
+        val current = sprintManager.state.value
+        if (current is SprintState.Finished) {
+            viewModelScope.launch {
+                val inbox = _uiState.value.board.objectives.firstOrNull { it.name == "Inbox" } ?: Objective.None
+                addTask(
+                    TaskWriteInput(
+                        objectiveId = inbox.id,
+                        keyResultId = null,
+                        name = current.description,
+                        description = "Sprint session (${current.totalSeconds / 60}m)",
+                        subtasks = emptyList(),
+                        status = TaskStatus.Completed,
+                        priority = TaskPriority.None,
+                        doDate = today(),
+                        startTimeMinutes = null,
+                        endTimeMinutes = null,
+                        repeatRRule = null,
+                        reminders = emptyList(),
+                        tagIds = emptyList()
+                    )
+                )
+                
+                // Add to daily plan so it shows up in "Done" list today
+                addDailyPlanItem(
+                    date = today(),
+                    title = current.description,
+                    note = "Sprint session (${current.totalSeconds / 60}m)",
+                    startTimeMinutes = null,
+                    endTimeMinutes = null,
+                    source = DailyPlanItemSource.MyDayTask,
+                    status = DailyPlanItemStatus.Done,
+                    tagIds = emptyList()
+                )
+                
+                sprintManager.dismissFinished()
+            }
+        }
+    }
+
+    fun dismissFinishedSprint() = sprintManager.dismissFinished()
 
     private fun sendEvent(event: UiEvent) {
         viewModelScope.launch { _events.send(event) }
