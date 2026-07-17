@@ -125,4 +125,8 @@ class CalendarViewModel(
             )
         }
     }
+
+    fun toggleMonthlyWinsExpanded() {
+        _uiState.update { it.copy(isMonthlyWinsExpanded = !it.isMonthlyWinsExpanded) }
+    }
 }

@@ -358,7 +358,7 @@ private fun AgendaAxisRow(
         modifier = Modifier
             .fillMaxWidth()
             .height(IntrinsicSize.Min),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.Top
     ) {
         AgendaAxisLabel(text = label, isHighlighted)

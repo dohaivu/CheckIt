@@ -49,7 +49,8 @@ data class DayReviewConfirmInput(
     val date: LocalDate,
     val leftoverActions: Map<Long, LeftoverAction>,
     val winNote: String? = null,
-    val winNoteItemId: Long? = null
+    val winNoteItemId: Long? = null,
+    val tomorrowGoal: String? = null
 )
 
 data class DayReviewConfirmResult(

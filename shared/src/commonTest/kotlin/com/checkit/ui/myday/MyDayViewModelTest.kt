@@ -10,6 +10,7 @@ import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.BuildDayReviewSummaryUseCase
 import com.checkit.domain.usecase.CarryOverDailyPlanItemsUseCase
 import com.checkit.domain.usecase.CompleteDayReviewUseCase
+import com.checkit.domain.usecase.UpsertDayReviewWinNoteUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
@@ -45,7 +46,8 @@ class MyDayViewModelTest {
         Dispatchers.setMain(dispatcher)
         repository = FakeCheckItRepository()
         settingsRepository = FakeSettingsRepository()
-        val buildSummary = BuildDayReviewSummaryUseCase()
+        val buildSummary = BuildDayReviewSummaryUseCase(dispatcher)
+        val carryOver = CarryOverDailyPlanItemsUseCase(repository, dispatcher)
         viewModel = MyDayViewModel(
             observeTaskBoard = ObserveTaskBoardUseCase(repository),
             observeDailyPlans = ObserveDailyPlansUseCase(repository),
@@ -61,10 +63,12 @@ class MyDayViewModelTest {
             completeDayReview = CompleteDayReviewUseCase(
                 repository = repository,
                 settingsRepository = settingsRepository,
-                carryOverDailyPlanItems = CarryOverDailyPlanItemsUseCase(repository),
-                buildSummary = buildSummary
+                carryOverDailyPlanItems = carryOver,
+                upsertWinNote = UpsertDayReviewWinNoteUseCase(repository, dispatcher),
+                buildSummary = buildSummary,
+                dispatcher = dispatcher
             ),
-            carryOverDailyPlanItems = CarryOverDailyPlanItemsUseCase(repository)
+            carryOverDailyPlanItems = carryOver
         )
         dispatcher.scheduler.advanceUntilIdle()
     }

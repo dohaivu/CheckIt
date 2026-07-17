@@ -35,6 +35,7 @@ data class MyDayUiState(
     val showLeftoversSheet: Boolean = false,
     val showPlanAssistBanner: Boolean = false,
     val showSuggestions: Boolean = false,
+    val showCelebration: Boolean = false,
     val suggestionStartTimeMinutes: Int? = null,
     val suggestionEndTimeMinutes: Int? = null,
     val isLoading: Boolean = true
@@ -67,6 +68,7 @@ data class DayReviewUiState(
     val leftoverActions: Map<Long, LeftoverAction> = emptyMap(),
     val winNote: String = "",
     val winNoteItemId: Long? = null,
+    val tomorrowGoal: String = "",
     val isSubmitting: Boolean = false
 ) {
     fun actionFor(itemId: Long): LeftoverAction =

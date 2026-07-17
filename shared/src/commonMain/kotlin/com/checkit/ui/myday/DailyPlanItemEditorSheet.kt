@@ -72,7 +72,7 @@ internal fun DailyPlanItemEditorSheet(
     AppEditorBottomSheet(
         onDismiss = onDismiss,
         modifier = Modifier
-            .fillMaxHeight(0.85f)
+            .fillMaxHeight(0.9f)
             .padding(bottom = 24.dp)
             .windowInsetsPadding(WindowInsets.ime)
     ) {
@@ -211,7 +211,7 @@ private fun DailyPlanItemFormContent(
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.SemiBold
             ),
-            minLines = 1,
+            minLines = 2,
             maxLines = 3,
             placeholder = displaySource.titlePlaceholder(),
             enabled = enabled,

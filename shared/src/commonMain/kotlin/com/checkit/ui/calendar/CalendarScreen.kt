@@ -9,6 +9,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -31,6 +32,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -68,6 +70,20 @@ import com.mikepenz.markdown.m3.markdownTypography
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
+import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.VerticalDivider
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 import org.jetbrains.compose.resources.stringResource
@@ -113,68 +129,98 @@ internal fun CalendarScreen(
             )
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 12.dp, vertical = 0.dp)
-                .padding(top = padding.calculateTopPadding()),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            CalendarPeriodHeader(
-                month = state.selectedMonth,
-                selectedDate = state.selectedDate,
-                displayMode = state.calendarDisplayMode,
-                onPreviousPeriod = calendarViewModel::previousPeriod,
-                onNextPeriod = calendarViewModel::nextPeriod,
-                onCurrentMonth = calendarViewModel::resetToToday,
-                onDisplayModeToggle = calendarViewModel::toggleCalendarDisplayMode
-            )
-            Box(
+        Box(modifier = Modifier.fillMaxSize().padding(top = padding.calculateTopPadding())) {
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .animateContentSize()
+                    .fillMaxSize()
+                    .padding(horizontal = 12.dp, vertical = 0.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                when (state.calendarDisplayMode) {
-                    CalendarDisplayMode.Month -> MonthCalendar(
-                        month = state.selectedMonth,
-                        selectedDate = state.selectedDate,
-                        onDateSelected = calendarViewModel::selectDate,
-                        onDateDoubleClick = handleDateDoubleClick,
-                        state = state
-                    )
-                    CalendarDisplayMode.Week -> WeekCalendar(
-                        selectedDate = state.selectedDate,
-                        onDateSelected = calendarViewModel::selectDate,
-                        onDateDoubleClick = handleDateDoubleClick,
-                        state = state
-                    )
+                CalendarPeriodHeader(
+                    month = state.selectedMonth,
+                    selectedDate = state.selectedDate,
+                    displayMode = state.calendarDisplayMode,
+                    onPreviousPeriod = calendarViewModel::previousPeriod,
+                    onNextPeriod = calendarViewModel::nextPeriod,
+                    onCurrentMonth = calendarViewModel::resetToToday,
+                    onDisplayModeToggle = calendarViewModel::toggleCalendarDisplayMode
+                )
+
+                Crossfade(targetState = state.isMonthlyWinsExpanded, modifier = Modifier.weight(1f)) { expanded ->
+                    if (expanded) {
+                        MonthlyWinsGallery(
+                            wins = state.monthlyWins,
+                            onDateClick = {
+                                calendarViewModel.selectDate(it)
+                                calendarViewModel.toggleMonthlyWinsExpanded()
+                            }
+                        )
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .animateContentSize()
+                            ) {
+                                when (state.calendarDisplayMode) {
+                                    CalendarDisplayMode.Month -> MonthCalendar(
+                                        month = state.selectedMonth,
+                                        selectedDate = state.selectedDate,
+                                        onDateSelected = calendarViewModel::selectDate,
+                                        onDateDoubleClick = handleDateDoubleClick,
+                                        state = state
+                                                    )
+                                    CalendarDisplayMode.Week -> WeekCalendar(
+                                        selectedDate = state.selectedDate,
+                                        onDateSelected = calendarViewModel::selectDate,
+                                        onDateDoubleClick = handleDateDoubleClick,
+                                        state = state
+                                                    )
+                                }
+                            }
+                            SelectedDateHeader(
+                                date = state.selectedDate,
+                                taskCount = selectedContent.taskCount,
+                                noteCount = selectedContent.noteCount,
+                                summaryEnabled = selectedContent.showDailyPlan && state.showDailyPlanSummary,
+                                summaryAvailable = selectedContent.showDailyPlan,
+                                onSummaryToggle = calendarViewModel::toggleDailyPlanSummary
+                            )
+                            if (selectedContent.showDailyPlan) {
+                                DayLinearTimeline(
+                                    items = selectedContent.dailyPlanItems.filter { it.status == DailyPlanItemStatus.Done },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 4.dp)
+                                        .padding(bottom = 4.dp)
+                                )
+                            }
+                            SelectedDateContent(
+                                content = selectedContent,
+                                showDailyPlanSummary = state.showDailyPlanSummary,
+                                onDailyPlanItemClick = onDailyPlanItemClick,
+                                onTaskClick = onTaskClick,
+                                onNoteClick = onNoteClick,
+                                modifier = Modifier.fillMaxWidth().weight(1f)
+                            )
+                        }
+                    }
                 }
             }
-            SelectedDateHeader(
-                date = state.selectedDate,
-                taskCount = selectedContent.taskCount,
-                noteCount = selectedContent.noteCount,
-                summaryEnabled = selectedContent.showDailyPlan && state.showDailyPlanSummary,
-                summaryAvailable = selectedContent.showDailyPlan,
-                onSummaryToggle = calendarViewModel::toggleDailyPlanSummary
-            )
-            if (selectedContent.showDailyPlan) {
-                DayLinearTimeline(
-                    items = selectedContent.dailyPlanItems.filter { it.status == DailyPlanItemStatus.Done },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 4.dp)
-                        .padding(bottom = 4.dp)
+
+            // The "Expandable Hall of Fame" Handle
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                HallOfFameHandle(
+                    winCount = state.monthlyWins.size,
+                    expanded = state.isMonthlyWinsExpanded,
+                    onClick = calendarViewModel::toggleMonthlyWinsExpanded
                 )
             }
-            SelectedDateContent(
-                content = selectedContent,
-                showDailyPlanSummary = state.showDailyPlanSummary,
-                onDailyPlanItemClick = onDailyPlanItemClick,
-                onTaskClick = onTaskClick,
-                onNoteClick = onNoteClick,
-                modifier = Modifier.fillMaxWidth().weight(1f)
-            )
         }
     }
 }
@@ -739,4 +785,129 @@ internal fun DayOfWeek.headerColor(colors: CalendarCellColors): Color = when (th
     DayOfWeek.SATURDAY -> colors.saturday
     DayOfWeek.SUNDAY -> colors.sunday
     else -> colors.headerDay
+}
+
+@Composable
+private fun HallOfFameHandle(
+    winCount: Int,
+    expanded: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        color = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 12.dp, bottomEnd = 12.dp),
+        tonalElevation = 4.dp,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.EmojiEvents,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = if (winCount > 0) "Monthly Hall of Fame ($winCount Wins)" else "Monthly Hall of Fame",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                imageVector = if (expanded) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun MonthlyWinsGallery(
+    wins: List<Pair<LocalDate, DailyPlanItem>>,
+    onDateClick: (LocalDate) -> Unit
+) {
+    if (wins.isEmpty()) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Default.AutoAwesome, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.outline)
+                Text(
+                    "No wins recorded this month yet.\nComplete your day reviews to build your Hall of Fame!",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 64.dp, top = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(wins) { (date, win) ->
+                WinCard(date, win, onClick = { onDateClick(date) })
+            }
+        }
+    }
+}
+
+@Composable
+private fun WinCard(
+    date: LocalDate,
+    win: DailyPlanItem,
+    onClick: () -> Unit
+) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = date.day.toString(),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = date.localizedShortMonthName(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            VerticalDivider(modifier = Modifier.height(32.dp), color = MaterialTheme.colorScheme.outlineVariant)
+
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Icon(Icons.Default.Star, null, Modifier.size(14.dp), tint = Color(0xFFEAB308))
+                    Text(
+                        text = "WIN OF THE DAY",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Black,
+                        color = Color(0xFFEAB308)
+                    )
+                }
+                Text(
+                    text = win.note ?: "A great day!",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+    }
 }

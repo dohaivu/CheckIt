@@ -92,7 +92,7 @@
     <string name="day_review_action_done">Done</string>
     <string name="day_review_action_carry">Tomorrow</string>
     <string name="day_review_action_drop">Leave</string>
-    <string name="day_review_win_note_label">Win of the day (optional)</string>
+    <string name="day_review_win_note_label">Win of the day</string>
     <string name="day_review_win_note_placeholder">What went well today?</string>
     <string name="day_review_finish">Finish review</string>
     <string name="day_review_finish_and_report">Finish &amp; report</string>

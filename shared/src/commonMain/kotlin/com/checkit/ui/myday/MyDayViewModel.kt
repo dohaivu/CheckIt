@@ -51,6 +51,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.milliseconds
 
 class MyDayViewModel(
     private val observeTaskBoard: ObserveTaskBoardUseCase,
@@ -121,16 +122,16 @@ class MyDayViewModel(
                         nowMinutes = nowMinutes
                     )
                     maybeAutoCarryOver(settings, pendingLeftovers, date)
+                    val review = _uiState.value.dayReview?.let { existing ->
+                        val summary = buildDayReviewSummary(date, plan)
+                        val validIds = summary.plannedItems.map { it.id }.toSet()
+                        existing.copy(
+                            summary = summary,
+                            leftoverActions = existing.leftoverActions.filterKeys { it in validIds },
+                            winNoteItemId = existing.winNoteItemId ?: summary.winNoteItemId
+                        )
+                    }
                     _uiState.update { state ->
-                        val review = state.dayReview?.let { existing ->
-                            val summary = buildDayReviewSummary(date, plan)
-                            val validIds = summary.plannedItems.map { it.id }.toSet()
-                            existing.copy(
-                                summary = summary,
-                                leftoverActions = existing.leftoverActions.filterKeys { it in validIds },
-                                winNoteItemId = existing.winNoteItemId ?: summary.winNoteItemId
-                            )
-                        }
                         state.copy(
                             board = board,
                             dailyPlans = dailyPlans,
@@ -189,21 +190,23 @@ class MyDayViewModel(
     fun openDayReview() {
         val state = _uiState.value
         val date = state.today
-        val summary = buildDayReviewSummary(date, state.plan)
-        val defaults = summary.plannedItems.associate { it.id to LeftoverAction.CarryOver }
-        _uiState.update {
-            it.copy(
-                dayReview = DayReviewUiState(
-                    summary = summary,
-                    leftoverActions = defaults,
-                    winNote = summary.winNote,
-                    winNoteItemId = summary.winNoteItemId
-                ),
-                showDayReviewBanner = false,
-                showLeftoversSheet = false,
-                showSuggestions = false,
-                itemEditor = null
-            )
+        viewModelScope.launch {
+            val summary = buildDayReviewSummary(date, state.plan)
+            val defaults = summary.plannedItems.associate { it.id to LeftoverAction.CarryOver }
+            _uiState.update {
+                it.copy(
+                    dayReview = DayReviewUiState(
+                        summary = summary,
+                        leftoverActions = defaults,
+                        winNote = summary.winNote,
+                        winNoteItemId = summary.winNoteItemId
+                    ),
+                    showDayReviewBanner = false,
+                    showLeftoversSheet = false,
+                    showSuggestions = false,
+                    itemEditor = null
+                )
+            }
         }
     }
 
@@ -282,7 +285,7 @@ class MyDayViewModel(
             runCatching {
                 carryOverDailyPlanItems(
                     items = listOf(item),
-                    itemIds = listOf(item.id),
+                    itemIds = setOf(item.id),
                     toDate = today(),
                     timePolicy = CarryOverTimePolicy.ClearTimes
                 )
@@ -352,24 +355,34 @@ class MyDayViewModel(
         }
     }
 
-    fun confirmDayReview(openReportAfter: Boolean = false) {
+    fun updateTomorrowGoal(goal: String) {
+        _uiState.update { state ->
+            val review = state.dayReview ?: return@update state
+            state.copy(dayReview = review.copy(tomorrowGoal = goal))
+        }
+    }
+
+    fun confirmDayReview() {
         val state = _uiState.value
         val review = state.dayReview ?: return
         if (review.isSubmitting) return
         _uiState.update { it.copy(dayReview = review.copy(isSubmitting = true)) }
         viewModelScope.launch {
-            runCatching {
-                completeDayReview(
-                    plan = state.plan,
-                    input = DayReviewConfirmInput(
-                        date = review.summary.date,
-                        leftoverActions = review.leftoverActions,
-                        winNote = review.winNote,
-                        winNoteItemId = review.winNoteItemId
-                    )
+            completeDayReview(
+                plan = state.plan,
+                input = DayReviewConfirmInput(
+                    date = review.summary.date,
+                    leftoverActions = review.leftoverActions,
+                    winNote = review.winNote,
+                    winNoteItemId = review.winNoteItemId,
+                    tomorrowGoal = review.tomorrowGoal
                 )
-            }.onSuccess { result ->
-                _uiState.update { it.copy(dayReview = null, showDayReviewBanner = false) }
+            ).onSuccess { result ->
+                _uiState.update { it.copy(dayReview = null, showDayReviewBanner = false, showCelebration = true) }
+                viewModelScope.launch {
+                    delay(3000.milliseconds)
+                    _uiState.update { it.copy(showCelebration = false) }
+                }
                 val parts = buildList {
                     if (result.carriedCount > 0) add("${result.carriedCount} carried to tomorrow")
                     if (result.markedDoneCount > 0) add("${result.markedDoneCount} marked done")
@@ -381,9 +394,6 @@ class MyDayViewModel(
                         if (parts.isEmpty()) "Day reviewed" else parts.joinToString(" · ")
                     )
                 )
-                if (openReportAfter) {
-                    sendEvent(UiEvent.OpenReport)
-                }
             }.onFailure { error ->
                 _uiState.update { current ->
                     current.copy(

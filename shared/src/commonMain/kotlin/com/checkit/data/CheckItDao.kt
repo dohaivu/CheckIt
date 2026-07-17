@@ -534,6 +534,20 @@ interface CheckItDao {
     @Query(
         """
         UPDATE daily_plan_items
+        SET status = :status,
+            completedAtMillis = :completedAtMillis
+        WHERE id IN (:itemIds)
+        """
+    )
+    suspend fun updateDailyPlanItemsStatus(
+        itemIds: List<Long>,
+        status: String,
+        completedAtMillis: Long?
+    )
+
+    @Query(
+        """
+        UPDATE daily_plan_items
         SET title = :title,
             note = :note,
             source = :source,

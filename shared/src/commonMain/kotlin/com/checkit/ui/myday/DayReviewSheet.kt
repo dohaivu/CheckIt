@@ -1,6 +1,8 @@
 package com.checkit.ui.myday
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -8,27 +10,26 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import checkit.shared.generated.resources.Res
@@ -39,7 +40,6 @@ import checkit.shared.generated.resources.day_review_action_drop
 import checkit.shared.generated.resources.day_review_done_count
 import checkit.shared.generated.resources.day_review_done_minutes
 import checkit.shared.generated.resources.day_review_finish
-import checkit.shared.generated.resources.day_review_finish_and_report
 import checkit.shared.generated.resources.day_review_leftovers_empty
 import checkit.shared.generated.resources.day_review_leftovers_title
 import checkit.shared.generated.resources.day_review_planned_count
@@ -47,12 +47,15 @@ import checkit.shared.generated.resources.day_review_title
 import checkit.shared.generated.resources.day_review_win_note_label
 import checkit.shared.generated.resources.day_review_win_note_placeholder
 import com.checkit.domain.DailyPlanItem
+import com.checkit.domain.DayReviewTagMinutes
 import com.checkit.domain.LeftoverAction
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.tasks.isOverdue
+import com.checkit.ui.tasks.toDurationLabel
 import com.checkit.ui.tasks.views.DailyPlanTimelineCard
+import com.checkit.ui.theme.toColor
 import com.checkit.ui.today
 import org.jetbrains.compose.resources.stringResource
 
@@ -63,18 +66,22 @@ internal fun DayReviewSheet(
     onDismiss: () -> Unit,
     onLeftoverAction: (Long, LeftoverAction) -> Unit,
     onWinNoteChange: (String) -> Unit,
-    onConfirm: (openReportAfter: Boolean) -> Unit
+    onTomorrowGoalChange: (String) -> Unit,
+    onConfirm: () -> Unit
 ) {
     AppEditorBottomSheet(
         onDismiss = onDismiss,
         modifier = Modifier
             .fillMaxHeight(0.9f)
-            .padding(bottom = 16.dp)
+            .padding(bottom = 16.dp),
+        sheetGesturesEnabled = false
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp),
+                .weight(1f)
+                .padding(horizontal = 12.dp)
+                .alpha(if (state.isSubmitting) 0.5f else 1f),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
@@ -83,6 +90,23 @@ internal fun DayReviewSheet(
                 fontWeight = FontWeight.SemiBold
             )
             ReviewSummaryRow(state)
+
+            if (state.summary.topTags.isNotEmpty()) {
+                TagInsightsRow(state.summary.topTags)
+            }
+
+            ReflectionSection(
+                value = state.winNote,
+                onValueChange = onWinNoteChange,
+                enabled = !state.isSubmitting
+            )
+
+            TomorrowGoalSection(
+                value = state.tomorrowGoal,
+                onValueChange = onTomorrowGoalChange,
+                enabled = !state.isSubmitting
+            )
+
             Text(
                 text = stringResource(Res.string.day_review_leftovers_title),
                 style = MaterialTheme.typography.titleMedium,
@@ -101,7 +125,9 @@ internal fun DayReviewSheet(
                         .weight(1f, fill = true),
                     contentPadding = PaddingValues(bottom = 8.dp)
                 ) {
-                    itemsIndexed(state.summary.plannedItems, key = { _, item -> item.id }) { index, item ->
+                    itemsIndexed(
+                        state.summary.plannedItems,
+                        key = { _, item -> item.id }) { index, item ->
                         LeftoverReviewRow(
                             item = item,
                             action = state.actionFor(item.id),
@@ -109,54 +135,133 @@ internal fun DayReviewSheet(
                             onAction = { onLeftoverAction(item.id, it) }
                         )
                         if (index < state.summary.plannedItems.lastIndex) {
-                            AppHorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                            AppHorizontalDivider(
+                                modifier = Modifier.padding(vertical = 12.dp),
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                            )
                         }
                     }
                 }
             }
-            Text(
-                text = stringResource(Res.string.day_review_win_note_label),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            AppOutlinedTextField(
-                value = state.winNote,
-                onValueChange = onWinNoteChange,
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = stringResource(Res.string.day_review_win_note_placeholder),
-                minLines = 2,
-                maxLines = 5,
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextButton(
+                onClick = onDismiss,
                 enabled = !state.isSubmitting
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically
             ) {
-                TextButton(
-                    onClick = onDismiss,
-                    enabled = !state.isSubmitting
-                ) {
-                    Text(stringResource(Res.string.cancel))
-                }
-                Spacer(Modifier.weight(1f))
-                OutlinedButton(
-                    onClick = { onConfirm(true) },
-                    enabled = !state.isSubmitting
-                ) {
-                    Text(stringResource(Res.string.day_review_finish_and_report))
-                }
-                Button(
-                    onClick = { onConfirm(false) },
-                    enabled = !state.isSubmitting
-                ) {
-                    Text(stringResource(Res.string.day_review_finish))
-                }
+                Text(stringResource(Res.string.cancel))
+            }
+            Spacer(Modifier.weight(1f))
+            Button(
+                onClick = onConfirm,
+                enabled = !state.isSubmitting
+            ) {
+                Text(stringResource(Res.string.day_review_finish))
             }
         }
     }
 }
+
+@Composable
+private fun ReflectionSection(
+    value: String,
+    onValueChange: (String) -> Unit,
+    enabled: Boolean
+) {
+    val prompt = remember { WinNotePrompts.random() }
+
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = stringResource(Res.string.day_review_win_note_label),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = "Tip: $prompt",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+        )
+        AppOutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = stringResource(Res.string.day_review_win_note_placeholder),
+            minLines = 4,
+            maxLines = 8,
+            enabled = enabled
+        )
+    }
+}
+
+@Composable
+private fun TomorrowGoalSection(
+    value: String,
+    onValueChange: (String) -> Unit,
+    enabled: Boolean
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = "Tomorrow's Top Priority",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        AppOutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = "One thing you want to focus on...",
+            minLines = 1,
+            enabled = enabled
+        )
+    }
+}
+
+@Composable
+private fun TagInsightsRow(tags: List<DayReviewTagMinutes>) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        tags.forEach { tag ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .clip(MaterialTheme.shapes.extraSmall)
+                    .background(tag.color.toColor().copy(alpha = 0.15f))
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(MaterialTheme.shapes.extraSmall)
+                        .background(tag.color.toColor())
+                )
+                Text(
+                    text = "${tag.name} (${tag.totalMinutes.toDurationLabel()})",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+    }
+}
+
+private val WinNotePrompts = listOf(
+    "What is one thing you're proud of today?",
+    "What was the highlight of your day?",
+    "What made you smile today?",
+    "What is a small win you achieved?",
+    "What did you learn today?"
+)
 
 @Composable
 private fun ReviewSummaryRow(state: DayReviewUiState) {
