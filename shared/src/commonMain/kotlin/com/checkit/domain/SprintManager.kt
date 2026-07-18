@@ -4,6 +4,7 @@ import com.checkit.notifications.SprintNotificationScheduler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,7 +14,7 @@ import kotlin.time.Clock
 import kotlin.time.Duration.Companion.milliseconds
 
 sealed interface SprintState {
-    object Idle : SprintState
+    data object Idle : SprintState
 
     data class Running(
         val taskId: Long?,
@@ -22,6 +23,8 @@ sealed interface SprintState {
         val totalSeconds: Int,
         val remainingSeconds: Int,
         val startTimeEpochMillis: Long,
+        /** Wall-clock deadline used to recompute remaining while running. */
+        val endsAtEpochMillis: Long,
         val isPomodoro: Boolean = false
     ) : SprintState
 
@@ -42,52 +45,105 @@ sealed interface SprintState {
 }
 
 class SprintManager(
-    private val notificationScheduler: SprintNotificationScheduler
+    private val notificationScheduler: SprintNotificationScheduler,
+    private val clock: Clock = Clock.System,
+    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 ) {
     private val _state = MutableStateFlow<SprintState>(SprintState.Idle)
     val state: StateFlow<SprintState> = _state.asStateFlow()
 
     private var timerJob: Job? = null
-    private val scope = CoroutineScope(Dispatchers.Default)
 
-    fun startSprint(taskId: Long?, dailyPlanItemId: Long?, description: String, durationSeconds: Int = 300, isPomodoro: Boolean = false) {
-        val now = Clock.System.now().toEpochMilliseconds()
+    /**
+     * Starts a sprint when idle or after a finished session.
+     * Returns false if a sprint is already running or paused (does not overwrite).
+     */
+    fun startSprint(
+        taskId: Long?,
+        dailyPlanItemId: Long?,
+        description: String,
+        durationSeconds: Int = 300,
+        isPomodoro: Boolean = false
+    ): Boolean {
+        when (_state.value) {
+            is SprintState.Running, is SprintState.Paused -> return false
+            is SprintState.Idle, is SprintState.Finished -> Unit
+        }
+
+        val safeDuration = durationSeconds.coerceAtLeast(1)
+        val now = clock.now().toEpochMilliseconds()
         val running = SprintState.Running(
             taskId = taskId,
             dailyPlanItemId = dailyPlanItemId,
             description = description.ifBlank { if (isPomodoro) "Deep Focus" else "Quick Sprint" },
-            totalSeconds = durationSeconds,
-            remainingSeconds = durationSeconds,
+            totalSeconds = safeDuration,
+            remainingSeconds = safeDuration,
             startTimeEpochMillis = now,
+            endsAtEpochMillis = now + safeDuration * 1000L,
             isPomodoro = isPomodoro
         )
+        timerJob?.cancel()
         _state.value = running
         notificationScheduler.startPersistentNotification(running)
         startTimer()
+        return true
     }
 
     fun pauseSprint() {
         val current = _state.value
         if (current is SprintState.Running) {
             timerJob?.cancel()
-            _state.value = SprintState.Paused(current, current.remainingSeconds)
-            notificationScheduler.updatePersistentNotification(current, isPaused = true)
+            val remaining = remainingSeconds(current)
+            val frozen = current.copy(remainingSeconds = remaining)
+            _state.value = SprintState.Paused(frozen, remaining)
+            notificationScheduler.updatePersistentNotification(frozen, isPaused = true)
         }
     }
 
     fun resumeSprint() {
         val current = _state.value
         if (current is SprintState.Paused) {
-            _state.value = current.runningState.copy(remainingSeconds = current.remainingSecondsAtPause)
+            val remaining = current.remainingSecondsAtPause.coerceAtLeast(0)
+            if (remaining <= 0) {
+                finishWithRemaining(current.runningState, remainingSeconds = 0)
+                return
+            }
+            val now = clock.now().toEpochMilliseconds()
+            val running = current.runningState.copy(
+                remainingSeconds = remaining,
+                endsAtEpochMillis = now + remaining * 1000L
+            )
+            _state.value = running
+            // Re-assert foreground service in case it was stopped while paused.
+            notificationScheduler.startPersistentNotification(running)
             startTimer()
         }
     }
 
     fun completeSprintManually() {
         when (val current = _state.value) {
-            is SprintState.Running -> finish(current)
-            is SprintState.Paused -> finish(current.runningState)
+            is SprintState.Running -> finishWithRemaining(current, remainingSeconds(current))
+            is SprintState.Paused -> finishWithRemaining(current.runningState, current.remainingSecondsAtPause)
             else -> Unit
+        }
+    }
+
+    /**
+     * Atomically takes a finished sprint (transitions to Idle) so save can only run once.
+     * Cancels persistent notification if still showing.
+     */
+    fun takeFinished(): SprintState.Finished? {
+        val current = _state.value
+        if (current !is SprintState.Finished) return null
+        _state.value = SprintState.Idle
+        notificationScheduler.cancelNotification()
+        return current
+    }
+
+    fun dismissFinished() {
+        if (_state.value is SprintState.Finished) {
+            _state.value = SprintState.Idle
+            notificationScheduler.cancelNotification()
         }
     }
 
@@ -95,29 +151,36 @@ class SprintManager(
         timerJob?.cancel()
         timerJob = scope.launch {
             while (true) {
-                delay(1000.milliseconds)
+                delay(200.milliseconds)
                 val current = _state.value
-                if (current is SprintState.Running) {
-                    val remaining = current.remainingSeconds - 1
-                    if (remaining <= 0) {
-                        finish(current)
-                        break
-                    } else {
-                        val updated = current.copy(remainingSeconds = remaining)
-                        _state.value = updated
-                        notificationScheduler.updatePersistentNotification(updated, isPaused = false)
-                    }
-                } else {
+                if (current !is SprintState.Running) break
+
+                val remaining = remainingSeconds(current)
+                if (remaining <= 0) {
+                    finishWithRemaining(current, remainingSeconds = 0)
                     break
+                }
+                if (remaining != current.remainingSeconds) {
+                    val updated = current.copy(remainingSeconds = remaining)
+                    _state.value = updated
+                    notificationScheduler.updatePersistentNotification(updated, isPaused = false)
                 }
             }
         }
     }
 
-    private fun finish(running: SprintState.Running) {
+    private fun remainingSeconds(running: SprintState.Running): Int {
+        val now = clock.now().toEpochMilliseconds()
+        val millisLeft = running.endsAtEpochMillis - now
+        if (millisLeft <= 0L) return 0
+        return ((millisLeft + 999L) / 1000L).toInt().coerceAtMost(running.totalSeconds)
+    }
+
+    private fun finishWithRemaining(running: SprintState.Running, remainingSeconds: Int) {
         timerJob?.cancel()
-        val now = Clock.System.now().toEpochMilliseconds()
-        val elapsed = ((now - running.startTimeEpochMillis) / 1000).toInt().coerceAtMost(running.totalSeconds)
+        timerJob = null
+        val remaining = remainingSeconds.coerceIn(0, running.totalSeconds)
+        val elapsed = (running.totalSeconds - remaining).coerceIn(0, running.totalSeconds)
         _state.value = SprintState.Finished(
             taskId = running.taskId,
             dailyPlanItemId = running.dailyPlanItemId,
@@ -127,9 +190,6 @@ class SprintManager(
             startTimeEpochMillis = running.startTimeEpochMillis,
             isPomodoro = running.isPomodoro
         )
-    }
-
-    fun dismissFinished() {
-        _state.value = SprintState.Idle
+        notificationScheduler.cancelNotification()
     }
 }

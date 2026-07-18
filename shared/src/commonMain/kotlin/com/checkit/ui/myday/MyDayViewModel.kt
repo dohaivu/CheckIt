@@ -642,12 +642,16 @@ class MyDayViewModel(
 
     fun startSprint(taskId: Long? = null, dailyPlanItemId: Long? = null, description: String = "") {
         dismissQuickSprint()
-        sprintManager.startSprint(taskId, dailyPlanItemId, description)
+        if (!sprintManager.startSprint(taskId, dailyPlanItemId, description)) {
+            sendEvent(UiEvent.ShowSnackbar("A sprint is already in progress"))
+        }
     }
 
     fun startSprintWithTask(task: TaskItem) {
         dismissQuickSprint()
-        sprintManager.startSprint(task.id, null, task.name)
+        if (!sprintManager.startSprint(task.id, null, task.name)) {
+            sendEvent(UiEvent.ShowSnackbar("A sprint is already in progress"))
+        }
     }
 
     fun openQuickSprint() {
@@ -665,14 +669,25 @@ class MyDayViewModel(
     fun upgradeToPomodoro() {
         val current = sprintManager.state.value
         if (current is SprintState.Finished) {
-            sprintManager.startSprint(current.taskId, current.dailyPlanItemId, current.description, durationSeconds = 1500, isPomodoro = true)
+            // Finished is allowed to start; takeFinished not needed — startSprint replaces Finished.
+            if (!sprintManager.startSprint(
+                    current.taskId,
+                    current.dailyPlanItemId,
+                    current.description,
+                    durationSeconds = 1500,
+                    isPomodoro = true
+                )
+            ) {
+                sendEvent(UiEvent.ShowSnackbar("A sprint is already in progress"))
+            }
         }
     }
 
     fun saveSprintAsWin() {
-        val current = sprintManager.state.value
-        if (current is SprintState.Finished) {
-            viewModelScope.launch {
+        // Atomically consume Finished so double-taps cannot save twice.
+        val current = sprintManager.takeFinished() ?: return
+        viewModelScope.launch {
+            try {
                 val todayDate = today()
                 val startInstant = kotlinx.datetime.Instant.fromEpochMilliseconds(current.startTimeEpochMillis)
                 val startDateTime = startInstant.toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
@@ -684,8 +699,11 @@ class MyDayViewModel(
                 val dailyPlanItemId = current.dailyPlanItemId
 
                 if (dailyPlanItemId != null) {
-                    if (_uiState.value.items.none { it.id == dailyPlanItemId }) return@launch
-                    
+                    if (_uiState.value.items.none { it.id == dailyPlanItemId }) {
+                        sendEvent(UiEvent.ShowSnackbar("Could not save sprint: plan item no longer exists"))
+                        return@launch
+                    }
+
                     syncKeyResultFromDailyPlan(
                         itemId = dailyPlanItemId,
                         proposedStatus = DailyPlanItemStatus.Done,
@@ -695,8 +713,13 @@ class MyDayViewModel(
                     updateDailyPlanItemTime(dailyPlanItemId, startMinutes, endMinutes)
                     updateDailyPlanItemStatus(dailyPlanItemId, DailyPlanItemStatus.Done)
                 } else if (taskId != null) {
-                    // Start from task but not from a plan item (e.g. from suggestions)
-                    val task = _uiState.value.board.tasksById[taskId] ?: return@launch
+                    // Start from task but not from a plan item (e.g. from suggestions / quick sprint).
+                    // Multiple plan items per task are intentional.
+                    val task = _uiState.value.board.tasksById[taskId]
+                    if (task == null) {
+                        sendEvent(UiEvent.ShowSnackbar("Could not save sprint: task no longer exists"))
+                        return@launch
+                    }
                     val itemId = addTaskToDailyPlan(todayDate, task)
                     
                     syncKeyResultFromDailyPlan(
@@ -720,7 +743,8 @@ class MyDayViewModel(
                         tagIds = emptyList()
                     )
                 }
-                sprintManager.dismissFinished()
+            } catch (error: Exception) {
+                sendEvent(UiEvent.ShowSnackbar(error.message ?: "Could not save sprint"))
             }
         }
     }
