@@ -2,34 +2,9 @@ package com.checkit.ui.myday
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.checkit.data.DailyPlanItemWriteInput
-import com.checkit.data.SettingsRepository
-import com.checkit.data.UserSettings
-import com.checkit.domain.CarryOverTimePolicy
-import com.checkit.domain.DailyPlan
-import com.checkit.domain.DailyPlanItem
-import com.checkit.domain.DailyPlanItemSource
-import com.checkit.domain.DailyPlanItemStatus
-import com.checkit.domain.DayReviewBannerPolicy
-import com.checkit.domain.DayReviewConfirmInput
-import com.checkit.domain.LeftoverAction
-import com.checkit.domain.LeftoversBannerPolicy
-import com.checkit.domain.PlanAssistBannerPolicy
-import com.checkit.domain.TaskItem
-import com.checkit.domain.YesterdayLeftovers
-import com.checkit.domain.hasEndTime
-import com.checkit.domain.usecase.AddDailyPlanItemUseCase
-import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
-import com.checkit.domain.usecase.BuildDayReviewSummaryUseCase
-import com.checkit.domain.usecase.CarryOverDailyPlanItemsUseCase
-import com.checkit.domain.usecase.CompleteDayReviewUseCase
-import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
-import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
-import com.checkit.domain.usecase.ObserveDailyPlansUseCase
-import com.checkit.domain.usecase.ObserveTaskBoardUseCase
-import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
-import com.checkit.domain.usecase.UpdateDailyPlanItemUseCase
-import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
+import com.checkit.domain.*
+import com.checkit.domain.usecase.*
+import com.checkit.data.*
 import com.checkit.ui.tasks.EditorMode
 import com.checkit.ui.UiEvent
 import com.checkit.ui.duration
@@ -47,6 +22,10 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import com.checkit.domain.SprintManager
+import com.checkit.domain.usecase.AddTaskUseCase
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -60,13 +39,15 @@ class MyDayViewModel(
     private val addTaskToDailyPlan: AddTaskToDailyPlanUseCase,
     private val addDailyPlanItem: AddDailyPlanItemUseCase,
     private val updateDailyPlanItemTime: UpdateDailyPlanItemTimeUseCase,
+    private val updateDailyPlanItemStatus: UpdateDailyPlanItemStatusUseCase,
     private val updateDailyPlanItem: UpdateDailyPlanItemUseCase,
     private val syncKeyResultFromDailyPlan: SyncKeyResultFromDailyPlanUseCase,
     private val deleteDailyPlanItemUseCase: DeleteDailyPlanItemUseCase,
     private val settingsRepository: SettingsRepository,
     private val buildDayReviewSummary: BuildDayReviewSummaryUseCase,
     private val completeDayReview: CompleteDayReviewUseCase,
-    private val carryOverDailyPlanItems: CarryOverDailyPlanItemsUseCase
+    private val carryOverDailyPlanItems: CarryOverDailyPlanItemsUseCase,
+    val sprintManager: SprintManager
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(MyDayUiState())
     val uiState: StateFlow<MyDayUiState> = _uiState.asStateFlow()
@@ -658,6 +639,123 @@ class MyDayViewModel(
             _uiState.update(updateState)
         }
     }
+
+    fun startSprint(taskId: Long? = null, dailyPlanItemId: Long? = null, description: String = "") {
+        dismissQuickSprint()
+        if (!sprintManager.startSprint(taskId, dailyPlanItemId, description)) {
+            sendEvent(UiEvent.ShowSnackbar("A sprint is already in progress"))
+        }
+    }
+
+    fun startSprintWithTask(task: TaskItem) {
+        dismissQuickSprint()
+        if (!sprintManager.startSprint(task.id, null, task.name)) {
+            sendEvent(UiEvent.ShowSnackbar("A sprint is already in progress"))
+        }
+    }
+
+    fun openQuickSprint() {
+        _uiState.update { it.copy(showQuickSprintSheet = true) }
+    }
+
+    fun dismissQuickSprint() {
+        _uiState.update { it.copy(showQuickSprintSheet = false) }
+    }
+
+    fun pauseSprint() = sprintManager.pauseSprint()
+    fun resumeSprint() = sprintManager.resumeSprint()
+    fun completeSprint() = sprintManager.completeSprintManually()
+
+    fun upgradeToPomodoro() {
+        val current = sprintManager.state.value
+        if (current is SprintState.Finished) {
+            val originalStartTime = current.startTimeEpochMillis
+            
+            if (!sprintManager.startSprint(
+                    taskId = current.taskId,
+                    dailyPlanItemId = current.dailyPlanItemId,
+                    description = current.description,
+                    durationSeconds = 1500, // 25 minutes
+                    isPomodoro = true,
+                    startTimeEpochMillis = originalStartTime
+                )
+            ) {
+                sendEvent(UiEvent.ShowSnackbar("A focus session is already in progress"))
+            }
+        }
+    }
+
+    fun saveSprintAsWin() {
+        // Atomically consume Finished so double-taps cannot save twice.
+        val current = sprintManager.takeFinished() ?: return
+        viewModelScope.launch {
+            try {
+                val todayDate = today()
+                val startInstant = kotlinx.datetime.Instant.fromEpochMilliseconds(current.startTimeEpochMillis)
+                val startDateTime = startInstant.toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
+                val startMinutes = startDateTime.hour * 60 + startDateTime.minute
+                val durationMinutes = (current.elapsedSeconds / 60).coerceAtLeast(1)
+                val endMinutes = startMinutes + durationMinutes
+
+                val taskId = current.taskId
+                val dailyPlanItemId = current.dailyPlanItemId
+
+                if (dailyPlanItemId != null) {
+                    if (_uiState.value.items.none { it.id == dailyPlanItemId }) {
+                        sendEvent(UiEvent.ShowSnackbar("Could not save sprint: plan item no longer exists"))
+                        return@launch
+                    }
+
+                    syncKeyResultFromDailyPlan(
+                        itemId = dailyPlanItemId,
+                        proposedStatus = DailyPlanItemStatus.Done,
+                        proposedStartTime = startMinutes,
+                        proposedEndTime = endMinutes
+                    )
+                    updateDailyPlanItemTime(dailyPlanItemId, startMinutes, endMinutes)
+                    updateDailyPlanItemStatus(dailyPlanItemId, DailyPlanItemStatus.Done)
+                } else if (taskId != null) {
+                    // Start from task but not from a plan item (e.g. from suggestions / quick sprint).
+                    // Multiple plan items per task are intentional.
+                    val task = _uiState.value.board.tasksById[taskId]
+                    if (task == null) {
+                        sendEvent(UiEvent.ShowSnackbar("Could not save sprint: task no longer exists"))
+                        return@launch
+                    }
+                    val itemId = addTaskToDailyPlan(todayDate, task)
+                    
+                    syncKeyResultFromDailyPlan(
+                        itemId = itemId,
+                        proposedStatus = DailyPlanItemStatus.Done,
+                        proposedStartTime = startMinutes,
+                        proposedEndTime = endMinutes
+                    )
+                    updateDailyPlanItemTime(itemId, startMinutes, endMinutes)
+                    updateDailyPlanItemStatus(itemId, DailyPlanItemStatus.Done)
+                } else {
+                    // Ad-hoc sprint
+                    addDailyPlanItem(
+                        date = todayDate,
+                        title = current.description,
+                        note = "Sprint session (${durationMinutes}m)",
+                        startTimeMinutes = startMinutes,
+                        endTimeMinutes = startMinutes + durationMinutes,
+                        source = DailyPlanItemSource.MyDayTask,
+                        status = DailyPlanItemStatus.Done,
+                        tagIds = emptyList()
+                    )
+                }
+            } catch (error: Exception) {
+                sendEvent(UiEvent.ShowSnackbar(error.message ?: "Could not save sprint"))
+            }
+        }
+    }
+
+    fun logSprintAsTask() {
+        saveSprintAsWin()
+    }
+
+    fun dismissFinishedSprint() = sprintManager.dismissFinished()
 
     private fun sendEvent(event: UiEvent) {
         viewModelScope.launch { _events.send(event) }

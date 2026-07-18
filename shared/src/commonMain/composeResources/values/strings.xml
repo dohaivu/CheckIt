@@ -112,4 +112,20 @@
     <string name="plan_assist_banner_dismiss">Later</string>
     <string name="settings_auto_carry_title">Auto-carry leftovers</string>
     <string name="settings_auto_carry_subtitle">Automatically move unfinished yesterday items into today</string>
+
+    <string name="sprint_adhoc_placeholder">What's 5 minutes of focus?</string>
+    <string name="sprint_start">Start</string>
+    <string name="sprint_stop">Stop</string>
+    <string name="sprint_pause">Pause</string>
+    <string name="sprint_resume">Resume</string>
+    <string name="sprint_finish_title">Awesome! You broke the inertia.</string>
+    <string name="sprint_finish_subtitle">You did the hardest part: starting. What's next?</string>
+    <string name="sprint_action_save">Stop &amp; Save Win</string>
+    <string name="sprint_action_pomodoro">Keep Going (25m Pomodoro)</string>
+    <string name="sprint_action_log_task">Log as Task</string>
+    <string name="sprint_ongoing_title">Focusing: %1$s</string>
+    <string name="sprint_ongoing_paused_title">Paused: %1$s</string>
+    <string name="sprint_finished_title">Sprint Finished!</string>
+    <string name="sprint_pomodoro_finished_title">Deep Focus Finished!</string>
+    <string name="sprint_finished_body">You did it: %1$s. Great job starting.</string>
 </resources>

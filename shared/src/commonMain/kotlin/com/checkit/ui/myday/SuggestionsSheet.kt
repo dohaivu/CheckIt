@@ -10,11 +10,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonColors
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -155,18 +158,23 @@ private fun SuggestionCard(
     onClick: () -> Unit,
     onAdd: () -> Unit
 ) {
-    Box(modifier = Modifier.fillMaxWidth()) {
-        TaskTimelineCard(
-            task = task,
-            timeLabel = task.timeRangeLabel().takeIf { it.isNotBlank() } ?: task.doDate?.localizedCompactDateWithDayName() ?: list?.name,
-            onClick = onClick,
-            modifier = Modifier.fillMaxWidth()
-        )
-        IconButton(
-            onClick = onAdd,
-            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 8.dp)
-        ) {
-            Icon(Icons.Default.Add, contentDescription = null)
-        }
-    }
+    TaskTimelineCard(
+        task = task,
+        timeLabel = task.timeRangeLabel().takeIf { it.isNotBlank() } ?: task.doDate?.localizedCompactDateWithDayName() ?: list?.name,
+        onClick = onClick,
+        trailingContent = {
+            IconButton(
+                onClick = onAdd,
+                shape = CircleShape,
+                colors = IconButtonDefaults.iconButtonColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f))
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    tint = MaterialTheme.colorScheme.primary,
+                    contentDescription = null
+                )
+            }
+        },
+        modifier = Modifier.fillMaxWidth()
+    )
 }

@@ -1,5 +1,6 @@
 package com.checkit.platform
 
+import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -60,6 +61,19 @@ actual class Platform {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             context.startActivity(chooser)
+        }
+
+        actual fun isAppInForeground(): Boolean {
+            val context = AndroidContextProvider.context
+            val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            val appProcesses = activityManager.runningAppProcesses ?: return false
+            val packageName = context.packageName
+            for (appProcess in appProcesses) {
+                if (appProcess.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND && appProcess.processName == packageName) {
+                    return true
+                }
+            }
+            return false
         }
     }
 }

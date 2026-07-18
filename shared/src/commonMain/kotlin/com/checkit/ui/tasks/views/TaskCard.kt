@@ -16,6 +16,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,6 +35,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
@@ -56,6 +61,7 @@ internal fun TaskCard(
     timeLabel: String? = null,
     supportingText: String? = null,
     leadingContent: (@Composable () -> Unit)? = null,
+    trailingContent: (@Composable () -> Unit)? = null,
     minHeight: Dp = 64.dp,
     contentPadding: PaddingValues = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
     titleMaxLines: Int = 2,
@@ -98,7 +104,16 @@ internal fun TaskCard(
         onClick = onClick,
         minHeight = minHeight,
         containerAlpha = containerAlpha,
-        completedOverlay = completedOverlay
+        completedOverlay = completedOverlay,
+        trailingOverlay = if (trailingContent != null) {
+            {
+                Box(
+                    modifier = Modifier.align(Alignment.CenterEnd).padding(end = 6.dp)
+                ) {
+                    trailingContent()
+                }
+            }
+        } else null
     ) {
         Row(
             modifier = Modifier
@@ -148,6 +163,7 @@ private fun BaseTaskCard(
     minHeight: Dp = Dp.Unspecified,
     containerAlpha: Float = 0.11f,
     completedOverlay: Boolean = false,
+    trailingOverlay: (@Composable BoxScope.() -> Unit)? = null,
     content: @Composable RowScope.() -> Unit
 ) {
     Box(
@@ -176,6 +192,10 @@ private fun BaseTaskCard(
             )
         }
 
+        if (trailingOverlay != null) {
+            trailingOverlay()
+        }
+
         if (completedOverlay) {
             CompletedOverlay()
         }
@@ -187,6 +207,7 @@ internal fun TaskTimelineCard(
     task: TaskItem,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    trailingContent: (@Composable () -> Unit)? = null,
     timeLabel: String? = task.timeRangeLabel(),
     selected: Boolean = false,
     completed: Boolean = task.status == TaskStatus.Completed,
@@ -207,6 +228,7 @@ internal fun TaskTimelineCard(
                 color = task.priority.priorityColor()
             )
         },
+        trailingContent = trailingContent,
         completedOverlay = completedOverlay,
         onClick = onClick,
         modifier = modifier,
@@ -243,6 +265,7 @@ internal fun NoteTimelineCard(
     note: NoteItem,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    trailingContent: (@Composable () -> Unit)? = null,
     timeLabel: String? = note.startTimeMinutes?.toClockLabel(),
     selected: Boolean = false,
     completedOverlay: Boolean = false
@@ -256,6 +279,7 @@ internal fun NoteTimelineCard(
         leadingContent = {
             NoteIcon(status = note.status)
         },
+        trailingContent = trailingContent,
         completedOverlay = completedOverlay,
         onClick = onClick,
         modifier = modifier,
@@ -270,6 +294,7 @@ internal fun DailyPlanTimelineCard(
     item: DailyPlanItem,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    trailingContent: (@Composable () -> Unit)? = null,
     title: String = item.timelineTitle(),
     timeLabel: String? = item.timelineTimeLabel() ?: item.timelineSupportingText(),
     selected: Boolean = false,
@@ -286,6 +311,7 @@ internal fun DailyPlanTimelineCard(
         leadingContent = {
             DailyPlanIcon(item.source, item.status == DailyPlanItemStatus.Done)
         },
+        trailingContent = trailingContent,
         completedOverlay = completedOverlay,
         onClick = onClick,
         modifier = modifier,
@@ -317,6 +343,7 @@ internal fun DailyPlanTimelineCard(
 internal fun TaskAllDayCard(
     task: TaskItem,
     modifier: Modifier = Modifier,
+    trailingContent: (@Composable () -> Unit)? = null,
     completedOverlay: Boolean = false
 ) {
     AllDayTypeCard(
@@ -328,6 +355,7 @@ internal fun TaskAllDayCard(
                 color = task.priority.priorityColor()
             )
         },
+        trailingContent = trailingContent,
         modifier = modifier,
         completedOverlay = completedOverlay
     )
@@ -337,12 +365,14 @@ internal fun TaskAllDayCard(
 internal fun NoteAllDayCard(
     note: NoteItem,
     modifier: Modifier = Modifier,
+    trailingContent: (@Composable () -> Unit)? = null,
     completedOverlay: Boolean = false
 ) {
     AllDayTypeCard(
         title = note.title.ifBlank { note.content.ifBlank { "Empty note" } },
         color = note.cardColor(),
         icon = { NoteIcon(note.status) },
+        trailingContent = trailingContent,
         modifier = modifier,
         completedOverlay = completedOverlay
     )
@@ -352,6 +382,7 @@ internal fun NoteAllDayCard(
 internal fun DailyPlanAllDayCard(
     item: DailyPlanItem,
     modifier: Modifier = Modifier,
+    trailingContent: (@Composable () -> Unit)? = null,
     title: String = item.timelineTitle(),
     completedOverlay: Boolean = false
 ) {
@@ -359,6 +390,7 @@ internal fun DailyPlanAllDayCard(
         title = title,
         color = item.cardColor(),
         icon = { DailyPlanIcon(item.source, item.status == DailyPlanItemStatus.Done) },
+        trailingContent = trailingContent,
         modifier = modifier,
         completedOverlay = completedOverlay
     )
@@ -369,6 +401,7 @@ private fun AllDayTypeCard(
     title: String,
     color: Color,
     icon: @Composable () -> Unit,
+    trailingContent: (@Composable () -> Unit)? = null,
     modifier: Modifier = Modifier,
     completedOverlay: Boolean = false
 ) {
@@ -376,7 +409,16 @@ private fun AllDayTypeCard(
         color = color,
         modifier = modifier.height(32.dp),
         containerAlpha = DefaultTaskCardAlpha,
-        completedOverlay = completedOverlay
+        completedOverlay = completedOverlay,
+        trailingOverlay = if (trailingContent != null) {
+            {
+                Box(
+                    modifier = Modifier.align(Alignment.CenterEnd).padding(end = 4.dp)
+                ) {
+                    trailingContent()
+                }
+            }
+        } else null
     ) {
         Row(
             modifier = Modifier
@@ -396,6 +438,24 @@ private fun AllDayTypeCard(
                 overflow = TextOverflow.Ellipsis
             )
         }
+    }
+}
+
+@Composable
+internal fun SprintButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    IconButton(
+        onClick = onClick,
+        modifier = modifier.size(32.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Default.Bolt,
+            contentDescription = "Start Sprint",
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(20.dp)
+        )
     }
 }
 

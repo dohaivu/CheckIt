@@ -16,8 +16,11 @@ import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
+import com.checkit.domain.SprintManager
+import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemUseCase
+import com.checkit.notifications.NoOpSprintNotificationScheduler
 import com.checkit.ui.tasks.FakeCheckItRepository
 import com.checkit.ui.tasks.FakeSettingsRepository
 import com.checkit.ui.today
@@ -55,6 +58,7 @@ class MyDayViewModelTest {
             addTaskToDailyPlan = AddTaskToDailyPlanUseCase(repository),
             addDailyPlanItem = AddDailyPlanItemUseCase(repository),
             updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository),
+            updateDailyPlanItemStatus = UpdateDailyPlanItemStatusUseCase(repository),
             updateDailyPlanItem = UpdateDailyPlanItemUseCase(repository),
             syncKeyResultFromDailyPlan = SyncKeyResultFromDailyPlanUseCase(repository),
             deleteDailyPlanItemUseCase = DeleteDailyPlanItemUseCase(repository),
@@ -68,7 +72,8 @@ class MyDayViewModelTest {
                 buildSummary = buildSummary,
                 dispatcher = dispatcher
             ),
-            carryOverDailyPlanItems = carryOver
+            carryOverDailyPlanItems = carryOver,
+            sprintManager = SprintManager(NoOpSprintNotificationScheduler())
         )
         dispatcher.scheduler.advanceUntilIdle()
     }

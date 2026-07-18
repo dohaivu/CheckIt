@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.AddTask
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
@@ -28,14 +29,14 @@ import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.RateReview
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.ViewAgenda
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -46,7 +47,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -61,30 +64,31 @@ import checkit.shared.generated.resources.leftovers_banner_dismiss
 import checkit.shared.generated.resources.leftovers_banner_review
 import checkit.shared.generated.resources.leftovers_banner_subtitle
 import checkit.shared.generated.resources.leftovers_banner_title
-import checkit.shared.generated.resources.leftovers_item_carry
-import checkit.shared.generated.resources.leftovers_section_title
 import checkit.shared.generated.resources.plan_assist_banner_dismiss
 import checkit.shared.generated.resources.plan_assist_banner_subtitle
 import checkit.shared.generated.resources.plan_assist_banner_title
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.NoteItem
-import com.checkit.domain.Objective
+import com.checkit.domain.SprintState
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.hasEndTime
+import com.checkit.ui.components.QuickSprintSheet
+import com.checkit.ui.components.SprintBar
+import com.checkit.ui.components.SprintCompletionDialog
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.tasks.TimelineItem
 import com.checkit.ui.tasks.TimelineItemType
 import com.checkit.ui.tasks.isOverdue
-import com.checkit.ui.tasks.timeRangeLabel
 import com.checkit.ui.tasks.toClockLabel
 import com.checkit.ui.tasks.views.AgendaView
 import com.checkit.ui.tasks.views.DailyPlanAllDayCard
 import com.checkit.ui.tasks.views.DailyPlanTimelineCard
 import com.checkit.ui.tasks.views.NoteAllDayCard
 import com.checkit.ui.tasks.views.NoteTimelineCard
+import com.checkit.ui.tasks.views.SprintButton
 import com.checkit.ui.tasks.views.TaskAllDayCard
 import com.checkit.ui.tasks.views.TaskTimelineCard
 import com.checkit.ui.tasks.views.TimelineView
@@ -103,6 +107,8 @@ internal fun MyDayScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
+    val sprintState by viewModel.sprintManager.state.collectAsState()
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
@@ -133,71 +139,130 @@ internal fun MyDayScreen(
                     }
                 }
             )
+        },
+        floatingActionButton = {
+            if (sprintState is SprintState.Idle) {
+                FloatingActionButton(
+                    onClick = viewModel::openQuickSprint,
+                    shape = FloatingActionButtonDefaults.smallShape,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ) {
+                    Icon(Icons.Default.Bolt, contentDescription = "Quick Sprint")
+                }
+            }
         }
     ) { padding ->
-        Column(
+        val activeSprint = when (val s = sprintState) {
+            is SprintState.Running -> s
+            is SprintState.Paused -> s.runningState
+            else -> null
+        }
+
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(top = padding.calculateTopPadding())
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (state.showLeftoversBanner) {
-                LeftoversBanner(
-                    count = state.pendingYesterdayLeftovers.size,
-                    onCarryAll = viewModel::carryAllYesterdayLeftovers,
-                    onReview = viewModel::openLeftoversSheet,
-                    onDismiss = viewModel::dismissLeftoversBanner
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (state.showLeftoversBanner) {
+                    LeftoversBanner(
+                        count = state.pendingYesterdayLeftovers.size,
+                        onCarryAll = viewModel::carryAllYesterdayLeftovers,
+                        onReview = viewModel::openLeftoversSheet,
+                        onDismiss = viewModel::dismissLeftoversBanner
+                    )
+                }
+                if (state.showPlanAssistBanner) {
+                    PlanAssistBanner(
+                        onPlan = viewModel::openPlanAssist,
+                        onDismiss = viewModel::dismissPlanAssist
+                    )
+                }
+                if (state.showDayReviewBanner) {
+                    DayReviewBanner(onClick = viewModel::openDayReview)
+                }
+
+                MyDayViewSelector(
+                    selectedView = state.selectedView,
+                    onSelect = viewModel::selectView
                 )
-            }
-            if (state.showPlanAssistBanner) {
-                PlanAssistBanner(
-                    onPlan = viewModel::openPlanAssist,
-                    onDismiss = viewModel::dismissPlanAssist
-                )
-            }
-            if (state.showDayReviewBanner) {
-                DayReviewBanner(onClick = viewModel::openDayReview)
-            }
-            MyDayViewSelector(
-                selectedView = state.selectedView,
-                onSelect = viewModel::selectView
-            )
-            DayLinearTimeline(
-                items = state.items,
-                modifier = Modifier.fillMaxWidth()
-            )
-            when (state.selectedView) {
-                MyDayView.Agenda -> MyDayAgenda(
+                DayLinearTimeline(
                     items = state.items,
-                    board = state.board,
-                    date = state.today,
-                    onItemClick = { viewModel.openItemEditor(it, state.today) },
-                    onTaskClick = onTaskClick,
-                    onNoteClick = onNoteClick,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.fillMaxWidth()
                 )
-                MyDayView.Timeline -> MyDayTimeline(
-                    items = state.items,
-                    board = state.board,
-                    date = state.today,
-                    onItemClick = { viewModel.openItemEditor(it, state.today) },
-                    onTaskClick = onTaskClick,
-                    onNoteClick = onNoteClick,
-                    onCreateTask = viewModel::createFromTimelineRange,
-                    onItemTimeChange = viewModel::updateItemTime,
-                    onNoteTimeChange = onNoteTimeChange,
-                    modifier = Modifier.weight(1f)
-                )
-                MyDayView.Board -> MyDayBoard(
-                    state = state,
-                    onItemClick = { viewModel.openItemEditor(it, state.today) },
-                    onTaskClick = onTaskClick,
-                    modifier = Modifier.weight(1f)
+                when (state.selectedView) {
+                    MyDayView.Agenda -> MyDayAgenda(
+                        items = state.items,
+                        board = state.board,
+                        date = state.today,
+                        onItemClick = { viewModel.openItemEditor(it, state.today) },
+                        onTaskClick = onTaskClick,
+                        onNoteClick = onNoteClick,
+                        onSprintClick = viewModel::startSprint,
+                        modifier = Modifier.weight(1f)
+                    )
+                    MyDayView.Timeline -> MyDayTimeline(
+                        items = state.items,
+                        board = state.board,
+                        date = state.today,
+                        onItemClick = { viewModel.openItemEditor(it, state.today) },
+                        onTaskClick = onTaskClick,
+                        onNoteClick = onNoteClick,
+                        onSprintClick = viewModel::startSprint,
+                        onCreateTask = viewModel::createFromTimelineRange,
+                        onItemTimeChange = viewModel::updateItemTime,
+                        onNoteTimeChange = onNoteTimeChange,
+                        modifier = Modifier.weight(1f)
+                    )
+                    MyDayView.Board -> MyDayBoard(
+                        state = state,
+                        onItemClick = { viewModel.openItemEditor(it, state.today) },
+                        onTaskClick = onTaskClick,
+                        onSprintClick = viewModel::startSprint,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
+            if (activeSprint != null) {
+                SprintBar(
+                    state = activeSprint,
+                    isPaused = sprintState is SprintState.Paused,
+                    onPause = viewModel::pauseSprint,
+                    onResume = viewModel::resumeSprint,
+                    onStop = viewModel::completeSprint,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(horizontal = 16.dp, vertical = 24.dp)
                 )
             }
         }
+    }
+
+    if (state.showQuickSprintSheet) {
+        QuickSprintSheet(
+            tasks = state.suggestedTasks,
+            onStartSprint = viewModel::startSprint,
+            onStartSprintWithTask = viewModel::startSprintWithTask,
+            onDismiss = viewModel::dismissQuickSprint
+        )
+    }
+
+    if (sprintState is SprintState.Finished) {
+        SprintCompletionDialog(
+            state = sprintState as SprintState.Finished,
+            onSaveWin = viewModel::saveSprintAsWin,
+            onStartPomodoro = viewModel::upgradeToPomodoro,
+            onLogTask = viewModel::logSprintAsTask,
+            onDismiss = viewModel::dismissFinishedSprint
+        )
     }
 
     if (state.showSuggestions) {
@@ -480,6 +545,7 @@ internal fun MyDayAgenda(
     onItemClick: (DailyPlanItem) -> Unit,
     onTaskClick: (TaskItem, DailyPlanItem?) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
+    onSprintClick: (Long?, Long?, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val projection = remember(items, board, date) { items.toTaskViewProjection(board = board, date = date) }
@@ -500,18 +566,41 @@ internal fun MyDayAgenda(
         focusedDate = date,
         itemContent = { item ->
             when (val tag = item.tag) {
-                is DailyPlanItem -> if (item.startTimeMinutes == null) DailyPlanAllDayCard(tag) else DailyPlanTimelineCard(tag, isOverdue = tag.isOverdue(date))
+                is DailyPlanItem -> if (item.startTimeMinutes == null) {
+                    DailyPlanAllDayCard(
+                        item = tag,
+                        trailingContent = if (tag.status != DailyPlanItemStatus.Done) {
+                            { SprintButton(onClick = { onSprintClick(tag.taskId, tag.id, tag.title) }) }
+                        } else null
+                    )
+                } else {
+                    DailyPlanTimelineCard(
+                        item = tag,
+                        isOverdue = tag.isOverdue(date),
+                        trailingContent = if (tag.status != DailyPlanItemStatus.Done) {
+                            { SprintButton(onClick = { onSprintClick(tag.taskId, tag.id, tag.title) }) }
+                        } else null
+                    )
+                }
                 is NoteItem -> if (item.startTimeMinutes == null) NoteAllDayCard(tag) else NoteTimelineCard(tag)
                 is PlannedTaskProjection -> {
                     val task = tag.task
                     if (item.startTimeMinutes == null) {
-                        TaskAllDayCard(task)
+                        TaskAllDayCard(
+                            task = task,
+                            trailingContent = if (tag.dailyPlanItem.status != DailyPlanItemStatus.Done) {
+                                { SprintButton(onClick = { onSprintClick(task.id, tag.dailyPlanItem.id, task.name) }) }
+                            } else null
+                        )
                     } else {
                         TaskTimelineCard(
                             task = task,
                             timeLabel = tag.dailyPlanItem.dailyPlanTimeLabel(),
                             completed = tag.dailyPlanItem.isDone(),
-                            isOverdue = tag.dailyPlanItem.isOverdue(date)
+                            isOverdue = tag.dailyPlanItem.isOverdue(date),
+                            trailingContent = if (tag.dailyPlanItem.status != DailyPlanItemStatus.Done) {
+                                { SprintButton(onClick = { onSprintClick(task.id, tag.dailyPlanItem.id, task.name) }) }
+                            } else null
                         )
                     }
                 }
@@ -529,6 +618,7 @@ private fun MyDayTimeline(
     onItemClick: (DailyPlanItem) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
     onTaskClick: (TaskItem, DailyPlanItem?) -> Unit,
+    onSprintClick: (Long?, Long?, String) -> Unit,
     onCreateTask: (Int, Int) -> Unit,
     onItemTimeChange: (DailyPlanItem, Int, Int) -> Unit,
     onNoteTimeChange: (NoteItem, Int) -> Unit,
@@ -560,9 +650,19 @@ private fun MyDayTimeline(
         },
         allDayItemContent = { item ->
             when (val tag = item.tag) {
-                is DailyPlanItem -> DailyPlanAllDayCard(tag)
+                is DailyPlanItem -> DailyPlanAllDayCard(
+                    item = tag,
+                    trailingContent = if (tag.status != DailyPlanItemStatus.Done) {
+                        { SprintButton(onClick = { onSprintClick(tag.taskId, tag.id, tag.title) }) }
+                    } else null
+                )
                 is NoteItem -> NoteAllDayCard(tag)
-                is PlannedTaskProjection -> TaskAllDayCard(tag.task)
+                is PlannedTaskProjection -> TaskAllDayCard(
+                    task = tag.task,
+                    trailingContent = if (tag.dailyPlanItem.status != DailyPlanItemStatus.Done) {
+                        { SprintButton(onClick = { onSprintClick(tag.task.id, tag.dailyPlanItem.id, tag.task.name) }) }
+                    } else null
+                )
             }
         },
         timedItemContent = { item, isSelected, displayMode ->
@@ -572,7 +672,10 @@ private fun MyDayTimeline(
                     selected = isSelected,
                     modifier = Modifier.matchParentSize(),
                     displayMode = displayMode,
-                    isOverdue = tag.isOverdue(date)
+                    isOverdue = tag.isOverdue(date),
+                    trailingContent = if (tag.status != DailyPlanItemStatus.Done) {
+                        { SprintButton(onClick = { onSprintClick(tag.taskId, tag.id, tag.title) }) }
+                    } else null
                 )
                 is NoteItem -> NoteTimelineCard(tag, selected = isSelected, modifier = Modifier.matchParentSize())
                 is PlannedTaskProjection -> TaskTimelineCard(
@@ -582,7 +685,10 @@ private fun MyDayTimeline(
                     completed = tag.dailyPlanItem.isDone(),
                     modifier = Modifier.matchParentSize(),
                     isOverdue = tag.dailyPlanItem.isOverdue(date),
-                    displayMode = displayMode
+                    displayMode = displayMode,
+                    trailingContent = if (tag.dailyPlanItem.status != DailyPlanItemStatus.Done) {
+                        { SprintButton(onClick = { onSprintClick(tag.task.id, tag.dailyPlanItem.id, tag.task.name) }) }
+                    } else null
                 )
             }
         },
@@ -595,6 +701,7 @@ private fun MyDayBoard(
     state: MyDayUiState,
     onItemClick: (DailyPlanItem) -> Unit,
     onTaskClick: (TaskItem, DailyPlanItem?) -> Unit,
+    onSprintClick: (Long?, Long?, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val plannedTasksByDailyItemId = remember(state.items, state.board, state.today) {
@@ -617,7 +724,8 @@ private fun MyDayBoard(
                     item = item,
                     plannedTask = plannedTasksByDailyItemId[item.id],
                     onItemClick = onItemClick,
-                    onTaskClick = onTaskClick
+                    onTaskClick = onTaskClick,
+                    onSprintClick = onSprintClick
                 )
             }
         }
@@ -630,7 +738,8 @@ private fun MyDayBoard(
                     item = item,
                     plannedTask = plannedTasksByDailyItemId[item.id],
                     onItemClick = onItemClick,
-                    onTaskClick = onTaskClick
+                    onTaskClick = onTaskClick,
+                    onSprintClick = onSprintClick
                 )
             }
         }
@@ -642,7 +751,8 @@ private fun MyDayBoardItem(
     item: DailyPlanItem,
     plannedTask: PlannedTaskProjection?,
     onItemClick: (DailyPlanItem) -> Unit,
-    onTaskClick: (TaskItem, DailyPlanItem?) -> Unit
+    onTaskClick: (TaskItem, DailyPlanItem?) -> Unit,
+    onSprintClick: (Long?, Long?, String) -> Unit
 ) {
     if (plannedTask != null) {
         val task = plannedTask.task
@@ -650,13 +760,19 @@ private fun MyDayBoardItem(
             task = task,
             timeLabel = plannedTask.dailyPlanItem.dailyPlanTimeLabel(),
             completed = plannedTask.dailyPlanItem.isDone(),
-            onClick = { onTaskClick(task, plannedTask.dailyPlanItem) }
+            onClick = { onTaskClick(task, plannedTask.dailyPlanItem) },
+            trailingContent = if (plannedTask.dailyPlanItem.status != DailyPlanItemStatus.Done) {
+                { SprintButton(onClick = { onSprintClick(task.id, plannedTask.dailyPlanItem.id, task.name) }) }
+            } else null
         )
     } else {
         DailyPlanTimelineCard(
             item = item,
             onClick = { onItemClick(item) },
-            isOverdue = item.isOverdue(today())
+            isOverdue = item.isOverdue(today()),
+            trailingContent = if (item.status != DailyPlanItemStatus.Done) {
+                { SprintButton(onClick = { onSprintClick(item.taskId, item.id, item.title) }) }
+            } else null
         )
     }
 }
