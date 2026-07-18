@@ -140,7 +140,7 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                             Image(
                                 provider = ImageProvider(R.drawable.bolt_24px),
                                 contentDescription = "Open quick sprint",
-                                modifier = GlanceModifier.size(20.dp),
+                                modifier = GlanceModifier.size(24.dp),
                                 colorFilter = ColorFilter.tint(GlanceTheme.colors.primary)
                             )
                         }

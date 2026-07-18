@@ -63,7 +63,8 @@ class SprintManager(
         dailyPlanItemId: Long?,
         description: String,
         durationSeconds: Int = 300,
-        isPomodoro: Boolean = false
+        isPomodoro: Boolean = false,
+        startTimeEpochMillis: Long? = null
     ): Boolean {
         when (_state.value) {
             is SprintState.Running, is SprintState.Paused -> return false
@@ -72,14 +73,15 @@ class SprintManager(
 
         val safeDuration = durationSeconds.coerceAtLeast(1)
         val now = clock.now().toEpochMilliseconds()
+        val start = startTimeEpochMillis ?: now
         val running = SprintState.Running(
             taskId = taskId,
             dailyPlanItemId = dailyPlanItemId,
             description = description.ifBlank { if (isPomodoro) "Deep Focus" else "Quick Sprint" },
             totalSeconds = safeDuration,
-            remainingSeconds = safeDuration,
-            startTimeEpochMillis = now,
-            endsAtEpochMillis = now + safeDuration * 1000L,
+            remainingSeconds = ((start + safeDuration * 1000L - now) / 1000L).toInt().coerceIn(1, safeDuration),
+            startTimeEpochMillis = start,
+            endsAtEpochMillis = start + safeDuration * 1000L,
             isPomodoro = isPomodoro
         )
         timerJob?.cancel()

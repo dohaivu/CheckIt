@@ -669,16 +669,18 @@ class MyDayViewModel(
     fun upgradeToPomodoro() {
         val current = sprintManager.state.value
         if (current is SprintState.Finished) {
-            // Finished is allowed to start; takeFinished not needed — startSprint replaces Finished.
+            val originalStartTime = current.startTimeEpochMillis
+            
             if (!sprintManager.startSprint(
-                    current.taskId,
-                    current.dailyPlanItemId,
-                    current.description,
-                    durationSeconds = 1500,
-                    isPomodoro = true
+                    taskId = current.taskId,
+                    dailyPlanItemId = current.dailyPlanItemId,
+                    description = current.description,
+                    durationSeconds = 1500, // 25 minutes
+                    isPomodoro = true,
+                    startTimeEpochMillis = originalStartTime
                 )
             ) {
-                sendEvent(UiEvent.ShowSnackbar("A sprint is already in progress"))
+                sendEvent(UiEvent.ShowSnackbar("A focus session is already in progress"))
             }
         }
     }
