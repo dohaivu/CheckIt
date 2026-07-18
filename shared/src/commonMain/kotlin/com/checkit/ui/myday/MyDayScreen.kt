@@ -145,44 +145,90 @@ internal fun MyDayScreen(
                 FloatingActionButton(
                     onClick = viewModel::openQuickSprint,
                     shape = FloatingActionButtonDefaults.smallShape,
-                    containerColor = MaterialTheme.colorScheme.tertiary,
-                    contentColor = MaterialTheme.colorScheme.onTertiary
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 ) {
                     Icon(Icons.Default.Bolt, contentDescription = "Quick Sprint")
                 }
             }
         }
     ) { padding ->
-        Column(
+        val activeSprint = when (val s = sprintState) {
+            is SprintState.Running -> s
+            is SprintState.Paused -> s.runningState
+            else -> null
+        }
+
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(top = padding.calculateTopPadding())
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (state.showLeftoversBanner) {
-                LeftoversBanner(
-                    count = state.pendingYesterdayLeftovers.size,
-                    onCarryAll = viewModel::carryAllYesterdayLeftovers,
-                    onReview = viewModel::openLeftoversSheet,
-                    onDismiss = viewModel::dismissLeftoversBanner
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (state.showLeftoversBanner) {
+                    LeftoversBanner(
+                        count = state.pendingYesterdayLeftovers.size,
+                        onCarryAll = viewModel::carryAllYesterdayLeftovers,
+                        onReview = viewModel::openLeftoversSheet,
+                        onDismiss = viewModel::dismissLeftoversBanner
+                    )
+                }
+                if (state.showPlanAssistBanner) {
+                    PlanAssistBanner(
+                        onPlan = viewModel::openPlanAssist,
+                        onDismiss = viewModel::dismissPlanAssist
+                    )
+                }
+                if (state.showDayReviewBanner) {
+                    DayReviewBanner(onClick = viewModel::openDayReview)
+                }
+
+                MyDayViewSelector(
+                    selectedView = state.selectedView,
+                    onSelect = viewModel::selectView
                 )
-            }
-            if (state.showPlanAssistBanner) {
-                PlanAssistBanner(
-                    onPlan = viewModel::openPlanAssist,
-                    onDismiss = viewModel::dismissPlanAssist
+                DayLinearTimeline(
+                    items = state.items,
+                    modifier = Modifier.fillMaxWidth()
                 )
-            }
-            if (state.showDayReviewBanner) {
-                DayReviewBanner(onClick = viewModel::openDayReview)
-            }
-            
-            val activeSprint = when (val s = sprintState) {
-                is SprintState.Running -> s
-                is SprintState.Paused -> s.runningState
-                else -> null
+                when (state.selectedView) {
+                    MyDayView.Agenda -> MyDayAgenda(
+                        items = state.items,
+                        board = state.board,
+                        date = state.today,
+                        onItemClick = { viewModel.openItemEditor(it, state.today) },
+                        onTaskClick = onTaskClick,
+                        onNoteClick = onNoteClick,
+                        onSprintClick = viewModel::startSprint,
+                        modifier = Modifier.weight(1f)
+                    )
+                    MyDayView.Timeline -> MyDayTimeline(
+                        items = state.items,
+                        board = state.board,
+                        date = state.today,
+                        onItemClick = { viewModel.openItemEditor(it, state.today) },
+                        onTaskClick = onTaskClick,
+                        onNoteClick = onNoteClick,
+                        onSprintClick = viewModel::startSprint,
+                        onCreateTask = viewModel::createFromTimelineRange,
+                        onItemTimeChange = viewModel::updateItemTime,
+                        onNoteTimeChange = onNoteTimeChange,
+                        modifier = Modifier.weight(1f)
+                    )
+                    MyDayView.Board -> MyDayBoard(
+                        state = state,
+                        onItemClick = { viewModel.openItemEditor(it, state.today) },
+                        onTaskClick = onTaskClick,
+                        onSprintClick = viewModel::startSprint,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
 
             if (activeSprint != null) {
@@ -191,48 +237,10 @@ internal fun MyDayScreen(
                     isPaused = sprintState is SprintState.Paused,
                     onPause = viewModel::pauseSprint,
                     onResume = viewModel::resumeSprint,
-                    onStop = viewModel::completeSprint
-                )
-            }
-
-            MyDayViewSelector(
-                selectedView = state.selectedView,
-                onSelect = viewModel::selectView
-            )
-            DayLinearTimeline(
-                items = state.items,
-                modifier = Modifier.fillMaxWidth()
-            )
-            when (state.selectedView) {
-                MyDayView.Agenda -> MyDayAgenda(
-                    items = state.items,
-                    board = state.board,
-                    date = state.today,
-                    onItemClick = { viewModel.openItemEditor(it, state.today) },
-                    onTaskClick = onTaskClick,
-                    onNoteClick = onNoteClick,
-                    onSprintClick = viewModel::startSprint,
-                    modifier = Modifier.weight(1f)
-                )
-                MyDayView.Timeline -> MyDayTimeline(
-                    items = state.items,
-                    board = state.board,
-                    date = state.today,
-                    onItemClick = { viewModel.openItemEditor(it, state.today) },
-                    onTaskClick = onTaskClick,
-                    onNoteClick = onNoteClick,
-                    onSprintClick = viewModel::startSprint,
-                    onCreateTask = viewModel::createFromTimelineRange,
-                    onItemTimeChange = viewModel::updateItemTime,
-                    onNoteTimeChange = onNoteTimeChange,
-                    modifier = Modifier.weight(1f)
-                )
-                MyDayView.Board -> MyDayBoard(
-                    state = state,
-                    onItemClick = { viewModel.openItemEditor(it, state.today) },
-                    onTaskClick = onTaskClick,
-                    onSprintClick = viewModel::startSprint,
-                    modifier = Modifier.weight(1f)
+                    onStop = viewModel::completeSprint,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(horizontal = 16.dp, vertical = 24.dp)
                 )
             }
         }
