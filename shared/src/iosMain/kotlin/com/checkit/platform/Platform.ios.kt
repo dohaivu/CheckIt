@@ -12,6 +12,7 @@ import platform.Foundation.NSURL
 import platform.Foundation.NSUserDomainMask
 import platform.UIKit.UIActivityViewController
 import platform.UIKit.UIApplication
+import platform.UIKit.UIApplicationState
 import platform.UIKit.UIDevice
 import platform.UIKit.UIWindow
 import platform.UIKit.UIWindowScene
@@ -72,6 +73,10 @@ actual class Platform {
             }
 
             rootViewController?.presentViewController(activityViewController, animated = true, completion = null)
+        }
+
+        actual fun isAppInForeground(): Boolean {
+            return UIApplication.sharedApplication.applicationState == UIApplicationStateActive
         }
     }
 }

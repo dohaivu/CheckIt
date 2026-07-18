@@ -16,5 +16,7 @@ expect class Platform {
         fun getFileLogWriter(): LogWriter
 
         fun shareLogFile()
+
+        fun isAppInForeground(): Boolean
     }
 }

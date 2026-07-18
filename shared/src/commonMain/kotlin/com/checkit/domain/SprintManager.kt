@@ -193,5 +193,6 @@ class SprintManager(
             isPomodoro = running.isPomodoro
         )
         notificationScheduler.cancelNotification()
+        notificationScheduler.showFinishedNotification(running.description, running.isPomodoro)
     }
 }
