@@ -192,7 +192,7 @@ fun SprintCompletionDialog(
                     ) {
                         Text(stringResource(Res.string.sprint_action_pomodoro))
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
                 }
                 
                 OutlinedButton(

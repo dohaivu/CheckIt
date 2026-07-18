@@ -127,7 +127,6 @@ class SprintManager(
             startTimeEpochMillis = running.startTimeEpochMillis,
             isPomodoro = running.isPomodoro
         )
-        notificationScheduler.showFinishedNotification(running.description, running.isPomodoro)
     }
 
     fun dismissFinished() {
