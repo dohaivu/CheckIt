@@ -108,7 +108,6 @@ internal fun MyDayScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val sprintState by viewModel.sprintManager.state.collectAsState()
-    var showQuickSprintSheet by remember { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -144,7 +143,7 @@ internal fun MyDayScreen(
         floatingActionButton = {
             if (sprintState is SprintState.Idle) {
                 FloatingActionButton(
-                    onClick = { showQuickSprintSheet = true },
+                    onClick = viewModel::openQuickSprint,
                     shape = FloatingActionButtonDefaults.smallShape,
                     containerColor = MaterialTheme.colorScheme.tertiary,
                     contentColor = MaterialTheme.colorScheme.onTertiary
@@ -239,12 +238,12 @@ internal fun MyDayScreen(
         }
     }
 
-    if (showQuickSprintSheet) {
+    if (state.showQuickSprintSheet) {
         QuickSprintSheet(
             tasks = state.suggestedTasks,
             onStartSprint = viewModel::startSprint,
             onStartSprintWithTask = viewModel::startSprintWithTask,
-            onDismiss = { showQuickSprintSheet = false }
+            onDismiss = viewModel::dismissQuickSprint
         )
     }
 

@@ -134,6 +134,21 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                             modifier = GlanceModifier
                                 .size(32.dp)
                                 .cornerRadius(16.dp)
+                                .clickable(openQuickSprintAction()),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Image(
+                                provider = ImageProvider(R.drawable.bolt_24px),
+                                contentDescription = "Open quick sprint",
+                                modifier = GlanceModifier.size(20.dp),
+                                colorFilter = ColorFilter.tint(GlanceTheme.colors.primary)
+                            )
+                        }
+                        Spacer(modifier = GlanceModifier.width(8.dp))
+                        Box(
+                            modifier = GlanceModifier
+                                .size(32.dp)
+                                .cornerRadius(16.dp)
                                 .clickable(openSuggestionsAction()),
                             contentAlignment = Alignment.Center
                         ) {
@@ -202,6 +217,10 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
 
     private fun openSuggestionsAction(): Action = actionStartActivity<MainActivity>(
         parameters = actionParametersOf(OpenMyDaySuggestionsParameterKey to true)
+    )
+
+    private fun openQuickSprintAction(): Action = actionStartActivity<MainActivity>(
+        parameters = actionParametersOf(OpenQuickSprintParameterKey to true)
     )
 
     @Composable

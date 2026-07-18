@@ -345,10 +345,6 @@ fun QuickSprintSheet(
                     TaskTimelineCard(
                         task = task,
                         timeLabel = task.doDate?.localizedCompactDateWithDayName() ?: task.objective.name,
-                        onClick = {
-                            onStartSprintWithTask(task)
-                            onDismiss()
-                        },
                         trailingContent = {
                             SprintButton(onClick = {
                                 onStartSprintWithTask(task)

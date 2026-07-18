@@ -641,11 +641,21 @@ class MyDayViewModel(
     }
 
     fun startSprint(taskId: Long? = null, dailyPlanItemId: Long? = null, description: String = "") {
+        dismissQuickSprint()
         sprintManager.startSprint(taskId, dailyPlanItemId, description)
     }
 
     fun startSprintWithTask(task: TaskItem) {
+        dismissQuickSprint()
         sprintManager.startSprint(task.id, null, task.name)
+    }
+
+    fun openQuickSprint() {
+        _uiState.update { it.copy(showQuickSprintSheet = true) }
+    }
+
+    fun dismissQuickSprint() {
+        _uiState.update { it.copy(showQuickSprintSheet = false) }
     }
 
     fun pauseSprint() = sprintManager.pauseSprint()
