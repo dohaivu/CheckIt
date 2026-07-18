@@ -39,6 +39,7 @@ class MyDayViewModel(
     private val addTaskToDailyPlan: AddTaskToDailyPlanUseCase,
     private val addDailyPlanItem: AddDailyPlanItemUseCase,
     private val updateDailyPlanItemTime: UpdateDailyPlanItemTimeUseCase,
+    private val updateDailyPlanItemStatus: UpdateDailyPlanItemStatusUseCase,
     private val updateDailyPlanItem: UpdateDailyPlanItemUseCase,
     private val syncKeyResultFromDailyPlan: SyncKeyResultFromDailyPlanUseCase,
     private val deleteDailyPlanItemUseCase: DeleteDailyPlanItemUseCase,
@@ -639,8 +640,12 @@ class MyDayViewModel(
         }
     }
 
-    fun startSprint(dailyPlanItemId: Long? = null, description: String = "") {
-        sprintManager.startSprint(dailyPlanItemId, description)
+    fun startSprint(taskId: Long? = null, dailyPlanItemId: Long? = null, description: String = "") {
+        sprintManager.startSprint(taskId, dailyPlanItemId, description)
+    }
+
+    fun startSprintWithTask(task: TaskItem) {
+        sprintManager.startSprint(task.id, null, task.name)
     }
 
     fun pauseSprint() = sprintManager.pauseSprint()
@@ -650,68 +655,68 @@ class MyDayViewModel(
     fun upgradeToPomodoro() {
         val current = sprintManager.state.value
         if (current is SprintState.Finished) {
-            sprintManager.startSprint(current.dailyPlanItemId, current.description, durationSeconds = 1500, isPomodoro = true)
+            sprintManager.startSprint(current.taskId, current.dailyPlanItemId, current.description, durationSeconds = 1500, isPomodoro = true)
         }
     }
 
     fun saveSprintAsWin() {
         val current = sprintManager.state.value
         if (current is SprintState.Finished) {
-            val itemId = current.dailyPlanItemId
-            if (itemId != null) {
-                viewModelScope.launch {
-                    val existingItem = _uiState.value.items.find { it.id == itemId } ?: return@launch
-                    val startInstant = kotlinx.datetime.Instant.fromEpochMilliseconds(current.startTimeEpochMillis)
-                    val startDateTime = startInstant.toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
-                    val startMinutes = startDateTime.hour * 60 + startDateTime.minute
-                    val durationMinutes = (current.elapsedSeconds / 60).coerceAtLeast(1)
-                    val endMinutes = startMinutes + durationMinutes
-
-                    updateDailyPlanItem(
-                        itemId,
-                        DailyPlanItemWriteInput(
-                            title = existingItem.title,
-                            note = existingItem.note,
-                            source = existingItem.source,
-                            status = DailyPlanItemStatus.Done,
-                            startTimeMinutes = startMinutes,
-                            endTimeMinutes = if (existingItem.source.hasEndTime()) endMinutes else null,
-                            tagIds = existingItem.tags.map { it.id }
-                        )
-                    )
-                    sprintManager.dismissFinished()
-                }
-            } else {
-                sprintManager.dismissFinished()
-            }
-        }
-    }
-
-    fun logSprintAsTask() {
-        val current = sprintManager.state.value
-        if (current is SprintState.Finished) {
             viewModelScope.launch {
+                val todayDate = today()
                 val startInstant = kotlinx.datetime.Instant.fromEpochMilliseconds(current.startTimeEpochMillis)
                 val startDateTime = startInstant.toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
                 val startMinutes = startDateTime.hour * 60 + startDateTime.minute
                 val durationMinutes = (current.elapsedSeconds / 60).coerceAtLeast(1)
                 val endMinutes = startMinutes + durationMinutes
 
-                // Add to daily plan so it shows up in "Done" list today
-                addDailyPlanItem(
-                    date = today(),
-                    title = current.description,
-                    note = "Sprint session (${durationMinutes}m)",
-                    startTimeMinutes = startMinutes,
-                    endTimeMinutes = endMinutes,
-                    source = DailyPlanItemSource.MyDayTask,
-                    status = DailyPlanItemStatus.Done,
-                    tagIds = emptyList()
-                )
-                
+                val taskId = current.taskId
+                val dailyPlanItemId = current.dailyPlanItemId
+
+                if (dailyPlanItemId != null) {
+                    if (_uiState.value.items.none { it.id == dailyPlanItemId }) return@launch
+                    
+                    syncKeyResultFromDailyPlan(
+                        itemId = dailyPlanItemId,
+                        proposedStatus = DailyPlanItemStatus.Done,
+                        proposedStartTime = startMinutes,
+                        proposedEndTime = endMinutes
+                    )
+                    updateDailyPlanItemTime(dailyPlanItemId, startMinutes, endMinutes)
+                    updateDailyPlanItemStatus(dailyPlanItemId, DailyPlanItemStatus.Done)
+                } else if (taskId != null) {
+                    // Start from task but not from a plan item (e.g. from suggestions)
+                    val task = _uiState.value.board.tasksById[taskId] ?: return@launch
+                    val itemId = addTaskToDailyPlan(todayDate, task)
+                    
+                    syncKeyResultFromDailyPlan(
+                        itemId = itemId,
+                        proposedStatus = DailyPlanItemStatus.Done,
+                        proposedStartTime = startMinutes,
+                        proposedEndTime = endMinutes
+                    )
+                    updateDailyPlanItemTime(itemId, startMinutes, endMinutes)
+                    updateDailyPlanItemStatus(itemId, DailyPlanItemStatus.Done)
+                } else {
+                    // Ad-hoc sprint
+                    addDailyPlanItem(
+                        date = todayDate,
+                        title = current.description,
+                        note = "Sprint session (${durationMinutes}m)",
+                        startTimeMinutes = startMinutes,
+                        endTimeMinutes = startMinutes + durationMinutes,
+                        source = DailyPlanItemSource.MyDayTask,
+                        status = DailyPlanItemStatus.Done,
+                        tagIds = emptyList()
+                    )
+                }
                 sprintManager.dismissFinished()
             }
         }
+    }
+
+    fun logSprintAsTask() {
+        saveSprintAsWin()
     }
 
     fun dismissFinishedSprint() = sprintManager.dismissFinished()

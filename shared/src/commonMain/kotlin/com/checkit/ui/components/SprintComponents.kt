@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
@@ -59,6 +61,12 @@ import checkit.shared.generated.resources.sprint_finish_subtitle
 import checkit.shared.generated.resources.sprint_finish_title
 import checkit.shared.generated.resources.sprint_start
 import com.checkit.domain.SprintState
+import com.checkit.domain.TaskItem
+import com.checkit.ui.localizedCompactDateWithDayName
+import com.checkit.ui.tasks.views.SprintButton
+import com.checkit.ui.tasks.views.TaskTimelineCard
+import com.checkit.ui.components.AppEditorBottomSheet
+import com.checkit.ui.components.AppOutlinedTextField
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -153,7 +161,7 @@ fun SprintCompletionDialog(
         text = {
             Column {
                 Text(stringResource(Res.string.sprint_finish_subtitle))
-                if (state.dailyPlanItemId == null) {
+                if (state.taskId == null) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "Goal: ${state.description}",
@@ -176,10 +184,10 @@ fun SprintCompletionDialog(
                 }
                 
                 OutlinedButton(
-                    onClick = if (state.dailyPlanItemId != null) onSaveWin else onLogTask,
+                    onClick = if (state.taskId != null) onSaveWin else onLogTask,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(stringResource(if (state.dailyPlanItemId != null) Res.string.sprint_action_save else Res.string.sprint_action_log_task))
+                    Text(stringResource(if (state.taskId != null) Res.string.sprint_action_save else Res.string.sprint_action_log_task))
                 }
             }
         },
@@ -271,25 +279,20 @@ fun SprintBar(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QuickSprintSheet(
-    onStartSprint: (taskId: Long?, description: String) -> Unit,
+    tasks: List<TaskItem>,
+    onStartSprint: (taskId: Long?, dailyPlanItemId: Long?, description: String) -> Unit,
+    onStartSprintWithTask: (TaskItem) -> Unit,
     onDismiss: () -> Unit
 ) {
     var text by remember { mutableStateOf("") }
-    val sheetState = rememberModalBottomSheetState()
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-    ) {
+    AppEditorBottomSheet(onDismiss = onDismiss) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
-                .padding(bottom = 32.dp),
+                .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -298,7 +301,7 @@ fun QuickSprintSheet(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
-            
+
             AppOutlinedTextField(
                 value = text,
                 onValueChange = { text = it },
@@ -310,7 +313,7 @@ fun QuickSprintSheet(
 
             Button(
                 onClick = {
-                    onStartSprint(null, text)
+                    onStartSprint(null, null, text)
                     onDismiss()
                 },
                 modifier = Modifier.fillMaxWidth(),
@@ -319,6 +322,42 @@ fun QuickSprintSheet(
                 Icon(Icons.Default.Bolt, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(stringResource(Res.string.sprint_start))
+            }
+        }
+
+        if (tasks.isNotEmpty()) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 400.dp),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                item {
+                    Text(
+                        text = "Or start with a task",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                }
+                items(tasks, key = { it.id }) { task ->
+                    TaskTimelineCard(
+                        task = task,
+                        timeLabel = task.doDate?.localizedCompactDateWithDayName() ?: task.objective.name,
+                        onClick = {
+                            onStartSprintWithTask(task)
+                            onDismiss()
+                        },
+                        trailingContent = {
+                            SprintButton(onClick = {
+                                onStartSprintWithTask(task)
+                                onDismiss()
+                            })
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
         }
     }

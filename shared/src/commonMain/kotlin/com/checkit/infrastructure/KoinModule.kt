@@ -188,6 +188,7 @@ val provideViewModelModule = module {
             addTaskToDailyPlan = get(),
             addDailyPlanItem = get(),
             updateDailyPlanItemTime = get(),
+            updateDailyPlanItemStatus = get(),
             updateDailyPlanItem = get(),
             syncKeyResultFromDailyPlan = get(),
             deleteDailyPlanItemUseCase = get(),

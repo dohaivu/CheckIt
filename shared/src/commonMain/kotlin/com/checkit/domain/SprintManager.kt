@@ -16,6 +16,7 @@ sealed interface SprintState {
     object Idle : SprintState
 
     data class Running(
+        val taskId: Long?,
         val dailyPlanItemId: Long?,
         val description: String,
         val totalSeconds: Int,
@@ -30,6 +31,7 @@ sealed interface SprintState {
     ) : SprintState
 
     data class Finished(
+        val taskId: Long?,
         val dailyPlanItemId: Long?,
         val description: String,
         val durationSeconds: Int,
@@ -48,9 +50,10 @@ class SprintManager(
     private var timerJob: Job? = null
     private val scope = CoroutineScope(Dispatchers.Default)
 
-    fun startSprint(dailyPlanItemId: Long?, description: String, durationSeconds: Int = 300, isPomodoro: Boolean = false) {
+    fun startSprint(taskId: Long?, dailyPlanItemId: Long?, description: String, durationSeconds: Int = 300, isPomodoro: Boolean = false) {
         val now = Clock.System.now().toEpochMilliseconds()
         val running = SprintState.Running(
+            taskId = taskId,
             dailyPlanItemId = dailyPlanItemId,
             description = description.ifBlank { if (isPomodoro) "Deep Focus" else "Quick Sprint" },
             totalSeconds = durationSeconds,
@@ -116,6 +119,7 @@ class SprintManager(
         val now = Clock.System.now().toEpochMilliseconds()
         val elapsed = ((now - running.startTimeEpochMillis) / 1000).toInt().coerceAtMost(running.totalSeconds)
         _state.value = SprintState.Finished(
+            taskId = running.taskId,
             dailyPlanItemId = running.dailyPlanItemId,
             description = running.description,
             durationSeconds = running.totalSeconds,
