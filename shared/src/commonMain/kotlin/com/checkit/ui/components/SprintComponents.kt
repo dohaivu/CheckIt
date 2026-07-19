@@ -54,7 +54,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.cancel
-import checkit.shared.generated.resources.sprint_action_log_task
 import checkit.shared.generated.resources.sprint_action_pomodoro
 import checkit.shared.generated.resources.sprint_action_save
 import checkit.shared.generated.resources.sprint_adhoc_placeholder
@@ -112,7 +111,7 @@ fun SprintCompletionDialog(
                     onClick = if (state.taskId != null) onSaveWin else onLogTask,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(stringResource(if (state.taskId != null) Res.string.sprint_action_save else Res.string.sprint_action_log_task))
+                    Text(stringResource(Res.string.sprint_action_save))
                 }
             }
         },

@@ -122,7 +122,6 @@
     <string name="sprint_finish_subtitle">You did the hardest part: starting. What's next?</string>
     <string name="sprint_action_save">Stop &amp; Save Win</string>
     <string name="sprint_action_pomodoro">Keep Going (25m Pomodoro)</string>
-    <string name="sprint_action_log_task">Log as Task</string>
     <string name="sprint_ongoing_title">Focusing: %1$s</string>
     <string name="sprint_ongoing_paused_title">Paused: %1$s</string>
     <string name="sprint_finished_title">Sprint Finished!</string>
