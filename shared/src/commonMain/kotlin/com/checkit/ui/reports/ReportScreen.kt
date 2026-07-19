@@ -1,8 +1,10 @@
 package com.checkit.ui.reports
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenu
@@ -17,6 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -50,27 +53,41 @@ internal fun ReportScreen(
                     )
                 },
                 actions = {
-                    IconButton(onClick = { menuExpanded = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "Report options")
-                    }
-                    DropdownMenu(
-                        expanded = menuExpanded,
-                        onDismissRequest = { menuExpanded = false }
+                    Box(
+                        modifier = Modifier.wrapContentSize(Alignment.TopStart)
                     ) {
-                        ReportMenuItem(
-                            text = stringResource(Res.string.tags_report_title),
-                            onClick = {
-                                menuExpanded = false
-                                onShowTagsReport()
-                            }
-                        )
-                        ReportMenuItem(
-                            text = stringResource(Res.string.time_report_title),
-                            onClick = {
-                                menuExpanded = false
-                                onShowTimeReport()
-                            }
-                        )
+                        IconButton(onClick = { menuExpanded = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Report options")
+                        }
+                        DropdownMenu(
+                            expanded = menuExpanded,
+                            onDismissRequest = { menuExpanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = stringResource(Res.string.tags_report_title),
+                                        fontWeight = FontWeight.Normal
+                                    )
+                                },
+                                onClick = {
+                                    menuExpanded = false
+                                    onShowTagsReport()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = stringResource(Res.string.time_report_title),
+                                        fontWeight = FontWeight.Normal
+                                    )
+                                },
+                                onClick = {
+                                    menuExpanded = false
+                                    onShowTimeReport()
+                                }
+                            )
+                        }
                     }
                 }
             )
