@@ -31,6 +31,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Instant
 
 class MyDayViewModel(
     private val observeTaskBoard: ObserveTaskBoardUseCase,
@@ -702,85 +703,104 @@ class MyDayViewModel(
 
     fun saveSprintAsWin() {
         val current = sprintManager.takeFinished() ?: return
-        saveSprintAsWin(current)
+        viewModelScope.launch {
+            performSaveSprintAsWin(current)
+        }
     }
 
-    private fun saveSprintAsWin(current: SprintState.Finished) {
-        if (current.isBreak) return // Don't save breaks as tasks
-        viewModelScope.launch {
-            try {
-                val todayDate = today()
-                val startInstant = kotlinx.datetime.Instant.fromEpochMilliseconds(current.startTimeEpochMillis)
-                val startDateTime = startInstant.toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
-                val startMinutes = startDateTime.hour * 60 + startDateTime.minute
-                val durationMinutes = (current.elapsedSeconds / 60).coerceAtLeast(1)
-                val endMinutes = startMinutes + durationMinutes
+    private suspend fun performSaveSprintAsWin(current: SprintState.Finished): Long? {
+        if (current.isBreak) return null
+        return try {
+            val todayDate = today()
+            val startInstant = Instant.fromEpochMilliseconds(current.startTimeEpochMillis)
+            val startDateTime = startInstant.toLocalDateTime(TimeZone.currentSystemDefault())
+            val startMinutes = startDateTime.hour * 60 + startDateTime.minute
+            val durationMinutes = (current.elapsedSeconds / 60).coerceAtLeast(1)
+            val endMinutes = startMinutes + durationMinutes
 
-                val taskId = current.taskId
-                val dailyPlanItemId = current.dailyPlanItemId
+            val taskId = current.taskId
+            val dailyPlanItemId = current.dailyPlanItemId
 
-                if (dailyPlanItemId != null) {
-                    if (_uiState.value.items.none { it.id == dailyPlanItemId }) {
-                        sendEvent(UiEvent.ShowSnackbar("Could not save sprint: plan item no longer exists"))
-                        return@launch
-                    }
-
-                    syncKeyResultFromDailyPlan(
-                        itemId = dailyPlanItemId,
-                        proposedStatus = DailyPlanItemStatus.Done,
-                        proposedStartTime = startMinutes,
-                        proposedEndTime = endMinutes
-                    )
-                    updateDailyPlanItemTime(dailyPlanItemId, startMinutes, endMinutes)
-                    updateDailyPlanItemStatus(dailyPlanItemId, DailyPlanItemStatus.Done)
-                } else if (taskId != null) {
-                    // Start from task but not from a plan item (e.g. from suggestions / quick sprint).
-                    // Multiple plan items per task are intentional.
-                    val task = _uiState.value.board.tasksById[taskId]
-                    if (task == null) {
-                        sendEvent(UiEvent.ShowSnackbar("Could not save sprint: task no longer exists"))
-                        return@launch
-                    }
-                    val itemId = addTaskToDailyPlan(todayDate, task)
-                    
-                    syncKeyResultFromDailyPlan(
-                        itemId = itemId,
-                        proposedStatus = DailyPlanItemStatus.Done,
-                        proposedStartTime = startMinutes,
-                        proposedEndTime = endMinutes
-                    )
-                    updateDailyPlanItemTime(itemId, startMinutes, endMinutes)
-                    updateDailyPlanItemStatus(itemId, DailyPlanItemStatus.Done)
-                } else {
-                    // Ad-hoc sprint
-                    addDailyPlanItem(
-                        date = todayDate,
-                        title = current.description,
-                        note = "Sprint session (${durationMinutes}m)",
-                        startTimeMinutes = startMinutes,
-                        endTimeMinutes = startMinutes + durationMinutes,
-                        source = DailyPlanItemSource.MyDayTask,
-                        status = DailyPlanItemStatus.Done,
-                        tagIds = emptyList()
-                    )
+            if (dailyPlanItemId != null) {
+                if (_uiState.value.items.none { it.id == dailyPlanItemId }) {
+                    sendEvent(UiEvent.ShowSnackbar("Could not save sprint: plan item no longer exists"))
+                    return null
                 }
-            } catch (error: Exception) {
-                sendEvent(UiEvent.ShowSnackbar(error.message ?: "Could not save sprint"))
+
+                syncKeyResultFromDailyPlan(
+                    itemId = dailyPlanItemId,
+                    proposedStatus = DailyPlanItemStatus.Done,
+                    proposedStartTime = startMinutes,
+                    proposedEndTime = endMinutes
+                )
+                updateDailyPlanItemTime(dailyPlanItemId, startMinutes, endMinutes)
+                updateDailyPlanItemStatus(dailyPlanItemId, DailyPlanItemStatus.Done)
+                dailyPlanItemId
+            } else if (taskId != null) {
+                val task = _uiState.value.board.tasksById[taskId]
+                if (task == null) {
+                    sendEvent(UiEvent.ShowSnackbar("Could not save sprint: task no longer exists"))
+                    return null
+                }
+                val itemId = addTaskToDailyPlan(todayDate, task)
+
+                syncKeyResultFromDailyPlan(
+                    itemId = itemId,
+                    proposedStatus = DailyPlanItemStatus.Done,
+                    proposedStartTime = startMinutes,
+                    proposedEndTime = endMinutes
+                )
+                updateDailyPlanItemTime(itemId, startMinutes, endMinutes)
+                updateDailyPlanItemStatus(itemId, DailyPlanItemStatus.Done)
+                itemId
+            } else {
+                addDailyPlanItem(
+                    date = todayDate,
+                    title = current.description,
+                    note = "Sprint session (${durationMinutes}m)",
+                    startTimeMinutes = startMinutes,
+                    endTimeMinutes = startMinutes + durationMinutes,
+                    source = DailyPlanItemSource.MyDayTask,
+                    status = DailyPlanItemStatus.Done,
+                    tagIds = emptyList()
+                )
             }
+        } catch (error: Exception) {
+            sendEvent(UiEvent.ShowSnackbar(error.message ?: "Could not save sprint"))
+            null
         }
     }
 
     fun saveAndBreak() {
         val current = sprintManager.takeFinished() ?: return
-        saveSprintAsWin(current)
-        sprintManager.startSprint(
-            taskId = current.taskId,
-            dailyPlanItemId = current.dailyPlanItemId,
-            description = "Short Break",
-            durationSeconds = 300,
-            isPomodoro = false,
-            isBreak = true
-        )
+        viewModelScope.launch {
+            performSaveSprintAsWin(current)
+            sprintManager.startSprint(
+                taskId = current.taskId,
+                dailyPlanItemId = current.dailyPlanItemId,
+                description = "Short Break",
+                durationSeconds = 300,
+                isPomodoro = false,
+                isBreak = true
+            )
+        }
+    }
+
+    fun continueNewPomodoro() {
+        val current = sprintManager.takeFinished() ?: return
+        viewModelScope.launch {
+            val savedItemId = performSaveSprintAsWin(current)
+            val task = current.taskId?.let { _uiState.value.board.tasksById[it] }
+            sprintManager.startSprint(
+                taskId = current.taskId,
+                dailyPlanItemId = savedItemId ?: current.dailyPlanItemId,
+                description = task?.name ?: current.description,
+                durationSeconds = current.durationSeconds + 1500, // Expand total duration
+                isPomodoro = true,
+                isBreak = false,
+                startTimeEpochMillis = current.startTimeEpochMillis // Keep original start
+            )
+        }
     }
 
     fun startNextPomodoro() {

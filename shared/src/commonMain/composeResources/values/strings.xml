@@ -126,6 +126,7 @@
     <string name="sprint_break_finish_subtitle">Ready to dive back in?</string>
     <string name="sprint_action_save">Stop &amp; Save Win</string>
     <string name="sprint_action_save_and_break">Save &amp; Break (5m)</string>
+    <string name="sprint_action_continue_pomodoro">Continue New Pomodoro</string>
     <string name="sprint_action_next_pomodoro">Start New Pomodoro</string>
     <string name="sprint_action_pomodoro">Keep Going (25m Pomodoro)</string>
     <string name="sprint_ongoing_title">Focusing: %1$s</string>

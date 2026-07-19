@@ -54,6 +54,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.cancel
+import checkit.shared.generated.resources.sprint_action_continue_pomodoro
 import checkit.shared.generated.resources.sprint_action_next_pomodoro
 import checkit.shared.generated.resources.sprint_action_pomodoro
 import checkit.shared.generated.resources.sprint_action_save
@@ -80,6 +81,7 @@ fun SprintCompletionDialog(
     state: SprintState.Finished,
     onSaveWin: () -> Unit,
     onSaveAndBreak: () -> Unit,
+    onContinueNewPomodoro: () -> Unit,
     onStartPomodoro: () -> Unit,
     onStartNextPomodoro: () -> Unit,
     onDismiss: () -> Unit
@@ -128,6 +130,13 @@ fun SprintCompletionDialog(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(stringResource(Res.string.sprint_action_save_and_break))
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        OutlinedButton(
+                            onClick = onContinueNewPomodoro,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(stringResource(Res.string.sprint_action_continue_pomodoro))
                         }
                     }
                     else -> {
