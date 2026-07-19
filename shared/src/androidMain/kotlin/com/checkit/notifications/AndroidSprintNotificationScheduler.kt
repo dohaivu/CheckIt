@@ -27,11 +27,15 @@ class AndroidSprintNotificationScheduler(
         SprintForegroundService.stop(context)
     }
 
-    override fun showFinishedNotification(description: String, isPomodoro: Boolean) {
+    override fun showFinishedNotification(description: String, isPomodoro: Boolean, isBreak: Boolean) {
         if (Platform.isAppInForeground()) return
 
-        val title = if (isPomodoro) "Deep Focus Finished!" else "Sprint Finished!"
-        val body = "You did it: $description. Great job starting."
+        val title = when {
+            isBreak -> "Break Finished!"
+            isPomodoro -> "Deep Focus Finished!"
+            else -> "Sprint Finished!"
+        }
+        val body = if (isBreak) "Ready to dive back in?" else "You did it: $description. Great job starting."
         
         val intent = Intent().setClassName(context.packageName, "com.checkit.MainActivity").apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP

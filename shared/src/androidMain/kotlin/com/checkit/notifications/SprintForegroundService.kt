@@ -85,11 +85,13 @@ class SprintForegroundService : Service(), KoinComponent {
         val minutes = state.remainingSeconds / 60
         val seconds = state.remainingSeconds % 60
         val timeLabel = String.format("%02d:%02d", minutes, seconds)
-        val title = if (isPaused) "Paused: ${state.description}" else "Focusing: ${state.description}"
+        val title = when {
+            isPaused -> "Paused: ${state.description}"
+            state.isBreak -> "Short Break: $timeLabel"
+            else -> "Focusing: ${state.description}"
+        }
+        val content = if (state.isBreak) "Time for a breather" else "$timeLabel remaining"
         
-        // We assume MainActivity is in the androidApp module and available via its full name or it will be merged.
-        // If shared doesn't know about MainActivity, we might need a different way to start it.
-        // But usually shared can reference classes that will be present in the final app.
         val intent = Intent().setClassName(packageName, "com.checkit.MainActivity").apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
@@ -105,7 +107,7 @@ class SprintForegroundService : Service(), KoinComponent {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(if (iconRes != 0) iconRes else R.mipmap.ic_launcher_round)
             .setContentTitle(title)
-            .setContentText("$timeLabel remaining")
+            .setContentText(content)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setContentIntent(pendingIntent)

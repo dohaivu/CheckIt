@@ -54,11 +54,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.cancel
+import checkit.shared.generated.resources.sprint_action_next_pomodoro
 import checkit.shared.generated.resources.sprint_action_pomodoro
 import checkit.shared.generated.resources.sprint_action_save
+import checkit.shared.generated.resources.sprint_action_save_and_break
 import checkit.shared.generated.resources.sprint_adhoc_placeholder
+import checkit.shared.generated.resources.sprint_break_finish_subtitle
+import checkit.shared.generated.resources.sprint_break_finish_title
 import checkit.shared.generated.resources.sprint_finish_subtitle
 import checkit.shared.generated.resources.sprint_finish_title
+import checkit.shared.generated.resources.sprint_pomodoro_finish_subtitle
+import checkit.shared.generated.resources.sprint_pomodoro_finish_title
 import checkit.shared.generated.resources.sprint_start
 import com.checkit.domain.SprintState
 import com.checkit.domain.TaskItem
@@ -73,19 +79,29 @@ import org.jetbrains.compose.resources.stringResource
 fun SprintCompletionDialog(
     state: SprintState.Finished,
     onSaveWin: () -> Unit,
+    onSaveAndBreak: () -> Unit,
     onStartPomodoro: () -> Unit,
-    onLogTask: () -> Unit,
+    onStartNextPomodoro: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val title = when {
+        state.isBreak -> stringResource(Res.string.sprint_break_finish_title)
+        state.isPomodoro -> stringResource(Res.string.sprint_pomodoro_finish_title)
+        else -> stringResource(Res.string.sprint_finish_title)
+    }
+    val subtitle = when {
+        state.isBreak -> stringResource(Res.string.sprint_break_finish_subtitle)
+        state.isPomodoro -> stringResource(Res.string.sprint_pomodoro_finish_subtitle)
+        else -> stringResource(Res.string.sprint_finish_subtitle)
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = {
-            Text(stringResource(Res.string.sprint_finish_title))
-        },
+        title = { Text(title) },
         text = {
             Column {
-                Text(stringResource(Res.string.sprint_finish_subtitle))
-                if (state.taskId == null) {
+                Text(subtitle)
+                if (state.taskId == null && !state.isBreak) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "Goal: ${state.description}",
@@ -97,29 +113,44 @@ fun SprintCompletionDialog(
         },
         confirmButton = {
             Column(modifier = Modifier.fillMaxWidth()) {
-                if (!state.isPomodoro) {
-                    Button(
-                        onClick = onStartPomodoro,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(stringResource(Res.string.sprint_action_pomodoro))
+                when {
+                    state.isBreak -> {
+                        Button(
+                            onClick = onStartNextPomodoro,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(stringResource(Res.string.sprint_action_next_pomodoro))
+                        }
                     }
-                    Spacer(modifier = Modifier.height(12.dp))
+                    state.isPomodoro -> {
+                        Button(
+                            onClick = onSaveAndBreak,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(stringResource(Res.string.sprint_action_save_and_break))
+                        }
+                    }
+                    else -> {
+                        Button(
+                            onClick = onStartPomodoro,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(stringResource(Res.string.sprint_action_pomodoro))
+                        }
+                    }
                 }
                 
+                Spacer(modifier = Modifier.height(12.dp))
+                
                 OutlinedButton(
-                    onClick = if (state.taskId != null) onSaveWin else onLogTask,
+                    onClick = onSaveWin,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(stringResource(Res.string.sprint_action_save))
+                    Text(stringResource(if (state.isBreak) Res.string.cancel else Res.string.sprint_action_save))
                 }
             }
         },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(Res.string.cancel))
-            }
-        }
+        dismissButton = null
     )
 }
 
@@ -137,16 +168,16 @@ fun SprintBar(
     val timeLabel = "${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}"
     val progress = (state.totalSeconds - state.remainingSeconds).toFloat() / state.totalSeconds.toFloat()
 
-    val containerColor = if (state.isPomodoro) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        MaterialTheme.colorScheme.tertiaryContainer
+    val containerColor = when {
+        state.isBreak -> MaterialTheme.colorScheme.secondaryContainer
+        state.isPomodoro -> MaterialTheme.colorScheme.primaryContainer
+        else -> MaterialTheme.colorScheme.tertiaryContainer
     }
 
-    val progressColor = if (state.isPomodoro) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.tertiary
+    val progressColor = when {
+        state.isBreak -> MaterialTheme.colorScheme.secondary
+        state.isPomodoro -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.tertiary
     }
 
     Surface(
@@ -179,7 +210,12 @@ fun SprintBar(
                             Spacer(Modifier.width(6.dp))
                         }
                         Text(
-                            text = if (isPaused) "Paused" else if (state.isPomodoro) "Deep Focus" else "Quick Sprint",
+                            text = when {
+                                isPaused -> "Paused"
+                                state.isBreak -> "Short Break"
+                                state.isPomodoro -> "Deep Focus"
+                                else -> "Quick Sprint"
+                            },
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

@@ -701,8 +701,12 @@ class MyDayViewModel(
     }
 
     fun saveSprintAsWin() {
-        // Atomically consume Finished so double-taps cannot save twice.
         val current = sprintManager.takeFinished() ?: return
+        saveSprintAsWin(current)
+    }
+
+    private fun saveSprintAsWin(current: SprintState.Finished) {
+        if (current.isBreak) return // Don't save breaks as tasks
         viewModelScope.launch {
             try {
                 val todayDate = today()
@@ -766,8 +770,30 @@ class MyDayViewModel(
         }
     }
 
-    fun logSprintAsTask() {
-        saveSprintAsWin()
+    fun saveAndBreak() {
+        val current = sprintManager.takeFinished() ?: return
+        saveSprintAsWin(current)
+        sprintManager.startSprint(
+            taskId = current.taskId,
+            dailyPlanItemId = current.dailyPlanItemId,
+            description = "Short Break",
+            durationSeconds = 300,
+            isPomodoro = false,
+            isBreak = true
+        )
+    }
+
+    fun startNextPomodoro() {
+        val current = sprintManager.takeFinished() ?: return
+        val task = current.taskId?.let { _uiState.value.board.tasksById[it] }
+        sprintManager.startSprint(
+            taskId = current.taskId,
+            dailyPlanItemId = current.dailyPlanItemId,
+            description = task?.name ?: current.description,
+            durationSeconds = 1500,
+            isPomodoro = true,
+            isBreak = false
+        )
     }
 
     fun dismissFinishedSprint() = sprintManager.dismissFinished()

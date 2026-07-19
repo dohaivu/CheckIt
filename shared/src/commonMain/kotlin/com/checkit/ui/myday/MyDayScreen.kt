@@ -263,8 +263,9 @@ internal fun MyDayScreen(
         SprintCompletionDialog(
             state = sprintState as SprintState.Finished,
             onSaveWin = viewModel::saveSprintAsWin,
+            onSaveAndBreak = viewModel::saveAndBreak,
             onStartPomodoro = viewModel::upgradeToPomodoro,
-            onLogTask = viewModel::logSprintAsTask,
+            onStartNextPomodoro = viewModel::startNextPomodoro,
             onDismiss = viewModel::dismissFinishedSprint
         )
     }

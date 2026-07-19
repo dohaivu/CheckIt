@@ -25,7 +25,8 @@ sealed interface SprintState {
         val startTimeEpochMillis: Long,
         /** Wall-clock deadline used to recompute remaining while running. */
         val endsAtEpochMillis: Long,
-        val isPomodoro: Boolean = false
+        val isPomodoro: Boolean = false,
+        val isBreak: Boolean = false
     ) : SprintState
 
     data class Paused(
@@ -40,7 +41,8 @@ sealed interface SprintState {
         val durationSeconds: Int,
         val elapsedSeconds: Int,
         val startTimeEpochMillis: Long,
-        val isPomodoro: Boolean
+        val isPomodoro: Boolean,
+        val isBreak: Boolean = false
     ) : SprintState
 }
 
@@ -64,6 +66,7 @@ class SprintManager(
         description: String,
         durationSeconds: Int = 300,
         isPomodoro: Boolean = false,
+        isBreak: Boolean = false,
         startTimeEpochMillis: Long? = null
     ): Boolean {
         when (_state.value) {
@@ -77,12 +80,15 @@ class SprintManager(
         val running = SprintState.Running(
             taskId = taskId,
             dailyPlanItemId = dailyPlanItemId,
-            description = description.ifBlank { if (isPomodoro) "Deep Focus" else "Quick Sprint" },
+            description = description.ifBlank { 
+                if (isBreak) "Short Break" else if (isPomodoro) "Deep Focus" else "Quick Sprint" 
+            },
             totalSeconds = safeDuration,
             remainingSeconds = ((start + safeDuration * 1000L - now) / 1000L).toInt().coerceIn(1, safeDuration),
             startTimeEpochMillis = start,
             endsAtEpochMillis = start + safeDuration * 1000L,
-            isPomodoro = isPomodoro
+            isPomodoro = isPomodoro,
+            isBreak = isBreak
         )
         timerJob?.cancel()
         _state.value = running
@@ -190,9 +196,10 @@ class SprintManager(
             durationSeconds = running.totalSeconds,
             elapsedSeconds = elapsed,
             startTimeEpochMillis = running.startTimeEpochMillis,
-            isPomodoro = running.isPomodoro
+            isPomodoro = running.isPomodoro,
+            isBreak = running.isBreak
         )
         notificationScheduler.cancelNotification()
-        notificationScheduler.showFinishedNotification(running.description, running.isPomodoro)
+        notificationScheduler.showFinishedNotification(running.description, running.isPomodoro, running.isBreak)
     }
 }
