@@ -654,6 +654,21 @@ class MyDayViewModel(
         }
     }
 
+    fun startSprintWithChoice(choice: SprintChoice) {
+        dismissQuickSprint()
+        val success = when (choice) {
+            is SprintChoice.Task -> sprintManager.startSprint(choice.task.id, null, choice.task.name)
+            is SprintChoice.PlanItem -> {
+                // If the item is already Done, we start a NEW session (new daily plan item) on finish.
+                val itemId = if (choice.item.status == DailyPlanItemStatus.Done) null else choice.item.id
+                sprintManager.startSprint(choice.item.taskId, itemId, choice.item.title)
+            }
+        }
+        if (!success) {
+            sendEvent(UiEvent.ShowSnackbar("A sprint is already in progress"))
+        }
+    }
+
     fun openQuickSprint() {
         _uiState.update { it.copy(showQuickSprintSheet = true) }
     }

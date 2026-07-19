@@ -14,6 +14,11 @@ import com.checkit.ui.tasks.EditorMode
 import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
 
+sealed class SprintChoice {
+    data class Task(val task: TaskItem) : SprintChoice()
+    data class PlanItem(val item: DailyPlanItem, val task: TaskItem? = null) : SprintChoice()
+}
+
 data class MyDayUiState(
     val board: TaskBoard = TaskBoard(),
     val dailyPlans: List<DailyPlan> = emptyList(),
@@ -62,6 +67,18 @@ data class MyDayUiState(
         )
 
     val yesterdayDate: LocalDate get() = YesterdayLeftovers.sourceDate(today)
+
+    val sprintSuggestedToday: List<SprintChoice> = plannedItems
+        .take(3)
+        .map { item -> SprintChoice.PlanItem(item, board.tasksById[item.taskId]) }
+
+    val sprintSuggestedYesterday: List<SprintChoice> = pendingYesterdayLeftovers
+        .take(3)
+        .map { item -> SprintChoice.PlanItem(item, board.tasksById[item.taskId]) }
+
+    val continueSprintItem: SprintChoice? = doneItems.lastOrNull()?.let { SprintChoice.PlanItem(it, board.tasksById[it.taskId]) }
+        ?: sprintSuggestedToday.firstOrNull()
+        ?: sprintSuggestedYesterday.firstOrNull()
 }
 
 data class DayReviewUiState(

@@ -1,8 +1,5 @@
 package com.checkit.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -16,39 +13,33 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -59,10 +50,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.cancel
 import checkit.shared.generated.resources.sprint_action_log_task
@@ -75,87 +64,11 @@ import checkit.shared.generated.resources.sprint_start
 import com.checkit.domain.SprintState
 import com.checkit.domain.TaskItem
 import com.checkit.ui.localizedCompactDateWithDayName
+import com.checkit.ui.myday.SprintChoice
+import com.checkit.ui.tasks.views.DailyPlanTimelineCard
 import com.checkit.ui.tasks.views.SprintButton
 import com.checkit.ui.tasks.views.TaskTimelineCard
-import com.checkit.ui.components.AppEditorBottomSheet
-import com.checkit.ui.components.AppOutlinedTextField
 import org.jetbrains.compose.resources.stringResource
-
-@Composable
-fun SprintTimerOverlay(
-    state: SprintState.Running,
-    isPaused: Boolean,
-    onPause: () -> Unit,
-    onResume: () -> Unit,
-    onStop: () -> Unit
-) {
-    val minutes = state.remainingSeconds / 60
-    val seconds = state.remainingSeconds % 60
-    val timeLabel = "${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}"
-
-    val backgroundColor = if (state.isPomodoro) {
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.95f)
-    } else {
-        MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.95f)
-    }
-
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = backgroundColor
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = state.description,
-                style = MaterialTheme.typography.headlineMedium,
-                textAlign = TextAlign.Center,
-                fontWeight = FontWeight.Bold
-            )
-            
-            Spacer(modifier = Modifier.height(48.dp))
-            
-            Text(
-                text = timeLabel,
-                style = MaterialTheme.typography.displayLarge.copy(
-                    fontSize = 80.sp,
-                    fontWeight = FontWeight.Light
-                ),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            
-            Spacer(modifier = Modifier.height(64.dp))
-            
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                IconButton(
-                    onClick = onStop,
-                    modifier = Modifier.size(64.dp).background(MaterialTheme.colorScheme.errorContainer, CircleShape)
-                ) {
-                    Icon(Icons.Default.Close, contentDescription = "Stop", tint = MaterialTheme.colorScheme.onErrorContainer)
-                }
-                
-                Spacer(modifier = Modifier.width(32.dp))
-                
-                IconButton(
-                    onClick = if (isPaused) onResume else onPause,
-                    modifier = Modifier.size(80.dp).background(MaterialTheme.colorScheme.primary, CircleShape)
-                ) {
-                    Icon(
-                        if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                        contentDescription = if (isPaused) "Resume" else "Pause",
-                        modifier = Modifier.size(40.dp),
-                        tint = MaterialTheme.colorScheme.onPrimary
-                    )
-                }
-            }
-        }
-    }
-}
 
 @Composable
 fun SprintCompletionDialog(
@@ -343,8 +256,12 @@ private fun PulsingDot(color: Color) {
 
 @Composable
 fun QuickSprintSheet(
-    tasks: List<TaskItem>,
+    suggestedToday: List<SprintChoice>,
+    suggestedYesterday: List<SprintChoice>,
+    suggestedTasks: List<TaskItem>,
+    continueItem: SprintChoice?,
     onStartSprint: (taskId: Long?, dailyPlanItemId: Long?, description: String) -> Unit,
+    onStartSprintWithChoice: (SprintChoice) -> Unit,
     onStartSprintWithTask: (TaskItem) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -373,37 +290,73 @@ fun QuickSprintSheet(
                 contentPadding = PaddingValues(12.dp)
             )
 
-            Button(
-                onClick = {
-                    onStartSprint(null, null, text)
-                    onDismiss()
-                },
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.medium
-            ) {
-                Icon(Icons.Default.Bolt, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(stringResource(Res.string.sprint_start))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Button(
+                    onClick = {
+                        onStartSprint(null, null, text)
+                        onDismiss()
+                    },
+                    modifier = Modifier.weight(1f),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Icon(Icons.Default.Bolt, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(stringResource(Res.string.sprint_start))
+                }
+
+                if (continueItem != null) {
+                    OutlinedButton(
+                        onClick = {
+                            onStartSprintWithChoice(continueItem)
+                            onDismiss()
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Text("Continue Last")
+                    }
+                }
             }
         }
 
-        if (tasks.isNotEmpty()) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 400.dp),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                item {
-                    Text(
-                        text = "Or start with a task",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = 4.dp)
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 450.dp),
+            contentPadding = PaddingValues(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            if (suggestedToday.isNotEmpty()) {
+                item { SectionLabel("Today's Plan", modifier = Modifier.padding(horizontal = 16.dp)) }
+                items(suggestedToday) { choice ->
+                    SprintChoiceCard(
+                        choice = choice,
+                        onClick = {
+                            onStartSprintWithChoice(choice)
+                            onDismiss()
+                        },
+                        modifier = Modifier.padding(horizontal = 16.dp)
                     )
                 }
-                items(tasks, key = { it.id }) { task ->
+            }
+
+            if (suggestedYesterday.isNotEmpty()) {
+                item { SectionLabel("Yesterday's Leftovers", modifier = Modifier.padding(horizontal = 16.dp)) }
+                items(suggestedYesterday) { choice ->
+                    SprintChoiceCard(
+                        choice = choice,
+                        onClick = {
+                            onStartSprintWithChoice(choice)
+                            onDismiss()
+                        },
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                }
+            }
+
+            if (suggestedTasks.isNotEmpty()) {
+                item { SectionLabel("Or start with a task", modifier = Modifier.padding(horizontal = 16.dp)) }
+                items(suggestedTasks, key = { it.id }) { task ->
                     TaskTimelineCard(
                         task = task,
                         timeLabel = task.doDate?.localizedCompactDateWithDayName() ?: task.objective.name,
@@ -413,9 +366,59 @@ fun QuickSprintSheet(
                                 onDismiss()
                             })
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        onClick = {
+                            onStartSprintWithTask(task)
+                            onDismiss()
+                        },
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SectionLabel(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.padding(bottom = 4.dp, top = 8.dp)
+    )
+}
+
+@Composable
+private fun SprintChoiceCard(
+    choice: SprintChoice,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    when (choice) {
+        is SprintChoice.Task -> TaskTimelineCard(
+            task = choice.task,
+            trailingContent = { SprintButton(onClick = onClick) },
+            onClick = onClick,
+            modifier = modifier
+        )
+        is SprintChoice.PlanItem -> {
+            val task = choice.task
+            if (task != null) {
+                TaskTimelineCard(
+                    task = task,
+                    timeLabel = choice.item.title,
+                    trailingContent = { SprintButton(onClick = onClick) },
+                    onClick = onClick,
+                    modifier = modifier
+                )
+            } else {
+                DailyPlanTimelineCard(
+                    item = choice.item,
+                    isOverdue = false,
+                    trailingContent = { SprintButton(onClick = onClick) },
+                    onClick = onClick,
+                    modifier = modifier
+                )
             }
         }
     }

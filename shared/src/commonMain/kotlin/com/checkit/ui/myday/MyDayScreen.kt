@@ -248,8 +248,12 @@ internal fun MyDayScreen(
 
     if (state.showQuickSprintSheet) {
         QuickSprintSheet(
-            tasks = state.suggestedTasks,
+            suggestedToday = state.sprintSuggestedToday,
+            suggestedYesterday = state.sprintSuggestedYesterday,
+            suggestedTasks = state.suggestedTasks,
+            continueItem = state.continueSprintItem,
             onStartSprint = viewModel::startSprint,
+            onStartSprintWithChoice = viewModel::startSprintWithChoice,
             onStartSprintWithTask = viewModel::startSprintWithTask,
             onDismiss = viewModel::dismissQuickSprint
         )
