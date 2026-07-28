@@ -74,9 +74,9 @@ import com.checkit.domain.SprintState
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.hasEndTime
-import com.checkit.ui.components.QuickSprintSheet
-import com.checkit.ui.components.SprintBar
-import com.checkit.ui.components.SprintCompletionDialog
+import com.checkit.ui.myday.QuickSprintSheet
+import com.checkit.ui.myday.SprintBar
+import com.checkit.ui.myday.SprintCompletionDialog
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.tasks.TimelineItem

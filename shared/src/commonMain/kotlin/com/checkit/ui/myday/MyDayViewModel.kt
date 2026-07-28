@@ -310,15 +310,6 @@ class MyDayViewModel(
         }
     }
 
-    /** PR3: open check-in with a free time slot around now (notification deep link). */
-    fun openCheckInAtFreeSlot() {
-        val state = _uiState.value
-        val duration = DefaultTaskDurationMinutes
-        val preferredStart = currentMyDayTimeMinutes()
-        val (start, end) = state.nextAvailableTimeRange(preferredStart, duration)
-        openCheckIn(startTimeMinutes = start, endTimeMinutes = end)
-    }
-
     fun setLeftoverAction(itemId: Long, action: LeftoverAction) {
         _uiState.update { state ->
             val review = state.dayReview ?: return@update state
@@ -397,6 +388,15 @@ class MyDayViewModel(
             syncKeyResultFromDailyPlan(itemId = item.id, proposedStartTime = startTimeMinutes, proposedEndTime = nextEndTime)
             updateDailyPlanItemTime(item.id, startTimeMinutes, nextEndTime)
         }
+    }
+
+    /** PR3: open check-in with a free time slot around now (notification deep link). */
+    fun openCheckInAtFreeSlot() {
+        val state = _uiState.value
+        val duration = DefaultTaskDurationMinutes
+        val preferredStart = currentMyDayTimeMinutes()
+        val (start, end) = state.nextAvailableTimeRange(preferredStart, duration)
+        openCheckIn(startTimeMinutes = start, endTimeMinutes = end)
     }
 
     fun openCheckIn(

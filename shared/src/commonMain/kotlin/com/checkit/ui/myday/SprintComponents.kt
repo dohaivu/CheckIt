@@ -1,4 +1,4 @@
-package com.checkit.ui.components
+package com.checkit.ui.myday
 
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -69,6 +69,8 @@ import checkit.shared.generated.resources.sprint_pomodoro_finish_title
 import checkit.shared.generated.resources.sprint_start
 import com.checkit.domain.SprintState
 import com.checkit.domain.TaskItem
+import com.checkit.ui.components.AppEditorBottomSheet
+import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.myday.SprintChoice
 import com.checkit.ui.tasks.views.DailyPlanTimelineCard
