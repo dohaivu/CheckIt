@@ -69,8 +69,10 @@ import checkit.shared.generated.resources.sprint_pomodoro_finish_title
 import checkit.shared.generated.resources.sprint_start
 import com.checkit.domain.SprintState
 import com.checkit.domain.TaskItem
+import com.checkit.domain.TaskTag
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
+import com.checkit.ui.components.TagPicker
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.myday.SprintChoice
 import com.checkit.ui.tasks.views.DailyPlanTimelineCard
@@ -305,13 +307,15 @@ fun QuickSprintSheet(
     suggestedToday: List<SprintChoice>,
     suggestedYesterday: List<SprintChoice>,
     suggestedTasks: List<TaskItem>,
+    availableTags: List<TaskTag>,
     continueItem: SprintChoice?,
-    onStartSprint: (taskId: Long?, dailyPlanItemId: Long?, description: String) -> Unit,
+    onStartSprint: (taskId: Long?, dailyPlanItemId: Long?, description: String, tagIds: List<Long>) -> Unit,
     onStartSprintWithChoice: (SprintChoice) -> Unit,
     onStartSprintWithTask: (TaskItem) -> Unit,
     onDismiss: () -> Unit
 ) {
     var text by remember { mutableStateOf("") }
+    var selectedTagIds by remember { mutableStateOf(emptySet<Long>()) }
 
     AppEditorBottomSheet(onDismiss = onDismiss) {
         Column(
@@ -336,10 +340,23 @@ fun QuickSprintSheet(
                 contentPadding = PaddingValues(12.dp)
             )
 
+            TagPicker(
+                availableTags = availableTags,
+                selectedTagIds = selectedTagIds,
+                onTagToggle = { tagId ->
+                    selectedTagIds = if (tagId in selectedTagIds) {
+                        selectedTagIds - tagId
+                    } else {
+                        selectedTagIds + tagId
+                    }
+                },
+                modifier = Modifier.align(Alignment.Start)
+            )
+
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Button(
                     onClick = {
-                        onStartSprint(null, null, text)
+                        onStartSprint(null, null, text, selectedTagIds.toList())
                         onDismiss()
                     },
                     modifier = Modifier.weight(1f),

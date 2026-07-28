@@ -641,16 +641,16 @@ class MyDayViewModel(
         }
     }
 
-    fun startSprint(taskId: Long? = null, dailyPlanItemId: Long? = null, description: String = "") {
+    fun startSprint(taskId: Long? = null, dailyPlanItemId: Long? = null, description: String = "", tagIds: List<Long> = emptyList()) {
         dismissQuickSprint()
-        if (!sprintManager.startSprint(taskId, dailyPlanItemId, description)) {
+        if (!sprintManager.startSprint(taskId, dailyPlanItemId, description, tagIds = tagIds)) {
             sendEvent(UiEvent.ShowSnackbar("A sprint is already in progress"))
         }
     }
 
     fun startSprintWithTask(task: TaskItem) {
         dismissQuickSprint()
-        if (!sprintManager.startSprint(task.id, null, task.name)) {
+        if (!sprintManager.startSprint(task.id, null, task.name, tagIds = task.tags.map { it.id })) {
             sendEvent(UiEvent.ShowSnackbar("A sprint is already in progress"))
         }
     }
@@ -658,11 +658,21 @@ class MyDayViewModel(
     fun startSprintWithChoice(choice: SprintChoice) {
         dismissQuickSprint()
         val success = when (choice) {
-            is SprintChoice.Task -> sprintManager.startSprint(choice.task.id, null, choice.task.name)
+            is SprintChoice.Task -> sprintManager.startSprint(
+                choice.task.id,
+                null,
+                choice.task.name,
+                tagIds = choice.task.tags.map { it.id }
+            )
             is SprintChoice.PlanItem -> {
                 // If the item is already Done, we start a NEW session (new daily plan item) on finish.
                 val itemId = if (choice.item.status == DailyPlanItemStatus.Done) null else choice.item.id
-                sprintManager.startSprint(choice.item.taskId, itemId, choice.item.title)
+                sprintManager.startSprint(
+                    choice.item.taskId,
+                    itemId,
+                    choice.item.title,
+                    tagIds = choice.item.tags.map { it.id }
+                )
             }
         }
         if (!success) {
@@ -762,7 +772,7 @@ class MyDayViewModel(
                     endTimeMinutes = startMinutes + durationMinutes,
                     source = DailyPlanItemSource.MyDayTask,
                     status = DailyPlanItemStatus.Done,
-                    tagIds = emptyList()
+                    tagIds = current.tagIds
                 )
             }
         } catch (error: Exception) {

@@ -26,7 +26,8 @@ sealed interface SprintState {
         /** Wall-clock deadline used to recompute remaining while running. */
         val endsAtEpochMillis: Long,
         val isPomodoro: Boolean = false,
-        val isBreak: Boolean = false
+        val isBreak: Boolean = false,
+        val tagIds: List<Long> = emptyList()
     ) : SprintState
 
     data class Paused(
@@ -42,7 +43,8 @@ sealed interface SprintState {
         val elapsedSeconds: Int,
         val startTimeEpochMillis: Long,
         val isPomodoro: Boolean,
-        val isBreak: Boolean = false
+        val isBreak: Boolean = false,
+        val tagIds: List<Long> = emptyList()
     ) : SprintState
 }
 
@@ -67,6 +69,7 @@ class SprintManager(
         durationSeconds: Int = 300,
         isPomodoro: Boolean = false,
         isBreak: Boolean = false,
+        tagIds: List<Long> = emptyList(),
         startTimeEpochMillis: Long? = null
     ): Boolean {
         when (_state.value) {
@@ -88,7 +91,8 @@ class SprintManager(
             startTimeEpochMillis = start,
             endsAtEpochMillis = start + safeDuration * 1000L,
             isPomodoro = isPomodoro,
-            isBreak = isBreak
+            isBreak = isBreak,
+            tagIds = tagIds
         )
         timerJob?.cancel()
         _state.value = running
@@ -197,7 +201,8 @@ class SprintManager(
             elapsedSeconds = elapsed,
             startTimeEpochMillis = running.startTimeEpochMillis,
             isPomodoro = running.isPomodoro,
-            isBreak = running.isBreak
+            isBreak = running.isBreak,
+            tagIds = running.tagIds
         )
         notificationScheduler.cancelNotification()
         notificationScheduler.showFinishedNotification(running.description, running.isPomodoro, running.isBreak)

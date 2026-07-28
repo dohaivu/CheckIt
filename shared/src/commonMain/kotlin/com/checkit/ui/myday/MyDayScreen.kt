@@ -251,8 +251,11 @@ internal fun MyDayScreen(
             suggestedToday = state.sprintSuggestedToday,
             suggestedYesterday = state.sprintSuggestedYesterday,
             suggestedTasks = state.suggestedTasks,
+            availableTags = state.board.tags,
             continueItem = state.continueSprintItem,
-            onStartSprint = viewModel::startSprint,
+            onStartSprint = { taskId, dailyPlanItemId, description, tagIds ->
+                viewModel.startSprint(taskId, dailyPlanItemId, description, tagIds)
+            },
             onStartSprintWithChoice = viewModel::startSprintWithChoice,
             onStartSprintWithTask = viewModel::startSprintWithTask,
             onDismiss = viewModel::dismissQuickSprint
