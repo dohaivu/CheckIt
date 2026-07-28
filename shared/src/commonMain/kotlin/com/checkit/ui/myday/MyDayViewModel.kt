@@ -690,12 +690,8 @@ class MyDayViewModel(
     }
 
     fun pauseSprint() = sprintManager.pauseSprint()
-    fun resumeSprint() {
-        viewModelScope.launch { sprintManager.resumeSprint() }
-    }
-    fun completeSprint() {
-        viewModelScope.launch { sprintManager.completeSprintManually() }
-    }
+    fun resumeSprint() = sprintManager.resumeSprint()
+    fun completeSprint() = sprintManager.completeSprintManually()
 
     fun upgradeToPomodoro() {
         viewModelScope.launch { sprintTransition.upgradeToPomodoro() }
