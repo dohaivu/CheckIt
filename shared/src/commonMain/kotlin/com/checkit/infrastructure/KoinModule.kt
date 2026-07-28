@@ -28,6 +28,8 @@ import com.checkit.domain.usecase.AutoAddTodayTasksToMyDayUseCase
 import com.checkit.domain.usecase.BuildDayReviewSummaryUseCase
 import com.checkit.domain.usecase.CarryOverDailyPlanItemsUseCase
 import com.checkit.domain.usecase.UpsertDayReviewWinNoteUseCase
+import com.checkit.domain.usecase.UpsertDailyPlanItemUseCase
+import com.checkit.domain.usecase.AddSuggestedTaskToMyDayUseCase
 import com.checkit.domain.usecase.CompleteDayReviewUseCase
 import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
@@ -100,6 +102,8 @@ val provideInteractorModule = module {
     single { SprintManager(get()) }
     single { SaveSprintAsWinUseCase(get(), get(), get(), get(), get(), get()) }
     single { SprintTransitionUseCase(get(), get(), get()) }
+    single { UpsertDailyPlanItemUseCase(get(), get()) }
+    single { AddSuggestedTaskToMyDayUseCase(get(), get(), get()) }
     single<CheckItRepository> { RoomCheckItRepository(get(), get(), get()) }
     single { ObserveTaskBoardUseCase(get()) }
     single { ObserveDailyPlansUseCase(get()) }
@@ -189,17 +193,15 @@ val provideViewModelModule = module {
             observeTaskBoard = get(),
             observeDailyPlans = get(),
             ensureDefaultTaskData = get(),
-            addTaskToDailyPlan = get(),
-            addDailyPlanItem = get(),
-            updateDailyPlanItemTime = get(),
-            updateDailyPlanItemStatus = get(),
-            updateDailyPlanItem = get(),
-            syncKeyResultFromDailyPlan = get(),
             deleteDailyPlanItemUseCase = get(),
             settingsRepository = get(),
             buildDayReviewSummary = get(),
             completeDayReview = get(),
             carryOverDailyPlanItems = get(),
+            upsertDailyPlanItem = get(),
+            addSuggestedTaskToMyDay = get(),
+            syncKeyResultFromDailyPlan = get(),
+            updateDailyPlanItemTime = get(),
             sprintManager = get(),
             sprintTransition = get()
         )

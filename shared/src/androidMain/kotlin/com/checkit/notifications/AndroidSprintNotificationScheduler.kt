@@ -93,8 +93,8 @@ class AndroidSprintNotificationScheduler(
                 builder.addAction(createAction(context, saveLabel, SprintActionReceiver.ACTION_SAVE_WIN))
             }
 
-            Log.d("SprintNotification", "Sending notification 1002")
-            notificationManager.notify(1002, builder.build())
+            Log.d("SprintNotification", "Sending notification ${NotificationIds.SprintFinished}")
+            notificationManager.notify(NotificationIds.SprintFinished, builder.build())
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
             Log.e("SprintNotification", "CRITICAL Error showing notification", e)

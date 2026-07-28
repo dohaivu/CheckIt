@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import android.util.Log
+import android.app.NotificationManager
 
 class SprintActionReceiver : BroadcastReceiver(), KoinComponent {
     private val transitionUseCase: SprintTransitionUseCase by inject()
@@ -27,6 +28,10 @@ class SprintActionReceiver : BroadcastReceiver(), KoinComponent {
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action ?: return
         Log.d("SprintAction", "Received action: $action")
+        
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.cancel(NotificationIds.SprintFinished)
+        
         val pendingResult = goAsync()
         
         scope.launch {

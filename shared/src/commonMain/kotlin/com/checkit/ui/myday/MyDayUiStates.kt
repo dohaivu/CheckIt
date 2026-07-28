@@ -115,6 +115,30 @@ data class DailyPlanItemEditorState(
     val isAddMode: Boolean get() = mode == EditorMode.Add
     val isEditMode: Boolean get() = mode == EditorMode.Edit
     val canDelete: Boolean get() = itemId != null
+
+    fun saveSource(): DailyPlanItemSource = source
+
+    fun saveStatus(): DailyPlanItemStatus =
+        if (isAddMode) {
+            if (source == DailyPlanItemSource.MyDayNote) DailyPlanItemStatus.Done
+            else source.inferredAddStatus(startTimeMinutes)
+        } else status
+}
+
+fun DailyPlanItemSource.inferredAddStatus(startTimeMinutes: Int?): DailyPlanItemStatus =
+    if (infersAddStatusFromStartTime() && startTimeMinutes != null && startTimeMinutes < com.checkit.ui.currentMyDayTimeMinutes()) {
+        DailyPlanItemStatus.Done
+    } else {
+        DailyPlanItemStatus.Planned
+    }
+
+fun DailyPlanItemSource.infersAddStatusFromStartTime(): Boolean =
+    this == DailyPlanItemSource.MyDayTask || this == DailyPlanItemSource.MyDayReminder
+
+fun DailyPlanItemSource.defaultStatus(): DailyPlanItemStatus = when (this) {
+    DailyPlanItemSource.MyDayNote,
+    DailyPlanItemSource.MyDayReminder -> DailyPlanItemStatus.Planned
+    else -> DailyPlanItemStatus.Done
 }
 
 internal fun DailyPlanItem.workMinutes(): Int {

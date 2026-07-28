@@ -159,5 +159,9 @@ class SprintManagerTest {
         override fun cancelNotification() {
             cancelCount++
         }
+
+        override suspend fun showFinishedNotification(finished: SprintState.Finished) {
+            // Record if needed
+        }
     }
 }
