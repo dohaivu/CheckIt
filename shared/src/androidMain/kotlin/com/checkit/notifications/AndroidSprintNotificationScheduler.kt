@@ -8,6 +8,8 @@ import androidx.core.app.NotificationCompat
 import com.checkit.domain.SprintState
 import com.checkit.platform.Platform
 import com.checkit.shared.R
+import org.jetbrains.compose.resources.getString
+import checkit.shared.generated.resources.*
 
 class AndroidSprintNotificationScheduler(
     private val context: Context
@@ -27,15 +29,19 @@ class AndroidSprintNotificationScheduler(
         SprintForegroundService.stop(context)
     }
 
-    override fun showFinishedNotification(description: String, isPomodoro: Boolean, isBreak: Boolean) {
+    override suspend fun showFinishedNotification(finished: SprintState.Finished) {
         if (Platform.isAppInForeground()) return
 
         val title = when {
-            isBreak -> "Break Finished!"
-            isPomodoro -> "Deep Focus Finished!"
-            else -> "Sprint Finished!"
+            finished.isBreak -> getString(Res.string.sprint_break_finish_title)
+            finished.isPomodoro -> getString(Res.string.sprint_pomodoro_finish_title)
+            else -> getString(Res.string.sprint_finish_title)
         }
-        val body = if (isBreak) "Ready to dive back in?" else "You did it: $description. Great job starting."
+        val body = when {
+            finished.isBreak -> getString(Res.string.sprint_break_finish_subtitle)
+            finished.isPomodoro -> getString(Res.string.sprint_pomodoro_finish_subtitle)
+            else -> getString(Res.string.sprint_finished_body, finished.description)
+        }
         
         val intent = Intent().setClassName(context.packageName, "com.checkit.MainActivity").apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -48,7 +54,7 @@ class AndroidSprintNotificationScheduler(
         )
 
         val iconRes = context.applicationInfo.icon
-        val notification = NotificationCompat.Builder(context, NotificationChannels.ReminderId)
+        val builder = NotificationCompat.Builder(context, NotificationChannels.ReminderId)
             .setSmallIcon(if (iconRes != 0) iconRes else R.mipmap.ic_launcher_round)
             .setContentTitle(title)
             .setContentText(body)
@@ -57,8 +63,32 @@ class AndroidSprintNotificationScheduler(
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
-            .build()
 
-        notificationManager.notify(1002, notification)
+        if (finished.isBreak) {
+            builder.addAction(createAction(context, getString(Res.string.sprint_action_next_pomodoro), SprintActionReceiver.ACTION_START_NEXT))
+            builder.addAction(createAction(context, getString(Res.string.cancel), SprintActionReceiver.ACTION_SAVE_WIN)) // SAVE_WIN for break just dismisses/saves idle
+        } else if (finished.isPomodoro) {
+            builder.addAction(createAction(context, getString(Res.string.sprint_action_save_and_break), SprintActionReceiver.ACTION_SAVE_BREAK))
+            builder.addAction(createAction(context, getString(Res.string.sprint_action_continue_pomodoro), SprintActionReceiver.ACTION_SAVE_CONTINUE))
+            builder.addAction(createAction(context, getString(Res.string.sprint_action_save), SprintActionReceiver.ACTION_SAVE_WIN))
+        } else {
+            builder.addAction(createAction(context, getString(Res.string.sprint_action_pomodoro), SprintActionReceiver.ACTION_UPGRADE))
+            builder.addAction(createAction(context, getString(Res.string.sprint_action_save), SprintActionReceiver.ACTION_SAVE_WIN))
+        }
+
+        notificationManager.notify(1002, builder.build())
+    }
+
+    private fun createAction(context: Context, label: String, action: String): NotificationCompat.Action {
+        val intent = Intent(context, SprintActionReceiver::class.java).apply {
+            this.action = action
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            action.hashCode(),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        return NotificationCompat.Action.Builder(0, label, pendingIntent).build()
     }
 }

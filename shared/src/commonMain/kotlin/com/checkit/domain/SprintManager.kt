@@ -112,7 +112,7 @@ class SprintManager(
         }
     }
 
-    fun resumeSprint() {
+    suspend fun resumeSprint() {
         val current = _state.value
         if (current is SprintState.Paused) {
             val remaining = current.remainingSecondsAtPause.coerceAtLeast(0)
@@ -132,7 +132,7 @@ class SprintManager(
         }
     }
 
-    fun completeSprintManually() {
+    suspend fun completeSprintManually() {
         when (val current = _state.value) {
             is SprintState.Running -> finishWithRemaining(current, remainingSeconds(current))
             is SprintState.Paused -> finishWithRemaining(current.runningState, current.remainingSecondsAtPause)
@@ -188,12 +188,12 @@ class SprintManager(
         return ((millisLeft + 999L) / 1000L).toInt().coerceAtMost(running.totalSeconds)
     }
 
-    private fun finishWithRemaining(running: SprintState.Running, remainingSeconds: Int) {
+    private suspend fun finishWithRemaining(running: SprintState.Running, remainingSeconds: Int) {
         timerJob?.cancel()
         timerJob = null
         val remaining = remainingSeconds.coerceIn(0, running.totalSeconds)
         val elapsed = (running.totalSeconds - remaining).coerceIn(0, running.totalSeconds)
-        _state.value = SprintState.Finished(
+        val finished = SprintState.Finished(
             taskId = running.taskId,
             dailyPlanItemId = running.dailyPlanItemId,
             description = running.description,
@@ -204,7 +204,8 @@ class SprintManager(
             isBreak = running.isBreak,
             tagIds = running.tagIds
         )
+        _state.value = finished
         notificationScheduler.cancelNotification()
-        notificationScheduler.showFinishedNotification(running.description, running.isPomodoro, running.isBreak)
+        notificationScheduler.showFinishedNotification(finished)
     }
 }

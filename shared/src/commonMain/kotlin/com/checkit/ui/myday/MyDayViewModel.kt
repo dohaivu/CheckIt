@@ -48,7 +48,8 @@ class MyDayViewModel(
     private val buildDayReviewSummary: BuildDayReviewSummaryUseCase,
     private val completeDayReview: CompleteDayReviewUseCase,
     private val carryOverDailyPlanItems: CarryOverDailyPlanItemsUseCase,
-    val sprintManager: SprintManager
+    val sprintManager: SprintManager,
+    private val sprintTransition: SprintTransitionUseCase
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(MyDayUiState())
     val uiState: StateFlow<MyDayUiState> = _uiState.asStateFlow()
@@ -689,141 +690,31 @@ class MyDayViewModel(
     }
 
     fun pauseSprint() = sprintManager.pauseSprint()
-    fun resumeSprint() = sprintManager.resumeSprint()
-    fun completeSprint() = sprintManager.completeSprintManually()
+    fun resumeSprint() {
+        viewModelScope.launch { sprintManager.resumeSprint() }
+    }
+    fun completeSprint() {
+        viewModelScope.launch { sprintManager.completeSprintManually() }
+    }
 
     fun upgradeToPomodoro() {
-        val current = sprintManager.state.value
-        if (current is SprintState.Finished) {
-            val originalStartTime = current.startTimeEpochMillis
-            
-            if (!sprintManager.startSprint(
-                    taskId = current.taskId,
-                    dailyPlanItemId = current.dailyPlanItemId,
-                    description = current.description,
-                    durationSeconds = 1500, // 25 minutes
-                    isPomodoro = true,
-                    startTimeEpochMillis = originalStartTime
-                )
-            ) {
-                sendEvent(UiEvent.ShowSnackbar("A focus session is already in progress"))
-            }
-        }
+        viewModelScope.launch { sprintTransition.upgradeToPomodoro() }
     }
 
     fun saveSprintAsWin() {
-        val current = sprintManager.takeFinished() ?: return
-        viewModelScope.launch {
-            performSaveSprintAsWin(current)
-        }
-    }
-
-    private suspend fun performSaveSprintAsWin(current: SprintState.Finished): Long? {
-        if (current.isBreak) return null
-        return try {
-            val todayDate = today()
-            val startInstant = Instant.fromEpochMilliseconds(current.startTimeEpochMillis)
-            val startDateTime = startInstant.toLocalDateTime(TimeZone.currentSystemDefault())
-            val startMinutes = startDateTime.hour * 60 + startDateTime.minute
-            val durationMinutes = (current.elapsedSeconds / 60).coerceAtLeast(1)
-            val endMinutes = startMinutes + durationMinutes
-
-            val taskId = current.taskId
-            val dailyPlanItemId = current.dailyPlanItemId
-
-            if (dailyPlanItemId != null) {
-                if (_uiState.value.items.none { it.id == dailyPlanItemId }) {
-                    sendEvent(UiEvent.ShowSnackbar("Could not save sprint: plan item no longer exists"))
-                    return null
-                }
-
-                syncKeyResultFromDailyPlan(
-                    itemId = dailyPlanItemId,
-                    proposedStatus = DailyPlanItemStatus.Done,
-                    proposedStartTime = startMinutes,
-                    proposedEndTime = endMinutes
-                )
-                updateDailyPlanItemTime(dailyPlanItemId, startMinutes, endMinutes)
-                updateDailyPlanItemStatus(dailyPlanItemId, DailyPlanItemStatus.Done)
-                dailyPlanItemId
-            } else if (taskId != null) {
-                val task = _uiState.value.board.tasksById[taskId]
-                if (task == null) {
-                    sendEvent(UiEvent.ShowSnackbar("Could not save sprint: task no longer exists"))
-                    return null
-                }
-                val itemId = addTaskToDailyPlan(todayDate, task)
-
-                syncKeyResultFromDailyPlan(
-                    itemId = itemId,
-                    proposedStatus = DailyPlanItemStatus.Done,
-                    proposedStartTime = startMinutes,
-                    proposedEndTime = endMinutes
-                )
-                updateDailyPlanItemTime(itemId, startMinutes, endMinutes)
-                updateDailyPlanItemStatus(itemId, DailyPlanItemStatus.Done)
-                itemId
-            } else {
-                addDailyPlanItem(
-                    date = todayDate,
-                    title = current.description,
-                    note = "Sprint session (${durationMinutes}m)",
-                    startTimeMinutes = startMinutes,
-                    endTimeMinutes = startMinutes + durationMinutes,
-                    source = DailyPlanItemSource.MyDayTask,
-                    status = DailyPlanItemStatus.Done,
-                    tagIds = current.tagIds
-                )
-            }
-        } catch (error: Exception) {
-            sendEvent(UiEvent.ShowSnackbar(error.message ?: "Could not save sprint"))
-            null
-        }
+        viewModelScope.launch { sprintTransition.saveWin() }
     }
 
     fun saveAndBreak() {
-        val current = sprintManager.takeFinished() ?: return
-        viewModelScope.launch {
-            performSaveSprintAsWin(current)
-            sprintManager.startSprint(
-                taskId = current.taskId,
-                dailyPlanItemId = current.dailyPlanItemId,
-                description = "Short Break",
-                durationSeconds = 300,
-                isPomodoro = false,
-                isBreak = true
-            )
-        }
+        viewModelScope.launch { sprintTransition.saveAndBreak() }
     }
 
     fun continueNewPomodoro() {
-        val current = sprintManager.takeFinished() ?: return
-        viewModelScope.launch {
-            val savedItemId = performSaveSprintAsWin(current)
-            val task = current.taskId?.let { _uiState.value.board.tasksById[it] }
-            sprintManager.startSprint(
-                taskId = current.taskId,
-                dailyPlanItemId = savedItemId ?: current.dailyPlanItemId,
-                description = task?.name ?: current.description,
-                durationSeconds = current.durationSeconds + 1500, // Expand total duration
-                isPomodoro = true,
-                isBreak = false,
-                startTimeEpochMillis = current.startTimeEpochMillis // Keep original start
-            )
-        }
+        viewModelScope.launch { sprintTransition.saveAndContinue() }
     }
 
     fun startNextPomodoro() {
-        val current = sprintManager.takeFinished() ?: return
-        val task = current.taskId?.let { _uiState.value.board.tasksById[it] }
-        sprintManager.startSprint(
-            taskId = current.taskId,
-            dailyPlanItemId = current.dailyPlanItemId,
-            description = task?.name ?: current.description,
-            durationSeconds = 1500,
-            isPomodoro = true,
-            isBreak = false
-        )
+        viewModelScope.launch { sprintTransition.startNext() }
     }
 
     fun dismissFinishedSprint() = sprintManager.dismissFinished()

@@ -15,6 +15,8 @@ import com.checkit.domain.DailyPlanScheduleReminderPolicy
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.notifications.AppReminderScheduler
 import com.checkit.domain.SprintManager
+import com.checkit.domain.usecase.SaveSprintAsWinUseCase
+import com.checkit.domain.usecase.SprintTransitionUseCase
 import com.checkit.domain.usecase.AddNoteUseCase
 import com.checkit.domain.usecase.AddDailyPlanItemUseCase
 import com.checkit.domain.usecase.AddGoalUseCase
@@ -96,6 +98,8 @@ val provideCommonModule = module {
 val provideInteractorModule = module {
     single { HttpClient() }
     single { SprintManager(get()) }
+    single { SaveSprintAsWinUseCase(get(), get(), get(), get(), get(), get()) }
+    single { SprintTransitionUseCase(get(), get(), get()) }
     single<CheckItRepository> { RoomCheckItRepository(get(), get(), get()) }
     single { ObserveTaskBoardUseCase(get()) }
     single { ObserveDailyPlansUseCase(get()) }
@@ -196,7 +200,8 @@ val provideViewModelModule = module {
             buildDayReviewSummary = get(),
             completeDayReview = get(),
             carryOverDailyPlanItems = get(),
-            sprintManager = get()
+            sprintManager = get(),
+            sprintTransition = get()
         )
     }
     viewModel { ReportViewModel(get()) }
