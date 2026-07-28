@@ -334,6 +334,10 @@ fun QuickSprintSheet(
             AppOutlinedTextField(
                 value = text,
                 onValueChange = { text = it },
+                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Normal
+                ),
                 placeholder = "e.g., Focus on coding",
                 modifier = Modifier.fillMaxWidth(),
                 maxLines = 1,
