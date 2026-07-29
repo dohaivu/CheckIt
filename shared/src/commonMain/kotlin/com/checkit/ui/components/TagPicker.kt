@@ -66,9 +66,9 @@ fun TagOptionMenu(
             }
         }
     ) {
-        Column(
+        FlowRow(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
-            horizontalAlignment = Alignment.Start,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             availableTags.forEach { tag ->
