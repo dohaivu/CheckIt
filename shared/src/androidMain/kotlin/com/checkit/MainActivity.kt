@@ -85,7 +85,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleLaunchIntent(intent: Intent) {
-        dailyPlanItemLaunchId.value = intent.longExtraOrNull(ExtraDailyPlanItemId)
+        val dailyPlanItemId = intent.longExtraOrNull(ExtraDailyPlanItemId)
+        dailyPlanItemLaunchId.value = dailyPlanItemId
         taskLaunchId.value = intent.longExtraOrNull(ExtraTaskId)
         noteLaunchId.value = intent.longExtraOrNull(ExtraNoteId)
         openMyDaySuggestionsLaunch.value = intent.getBooleanExtra(ExtraOpenMyDaySuggestions, false)
@@ -93,7 +94,15 @@ class MainActivity : ComponentActivity() {
         openPlanAssistLaunch.value = intent.getBooleanExtra(ExtraOpenPlanAssist, false)
         openCheckInLaunch.value = intent.getBooleanExtra(ExtraOpenCheckIn, false)
         openQuickSprintLaunch.value = intent.getBooleanExtra(ExtraOpenQuickSprint, false)
-        startSprintItemIdLaunch.value = intent.longExtraOrNull(ExtraStartSprintForItemId)
+        
+        val startSprintItemId = intent.longExtraOrNull(ExtraStartSprintForItemId)
+        startSprintItemIdLaunch.value = startSprintItemId
+
+        if (dailyPlanItemId != null || startSprintItemId != null) {
+            val center = CheckItNotificationCenter(this)
+            dailyPlanItemId?.let { center.dismissDailyPlanScheduleReminder(it) }
+            startSprintItemId?.let { center.dismissDailyPlanScheduleReminder(it) }
+        }
     }
 
     private fun clearWidgetLaunch() {

@@ -75,6 +75,10 @@ class CheckItNotificationCenter(
         )
     }
 
+    fun dismissDailyPlanScheduleReminder(itemId: Long) {
+        notificationManager.cancel(NotificationIds.dailyPlanSchedule(itemId))
+    }
+
     private fun showReminder(
         notificationId: Int,
         requestCode: Int,
