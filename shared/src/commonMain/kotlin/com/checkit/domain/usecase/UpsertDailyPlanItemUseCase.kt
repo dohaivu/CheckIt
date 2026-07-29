@@ -82,8 +82,7 @@ class UpsertDailyPlanItemUseCase(
             DailyPlanItemSource.MyDayTask -> {
                 when {
                     title.isBlank() -> "Add a focus item"
-                    start == null || end == null -> "Add start and end time"
-                    end <= start -> "End time must be after start"
+                    start != null && end != null && end <= start -> "End time must be after start"
                     else -> null
                 }
             }

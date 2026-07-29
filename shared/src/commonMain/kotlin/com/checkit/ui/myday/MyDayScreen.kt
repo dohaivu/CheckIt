@@ -283,17 +283,20 @@ internal fun MyDayScreen(
         SuggestionsSheet(
             tasks = state.suggestedTasks,
             leftovers = state.pendingYesterdayLeftovers,
+            availableTags = state.board.tags,
             onDismiss = viewModel::dismissSuggestions,
             onTaskClick = {
                 onTaskClick.invoke(it, null)
             },
             onAddTask = viewModel::addTaskFromSuggestion,
+            onQuickAdd = viewModel::quickAddDailyPlanItem,
             onCarryLeftover = viewModel::carryYesterdayLeftover,
             onCarryAllLeftovers = viewModel::carryAllYesterdayLeftovers,
             onCreateTask = {
                 viewModel.dismissSuggestions()
                 onCreateTask(true)
-            }
+            },
+            onNewTagClick = onNewTagClick
         )
     }
 

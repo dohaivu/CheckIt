@@ -5,14 +5,18 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -26,6 +30,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -37,6 +45,9 @@ import checkit.shared.generated.resources.leftovers_section_title
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.Objective
 import com.checkit.domain.TaskItem
+import com.checkit.domain.TaskTag
+import com.checkit.ui.components.AppOutlinedTextField
+import com.checkit.ui.components.TagPicker
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.tasks.isOverdue
 import com.checkit.ui.tasks.timeRangeLabel
@@ -50,14 +61,20 @@ import org.jetbrains.compose.resources.stringResource
 internal fun SuggestionsSheet(
     tasks: List<TaskItem>,
     leftovers: List<DailyPlanItem>,
+    availableTags: List<TaskTag>,
     onDismiss: () -> Unit,
     onTaskClick: (TaskItem) -> Unit,
     onAddTask: (TaskItem) -> Unit,
+    onQuickAdd: (String, List<Long>) -> Unit,
     onCarryLeftover: (DailyPlanItem) -> Unit,
     onCarryAllLeftovers: () -> Unit,
-    onCreateTask: () -> Unit
+    onCreateTask: () -> Unit,
+    onNewTagClick: () -> Unit = {}
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var quickAddText by remember { mutableStateOf("") }
+    var selectedTagIds by remember { mutableStateOf(emptySet<Long>()) }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -85,6 +102,52 @@ internal fun SuggestionsSheet(
                     Text("New Task")
                 }
             }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                AppOutlinedTextField(
+                    value = quickAddText,
+                    onValueChange = { quickAddText = it },
+                    placeholder = "Quick add to plan...",
+                    modifier = Modifier.fillMaxWidth(),
+                    maxLines = 1,
+                    contentPadding = PaddingValues(12.dp)
+                )
+
+                TagPicker(
+                    availableTags = availableTags,
+                    selectedTagIds = selectedTagIds,
+                    onTagToggle = { tagId ->
+                        selectedTagIds = if (tagId in selectedTagIds) {
+                            selectedTagIds - tagId
+                        } else {
+                            selectedTagIds + tagId
+                        }
+                    },
+                    onNewTagClick = onNewTagClick,
+                    modifier = Modifier.align(Alignment.Start)
+                )
+
+                Button(
+                    onClick = {
+                        onQuickAdd(quickAddText, selectedTagIds.toList())
+                        quickAddText = ""
+                        selectedTagIds = emptySet()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    enabled = quickAddText.isNotBlank()
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Add to My Day")
+                }
+            }
+
             LazyColumn(
                 modifier = Modifier.fillMaxWidth().weight(1f),
                 contentPadding = PaddingValues(bottom = 20.dp),
