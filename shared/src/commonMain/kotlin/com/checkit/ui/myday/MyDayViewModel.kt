@@ -663,6 +663,15 @@ class MyDayViewModel(
         }
     }
 
+    fun startNewSprintFromEditor() {
+        val editor = _uiState.value.itemEditor ?: return
+        val itemId = editor.itemId ?: return
+        val planItem = _uiState.value.items.firstOrNull { it.id == itemId } ?: return
+
+        startSprintWithChoice(SprintChoice.PlanItem(planItem, _uiState.value.board.tasksById[planItem.taskId]))
+        _uiState.update { it.copy(itemEditor = null) }
+    }
+
     fun openQuickSprint() {
         _uiState.update { it.copy(showQuickSprintSheet = true) }
     }

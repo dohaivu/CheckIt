@@ -382,7 +382,8 @@ fun CheckItApp(
                             onTagToggle = viewModels.myDay::toggleTag,
                             onNewTagClick = viewModels.tag::openNewTag,
                             onAdd = viewModels.myDay::addCheckIn,
-                            onDelete = viewModels.myDay::deleteEditorItem
+                            onDelete = viewModels.myDay::deleteEditorItem,
+                            onStartSprint = viewModels.myDay::startNewSprintFromEditor
                         )
                     }
                     tagUiState.editor?.let { tagEditor ->

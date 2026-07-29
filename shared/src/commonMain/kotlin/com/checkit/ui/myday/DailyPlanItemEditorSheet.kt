@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -66,7 +67,8 @@ internal fun DailyPlanItemEditorSheet(
     onTagToggle: (Long) -> Unit,
     onNewTagClick: () -> Unit,
     onAdd: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onStartSprint: () -> Unit
 ) {
     val enabled = state.isEditableByDate()
 
@@ -105,7 +107,12 @@ internal fun DailyPlanItemEditorSheet(
                 )
             }
         }
-        DailyPlanItemSheetFooter(state.isAddMode, enabled, onAdd)
+        DailyPlanItemSheetFooter(
+            state = state,
+            enabled = enabled,
+            onAdd = onAdd,
+            onStartSprint = onStartSprint
+        )
     }
 }
 
@@ -148,21 +155,33 @@ private fun DailyPlanItemSheetHeader(
 
 @Composable
 private fun DailyPlanItemSheetFooter(
-    isAddMode: Boolean,
+    state: DailyPlanItemEditorState,
     enabled: Boolean,
     onAdd: () -> Unit,
+    onStartSprint: () -> Unit
 ) {
-    if (isAddMode && enabled) {
+    if (enabled) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Button(
-                onClick = onAdd,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Add to My Day")
+            if (state.isAddMode) {
+                Button(
+                    onClick = onAdd,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Add to My Day")
+                }
+            } else if (state.source == DailyPlanItemSource.MyDayTask && state.status == DailyPlanItemStatus.Done) {
+                Button(
+                    onClick = onStartSprint,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Schedule, contentDescription = null)
+                    Spacer(Modifier.size(8.dp))
+                    Text("Start new focus session")
+                }
             }
         }
     }
