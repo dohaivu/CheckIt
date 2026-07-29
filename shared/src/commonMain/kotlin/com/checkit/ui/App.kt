@@ -67,6 +67,7 @@ fun CheckItApp(
     openPlanAssistLaunch: Boolean = false,
     openCheckInLaunch: Boolean = false,
     openQuickSprintLaunch: Boolean = false,
+    startSprintItemIdLaunch: Long? = null,
     onWidgetLaunchConsumed: () -> Unit = {}
 ) {
     val navState = rememberAppNavigationState()
@@ -161,6 +162,14 @@ fun CheckItApp(
         if (!openQuickSprintLaunch) return@LaunchedEffect
         navState.resetTo(AppRoute.MyDay)
         viewModels.myDay.openQuickSprint()
+        onWidgetLaunchConsumed()
+    }
+
+    LaunchedEffect(startSprintItemIdLaunch, myDayUiState.dailyPlans) {
+        if (startSprintItemIdLaunch == null) return@LaunchedEffect
+        if (myDayUiState.dailyPlans.isEmpty()) return@LaunchedEffect
+        navState.resetTo(AppRoute.MyDay)
+        viewModels.myDay.startSprintByItemId(startSprintItemIdLaunch)
         onWidgetLaunchConsumed()
     }
 

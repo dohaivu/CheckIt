@@ -10,6 +10,7 @@ internal const val ExtraOpenDayReview: String = "com.checkit.extra.OPEN_DAY_REVI
 internal const val ExtraOpenPlanAssist: String = "com.checkit.extra.OPEN_PLAN_ASSIST"
 internal const val ExtraOpenCheckIn: String = "com.checkit.extra.OPEN_CHECK_IN"
 internal const val ExtraOpenQuickSprint: String = "com.checkit.extra.OPEN_QUICK_SPRINT"
+internal const val ExtraStartSprintForItemId: String = "com.checkit.extra.START_SPRINT_FOR_ITEM_ID"
 
 internal val DailyPlanItemIdParameterKey = ActionParameters.Key<Long>(ExtraDailyPlanItemId)
 internal val TaskIdParameterKey = ActionParameters.Key<Long>(ExtraTaskId)

@@ -618,6 +618,19 @@ class MyDayViewModel(
         }
     }
 
+    fun startSprintByItemId(itemId: Long) {
+        val state = _uiState.value
+        val item = state.items.firstOrNull { it.id == itemId }
+        if (item != null) {
+            startSprint(
+                taskId = item.taskId,
+                dailyPlanItemId = item.id,
+                description = item.title,
+                tagIds = item.tags.map { it.id }
+            )
+        }
+    }
+
     fun startSprintWithTask(task: TaskItem) {
         dismissQuickSprint()
         if (!sprintManager.startSprint(task.id, null, task.name, tagIds = task.tags.map { it.id })) {

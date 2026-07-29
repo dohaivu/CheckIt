@@ -20,6 +20,7 @@ import com.checkit.widget.ExtraOpenDayReview
 import com.checkit.widget.ExtraOpenMyDaySuggestions
 import com.checkit.widget.ExtraOpenPlanAssist
 import com.checkit.widget.ExtraOpenQuickSprint
+import com.checkit.widget.ExtraStartSprintForItemId
 import com.checkit.widget.ExtraTaskId
 
 class MainActivity : ComponentActivity() {
@@ -32,6 +33,7 @@ class MainActivity : ComponentActivity() {
     private val openPlanAssistLaunch = mutableStateOf(false)
     private val openCheckInLaunch = mutableStateOf(false)
     private val openQuickSprintLaunch = mutableStateOf(false)
+    private val startSprintItemIdLaunch = mutableStateOf<Long?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -56,6 +58,7 @@ class MainActivity : ComponentActivity() {
                 openPlanAssistLaunch = openPlanAssistLaunch.value,
                 openCheckInLaunch = openCheckInLaunch.value,
                 openQuickSprintLaunch = openQuickSprintLaunch.value,
+                startSprintItemIdLaunch = startSprintItemIdLaunch.value,
                 onWidgetLaunchConsumed = ::clearWidgetLaunch
             )
         }
@@ -90,6 +93,7 @@ class MainActivity : ComponentActivity() {
         openPlanAssistLaunch.value = intent.getBooleanExtra(ExtraOpenPlanAssist, false)
         openCheckInLaunch.value = intent.getBooleanExtra(ExtraOpenCheckIn, false)
         openQuickSprintLaunch.value = intent.getBooleanExtra(ExtraOpenQuickSprint, false)
+        startSprintItemIdLaunch.value = intent.longExtraOrNull(ExtraStartSprintForItemId)
     }
 
     private fun clearWidgetLaunch() {
@@ -101,6 +105,7 @@ class MainActivity : ComponentActivity() {
         openPlanAssistLaunch.value = false
         openCheckInLaunch.value = false
         openQuickSprintLaunch.value = false
+        startSprintItemIdLaunch.value = null
     }
 }
 
