@@ -12,6 +12,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.LocalOffer
+import androidx.compose.material.icons.outlined.Sell
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -50,7 +52,7 @@ fun TagOptionMenu(
             ) {
                 Box(modifier = Modifier.size(24.dp)) {
                     Icon(
-                        imageVector = Icons.Outlined.Tune,
+                        imageVector = Icons.Outlined.LocalOffer,
                         contentDescription = if (hasSelectedTags) "Tag filters active" else "View options",
                         tint = if (hasSelectedTags) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.align(Alignment.Center)

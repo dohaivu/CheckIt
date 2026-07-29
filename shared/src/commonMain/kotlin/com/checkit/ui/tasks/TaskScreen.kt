@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.checkit.ui.components.HelpContent
 import com.checkit.ui.components.HelpTooltip
+import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.okr.GoalEditorSheet
 import com.checkit.ui.okr.GoalItemType
@@ -170,6 +171,11 @@ internal fun TaskScreen(
                         if (state.selectedGoal != null) {
                             HelpTooltip(markdownContent = HelpContent.okrTips)
                         }
+                        TagOptionMenu(
+                            availableTags = state.board.tags,
+                            selectedTagIds = state.options.selectedTagIds,
+                            onTagToggle = viewModel::toggleTagFilter
+                        )
                         ViewOptionsMenu(
                             showCompleted = state.showCompleted,
                             onShowCompletedChange = viewModel::setShowCompleted,
