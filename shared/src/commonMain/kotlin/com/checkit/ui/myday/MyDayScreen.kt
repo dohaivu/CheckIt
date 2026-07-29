@@ -47,9 +47,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -74,9 +72,6 @@ import com.checkit.domain.SprintState
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.hasEndTime
-import com.checkit.ui.myday.QuickSprintSheet
-import com.checkit.ui.myday.SprintBar
-import com.checkit.ui.myday.SprintCompletionDialog
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.tasks.TimelineItem
@@ -135,7 +130,7 @@ internal fun MyDayScreen(
                     IconButton(onClick = viewModel::openSuggestions) {
                         Icon(Icons.Default.Lightbulb, contentDescription = "Add to My Day")
                     }
-                    IconButton(onClick = viewModel::openCheckIn) {
+                    IconButton(onClick = viewModel::openDailyPlan) {
                         Icon(Icons.Default.AddTask, contentDescription = null)
                     }
                 }

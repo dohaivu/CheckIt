@@ -141,10 +141,10 @@ class MyDayViewModelTest {
 
     @Test
     fun addCheckInWithoutTimePersistsPlannedNote() = runTest(dispatcher) {
-        viewModel.openCheckIn()
+        viewModel.openDailyPlan()
         viewModel.updateTitle("Draft proposal")
 
-        viewModel.addCheckIn()
+        viewModel.addDailyPlan()
         dispatcher.scheduler.advanceUntilIdle()
 
         val item = repository.addedManualDailyPlanItems.single()
@@ -156,10 +156,10 @@ class MyDayViewModelTest {
 
     @Test
     fun addNoteWithStartTimeDoesNotInferDoneItem() = runTest(dispatcher) {
-        viewModel.openCheckIn(startTimeMinutes = 0, endTimeMinutes = 30)
+        viewModel.openDailyPlan(startTimeMinutes = 0, endTimeMinutes = 30)
         viewModel.updateTitle("Morning thought")
 
-        viewModel.addCheckIn()
+        viewModel.addDailyPlan()
         dispatcher.scheduler.advanceUntilIdle()
 
         val item = repository.addedManualDailyPlanItems.single()
@@ -171,11 +171,11 @@ class MyDayViewModelTest {
 
     @Test
     fun addReminderPersistsStartTimeOnlyAndPlannedStatus() = runTest(dispatcher) {
-        viewModel.openCheckIn(startTimeMinutes = 23 * 60 + 59, endTimeMinutes = null)
+        viewModel.openDailyPlan(startTimeMinutes = 23 * 60 + 59, endTimeMinutes = null)
         viewModel.updateEditorSource(DailyPlanItemSource.MyDayReminder)
         viewModel.updateTitle("Send invoice")
 
-        viewModel.addCheckIn()
+        viewModel.addDailyPlan()
         dispatcher.scheduler.advanceUntilIdle()
 
         val reminder = repository.addedManualDailyPlanItems.single()
@@ -236,7 +236,7 @@ class MyDayViewModelTest {
         viewModel.openItemEditor(dailyPlanItem(), TestDate)
         viewModel.updateTitle("Closed quickly")
 
-        viewModel.dismissCheckIn()
+        viewModel.dismissDailyPlanEditor()
         dispatcher.scheduler.advanceUntilIdle()
 
         val (_, input) = repository.updatedDailyPlanItems.single()

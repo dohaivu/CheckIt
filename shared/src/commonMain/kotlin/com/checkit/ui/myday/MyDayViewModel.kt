@@ -8,7 +8,6 @@ import com.checkit.domain.usecase.*
 import com.checkit.data.*
 import com.checkit.ui.tasks.EditorMode
 import com.checkit.ui.UiEvent
-import com.checkit.ui.duration
 import com.checkit.ui.today
 import com.checkit.ui.currentMyDayTimeMinutes
 import kotlinx.datetime.LocalDate
@@ -25,15 +24,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import com.checkit.domain.SprintManager
-import com.checkit.domain.usecase.AddTaskUseCase
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.sync.withLock
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
-import kotlin.time.Clock
 import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Instant
 
 class MyDayViewModel(
     private val observeTaskBoard: ObserveTaskBoardUseCase,
@@ -391,16 +383,7 @@ class MyDayViewModel(
         }
     }
 
-    /** PR3: open check-in with a free time slot around now (notification deep link). */
-    fun openCheckInAtFreeSlot() {
-        val state = _uiState.value
-        val duration = DefaultTaskDurationMinutes
-        val preferredStart = currentMyDayTimeMinutes()
-        val (start, end) = nextAvailableTimeRange(preferredStart, duration, state.items)
-        openCheckIn(startTimeMinutes = start, endTimeMinutes = end)
-    }
-
-    fun openCheckIn(
+    fun openDailyPlan(
         startTimeMinutes: Int? = null,
         endTimeMinutes: Int? = null,
         date: LocalDate = today()
@@ -418,21 +401,21 @@ class MyDayViewModel(
             )
         }
     }
-    fun dismissCheckIn() {
+    fun dismissDailyPlanEditor() {
         flushPendingEditorTextSave()
         _uiState.update { it.copy(itemEditor = null) }
     }
 
-    fun addCheckIn() {
+    fun addDailyPlan() {
         val editor = _uiState.value.itemEditor ?: return
 
-        if (!saveCheckIn(editor)) return
+        if (!saveDailyPlan(editor)) return
 
         _uiState.update { it.copy(itemEditor = null) }
         sendEvent(UiEvent.ShowSnackbar("Saved"))
     }
 
-    fun saveCheckIn(editor: DailyPlanItemEditorState): Boolean {
+    fun saveDailyPlan(editor: DailyPlanItemEditorState): Boolean {
         viewModelScope.launch {
             upsertDailyPlanItem(editor).onFailure { error ->
                 sendEvent(UiEvent.ShowSnackbar(error.message ?: "Unable to save"))
@@ -531,7 +514,7 @@ class MyDayViewModel(
 
     fun createFromTimelineRange(startTimeMinutes: Int, endTimeMinutes: Int) {
         if (startTimeMinutes < currentMyDayTimeMinutes()) {
-            openCheckIn(startTimeMinutes, endTimeMinutes)
+            openDailyPlan(startTimeMinutes, endTimeMinutes)
         } else {
             openSuggestions(startTimeMinutes, endTimeMinutes)
         }
@@ -585,7 +568,7 @@ class MyDayViewModel(
         it.copy(selectedTagIds = newTagIds)
     }
 
-    fun deleteEditorItem() {
+    fun deleteDailyPlan() {
         cancelPendingEditorTextSave()
         val itemId = _uiState.value.itemEditor?.itemId ?: return
         deleteDailyPlanItem(itemId) {
@@ -725,7 +708,7 @@ class MyDayViewModel(
         if (!editor.isEditMode) return
         if (saveImmediately) {
             cancelPendingEditorTextSave()
-            saveCheckIn(editor)
+            saveDailyPlan(editor)
         } else {
             scheduleEditorTextSave()
         }
@@ -754,7 +737,7 @@ class MyDayViewModel(
 
     private fun saveCurrentEditor() {
         val editor = _uiState.value.itemEditor?.takeIf { it.isEditMode } ?: return
-        saveCheckIn(editor)
+        saveDailyPlan(editor)
     }
     
     companion object {
