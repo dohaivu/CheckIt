@@ -6,11 +6,8 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -20,10 +17,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -36,7 +33,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.Goal
 import com.checkit.domain.Objective
-import com.checkit.domain.TaskTag
 import com.checkit.ui.theme.materialIcon
 import com.checkit.ui.theme.toColor
 
@@ -44,21 +40,18 @@ import com.checkit.ui.theme.toColor
 internal fun TaskSidebar(
     goals: List<Goal>,
     lists: List<Objective>,
-    tags: List<TaskTag>,
     isBoardSelected: Boolean,
     selectedListId: Long?,
     selectedGoalId: Long?,
-    selectedTagId: Long?,
+    isTagsSelected: Boolean,
     onBoardClick: () -> Unit,
     onGoalClick: (Long) -> Unit,
     onListClick: (Long) -> Unit,
-    onTagClick: (Long) -> Unit,
+    onTagsClick: () -> Unit,
     onAddGoalClick: () -> Unit,
     onEditGoalClick: (Goal) -> Unit,
     onAddListClick: () -> Unit,
-    onEditListClick: (Objective) -> Unit,
-    onAddTagClick: () -> Unit,
-    onEditTagClick: (TaskTag) -> Unit
+    onEditListClick: (Objective) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.width(260.dp).fillMaxHeight().padding(horizontal = 10.dp),
@@ -77,7 +70,7 @@ internal fun TaskSidebar(
             )
         }
         item {
-            Spacer(Modifier.height(10.dp))
+            SidebarSectionDivider()
             SidebarHeader(
                 text = "Goals",
                 action = {
@@ -104,7 +97,7 @@ internal fun TaskSidebar(
             )
         }
         item {
-            Spacer(Modifier.height(10.dp))
+            SidebarSectionDivider()
             SidebarHeader(
                 text = "Lists",
                 action = {
@@ -131,33 +124,27 @@ internal fun TaskSidebar(
             )
         }
         item {
-            Spacer(Modifier.height(10.dp))
-            SidebarHeader(
-                text = "Tags",
-                action = {
-                    IconButton(onClick = onAddTagClick, modifier = Modifier.size(28.dp)) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Add tag",
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
-            )
-        }
-        items(tags, key = { "tag-${it.id}" }) { tag ->
+            SidebarSectionDivider()
             SidebarItem(
-                title = tag.name,
-                icon = null,
-                color = tag.color.toColor(),
-                selected = selectedTagId == tag.id,
-                onClick = { onTagClick(tag.id) },
-                onLongClick = {
-                    onEditTagClick(tag)
-                }
+                title = "Tags",
+                icon = materialIcon("LocalOffer"),
+                color = MaterialTheme.colorScheme.primary,
+                selected = isTagsSelected,
+                onClick = onTagsClick
             )
         }
     }
+}
+
+@Composable
+private fun SidebarSectionDivider() {
+    HorizontalDivider(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        thickness = 0.5.dp,
+        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
+    )
 }
 
 @Composable

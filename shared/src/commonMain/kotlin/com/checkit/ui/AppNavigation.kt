@@ -32,6 +32,7 @@ import org.jetbrains.compose.resources.stringResource
 @Serializable
 sealed interface AppRoute : NavKey {
     @Serializable data object Task : AppRoute
+    @Serializable data object Tags : AppRoute
     @Serializable data object Calendar : AppRoute
     @Serializable data object MyDay : AppRoute
     @Serializable data object Report : AppRoute
@@ -71,7 +72,7 @@ enum class CheckItTab {
     companion object {
         fun fromRoute(route: NavKey): CheckItTab? = when (route) {
             AppRoute.MyDay -> MyDay
-            AppRoute.Task -> Task
+            AppRoute.Task, AppRoute.Tags -> Task
             AppRoute.Calendar -> Calendar
             AppRoute.Report, AppRoute.TimeReport, AppRoute.TagsReport -> Report
             AppRoute.Settings -> Settings

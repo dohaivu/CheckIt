@@ -46,6 +46,7 @@ import com.checkit.ui.tasks.TaskEditorActions
 import com.checkit.ui.tasks.TaskEditorSheet
 import com.checkit.ui.tasks.TaskEditorState
 import com.checkit.ui.tasks.TaskScreen
+import com.checkit.ui.tasks.tag.TagScreen
 import com.checkit.ui.theme.AppTheme
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -226,7 +227,19 @@ fun CheckItApp(
                                             goalViewModel = viewModels.goal,
                                             keyResultViewModel = viewModels.keyResult,
                                             objectiveViewModel = viewModels.objective,
-                                            tagViewModel = viewModels.tag
+                                            onOpenTags = { navState.push(AppRoute.Tags) }
+                                        )
+                                    }
+                                    AppRoute.Tags -> {
+                                        TagScreen(
+                                            tags = taskUiState.board.tags,
+                                            selectedTagId = taskUiState.selectedTagId,
+                                            tagViewModel = viewModels.tag,
+                                            onTagClick = { tagId ->
+                                                viewModels.task.selectTag(tagId)
+                                                navState.pop()
+                                            },
+                                            onNavigateBack = { navState.pop() }
                                         )
                                     }
                                     AppRoute.MyDay -> {
