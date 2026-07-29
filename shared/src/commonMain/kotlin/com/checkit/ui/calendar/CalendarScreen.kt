@@ -255,6 +255,7 @@ private fun SelectedDateContent(
                 items = content.dailyPlanItems,
                 board = content.board,
                 date = content.date,
+                activeSprint = null,
                 onItemClick = { onDailyPlanItemClick(it, content.date) },
                 onTaskClick = onTaskClick,
                 onNoteClick = onNoteClick,

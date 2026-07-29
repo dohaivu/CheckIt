@@ -285,7 +285,10 @@ fun SprintBar(
 }
 
 @Composable
-private fun PulsingDot(color: Color) {
+internal fun PulsingDot(
+    color: Color,
+    modifier: Modifier = Modifier
+) {
     val infiniteTransition = rememberInfiniteTransition()
     val alpha by infiniteTransition.animateFloat(
         initialValue = 1f,
@@ -296,7 +299,7 @@ private fun PulsingDot(color: Color) {
         )
     )
     Box(
-        Modifier
+        modifier
             .size(8.dp)
             .background(color.copy(alpha = alpha), CircleShape)
     )

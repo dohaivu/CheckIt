@@ -203,6 +203,7 @@ internal fun MyDayScreen(
                         items = state.items,
                         board = state.board,
                         date = state.today,
+                        activeSprint = activeSprint,
                         onItemClick = { viewModel.openItemEditor(it, state.today) },
                         onTaskClick = onTaskClick,
                         onNoteClick = onNoteClick,
@@ -213,6 +214,7 @@ internal fun MyDayScreen(
                         items = state.items,
                         board = state.board,
                         date = state.today,
+                        activeSprint = activeSprint,
                         onItemClick = { viewModel.openItemEditor(it, state.today) },
                         onTaskClick = onTaskClick,
                         onNoteClick = onNoteClick,
@@ -224,6 +226,7 @@ internal fun MyDayScreen(
                     )
                     MyDayView.Board -> MyDayBoard(
                         state = state,
+                        activeSprint = activeSprint,
                         onItemClick = { viewModel.openItemEditor(it, state.today) },
                         onTaskClick = onTaskClick,
                         onSprintClick = viewModel::startSprint,
@@ -553,6 +556,7 @@ internal fun MyDayAgenda(
     items: List<DailyPlanItem>,
     board: TaskBoard,
     date: LocalDate,
+    activeSprint: SprintState.Running?,
     onItemClick: (DailyPlanItem) -> Unit,
     onTaskClick: (TaskItem, DailyPlanItem?) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
@@ -580,17 +584,17 @@ internal fun MyDayAgenda(
                 is DailyPlanItem -> if (item.startTimeMinutes == null) {
                     DailyPlanAllDayCard(
                         item = tag,
-                        trailingContent = if (tag.status != DailyPlanItemStatus.Done) {
-                            { SprintButton(onClick = { onSprintClick(tag.taskId, tag.id, tag.title) }) }
-                        } else null
+                        trailingContent = {
+                            SprintTrailingContent(tag, activeSprint, onSprintClick)
+                        }
                     )
                 } else {
                     DailyPlanTimelineCard(
                         item = tag,
                         isOverdue = tag.isOverdue(date),
-                        trailingContent = if (tag.status != DailyPlanItemStatus.Done) {
-                            { SprintButton(onClick = { onSprintClick(tag.taskId, tag.id, tag.title) }) }
-                        } else null
+                        trailingContent = {
+                            SprintTrailingContent(tag, activeSprint, onSprintClick)
+                        }
                     )
                 }
                 is NoteItem -> if (item.startTimeMinutes == null) NoteAllDayCard(tag) else NoteTimelineCard(tag)
@@ -599,9 +603,15 @@ internal fun MyDayAgenda(
                     if (item.startTimeMinutes == null) {
                         TaskAllDayCard(
                             task = task,
-                            trailingContent = if (tag.dailyPlanItem.status != DailyPlanItemStatus.Done) {
-                                { SprintButton(onClick = { onSprintClick(task.id, tag.dailyPlanItem.id, task.name) }) }
-                            } else null
+                            trailingContent = {
+                                SprintTrailingContent(
+                                    item = tag.dailyPlanItem,
+                                    activeSprint = activeSprint,
+                                    onSprintClick = onSprintClick,
+                                    taskId = task.id,
+                                    title = task.name
+                                )
+                            }
                         )
                     } else {
                         TaskTimelineCard(
@@ -609,9 +619,15 @@ internal fun MyDayAgenda(
                             timeLabel = tag.dailyPlanItem.dailyPlanTimeLabel(),
                             completed = tag.dailyPlanItem.isDone(),
                             isOverdue = tag.dailyPlanItem.isOverdue(date),
-                            trailingContent = if (tag.dailyPlanItem.status != DailyPlanItemStatus.Done) {
-                                { SprintButton(onClick = { onSprintClick(task.id, tag.dailyPlanItem.id, task.name) }) }
-                            } else null
+                            trailingContent = {
+                                SprintTrailingContent(
+                                    item = tag.dailyPlanItem,
+                                    activeSprint = activeSprint,
+                                    onSprintClick = onSprintClick,
+                                    taskId = task.id,
+                                    title = task.name
+                                )
+                            }
                         )
                     }
                 }
@@ -626,6 +642,7 @@ private fun MyDayTimeline(
     items: List<DailyPlanItem>,
     board: TaskBoard,
     date: LocalDate,
+    activeSprint: SprintState.Running?,
     onItemClick: (DailyPlanItem) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
     onTaskClick: (TaskItem, DailyPlanItem?) -> Unit,
@@ -663,16 +680,22 @@ private fun MyDayTimeline(
             when (val tag = item.tag) {
                 is DailyPlanItem -> DailyPlanAllDayCard(
                     item = tag,
-                    trailingContent = if (tag.status != DailyPlanItemStatus.Done) {
-                        { SprintButton(onClick = { onSprintClick(tag.taskId, tag.id, tag.title) }) }
-                    } else null
+                    trailingContent = {
+                        SprintTrailingContent(tag, activeSprint, onSprintClick)
+                    }
                 )
                 is NoteItem -> NoteAllDayCard(tag)
                 is PlannedTaskProjection -> TaskAllDayCard(
                     task = tag.task,
-                    trailingContent = if (tag.dailyPlanItem.status != DailyPlanItemStatus.Done) {
-                        { SprintButton(onClick = { onSprintClick(tag.task.id, tag.dailyPlanItem.id, tag.task.name) }) }
-                    } else null
+                    trailingContent = {
+                        SprintTrailingContent(
+                            item = tag.dailyPlanItem,
+                            activeSprint = activeSprint,
+                            onSprintClick = onSprintClick,
+                            taskId = tag.task.id,
+                            title = tag.task.name
+                        )
+                    }
                 )
             }
         },
@@ -684,9 +707,9 @@ private fun MyDayTimeline(
                     modifier = Modifier.matchParentSize(),
                     displayMode = displayMode,
                     isOverdue = tag.isOverdue(date),
-                    trailingContent = if (tag.status != DailyPlanItemStatus.Done) {
-                        { SprintButton(onClick = { onSprintClick(tag.taskId, tag.id, tag.title) }) }
-                    } else null
+                    trailingContent = {
+                        SprintTrailingContent(tag, activeSprint, onSprintClick)
+                    }
                 )
                 is NoteItem -> NoteTimelineCard(tag, selected = isSelected, modifier = Modifier.matchParentSize())
                 is PlannedTaskProjection -> TaskTimelineCard(
@@ -697,9 +720,15 @@ private fun MyDayTimeline(
                     modifier = Modifier.matchParentSize(),
                     isOverdue = tag.dailyPlanItem.isOverdue(date),
                     displayMode = displayMode,
-                    trailingContent = if (tag.dailyPlanItem.status != DailyPlanItemStatus.Done) {
-                        { SprintButton(onClick = { onSprintClick(tag.task.id, tag.dailyPlanItem.id, tag.task.name) }) }
-                    } else null
+                    trailingContent = {
+                        SprintTrailingContent(
+                            item = tag.dailyPlanItem,
+                            activeSprint = activeSprint,
+                            onSprintClick = onSprintClick,
+                            taskId = tag.task.id,
+                            title = tag.task.name
+                        )
+                    }
                 )
             }
         },
@@ -710,6 +739,7 @@ private fun MyDayTimeline(
 @Composable
 private fun MyDayBoard(
     state: MyDayUiState,
+    activeSprint: SprintState.Running?,
     onItemClick: (DailyPlanItem) -> Unit,
     onTaskClick: (TaskItem, DailyPlanItem?) -> Unit,
     onSprintClick: (Long?, Long?, String) -> Unit,
@@ -734,6 +764,7 @@ private fun MyDayBoard(
                 MyDayBoardItem(
                     item = item,
                     plannedTask = plannedTasksByDailyItemId[item.id],
+                    activeSprint = activeSprint,
                     onItemClick = onItemClick,
                     onTaskClick = onTaskClick,
                     onSprintClick = onSprintClick
@@ -748,6 +779,7 @@ private fun MyDayBoard(
                 MyDayBoardItem(
                     item = item,
                     plannedTask = plannedTasksByDailyItemId[item.id],
+                    activeSprint = activeSprint,
                     onItemClick = onItemClick,
                     onTaskClick = onTaskClick,
                     onSprintClick = onSprintClick
@@ -761,6 +793,7 @@ private fun MyDayBoard(
 private fun MyDayBoardItem(
     item: DailyPlanItem,
     plannedTask: PlannedTaskProjection?,
+    activeSprint: SprintState.Running?,
     onItemClick: (DailyPlanItem) -> Unit,
     onTaskClick: (TaskItem, DailyPlanItem?) -> Unit,
     onSprintClick: (Long?, Long?, String) -> Unit
@@ -772,19 +805,52 @@ private fun MyDayBoardItem(
             timeLabel = plannedTask.dailyPlanItem.dailyPlanTimeLabel(),
             completed = plannedTask.dailyPlanItem.isDone(),
             onClick = { onTaskClick(task, plannedTask.dailyPlanItem) },
-            trailingContent = if (plannedTask.dailyPlanItem.status != DailyPlanItemStatus.Done) {
-                { SprintButton(onClick = { onSprintClick(task.id, plannedTask.dailyPlanItem.id, task.name) }) }
-            } else null
+            trailingContent = {
+                SprintTrailingContent(
+                    item = plannedTask.dailyPlanItem,
+                    activeSprint = activeSprint,
+                    onSprintClick = onSprintClick,
+                    taskId = task.id,
+                    title = task.name
+                )
+            }
         )
     } else {
         DailyPlanTimelineCard(
             item = item,
             onClick = { onItemClick(item) },
             isOverdue = item.isOverdue(today()),
-            trailingContent = if (item.status != DailyPlanItemStatus.Done) {
-                { SprintButton(onClick = { onSprintClick(item.taskId, item.id, item.title) }) }
-            } else null
+            trailingContent = {
+                SprintTrailingContent(item, activeSprint, onSprintClick)
+            }
         )
+    }
+}
+
+@Composable
+private fun SprintTrailingContent(
+    item: DailyPlanItem,
+    activeSprint: SprintState.Running?,
+    onSprintClick: (Long?, Long?, String) -> Unit,
+    taskId: Long? = item.taskId,
+    title: String = item.title
+) {
+    if (item.status == DailyPlanItemStatus.Done) return
+
+    if (activeSprint?.dailyPlanItemId == item.id) {
+        val dotColor = when {
+            activeSprint.isBreak -> MaterialTheme.colorScheme.secondary
+            activeSprint.isPomodoro -> MaterialTheme.colorScheme.primary
+            else -> MaterialTheme.colorScheme.tertiary
+        }
+        Box(
+            modifier = Modifier.size(32.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            PulsingDot(color = dotColor)
+        }
+    } else {
+        SprintButton(onClick = { onSprintClick(taskId, item.id, title) })
     }
 }
 
