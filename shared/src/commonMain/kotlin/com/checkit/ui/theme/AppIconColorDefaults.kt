@@ -282,3 +282,15 @@ fun materialIcon(name: String): ImageVector = AppIconColorDefaults.icon(name)
 fun String.toColor(): Color = AppIconColorDefaults.colorFromHex(this)
 
 fun String.parseHexColorOrNull(): Color? = AppIconColorDefaults.colorFromHexOrNull(this)
+
+fun Color.toHex(): String {
+    val r = (red * 255).toInt().coerceIn(0, 255)
+    val g = (green * 255).toInt().coerceIn(0, 255)
+    val b = (blue * 255).toInt().coerceIn(0, 255)
+    return "#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}".uppercase()
+}
+
+fun Color.isLight(): Boolean {
+    val luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue
+    return luminance > 0.5
+}
