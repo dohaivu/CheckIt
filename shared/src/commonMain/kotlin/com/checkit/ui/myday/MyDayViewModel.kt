@@ -410,7 +410,7 @@ class MyDayViewModel(
             it.copy(
                 itemEditor = DailyPlanItemEditorState(
                     date = date,
-                    source = DailyPlanItemSource.MyDayNote,
+                    source = DailyPlanItemSource.MyDayTask,
                     status = DailyPlanItemStatus.Planned,
                     startTimeMinutes = startTimeMinutes,
                     endTimeMinutes = endTimeMinutes
@@ -469,6 +469,35 @@ class MyDayViewModel(
 
     fun addTaskToMyDay(task: TaskItem) {
         addTaskToMyDay(task, clearSuggestions = false)
+    }
+
+    fun quickAddDailyPlanItem(title: String, tagIds: List<Long>) {
+        if (title.isBlank()) return
+        val state = _uiState.value
+
+        val (startTime, endTime) = if (state.suggestionStartTimeMinutes == null) {
+            nextAvailableTimeRange(currentMyDayTimeMinutes(), DefaultTaskDurationMinutes, state.items)
+        } else {
+            state.suggestionStartTimeMinutes to state.suggestionEndTimeMinutes
+        }
+
+        viewModelScope.launch {
+            val editor = DailyPlanItemEditorState(
+                mode = EditorMode.Add,
+                date = state.today,
+                source = DailyPlanItemSource.MyDayTask,
+                title = title,
+                status = DailyPlanItemStatus.Planned,
+                startTimeMinutes = startTime,
+                endTimeMinutes = endTime,
+                selectedTagIds = tagIds.toSet()
+            )
+            upsertDailyPlanItem(editor).onSuccess {
+                sendEvent(UiEvent.ShowSnackbar("Added to My Day"))
+            }.onFailure { error ->
+                sendEvent(UiEvent.ShowSnackbar("Failed: ${error.message ?: "Unknown error"}"))
+            }
+        }
     }
 
     private fun addTaskToMyDay(

@@ -7,10 +7,12 @@ import com.checkit.domain.TaskTag
 import com.checkit.domain.usecase.AddTagUseCase
 import com.checkit.domain.usecase.DeleteTagUseCase
 import com.checkit.domain.usecase.IsTagNameTakenUseCase
+import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.UpdateTagUseCase
 import com.checkit.ui.tasks.EditorMode
 import com.checkit.ui.tasks.TagEditorState
 import com.checkit.ui.UiEvent
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,12 +20,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class TagUiState(
-    val editor: TagEditorState? = null
+    val editor: TagEditorState? = null,
+    val tagUsageCounts: Map<Long, Int> = emptyMap()
 )
 
 class TagViewModel(
+    private val observeTaskBoard: ObserveTaskBoardUseCase,
     private val addTaskTag: AddTagUseCase,
     private val updateTaskTag: UpdateTagUseCase,
     private val deleteTaskTag: DeleteTagUseCase,
@@ -34,6 +39,28 @@ class TagViewModel(
 
     private val _events = Channel<UiEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
+
+    init {
+        viewModelScope.launch {
+            observeTaskBoard().collect { board ->
+                val counts = withContext(Dispatchers.Default) {
+                    val stats = mutableMapOf<Long, Int>()
+                    board.tasks.filter { !it.isTrashed }.forEach { task ->
+                        task.tags.forEach { tag ->
+                            stats[tag.id] = (stats[tag.id] ?: 0) + 1
+                        }
+                    }
+                    board.notes.filter { !it.isTrashed }.forEach { note ->
+                        note.tags.forEach { tag ->
+                            stats[tag.id] = (stats[tag.id] ?: 0) + 1
+                        }
+                    }
+                    stats
+                }
+                _uiState.update { it.copy(tagUsageCounts = counts) }
+            }
+        }
+    }
 
     fun openNewTag() {
         _uiState.update { it.copy(editor = TagEditorState(mode = EditorMode.Add)) }

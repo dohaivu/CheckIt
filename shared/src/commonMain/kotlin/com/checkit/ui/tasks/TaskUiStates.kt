@@ -58,7 +58,8 @@ data class TaskViewOptionsState(
     val showCompleted: Boolean = false,
     val searchText: String = "",
     val sortOption: TaskSortOption = TaskSortOption.Custom,
-    val selectedFilterId: Long? = null
+    val selectedFilterId: Long? = null,
+    val selectedTagIds: Set<Long> = emptySet()
 )
 
 data class TaskVisibleItemsState(

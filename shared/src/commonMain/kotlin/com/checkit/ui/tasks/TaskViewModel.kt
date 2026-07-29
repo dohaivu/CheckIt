@@ -165,6 +165,14 @@ class TaskViewModel(
         }
     }
 
+    fun toggleTagFilter(tagId: Long) {
+        _uiState.update { state ->
+            state.copy(options = state.options.copy(selectedTagIds = state.options.selectedTagIds.toggle(tagId)))
+                .refreshVisibleItems()
+                .coerceViewToAvailable()
+        }
+    }
+
     fun selectView(view: TaskWorkspaceView) {
         var shouldPersist = false
         _uiState.update {
@@ -803,6 +811,7 @@ class TaskViewModel(
         val nextFilterId = options.selectedFilterId?.takeIf { selectedId -> board.filters.any { it.id == selectedId } }
         val nextTagId = selectedTagId?.takeIf { selectedId -> board.tags.any { it.id == selectedId } }
         val nextGoalId = selectedGoalId?.takeIf { selectedId -> board.goals.any { it.id == selectedId } }
+        val nextSelectedTagIds = options.selectedTagIds.filter { tagId -> board.tags.any { it.id == tagId } }.toSet()
         return copy(
             board = board,
             selection = TaskSelectionState(
@@ -810,7 +819,10 @@ class TaskViewModel(
                 selectedTagId = nextTagId,
                 selectedGoalId = nextGoalId
             ),
-            options = options.copy(selectedFilterId = nextFilterId),
+            options = options.copy(
+                selectedFilterId = nextFilterId,
+                selectedTagIds = nextSelectedTagIds
+            ),
             isLoading = false
         ).refreshVisibleItems().coerceViewToAvailable()
     }
@@ -845,7 +857,8 @@ private fun <T> List<T>.move(fromIndex: Int, toIndex: Int): List<T> =
 private fun TaskViewOptionsState.hasSameVisibleItemsAs(other: TaskViewOptionsState): Boolean =
     showCompleted == other.showCompleted &&
         searchText == other.searchText &&
-        sortOption == other.sortOption
+        sortOption == other.sortOption &&
+        selectedTagIds == other.selectedTagIds
 
 private const val MinimumTimelineDurationMinutes = 15
 private const val LastTimelineStartMinute = MinutesPerDay - MinimumTimelineDurationMinutes

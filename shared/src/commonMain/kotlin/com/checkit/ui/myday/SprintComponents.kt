@@ -285,7 +285,10 @@ fun SprintBar(
 }
 
 @Composable
-private fun PulsingDot(color: Color) {
+internal fun PulsingDot(
+    color: Color,
+    modifier: Modifier = Modifier
+) {
     val infiniteTransition = rememberInfiniteTransition()
     val alpha by infiniteTransition.animateFloat(
         initialValue = 1f,
@@ -296,7 +299,7 @@ private fun PulsingDot(color: Color) {
         )
     )
     Box(
-        Modifier
+        modifier
             .size(8.dp)
             .background(color.copy(alpha = alpha), CircleShape)
     )
@@ -312,6 +315,7 @@ fun QuickSprintSheet(
     onStartSprint: (taskId: Long?, dailyPlanItemId: Long?, description: String, tagIds: List<Long>) -> Unit,
     onStartSprintWithChoice: (SprintChoice) -> Unit,
     onStartSprintWithTask: (TaskItem) -> Unit,
+    onNewTagClick: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
     var text by remember { mutableStateOf("") }
@@ -354,6 +358,7 @@ fun QuickSprintSheet(
                         selectedTagIds + tagId
                     }
                 },
+                onNewTagClick = onNewTagClick,
                 modifier = Modifier.align(Alignment.Start)
             )
 

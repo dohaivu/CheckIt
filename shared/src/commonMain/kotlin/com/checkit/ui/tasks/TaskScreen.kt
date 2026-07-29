@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.checkit.ui.components.HelpContent
 import com.checkit.ui.components.HelpTooltip
+import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.okr.GoalEditorSheet
 import com.checkit.ui.okr.GoalItemType
@@ -33,8 +34,6 @@ import com.checkit.ui.okr.ObjectiveEditorSheet
 import com.checkit.ui.okr.GoalScreen
 import com.checkit.ui.tasks.list.ListEditorSheet
 import com.checkit.ui.okr.ObjectiveViewModel
-import com.checkit.ui.tasks.tag.TagEditorSheet
-import com.checkit.ui.tasks.tag.TagViewModel
 import com.checkit.ui.tasks.views.ViewOptionsMenu
 import com.checkit.ui.theme.materialIcon
 import com.checkit.ui.theme.toColor
@@ -47,14 +46,13 @@ internal fun TaskScreen(
     goalViewModel: GoalViewModel,
     keyResultViewModel: KeyResultViewModel,
     objectiveViewModel: ObjectiveViewModel,
-    tagViewModel: TagViewModel,
+    onOpenTags: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val goalState by goalViewModel.uiState.collectAsState()
     val listState by objectiveViewModel.uiState.collectAsState()
-    val tagState by tagViewModel.uiState.collectAsState()
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -65,14 +63,13 @@ internal fun TaskScreen(
                 TaskSidebar(
                     goals = state.board.goals,
                     lists = state.board.objectives.filter { it.goalId == null },
-                    tags = state.board.tags,
                     isBoardSelected = state.selectedGoalId == null &&
                         state.selectedListId == null &&
                         state.selectedFilterId == null &&
                         state.selectedTagId == null,
                     selectedListId = state.selectedListId,
                     selectedGoalId = state.selectedGoalId,
-                    selectedTagId = state.selectedTagId,
+                    isTagsSelected = false,
                     onBoardClick = {
                         viewModel.selectBoard()
                         scope.launch { drawerState.close() }
@@ -81,9 +78,9 @@ internal fun TaskScreen(
                         viewModel.selectList(listId)
                         scope.launch { drawerState.close() }
                     },
-                    onTagClick = { tagId ->
-                        viewModel.selectTag(tagId)
+                    onTagsClick = {
                         scope.launch { drawerState.close() }
+                        onOpenTags()
                     },
                     onGoalClick = { goalId ->
                         viewModel.selectGoal(goalId)
@@ -92,9 +89,7 @@ internal fun TaskScreen(
                     onAddGoalClick = { goalViewModel.openNewGoal() },
                     onEditGoalClick = { goal -> goalViewModel.openEditGoal(goal) },
                     onAddListClick = { objectiveViewModel.openNewList() },
-                    onEditListClick = { list -> objectiveViewModel.openEditObjective(list) },
-                    onAddTagClick = { tagViewModel.openNewTag() },
-                    onEditTagClick = { tag -> tagViewModel.openEditTag(tag) }
+                    onEditListClick = { list -> objectiveViewModel.openEditObjective(list) }
                 )
             }
         }
@@ -176,6 +171,11 @@ internal fun TaskScreen(
                         if (state.selectedGoal != null) {
                             HelpTooltip(markdownContent = HelpContent.okrTips)
                         }
+                        TagOptionMenu(
+                            availableTags = state.board.tags,
+                            selectedTagIds = state.options.selectedTagIds,
+                            onTagToggle = viewModel::toggleTagFilter
+                        )
                         ViewOptionsMenu(
                             showCompleted = state.showCompleted,
                             onShowCompletedChange = viewModel::setShowCompleted,
@@ -262,16 +262,5 @@ internal fun TaskScreen(
                 onIconChange = objectiveViewModel::updateIcon
             )
         }
-    }
-
-    tagState.editor?.let { tagEditor ->
-        TagEditorSheet(
-            editor = tagEditor,
-            onDismiss = tagViewModel::dismissEditor,
-            onSave = { tagViewModel.saveEditor(onSaved = viewModel::selectTag) },
-            onDelete = { tagViewModel.deleteEditorTag() },
-            onNameChange = tagViewModel::updateName,
-            onColorChange = tagViewModel::updateColor
-        )
     }
 }

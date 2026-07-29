@@ -11,6 +11,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Label
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.LocalOffer
+import androidx.compose.material.icons.outlined.Sell
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,9 +35,9 @@ import com.checkit.ui.theme.toColor
 fun TagOptionMenu(
     availableTags: List<TaskTag>,
     selectedTagIds: Set<Long>,
-    onTagToggle: (Long) -> Unit
+    onTagToggle: (Long) -> Unit,
+    onNewTagClick: () -> Unit = {}
 ) {
-    if (availableTags.isEmpty()) return
     var expanded by remember { mutableStateOf(false) }
     val hasSelectedTags = selectedTagIds.isNotEmpty()
 
@@ -49,7 +52,7 @@ fun TagOptionMenu(
             ) {
                 Box(modifier = Modifier.size(24.dp)) {
                     Icon(
-                        imageVector = Icons.Outlined.Tune,
+                        imageVector = Icons.Outlined.LocalOffer,
                         contentDescription = if (hasSelectedTags) "Tag filters active" else "View options",
                         tint = if (hasSelectedTags) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.align(Alignment.Center)
@@ -66,9 +69,9 @@ fun TagOptionMenu(
             }
         }
     ) {
-        Column(
+        FlowRow(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
-            horizontalAlignment = Alignment.Start,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             availableTags.forEach { tag ->
@@ -78,6 +81,10 @@ fun TagOptionMenu(
                     onClick = { onTagToggle(tag.id) }
                 )
             }
+            NewTagPill(onClick = {
+                expanded = false
+                onNewTagClick()
+            })
         }
     }
 }
@@ -88,10 +95,10 @@ fun TagPicker(
     availableTags: List<TaskTag>,
     selectedTagIds: Set<Long>,
     onTagToggle: (Long) -> Unit,
+    onNewTagClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     enabled: Boolean = true
 ) {
-    if (availableTags.isEmpty()) return
     var expanded by remember { mutableStateOf(false) }
 
     val selectedTags = remember(selectedTagIds, availableTags) {
@@ -133,8 +140,28 @@ fun TagPicker(
                     onClick = { onTagToggle(tag.id) }
                 )
             }
+            NewTagPill(onClick = {
+                expanded = false
+                onNewTagClick()
+            })
         }
     }
+}
+
+@Composable
+internal fun NewTagPill(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    DetailChip(
+        icon = Icons.Default.Add,
+        label = "New tag",
+        modifier = modifier,
+        iconTint = MaterialTheme.colorScheme.primary,
+        backgroundColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+        borderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+        onClick = onClick
+    )
 }
 
 @Composable

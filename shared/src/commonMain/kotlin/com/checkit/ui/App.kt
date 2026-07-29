@@ -46,6 +46,8 @@ import com.checkit.ui.tasks.TaskEditorActions
 import com.checkit.ui.tasks.TaskEditorSheet
 import com.checkit.ui.tasks.TaskEditorState
 import com.checkit.ui.tasks.TaskScreen
+import com.checkit.ui.tasks.tag.TagEditorSheet
+import com.checkit.ui.tasks.tag.TagScreen
 import com.checkit.ui.theme.AppTheme
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -101,6 +103,7 @@ fun CheckItApp(
     val selectedTab = remember(navState.currentRoute) { CheckItTab.fromRoute(navState.currentRoute) }
 
     val taskUiState by viewModels.task.uiState.collectAsState()
+    val tagUiState by viewModels.tag.uiState.collectAsState()
     val myDayUiState by viewModels.myDay.uiState.collectAsState()
     val calendarUiState by viewModels.calendar.uiState.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -226,7 +229,19 @@ fun CheckItApp(
                                             goalViewModel = viewModels.goal,
                                             keyResultViewModel = viewModels.keyResult,
                                             objectiveViewModel = viewModels.objective,
-                                            tagViewModel = viewModels.tag
+                                            onOpenTags = { navState.push(AppRoute.Tags) }
+                                        )
+                                    }
+                                    AppRoute.Tags -> {
+                                        TagScreen(
+                                            tags = taskUiState.board.tags,
+                                            selectedTagId = taskUiState.selectedTagId,
+                                            tagViewModel = viewModels.tag,
+                                            onTagClick = { tagId ->
+                                                viewModels.task.selectTag(tagId)
+                                                navState.pop()
+                                            },
+                                            onNavigateBack = { navState.pop() }
                                         )
                                     }
                                     AppRoute.MyDay -> {
@@ -235,7 +250,8 @@ fun CheckItApp(
                                             onTaskClick = viewModels.task::openTask,
                                             onNoteClick = viewModels.task::openNote,
                                             onNoteTimeChange = viewModels.task::updateNoteTime,
-                                            onCreateTask = viewModels.task::openNewTask
+                                            onCreateTask = viewModels.task::openNewTask,
+                                            onNewTagClick = viewModels.tag::openNewTag
                                         )
                                     }
                                     AppRoute.Calendar -> {
@@ -246,7 +262,8 @@ fun CheckItApp(
                                             onDailyPlanItemClick = viewModels.myDay::openItemEditor,
                                             onAddDailyPlanItem = { date -> viewModels.myDay.openCheckIn(date = date) },
                                             onTaskClick = viewModels.task::openTask,
-                                            onNoteClick = viewModels.task::openNote
+                                            onNoteClick = viewModels.task::openNote,
+                                            onNewTagClick = viewModels.tag::openNewTag
                                         )
                                     }
                                     AppRoute.Report -> {
@@ -336,6 +353,7 @@ fun CheckItApp(
                                 onNoteDateChange = viewModels.task::updateNoteDate,
                                 onNoteStartTimeChange = viewModels.task::updateNoteStartTime,
                                 onNoteTagToggle = viewModels.task::toggleNoteTag,
+                                onNewTagClick = viewModels.tag::openNewTag,
                                 onSwitchAddModeToTask = viewModels.task::switchAddEditorToTask,
                                 onSwitchAddModeToNote = viewModels.task::switchAddEditorToNote
                             )
@@ -353,8 +371,19 @@ fun CheckItApp(
                             onStartTimeChange = viewModels.myDay::updateStartTime,
                             onEndTimeChange = viewModels.myDay::updateEndTime,
                             onTagToggle = viewModels.myDay::toggleTag,
+                            onNewTagClick = viewModels.tag::openNewTag,
                             onAdd = viewModels.myDay::addCheckIn,
                             onDelete = viewModels.myDay::deleteEditorItem
+                        )
+                    }
+                    tagUiState.editor?.let { tagEditor ->
+                        TagEditorSheet(
+                            editor = tagEditor,
+                            onDismiss = viewModels.tag::dismissEditor,
+                            onSave = { viewModels.tag.saveEditor() },
+                            onDelete = { viewModels.tag.deleteEditorTag() },
+                            onNameChange = viewModels.tag::updateName,
+                            onColorChange = viewModels.tag::updateColor
                         )
                     }
                 }

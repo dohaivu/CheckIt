@@ -186,7 +186,7 @@ val provideViewModelModule = module {
     viewModel { GoalViewModel(get(), get(), get()) }
     viewModel { KeyResultViewModel(get()) }
     viewModel { ObjectiveViewModel(get(), get(), get()) }
-    viewModel { TagViewModel(get(), get(), get(), get()) }
+    viewModel { TagViewModel(get(), get(), get(), get(), get()) }
     viewModel { CalendarViewModel(get(), get(), get()) }
     viewModel {
         MyDayViewModel(

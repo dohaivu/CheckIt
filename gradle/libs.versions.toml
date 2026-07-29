@@ -39,6 +39,7 @@ calendar = "2.10.1"
 androidgitversion = "0.4.14"
 doistx-normalize = "1.3.3"
 markdownRenderer = "0.43.0"
+colorpicker = "1.2.0"
 
 mockk = "1.14.11"
 turbine = "1.2.1"
@@ -102,6 +103,7 @@ kermit-io = { module = "co.touchlab:kermit-io", version.ref = "kermit" }
 #calendar-compose = { module = "com.kizitonwose.calendar:compose-multiplatform", version.ref = "calendar" }
 doist-normalize = { module = "com.doist.x:normalize", version.ref = "doistx-normalize" }
 markdown-renderer = { module = "com.mikepenz:multiplatform-markdown-renderer-m3", version.ref = "markdownRenderer" }
+compose-colorpicker = { module = "com.github.skydoves:colorpicker-compose", version.ref = "colorpicker" }
 
 # compose multiplatform
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "composeMultiplatform" }
