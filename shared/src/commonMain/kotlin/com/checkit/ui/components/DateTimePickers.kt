@@ -431,6 +431,17 @@ private fun TimeRangeSelectionRow(
         
         if (enabled && onEndTimeChange != null) {
             PickerShortcutRow {
+                PickerShortcut(
+                    text = "Now",
+                    onClick = {
+                        val start = currentTimeMinutes()
+                        onStartTimeChange(start)
+                        durationMinutes?.let { duration ->
+                            onEndTimeChange((start + duration).coerceAtMost(MinutesPerDay - 1))
+                        }
+
+                    }
+                )
                 TimeRangeShortcutDurations.forEach { duration ->
                     PickerShortcut(
                         text = duration.shortcutDurationLabel(),

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -131,21 +132,15 @@ private fun DailyPlanItemSheetHeader(
             verticalAlignment = Alignment.CenterVertically
         ) {
             SourceIconBadge(source = state.displaySource())
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = if (state.isAddMode) "Add to My Day" else "Edit My Day item",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = state.displaySource().supportingLabel(),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+            Text(
+                text = state.displaySource().supportingLabel(),
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
             if (state.canDelete) {
                 DeleteOverflowMenu(onDelete = onDelete)
             }
@@ -173,7 +168,7 @@ private fun DailyPlanItemSheetFooter(
                 ) {
                     Text("Add to My Day")
                 }
-            } else if (state.source == DailyPlanItemSource.MyDayTask && state.status == DailyPlanItemStatus.Done) {
+            } else if (state.source == DailyPlanItemSource.MyDayTask) {
                 Button(
                     onClick = onStartSprint,
                     modifier = Modifier.fillMaxWidth()
