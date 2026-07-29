@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Label
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,9 +33,9 @@ import com.checkit.ui.theme.toColor
 fun TagOptionMenu(
     availableTags: List<TaskTag>,
     selectedTagIds: Set<Long>,
-    onTagToggle: (Long) -> Unit
+    onTagToggle: (Long) -> Unit,
+    onNewTagClick: () -> Unit = {}
 ) {
-    if (availableTags.isEmpty()) return
     var expanded by remember { mutableStateOf(false) }
     val hasSelectedTags = selectedTagIds.isNotEmpty()
 
@@ -78,6 +79,10 @@ fun TagOptionMenu(
                     onClick = { onTagToggle(tag.id) }
                 )
             }
+            NewTagPill(onClick = {
+                expanded = false
+                onNewTagClick()
+            })
         }
     }
 }
@@ -88,10 +93,10 @@ fun TagPicker(
     availableTags: List<TaskTag>,
     selectedTagIds: Set<Long>,
     onTagToggle: (Long) -> Unit,
+    onNewTagClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     enabled: Boolean = true
 ) {
-    if (availableTags.isEmpty()) return
     var expanded by remember { mutableStateOf(false) }
 
     val selectedTags = remember(selectedTagIds, availableTags) {
@@ -133,8 +138,28 @@ fun TagPicker(
                     onClick = { onTagToggle(tag.id) }
                 )
             }
+            NewTagPill(onClick = {
+                expanded = false
+                onNewTagClick()
+            })
         }
     }
+}
+
+@Composable
+internal fun NewTagPill(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    DetailChip(
+        icon = Icons.Default.Add,
+        label = "New tag",
+        modifier = modifier,
+        iconTint = MaterialTheme.colorScheme.primary,
+        backgroundColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+        borderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+        onClick = onClick
+    )
 }
 
 @Composable

@@ -64,6 +64,7 @@ internal fun DailyPlanItemEditorSheet(
     onStartTimeChange: (Int?) -> Unit,
     onEndTimeChange: (Int?) -> Unit,
     onTagToggle: (Long) -> Unit,
+    onNewTagClick: () -> Unit,
     onAdd: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -99,6 +100,7 @@ internal fun DailyPlanItemEditorSheet(
                     onStartTimeChange = onStartTimeChange,
                     onEndTimeChange = onEndTimeChange,
                     onTagToggle = onTagToggle,
+                    onNewTagClick = onNewTagClick,
                     enabled = enabled
                 )
             }
@@ -195,6 +197,7 @@ private fun DailyPlanItemFormContent(
     onStartTimeChange: (Int?) -> Unit,
     onEndTimeChange: (Int?) -> Unit,
     onTagToggle: (Long) -> Unit,
+    onNewTagClick: () -> Unit,
     enabled: Boolean
 ) {
     val sourceLocked = state.isEditMode
@@ -288,6 +291,7 @@ private fun DailyPlanItemFormContent(
             availableTags = availableTags,
             selectedTagIds = state.selectedTagIds,
             onTagToggle = onTagToggle,
+            onNewTagClick = onNewTagClick,
             enabled = enabled
         )
     }
@@ -470,9 +474,9 @@ private fun LabeledTagPicker(
     availableTags: List<TaskTag>,
     selectedTagIds: Set<Long>,
     onTagToggle: (Long) -> Unit,
+    onNewTagClick: () -> Unit,
     enabled: Boolean
 ) {
-    if (availableTags.isEmpty()) return
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             text = source.tagsLabel(isEditMode),
@@ -484,6 +488,7 @@ private fun LabeledTagPicker(
             availableTags = availableTags,
             selectedTagIds = selectedTagIds,
             onTagToggle = onTagToggle,
+            onNewTagClick = onNewTagClick,
             enabled = enabled
         )
     }

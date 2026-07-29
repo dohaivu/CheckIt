@@ -96,12 +96,13 @@ internal fun TaskEditorSheet(
     val onSubTaskRemove = actions.onSubTaskRemove
     val onSubTaskMove = actions.onSubTaskMove
     val onTaskTagToggle = actions.onTaskTagToggle
+    val onNoteTagToggle = actions.onNoteTagToggle
+    val onNewTagClick = actions.onNewTagClick
     val onNoteTitleChange = actions.onNoteTitleChange
     val onNoteContentChange = actions.onNoteContentChange
     val onNoteListChange = actions.onNoteListChange
     val onNoteDateChange = actions.onNoteDateChange
     val onNoteStartTimeChange = actions.onNoteStartTimeChange
-    val onNoteTagToggle = actions.onNoteTagToggle
     val onSwitchAddModeToTask = actions.onSwitchAddModeToTask
     val onSwitchAddModeToNote = actions.onSwitchAddModeToNote
 
@@ -168,6 +169,7 @@ internal fun TaskEditorSheet(
                             onSubTaskRemove = onSubTaskRemove,
                             onSubTaskMove = onSubTaskMove,
                             onTagToggle = onTaskTagToggle,
+                            onNewTagClick = onNewTagClick,
                             enabled = editor.isFormEditable()
                         )
                     }
@@ -185,6 +187,7 @@ internal fun TaskEditorSheet(
                             onDateChange = onNoteDateChange,
                             onStartTimeChange = onNoteStartTimeChange,
                             onTagToggle = onNoteTagToggle,
+                            onNewTagClick = onNewTagClick,
                             enabled = editor.isFormEditable()
                         )
                     }
@@ -367,6 +370,7 @@ private fun TaskFormContent(
     onSubTaskRemove: (Int) -> Unit,
     onSubTaskMove: (Int, Int) -> Unit,
     onTagToggle: (Long) -> Unit,
+    onNewTagClick: () -> Unit,
     enabled: Boolean = true
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -453,6 +457,7 @@ private fun TaskFormContent(
                 availableTags = availableTags,
                 selectedTagIds = form.selectedTagIds,
                 onTagToggle = onTagToggle,
+                onNewTagClick = onNewTagClick,
                 enabled = enabled
             )
         }
@@ -565,6 +570,7 @@ private fun NoteFormContent(
     onDateChange: (LocalDate?) -> Unit,
     onStartTimeChange: (Int?) -> Unit,
     onTagToggle: (Long) -> Unit,
+    onNewTagClick: () -> Unit,
     enabled: Boolean = true
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -624,6 +630,7 @@ private fun NoteFormContent(
                 availableTags = availableTags,
                 selectedTagIds = form.selectedTagIds,
                 onTagToggle = onTagToggle,
+                onNewTagClick = onNewTagClick,
                 enabled = enabled
             )
         }

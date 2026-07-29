@@ -312,6 +312,7 @@ fun QuickSprintSheet(
     onStartSprint: (taskId: Long?, dailyPlanItemId: Long?, description: String, tagIds: List<Long>) -> Unit,
     onStartSprintWithChoice: (SprintChoice) -> Unit,
     onStartSprintWithTask: (TaskItem) -> Unit,
+    onNewTagClick: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
     var text by remember { mutableStateOf("") }
@@ -354,6 +355,7 @@ fun QuickSprintSheet(
                         selectedTagIds + tagId
                     }
                 },
+                onNewTagClick = onNewTagClick,
                 modifier = Modifier.align(Alignment.Start)
             )
 

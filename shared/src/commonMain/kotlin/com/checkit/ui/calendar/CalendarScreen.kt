@@ -98,6 +98,7 @@ internal fun CalendarScreen(
     onAddDailyPlanItem: (LocalDate) -> Unit,
     onTaskClick: (TaskItem, DailyPlanItem?) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
+    onNewTagClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val today = today()
@@ -123,7 +124,8 @@ internal fun CalendarScreen(
                     TagOptionMenu(
                         availableTags = state.board.tags,
                         selectedTagIds = state.selectedTagIds,
-                        onTagToggle = calendarViewModel::toggleTagFilter
+                        onTagToggle = calendarViewModel::toggleTagFilter,
+                        onNewTagClick = onNewTagClick
                     )
                 }
             )

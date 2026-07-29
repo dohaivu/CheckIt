@@ -46,8 +46,6 @@ internal fun TagScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val tagState by tagViewModel.uiState.collectAsState()
-
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
@@ -105,17 +103,6 @@ internal fun TagScreen(
                 }
             }
         }
-    }
-
-    tagState.editor?.let { tagEditor ->
-        TagEditorSheet(
-            editor = tagEditor,
-            onDismiss = tagViewModel::dismissEditor,
-            onSave = { tagViewModel.saveEditor() },
-            onDelete = { tagViewModel.deleteEditorTag() },
-            onNameChange = tagViewModel::updateName,
-            onColorChange = tagViewModel::updateColor
-        )
     }
 }
 

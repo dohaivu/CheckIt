@@ -104,6 +104,7 @@ internal fun MyDayScreen(
     onNoteClick: (NoteItem) -> Unit,
     onNoteTimeChange: (NoteItem, Int) -> Unit,
     onCreateTask: (addToMyDayOnSave: Boolean) -> Unit,
+    onNewTagClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -258,6 +259,7 @@ internal fun MyDayScreen(
             },
             onStartSprintWithChoice = viewModel::startSprintWithChoice,
             onStartSprintWithTask = viewModel::startSprintWithTask,
+            onNewTagClick = onNewTagClick,
             onDismiss = viewModel::dismissQuickSprint
         )
     }
