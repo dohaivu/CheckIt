@@ -56,5 +56,15 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/new_items_widget_info" />
         </receiver>
+
+        <receiver android:name="com.checkit.notifications.SprintActionReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="com.checkit.ACTION_SAVE_WIN" />
+                <action android:name="com.checkit.ACTION_SAVE_BREAK" />
+                <action android:name="com.checkit.ACTION_SAVE_CONTINUE" />
+                <action android:name="com.checkit.ACTION_START_NEXT" />
+                <action android:name="com.checkit.ACTION_UPGRADE" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

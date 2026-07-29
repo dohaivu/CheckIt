@@ -190,6 +190,10 @@ private fun ReflectionSection(
         AppOutlinedTextField(
             value = value,
             onValueChange = onValueChange,
+            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Normal
+            ),
             modifier = Modifier.fillMaxWidth(),
             placeholder = stringResource(Res.string.day_review_win_note_placeholder),
             minLines = 4,
@@ -215,6 +219,10 @@ private fun TomorrowGoalSection(
         AppOutlinedTextField(
             value = value,
             onValueChange = onValueChange,
+            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Normal
+            ),
             modifier = Modifier.fillMaxWidth(),
             placeholder = "One thing you want to focus on...",
             minLines = 1,

@@ -48,4 +48,9 @@ internal fun LocalDate.monthAxisLabel(): String {
 fun today(): LocalDate =
     Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 
+fun currentMyDayTimeMinutes(): Int {
+    val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).time
+    return now.hour * 60 + now.minute
+}
+
 fun LocalDate.firstDayOfMonth(): LocalDate = LocalDate(year, month, 1)

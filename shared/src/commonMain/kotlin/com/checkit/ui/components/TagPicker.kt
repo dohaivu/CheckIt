@@ -88,6 +88,7 @@ fun TagPicker(
     availableTags: List<TaskTag>,
     selectedTagIds: Set<Long>,
     onTagToggle: (Long) -> Unit,
+    modifier: Modifier = Modifier,
     enabled: Boolean = true
 ) {
     if (availableTags.isEmpty()) return
@@ -99,6 +100,7 @@ fun TagPicker(
     AppleStylePopup(
         isExpanded = expanded,
         onDismissRequest = { expanded = false },
+        modifier = modifier,
         anchor = {
             if (selectedTags.isEmpty()) {
                 TagPill(tag = TaskTag.None, selected = false, onClick = { if (enabled) expanded = true })

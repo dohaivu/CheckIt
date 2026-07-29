@@ -1,8 +1,5 @@
-package com.checkit.ui.components
+package com.checkit.ui.myday
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -16,39 +13,33 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -59,121 +50,64 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.cancel
-import checkit.shared.generated.resources.sprint_action_log_task
+import checkit.shared.generated.resources.sprint_action_continue_pomodoro
+import checkit.shared.generated.resources.sprint_action_next_pomodoro
 import checkit.shared.generated.resources.sprint_action_pomodoro
 import checkit.shared.generated.resources.sprint_action_save
+import checkit.shared.generated.resources.sprint_action_save_and_break
 import checkit.shared.generated.resources.sprint_adhoc_placeholder
+import checkit.shared.generated.resources.sprint_break_finish_subtitle
+import checkit.shared.generated.resources.sprint_break_finish_title
 import checkit.shared.generated.resources.sprint_finish_subtitle
 import checkit.shared.generated.resources.sprint_finish_title
+import checkit.shared.generated.resources.sprint_pomodoro_finish_subtitle
+import checkit.shared.generated.resources.sprint_pomodoro_finish_title
 import checkit.shared.generated.resources.sprint_start
 import com.checkit.domain.SprintState
 import com.checkit.domain.TaskItem
-import com.checkit.ui.localizedCompactDateWithDayName
-import com.checkit.ui.tasks.views.SprintButton
-import com.checkit.ui.tasks.views.TaskTimelineCard
+import com.checkit.domain.TaskTag
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
+import com.checkit.ui.components.TagPicker
+import com.checkit.ui.localizedCompactDateWithDayName
+import com.checkit.ui.myday.SprintChoice
+import com.checkit.ui.tasks.views.DailyPlanTimelineCard
+import com.checkit.ui.tasks.views.SprintButton
+import com.checkit.ui.tasks.views.TaskTimelineCard
 import org.jetbrains.compose.resources.stringResource
-
-@Composable
-fun SprintTimerOverlay(
-    state: SprintState.Running,
-    isPaused: Boolean,
-    onPause: () -> Unit,
-    onResume: () -> Unit,
-    onStop: () -> Unit
-) {
-    val minutes = state.remainingSeconds / 60
-    val seconds = state.remainingSeconds % 60
-    val timeLabel = "${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}"
-
-    val backgroundColor = if (state.isPomodoro) {
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.95f)
-    } else {
-        MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.95f)
-    }
-
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = backgroundColor
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = state.description,
-                style = MaterialTheme.typography.headlineMedium,
-                textAlign = TextAlign.Center,
-                fontWeight = FontWeight.Bold
-            )
-            
-            Spacer(modifier = Modifier.height(48.dp))
-            
-            Text(
-                text = timeLabel,
-                style = MaterialTheme.typography.displayLarge.copy(
-                    fontSize = 80.sp,
-                    fontWeight = FontWeight.Light
-                ),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            
-            Spacer(modifier = Modifier.height(64.dp))
-            
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                IconButton(
-                    onClick = onStop,
-                    modifier = Modifier.size(64.dp).background(MaterialTheme.colorScheme.errorContainer, CircleShape)
-                ) {
-                    Icon(Icons.Default.Close, contentDescription = "Stop", tint = MaterialTheme.colorScheme.onErrorContainer)
-                }
-                
-                Spacer(modifier = Modifier.width(32.dp))
-                
-                IconButton(
-                    onClick = if (isPaused) onResume else onPause,
-                    modifier = Modifier.size(80.dp).background(MaterialTheme.colorScheme.primary, CircleShape)
-                ) {
-                    Icon(
-                        if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                        contentDescription = if (isPaused) "Resume" else "Pause",
-                        modifier = Modifier.size(40.dp),
-                        tint = MaterialTheme.colorScheme.onPrimary
-                    )
-                }
-            }
-        }
-    }
-}
 
 @Composable
 fun SprintCompletionDialog(
     state: SprintState.Finished,
     onSaveWin: () -> Unit,
+    onSaveAndBreak: () -> Unit,
+    onContinueNewPomodoro: () -> Unit,
     onStartPomodoro: () -> Unit,
-    onLogTask: () -> Unit,
+    onStartNextPomodoro: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val title = when {
+        state.isBreak -> stringResource(Res.string.sprint_break_finish_title)
+        state.isPomodoro -> stringResource(Res.string.sprint_pomodoro_finish_title)
+        else -> stringResource(Res.string.sprint_finish_title)
+    }
+    val subtitle = when {
+        state.isBreak -> stringResource(Res.string.sprint_break_finish_subtitle)
+        state.isPomodoro -> stringResource(Res.string.sprint_pomodoro_finish_subtitle)
+        else -> stringResource(Res.string.sprint_finish_subtitle)
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = {
-            Text(stringResource(Res.string.sprint_finish_title))
-        },
+        title = { Text(title) },
         text = {
             Column {
-                Text(stringResource(Res.string.sprint_finish_subtitle))
-                if (state.taskId == null) {
+                Text(subtitle)
+                if (state.taskId == null && !state.isBreak) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "Goal: ${state.description}",
@@ -185,29 +119,51 @@ fun SprintCompletionDialog(
         },
         confirmButton = {
             Column(modifier = Modifier.fillMaxWidth()) {
-                if (!state.isPomodoro) {
-                    Button(
-                        onClick = onStartPomodoro,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(stringResource(Res.string.sprint_action_pomodoro))
+                when {
+                    state.isBreak -> {
+                        Button(
+                            onClick = onStartNextPomodoro,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(stringResource(Res.string.sprint_action_next_pomodoro))
+                        }
                     }
-                    Spacer(modifier = Modifier.height(12.dp))
+                    state.isPomodoro -> {
+                        Button(
+                            onClick = onSaveAndBreak,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(stringResource(Res.string.sprint_action_save_and_break))
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        OutlinedButton(
+                            onClick = onContinueNewPomodoro,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(stringResource(Res.string.sprint_action_continue_pomodoro))
+                        }
+                    }
+                    else -> {
+                        Button(
+                            onClick = onStartPomodoro,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(stringResource(Res.string.sprint_action_pomodoro))
+                        }
+                    }
                 }
                 
+                Spacer(modifier = Modifier.height(12.dp))
+                
                 OutlinedButton(
-                    onClick = if (state.taskId != null) onSaveWin else onLogTask,
+                    onClick = onSaveWin,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(stringResource(if (state.taskId != null) Res.string.sprint_action_save else Res.string.sprint_action_log_task))
+                    Text(stringResource(if (state.isBreak) Res.string.cancel else Res.string.sprint_action_save))
                 }
             }
         },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(Res.string.cancel))
-            }
-        }
+        dismissButton = null
     )
 }
 
@@ -225,16 +181,16 @@ fun SprintBar(
     val timeLabel = "${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}"
     val progress = (state.totalSeconds - state.remainingSeconds).toFloat() / state.totalSeconds.toFloat()
 
-    val containerColor = if (state.isPomodoro) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        MaterialTheme.colorScheme.tertiaryContainer
+    val containerColor = when {
+        state.isBreak -> MaterialTheme.colorScheme.secondaryContainer
+        state.isPomodoro -> MaterialTheme.colorScheme.primaryContainer
+        else -> MaterialTheme.colorScheme.tertiaryContainer
     }
 
-    val progressColor = if (state.isPomodoro) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.tertiary
+    val progressColor = when {
+        state.isBreak -> MaterialTheme.colorScheme.secondary
+        state.isPomodoro -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.tertiary
     }
 
     Surface(
@@ -267,7 +223,12 @@ fun SprintBar(
                             Spacer(Modifier.width(6.dp))
                         }
                         Text(
-                            text = if (isPaused) "Paused" else if (state.isPomodoro) "Deep Focus" else "Quick Sprint",
+                            text = when {
+                                isPaused -> "Paused"
+                                state.isBreak -> "Short Break"
+                                state.isPomodoro -> "Deep Focus"
+                                else -> "Quick Sprint"
+                            },
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -343,12 +304,18 @@ private fun PulsingDot(color: Color) {
 
 @Composable
 fun QuickSprintSheet(
-    tasks: List<TaskItem>,
-    onStartSprint: (taskId: Long?, dailyPlanItemId: Long?, description: String) -> Unit,
+    suggestedToday: List<SprintChoice>,
+    suggestedYesterday: List<SprintChoice>,
+    suggestedTasks: List<TaskItem>,
+    availableTags: List<TaskTag>,
+    continueItem: SprintChoice?,
+    onStartSprint: (taskId: Long?, dailyPlanItemId: Long?, description: String, tagIds: List<Long>) -> Unit,
+    onStartSprintWithChoice: (SprintChoice) -> Unit,
     onStartSprintWithTask: (TaskItem) -> Unit,
     onDismiss: () -> Unit
 ) {
     var text by remember { mutableStateOf("") }
+    var selectedTagIds by remember { mutableStateOf(emptySet<Long>()) }
 
     AppEditorBottomSheet(onDismiss = onDismiss) {
         Column(
@@ -367,43 +334,96 @@ fun QuickSprintSheet(
             AppOutlinedTextField(
                 value = text,
                 onValueChange = { text = it },
+                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Normal
+                ),
                 placeholder = "e.g., Focus on coding",
                 modifier = Modifier.fillMaxWidth(),
                 maxLines = 1,
                 contentPadding = PaddingValues(12.dp)
             )
 
-            Button(
-                onClick = {
-                    onStartSprint(null, null, text)
-                    onDismiss()
+            TagPicker(
+                availableTags = availableTags,
+                selectedTagIds = selectedTagIds,
+                onTagToggle = { tagId ->
+                    selectedTagIds = if (tagId in selectedTagIds) {
+                        selectedTagIds - tagId
+                    } else {
+                        selectedTagIds + tagId
+                    }
                 },
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.medium
-            ) {
-                Icon(Icons.Default.Bolt, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(stringResource(Res.string.sprint_start))
+                modifier = Modifier.align(Alignment.Start)
+            )
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Button(
+                    onClick = {
+                        onStartSprint(null, null, text, selectedTagIds.toList())
+                        onDismiss()
+                    },
+                    modifier = Modifier.weight(1f),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Icon(Icons.Default.Bolt, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(stringResource(Res.string.sprint_start))
+                }
+
+                if (continueItem != null) {
+                    OutlinedButton(
+                        onClick = {
+                            onStartSprintWithChoice(continueItem)
+                            onDismiss()
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Text("Continue Last")
+                    }
+                }
             }
         }
 
-        if (tasks.isNotEmpty()) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 400.dp),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                item {
-                    Text(
-                        text = "Or start with a task",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = 4.dp)
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 450.dp),
+            contentPadding = PaddingValues(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            if (suggestedToday.isNotEmpty()) {
+                item { SectionLabel("Today's Plan", modifier = Modifier.padding(horizontal = 16.dp)) }
+                items(suggestedToday) { choice ->
+                    SprintChoiceCard(
+                        choice = choice,
+                        onClick = {
+                            onStartSprintWithChoice(choice)
+                            onDismiss()
+                        },
+                        modifier = Modifier.padding(horizontal = 16.dp)
                     )
                 }
-                items(tasks, key = { it.id }) { task ->
+            }
+
+            if (suggestedYesterday.isNotEmpty()) {
+                item { SectionLabel("Yesterday's Leftovers", modifier = Modifier.padding(horizontal = 16.dp)) }
+                items(suggestedYesterday) { choice ->
+                    SprintChoiceCard(
+                        choice = choice,
+                        onClick = {
+                            onStartSprintWithChoice(choice)
+                            onDismiss()
+                        },
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                }
+            }
+
+            if (suggestedTasks.isNotEmpty()) {
+                item { SectionLabel("Or start with a task", modifier = Modifier.padding(horizontal = 16.dp)) }
+                items(suggestedTasks, key = { it.id }) { task ->
                     TaskTimelineCard(
                         task = task,
                         timeLabel = task.doDate?.localizedCompactDateWithDayName() ?: task.objective.name,
@@ -413,9 +433,59 @@ fun QuickSprintSheet(
                                 onDismiss()
                             })
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        onClick = {
+                            onStartSprintWithTask(task)
+                            onDismiss()
+                        },
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SectionLabel(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.padding(bottom = 4.dp, top = 8.dp)
+    )
+}
+
+@Composable
+private fun SprintChoiceCard(
+    choice: SprintChoice,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    when (choice) {
+        is SprintChoice.Task -> TaskTimelineCard(
+            task = choice.task,
+            trailingContent = { SprintButton(onClick = onClick) },
+            onClick = onClick,
+            modifier = modifier
+        )
+        is SprintChoice.PlanItem -> {
+            val task = choice.task
+            if (task != null) {
+                TaskTimelineCard(
+                    task = task,
+                    timeLabel = choice.item.title,
+                    trailingContent = { SprintButton(onClick = onClick) },
+                    onClick = onClick,
+                    modifier = modifier
+                )
+            } else {
+                DailyPlanTimelineCard(
+                    item = choice.item,
+                    isOverdue = false,
+                    trailingContent = { SprintButton(onClick = onClick) },
+                    onClick = onClick,
+                    modifier = modifier
+                )
             }
         }
     }

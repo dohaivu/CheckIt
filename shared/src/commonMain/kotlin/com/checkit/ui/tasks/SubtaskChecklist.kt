@@ -29,6 +29,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
@@ -43,6 +44,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
@@ -93,7 +96,7 @@ internal fun SubtaskBriefList(subtasks: List<SubTaskItem>) {
                         text = subtask.name,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
+                        maxLines = 3,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
@@ -117,6 +120,16 @@ internal fun SubtaskChecklist(
     val rowBounds = remember { mutableStateMapOf<Any, SubtaskRowBounds>() }
     val draggedIndex = remember { mutableIntStateOf(-1) }
     val draggedCenterY = remember { mutableFloatStateOf(0f) }
+    
+    var previousSize by remember { mutableIntStateOf(subtasks.size) }
+    var subtaskIdToFocus by remember { mutableStateOf<Any?>(null) }
+
+    LaunchedEffect(subtasks.size) {
+        if (subtasks.size > previousSize) {
+            subtaskIdToFocus = subtasks.lastOrNull()?.stableKey()
+        }
+        previousSize = subtasks.size
+    }
 
     val draggedKey = remember(draggedIndex.intValue, subtasks) {
         subtasks.getOrNull(draggedIndex.intValue)?.stableKey()
@@ -141,12 +154,23 @@ internal fun SubtaskChecklist(
                 val rowKey = subtask.stableKey()
                 val isDragging = draggedKey == rowKey
                 key(rowKey) {
+                    val focusRequester = remember { FocusRequester() }
+                    
+                    if (subtaskIdToFocus == rowKey) {
+                        LaunchedEffect(Unit) {
+                            focusRequester.requestFocus()
+                            subtaskIdToFocus = null
+                        }
+                    }
+                    
                     SubtaskRow(
                         subtask = subtask,
                         isDragging = isDragging,
                         onToggle = { onToggle(index) },
                         onNameChange = { onNameChange(index, it) },
                         onRemove = { onRemove(index) },
+                        onAdd = onAdd,
+                        focusRequester = focusRequester,
                         onMove = { dragAmountY ->
                             val currentDraggedIndex = subtasks.indexOfFirst { it.stableKey() == draggedKey }
                             if (currentDraggedIndex == -1) return@SubtaskRow
@@ -227,10 +251,12 @@ private fun SubtaskRow(
     onToggle: () -> Unit,
     onNameChange: (String) -> Unit,
     onRemove: () -> Unit,
+    onAdd: () -> Unit,
     onMove: (Float) -> Unit,
     onDragStart: () -> Unit,
     onDragEnd: () -> Unit,
     modifier: Modifier = Modifier,
+    focusRequester: FocusRequester = remember { FocusRequester() },
     enabled: Boolean = true
 ) {
     val rowAlpha = if (subtask.isCompleted) ContentAlpha else 1f
@@ -274,7 +300,8 @@ private fun SubtaskRow(
             Text(
                 text = subtask.name,
                 modifier = Modifier.weight(1f),
-                style = textStyle
+                style = textStyle,
+                maxLines = 3
             )
         } else {
             Row(
@@ -285,12 +312,14 @@ private fun SubtaskRow(
                 BasicTextField(
                     value = subtask.name,
                     onValueChange = onNameChange,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .focusRequester(focusRequester),
                     textStyle = textStyle,
-                    singleLine = true,
+                    singleLine = false,
                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    keyboardActions = KeyboardActions(onNext = { }),
+                    keyboardActions = KeyboardActions(onNext = { onAdd() }),
                     decorationBox = { innerTextField ->
                         if (subtask.name.isEmpty()) {
                             Text(

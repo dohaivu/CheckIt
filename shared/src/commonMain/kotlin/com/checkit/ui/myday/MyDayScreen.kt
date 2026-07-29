@@ -74,9 +74,9 @@ import com.checkit.domain.SprintState
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.hasEndTime
-import com.checkit.ui.components.QuickSprintSheet
-import com.checkit.ui.components.SprintBar
-import com.checkit.ui.components.SprintCompletionDialog
+import com.checkit.ui.myday.QuickSprintSheet
+import com.checkit.ui.myday.SprintBar
+import com.checkit.ui.myday.SprintCompletionDialog
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.tasks.TimelineItem
@@ -248,8 +248,15 @@ internal fun MyDayScreen(
 
     if (state.showQuickSprintSheet) {
         QuickSprintSheet(
-            tasks = state.suggestedTasks,
-            onStartSprint = viewModel::startSprint,
+            suggestedToday = state.sprintSuggestedToday,
+            suggestedYesterday = state.sprintSuggestedYesterday,
+            suggestedTasks = state.suggestedTasks,
+            availableTags = state.board.tags,
+            continueItem = state.continueSprintItem,
+            onStartSprint = { taskId, dailyPlanItemId, description, tagIds ->
+                viewModel.startSprint(taskId, dailyPlanItemId, description, tagIds)
+            },
+            onStartSprintWithChoice = viewModel::startSprintWithChoice,
             onStartSprintWithTask = viewModel::startSprintWithTask,
             onDismiss = viewModel::dismissQuickSprint
         )
@@ -259,8 +266,10 @@ internal fun MyDayScreen(
         SprintCompletionDialog(
             state = sprintState as SprintState.Finished,
             onSaveWin = viewModel::saveSprintAsWin,
+            onSaveAndBreak = viewModel::saveAndBreak,
+            onContinueNewPomodoro = viewModel::continueNewPomodoro,
             onStartPomodoro = viewModel::upgradeToPomodoro,
-            onLogTask = viewModel::logSprintAsTask,
+            onStartNextPomodoro = viewModel::startNextPomodoro,
             onDismiss = viewModel::dismissFinishedSprint
         )
     }

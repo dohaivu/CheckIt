@@ -18,10 +18,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import java.util.Locale
 
 class SprintForegroundService : Service(), KoinComponent {
     private val sprintManager: SprintManager by inject()
@@ -50,24 +52,39 @@ class SprintForegroundService : Service(), KoinComponent {
         super.onCreate()
         createNotificationChannel()
         
-        sprintManager.state.onEach { state ->
-            when (state) {
-                is SprintState.Running -> {
-                    startForeground(NOTIFICATION_ID, createNotification(state, isPaused = false))
-                }
-                is SprintState.Paused -> {
-                    startForeground(NOTIFICATION_ID, createNotification(state.runningState, isPaused = true))
-                }
-                is SprintState.Finished -> {
-                    stopForeground(true)
-                    stopSelf()
-                }
-                SprintState.Idle -> {
-                    stopForeground(true)
-                    stopSelf()
+        sprintManager.state
+            .distinctUntilChanged { old, new ->
+                // Only update notification if meaningful visual properties change.
+                // We ignore 'remainingSeconds' because the system chronometer handles it.
+                if (old::class != new::class) return@distinctUntilChanged false
+                when {
+                    old is SprintState.Running && new is SprintState.Running -> {
+                        old.description == new.description && 
+                        old.endsAtEpochMillis == new.endsAtEpochMillis &&
+                        old.isPaused() == new.isPaused() &&
+                        old.isBreak == new.isBreak
+                    }
+                    old is SprintState.Paused && new is SprintState.Paused -> {
+                        old.runningState.description == new.runningState.description &&
+                        old.remainingSecondsAtPause == new.remainingSecondsAtPause
+                    }
+                    else -> true
                 }
             }
-        }.launchIn(serviceScope)
+            .onEach { state ->
+                when (state) {
+                    is SprintState.Running -> {
+                        startForeground(NOTIFICATION_ID, createNotification(state, isPaused = false))
+                    }
+                    is SprintState.Paused -> {
+                        startForeground(NOTIFICATION_ID, createNotification(state.runningState, isPaused = true))
+                    }
+                    is SprintState.Finished, SprintState.Idle -> {
+                        stopForeground(true)
+                        stopSelf()
+                    }
+                }
+            }.launchIn(serviceScope)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -82,38 +99,49 @@ class SprintForegroundService : Service(), KoinComponent {
     }
 
     private fun createNotification(state: SprintState.Running, isPaused: Boolean): Notification {
-        val minutes = state.remainingSeconds / 60
-        val seconds = state.remainingSeconds % 60
-        val timeLabel = String.format("%02d:%02d", minutes, seconds)
-        val title = if (isPaused) "Paused: ${state.description}" else "Focusing: ${state.description}"
+        val headline = when {
+            isPaused -> "Paused"
+            state.isBreak -> "Short Break"
+            else -> "Focusing"
+        }
+
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(applicationInfo.icon.takeIf { it != 0 } ?: R.mipmap.ic_launcher_round)
+            .setContentTitle(headline)
+            .setContentText(state.description)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setCategory(NotificationCompat.CATEGORY_PROGRESS)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+
+        if (isPaused) {
+            // Static text for frozen time when paused
+            val minutes = state.remainingSeconds / 60
+            val seconds = state.remainingSeconds % 60
+            builder.setSubText(String.format(Locale.US, "%02d:%02d remaining", minutes, seconds))
+            builder.setUsesChronometer(false)
+        } else {
+            // Live countdown using system Chronometer for best performance
+            builder.setSubText(if (state.isBreak) "Time for a breather" else "In progress")
+            builder.setUsesChronometer(true)
+            builder.setChronometerCountDown(true)
+            builder.setWhen(state.endsAtEpochMillis)
+        }
         
-        // We assume MainActivity is in the androidApp module and available via its full name or it will be merged.
-        // If shared doesn't know about MainActivity, we might need a different way to start it.
-        // But usually shared can reference classes that will be present in the final app.
         val intent = Intent().setClassName(packageName, "com.checkit.MainActivity").apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
         
-        val pendingIntent = PendingIntent.getActivity(
-            this,
-            0,
-            intent,
+        builder.setContentIntent(PendingIntent.getActivity(
+            this, 0, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+        ))
 
-        val iconRes = applicationInfo.icon
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(if (iconRes != 0) iconRes else R.mipmap.ic_launcher_round)
-            .setContentTitle(title)
-            .setContentText("$timeLabel remaining")
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-            .setContentIntent(pendingIntent)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setCategory(NotificationCompat.CATEGORY_PROGRESS)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .build()
+        return builder.build()
     }
+
+    private fun SprintState.isPaused() = this is SprintState.Paused
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

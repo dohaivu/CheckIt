@@ -19,7 +19,10 @@ import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.SprintManager
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
-import com.checkit.domain.usecase.UpdateDailyPlanItemUseCase
+import com.checkit.domain.usecase.UpsertDailyPlanItemUseCase
+import com.checkit.domain.usecase.AddSuggestedTaskToMyDayUseCase
+import com.checkit.domain.usecase.SprintTransitionUseCase
+import com.checkit.domain.usecase.SaveSprintAsWinUseCase
 import com.checkit.notifications.NoOpSprintNotificationScheduler
 import com.checkit.ui.tasks.FakeCheckItRepository
 import com.checkit.ui.tasks.FakeSettingsRepository
@@ -51,16 +54,16 @@ class MyDayViewModelTest {
         settingsRepository = FakeSettingsRepository()
         val buildSummary = BuildDayReviewSummaryUseCase(dispatcher)
         val carryOver = CarryOverDailyPlanItemsUseCase(repository, dispatcher)
+        val observeTaskBoard = ObserveTaskBoardUseCase(repository)
+        val observeDailyPlans = ObserveDailyPlansUseCase(repository)
+        val syncKeyResult = SyncKeyResultFromDailyPlanUseCase(repository)
+        val addTaskToDailyPlan = AddTaskToDailyPlanUseCase(repository)
+        val updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository)
+        
         viewModel = MyDayViewModel(
-            observeTaskBoard = ObserveTaskBoardUseCase(repository),
-            observeDailyPlans = ObserveDailyPlansUseCase(repository),
+            observeTaskBoard = observeTaskBoard,
+            observeDailyPlans = observeDailyPlans,
             ensureDefaultTaskData = EnsureDefaultTaskDataUseCase(repository),
-            addTaskToDailyPlan = AddTaskToDailyPlanUseCase(repository),
-            addDailyPlanItem = AddDailyPlanItemUseCase(repository),
-            updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository),
-            updateDailyPlanItemStatus = UpdateDailyPlanItemStatusUseCase(repository),
-            updateDailyPlanItem = UpdateDailyPlanItemUseCase(repository),
-            syncKeyResultFromDailyPlan = SyncKeyResultFromDailyPlanUseCase(repository),
             deleteDailyPlanItemUseCase = DeleteDailyPlanItemUseCase(repository),
             settingsRepository = settingsRepository,
             buildDayReviewSummary = buildSummary,
@@ -73,7 +76,27 @@ class MyDayViewModelTest {
                 dispatcher = dispatcher
             ),
             carryOverDailyPlanItems = carryOver,
-            sprintManager = SprintManager(NoOpSprintNotificationScheduler())
+            upsertDailyPlanItem = UpsertDailyPlanItemUseCase(repository, syncKeyResult),
+            addSuggestedTaskToMyDay = AddSuggestedTaskToMyDayUseCase(
+                repository = repository,
+                addTaskToDailyPlan = addTaskToDailyPlan,
+                updateDailyPlanItemTime = updateDailyPlanItemTime
+            ),
+            syncKeyResultFromDailyPlan = syncKeyResult,
+            updateDailyPlanItemTime = updateDailyPlanItemTime,
+            sprintManager = SprintManager(NoOpSprintNotificationScheduler()),
+            sprintTransition = SprintTransitionUseCase(
+                sprintManager = SprintManager(NoOpSprintNotificationScheduler()), // Separate instance for transition if needed or reuse
+                saveSprintAsWin = SaveSprintAsWinUseCase(
+                    repository = repository,
+                    addTaskToDailyPlan = addTaskToDailyPlan,
+                    addDailyPlanItem = AddDailyPlanItemUseCase(repository),
+                    updateDailyPlanItemTime = updateDailyPlanItemTime,
+                    updateDailyPlanItemStatus = UpdateDailyPlanItemStatusUseCase(repository),
+                    syncKeyResultFromDailyPlan = syncKeyResult
+                ),
+                observeTaskBoard = observeTaskBoard
+            )
         )
         dispatcher.scheduler.advanceUntilIdle()
     }

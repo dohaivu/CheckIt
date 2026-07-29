@@ -15,6 +15,8 @@ import com.checkit.domain.DailyPlanScheduleReminderPolicy
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.notifications.AppReminderScheduler
 import com.checkit.domain.SprintManager
+import com.checkit.domain.usecase.SaveSprintAsWinUseCase
+import com.checkit.domain.usecase.SprintTransitionUseCase
 import com.checkit.domain.usecase.AddNoteUseCase
 import com.checkit.domain.usecase.AddDailyPlanItemUseCase
 import com.checkit.domain.usecase.AddGoalUseCase
@@ -26,6 +28,8 @@ import com.checkit.domain.usecase.AutoAddTodayTasksToMyDayUseCase
 import com.checkit.domain.usecase.BuildDayReviewSummaryUseCase
 import com.checkit.domain.usecase.CarryOverDailyPlanItemsUseCase
 import com.checkit.domain.usecase.UpsertDayReviewWinNoteUseCase
+import com.checkit.domain.usecase.UpsertDailyPlanItemUseCase
+import com.checkit.domain.usecase.AddSuggestedTaskToMyDayUseCase
 import com.checkit.domain.usecase.CompleteDayReviewUseCase
 import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
@@ -96,6 +100,10 @@ val provideCommonModule = module {
 val provideInteractorModule = module {
     single { HttpClient() }
     single { SprintManager(get()) }
+    single { SaveSprintAsWinUseCase(get(), get(), get(), get(), get(), get()) }
+    single { SprintTransitionUseCase(get(), get(), get()) }
+    single { UpsertDailyPlanItemUseCase(get(), get()) }
+    single { AddSuggestedTaskToMyDayUseCase(get(), get(), get()) }
     single<CheckItRepository> { RoomCheckItRepository(get(), get(), get()) }
     single { ObserveTaskBoardUseCase(get()) }
     single { ObserveDailyPlansUseCase(get()) }
@@ -185,18 +193,17 @@ val provideViewModelModule = module {
             observeTaskBoard = get(),
             observeDailyPlans = get(),
             ensureDefaultTaskData = get(),
-            addTaskToDailyPlan = get(),
-            addDailyPlanItem = get(),
-            updateDailyPlanItemTime = get(),
-            updateDailyPlanItemStatus = get(),
-            updateDailyPlanItem = get(),
-            syncKeyResultFromDailyPlan = get(),
             deleteDailyPlanItemUseCase = get(),
             settingsRepository = get(),
             buildDayReviewSummary = get(),
             completeDayReview = get(),
             carryOverDailyPlanItems = get(),
-            sprintManager = get()
+            upsertDailyPlanItem = get(),
+            addSuggestedTaskToMyDay = get(),
+            syncKeyResultFromDailyPlan = get(),
+            updateDailyPlanItemTime = get(),
+            sprintManager = get(),
+            sprintTransition = get()
         )
     }
     viewModel { ReportViewModel(get()) }

@@ -4,6 +4,7 @@ internal object NotificationIds {
     const val PlanReminder = 70_001
     const val ReviewReminder = 70_002
     const val CheckInReminder = 70_003
+    const val SprintFinished = 1002
 
     fun taskReminder(taskId: Long): Int =
         taskId.stableIntId()

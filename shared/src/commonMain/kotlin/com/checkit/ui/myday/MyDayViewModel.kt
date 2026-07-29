@@ -3,12 +3,14 @@ package com.checkit.ui.myday
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.checkit.domain.*
+import com.checkit.domain.DefaultTaskDurationMinutes
 import com.checkit.domain.usecase.*
 import com.checkit.data.*
 import com.checkit.ui.tasks.EditorMode
 import com.checkit.ui.UiEvent
 import com.checkit.ui.duration
 import com.checkit.ui.today
+import com.checkit.ui.currentMyDayTimeMinutes
 import kotlinx.datetime.LocalDate
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,23 +33,23 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Instant
 
 class MyDayViewModel(
     private val observeTaskBoard: ObserveTaskBoardUseCase,
     private val observeDailyPlans: ObserveDailyPlansUseCase,
     private val ensureDefaultTaskData: EnsureDefaultTaskDataUseCase,
-    private val addTaskToDailyPlan: AddTaskToDailyPlanUseCase,
-    private val addDailyPlanItem: AddDailyPlanItemUseCase,
-    private val updateDailyPlanItemTime: UpdateDailyPlanItemTimeUseCase,
-    private val updateDailyPlanItemStatus: UpdateDailyPlanItemStatusUseCase,
-    private val updateDailyPlanItem: UpdateDailyPlanItemUseCase,
-    private val syncKeyResultFromDailyPlan: SyncKeyResultFromDailyPlanUseCase,
     private val deleteDailyPlanItemUseCase: DeleteDailyPlanItemUseCase,
     private val settingsRepository: SettingsRepository,
     private val buildDayReviewSummary: BuildDayReviewSummaryUseCase,
     private val completeDayReview: CompleteDayReviewUseCase,
     private val carryOverDailyPlanItems: CarryOverDailyPlanItemsUseCase,
-    val sprintManager: SprintManager
+    private val upsertDailyPlanItem: UpsertDailyPlanItemUseCase,
+    private val addSuggestedTaskToMyDay: AddSuggestedTaskToMyDayUseCase,
+    private val syncKeyResultFromDailyPlan: SyncKeyResultFromDailyPlanUseCase,
+    private val updateDailyPlanItemTime: UpdateDailyPlanItemTimeUseCase,
+    val sprintManager: SprintManager,
+    private val sprintTransition: SprintTransitionUseCase
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(MyDayUiState())
     val uiState: StateFlow<MyDayUiState> = _uiState.asStateFlow()
@@ -309,15 +311,6 @@ class MyDayViewModel(
         }
     }
 
-    /** PR3: open check-in with a free time slot around now (notification deep link). */
-    fun openCheckInAtFreeSlot() {
-        val state = _uiState.value
-        val duration = DefaultTaskDurationMinutes
-        val preferredStart = currentMyDayTimeMinutes()
-        val (start, end) = state.nextAvailableTimeRange(preferredStart, duration)
-        openCheckIn(startTimeMinutes = start, endTimeMinutes = end)
-    }
-
     fun setLeftoverAction(itemId: Long, action: LeftoverAction) {
         _uiState.update { state ->
             val review = state.dayReview ?: return@update state
@@ -398,6 +391,15 @@ class MyDayViewModel(
         }
     }
 
+    /** PR3: open check-in with a free time slot around now (notification deep link). */
+    fun openCheckInAtFreeSlot() {
+        val state = _uiState.value
+        val duration = DefaultTaskDurationMinutes
+        val preferredStart = currentMyDayTimeMinutes()
+        val (start, end) = nextAvailableTimeRange(preferredStart, duration, state.items)
+        openCheckIn(startTimeMinutes = start, endTimeMinutes = end)
+    }
+
     fun openCheckIn(
         startTimeMinutes: Int? = null,
         endTimeMinutes: Int? = null,
@@ -431,72 +433,9 @@ class MyDayViewModel(
     }
 
     fun saveCheckIn(editor: DailyPlanItemEditorState): Boolean {
-        val title = editor.title.trim()
-        val note = editor.note.trim()
-        val source = editor.saveSource()
-        val status = editor.saveStatus()
-        when (source) {
-            DailyPlanItemSource.MyDayNote -> {
-                if (title.isBlank() && note.isBlank()) {
-                    sendEvent(UiEvent.ShowSnackbar("Add a note"))
-                    return false
-                }
-            }
-            DailyPlanItemSource.MyDayReminder -> {
-                when {
-                    title.isBlank() -> {
-                        sendEvent(UiEvent.ShowSnackbar("Add a reminder"))
-                        return false
-                    }
-                    editor.startTimeMinutes == null -> {
-                        sendEvent(UiEvent.ShowSnackbar("Add reminder time"))
-                        return false
-                    }
-                }
-            }
-            DailyPlanItemSource.MyDayTask -> {
-                val start = editor.startTimeMinutes
-                val end = editor.endTimeMinutes
-                when {
-                    title.isBlank() -> {
-                        sendEvent(UiEvent.ShowSnackbar("Add a done item"))
-                        return false
-                    }
-                    start == null || end == null -> {
-                        sendEvent(UiEvent.ShowSnackbar("Add start and end time"))
-                        return false
-                    }
-                    end <= start -> {
-                        sendEvent(UiEvent.ShowSnackbar("End time must be after start"))
-                        return false
-                    }
-                }
-            }
-            DailyPlanItemSource.ExistingTask -> Unit
-        }
         viewModelScope.launch {
-            if (editor.itemId == null) {
-                addDailyPlanItem(
-                    editor.date,
-                    title,
-                    note.takeIf { it.isNotBlank() },
-                    editor.startTimeMinutes,
-                    if (source.hasEndTime()) editor.endTimeMinutes else null,
-                    source,
-                    status = status,
-                    tagIds = editor.selectedTagIds.toList()
-                )
-            } else {
-                syncKeyResultFromDailyPlan(
-                    itemId = editor.itemId,
-                    proposedStatus = status,
-                    proposedStartTime = editor.startTimeMinutes,
-                    proposedEndTime = if (source.hasEndTime()) editor.endTimeMinutes else null
-                )
-                updateDailyPlanItem(
-                    editor.itemId,
-                    editor.toWriteInput(status, source)
-                )
+            upsertDailyPlanItem(editor).onFailure { error ->
+                sendEvent(UiEvent.ShowSnackbar(error.message ?: "Unable to save"))
             }
         }
         return true
@@ -538,23 +477,26 @@ class MyDayViewModel(
     ) {
         viewModelScope.launch {
             val state = _uiState.value
-            val (startTimeMinutes, endTimeMinutes) = state.selectedSuggestionTimeRangeFor(task)
-            val itemId = addTaskToDailyPlan(today(), task)
-            if (startTimeMinutes != task.startTimeMinutes || endTimeMinutes != task.endTimeMinutes) {
-                updateDailyPlanItemTime(itemId, startTimeMinutes, endTimeMinutes)
-            }
-            _uiState.update { current ->
-                if (clearSuggestions) {
-                    current.copy(
-                        showSuggestions = false,
-                        suggestionStartTimeMinutes = null,
-                        suggestionEndTimeMinutes = null
-                    )
-                } else {
-                    current
+            addSuggestedTaskToMyDay(
+                task = task,
+                suggestionStart = state.suggestionStartTimeMinutes,
+                suggestionEnd = state.suggestionEndTimeMinutes
+            ).onSuccess {
+                _uiState.update { current ->
+                    if (clearSuggestions) {
+                        current.copy(
+                            showSuggestions = false,
+                            suggestionStartTimeMinutes = null,
+                            suggestionEndTimeMinutes = null
+                        )
+                    } else {
+                        current
+                    }
                 }
+                sendEvent(UiEvent.ShowSnackbar("Added to My Day"))
+            }.onFailure { error ->
+                sendEvent(UiEvent.ShowSnackbar(error.message ?: "Unable to add task"))
             }
-            sendEvent(UiEvent.ShowSnackbar("Added to My Day"))
         }
     }
 
@@ -640,16 +582,41 @@ class MyDayViewModel(
         }
     }
 
-    fun startSprint(taskId: Long? = null, dailyPlanItemId: Long? = null, description: String = "") {
+    fun startSprint(taskId: Long? = null, dailyPlanItemId: Long? = null, description: String = "", tagIds: List<Long> = emptyList()) {
         dismissQuickSprint()
-        if (!sprintManager.startSprint(taskId, dailyPlanItemId, description)) {
+        if (!sprintManager.startSprint(taskId, dailyPlanItemId, description, tagIds = tagIds)) {
             sendEvent(UiEvent.ShowSnackbar("A sprint is already in progress"))
         }
     }
 
     fun startSprintWithTask(task: TaskItem) {
         dismissQuickSprint()
-        if (!sprintManager.startSprint(task.id, null, task.name)) {
+        if (!sprintManager.startSprint(task.id, null, task.name, tagIds = task.tags.map { it.id })) {
+            sendEvent(UiEvent.ShowSnackbar("A sprint is already in progress"))
+        }
+    }
+
+    fun startSprintWithChoice(choice: SprintChoice) {
+        dismissQuickSprint()
+        val success = when (choice) {
+            is SprintChoice.Task -> sprintManager.startSprint(
+                choice.task.id,
+                null,
+                choice.task.name,
+                tagIds = choice.task.tags.map { it.id }
+            )
+            is SprintChoice.PlanItem -> {
+                // If the item is already Done, we start a NEW session (new daily plan item) on finish.
+                val itemId = if (choice.item.status == DailyPlanItemStatus.Done) null else choice.item.id
+                sprintManager.startSprint(
+                    choice.item.taskId,
+                    itemId,
+                    choice.item.title,
+                    tagIds = choice.item.tags.map { it.id }
+                )
+            }
+        }
+        if (!success) {
             sendEvent(UiEvent.ShowSnackbar("A sprint is already in progress"))
         }
     }
@@ -667,92 +634,23 @@ class MyDayViewModel(
     fun completeSprint() = sprintManager.completeSprintManually()
 
     fun upgradeToPomodoro() {
-        val current = sprintManager.state.value
-        if (current is SprintState.Finished) {
-            val originalStartTime = current.startTimeEpochMillis
-            
-            if (!sprintManager.startSprint(
-                    taskId = current.taskId,
-                    dailyPlanItemId = current.dailyPlanItemId,
-                    description = current.description,
-                    durationSeconds = 1500, // 25 minutes
-                    isPomodoro = true,
-                    startTimeEpochMillis = originalStartTime
-                )
-            ) {
-                sendEvent(UiEvent.ShowSnackbar("A focus session is already in progress"))
-            }
-        }
+        viewModelScope.launch { sprintTransition.upgradeToPomodoro() }
     }
 
     fun saveSprintAsWin() {
-        // Atomically consume Finished so double-taps cannot save twice.
-        val current = sprintManager.takeFinished() ?: return
-        viewModelScope.launch {
-            try {
-                val todayDate = today()
-                val startInstant = kotlinx.datetime.Instant.fromEpochMilliseconds(current.startTimeEpochMillis)
-                val startDateTime = startInstant.toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
-                val startMinutes = startDateTime.hour * 60 + startDateTime.minute
-                val durationMinutes = (current.elapsedSeconds / 60).coerceAtLeast(1)
-                val endMinutes = startMinutes + durationMinutes
-
-                val taskId = current.taskId
-                val dailyPlanItemId = current.dailyPlanItemId
-
-                if (dailyPlanItemId != null) {
-                    if (_uiState.value.items.none { it.id == dailyPlanItemId }) {
-                        sendEvent(UiEvent.ShowSnackbar("Could not save sprint: plan item no longer exists"))
-                        return@launch
-                    }
-
-                    syncKeyResultFromDailyPlan(
-                        itemId = dailyPlanItemId,
-                        proposedStatus = DailyPlanItemStatus.Done,
-                        proposedStartTime = startMinutes,
-                        proposedEndTime = endMinutes
-                    )
-                    updateDailyPlanItemTime(dailyPlanItemId, startMinutes, endMinutes)
-                    updateDailyPlanItemStatus(dailyPlanItemId, DailyPlanItemStatus.Done)
-                } else if (taskId != null) {
-                    // Start from task but not from a plan item (e.g. from suggestions / quick sprint).
-                    // Multiple plan items per task are intentional.
-                    val task = _uiState.value.board.tasksById[taskId]
-                    if (task == null) {
-                        sendEvent(UiEvent.ShowSnackbar("Could not save sprint: task no longer exists"))
-                        return@launch
-                    }
-                    val itemId = addTaskToDailyPlan(todayDate, task)
-                    
-                    syncKeyResultFromDailyPlan(
-                        itemId = itemId,
-                        proposedStatus = DailyPlanItemStatus.Done,
-                        proposedStartTime = startMinutes,
-                        proposedEndTime = endMinutes
-                    )
-                    updateDailyPlanItemTime(itemId, startMinutes, endMinutes)
-                    updateDailyPlanItemStatus(itemId, DailyPlanItemStatus.Done)
-                } else {
-                    // Ad-hoc sprint
-                    addDailyPlanItem(
-                        date = todayDate,
-                        title = current.description,
-                        note = "Sprint session (${durationMinutes}m)",
-                        startTimeMinutes = startMinutes,
-                        endTimeMinutes = startMinutes + durationMinutes,
-                        source = DailyPlanItemSource.MyDayTask,
-                        status = DailyPlanItemStatus.Done,
-                        tagIds = emptyList()
-                    )
-                }
-            } catch (error: Exception) {
-                sendEvent(UiEvent.ShowSnackbar(error.message ?: "Could not save sprint"))
-            }
-        }
+        viewModelScope.launch { sprintTransition.saveWin() }
     }
 
-    fun logSprintAsTask() {
-        saveSprintAsWin()
+    fun saveAndBreak() {
+        viewModelScope.launch { sprintTransition.saveAndBreak() }
+    }
+
+    fun continueNewPomodoro() {
+        viewModelScope.launch { sprintTransition.saveAndContinue() }
+    }
+
+    fun startNextPomodoro() {
+        viewModelScope.launch { sprintTransition.startNext() }
     }
 
     fun dismissFinishedSprint() = sprintManager.dismissFinished()
@@ -785,7 +683,7 @@ class MyDayViewModel(
     private fun scheduleEditorTextSave() {
         pendingEditorTextSaveJob?.cancel()
         pendingEditorTextSaveJob = viewModelScope.launch {
-            delay(EditorTextSaveDebounceMillis)
+            delay(EditorTextSaveDebounceMillis.milliseconds)
             pendingEditorTextSaveJob = null
             saveCurrentEditor()
         }
@@ -807,122 +705,8 @@ class MyDayViewModel(
         val editor = _uiState.value.itemEditor?.takeIf { it.isEditMode } ?: return
         saveCheckIn(editor)
     }
-}
-
-private fun MyDayUiState.selectedSuggestionTimeRangeFor(task: TaskItem): Pair<Int?, Int?> {
-    val selectedDuration = suggestionStartTimeMinutes?.let { selectedStart ->
-        suggestionEndTimeMinutes?.let { selectedEnd ->
-            (selectedEnd - selectedStart).takeIf { it > 0 }
-        }
-    }
-    val durationMinutes = selectedDuration
-        ?: duration(task.startTimeMinutes, task.endTimeMinutes)
-        ?: DefaultTaskDurationMinutes
-    val preferredStart = suggestionStartTimeMinutes ?: task.preferredMyDayStartTime()
-    return nextAvailableTimeRange(preferredStart, durationMinutes)
-}
-
-private fun TaskItem.preferredMyDayStartTime(): Int {
-    val now = currentMyDayTimeMinutes()
-    val start = startTimeMinutes
-    return if (start == null || start < now) {
-        now
-    } else {
-        start
+    
+    companion object {
+        private const val EditorTextSaveDebounceMillis = 600L
     }
 }
-
-private fun MyDayUiState.nextAvailableTimeRange(
-    preferredStartTimeMinutes: Int,
-    durationMinutes: Int
-): Pair<Int?, Int?> {
-    val duration = durationMinutes.coerceIn(MinimumPlanDurationMinutes, MyDayMinutesPerDay)
-    val lastStart = MyDayMinutesPerDay - duration
-    val preferredStart = preferredStartTimeMinutes.coerceIn(0, lastStart)
-    val occupiedRanges = items
-        .mapNotNull { item -> item.occupiedTimeRange() }
-        .sortedBy { it.first }
-
-    findAvailableStart(preferredStart, duration, occupiedRanges)?.let { start ->
-        return start to start + duration
-    }
-    findAvailableStart(0, duration, occupiedRanges)?.let { start ->
-        return start to start + duration
-    }
-    return null to null
-}
-
-private fun DailyPlanItem.occupiedTimeRange(): Pair<Int, Int>? {
-    val start = startTimeMinutes ?: return null
-    val end = (endTimeMinutes ?: (start + DefaultTaskDurationMinutes)).coerceAtMost(MyDayMinutesPerDay)
-    return if (end > start) start.coerceIn(0, MyDayMinutesPerDay) to end else null
-}
-
-private fun findAvailableStart(
-    preferredStart: Int,
-    durationMinutes: Int,
-    occupiedRanges: List<Pair<Int, Int>>
-): Int? {
-    val lastStart = MyDayMinutesPerDay - durationMinutes
-    var candidate = preferredStart.coerceIn(0, lastStart)
-    occupiedRanges.forEach { (occupiedStart, occupiedEnd) ->
-        if (candidate + durationMinutes <= occupiedStart) return candidate
-        if (candidate < occupiedEnd && candidate + durationMinutes > occupiedStart) {
-            candidate = occupiedEnd.coerceAtMost(lastStart)
-        }
-    }
-    return candidate.takeIf { candidate + durationMinutes <= MyDayMinutesPerDay && !it.overlapsAny(durationMinutes, occupiedRanges) }
-}
-
-private fun Int.overlapsAny(durationMinutes: Int, occupiedRanges: List<Pair<Int, Int>>): Boolean =
-    occupiedRanges.any { (occupiedStart, occupiedEnd) ->
-        this < occupiedEnd && this + durationMinutes > occupiedStart
-    }
-
-private fun DailyPlanItemEditorState.toWriteInput(
-    status: DailyPlanItemStatus,
-    source: DailyPlanItemSource = this.source
-) = DailyPlanItemWriteInput(
-    title = title,
-    note = note,
-    source = source,
-    status = status,
-    startTimeMinutes = startTimeMinutes,
-    endTimeMinutes = if (source.hasEndTime()) endTimeMinutes else null,
-    tagIds = selectedTagIds.toList()
-)
-
-private fun DailyPlanItemEditorState.saveSource(): DailyPlanItemSource =
-    source
-
-private fun DailyPlanItemEditorState.saveStatus(): DailyPlanItemStatus =
-    if (isAddMode) {
-        if (source == DailyPlanItemSource.MyDayNote) DailyPlanItemStatus.Done
-        else source.inferredAddStatus(startTimeMinutes)
-    } else status
-
-private fun DailyPlanItemSource.inferredAddStatus(startTimeMinutes: Int?): DailyPlanItemStatus =
-    if (infersAddStatusFromStartTime() && startTimeMinutes != null && startTimeMinutes < currentMyDayTimeMinutes()) {
-        DailyPlanItemStatus.Done
-    } else {
-        DailyPlanItemStatus.Planned
-    }
-
-private fun DailyPlanItemSource.infersAddStatusFromStartTime(): Boolean =
-    this == DailyPlanItemSource.MyDayTask || this == DailyPlanItemSource.MyDayReminder
-
-private fun DailyPlanItemSource.defaultStatus(): DailyPlanItemStatus = when (this) {
-    DailyPlanItemSource.MyDayNote,
-    DailyPlanItemSource.MyDayReminder -> DailyPlanItemStatus.Planned
-    else -> DailyPlanItemStatus.Done
-}
-
-private fun currentMyDayTimeMinutes(): Int {
-    val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).time
-    return now.hour * 60 + now.minute
-}
-
-private const val DefaultTaskDurationMinutes = 45
-private const val MinimumPlanDurationMinutes = 15
-private const val MyDayMinutesPerDay = 24 * 60
-private const val EditorTextSaveDebounceMillis = 600L

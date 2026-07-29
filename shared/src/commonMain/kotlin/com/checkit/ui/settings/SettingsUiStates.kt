@@ -18,7 +18,7 @@ data class ReminderSettingsUiState(
 data class SettingsUiState(
     val language: AppLanguage = AppLanguage.English,
     val themeMode: AppThemeMode = AppThemeMode.System,
-    val colorSchemeMode: AppColorSchemeMode = AppColorSchemeMode.Sunset,
+    val colorSchemeMode: AppColorSchemeMode = AppColorSchemeMode.SkyBlue,
     val reminders: ReminderSettingsUiState = ReminderSettingsUiState(),
     val tagUsageSort: TagUsageSort = TagUsageSort.MostUsed
 )

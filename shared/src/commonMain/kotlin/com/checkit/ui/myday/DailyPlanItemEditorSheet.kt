@@ -525,16 +525,6 @@ private fun DailyPlanItemEditorState.displaySource(): DailyPlanItemSource =
 private fun DailyPlanItemEditorState.inferredAddStatus(): DailyPlanItemStatus =
     source.inferredAddStatus(startTimeMinutes)
 
-private fun DailyPlanItemSource.inferredAddStatus(startTimeMinutes: Int?): DailyPlanItemStatus =
-    if (infersAddStatusFromStartTime() && startTimeMinutes != null && startTimeMinutes < currentTimeMinutes()) {
-        DailyPlanItemStatus.Done
-    } else {
-        DailyPlanItemStatus.Planned
-    }
-
-private fun DailyPlanItemSource.infersAddStatusFromStartTime(): Boolean =
-    this == DailyPlanItemSource.MyDayTask || this == DailyPlanItemSource.MyDayReminder
-
 private fun DailyPlanItemEditorState.isEditableByDate(): Boolean =
     date > today().minus(2, DateTimeUnit.DAY)
 

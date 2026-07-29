@@ -4,5 +4,5 @@ import com.checkit.domain.ActionReminderQuotes
 
 internal object NotificationText {
     fun withActionQuote(body: String): String =
-        "$body\n${ActionReminderQuotes.random().line}"
+        "$body\n\n${ActionReminderQuotes.random().line}"
 }

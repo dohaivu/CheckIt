@@ -33,7 +33,7 @@ class CheckInReminderWorker(
                 CheckItNotificationCenter(applicationContext).showAppReminder(
                     notificationId = NotificationIds.CheckInReminder,
                     title = message.title,
-                    body = NotificationText.withActionQuote(message.body),
+                    body = message.body,
                     type = AppReminderType.CheckIn
                 )
                 checkInReminderPolicy.markReminderShown(now)

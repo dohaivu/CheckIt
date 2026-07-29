@@ -76,7 +76,7 @@ actual class Platform {
         }
 
         actual fun isAppInForeground(): Boolean {
-            return UIApplication.sharedApplication.applicationState == UIApplicationStateActive
+            return UIApplication.sharedApplication.applicationState == UIApplicationState.UIApplicationStateActive
         }
     }
 }

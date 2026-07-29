@@ -76,7 +76,7 @@ fun CheckItApp(
     }.collectAsState(AppThemeMode.System)
     val appColorSchemeMode by remember(viewModels.settings) {
         viewModels.settings.uiState.map { it.colorSchemeMode }.distinctUntilChanged()
-    }.collectAsState(AppColorSchemeMode.Sunset)
+    }.collectAsState(AppColorSchemeMode.SkyBlue)
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {
