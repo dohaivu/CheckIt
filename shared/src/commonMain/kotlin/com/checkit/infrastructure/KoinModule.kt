@@ -55,6 +55,7 @@ import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.domain.usecase.UpdateGoalUseCase
 import com.checkit.domain.usecase.UpdateObjectiveUseCase
 import com.checkit.domain.usecase.UpdateTagUseCase
+import com.checkit.domain.usecase.UpdateTagSortOrderUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -117,6 +118,7 @@ val provideInteractorModule = module {
     single { DeleteObjectiveUseCase(get()) }
     single { AddTagUseCase(get()) }
     single { UpdateTagUseCase(get()) }
+    single { UpdateTagSortOrderUseCase(get()) }
     single { DeleteTagUseCase(get()) }
     single { IsTagNameTakenUseCase(get()) }
     single { AddTaskUseCase(get()) }
@@ -186,7 +188,7 @@ val provideViewModelModule = module {
     viewModel { GoalViewModel(get(), get(), get()) }
     viewModel { KeyResultViewModel(get()) }
     viewModel { ObjectiveViewModel(get(), get(), get()) }
-    viewModel { TagViewModel(get(), get(), get(), get(), get()) }
+    viewModel { TagViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { CalendarViewModel(get(), get(), get()) }
     viewModel {
         MyDayViewModel(

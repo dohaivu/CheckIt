@@ -9,6 +9,7 @@ import com.checkit.domain.usecase.DeleteTagUseCase
 import com.checkit.domain.usecase.IsTagNameTakenUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.UpdateTagUseCase
+import com.checkit.domain.usecase.UpdateTagSortOrderUseCase
 import com.checkit.ui.tasks.EditorMode
 import com.checkit.ui.tasks.TagEditorState
 import com.checkit.ui.UiEvent
@@ -28,11 +29,12 @@ data class TagUiState(
 )
 
 class TagViewModel(
-    private val observeTaskBoard: ObserveTaskBoardUseCase,
+    private val observeTaskBoard: ObserveTaskBoardUseCase? = null,
     private val addTaskTag: AddTagUseCase,
     private val updateTaskTag: UpdateTagUseCase,
     private val deleteTaskTag: DeleteTagUseCase,
-    private val isTagNameTaken: IsTagNameTakenUseCase
+    private val isTagNameTaken: IsTagNameTakenUseCase,
+    private val updateTagSortOrder: UpdateTagSortOrderUseCase? = null
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(TagUiState())
     val uiState: StateFlow<TagUiState> = _uiState.asStateFlow()
@@ -41,8 +43,9 @@ class TagViewModel(
     val events = _events.receiveAsFlow()
 
     init {
-        viewModelScope.launch {
-            observeTaskBoard().collect { board ->
+        observeTaskBoard?.let { observe ->
+            viewModelScope.launch {
+                observe().collect { board ->
                 val counts = withContext(Dispatchers.Default) {
                     val stats = mutableMapOf<Long, Int>()
                     board.tasks.filter { !it.isTrashed }.forEach { task ->
@@ -58,6 +61,7 @@ class TagViewModel(
                     stats
                 }
                 _uiState.update { it.copy(tagUsageCounts = counts) }
+                }
             }
         }
     }
@@ -121,6 +125,15 @@ class TagViewModel(
             _uiState.update { it.copy(editor = null) }
             sendEvent(UiEvent.ShowSnackbar("Tag deleted"))
             onDeleted()
+        }
+    }
+
+    fun updateTagSortOrders(tags: List<TaskTag>) {
+        val updater = updateTagSortOrder ?: return
+        viewModelScope.launch {
+            tags.forEachIndexed { index, tag ->
+                if (tag.sortOrder != index) updater(tag.id, index)
+            }
         }
     }
 

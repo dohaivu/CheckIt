@@ -179,7 +179,9 @@ data class NoteItem(
 data class TaskTag(
     val id: Long,
     val name: String,
-    val color: String
+    val color: String,
+    val sortOrder: Int = 0,
+    val lastUsedAtMillis: Long = 0L
 ) {
     companion object {
         val None = TaskTag(id = -1, name = "None", color = "#FFFFFF")

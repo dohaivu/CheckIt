@@ -201,7 +201,7 @@ interface CheckItDao {
     @Query("SELECT * FROM objectives ORDER BY sortOrder ASC, title ASC")
     fun observeObjectives(): Flow<List<ObjectiveEntity>>
 
-    @Query("SELECT * FROM tags ORDER BY name ASC")
+    @Query("SELECT * FROM tags ORDER BY sortOrder ASC, lastUsedAtMillis DESC, name ASC")
     fun observeTags(): Flow<List<TagEntity>>
 
     @Query("SELECT * FROM task_filters ORDER BY sortOrder ASC, name ASC")
@@ -263,6 +263,15 @@ interface CheckItDao {
 
     @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM key_results WHERE objectiveId = :objectiveId")
     suspend fun nextKeyResultSortOrder(objectiveId: Long): Int
+
+    @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM tags")
+    suspend fun nextTagSortOrder(): Int
+
+    @Query("UPDATE tags SET sortOrder = :sortOrder WHERE id = :tagId")
+    suspend fun updateTagSortOrder(tagId: Long, sortOrder: Int)
+
+    @Query("UPDATE tags SET lastUsedAtMillis = :lastUsedAtMillis WHERE id = :tagId")
+    suspend fun updateTagLastUsedAtMillis(tagId: Long, lastUsedAtMillis: Long)
 
     @Query("UPDATE key_results SET currentValue = currentValue + :delta WHERE id = :keyResultId")
     suspend fun adjustKeyResultValue(keyResultId: Long, delta: Double)

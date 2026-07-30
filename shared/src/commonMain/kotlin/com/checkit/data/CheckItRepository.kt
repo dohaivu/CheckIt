@@ -49,6 +49,7 @@ interface CheckItRepository {
     suspend fun deleteKeyResult(keyResultId: Long)
     suspend fun addTag(input: TagWriteInput): Long
     suspend fun updateTag(tagId: Long, input: TagWriteInput)
+    suspend fun updateTagSortOrder(tagId: Long, sortOrder: Int)
     suspend fun deleteTag(tagId: Long)
     suspend fun isTagNameTaken(name: String, excludeTagId: Long? = null): Boolean
     suspend fun addTask(input: TaskWriteInput): Long
@@ -269,8 +270,8 @@ class RoomCheckItRepository(
                 sortOrder = 0
             )
         )
-        val workId = dao.insertTag(TagEntity(name = "work", color = "#7C3AED"))
-        val homeId = dao.insertTag(TagEntity(name = "home", color = "#059669"))
+        val workId = dao.insertTag(TagEntity(name = "work", color = "#7C3AED", sortOrder = 0))
+        val homeId = dao.insertTag(TagEntity(name = "home", color = "#059669", sortOrder = 1))
         val todayTaskId = dao.insertTask(
             TaskEntity(
                 objectiveId = inboxId,
@@ -287,7 +288,7 @@ class RoomCheckItRepository(
                 updatedAtMillis = now
             )
         )
-        dao.insertTaskTagIfParentsExist(todayTaskId, workId)
+        addTaskTag(todayTaskId, workId)
         dao.insertSubTask(SubTaskEntity(taskId = todayTaskId, name = "Check calendar", sortOrder = 0))
         dao.insertSubTask(SubTaskEntity(taskId = todayTaskId, name = "Pick top priority", sortOrder = 1))
         dao.insertReminder(
@@ -310,7 +311,7 @@ class RoomCheckItRepository(
                 sortOrder = 1
             )
         )
-        dao.insertNoteTagIfParentsExist(noteId, homeId)
+        addNoteTag(noteId, homeId)
     }
 
     override suspend fun addGoal(input: GoalWriteInput): Long =
@@ -397,12 +398,17 @@ class RoomCheckItRepository(
         dao.insertTag(
             TagEntity(
                 name = input.name,
-                color = input.color
+                color = input.color,
+                sortOrder = dao.nextTagSortOrder()
             )
         )
 
     override suspend fun updateTag(tagId: Long, input: TagWriteInput) {
         dao.updateTag(tagId = tagId, name = input.name, color = input.color)
+    }
+
+    override suspend fun updateTagSortOrder(tagId: Long, sortOrder: Int) {
+        dao.updateTagSortOrder(tagId, sortOrder)
     }
 
     override suspend fun deleteTag(tagId: Long) {
@@ -432,7 +438,7 @@ class RoomCheckItRepository(
                 updatedAtMillis = now
             )
         )
-        input.tagIds.forEach { tagId -> dao.insertTaskTagIfParentsExist(taskId, tagId) }
+        input.tagIds.forEach { tagId -> addTaskTag(taskId, tagId) }
         dao.replaceTaskSubTasks(taskId, input.subtasks)
         dao.replaceTaskReminders(taskId, input.reminders)
         scheduleTaskReminders(taskId, input)
@@ -458,7 +464,7 @@ class RoomCheckItRepository(
             updatedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
         dao.deleteTaskTags(taskId)
-        input.tagIds.forEach { tagId -> dao.insertTaskTagIfParentsExist(taskId, tagId) }
+        input.tagIds.forEach { tagId -> addTaskTag(taskId, tagId) }
         dao.replaceTaskSubTasks(taskId, input.subtasks)
         dao.replaceTaskReminders(taskId, input.reminders)
         if (shouldRemoveOpenDailyPlanItems) {
@@ -527,7 +533,7 @@ class RoomCheckItRepository(
                 completedAtMillis = if (task.status == TaskStatus.Completed) now else null
             )
         )
-        task.tags.forEach { tag -> dao.insertDailyPlanItemTagIfParentsExist(itemId, tag.id) }
+        task.tags.forEach { tag -> addDailyPlanItemTag(itemId, tag.id) }
         dailyPlanScheduleReminderScheduler.rescheduleNext()
         return itemId
     }
@@ -558,7 +564,7 @@ class RoomCheckItRepository(
                 completedAtMillis = if (status == DailyPlanItemStatus.Done) now else null
             )
         )
-        tagIds.forEach { tagId -> dao.insertDailyPlanItemTagIfParentsExist(itemId, tagId) }
+        tagIds.forEach { tagId -> addDailyPlanItemTag(itemId, tagId) }
         return itemId
     }
 
@@ -621,7 +627,7 @@ class RoomCheckItRepository(
             }
         )
         dao.deleteDailyPlanItemTags(itemId)
-        input.tagIds.forEach { tagId -> dao.insertDailyPlanItemTagIfParentsExist(itemId, tagId) }
+        input.tagIds.forEach { tagId -> addDailyPlanItemTag(itemId, tagId) }
         dailyPlanScheduleReminderScheduler.rescheduleNext()
     }
 
@@ -670,7 +676,7 @@ class RoomCheckItRepository(
                 completedAtMillis = null
             )
         )
-        source.tags.forEach { tag -> dao.insertDailyPlanItemTagIfParentsExist(itemId, tag.id) }
+        source.tags.forEach { tag -> addDailyPlanItemTag(itemId, tag.id) }
         dailyPlanScheduleReminderScheduler.rescheduleNext()
         return itemId
     }
@@ -704,7 +710,7 @@ class RoomCheckItRepository(
                 sortOrder = dao.nextNoteSortOrder(input.objectiveId)
             )
         )
-        input.tagIds.forEach { tagId -> dao.insertNoteTagIfParentsExist(noteId, tagId) }
+        input.tagIds.forEach { tagId -> addNoteTag(noteId, tagId) }
         return noteId
     }
 
@@ -720,7 +726,7 @@ class RoomCheckItRepository(
             editedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
         dao.deleteNoteTags(noteId)
-        input.tagIds.forEach { tagId -> dao.insertNoteTagIfParentsExist(noteId, tagId) }
+        input.tagIds.forEach { tagId -> addNoteTag(noteId, tagId) }
     }
 
     override suspend fun trashNote(noteId: Long) {
@@ -729,6 +735,21 @@ class RoomCheckItRepository(
 
     override suspend fun restoreNote(noteId: Long) {
         dao.restoreNote(noteId, Clock.System.now().toEpochMilliseconds())
+    }
+
+    private suspend fun addTaskTag(taskId: Long, tagId: Long) {
+        dao.insertTaskTagIfParentsExist(taskId, tagId)
+        dao.updateTagLastUsedAtMillis(tagId, Clock.System.now().toEpochMilliseconds())
+    }
+
+    private suspend fun addNoteTag(noteId: Long, tagId: Long) {
+        dao.insertNoteTagIfParentsExist(noteId, tagId)
+        dao.updateTagLastUsedAtMillis(tagId, Clock.System.now().toEpochMilliseconds())
+    }
+
+    private suspend fun addDailyPlanItemTag(itemId: Long, tagId: Long) {
+        dao.insertDailyPlanItemTagIfParentsExist(itemId, tagId)
+        dao.updateTagLastUsedAtMillis(tagId, Clock.System.now().toEpochMilliseconds())
     }
 
     override suspend fun completeNote(noteId: Long) {
@@ -909,7 +930,9 @@ private fun KeyResultEntity.toDomain() = KeyResult(
 private fun TagEntity.toDomain() = TaskTag(
     id = id,
     name = name,
-    color = color
+    color = color,
+    sortOrder = sortOrder,
+    lastUsedAtMillis = lastUsedAtMillis
 )
 
 private fun TaskFilterEntity.toDomain() = TaskFilter(

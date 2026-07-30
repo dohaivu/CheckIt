@@ -3,6 +3,7 @@ package com.checkit.ui.tasks.tag
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,12 +15,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -29,6 +32,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -51,6 +57,9 @@ internal fun TagScreen(
     modifier: Modifier = Modifier
 ) {
     val state by tagViewModel.uiState.collectAsState()
+    var orderedTags by remember(tags) { mutableStateOf(tags) }
+    var draggedTagId by remember { mutableStateOf<Long?>(null) }
+    val listState = rememberLazyListState()
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -84,19 +93,42 @@ internal fun TagScreen(
             )
         } else {
             LazyColumn(
+                state = listState,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                items(tags, key = { it.id }) { tag ->
+                items(orderedTags, key = { it.id }) { tag ->
                     TagRow(
                         tag = tag,
                         usageCount = state.tagUsageCounts[tag.id] ?: 0,
                         selected = selectedTagId == tag.id,
                         onClick = { onTagClick(tag.id) },
-                        onLongClick = { tagViewModel.openEditTag(tag) }
+                        onLongClick = { tagViewModel.openEditTag(tag) },
+                        onDragStart = { draggedTagId = tag.id },
+                        onDrag = { delta ->
+                            val fromIndex = orderedTags.indexOfFirst { it.id == tag.id }
+                            val current = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == tag.id }
+                            val target = current?.let { item ->
+                                listState.layoutInfo.visibleItemsInfo.firstOrNull { candidate ->
+                                    val candidateCenter = candidate.offset + candidate.size / 2
+                                    (delta > 0 && candidateCenter > item.offset + item.size / 2) ||
+                                        (delta < 0 && candidateCenter < item.offset + item.size / 2)
+                                }
+                            }
+                            val toIndex = target?.index
+                            if (fromIndex >= 0 && toIndex != null && fromIndex != toIndex) {
+                                orderedTags = orderedTags.toMutableList().apply {
+                                    add(toIndex, removeAt(fromIndex))
+                                }
+                            }
+                        },
+                        onDragEnd = {
+                            if (draggedTagId != null) tagViewModel.updateTagSortOrders(orderedTags)
+                            draggedTagId = null
+                        }
                     )
                 }
             }
@@ -110,7 +142,10 @@ private fun TagRow(
     usageCount: Int,
     selected: Boolean,
     onClick: () -> Unit,
-    onLongClick: () -> Unit
+    onLongClick: () -> Unit,
+    onDragStart: () -> Unit,
+    onDrag: (Float) -> Unit,
+    onDragEnd: () -> Unit
 ) {
     val background = if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
     Row(
@@ -158,6 +193,22 @@ private fun TagRow(
                 )
             }
         }
+        Icon(
+            imageVector = Icons.Default.DragHandle,
+            contentDescription = "Reorder tag",
+            modifier = Modifier.pointerInput(tag.id) {
+                detectDragGestures(
+                    onDragStart = { onDragStart() },
+                    onDragEnd = onDragEnd,
+                    onDragCancel = onDragEnd,
+                    onDrag = { change, dragAmount ->
+                        change.consume()
+                        onDrag(dragAmount.y)
+                    }
+                )
+            },
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

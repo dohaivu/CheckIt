@@ -59,7 +59,9 @@ data class TagEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0L,
     val name: String,
-    val color: String
+    val color: String,
+    val sortOrder: Int = 0,
+    val lastUsedAtMillis: Long = 0L
 )
 
 @Entity(
@@ -339,7 +341,7 @@ data class TaskFilterEntity(
         TaskReminderEntity::class,
         TaskFilterEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)
@@ -358,7 +360,14 @@ fun buildCheckItDatabase(
     return builder
         .fallbackToDestructiveMigration(false)
         .fallbackToDestructiveMigrationOnDowngrade(false)
-        .addMigrations()
+        .addMigrations(
+            object : Migration(2, 3) {
+                override suspend fun migrate(connection: SQLiteConnection) {
+                    connection.execSQL("ALTER TABLE tags ADD COLUMN sortOrder INTEGER NOT NULL DEFAULT 0")
+                    connection.execSQL("ALTER TABLE tags ADD COLUMN lastUsedAtMillis INTEGER NOT NULL DEFAULT 0")
+                }
+            }
+        )
         .setQueryCoroutineContext(Dispatchers.IO)
         .setDriver(BundledSQLiteDriver())
         .build()

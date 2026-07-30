@@ -42,6 +42,7 @@ internal class FakeCheckItRepository(
     val deletedObjectives = mutableListOf<Long>()
     val addedTags = mutableListOf<TagWriteInput>()
     val updatedTags = mutableListOf<Pair<Long, TagWriteInput>>()
+    val updatedTagSortOrders = mutableListOf<Pair<Long, Int>>()
     val deletedTags = mutableListOf<Long>()
     val addedTasks = mutableListOf<TaskWriteInput>()
     val updatedTasks = mutableListOf<Pair<Long, TaskWriteInput>>()
@@ -250,6 +251,15 @@ internal class FakeCheckItRepository(
                     }
                 }
             )
+        }
+    }
+
+    override suspend fun updateTagSortOrder(tagId: Long, sortOrder: Int) {
+        updatedTagSortOrders.add(tagId to sortOrder)
+        boardFlow.update { board ->
+            board.copy(tags = board.tags.map { tag ->
+                if (tag.id == tagId) tag.copy(sortOrder = sortOrder) else tag
+            })
         }
     }
 
