@@ -289,6 +289,7 @@ private fun DailyPlanItemFormContent(
             source = displaySource,
             startTimeMinutes = state.startTimeMinutes,
             endTimeMinutes = state.endTimeMinutes,
+            isOverdue = state.isOverdue,
             onStartTimeChange = { timeMinutes ->
                 onStartTimeChange(timeMinutes)
                 if (!sourceLocked) {
@@ -374,6 +375,7 @@ private fun TimeSection(
     source: DailyPlanItemSource,
     startTimeMinutes: Int?,
     endTimeMinutes: Int?,
+    isOverdue: Boolean,
     onStartTimeChange: (Int?) -> Unit,
     onEndTimeChange: (Int?) -> Unit,
     enabled: Boolean
@@ -391,7 +393,8 @@ private fun TimeSection(
                 timeMinutes = startTimeMinutes,
                 initialTimeMinutes = currentTimeMinutes(),
                 onTimeChange = onStartTimeChange,
-                enabled = enabled
+                enabled = enabled,
+                isOverdue = isOverdue
             )
         } else {
             TimeRangePicker(
@@ -399,7 +402,8 @@ private fun TimeSection(
                 endTimeMinutes = endTimeMinutes,
                 onStartTimeChange = onStartTimeChange,
                 onEndTimeChange = onEndTimeChange,
-                enabled = enabled
+                enabled = enabled,
+                isOverdue = isOverdue
             )
         }
     }

@@ -11,6 +11,7 @@ import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.YesterdayLeftovers
 import com.checkit.ui.tasks.EditorMode
+import com.checkit.ui.tasks.isOverdue
 import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
 
@@ -115,6 +116,12 @@ data class DailyPlanItemEditorState(
     val isAddMode: Boolean get() = mode == EditorMode.Add
     val isEditMode: Boolean get() = mode == EditorMode.Edit
     val canDelete: Boolean get() = itemId != null
+    val isOverdue: Boolean
+        get() = date.isOverdue(
+            today = today(),
+            deadline = endTimeMinutes ?: startTimeMinutes,
+            isCompleted = status == DailyPlanItemStatus.Done
+        )
 
     fun saveSource(): DailyPlanItemSource = source
 
