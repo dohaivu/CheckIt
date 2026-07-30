@@ -21,7 +21,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.AddTask
-import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
@@ -138,14 +137,11 @@ internal fun MyDayScreen(
         },
         floatingActionButton = {
             if (sprintState is SprintState.Idle) {
-                FloatingActionButton(
-                    onClick = viewModel::openQuickSprint,
-                    shape = FloatingActionButtonDefaults.smallShape,
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ) {
-                    Icon(Icons.Default.Bolt, contentDescription = "Quick Sprint")
-                }
+                SpeedSprintFab(
+                    lastAction = state.lastFabAction,
+                    recentTags = state.recentTags,
+                    onExecuteAction = viewModel::executeFabAction
+                )
             }
         }
     ) { padding ->

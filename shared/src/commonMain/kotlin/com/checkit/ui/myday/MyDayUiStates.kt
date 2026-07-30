@@ -9,6 +9,7 @@ import com.checkit.domain.LeftoverAction
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
+import com.checkit.domain.TaskTag
 import com.checkit.domain.YesterdayLeftovers
 import com.checkit.ui.tasks.EditorMode
 import com.checkit.ui.tasks.isOverdue
@@ -18,6 +19,11 @@ import kotlinx.datetime.LocalDate
 sealed class SprintChoice {
     data class Task(val task: TaskItem) : SprintChoice()
     data class PlanItem(val item: DailyPlanItem, val task: TaskItem? = null) : SprintChoice()
+}
+
+sealed interface FabAction {
+    data object QuickSprint : FabAction
+    data class TagSprint(val tag: TaskTag) : FabAction
 }
 
 data class MyDayUiState(
@@ -45,6 +51,8 @@ data class MyDayUiState(
     val showCelebration: Boolean = false,
     val suggestionStartTimeMinutes: Int? = null,
     val suggestionEndTimeMinutes: Int? = null,
+    val recentTags: List<TaskTag> = emptyList(),
+    val lastFabAction: FabAction = FabAction.QuickSprint,
     val isLoading: Boolean = true
 ) {
     val today: LocalDate = today()

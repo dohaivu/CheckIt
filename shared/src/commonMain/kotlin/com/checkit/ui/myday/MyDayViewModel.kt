@@ -107,6 +107,10 @@ class MyDayViewModel(
                         )
                     }
                     _uiState.update { state ->
+                        val lastFabAction = when (settings.lastFabActionType) {
+                            "TagSprint" -> board.tags.find { it.id == settings.lastFabActionId }?.let { FabAction.TagSprint(it) } ?: FabAction.QuickSprint
+                            else -> FabAction.QuickSprint
+                        }
                         state.copy(
                             board = board,
                             dailyPlans = dailyPlans,
@@ -122,6 +126,8 @@ class MyDayViewModel(
                             autoCarryOverLeftovers = settings.autoCarryOverLeftovers,
                             yesterdayLeftovers = leftovers,
                             pendingYesterdayLeftovers = pendingLeftovers,
+                            recentTags = board.tags.sortedByDescending { it.lastUsedAtMillis }.take(5),
+                            lastFabAction = lastFabAction,
                             showLeftoversBanner = showLeftoversBanner &&
                                 review == null &&
                                 !state.showLeftoversSheet,
@@ -591,6 +597,28 @@ class MyDayViewModel(
         viewModelScope.launch {
             deleteDailyPlanItemUseCase(itemId)
             _uiState.update(updateState)
+        }
+    }
+
+    fun executeFabAction(action: FabAction) {
+        when (action) {
+            is FabAction.QuickSprint -> openQuickSprint()
+            is FabAction.TagSprint -> {
+                val tag = action.tag
+                startSprint(description = tag.name, tagIds = listOf(tag.id))
+                viewModelScope.launch {
+                    settingsRepository.setLastFabAction("TagSprint", tag.id)
+                }
+            }
+        }
+    }
+
+    fun setLastFabAction(action: FabAction) {
+        viewModelScope.launch {
+            when (action) {
+                is FabAction.QuickSprint -> settingsRepository.setLastFabAction("QuickSprint", null)
+                is FabAction.TagSprint -> settingsRepository.setLastFabAction("TagSprint", action.tag.id)
+            }
         }
     }
 

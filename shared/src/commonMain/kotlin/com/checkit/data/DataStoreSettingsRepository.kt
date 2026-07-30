@@ -87,4 +87,8 @@ class DataStoreSettingsRepository(
     override suspend fun setLastDayPlanDismissedEpochDay(epochDay: Int) {
         dataStore.setLastDayPlanDismissedEpochDay(epochDay)
     }
+
+    override suspend fun setLastFabAction(type: String, id: Long?) {
+        dataStore.setLastFabAction(type, id)
+    }
 }

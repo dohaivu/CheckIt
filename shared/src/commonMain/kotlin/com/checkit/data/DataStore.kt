@@ -41,6 +41,8 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
                 autoCarryOverLastRunEpochDay = prefs[KEY_AUTO_CARRY_OVER_LAST_RUN_EPOCH_DAY],
                 leftoversBannerDismissedEpochDay = prefs[KEY_LEFTOVERS_BANNER_DISMISSED_EPOCH_DAY],
                 lastDayPlanDismissedEpochDay = prefs[KEY_LAST_DAY_PLAN_DISMISSED_EPOCH_DAY],
+                lastFabActionType = prefs[KEY_LAST_FAB_ACTION_TYPE] ?: UserSettings().lastFabActionType,
+                lastFabActionId = prefs[KEY_LAST_FAB_ACTION_ID]
             )
         }
 
@@ -124,6 +126,17 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { it[KEY_LAST_DAY_PLAN_DISMISSED_EPOCH_DAY] = epochDay }
     }
 
+    suspend fun setLastFabAction(type: String, id: Long?) {
+        dataStore.edit { prefs ->
+            prefs[KEY_LAST_FAB_ACTION_TYPE] = type
+            if (id != null) {
+                prefs[KEY_LAST_FAB_ACTION_ID] = id
+            } else {
+                prefs.remove(KEY_LAST_FAB_ACTION_ID)
+            }
+        }
+    }
+
     private companion object {
         const val MinutesPerDay = 24 * 60
         val KEY_LANGUAGE = stringPreferencesKey("language")
@@ -146,6 +159,8 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
         val KEY_AUTO_CARRY_OVER_LAST_RUN_EPOCH_DAY = intPreferencesKey("auto_carry_over_last_run_epoch_day")
         val KEY_LEFTOVERS_BANNER_DISMISSED_EPOCH_DAY = intPreferencesKey("leftovers_banner_dismissed_epoch_day")
         val KEY_LAST_DAY_PLAN_DISMISSED_EPOCH_DAY = intPreferencesKey("last_day_plan_dismissed_epoch_day")
+        val KEY_LAST_FAB_ACTION_TYPE = stringPreferencesKey("last_fab_action_type")
+        val KEY_LAST_FAB_ACTION_ID = longPreferencesKey("last_fab_action_id")
     }
 }
 
