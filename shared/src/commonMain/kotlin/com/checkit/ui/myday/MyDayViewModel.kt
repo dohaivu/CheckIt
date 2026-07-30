@@ -11,6 +11,8 @@ import com.checkit.ui.UiEvent
 import com.checkit.ui.today
 import com.checkit.ui.currentMyDayTimeMinutes
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +27,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import com.checkit.domain.SprintManager
 import kotlinx.coroutines.sync.withLock
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.milliseconds
 
 class MyDayViewModel(
@@ -681,6 +684,41 @@ class MyDayViewModel(
 
         startSprintWithChoice(SprintChoice.PlanItem(planItem, _uiState.value.board.tasksById[planItem.taskId]))
         _uiState.update { it.copy(itemEditor = null) }
+    }
+
+    fun startOngoingSprintFromEditor() {
+        val editor = _uiState.value.itemEditor ?: return
+        val startTimeMinutes = editor.startTimeMinutes ?: return
+        
+        val date = editor.date
+        val scheduledTimeMillis = date.atStartOfDayIn(TimeZone.currentSystemDefault()).toEpochMilliseconds() + (startTimeMinutes * 60 * 1000L)
+        val nowMillis = Clock.System.now().toEpochMilliseconds()
+        
+        val elapsedSeconds = ((nowMillis - scheduledTimeMillis) / 1000).toInt()
+        val pomodoroDurationSeconds = 25 * 60
+        val gracePeriodSeconds = 5 * 60
+
+        val (durationSeconds, isPomodoro) = when {
+            elapsedSeconds < 0 -> pomodoroDurationSeconds to true
+            elapsedSeconds < pomodoroDurationSeconds -> pomodoroDurationSeconds to true
+            else -> (elapsedSeconds + gracePeriodSeconds) to false
+        }
+
+        val success = sprintManager.startSprint(
+            taskId = editor.taskId,
+            dailyPlanItemId = editor.itemId,
+            description = editor.title,
+            durationSeconds = durationSeconds,
+            isPomodoro = isPomodoro,
+            tagIds = editor.selectedTagIds.toList(),
+            startTimeEpochMillis = if (elapsedSeconds < 0) nowMillis else scheduledTimeMillis
+        )
+
+        if (success) {
+            _uiState.update { it.copy(itemEditor = null) }
+        } else {
+            sendEvent(UiEvent.ShowSnackbar("A sprint is already in progress"))
+        }
     }
 
     fun openQuickSprint() {

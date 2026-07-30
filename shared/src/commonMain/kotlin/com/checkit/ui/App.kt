@@ -383,7 +383,8 @@ fun CheckItApp(
                             onNewTagClick = viewModels.tag::openNewTag,
                             onAdd = viewModels.myDay::addDailyPlan,
                             onDelete = viewModels.myDay::deleteDailyPlan,
-                            onStartSprint = viewModels.myDay::startNewSprintFromEditor
+                            onStartSprint = viewModels.myDay::startNewSprintFromEditor,
+                            onStartOngoingSprint = viewModels.myDay::startOngoingSprintFromEditor
                         )
                     }
                     tagUiState.editor?.let { tagEditor ->

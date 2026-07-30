@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.Button
@@ -66,7 +67,8 @@ internal fun DailyPlanItemEditorSheet(
     onNewTagClick: () -> Unit,
     onAdd: () -> Unit,
     onDelete: () -> Unit,
-    onStartSprint: () -> Unit
+    onStartSprint: () -> Unit,
+    onStartOngoingSprint: () -> Unit
 ) {
     val enabled = state.isEditableByDate()
 
@@ -109,7 +111,8 @@ internal fun DailyPlanItemEditorSheet(
             state = state,
             enabled = enabled,
             onAdd = onAdd,
-            onStartSprint = onStartSprint
+            onStartSprint = onStartSprint,
+            onStartOngoingSprint = onStartOngoingSprint
         )
     }
 }
@@ -158,12 +161,13 @@ private fun DailyPlanItemSheetFooter(
     state: DailyPlanItemEditorState,
     enabled: Boolean,
     onAdd: () -> Unit,
-    onStartSprint: () -> Unit
+    onStartSprint: () -> Unit,
+    onStartOngoingSprint: () -> Unit
 ) {
     if (enabled) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.Center,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (state.isAddMode) {
@@ -173,14 +177,31 @@ private fun DailyPlanItemSheetFooter(
                 ) {
                     Text("Add to My Day")
                 }
-            } else if (state.source == DailyPlanItemSource.MyDayTask) {
-                Button(
-                    onClick = onStartSprint,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Default.Schedule, contentDescription = null)
-                    Spacer(Modifier.size(8.dp))
-                    Text("Start focus session")
+            } else {
+                if (state.status == DailyPlanItemStatus.Planned && state.startTimeMinutes != null) {
+                    Button(
+                        onClick = onStartOngoingSprint,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Default.Bolt, contentDescription = null)
+                        Spacer(Modifier.size(8.dp))
+                        Text("Focus ongoing")
+                    }
+                }
+                
+                if (state.source == DailyPlanItemSource.MyDayTask) {
+                    Button(
+                        onClick = onStartSprint,
+                        modifier = if (state.status == DailyPlanItemStatus.Planned && state.startTimeMinutes != null) {
+                            Modifier.weight(1f)
+                        } else {
+                            Modifier.fillMaxWidth()
+                        }
+                    ) {
+                        Icon(Icons.Default.Schedule, contentDescription = null)
+                        Spacer(Modifier.size(8.dp))
+                        Text(if (state.status == DailyPlanItemStatus.Done) "Start new session" else "Start focus")
+                    }
                 }
             }
         }
