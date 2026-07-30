@@ -232,7 +232,7 @@ private fun DailyPlanItemFormContent(
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.SemiBold
             ),
-            minLines = 2,
+            minLines = 1,
             maxLines = 3,
             placeholder = displaySource.titlePlaceholder(),
             enabled = enabled,
