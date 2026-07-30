@@ -34,9 +34,6 @@ interface CheckItDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertDailyPlanItem(item: DailyPlanItemEntity): Long
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertFilter(filter: TaskFilterEntity): Long
-
     @Query(
         """
         INSERT INTO task_filters(
@@ -81,15 +78,6 @@ interface CheckItDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertReminder(reminder: TaskReminderEntity): Long
-
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insertTaskTag(taskTag: TaskTagEntity)
-
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insertNoteTag(noteTag: NoteTagEntity)
-
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insertDailyPlanItemTag(dailyPlanItemTag: DailyPlanItemTagEntity)
 
     @Query(
         """
