@@ -124,7 +124,7 @@
     <string name="sprint_pomodoro_finish_subtitle">Great focus block. Time for a breather?</string>
     <string name="sprint_break_finish_title">Break Finished!</string>
     <string name="sprint_break_finish_subtitle">Ready to dive back in?</string>
-    <string name="sprint_action_save">Stop &amp; Save Win</string>
+    <string name="sprint_action_save">Stop &amp; Save</string>
     <string name="sprint_action_save_and_break">Save &amp; Break (5m)</string>
     <string name="sprint_action_continue_pomodoro">Continue New Pomodoro</string>
     <string name="sprint_action_next_pomodoro">Start New Pomodoro</string>

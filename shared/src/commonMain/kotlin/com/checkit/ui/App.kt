@@ -67,6 +67,7 @@ fun CheckItApp(
     openPlanAssistLaunch: Boolean = false,
     openCheckInLaunch: Boolean = false,
     openQuickSprintLaunch: Boolean = false,
+    startSprintItemIdLaunch: Long? = null,
     onWidgetLaunchConsumed: () -> Unit = {}
 ) {
     val navState = rememberAppNavigationState()
@@ -153,7 +154,7 @@ fun CheckItApp(
     LaunchedEffect(openCheckInLaunch) {
         if (!openCheckInLaunch) return@LaunchedEffect
         navState.resetTo(AppRoute.MyDay)
-        viewModels.myDay.openCheckInAtFreeSlot()
+        viewModels.myDay.openQuickSprint()
         onWidgetLaunchConsumed()
     }
 
@@ -161,6 +162,14 @@ fun CheckItApp(
         if (!openQuickSprintLaunch) return@LaunchedEffect
         navState.resetTo(AppRoute.MyDay)
         viewModels.myDay.openQuickSprint()
+        onWidgetLaunchConsumed()
+    }
+
+    LaunchedEffect(startSprintItemIdLaunch, myDayUiState.dailyPlans) {
+        if (startSprintItemIdLaunch == null) return@LaunchedEffect
+        if (myDayUiState.dailyPlans.isEmpty()) return@LaunchedEffect
+        navState.resetTo(AppRoute.MyDay)
+        viewModels.myDay.startSprintByItemId(startSprintItemIdLaunch)
         onWidgetLaunchConsumed()
     }
 
@@ -260,7 +269,7 @@ fun CheckItApp(
                                             calendarViewModel = viewModels.calendar,
                                             onDateDoubleClick = { date -> viewModels.task.openNewTaskOnDate(date) },
                                             onDailyPlanItemClick = viewModels.myDay::openItemEditor,
-                                            onAddDailyPlanItem = { date -> viewModels.myDay.openCheckIn(date = date) },
+                                            onAddDailyPlanItem = { date -> viewModels.myDay.openDailyPlan(date = date) },
                                             onTaskClick = viewModels.task::openTask,
                                             onNoteClick = viewModels.task::openNote,
                                             onNewTagClick = viewModels.tag::openNewTag
@@ -363,7 +372,7 @@ fun CheckItApp(
                         DailyPlanItemEditorSheet(
                             state = editor,
                             availableTags = myDayUiState.board.tags,
-                            onDismiss = viewModels.myDay::dismissCheckIn,
+                            onDismiss = viewModels.myDay::dismissDailyPlanEditor,
                             onTitleChange = viewModels.myDay::updateTitle,
                             onNoteChange = viewModels.myDay::updateNote,
                             onStatusChange = viewModels.myDay::updateStatus,
@@ -372,8 +381,9 @@ fun CheckItApp(
                             onEndTimeChange = viewModels.myDay::updateEndTime,
                             onTagToggle = viewModels.myDay::toggleTag,
                             onNewTagClick = viewModels.tag::openNewTag,
-                            onAdd = viewModels.myDay::addCheckIn,
-                            onDelete = viewModels.myDay::deleteEditorItem
+                            onAdd = viewModels.myDay::addDailyPlan,
+                            onDelete = viewModels.myDay::deleteDailyPlan,
+                            onStartSprint = viewModels.myDay::startNewSprintFromEditor
                         )
                     }
                     tagUiState.editor?.let { tagEditor ->

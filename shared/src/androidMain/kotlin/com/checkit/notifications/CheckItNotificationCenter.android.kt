@@ -18,6 +18,7 @@ import com.checkit.widget.ExtraDailyPlanItemId
 import com.checkit.widget.ExtraOpenCheckIn
 import com.checkit.widget.ExtraOpenDayReview
 import com.checkit.widget.ExtraOpenPlanAssist
+import com.checkit.widget.ExtraStartSprintForItemId
 import java.time.LocalTime
 
 class CheckItNotificationCenter(
@@ -69,8 +70,13 @@ class CheckItNotificationCenter(
             body = NotificationText.withActionQuote("Starting now"),
             subText = AppReminderType.Schedule.subText,
             dailyPlanItemId = itemId,
+            startSprintItemId = itemId,
             bypassDnd = false
         )
+    }
+
+    fun dismissDailyPlanScheduleReminder(itemId: Long) {
+        notificationManager.cancel(NotificationIds.dailyPlanSchedule(itemId))
     }
 
     private fun showReminder(
@@ -127,6 +133,7 @@ class CheckItNotificationCenter(
         body: String,
         subText: String?,
         dailyPlanItemId: Long?,
+        startSprintItemId: Long? = null,
         bypassDnd: Boolean
     ) {
         showReminder(
@@ -136,6 +143,7 @@ class CheckItNotificationCenter(
             body = body,
             subText = subText,
             dailyPlanItemId = dailyPlanItemId,
+            startSprintItemId = startSprintItemId,
             openPlanAssist = false,
             openDayReview = false,
             openCheckIn = false,
@@ -150,6 +158,7 @@ class CheckItNotificationCenter(
         body: String,
         subText: String?,
         dailyPlanItemId: Long?,
+        startSprintItemId: Long? = null,
         openPlanAssist: Boolean = false,
         openDayReview: Boolean = false,
         openCheckIn: Boolean = false,
@@ -162,6 +171,7 @@ class CheckItNotificationCenter(
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             dailyPlanItemId?.let { putExtra(ExtraDailyPlanItemId, it) }
+            startSprintItemId?.let { putExtra(ExtraStartSprintForItemId, it) }
             if (openPlanAssist) putExtra(ExtraOpenPlanAssist, true)
             if (openDayReview) putExtra(ExtraOpenDayReview, true)
             if (openCheckIn) putExtra(ExtraOpenCheckIn, true)
@@ -173,7 +183,7 @@ class CheckItNotificationCenter(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val iconRes = context.applicationInfo.icon
-        val notification = NotificationCompat.Builder(context, NotificationChannels.ReminderId)
+        val builder = NotificationCompat.Builder(context, NotificationChannels.ReminderId)
             .setSmallIcon(if (iconRes != 0) iconRes else R.mipmap.ic_launcher_round)
             .setContentTitle(title)
             .setContentText(body)
@@ -184,9 +194,26 @@ class CheckItNotificationCenter(
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .build()
 
-        notificationManager.notify(notificationId, notification)
+        if (startSprintItemId != null) {
+            val startIntent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra(ExtraStartSprintForItemId, startSprintItemId)
+            }
+            val startPendingIntent = PendingIntent.getActivity(
+                context,
+                requestCode + 1000, // Offset to avoid collision
+                startIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            builder.addAction(
+                0, // No icon for now
+                "Start",
+                startPendingIntent
+            )
+        }
+
+        notificationManager.notify(notificationId, builder.build())
     }
 
     fun ensureChannels() {

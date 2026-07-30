@@ -20,6 +20,7 @@ import com.checkit.widget.ExtraOpenDayReview
 import com.checkit.widget.ExtraOpenMyDaySuggestions
 import com.checkit.widget.ExtraOpenPlanAssist
 import com.checkit.widget.ExtraOpenQuickSprint
+import com.checkit.widget.ExtraStartSprintForItemId
 import com.checkit.widget.ExtraTaskId
 
 class MainActivity : ComponentActivity() {
@@ -32,6 +33,7 @@ class MainActivity : ComponentActivity() {
     private val openPlanAssistLaunch = mutableStateOf(false)
     private val openCheckInLaunch = mutableStateOf(false)
     private val openQuickSprintLaunch = mutableStateOf(false)
+    private val startSprintItemIdLaunch = mutableStateOf<Long?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -56,6 +58,7 @@ class MainActivity : ComponentActivity() {
                 openPlanAssistLaunch = openPlanAssistLaunch.value,
                 openCheckInLaunch = openCheckInLaunch.value,
                 openQuickSprintLaunch = openQuickSprintLaunch.value,
+                startSprintItemIdLaunch = startSprintItemIdLaunch.value,
                 onWidgetLaunchConsumed = ::clearWidgetLaunch
             )
         }
@@ -82,7 +85,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleLaunchIntent(intent: Intent) {
-        dailyPlanItemLaunchId.value = intent.longExtraOrNull(ExtraDailyPlanItemId)
+        val dailyPlanItemId = intent.longExtraOrNull(ExtraDailyPlanItemId)
+        dailyPlanItemLaunchId.value = dailyPlanItemId
         taskLaunchId.value = intent.longExtraOrNull(ExtraTaskId)
         noteLaunchId.value = intent.longExtraOrNull(ExtraNoteId)
         openMyDaySuggestionsLaunch.value = intent.getBooleanExtra(ExtraOpenMyDaySuggestions, false)
@@ -90,6 +94,15 @@ class MainActivity : ComponentActivity() {
         openPlanAssistLaunch.value = intent.getBooleanExtra(ExtraOpenPlanAssist, false)
         openCheckInLaunch.value = intent.getBooleanExtra(ExtraOpenCheckIn, false)
         openQuickSprintLaunch.value = intent.getBooleanExtra(ExtraOpenQuickSprint, false)
+        
+        val startSprintItemId = intent.longExtraOrNull(ExtraStartSprintForItemId)
+        startSprintItemIdLaunch.value = startSprintItemId
+
+        if (dailyPlanItemId != null || startSprintItemId != null) {
+            val center = CheckItNotificationCenter(this)
+            dailyPlanItemId?.let { center.dismissDailyPlanScheduleReminder(it) }
+            startSprintItemId?.let { center.dismissDailyPlanScheduleReminder(it) }
+        }
     }
 
     private fun clearWidgetLaunch() {
@@ -101,6 +114,7 @@ class MainActivity : ComponentActivity() {
         openPlanAssistLaunch.value = false
         openCheckInLaunch.value = false
         openQuickSprintLaunch.value = false
+        startSprintItemIdLaunch.value = null
     }
 }
 

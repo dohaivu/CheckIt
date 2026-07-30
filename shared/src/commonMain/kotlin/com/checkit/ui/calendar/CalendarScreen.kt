@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -213,9 +214,8 @@ internal fun CalendarScreen(
             // The "Expandable Hall of Fame" Handle
             Box(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 16.dp, bottom = 16.dp)
             ) {
                 HallOfFameHandle(
                     winCount = state.monthlyWins.size,
@@ -259,7 +259,7 @@ private fun SelectedDateContent(
                 onItemClick = { onDailyPlanItemClick(it, content.date) },
                 onTaskClick = onTaskClick,
                 onNoteClick = onNoteClick,
-                onSprintClick = { _, _, _ -> },
+                onSprintClick = null,
                 modifier = modifier
             )
         } else {
@@ -801,32 +801,28 @@ private fun HallOfFameHandle(
         onClick = onClick,
         color = MaterialTheme.colorScheme.primaryContainer,
         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 12.dp, bottomEnd = 12.dp),
-        tonalElevation = 4.dp,
-        modifier = Modifier.fillMaxWidth()
+        shape = CircleShape,
+        tonalElevation = 6.dp,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.EmojiEvents,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
+                imageVector = if (expanded) Icons.Default.ExpandMore else Icons.Default.EmojiEvents,
+                contentDescription = "Monthly Hall of Fame",
+                modifier = Modifier.size(24.dp),
                 tint = MaterialTheme.colorScheme.primary
             )
-            Text(
-                text = if (winCount > 0) "Monthly Hall of Fame ($winCount Wins)" else "Monthly Hall of Fame",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1f)
-            )
-            Icon(
-                imageVector = if (expanded) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp)
-            )
+            if (winCount > 0 && !expanded) {
+                Text(
+                    text = winCount.toString(),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
     }
 }

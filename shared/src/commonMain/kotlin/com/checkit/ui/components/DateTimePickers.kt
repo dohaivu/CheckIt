@@ -14,10 +14,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -30,7 +28,6 @@ import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
@@ -56,7 +53,6 @@ import com.checkit.ui.TimeRangeShortcutDurations
 import com.checkit.ui.duration
 import com.checkit.ui.shortcutDurationLabel
 import com.checkit.ui.tasks.toClockLabel
-import com.checkit.ui.tasks.toDurationLabel
 import com.checkit.ui.tasks.views.ContentContainerAlpha
 import com.checkit.ui.tasks.views.currentTimeMinutes
 import com.checkit.ui.toUtcLocalDate
@@ -227,12 +223,14 @@ internal fun TimePicker(
     initialTimeMinutes: Int,
     onTimeChange: (Int?) -> Unit,
     enabled: Boolean = true,
+    isOverdue: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     var showPicker by remember { mutableStateOf(false) }
     DetailChip(
         icon = Icons.Default.Schedule,
         label = timeMinutes?.toClockLabel() ?: "No $label time",
+        isHighlighted = isOverdue,
         onClick = {
             if (enabled) showPicker = true
         }
@@ -431,6 +429,17 @@ private fun TimeRangeSelectionRow(
         
         if (enabled && onEndTimeChange != null) {
             PickerShortcutRow {
+                PickerShortcut(
+                    text = "Now",
+                    onClick = {
+                        val start = currentTimeMinutes()
+                        onStartTimeChange(start)
+                        durationMinutes?.let { duration ->
+                            onEndTimeChange((start + duration).coerceAtMost(MinutesPerDay - 1))
+                        }
+
+                    }
+                )
                 TimeRangeShortcutDurations.forEach { duration ->
                     PickerShortcut(
                         text = duration.shortcutDurationLabel(),

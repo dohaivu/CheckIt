@@ -1,16 +1,15 @@
 package com.checkit.ui.myday
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -26,7 +25,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -66,7 +64,8 @@ internal fun DailyPlanItemEditorSheet(
     onTagToggle: (Long) -> Unit,
     onNewTagClick: () -> Unit,
     onAdd: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onStartSprint: () -> Unit
 ) {
     val enabled = state.isEditableByDate()
 
@@ -105,7 +104,12 @@ internal fun DailyPlanItemEditorSheet(
                 )
             }
         }
-        DailyPlanItemSheetFooter(state.isAddMode, enabled, onAdd)
+        DailyPlanItemSheetFooter(
+            state = state,
+            enabled = enabled,
+            onAdd = onAdd,
+            onStartSprint = onStartSprint
+        )
     }
 }
 
@@ -126,14 +130,16 @@ private fun DailyPlanItemSheetHeader(
             SourceIconBadge(source = state.displaySource())
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = if (state.isAddMode) "Add to My Day" else "Edit My Day item",
+                    text = state.sheetTitle(),
                     style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.SemiBold
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = state.displaySource().supportingLabel(),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -148,21 +154,33 @@ private fun DailyPlanItemSheetHeader(
 
 @Composable
 private fun DailyPlanItemSheetFooter(
-    isAddMode: Boolean,
+    state: DailyPlanItemEditorState,
     enabled: Boolean,
     onAdd: () -> Unit,
+    onStartSprint: () -> Unit
 ) {
-    if (isAddMode && enabled) {
+    if (enabled) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Button(
-                onClick = onAdd,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Add to My Day")
+            if (state.isAddMode) {
+                Button(
+                    onClick = onAdd,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Add to My Day")
+                }
+            } else if (state.source == DailyPlanItemSource.MyDayTask) {
+                Button(
+                    onClick = onStartSprint,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Schedule, contentDescription = null)
+                    Spacer(Modifier.size(8.dp))
+                    Text("Start focus session")
+                }
             }
         }
     }
@@ -214,7 +232,7 @@ private fun DailyPlanItemFormContent(
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.SemiBold
             ),
-            minLines = 2,
+            minLines = 1,
             maxLines = 3,
             placeholder = displaySource.titlePlaceholder(),
             enabled = enabled,
@@ -245,8 +263,6 @@ private fun DailyPlanItemFormContent(
             AddModeIntentControls(
                 doneTypeChecked = doneTypeChecked,
                 reminderChecked = reminderChecked,
-                inferredSource = displaySource,
-                inferredStatus = state.inferredAddStatus(),
                 onDoneTypeChange = { checked ->
                     val nextSource = if (checked) DailyPlanItemSource.MyDayTask else DailyPlanItemSource.MyDayNote
                     val nextStatus = nextSource.inferredAddStatus(state.startTimeMinutes)
@@ -271,9 +287,9 @@ private fun DailyPlanItemFormContent(
 
         TimeSection(
             source = displaySource,
-            isEditMode = state.isEditMode,
             startTimeMinutes = state.startTimeMinutes,
             endTimeMinutes = state.endTimeMinutes,
+            isOverdue = state.isOverdue,
             onStartTimeChange = { timeMinutes ->
                 onStartTimeChange(timeMinutes)
                 if (!sourceLocked) {
@@ -287,7 +303,6 @@ private fun DailyPlanItemFormContent(
 
         LabeledTagPicker(
             source = displaySource,
-            isEditMode = state.isEditMode,
             availableTags = availableTags,
             selectedTagIds = state.selectedTagIds,
             onTagToggle = onTagToggle,
@@ -304,45 +319,53 @@ private fun FixedTypeControls(
     onDoneChange: (Boolean) -> Unit,
     enabled: Boolean
 ) {
+    if (!source.usesStatusControl()) return
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f), RoundedCornerShape(20.dp))
-            .padding(12.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
-        Column(
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            TypeSummary(source = source, label = "Saved as ${source.shortLabel().lowercase()}")
-            if (source.usesStatusControl()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Switch(
-                        checked = doneChecked,
-                        onCheckedChange = onDoneChange,
-                        enabled = enabled
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = source.statusTitle(doneChecked),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Text(
-                            text = source.statusMessage(doneChecked),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = source.icon(),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
             }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Status",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = source.statusTitle(doneChecked),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+            Switch(
+                checked = doneChecked,
+                onCheckedChange = onDoneChange,
+                enabled = enabled
+            )
         }
     }
 }
@@ -350,16 +373,16 @@ private fun FixedTypeControls(
 @Composable
 private fun TimeSection(
     source: DailyPlanItemSource,
-    isEditMode: Boolean,
     startTimeMinutes: Int?,
     endTimeMinutes: Int?,
+    isOverdue: Boolean,
     onStartTimeChange: (Int?) -> Unit,
     onEndTimeChange: (Int?) -> Unit,
     enabled: Boolean
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            text = source.timeLabel(isEditMode),
+            text = source.timeLabel(),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = FontWeight.Medium
@@ -370,7 +393,8 @@ private fun TimeSection(
                 timeMinutes = startTimeMinutes,
                 initialTimeMinutes = currentTimeMinutes(),
                 onTimeChange = onStartTimeChange,
-                enabled = enabled
+                enabled = enabled,
+                isOverdue = isOverdue
             )
         } else {
             TimeRangePicker(
@@ -378,7 +402,8 @@ private fun TimeSection(
                 endTimeMinutes = endTimeMinutes,
                 onStartTimeChange = onStartTimeChange,
                 onEndTimeChange = onEndTimeChange,
-                enabled = enabled
+                enabled = enabled,
+                isOverdue = isOverdue
             )
         }
     }
@@ -388,8 +413,6 @@ private fun TimeSection(
 private fun AddModeIntentControls(
     doneTypeChecked: Boolean,
     reminderChecked: Boolean,
-    inferredSource: DailyPlanItemSource,
-    inferredStatus: DailyPlanItemStatus,
     onDoneTypeChange: (Boolean) -> Unit,
     onReminderChange: (Boolean) -> Unit,
     enabled: Boolean
@@ -397,35 +420,25 @@ private fun AddModeIntentControls(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f), RoundedCornerShape(20.dp))
-            .padding(12.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .padding(vertical = 4.dp)
     ) {
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(start = 12.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Celebrate a win",
+                        text = "Task",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Medium
-                    )
-                    Text(
-                        text = if (doneTypeChecked) {
-                            "This becomes a tiny victory in your day"
-                        } else {
-                            "Leave it as a light note for now"
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Switch(
@@ -435,25 +448,16 @@ private fun AddModeIntentControls(
                 )
             }
             Row(
-                modifier = Modifier.fillMaxWidth().padding(start = 12.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Gentle reminder",
+                        text = "Reminder",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Medium
-                    )
-                    Text(
-                        text = if (reminderChecked) {
-                            "Future you gets a well-timed nudge"
-                        } else {
-                            "No ping, just calmly saved in My Day"
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Switch(
@@ -462,7 +466,6 @@ private fun AddModeIntentControls(
                     enabled = enabled
                 )
             }
-            TypeSummary(source = inferredSource, label = inferredSource.addModeFeelingLabel(inferredStatus))
         }
     }
 }
@@ -470,7 +473,6 @@ private fun AddModeIntentControls(
 @Composable
 private fun LabeledTagPicker(
     source: DailyPlanItemSource,
-    isEditMode: Boolean,
     availableTags: List<TaskTag>,
     selectedTagIds: Set<Long>,
     onTagToggle: (Long) -> Unit,
@@ -479,7 +481,7 @@ private fun LabeledTagPicker(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            text = source.tagsLabel(isEditMode),
+            text = source.tagsLabel(),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = FontWeight.Medium
@@ -494,112 +496,48 @@ private fun LabeledTagPicker(
     }
 }
 
-@Composable
-private fun TypeSummary(source: DailyPlanItemSource, label: String) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.56f))
-            .padding(horizontal = 12.dp, vertical = 9.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = source.icon(),
-                contentDescription = null,
-                modifier = Modifier.size(17.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
-}
-
 private fun DailyPlanItemEditorState.displaySource(): DailyPlanItemSource =
     source
 
-private fun DailyPlanItemEditorState.inferredAddStatus(): DailyPlanItemStatus =
-    source.inferredAddStatus(startTimeMinutes)
+private fun DailyPlanItemEditorState.sheetTitle(): String = when {
+    isAddMode -> "Add to My Day"
+    else -> when (source) {
+        DailyPlanItemSource.ExistingTask,
+        DailyPlanItemSource.MyDayTask -> "Edit task"
+        DailyPlanItemSource.MyDayNote -> "Edit note"
+        DailyPlanItemSource.MyDayReminder -> "Edit reminder"
+    }
+}
 
 private fun DailyPlanItemEditorState.isEditableByDate(): Boolean =
     date > today().minus(2, DateTimeUnit.DAY)
 
 private fun DailyPlanItemSource.titlePlaceholder(): String = when (this) {
-    DailyPlanItemSource.ExistingTask -> "Give this plan a clear little name"
-    DailyPlanItemSource.MyDayTask -> "What win should today remember?"
-    DailyPlanItemSource.MyDayNote -> "Catch the thought before it drifts"
-    DailyPlanItemSource.MyDayReminder -> "What should future you remember?"
-}
-
-private fun DailyPlanItemSource.notePlaceholder(): String? = when (this) {
-    DailyPlanItemSource.ExistingTask -> "Add the context that will make this easy later"
-    DailyPlanItemSource.MyDayTask -> "Add the tiny detail that made it satisfying"
-    DailyPlanItemSource.MyDayNote -> "Jot the useful details while they are still fresh"
-    DailyPlanItemSource.MyDayReminder -> "Add a kind nudge, reason, or place"
-}
-
-private fun DailyPlanItemSource.shortLabel(): String = when (this) {
-    DailyPlanItemSource.ExistingTask -> "Task"
-    DailyPlanItemSource.MyDayTask -> "Done item"
-    DailyPlanItemSource.MyDayNote -> "Note"
+    DailyPlanItemSource.ExistingTask,
+    DailyPlanItemSource.MyDayTask -> "Task name"
+    DailyPlanItemSource.MyDayNote -> "Note title"
     DailyPlanItemSource.MyDayReminder -> "Reminder"
 }
 
-private fun DailyPlanItemSource.statusTitle(doneChecked: Boolean): String = when (this) {
-    DailyPlanItemSource.ExistingTask -> if (doneChecked) "Task delivered" else "Task still open"
-    DailyPlanItemSource.MyDayTask -> if (doneChecked) "Win delivered" else "Win still ahead"
-    DailyPlanItemSource.MyDayReminder -> if (doneChecked) "Reminder has passed" else "Reminder is waiting"
-    DailyPlanItemSource.MyDayNote -> "Note saved"
+private fun DailyPlanItemSource.notePlaceholder(): String? = when (this) {
+    DailyPlanItemSource.ExistingTask,
+    DailyPlanItemSource.MyDayTask,
+    DailyPlanItemSource.MyDayNote,
+    DailyPlanItemSource.MyDayReminder -> "Add details"
 }
 
-private fun DailyPlanItemSource.statusMessage(doneChecked: Boolean): String = when (this) {
-    DailyPlanItemSource.ExistingTask -> if (doneChecked) {
-        "This planned task is complete for today"
-    } else {
-        "Keep it on today's plan until it lands"
-    }
-    DailyPlanItemSource.MyDayTask -> if (doneChecked) {
-        "Count it as a completed moment"
-    } else {
-        "Keep a little room to finish it later"
-    }
-    DailyPlanItemSource.MyDayReminder -> if (doneChecked) {
-        "The reminder time is behind you now"
-    } else {
-        "A gentle nudge is still coming"
-    }
-    DailyPlanItemSource.MyDayNote -> "No completion needed for notes"
+private fun DailyPlanItemSource.statusTitle(doneChecked: Boolean): String = when (this) {
+    DailyPlanItemSource.ExistingTask,
+    DailyPlanItemSource.MyDayTask -> if (doneChecked) "Completed" else "Not completed"
+    DailyPlanItemSource.MyDayReminder -> if (doneChecked) "Reminder passed" else "Reminder pending"
+    DailyPlanItemSource.MyDayNote -> "Saved"
 }
 
 private fun DailyPlanItemSource.supportingLabel(): String = when (this) {
-    DailyPlanItemSource.ExistingTask -> "A task already planned for today"
-    DailyPlanItemSource.MyDayTask -> "Log something you finished"
-    DailyPlanItemSource.MyDayNote -> "Capture a quick note"
-    DailyPlanItemSource.MyDayReminder -> "Keep a timed reminder"
-}
-
-private fun DailyPlanItemSource.addModeFeelingLabel(status: DailyPlanItemStatus): String = when (this) {
-    DailyPlanItemSource.MyDayTask -> if (status == DailyPlanItemStatus.Done) {
-        "Looks like a completed win"
-    } else {
-        "Ready for a small future victory"
-    }
-    DailyPlanItemSource.MyDayNote -> "Saved as a bright note for today"
-    DailyPlanItemSource.MyDayReminder -> if (status == DailyPlanItemStatus.Done) {
-        "The reminder time has already passed"
-    } else {
-        "Future you gets a gentle nudge"
-    }
-    DailyPlanItemSource.ExistingTask -> "Connected to a planned task"
+    DailyPlanItemSource.ExistingTask -> "Planned task"
+    DailyPlanItemSource.MyDayTask -> "Task for today"
+    DailyPlanItemSource.MyDayNote -> "Note for today"
+    DailyPlanItemSource.MyDayReminder -> "Timed reminder"
 }
 
 private fun DailyPlanItemSource.usesStatusControl(): Boolean =
@@ -608,19 +546,9 @@ private fun DailyPlanItemSource.usesStatusControl(): Boolean =
 private fun DailyPlanItemSource.usesTimePicker(): Boolean =
     this == DailyPlanItemSource.MyDayNote || this == DailyPlanItemSource.MyDayReminder
 
-private fun DailyPlanItemSource.timeLabel(isEditMode: Boolean): String = when (this) {
-    DailyPlanItemSource.ExistingTask -> if (isEditMode) "Adjust the planned window" else "Choose a time window"
-    DailyPlanItemSource.MyDayTask -> if (isEditMode) "Refine when it happened" else "When did it happen?"
-    DailyPlanItemSource.MyDayNote -> if (isEditMode) "Adjust the note time" else "Give this note a time"
-    DailyPlanItemSource.MyDayReminder -> if (isEditMode) "Adjust the reminder time" else "When should it remind you?"
-}
+private fun DailyPlanItemSource.timeLabel(): String = "Time"
 
-private fun DailyPlanItemSource.tagsLabel(isEditMode: Boolean): String = when (this) {
-    DailyPlanItemSource.ExistingTask -> if (isEditMode) "Tune its task tags" else "Group this task"
-    DailyPlanItemSource.MyDayTask -> if (isEditMode) "Tune the win tags" else "Mark the kind of win"
-    DailyPlanItemSource.MyDayNote -> if (isEditMode) "Tune the note tags" else "Give this thought a home"
-    DailyPlanItemSource.MyDayReminder -> if (isEditMode) "Tune the reminder tags" else "Place this nudge where it belongs"
-}
+private fun DailyPlanItemSource.tagsLabel(): String = "Tags"
 
 private fun DailyPlanItemSource.icon(): ImageVector = when (this) {
     DailyPlanItemSource.MyDayNote -> Icons.AutoMirrored.Filled.Notes
