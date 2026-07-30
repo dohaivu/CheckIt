@@ -70,11 +70,13 @@ import checkit.shared.generated.resources.sprint_start
 import com.checkit.domain.SprintState
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskTag
+import com.checkit.ui.toTimeMinutes
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.components.TagTitleAppender
 import com.checkit.ui.localizedCompactDateWithDayName
+import com.checkit.ui.tasks.toClockLabel
 import com.checkit.ui.myday.SprintChoice
 import com.checkit.ui.tasks.views.DailyPlanTimelineCard
 import com.checkit.ui.tasks.views.SprintButton
@@ -234,6 +236,11 @@ fun SprintBar(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    Text(
+                        text = "Started at ${state.startTimeEpochMillis.toTimeMinutes().toClockLabel()}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
                 }
 
                 Text(

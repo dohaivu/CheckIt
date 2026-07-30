@@ -19,6 +19,11 @@ internal fun Long.toUtcLocalDate(): LocalDate =
 internal fun Long.toLocalDate(): LocalDate =
     Instant.fromEpochMilliseconds(this).toLocalDateTime(TimeZone.currentSystemDefault()).date
 
+fun Long.toTimeMinutes(): Int {
+    val time = Instant.fromEpochMilliseconds(this).toLocalDateTime(TimeZone.currentSystemDefault()).time
+    return time.hour * 60 + time.minute
+}
+
 internal fun LocalDate.isSameMonth(month: LocalDate): Boolean =
     year == month.year && this.month == month.month
 
