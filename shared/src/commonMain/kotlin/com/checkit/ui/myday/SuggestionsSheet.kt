@@ -48,6 +48,7 @@ import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskTag
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.TagPicker
+import com.checkit.ui.components.TagTitleAppender
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.tasks.isOverdue
 import com.checkit.ui.tasks.timeRangeLabel
@@ -72,6 +73,7 @@ internal fun SuggestionsSheet(
     onNewTagClick: () -> Unit = {}
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
     var quickAddText by remember { mutableStateOf("") }
     var selectedTagIds by remember { mutableStateOf(emptySet<Long>()) }
 
@@ -126,6 +128,9 @@ internal fun SuggestionsSheet(
                             selectedTagIds - tagId
                         } else {
                             selectedTagIds + tagId
+                        }
+                        availableTags.find { it.id == tagId }?.let { tag ->
+                            quickAddText = TagTitleAppender.appendTagActionText(quickAddText, tag.name)
                         }
                     },
                     onNewTagClick = onNewTagClick,

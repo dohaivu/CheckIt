@@ -73,6 +73,7 @@ import com.checkit.domain.TaskTag
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.TagPicker
+import com.checkit.ui.components.TagTitleAppender
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.myday.SprintChoice
 import com.checkit.ui.tasks.views.DailyPlanTimelineCard
@@ -356,6 +357,9 @@ fun QuickSprintSheet(
                         selectedTagIds - tagId
                     } else {
                         selectedTagIds + tagId
+                    }
+                    availableTags.find { it.id == tagId }?.let { tag ->
+                        text = TagTitleAppender.appendTagActionText(text, tag.name)
                     }
                 },
                 onNewTagClick = onNewTagClick,

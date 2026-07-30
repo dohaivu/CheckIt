@@ -58,6 +58,7 @@ import com.checkit.ui.components.DeleteOverflowMenu
 import com.checkit.ui.components.ListPicker
 import com.checkit.ui.components.PriorityPicker
 import com.checkit.ui.components.TagPicker
+import com.checkit.ui.components.TagTitleAppender
 import com.checkit.ui.components.TimeRangePicker
 import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
@@ -456,7 +457,12 @@ private fun TaskFormContent(
             TagPicker(
                 availableTags = availableTags,
                 selectedTagIds = form.selectedTagIds,
-                onTagToggle = onTagToggle,
+                onTagToggle = { tagId ->
+                    onTagToggle(tagId)
+                    availableTags.find { it.id == tagId }?.let { tag ->
+                        onNameChange(TagTitleAppender.appendTagActionText(form.name, tag.name))
+                    }
+                },
                 onNewTagClick = onNewTagClick,
                 enabled = enabled
             )
@@ -629,7 +635,12 @@ private fun NoteFormContent(
             TagPicker(
                 availableTags = availableTags,
                 selectedTagIds = form.selectedTagIds,
-                onTagToggle = onTagToggle,
+                onTagToggle = { tagId ->
+                    onTagToggle(tagId)
+                    availableTags.find { it.id == tagId }?.let { tag ->
+                        onTitleChange(TagTitleAppender.appendTagActionText(form.title, tag.name))
+                    }
+                },
                 onNewTagClick = onNewTagClick,
                 enabled = enabled
             )

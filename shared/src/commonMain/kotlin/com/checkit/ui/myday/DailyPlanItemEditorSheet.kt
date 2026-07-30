@@ -42,6 +42,7 @@ import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DeleteOverflowMenu
 import com.checkit.ui.components.TagPicker
+import com.checkit.ui.components.TagTitleAppender
 import com.checkit.ui.components.TimePicker
 import com.checkit.ui.components.TimeRangePicker
 import com.checkit.ui.tasks.views.currentTimeMinutes
@@ -305,7 +306,12 @@ private fun DailyPlanItemFormContent(
             source = displaySource,
             availableTags = availableTags,
             selectedTagIds = state.selectedTagIds,
-            onTagToggle = onTagToggle,
+            onTagToggle = { tagId ->
+                onTagToggle(tagId)
+                availableTags.find { it.id == tagId }?.let { tag ->
+                    onTitleChange(TagTitleAppender.appendTagActionText(state.title, tag.name))
+                }
+            },
             onNewTagClick = onNewTagClick,
             enabled = enabled
         )
