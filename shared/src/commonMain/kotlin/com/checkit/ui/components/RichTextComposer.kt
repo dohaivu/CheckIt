@@ -53,9 +53,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import co.touchlab.kermit.Logger
 import com.mohamedrejeb.richeditor.annotation.ExperimentalRichTextApi
 import com.mohamedrejeb.richeditor.model.RichTextState
 import com.mohamedrejeb.richeditor.model.rememberRichTextState
+import com.mohamedrejeb.richeditor.ui.UndoBehavior
 import com.mohamedrejeb.richeditor.ui.material3.OutlinedRichTextEditor
 import com.mohamedrejeb.richeditor.ui.material3.RichText
 import com.mohamedrejeb.richeditor.ui.material3.RichTextEditorDefaults
@@ -110,7 +112,7 @@ internal fun RichTextComposer(
             .drop(1)
             .debounce(300.milliseconds)
             .collectLatest {
-                val markdown = state.toMarkdown()
+                val markdown = state.toMarkdown().replace(Regex("\n{2,}"), "\n")
                 if (lastMarkdown != null && markdown != lastMarkdown) {
                     lastMarkdown = markdown
                     onValueChange(markdown)
@@ -183,6 +185,7 @@ internal fun RichTextComposer(
                             .fillMaxWidth()
                             .focusRequester(focusRequester)
                             .defaultMinSize(minHeight = 120.dp),
+                        undoBehavior = UndoBehavior.Disabled
                     )
                 } else {
                     if (state.annotatedString.text.isBlank()) {
