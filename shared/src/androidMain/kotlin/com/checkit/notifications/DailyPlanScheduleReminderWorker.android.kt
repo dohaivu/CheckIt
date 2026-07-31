@@ -29,7 +29,7 @@ class DailyPlanScheduleReminderWorker(
                     title = title
                 )
             }
-            scheduler.rescheduleNext(afterTimeMinutes = timeMinutes + 1)
+            scheduler.rescheduleNext(afterTimeMinutes = timeMinutes + 1, isRescheduling = true)
             Result.success()
         } catch (_: Throwable) {
             Result.retry()
