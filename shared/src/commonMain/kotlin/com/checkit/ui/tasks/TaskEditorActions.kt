@@ -1,5 +1,6 @@
 package com.checkit.ui.tasks
 
+import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.TaskPriority
 import kotlinx.datetime.LocalDate
 
@@ -21,6 +22,8 @@ data class TaskEditorActions(
     val onDailyPlanEndTimeChange: (Int?) -> Unit,
     val onDailyPlanStatus: () -> Unit,
     val onDailyPlanDelete: (Long) -> Unit,
+    val onDailyPlanStartSprint: (DailyPlanItem) -> Unit,
+    val onDailyPlanStartOngoingSprint: (DailyPlanItem) -> Unit,
     val onTaskRepeatChange: (RepeatPreset) -> Unit,
     val onTaskPriorityChange: (TaskPriority) -> Unit,
     val onTaskReminderToggle: (Int) -> Unit,

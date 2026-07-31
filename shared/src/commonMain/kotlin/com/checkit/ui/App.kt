@@ -347,6 +347,14 @@ fun CheckItApp(
                                     viewModels.myDay.deleteDailyPlanItem(itemId)
                                     viewModels.task.removeDailyPlanItemFromEditor(itemId)
                                 },
+                                onDailyPlanStartSprint = { item ->
+                                    viewModels.myDay.startSprintForItem(item)
+                                    viewModels.task.dismissEditor()
+                                },
+                                onDailyPlanStartOngoingSprint = { item ->
+                                    viewModels.myDay.startOngoingSprintForItem(item)
+                                    viewModels.task.dismissEditor()
+                                },
                                 onTaskRepeatChange = viewModels.task::updateTaskRepeat,
                                 onTaskPriorityChange = viewModels.task::updateTaskPriority,
                                 onTaskReminderToggle = viewModels.task::toggleTaskReminder,

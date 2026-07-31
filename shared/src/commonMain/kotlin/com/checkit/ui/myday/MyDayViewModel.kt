@@ -677,23 +677,18 @@ class MyDayViewModel(
         }
     }
 
-    fun startNewSprintFromEditor() {
-        val editor = _uiState.value.itemEditor ?: return
-        val itemId = editor.itemId ?: return
-        val planItem = _uiState.value.items.firstOrNull { it.id == itemId } ?: return
-
-        startSprintWithChoice(SprintChoice.PlanItem(planItem, _uiState.value.board.tasksById[planItem.taskId]))
-        _uiState.update { it.copy(itemEditor = null) }
+    fun startSprintForItem(item: DailyPlanItem) {
+        val board = _uiState.value.board
+        startSprintWithChoice(SprintChoice.PlanItem(item, board.tasksById[item.taskId]))
     }
 
-    fun startOngoingSprintFromEditor() {
-        val editor = _uiState.value.itemEditor ?: return
-        val startTimeMinutes = editor.startTimeMinutes ?: return
-        
-        val date = editor.date
+    fun startOngoingSprintForItem(item: DailyPlanItem) {
+        val startTimeMinutes = item.startTimeMinutes ?: return
+
+        val date = LocalDate.fromEpochDays(item.dateEpochDays)
         val scheduledTimeMillis = date.atStartOfDayIn(TimeZone.currentSystemDefault()).toEpochMilliseconds() + (startTimeMinutes * 60 * 1000L)
         val nowMillis = Clock.System.now().toEpochMilliseconds()
-        
+
         val elapsedSeconds = ((nowMillis - scheduledTimeMillis) / 1000).toInt()
         val pomodoroDurationSeconds = 25 * 60
         val gracePeriodSeconds = 5 * 60
@@ -705,20 +700,36 @@ class MyDayViewModel(
         }
 
         val success = sprintManager.startSprint(
-            taskId = editor.taskId,
-            dailyPlanItemId = editor.itemId,
-            description = editor.title,
+            taskId = item.taskId,
+            dailyPlanItemId = item.id,
+            description = item.title,
             durationSeconds = durationSeconds,
             isPomodoro = isPomodoro,
-            tagIds = editor.selectedTagIds.toList(),
+            tagIds = item.tags.map { it.id },
             startTimeEpochMillis = if (elapsedSeconds < 0) nowMillis else scheduledTimeMillis
         )
 
-        if (success) {
-            _uiState.update { it.copy(itemEditor = null) }
-        } else {
+        if (!success) {
             sendEvent(UiEvent.ShowSnackbar("A sprint is already in progress"))
         }
+    }
+
+    fun startNewSprintFromEditor() {
+        val editor = _uiState.value.itemEditor ?: return
+        val itemId = editor.itemId ?: return
+        val planItem = _uiState.value.items.firstOrNull { it.id == itemId } ?: return
+
+        startSprintForItem(planItem)
+        _uiState.update { it.copy(itemEditor = null) }
+    }
+
+    fun startOngoingSprintFromEditor() {
+        val editor = _uiState.value.itemEditor ?: return
+        val itemId = editor.itemId ?: return
+        val planItem = _uiState.value.items.firstOrNull { it.id == itemId } ?: return
+
+        startOngoingSprintForItem(planItem)
+        _uiState.update { it.copy(itemEditor = null) }
     }
 
     fun openQuickSprint() {
