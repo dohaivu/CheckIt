@@ -32,13 +32,13 @@ kotlinx-serialization = "1.11.0"
 kotlinx-datetime = "0.8.0"
 kotlinx-atomicfu = "0.33.0"
 koin-bom = "4.2.2"
-koin-plugin = "1.0.2"
+koin-plugin = "1.1.0"
 kermit = "2.1.0"
 vico = "3.2.3"
 calendar = "2.10.1"
 androidgitversion = "0.4.14"
 doistx-normalize = "1.3.3"
-markdownRenderer = "0.43.0"
+richeditor = "1.0.0"
 colorpicker = "1.2.0"
 
 mockk = "1.14.11"
@@ -49,7 +49,7 @@ glance = "1.1.1"
 google-services-plugin = "4.5.0"
 firebase-crashlytics-plugin = "3.0.7"
 firebase-crashlytics = "20.1.0"
-firebase-bom = "34.16.0"
+firebase-bom = "34.17.0"
 firebase-analytics = "23.2.0"
 play-services-auth = "21.6.0"
 
@@ -102,7 +102,7 @@ kermit-io = { module = "co.touchlab:kermit-io", version.ref = "kermit" }
 #vico-compose-m3 = { group = "com.patrykandpatrick.vico", name = "compose-m3", version.ref = "vico" }
 #calendar-compose = { module = "com.kizitonwose.calendar:compose-multiplatform", version.ref = "calendar" }
 doist-normalize = { module = "com.doist.x:normalize", version.ref = "doistx-normalize" }
-markdown-renderer = { module = "com.mikepenz:multiplatform-markdown-renderer-m3", version.ref = "markdownRenderer" }
+richeditor-compose = { module = "com.mohamedrejeb.richeditor:richeditor-compose", version.ref = "richeditor" }
 compose-colorpicker = { module = "com.github.skydoves:colorpicker-compose", version.ref = "colorpicker" }
 
 # compose multiplatform

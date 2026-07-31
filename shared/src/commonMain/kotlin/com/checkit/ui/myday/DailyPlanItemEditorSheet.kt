@@ -42,6 +42,7 @@ import com.checkit.domain.TaskTag
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DeleteOverflowMenu
+import com.checkit.ui.components.RichTextComposer
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.components.TagTitleAppender
 import com.checkit.ui.components.TimePicker
@@ -261,17 +262,11 @@ private fun DailyPlanItemFormContent(
             modifier = Modifier.fillMaxWidth()
         )
 
-        AppOutlinedTextField(
+        RichTextComposer(
             value = state.note,
             onValueChange = onNoteChange,
-            textStyle = MaterialTheme.typography.bodyMedium.copy(
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.Normal
-            ),
-            minLines = 5,
-            maxLines = 10,
             placeholder = displaySource.notePlaceholder(),
-            enabled = enabled
+            modifier = Modifier.fillMaxWidth()
         )
 
         if (sourceLocked) {

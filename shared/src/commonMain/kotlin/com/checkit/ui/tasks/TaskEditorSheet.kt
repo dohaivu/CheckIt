@@ -60,6 +60,7 @@ import com.checkit.ui.components.DatePicker
 import com.checkit.ui.components.DeleteOverflowMenu
 import com.checkit.ui.components.ListPicker
 import com.checkit.ui.components.PriorityPicker
+import com.checkit.ui.components.RichTextComposer
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.components.TagTitleAppender
 import com.checkit.ui.components.TimeRangePicker
@@ -644,18 +645,11 @@ private fun NoteFormContent(
             enabled = enabled,
             modifier = Modifier.fillMaxWidth()
         )
-        AppOutlinedTextField(
+        RichTextComposer(
             value = form.content,
             onValueChange = onContentChange,
-            textStyle = MaterialTheme.typography.bodyMedium.copy(
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.Normal
-            ),
-            minLines = 5,
-            maxLines = 10,
             placeholder = "Add more details",
-            enabled = enabled,
-            modifier = Modifier.fillMaxWidth().height(130.dp)
+            modifier = Modifier.fillMaxWidth()
         )
 
         FlowRow(

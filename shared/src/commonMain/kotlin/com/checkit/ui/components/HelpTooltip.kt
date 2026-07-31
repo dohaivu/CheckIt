@@ -18,8 +18,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import com.mikepenz.markdown.m3.Markdown
-import com.mikepenz.markdown.m3.markdownTypography
+import com.mohamedrejeb.richeditor.annotation.ExperimentalRichTextApi
+import com.mohamedrejeb.richeditor.model.rememberRichTextState
+import com.mohamedrejeb.richeditor.ui.material3.RichText
 import kotlinx.coroutines.launch
 
 data object HelpContent {
@@ -40,7 +41,7 @@ data object HelpContent {
     """.trimIndent()
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalRichTextApi::class)
 @Composable
 fun HelpTooltip(
     modifier: Modifier = Modifier,
@@ -49,6 +50,9 @@ fun HelpTooltip(
     val tooltipState = rememberTooltipState(isPersistent = true)
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
+    val richTextState = rememberRichTextState()
+    richTextState.setMarkdown(markdownContent)
+    richTextState.config.listIndent = 10
 
     val title = "OKR Tips"
 
@@ -60,19 +64,10 @@ fun HelpTooltip(
                 title = { Text(title, fontWeight = FontWeight.Bold) },
                 action = null,
             ) {
-                Markdown(
+                RichText(
+                    state = richTextState,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = modifier.verticalScroll(scrollState),
-                    content = markdownContent,
-                    typography = markdownTypography(
-                        h1 = MaterialTheme.typography.headlineSmall,
-                        h2 = MaterialTheme.typography.titleLarge,
-                        h3 = MaterialTheme.typography.titleMedium,
-                        h4 = MaterialTheme.typography.bodyMedium,
-                        h5 = MaterialTheme.typography.bodySmall,
-                        h6 = MaterialTheme.typography.bodySmall,
-                        text = MaterialTheme.typography.bodySmall,
-                        paragraph = MaterialTheme.typography.bodySmall,
-                    ),
                 )
             }
         },
