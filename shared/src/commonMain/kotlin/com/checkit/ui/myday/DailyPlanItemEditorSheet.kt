@@ -178,18 +178,18 @@ private fun DailyPlanItemSheetFooter(
                     Text("Add to My Day")
                 }
             } else {
-                if (state.status == DailyPlanItemStatus.Planned && state.startTimeMinutes != null) {
-                    Button(
-                        onClick = onStartOngoingSprint,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Default.Bolt, contentDescription = null)
-                        Spacer(Modifier.size(8.dp))
-                        Text("Focus ongoing")
-                    }
-                }
-                
                 if (state.source == DailyPlanItemSource.MyDayTask) {
+                    if (state.status == DailyPlanItemStatus.Planned && state.startTimeMinutes != null) {
+                        Button(
+                            onClick = onStartOngoingSprint,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.Bolt, contentDescription = null)
+                            Spacer(Modifier.size(8.dp))
+                            Text("Focus ongoing")
+                        }
+                    }
+
                     Button(
                         onClick = onStartSprint,
                         modifier = if (state.status == DailyPlanItemStatus.Planned && state.startTimeMinutes != null) {
