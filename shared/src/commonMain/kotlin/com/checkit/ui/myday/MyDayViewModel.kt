@@ -605,13 +605,14 @@ class MyDayViewModel(
 
     fun executeFabAction(action: FabAction) {
         when (action) {
-            is FabAction.QuickSprint -> openQuickSprint()
+            is FabAction.QuickSprint -> {
+                openQuickSprint()
+                setLastFabAction(action)
+            }
             is FabAction.TagSprint -> {
                 val tag = action.tag
                 startSprint(description = tag.name, tagIds = listOf(tag.id))
-                viewModelScope.launch {
-                    settingsRepository.setLastFabAction("TagSprint", tag.id)
-                }
+                setLastFabAction(action)
             }
         }
     }
