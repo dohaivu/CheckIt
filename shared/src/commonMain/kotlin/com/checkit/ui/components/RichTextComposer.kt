@@ -41,7 +41,9 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.SpanStyle
@@ -60,6 +62,7 @@ import com.mohamedrejeb.richeditor.ui.material3.RichTextEditorDefaults
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.drop
 import kotlin.time.Duration.Companion.milliseconds
 
 private enum class ComposerTab(val label: String) {
@@ -79,8 +82,18 @@ internal fun RichTextComposer(
     val state = rememberRichTextState()
     state.config.listIndent = 15
 
+    var isEditing by remember { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
+
+    // Automatically focus when switching to editing mode
+    LaunchedEffect(isEditing) {
+        if (isEditing) {
+            focusRequester.requestFocus()
+        }
+    }
+
     // Track the last markdown to prevent infinite loops and redundant state.setMarkdown calls
-    var lastMarkdown by remember { mutableStateOf(value) }
+    var lastMarkdown by remember { mutableStateOf<String?>(null) }
 
     // Sync external value to internal state
     LaunchedEffect(value) {
@@ -93,10 +106,11 @@ internal fun RichTextComposer(
     // Sync internal state to external onValueChange with debouncing
     LaunchedEffect(state) {
         snapshotFlow { state.annotatedString }
+            .drop(1)
             .debounce(300.milliseconds)
             .collectLatest {
                 val markdown = state.toMarkdown()
-                if (markdown != lastMarkdown) {
+                if (lastMarkdown != null && markdown != lastMarkdown) {
                     lastMarkdown = markdown
                     onValueChange(markdown)
                 }
@@ -109,69 +123,100 @@ internal fun RichTextComposer(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.surface)
+            .border(
+                width = 1.dp,
+                color = if (isEditing) MaterialTheme.colorScheme.outlineVariant else Color.Transparent,
+                shape = RoundedCornerShape(8.dp)
+            )
+            .background(if (isEditing) MaterialTheme.colorScheme.surface else Color.Transparent)
         ,
     ) {
-        if (showPreview) {
-            TabRow(selected = tab, onSelect = { tab = it })
-        }
+        if (isEditing) {
+            if (showPreview) {
+                TabRow(selected = tab, onSelect = { tab = it })
+            }
 
-        val isWriteTab = tab == ComposerTab.Write || !showPreview
-        if (isWriteTab) {
-            ComposerToolbar(
-                state = state,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surfaceContainerLow)
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
-            )
-        }
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 160.dp)
-                .padding(0.dp),
-        ) {
+            val isWriteTab = tab == ComposerTab.Write || !showPreview
             if (isWriteTab) {
-                OutlinedRichTextEditor(
+                ComposerToolbar(
                     state = state,
-                    placeholder = if (placeholder != null) {
-                        {
-                            Text(
-                                text = placeholder,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    } else null,
-                    textStyle = LocalTextStyle.current.copy(
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontFamily = FontFamily.SansSerif,
-                    ),
-                    colors = RichTextEditorDefaults.richTextEditorColors(
-                        textColor = MaterialTheme.colorScheme.onSurface,
-                        containerColor = Color.Transparent,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        placeholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        cursorColor = MaterialTheme.colorScheme.primary,
-                    ),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .defaultMinSize(minHeight = 120.dp),
+                        .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
                 )
-            } else {
-                if (state.annotatedString.text.isBlank()) {
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 160.dp)
+                    .padding(0.dp),
+            ) {
+                if (isWriteTab) {
+                    OutlinedRichTextEditor(
+                        state = state,
+                        placeholder = if (placeholder != null) {
+                            {
+                                Text(
+                                    text = placeholder,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        } else null,
+                        textStyle = LocalTextStyle.current.copy(
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontFamily = FontFamily.SansSerif,
+                        ),
+                        colors = RichTextEditorDefaults.richTextEditorColors(
+                            textColor = MaterialTheme.colorScheme.onSurface,
+                            containerColor = Color.Transparent,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            placeholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            cursorColor = MaterialTheme.colorScheme.primary,
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(focusRequester)
+                            .defaultMinSize(minHeight = 120.dp),
+                    )
+                } else {
+                    if (state.annotatedString.text.isBlank()) {
+                        Text(
+                            text = "Nothing to preview",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 14.sp,
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    } else {
+                        RichText(
+                            state = state,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.fillMaxWidth().padding(12.dp)
+                        )
+                    }
+                }
+            }
+        } else {
+            // Read Mode
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { isEditing = true }
+                    .padding(vertical = 8.dp)
+            ) {
+                if (value.isBlank()) {
                     Text(
-                        text = "Nothing to preview",
+                        text = placeholder ?: "Add notes...",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 14.sp,
+                        style = MaterialTheme.typography.bodyMedium
                     )
                 } else {
                     RichText(
                         state = state,
                         color = MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
