@@ -889,10 +889,9 @@ private fun WinCard(
                         color = Color(0xFFEAB308)
                     )
                 }
-                Text(
-                    text = win.note ?: "A great day!",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
+                RichTextPreview(
+                    markdown = win.note ?: "A great day!",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                 )
             }
         }

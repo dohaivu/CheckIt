@@ -78,6 +78,7 @@ internal fun RichTextComposer(
     placeholder: String? = null,
     modifier: Modifier = Modifier,
     showPreview: Boolean = false,
+    enabled: Boolean = true,
 ) {
     val state = rememberRichTextState()
     state.config.listIndent = 15
@@ -140,6 +141,7 @@ internal fun RichTextComposer(
             if (isWriteTab) {
                 ComposerToolbar(
                     state = state,
+                    enabled = enabled,
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(MaterialTheme.colorScheme.surfaceContainerLow)
@@ -156,6 +158,7 @@ internal fun RichTextComposer(
                 if (isWriteTab) {
                     OutlinedRichTextEditor(
                         state = state,
+                        readOnly = !enabled,
                         placeholder = if (placeholder != null) {
                             {
                                 Text(
@@ -203,7 +206,7 @@ internal fun RichTextComposer(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { isEditing = true }
+                    .clickable(enabled = enabled) { isEditing = true }
                     .padding(vertical = 8.dp)
             ) {
                 if (value.isBlank()) {
@@ -287,6 +290,7 @@ private val StrikeSpan = SpanStyle(textDecoration = TextDecoration.LineThrough)
 @Composable
 private fun ComposerToolbar(
     state: RichTextState,
+    enabled: Boolean,
     modifier: Modifier = Modifier,
 ) {
     LazyRow(
@@ -299,6 +303,7 @@ private fun ComposerToolbar(
                 icon = Icons.Outlined.Title,
                 isSelected = state.currentSpanStyle.fontSize == HeadingSpan.fontSize,
                 contentDescription = "Heading",
+                enabled = enabled,
                 onClick = { state.toggleSpanStyle(HeadingSpan) },
             )
         }
@@ -307,6 +312,7 @@ private fun ComposerToolbar(
                 icon = Icons.Outlined.FormatBold,
                 isSelected = state.currentSpanStyle.fontWeight == FontWeight.Bold,
                 contentDescription = "Bold",
+                enabled = enabled,
                 onClick = { state.toggleSpanStyle(BoldSpan) },
             )
         }
@@ -315,6 +321,7 @@ private fun ComposerToolbar(
                 icon = Icons.Outlined.FormatItalic,
                 isSelected = state.currentSpanStyle.fontStyle == FontStyle.Italic,
                 contentDescription = "Italic",
+                enabled = enabled,
                 onClick = { state.toggleSpanStyle(ItalicSpan) },
             )
         }
@@ -323,6 +330,7 @@ private fun ComposerToolbar(
                 icon = Icons.Outlined.FormatStrikethrough,
                 isSelected = state.currentSpanStyle.textDecoration?.contains(TextDecoration.LineThrough) == true,
                 contentDescription = "Strikethrough",
+                enabled = enabled,
                 onClick = { state.toggleSpanStyle(StrikeSpan) },
             )
         }
@@ -334,6 +342,7 @@ private fun ComposerToolbar(
                 icon = Icons.AutoMirrored.Outlined.FormatListBulleted,
                 isSelected = state.isUnorderedList,
                 contentDescription = "Bulleted list",
+                enabled = enabled,
                 onClick = { state.toggleUnorderedList() },
             )
         }
@@ -342,6 +351,7 @@ private fun ComposerToolbar(
                 icon = Icons.Outlined.FormatListNumbered,
                 isSelected = state.isOrderedList,
                 contentDescription = "Numbered list",
+                enabled = enabled,
                 onClick = { state.toggleOrderedList() },
             )
         }
@@ -350,7 +360,7 @@ private fun ComposerToolbar(
             ToolbarButton(
                 icon = Icons.AutoMirrored.Outlined.FormatIndentDecrease,
                 isSelected = false,
-                enabled = state.canDecreaseListLevel,
+                enabled = enabled && state.canDecreaseListLevel,
                 contentDescription = "Outdent",
                 onClick = { state.decreaseListLevel() },
             )
@@ -360,7 +370,7 @@ private fun ComposerToolbar(
             ToolbarButton(
                 icon = Icons.AutoMirrored.Outlined.FormatIndentIncrease,
                 isSelected = false,
-                enabled = state.canIncreaseListLevel,
+                enabled = enabled && state.canIncreaseListLevel,
                 contentDescription = "Indent",
                 onClick = { state.increaseListLevel() },
             )

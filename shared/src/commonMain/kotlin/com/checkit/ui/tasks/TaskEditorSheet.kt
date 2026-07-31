@@ -649,6 +649,7 @@ private fun NoteFormContent(
             value = form.content,
             onValueChange = onContentChange,
             placeholder = "Add more details",
+            enabled = enabled,
             modifier = Modifier.fillMaxWidth()
         )
 

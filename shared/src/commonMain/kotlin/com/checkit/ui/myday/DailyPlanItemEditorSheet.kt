@@ -266,6 +266,7 @@ private fun DailyPlanItemFormContent(
             value = state.note,
             onValueChange = onNoteChange,
             placeholder = displaySource.notePlaceholder(),
+            enabled = enabled,
             modifier = Modifier.fillMaxWidth()
         )
 

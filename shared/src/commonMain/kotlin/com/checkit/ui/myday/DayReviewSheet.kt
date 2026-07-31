@@ -52,6 +52,7 @@ import com.checkit.domain.LeftoverAction
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.AppOutlinedTextField
+import com.checkit.ui.components.RichTextComposer
 import com.checkit.ui.tasks.isOverdue
 import com.checkit.ui.tasks.toDurationLabel
 import com.checkit.ui.tasks.views.DailyPlanTimelineCard
@@ -187,17 +188,11 @@ private fun ReflectionSection(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
         )
-        AppOutlinedTextField(
+        RichTextComposer(
             value = value,
             onValueChange = onValueChange,
-            textStyle = MaterialTheme.typography.bodyMedium.copy(
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.Normal
-            ),
-            modifier = Modifier.fillMaxWidth(),
             placeholder = stringResource(Res.string.day_review_win_note_placeholder),
-            minLines = 4,
-            maxLines = 8,
+            modifier = Modifier.fillMaxWidth(),
             enabled = enabled
         )
     }
