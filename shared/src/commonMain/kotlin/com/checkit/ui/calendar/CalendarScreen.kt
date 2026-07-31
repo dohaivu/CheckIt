@@ -62,6 +62,7 @@ import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.usecase.BuildDailyPlanMarkdownSummaryUseCase
+import com.checkit.ui.components.RichTextPreview
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.firstDayOfMonth
@@ -76,9 +77,6 @@ import com.checkit.ui.tasks.TaskAgendaView
 import com.checkit.ui.tasks.toDurationLabel
 import com.checkit.ui.tasks.views.ContentContainerAlpha
 import com.checkit.ui.today
-import com.mohamedrejeb.richeditor.annotation.ExperimentalRichTextApi
-import com.mohamedrejeb.richeditor.model.rememberRichTextState
-import com.mohamedrejeb.richeditor.ui.material3.RichText
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
@@ -408,21 +406,15 @@ private fun SelectedDateHeader(
     }
 }
 
-@OptIn(ExperimentalRichTextApi::class)
 @Composable
 private fun DailyPlanMarkdownSummary(
     markdown: String,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
-    val richTextState = rememberRichTextState()
-    richTextState.setMarkdown(markdown)
-    richTextState.config.listIndent = 10
-
-    RichText(
-        state = richTextState,
-        color = MaterialTheme.colorScheme.onSurface,
-        modifier = modifier.verticalScroll(scrollState),
+    RichTextPreview(
+        markdown = markdown,
+        modifier = modifier.verticalScroll(scrollState)
     )
 }
 

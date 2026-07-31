@@ -7,7 +7,6 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RichTooltip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TooltipAnchorPosition
@@ -18,9 +17,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import com.mohamedrejeb.richeditor.annotation.ExperimentalRichTextApi
-import com.mohamedrejeb.richeditor.model.rememberRichTextState
-import com.mohamedrejeb.richeditor.ui.material3.RichText
 import kotlinx.coroutines.launch
 
 data object HelpContent {
@@ -41,7 +37,7 @@ data object HelpContent {
     """.trimIndent()
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalRichTextApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HelpTooltip(
     modifier: Modifier = Modifier,
@@ -50,9 +46,6 @@ fun HelpTooltip(
     val tooltipState = rememberTooltipState(isPersistent = true)
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
-    val richTextState = rememberRichTextState()
-    richTextState.setMarkdown(markdownContent)
-    richTextState.config.listIndent = 10
 
     val title = "OKR Tips"
 
@@ -64,10 +57,9 @@ fun HelpTooltip(
                 title = { Text(title, fontWeight = FontWeight.Bold) },
                 action = null,
             ) {
-                RichText(
-                    state = richTextState,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = modifier.verticalScroll(scrollState),
+                RichTextPreview(
+                    markdown = markdownContent,
+                    modifier = modifier.verticalScroll(scrollState)
                 )
             }
         },
