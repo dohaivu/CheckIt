@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.FormatIndentDecrease
 import androidx.compose.material.icons.automirrored.outlined.FormatIndentIncrease
@@ -50,6 +51,9 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -82,7 +86,7 @@ internal fun RichTextComposer(
     showPreview: Boolean = false,
     enabled: Boolean = true,
 ) {
-    val state = rememberRichTextState()
+    val state = rememberRichTextState(historyLimit = 0, coalesceWindowMs = 0L)
     state.config.listIndent = 15
 
     var isEditing by remember { mutableStateOf(false) }
@@ -185,6 +189,7 @@ internal fun RichTextComposer(
                             .fillMaxWidth()
                             .focusRequester(focusRequester)
                             .defaultMinSize(minHeight = 120.dp),
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, keyboardType = KeyboardType.Unspecified, imeAction = ImeAction.Unspecified, platformImeOptions = null, showKeyboardOnFocus = null,hintLocales = null),
                         undoBehavior = UndoBehavior.Disabled
                     )
                 } else {
