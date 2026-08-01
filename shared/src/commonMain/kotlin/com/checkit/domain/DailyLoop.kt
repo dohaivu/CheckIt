@@ -26,19 +26,19 @@ object YesterdayLeftovers {
     }
 
     /**
-     * Leftovers that still need carrying (task-linked items already on today are omitted).
+     * Leftovers that still need carrying (task-linked items already on today,
+     * and items already carried onto today, are omitted).
      */
     fun pendingForToday(
         leftovers: List<DailyPlanItem>,
         todayPlan: DailyPlan?
     ): List<DailyPlanItem> {
-        val todayTaskIds = todayPlan?.items
-            .orEmpty()
-            .mapNotNull { it.taskId }
-            .toSet()
+        val todayItems = todayPlan?.items.orEmpty()
+        val todayTaskIds = todayItems.mapNotNull { it.taskId }.toSet()
+        val todayCarriedFromIds = todayItems.mapNotNull { it.carriedFromItemId }.toSet()
         return leftovers.filter { item ->
             val taskId = item.taskId
-            taskId == null || taskId !in todayTaskIds
+            (taskId == null || taskId !in todayTaskIds) && item.id !in todayCarriedFromIds
         }
     }
 }

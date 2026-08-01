@@ -50,6 +50,8 @@ class MyDayViewModel(
     val uiState: StateFlow<MyDayUiState> = _uiState.asStateFlow()
     private var pendingEditorTextSaveJob: Job? = null
     private val autoCarryMutex = Mutex()
+    private var lastReviewChoices: Map<Int, Map<Long, LeftoverAction>> = emptyMap()
+    private var lastReviewGoals: Map<Int, String> = emptyMap()
 
     private val _events = Channel<UiEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
@@ -173,17 +175,23 @@ class MyDayViewModel(
 
     fun openDayReview() {
         val state = _uiState.value
+        if (state.dayReview != null) return
         val date = state.today
+        val epochDay = date.toEpochDays().toInt()
         viewModelScope.launch {
             val summary = buildDayReviewSummary(date, state.plan)
-            val defaults = summary.plannedItems.associate { it.id to LeftoverAction.CarryOver }
+            val remembered = lastReviewChoices[epochDay].orEmpty()
+            val actions = summary.plannedItems.associate { item ->
+                item.id to (remembered[item.id] ?: LeftoverAction.CarryOver)
+            }
             _uiState.update {
                 it.copy(
                     dayReview = DayReviewUiState(
                         summary = summary,
-                        leftoverActions = defaults,
+                        leftoverActions = actions,
                         winNote = summary.winNote,
-                        winNoteItemId = summary.winNoteItemId
+                        winNoteItemId = summary.winNoteItemId,
+                        tomorrowGoal = lastReviewGoals[epochDay].orEmpty()
                     ),
                     showDayReviewBanner = false,
                     showLeftoversSheet = false,
@@ -353,6 +361,9 @@ class MyDayViewModel(
                     tomorrowGoal = review.tomorrowGoal
                 )
             ).onSuccess { result ->
+                val epochDay = review.summary.date.toEpochDays().toInt()
+                lastReviewChoices = lastReviewChoices + (epochDay to review.leftoverActions)
+                lastReviewGoals = lastReviewGoals + (epochDay to review.tomorrowGoal)
                 _uiState.update { it.copy(dayReview = null, showDayReviewBanner = false, showCelebration = true) }
                 viewModelScope.launch {
                     delay(3000.milliseconds)

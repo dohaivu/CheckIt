@@ -204,7 +204,9 @@ data class DailyPlanItemEntity(
     val startTimeMinutes: Int? = null,
     val endTimeMinutes: Int? = null,
     val addedAtMillis: Long,
-    val completedAtMillis: Long? = null
+    val completedAtMillis: Long? = null,
+    /** Id of the source item this was copied from via carry-over, if any. */
+    val carriedFromItemId: Long? = null
 )
 
 @Entity(
@@ -341,7 +343,7 @@ data class TaskFilterEntity(
         TaskReminderEntity::class,
         TaskFilterEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)
@@ -365,6 +367,11 @@ fun buildCheckItDatabase(
                 override suspend fun migrate(connection: SQLiteConnection) {
                     connection.execSQL("ALTER TABLE tags ADD COLUMN sortOrder INTEGER NOT NULL DEFAULT 0")
                     connection.execSQL("ALTER TABLE tags ADD COLUMN lastUsedAtMillis INTEGER NOT NULL DEFAULT 0")
+                }
+            },
+            object : Migration(3, 4) {
+                override suspend fun migrate(connection: SQLiteConnection) {
+                    connection.execSQL("ALTER TABLE daily_plan_items ADD COLUMN carriedFromItemId INTEGER")
                 }
             }
         )

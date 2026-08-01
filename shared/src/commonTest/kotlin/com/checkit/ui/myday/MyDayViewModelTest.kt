@@ -5,6 +5,7 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DayReviewWinNote
+import com.checkit.domain.LeftoverAction
 import com.checkit.domain.usecase.AddDailyPlanItemUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.BuildDayReviewSummaryUseCase
@@ -142,6 +143,7 @@ class MyDayViewModelTest {
     @Test
     fun addCheckInWithoutTimePersistsPlannedNote() = runTest(dispatcher) {
         viewModel.openDailyPlan()
+        viewModel.updateEditorSource(DailyPlanItemSource.MyDayNote)
         viewModel.updateTitle("Draft proposal")
 
         viewModel.addDailyPlan()
@@ -157,6 +159,7 @@ class MyDayViewModelTest {
     @Test
     fun addNoteWithStartTimeDoesNotInferDoneItem() = runTest(dispatcher) {
         viewModel.openDailyPlan(startTimeMinutes = 0, endTimeMinutes = 30)
+        viewModel.updateEditorSource(DailyPlanItemSource.MyDayNote)
         viewModel.updateTitle("Morning thought")
 
         viewModel.addDailyPlan()
@@ -241,6 +244,46 @@ class MyDayViewModelTest {
 
         val (_, input) = repository.updatedDailyPlanItems.single()
         assertEquals("Closed quickly", input.title)
+    }
+
+    @Test
+    fun reOpenDayReviewRemembersChosenLeftoverActions() = runTest(dispatcher) {
+        val today = today()
+        repository.setDailyPlans(
+            listOf(
+                DailyPlan(
+                    date = today,
+                    items = listOf(
+                        DailyPlanItem(
+                            id = 7L,
+                            dateEpochDays = today.toEpochDays().toInt(),
+                            title = "Standalone task",
+                            source = DailyPlanItemSource.MyDayTask,
+                            status = DailyPlanItemStatus.Planned,
+                            sortOrder = 0,
+                            addedAtMillis = 0L
+                        )
+                    )
+                )
+            )
+        )
+        dispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.openDayReview()
+        dispatcher.scheduler.advanceUntilIdle()
+        val first = viewModel.uiState.value.dayReview
+        assertNotNull(first)
+        assertEquals(LeftoverAction.CarryOver, first.actionFor(7L))
+
+        viewModel.setLeftoverAction(7L, LeftoverAction.Drop)
+        viewModel.confirmDayReview()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.openDayReview()
+        dispatcher.scheduler.advanceUntilIdle()
+        val reopened = viewModel.uiState.value.dayReview
+        assertNotNull(reopened)
+        assertEquals(LeftoverAction.Drop, reopened.actionFor(7L))
     }
 
     private fun dailyPlanItem(

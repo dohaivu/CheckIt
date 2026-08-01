@@ -75,9 +75,11 @@ interface CheckItRepository {
     suspend fun updateDailyPlanItem(itemId: Long, input: DailyPlanItemWriteInput)
     suspend fun deleteDailyPlanItem(itemId: Long)
     suspend fun getDailyPlanItem(itemId: Long): DailyPlanItem?
+    suspend fun dailyPlanForDate(date: LocalDate): DailyPlan?
     /**
      * Copies a plan item onto [targetDate] as Planned.
-     * @return new item id, or null if skipped (same taskId already on that date).
+     * @return new item id, or null if skipped (same taskId already on that date,
+     * or the item was already carried onto that date).
      */
     suspend fun copyDailyPlanItemToDate(
         source: DailyPlanItem,
@@ -643,17 +645,29 @@ class RoomCheckItRepository(
         return item.toDomain(tags)
     }
 
+    override suspend fun dailyPlanForDate(date: LocalDate): DailyPlan? {
+        val items = dao.dailyPlanItemsForDate(date.toEpochDays().toInt())
+            .map { item ->
+                val tagIds = dao.tagIdsForItem(item.id)
+                val tags = if (tagIds.isNotEmpty()) dao.tagsByIds(tagIds).map { it.toDomain() } else emptyList()
+                item.toDomain(tags)
+            }
+            .sortedWith(compareBy<DailyPlanItem> { it.startTimeMinutes }.thenBy { it.sortOrder })
+        return if (items.isEmpty()) null else DailyPlan(date = date, items = items)
+    }
+
     override suspend fun copyDailyPlanItemToDate(
         source: DailyPlanItem,
         targetDate: LocalDate,
         clearTimes: Boolean
     ): Long? {
         val targetEpochDays = targetDate.toEpochDays().toInt()
-        val taskId = source.taskId
-        if (taskId != null) {
-            val alreadyPresent = dao.dailyPlanItemsForDate(targetEpochDays).any { it.taskId == taskId }
-            if (alreadyPresent) return null
+        val targetItems = dao.dailyPlanItemsForDate(targetEpochDays)
+        val alreadyPresent = targetItems.any { item ->
+            (source.taskId != null && item.taskId == source.taskId) ||
+                (item.carriedFromItemId != null && item.carriedFromItemId == source.id)
         }
+        if (alreadyPresent) return null
         val now = Clock.System.now().toEpochMilliseconds()
         val startTime = if (clearTimes) null else source.startTimeMinutes
         val endTime = when {
@@ -664,7 +678,7 @@ class RoomCheckItRepository(
         val itemId = dao.insertDailyPlanItem(
             DailyPlanItemEntity(
                 dateEpochDays = targetEpochDays,
-                taskId = taskId,
+                taskId = source.taskId,
                 title = source.title.ifBlank { "Untitled" },
                 note = source.note,
                 source = source.source.name,
@@ -673,7 +687,8 @@ class RoomCheckItRepository(
                 startTimeMinutes = startTime,
                 endTimeMinutes = endTime,
                 addedAtMillis = now,
-                completedAtMillis = null
+                completedAtMillis = null,
+                carriedFromItemId = source.id
             )
         )
         source.tags.forEach { tag -> addDailyPlanItemTag(itemId, tag.id) }
@@ -994,7 +1009,8 @@ private fun DailyPlanItemEntity.toDomain(tags: List<TaskTag> = emptyList()) = Da
     startTimeMinutes = startTimeMinutes,
     endTimeMinutes = endTimeMinutes,
     addedAtMillis = addedAtMillis,
-    completedAtMillis = completedAtMillis
+    completedAtMillis = completedAtMillis,
+    carriedFromItemId = carriedFromItemId
 )
 
 private fun SubTaskEntity.toDomain() = SubTaskItem(

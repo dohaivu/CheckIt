@@ -234,16 +234,23 @@ class CompleteDayReviewUseCase(
             )
 
             if (!input.tomorrowGoal.isNullOrBlank()) {
-                repository.addDailyPlanItem(
-                    date = tomorrow,
-                    title = input.tomorrowGoal,
-                    note = null,
-                    startTimeMinutes = null,
-                    endTimeMinutes = null,
-                    source = DailyPlanItemSource.MyDayTask,
-                    status = DailyPlanItemStatus.Planned,
-                    tagIds = emptyList()
-                )
+                val tomorrowGoal = input.tomorrowGoal.trim()
+                val alreadyHasGoal = repository.dailyPlanForDate(tomorrow)
+                    ?.items
+                    .orEmpty()
+                    .any { it.source == DailyPlanItemSource.MyDayTask && it.title.trim() == tomorrowGoal }
+                if (!alreadyHasGoal) {
+                    repository.addDailyPlanItem(
+                        date = tomorrow,
+                        title = tomorrowGoal,
+                        note = null,
+                        startTimeMinutes = null,
+                        endTimeMinutes = null,
+                        source = DailyPlanItemSource.MyDayTask,
+                        status = DailyPlanItemStatus.Planned,
+                        tagIds = emptyList()
+                    )
+                }
             }
 
             settingsRepository.setLastDayReviewEpochDay(input.date.toEpochDays().toInt())

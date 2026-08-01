@@ -47,6 +47,25 @@ class DailyLoopTest {
     }
 
     @Test
+    fun pendingForTodaySkipsItemAlreadyCarriedToToday() {
+        val leftovers = listOf(
+            planItem(1L, "Carried A", DailyPlanItemStatus.Planned),
+            planItem(2L, "Still pending", DailyPlanItemStatus.Planned),
+            planItem(3L, "Task item", DailyPlanItemStatus.Planned, taskId = 30L)
+        )
+        val todayPlan = DailyPlan(
+            date = today,
+            items = listOf(
+                planItem(99L, "Carried A", DailyPlanItemStatus.Planned)
+                    .copy(carriedFromItemId = 1L),
+                planItem(98L, "Task item", DailyPlanItemStatus.Planned, taskId = 30L)
+            )
+        )
+        val pending = YesterdayLeftovers.pendingForToday(leftovers, todayPlan)
+        assertEquals(listOf(2L), pending.map { it.id })
+    }
+
+    @Test
     fun leftoversBannerPolicy() {
         assertTrue(
             LeftoversBannerPolicy.shouldShow(

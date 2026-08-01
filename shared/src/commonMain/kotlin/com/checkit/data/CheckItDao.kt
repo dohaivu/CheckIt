@@ -231,6 +231,9 @@ interface CheckItDao {
     @Query("SELECT * FROM daily_plan_items WHERE dateEpochDays = :dateEpochDays ORDER BY sortOrder ASC, addedAtMillis ASC")
     suspend fun dailyPlanItemsForDate(dateEpochDays: Int): List<DailyPlanItemEntity>
 
+    @Query("SELECT COUNT(*) FROM daily_plan_items WHERE dateEpochDays = :dateEpochDays AND carriedFromItemId = :sourceItemId")
+    suspend fun carriedFromCountOnDate(dateEpochDays: Int, sourceItemId: Long): Int
+
     @Query("SELECT * FROM sub_tasks ORDER BY sortOrder ASC, id ASC")
     fun observeSubTasks(): Flow<List<SubTaskEntity>>
 

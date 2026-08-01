@@ -133,7 +133,9 @@ data class DailyPlanItem(
     val startTimeMinutes: Int? = null,
     val endTimeMinutes: Int? = null,
     val addedAtMillis: Long,
-    val completedAtMillis: Long? = null
+    val completedAtMillis: Long? = null,
+    /** Id of the source item this was copied from via carry-over, if any. */
+    val carriedFromItemId: Long? = null
 )
 
 enum class DailyPlanItemSource {

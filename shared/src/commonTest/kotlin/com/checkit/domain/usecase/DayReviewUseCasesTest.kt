@@ -17,6 +17,7 @@ import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -126,6 +127,72 @@ class DayReviewUseCasesTest {
         assertNull(copy.endTimeMinutes)
         assertEquals(100L, copy.taskId)
         assertEquals(listOf("Code"), copy.tags.map { it.name })
+        assertEquals(11L, copy.carriedFromItemId)
+    }
+
+    @Test
+    fun carryOverSkipsWhenSourceAlreadyCarriedOntoDate() = runTest {
+        val repository = FakeCheckItRepository()
+        val carryOver = CarryOverDailyPlanItemsUseCase(repository, Dispatchers.Unconfined)
+        val planned = item(
+            id = 21L,
+            title = "Standalone task",
+            status = DailyPlanItemStatus.Planned
+        )
+        repository.setDailyPlans(listOf(DailyPlan(date = date, items = listOf(planned))))
+
+        val first = carryOver(
+            items = listOf(planned),
+            itemIds = setOf(21L),
+            toDate = tomorrow,
+            timePolicy = CarryOverTimePolicy.ClearTimes
+        )
+        assertEquals(1, first.carriedCount)
+        assertEquals(0, first.skippedCount)
+
+        val second = carryOver(
+            items = listOf(planned),
+            itemIds = setOf(21L),
+            toDate = tomorrow,
+            timePolicy = CarryOverTimePolicy.ClearTimes
+        )
+        assertEquals(0, second.carriedCount)
+        assertEquals(1, second.skippedCount)
+        assertEquals(1, repository.copiedDailyPlanItems.size)
+    }
+
+    @Test
+    fun completeReviewTwiceDoesNotDuplicateCarryOrTomorrowGoal() = runTest {
+        val repository = FakeCheckItRepository()
+        val settings = FakeSettingsRepository()
+        val complete = CompleteDayReviewUseCase(
+            repository = repository,
+            settingsRepository = settings,
+            carryOverDailyPlanItems = CarryOverDailyPlanItemsUseCase(repository, Dispatchers.Unconfined),
+            upsertWinNote = UpsertDayReviewWinNoteUseCase(repository, Dispatchers.Unconfined),
+            buildSummary = buildSummary,
+            dispatcher = Dispatchers.Unconfined
+        )
+        val planned = item(id = 1L, title = "Standalone", status = DailyPlanItemStatus.Planned)
+        val plan = DailyPlan(date = date, items = listOf(planned))
+        repository.setDailyPlans(listOf(plan))
+
+        val input = DayReviewConfirmInput(
+            date = date,
+            leftoverActions = mapOf(1L to LeftoverAction.CarryOver),
+            tomorrowGoal = "Ship the review"
+        )
+        val first = complete(plan, input).getOrThrow()
+        assertEquals(1, first.carriedCount)
+
+        val second = complete(plan, input).getOrThrow()
+        assertEquals(0, second.carriedCount)
+
+        assertEquals(1, repository.copiedDailyPlanItems.size)
+        val tomorrowPlan = assertNotNull(repository.dailyPlanForDate(tomorrow))
+        assertEquals(2, tomorrowPlan.items.size)
+        assertEquals(1, tomorrowPlan.items.count { it.title == "Ship the review" })
+        assertEquals(1, tomorrowPlan.items.count { it.carriedFromItemId == 1L })
     }
 
     @Test
