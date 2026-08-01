@@ -21,8 +21,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -100,26 +103,37 @@ internal fun WorkTimeChip(minutes: Int) {
 @Composable
 private fun DayTrack(blocks: List<DayTimelineBlock>) {
     val trackColor = MaterialTheme.colorScheme.surfaceContainerHigh
+    val focusColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
     Canvas(
         modifier = Modifier
             .fillMaxWidth()
             .height(16.dp)
     ) {
         val corner = size.height / 2f
-        drawRoundRect(
-            color = trackColor,
-            cornerRadius = CornerRadius(corner, corner),
-            size = size
-        )
-        blocks.forEach { block ->
-            val startFraction = (block.startMinutes - DayTimelineStartMinutes).toFloat() / DayTimelineTotalMinutes
-            val widthFraction = (block.endMinutes - block.startMinutes).toFloat() / DayTimelineTotalMinutes
-            drawRoundRect(
-                color = block.color,
-                topLeft = Offset(x = size.width * startFraction, y = 0f),
-                size = Size(width = size.width * widthFraction, height = size.height),
-                cornerRadius = CornerRadius(corner, corner)
-            )
+        val pill = Path().apply {
+            addRoundRect(RoundRect(0f, 0f, size.width, size.height, CornerRadius(corner, corner)))
+        }
+        clipPath(pill) {
+            drawRect(color = trackColor)
+            DayFocusRanges.forEach { (startMinutes, endMinutes) ->
+                val left = (startMinutes - DayTimelineStartMinutes).toFloat() / DayTimelineTotalMinutes * size.width
+                val right = (endMinutes - DayTimelineStartMinutes).toFloat() / DayTimelineTotalMinutes * size.width
+                drawRect(
+                    color = focusColor,
+                    topLeft = Offset(x = left, y = 0f),
+                    size = Size(width = right - left, height = size.height)
+                )
+            }
+            blocks.forEach { block ->
+                val startFraction = (block.startMinutes - DayTimelineStartMinutes).toFloat() / DayTimelineTotalMinutes
+                val widthFraction = (block.endMinutes - block.startMinutes).toFloat() / DayTimelineTotalMinutes
+                drawRoundRect(
+                    color = block.color,
+                    topLeft = Offset(x = size.width * startFraction, y = 0f),
+                    size = Size(width = size.width * widthFraction, height = size.height),
+                    cornerRadius = CornerRadius(corner, corner)
+                )
+            }
         }
     }
 }
@@ -202,6 +216,14 @@ private fun List<DayTimelineBlock>.totalOccupiedMinutes(): Int {
 private const val DayTimelineStartMinutes = 6 * 60
 private const val DayTimelineEndMinutes = 22 * 60
 private const val DayTimelineTotalMinutes = DayTimelineEndMinutes - DayTimelineStartMinutes
+
+/** Prime hours (9-11, 13-17, 19-22) highlighted on the track so users see time spent in focus windows. */
+private val DayFocusRanges = listOf(
+    8 * 60 to 11 * 60,
+    13 * 60 to 16 * 60,
+    19 * 60 to 22 * 60
+)
+
 private val DayTimelineTicks = listOf(
     DayTimelineTick(label = "6am", minutes = 6 * 60),
     DayTimelineTick(label = "12pm", minutes = 12 * 60),
