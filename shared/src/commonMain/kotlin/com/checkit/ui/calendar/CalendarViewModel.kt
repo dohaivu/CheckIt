@@ -2,8 +2,12 @@ package com.checkit.ui.calendar
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.checkit.domain.DailyPlan
+import com.checkit.domain.DayReviewRecord
+import com.checkit.domain.TaskBoard
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
+import com.checkit.domain.usecase.ObserveDayReviewsUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.ui.firstDayOfMonth
 import com.checkit.ui.today
@@ -22,6 +26,7 @@ import kotlinx.datetime.plus
 class CalendarViewModel(
     private val observeTaskBoard: ObserveTaskBoardUseCase,
     private val observeDailyPlans: ObserveDailyPlansUseCase,
+    private val observeDayReviews: ObserveDayReviewsUseCase,
     private val ensureDefaultTaskData: EnsureDefaultTaskDataUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(CalendarUiState())
@@ -30,18 +35,23 @@ class CalendarViewModel(
     init {
         viewModelScope.launch {
             ensureDefaultTaskData()
-            combine(observeTaskBoard(), observeDailyPlans()) { board, dailyPlans ->
-                board to dailyPlans
+            combine(
+                observeTaskBoard(),
+                observeDailyPlans(),
+                observeDayReviews()
+            ) { board, dailyPlans, dayReviews ->
+                CalendarCombined(board, dailyPlans, dayReviews)
             }
                 .catch { _ ->
                     _uiState.update { it.copy() }
                 }
-                .collect { (board, dailyPlans) ->
+                .collect { (board, dailyPlans, dayReviews) ->
                     _uiState.update { state ->
                         val availableTagIds = board.tags.map { it.id }.toSet()
                         state.copy(
                             board = board,
                             dailyPlans = dailyPlans,
+                            dayReviews = dayReviews,
                             selectedTagIds = state.selectedTagIds.intersect(availableTagIds)
                         )
                     }
@@ -130,3 +140,9 @@ class CalendarViewModel(
         _uiState.update { it.copy(isMonthlyWinsExpanded = !it.isMonthlyWinsExpanded) }
     }
 }
+
+private data class CalendarCombined(
+    val board: TaskBoard,
+    val dailyPlans: List<DailyPlan>,
+    val dayReviews: List<DayReviewRecord>
+)

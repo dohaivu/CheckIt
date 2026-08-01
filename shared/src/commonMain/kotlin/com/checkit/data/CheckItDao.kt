@@ -5,6 +5,8 @@ import androidx.room3.Insert
 import androidx.room3.OnConflictStrategy
 import androidx.room3.Query
 import androidx.room3.Transaction
+import com.checkit.domain.DailyPlanItemStatus
+import com.checkit.domain.DayReviewCommitResult
 import com.checkit.domain.TaskReminderWriteInput
 import kotlinx.coroutines.flow.Flow
 
@@ -544,6 +546,92 @@ interface CheckItDao {
         status: String,
         completedAtMillis: Long?
     )
+
+    @Query("UPDATE daily_plan_items SET handledAtMillis = :handledAtMillis WHERE id IN (:itemIds)")
+    suspend fun markDailyPlanItemsHandled(itemIds: List<Long>, handledAtMillis: Long)
+
+    @Query("SELECT * FROM day_reviews ORDER BY dateEpochDays ASC")
+    fun observeDayReviews(): Flow<List<DayReviewEntity>>
+
+    @Query("SELECT * FROM day_reviews WHERE dateEpochDays = :dateEpochDays LIMIT 1")
+    suspend fun dayReviewForDate(dateEpochDays: Int): DayReviewEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertDayReview(review: DayReviewEntity)
+
+    /**
+     * Applies a complete evening review atomically: marks done items, carries
+     * leftovers onto the next day, writes tomorrow's goal note, and records the
+     * review. Idempotent: already-carried items are skipped and every resolved
+     * item is stamped as handled.
+     */
+    @Transaction
+    suspend fun completeDayReview(
+        dateEpochDays: Int,
+        markDoneItemIds: List<Long>,
+        carryItemIds: List<Long>,
+        dropItemIds: List<Long>,
+        winNote: String?,
+        tomorrowGoal: String?,
+        doneCount: Int,
+        plannedCount: Int,
+        doneMinutes: Int,
+        targetDateEpochDays: Int,
+        nowMillis: Long
+    ): DayReviewCommitResult {
+        updateDailyPlanItemsStatus(markDoneItemIds, DailyPlanItemStatus.Done.name, nowMillis)
+        markDailyPlanItemsHandled(markDoneItemIds, nowMillis)
+        markDailyPlanItemsHandled(dropItemIds, nowMillis)
+
+        var carriedCount = 0
+        var skippedCount = 0
+        carryItemIds.forEach { itemId ->
+            val source = dailyPlanItemById(itemId) ?: return@forEach
+            val alreadyCarried = carriedFromCountOnDate(targetDateEpochDays, source.id) > 0
+            if (!alreadyCarried) {
+                val newItemId = insertDailyPlanItem(
+                    DailyPlanItemEntity(
+                        dateEpochDays = targetDateEpochDays,
+                        taskId = source.taskId,
+                        title = source.title,
+                        note = source.note,
+                        source = source.source,
+                        status = DailyPlanItemStatus.Planned.name,
+                        sortOrder = nextDailyPlanItemSortOrder(targetDateEpochDays),
+                        startTimeMinutes = null,
+                        endTimeMinutes = null,
+                        addedAtMillis = nowMillis,
+                        completedAtMillis = null,
+                        carriedFromItemId = source.id
+                    )
+                )
+                tagIdsForItem(source.id).forEach { tagId ->
+                    insertDailyPlanItemTagIfParentsExist(newItemId, tagId)
+                }
+                carriedCount += 1
+            } else {
+                skippedCount += 1
+            }
+            markDailyPlanItemsHandled(listOf(source.id), nowMillis)
+        }
+
+        upsertDayReview(
+            DayReviewEntity(
+                dateEpochDays = dateEpochDays,
+                doneCount = doneCount,
+                plannedCount = plannedCount,
+                doneMinutes = doneMinutes,
+                winNote = winNote?.trim()?.takeIf { it.isNotEmpty() },
+                tomorrowGoal = tomorrowGoal?.trim()?.takeIf { it.isNotEmpty() },
+                completedAtMillis = nowMillis
+            )
+        )
+
+        return DayReviewCommitResult(
+            carriedCount = carriedCount,
+            skippedCount = skippedCount
+        )
+    }
 
     @Query(
         """

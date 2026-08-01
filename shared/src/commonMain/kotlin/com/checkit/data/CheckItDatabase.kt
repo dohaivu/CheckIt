@@ -206,7 +206,21 @@ data class DailyPlanItemEntity(
     val addedAtMillis: Long,
     val completedAtMillis: Long? = null,
     /** Id of the source item this was copied from via carry-over, if any. */
-    val carriedFromItemId: Long? = null
+    val carriedFromItemId: Long? = null,
+    /** Timestamp (epoch millis) when this item was resolved by a review or carry-over. */
+    val handledAtMillis: Long? = null
+)
+
+@Entity(tableName = "day_reviews")
+data class DayReviewEntity(
+    @PrimaryKey
+    val dateEpochDays: Int,
+    val doneCount: Int,
+    val plannedCount: Int,
+    val doneMinutes: Int,
+    val winNote: String? = null,
+    val tomorrowGoal: String? = null,
+    val completedAtMillis: Long
 )
 
 @Entity(
@@ -336,6 +350,7 @@ data class TaskFilterEntity(
         SubTaskEntity::class,
         NoteEntity::class,
         DailyPlanItemEntity::class,
+        DayReviewEntity::class,
         TagEntity::class,
         TaskTagEntity::class,
         NoteTagEntity::class,
@@ -343,7 +358,7 @@ data class TaskFilterEntity(
         TaskReminderEntity::class,
         TaskFilterEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)
@@ -372,6 +387,27 @@ fun buildCheckItDatabase(
             object : Migration(3, 4) {
                 override suspend fun migrate(connection: SQLiteConnection) {
                     connection.execSQL("ALTER TABLE daily_plan_items ADD COLUMN carriedFromItemId INTEGER")
+                }
+            },
+            object : Migration(4, 5) {
+                override suspend fun migrate(connection: SQLiteConnection) {
+                    connection.execSQL("ALTER TABLE daily_plan_items ADD COLUMN handledAtMillis INTEGER")
+                    connection.execSQL(
+                        """
+                        CREATE TABLE IF NOT EXISTS day_reviews (
+                            dateEpochDays INTEGER NOT NULL PRIMARY KEY,
+                            doneCount INTEGER NOT NULL,
+                            plannedCount INTEGER NOT NULL,
+                            doneMinutes INTEGER NOT NULL,
+                            winNote TEXT,
+                            tomorrowGoal TEXT,
+                            completedAtMillis INTEGER NOT NULL
+                        )
+                        """.trimIndent()
+                    )
+                    connection.execSQL(
+                        "DELETE FROM daily_plan_items WHERE source = 'MyDayNote' AND title = 'Win'"
+                    )
                 }
             }
         )

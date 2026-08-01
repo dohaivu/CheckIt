@@ -1,23 +1,23 @@
 package com.checkit.domain.usecase
 
 import com.checkit.data.CheckItRepository
-import com.checkit.data.DailyPlanItemWriteInput
 import com.checkit.data.SettingsRepository
 import com.checkit.domain.CarryOverResult
 import com.checkit.domain.CarryOverTimePolicy
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
-import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DayReviewConfirmInput
 import com.checkit.domain.DayReviewConfirmResult
+import com.checkit.domain.DayReviewRecord
 import com.checkit.domain.DayReviewSummary
 import com.checkit.domain.DayReviewTagMinutes
-import com.checkit.domain.DayReviewWinNote
 import com.checkit.domain.LeftoverAction
 import com.checkit.domain.planWorkMinutes
+import kotlin.time.Clock
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
@@ -28,15 +28,14 @@ class BuildDayReviewSummaryUseCase(
     private val dispatcher: CoroutineDispatcher = Dispatchers.Default
 ) {
     suspend operator fun invoke(date: LocalDate, plan: DailyPlan?): DayReviewSummary = withContext(dispatcher) {
-        val winItem = DayReviewWinNote.findItem(plan)
-        val winItemId = winItem?.id
-        val items = plan?.items.orEmpty().filterNot { it.id == winItemId }
+        val items = plan?.items.orEmpty()
         val doneItems = items
             .filter { it.status == DailyPlanItemStatus.Done }
             .sortedBy { it.startTimeMinutes ?: Int.MAX_VALUE }
         val plannedItems = items
-            .filter { it.status == DailyPlanItemStatus.Planned }
+            .filter { it.status == DailyPlanItemStatus.Planned && it.handledAtMillis == null }
             .sortedBy { it.startTimeMinutes ?: Int.MAX_VALUE }
+        val alreadyCarriedCount = items.count { it.status == DailyPlanItemStatus.Planned && it.handledAtMillis != null }
         val doneMinutes = doneItems.sumOf { it.planWorkMinutes() }
         val topTags = doneItems
             .asSequence()
@@ -68,8 +67,7 @@ class BuildDayReviewSummaryUseCase(
             plannedItems = plannedItems,
             doneItems = doneItems,
             topTags = topTags,
-            winNoteItemId = winItemId,
-            winNote = DayReviewWinNote.textOf(winItem)
+            alreadyCarriedCount = alreadyCarriedCount
         )
     }
 
@@ -128,64 +126,22 @@ class CarryOverDailyPlanItemsUseCase(
     )
 }
 
-/** Specific logic for upserting or deleting the "Win of the Day" note. */
-class UpsertDayReviewWinNoteUseCase(
-    private val repository: CheckItRepository,
-    private val dispatcher: CoroutineDispatcher = Dispatchers.Default
+/** Observes the persisted day review history. */
+class ObserveDayReviewsUseCase(
+    private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(
-        plan: DailyPlan?,
-        date: LocalDate,
-        winNoteItemId: Long?,
-        winNoteText: String?
-    ): Boolean = withContext(dispatcher) {
-        val text = winNoteText?.trim().orEmpty()
-        val existingId = winNoteItemId ?: DayReviewWinNote.findItem(plan)?.id
-
-        when {
-            existingId != null && text.isNotEmpty() -> {
-                repository.updateDailyPlanItem(
-                    existingId,
-                    DailyPlanItemWriteInput(
-                        title = DayReviewWinNote.Title,
-                        note = text,
-                        source = DailyPlanItemSource.MyDayNote,
-                        status = DailyPlanItemStatus.Done,
-                        startTimeMinutes = null,
-                        endTimeMinutes = null,
-                        tagIds = emptyList()
-                    )
-                )
-                true
-            }
-            existingId != null && text.isEmpty() -> {
-                repository.deleteDailyPlanItem(existingId)
-                true
-            }
-            existingId == null && text.isNotEmpty() -> {
-                repository.addDailyPlanItem(
-                    date = date,
-                    title = DayReviewWinNote.Title,
-                    note = text,
-                    startTimeMinutes = null,
-                    endTimeMinutes = null,
-                    source = DailyPlanItemSource.MyDayNote,
-                    status = DailyPlanItemStatus.Done,
-                    tagIds = emptyList()
-                )
-                true
-            }
-            else -> false
-        }
-    }
+    operator fun invoke(): Flow<List<DayReviewRecord>> = repository.observeDayReviews()
 }
 
-/** Applies leftover decisions, optional win note, and marks the day as reviewed. */
+/**
+ * Applies leftover decisions and records the review atomically.
+ * Marking done, carrying items, saving the win note/goal, and stamping items as
+ * handled happen in a single database transaction, so repeated invocations for
+ * the same day are idempotent.
+ */
 class CompleteDayReviewUseCase(
     private val repository: CheckItRepository,
     private val settingsRepository: SettingsRepository,
-    private val carryOverDailyPlanItems: CarryOverDailyPlanItemsUseCase,
-    private val upsertWinNote: UpsertDayReviewWinNoteUseCase,
     private val buildSummary: BuildDayReviewSummaryUseCase,
     private val dispatcher: CoroutineDispatcher = Dispatchers.Default
 ) {
@@ -195,72 +151,61 @@ class CompleteDayReviewUseCase(
     ): Result<DayReviewConfirmResult> = runCatching {
         withContext(dispatcher) {
             val summary = buildSummary(input.date, plan)
-            val plannedById = summary.plannedItems.associateBy { it.id }
-
-            val markDoneIds = mutableListOf<Long>()
-            var dropped = 0
-            val carryIds = mutableSetOf<Long>()
-
-            for ((itemId, action) in input.leftoverActions) {
-                val item = plannedById[itemId] ?: continue
-                when (action) {
-                    LeftoverAction.MarkDone -> markDoneIds += itemId
-                    LeftoverAction.CarryOver -> carryIds += item.id
-                    LeftoverAction.Drop -> dropped += 1
-                }
-            }
-
-            if (markDoneIds.isNotEmpty()) {
-                repository.updateDailyPlanItemsStatus(markDoneIds, DailyPlanItemStatus.Done)
-            }
-
+            val resolution = resolveLeftovers(summary.plannedItems, input.leftoverActions)
             val tomorrow = input.date.plus(1, DateTimeUnit.DAY)
-            val carryResult = if (carryIds.isEmpty()) {
-                CarryOverResult(carriedCount = 0, skippedCount = 0, newItemIds = emptyList())
-            } else {
-                carryOverDailyPlanItems(
-                    items = summary.plannedItems,
-                    itemIds = carryIds,
-                    toDate = tomorrow,
-                    timePolicy = CarryOverTimePolicy.ClearTimes
-                )
-            }
-
-            val winNoteSaved = upsertWinNote(
-                plan = plan,
+            val commit = repository.completeDayReview(
                 date = input.date,
-                winNoteItemId = input.winNoteItemId,
-                winNoteText = input.winNote
+                markDoneItemIds = resolution.markDoneIds,
+                carryItemIds = resolution.carryIds,
+                dropItemIds = resolution.dropIds,
+                winNote = input.winNote,
+                tomorrowGoal = input.tomorrowGoal,
+                doneCount = summary.doneCount,
+                plannedCount = summary.plannedCount,
+                doneMinutes = summary.doneMinutes,
+                targetDate = tomorrow,
+                nowMillis = Clock.System.now().toEpochMilliseconds()
             )
-
-            if (!input.tomorrowGoal.isNullOrBlank()) {
-                val tomorrowGoal = input.tomorrowGoal.trim()
-                val alreadyHasGoal = repository.dailyPlanForDate(tomorrow)
-                    ?.items
-                    .orEmpty()
-                    .any { it.source == DailyPlanItemSource.MyDayTask && it.title.trim() == tomorrowGoal }
-                if (!alreadyHasGoal) {
-                    repository.addDailyPlanItem(
-                        date = tomorrow,
-                        title = tomorrowGoal,
-                        note = null,
-                        startTimeMinutes = null,
-                        endTimeMinutes = null,
-                        source = DailyPlanItemSource.MyDayTask,
-                        status = DailyPlanItemStatus.Planned,
-                        tagIds = emptyList()
-                    )
-                }
-            }
-
             settingsRepository.setLastDayReviewEpochDay(input.date.toEpochDays().toInt())
 
             DayReviewConfirmResult(
-                markedDoneCount = markDoneIds.size,
-                carriedCount = carryResult.carriedCount,
-                droppedCount = dropped,
-                winNoteSaved = winNoteSaved
+                markedDoneCount = resolution.markDoneIds.size,
+                carriedCount = commit.carriedCount,
+                droppedCount = resolution.droppedCount,
+                winNoteSaved = !input.winNote.isNullOrBlank()
             )
         }
+    }
+
+    /** Splits leftover decisions into the operations performed by the review. */
+    private fun resolveLeftovers(
+        plannedItems: List<DailyPlanItem>,
+        actions: Map<Long, LeftoverAction>
+    ): LeftoverResolution {
+        val plannedById = plannedItems.associateBy { it.id }
+        val markDoneIds = mutableListOf<Long>()
+        val carryIds = mutableListOf<Long>()
+        val dropIds = mutableListOf<Long>()
+        for ((itemId, action) in actions) {
+            val item = plannedById[itemId] ?: continue
+            when (action) {
+                LeftoverAction.MarkDone -> markDoneIds += item.id
+                LeftoverAction.CarryOver -> carryIds += item.id
+                LeftoverAction.Drop -> dropIds += item.id
+            }
+        }
+        return LeftoverResolution(
+            markDoneIds = markDoneIds,
+            carryIds = carryIds,
+            dropIds = dropIds
+        )
+    }
+
+    private data class LeftoverResolution(
+        val markDoneIds: List<Long>,
+        val carryIds: List<Long>,
+        val dropIds: List<Long>
+    ) {
+        val droppedCount: Int get() = dropIds.size
     }
 }

@@ -113,6 +113,13 @@ internal fun DayReviewSheet(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
+            if (state.summary.alreadyCarriedCount > 0) {
+                Text(
+                    text = "${state.summary.alreadyCarriedCount} already moved to tomorrow",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
             if (state.summary.plannedItems.isEmpty()) {
                 Text(
                     text = stringResource(Res.string.day_review_leftovers_empty),
@@ -131,7 +138,7 @@ internal fun DayReviewSheet(
                         key = { _, item -> item.id }) { index, item ->
                         LeftoverReviewRow(
                             item = item,
-                            action = state.actionFor(item.id),
+                            action = state.actionFor(item),
                             enabled = !state.isSubmitting,
                             onAction = { onLeftoverAction(item.id, it) }
                         )
@@ -284,6 +291,11 @@ private fun ReviewSummaryRow(state: DayReviewUiState) {
                 state.summary.doneMinutes
             )
         )
+        if (state.streak > 0) {
+            SummaryChip(
+                label = "${state.streak}-day review streak"
+            )
+        }
     }
 }
 

@@ -7,8 +7,11 @@ import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DayReviewBannerPolicy
 import com.checkit.domain.DayReviewConfirmInput
+import com.checkit.domain.DayReviewRecord
 import com.checkit.domain.LeftoverAction
+import com.checkit.domain.ReviewStreakPolicy
 import com.checkit.domain.TaskTag
+import com.checkit.domain.defaultLeftoverAction
 import com.checkit.ui.tasks.FakeCheckItRepository
 import com.checkit.ui.tasks.FakeSettingsRepository
 import kotlinx.coroutines.Dispatchers
@@ -71,6 +74,39 @@ class DayReviewUseCasesTest {
         assertEquals(0, summary.doneMinutes)
         assertTrue(summary.plannedItems.isEmpty())
         assertTrue(summary.topTags.isEmpty())
+    }
+
+    @Test
+    fun summaryExcludesHandledItemsAndCountsAlreadyCarried() = runTest {
+        val plan = DailyPlan(
+            date = date,
+            items = listOf(
+                item(
+                    id = 50L,
+                    title = "Already carried",
+                    status = DailyPlanItemStatus.Planned,
+                    handledAtMillis = 1L
+                ),
+                item(
+                    id = 51L,
+                    title = "Still open",
+                    status = DailyPlanItemStatus.Planned
+                ),
+                item(
+                    id = 1L,
+                    title = "Deep work",
+                    status = DailyPlanItemStatus.Done,
+                    startTimeMinutes = 9 * 60,
+                    endTimeMinutes = 10 * 60
+                )
+            )
+        )
+
+        val summary = buildSummary(date, plan)
+        assertEquals(1, summary.alreadyCarriedCount)
+        assertEquals(listOf(51L), summary.plannedItems.map { it.id })
+        assertEquals(listOf(1L), summary.doneItems.map { it.id })
+        assertEquals(1, summary.doneCount)
     }
 
     @Test
@@ -162,14 +198,12 @@ class DayReviewUseCasesTest {
     }
 
     @Test
-    fun completeReviewTwiceDoesNotDuplicateCarryOrTomorrowGoal() = runTest {
+    fun completeReviewTwiceDoesNotDuplicateCarryOrGoalRecord() = runTest {
         val repository = FakeCheckItRepository()
         val settings = FakeSettingsRepository()
         val complete = CompleteDayReviewUseCase(
             repository = repository,
             settingsRepository = settings,
-            carryOverDailyPlanItems = CarryOverDailyPlanItemsUseCase(repository, Dispatchers.Unconfined),
-            upsertWinNote = UpsertDayReviewWinNoteUseCase(repository, Dispatchers.Unconfined),
             buildSummary = buildSummary,
             dispatcher = Dispatchers.Unconfined
         )
@@ -190,20 +224,20 @@ class DayReviewUseCasesTest {
 
         assertEquals(1, repository.copiedDailyPlanItems.size)
         val tomorrowPlan = assertNotNull(repository.dailyPlanForDate(tomorrow))
-        assertEquals(2, tomorrowPlan.items.size)
-        assertEquals(1, tomorrowPlan.items.count { it.title == "Ship the review" })
+        assertEquals(1, tomorrowPlan.items.size)
         assertEquals(1, tomorrowPlan.items.count { it.carriedFromItemId == 1L })
+
+        val record = assertNotNull(repository.dayReviewForDate(date))
+        assertEquals("Ship the review", record.tomorrowGoal)
     }
 
     @Test
-    fun completeReviewAppliesActionsWinNoteAndSettings() = runTest {
+    fun completeReviewAppliesActionsAndPersistsWinNote() = runTest {
         val repository = FakeCheckItRepository()
         val settings = FakeSettingsRepository()
         val complete = CompleteDayReviewUseCase(
             repository = repository,
             settingsRepository = settings,
-            carryOverDailyPlanItems = CarryOverDailyPlanItemsUseCase(repository, Dispatchers.Unconfined),
-            upsertWinNote = UpsertDayReviewWinNoteUseCase(repository, Dispatchers.Unconfined),
             buildSummary = buildSummary,
             dispatcher = Dispatchers.Unconfined
         )
@@ -239,56 +273,24 @@ class DayReviewUseCasesTest {
         assertTrue(result.winNoteSaved)
         assertEquals(listOf(1L to DailyPlanItemStatus.Done), repository.statusUpdates)
         assertEquals(1, repository.copiedDailyPlanItems.size)
-        assertEquals("Win", repository.addedManualDailyPlanItems.single().title)
-        assertEquals("Shipped review", repository.addedManualDailyPlanItems.single().note)
+        assertTrue(repository.addedManualDailyPlanItems.isEmpty())
+        assertTrue(repository.markedHandledItemIds.containsAll(listOf(1L, 2L, 3L)))
+        val record = assertNotNull(repository.dayReviewForDate(date))
+        assertEquals("Shipped review", record.winNote)
         assertEquals(date.toEpochDays().toInt(), settings.currentSettings().lastDayReviewEpochDay)
     }
 
     @Test
-    fun summaryLoadsExistingWinNoteAndExcludesItFromCounts() = runTest {
-        val win = item(
-            id = 50L,
-            title = "Win",
-            status = DailyPlanItemStatus.Done,
-            source = DailyPlanItemSource.MyDayNote,
-            note = "Closed the review loop"
-        )
-        val done = item(
-            id = 1L,
-            title = "Deep work",
-            status = DailyPlanItemStatus.Done,
-            startTimeMinutes = 9 * 60,
-            endTimeMinutes = 10 * 60
-        )
-        val plan = DailyPlan(date = date, items = listOf(win, done))
-
-        val summary = buildSummary(date, plan)
-        assertEquals(50L, summary.winNoteItemId)
-        assertEquals("Closed the review loop", summary.winNote)
-        assertEquals(1, summary.doneCount)
-        assertEquals(listOf(1L), summary.doneItems.map { it.id })
-    }
-
-    @Test
-    fun completeReviewUpdatesExistingWinNote() = runTest {
+    fun completeReviewClearsBlankWinNoteFromRecord() = runTest {
         val repository = FakeCheckItRepository()
         val settings = FakeSettingsRepository()
         val complete = CompleteDayReviewUseCase(
             repository = repository,
             settingsRepository = settings,
-            carryOverDailyPlanItems = CarryOverDailyPlanItemsUseCase(repository, Dispatchers.Unconfined),
-            upsertWinNote = UpsertDayReviewWinNoteUseCase(repository, Dispatchers.Unconfined),
             buildSummary = buildSummary,
             dispatcher = Dispatchers.Unconfined
         )
-        val win = item(
-            id = 50L,
-            title = "Win",
-            status = DailyPlanItemStatus.Done,
-            source = DailyPlanItemSource.MyDayNote,
-            note = "First draft"
-        )
-        val plan = DailyPlan(date = date, items = listOf(win))
+        val plan = DailyPlan(date = date, items = emptyList())
         repository.setDailyPlans(listOf(plan))
 
         val result = complete(
@@ -296,53 +298,50 @@ class DayReviewUseCasesTest {
             input = DayReviewConfirmInput(
                 date = date,
                 leftoverActions = emptyMap(),
-                winNote = "Updated win",
-                winNoteItemId = 50L
+                winNote = "   "
             )
         ).getOrThrow()
 
-        assertTrue(result.winNoteSaved)
-        assertTrue(repository.addedManualDailyPlanItems.isEmpty())
-        val update = repository.updatedDailyPlanItems.single()
-        assertEquals(50L, update.first)
-        assertEquals("Updated win", update.second.note)
-        assertEquals("Win", update.second.title)
+        assertFalse(result.winNoteSaved)
+        val record = assertNotNull(repository.dayReviewForDate(date))
+        assertEquals("", record.winNote)
     }
 
     @Test
-    fun completeReviewDeletesWinNoteWhenCleared() = runTest {
-        val repository = FakeCheckItRepository()
-        val settings = FakeSettingsRepository()
-        val complete = CompleteDayReviewUseCase(
-            repository = repository,
-            settingsRepository = settings,
-            carryOverDailyPlanItems = CarryOverDailyPlanItemsUseCase(repository, Dispatchers.Unconfined),
-            upsertWinNote = UpsertDayReviewWinNoteUseCase(repository, Dispatchers.Unconfined),
-            buildSummary = buildSummary,
-            dispatcher = Dispatchers.Unconfined
-        )
-        val win = item(
-            id = 50L,
-            title = "Win",
-            status = DailyPlanItemStatus.Done,
-            source = DailyPlanItemSource.MyDayNote,
-            note = "Temporary"
-        )
-        val plan = DailyPlan(date = date, items = listOf(win))
-        repository.setDailyPlans(listOf(plan))
+    fun defaultLeftoverActionCarriesTaskLinkedItemsOnly() {
+        val linked = item(id = 1L, taskId = 100L, title = "Linked", status = DailyPlanItemStatus.Planned)
+        val standalone = item(id = 2L, title = "Standalone", status = DailyPlanItemStatus.Planned)
+        assertEquals(LeftoverAction.CarryOver, linked.defaultLeftoverAction())
+        assertEquals(LeftoverAction.Drop, standalone.defaultLeftoverAction())
+    }
 
-        val result = complete(
-            plan = plan,
-            input = DayReviewConfirmInput(
-                date = date,
-                leftoverActions = emptyMap(),
-                winNote = "   ",
-                winNoteItemId = 50L
-            )
-        ).getOrThrow()
+    @Test
+    fun reviewStreakCountsConsecutiveDays() {
+        val records = listOf(
+            streakRecord(LocalDate(2026, 7, 9)),
+            streakRecord(LocalDate(2026, 7, 8)),
+            streakRecord(LocalDate(2026, 7, 7))
+        )
+        assertEquals(3, ReviewStreakPolicy.currentStreak(records, LocalDate(2026, 7, 9)))
+    }
 
-        assertTrue(result.winNoteSaved)
-        assertEquals(listOf(50L), repository.deletedDailyPlanItemIds)
+    @Test
+    fun reviewStreakCountsFromYesterdayWhenTodayNotReviewed() {
+        val records = listOf(
+            streakRecord(LocalDate(2026, 7, 8)),
+            streakRecord(LocalDate(2026, 7, 7))
+        )
+        assertEquals(2, ReviewStreakPolicy.currentStreak(records, LocalDate(2026, 7, 9)))
+    }
+
+    @Test
+    fun reviewStreakStopsAtGap() {
+        val records = listOf(
+            streakRecord(LocalDate(2026, 7, 9)),
+            streakRecord(LocalDate(2026, 7, 8)),
+            streakRecord(LocalDate(2026, 7, 6))
+        )
+        assertEquals(2, ReviewStreakPolicy.currentStreak(records, LocalDate(2026, 7, 9)))
     }
 
     @Test
@@ -399,6 +398,14 @@ class DayReviewUseCasesTest {
         )
     }
 
+    private fun streakRecord(day: LocalDate) = DayReviewRecord(
+        date = day,
+        doneCount = 1,
+        plannedCount = 0,
+        doneMinutes = 0,
+        completedAtMillis = 1L
+    )
+
     private fun item(
         id: Long,
         title: String,
@@ -413,7 +420,8 @@ class DayReviewUseCasesTest {
             DailyPlanItemSource.MyDayTask
         },
         note: String? = null,
-        addedAtMillis: Long = 0L
+        addedAtMillis: Long = 0L,
+        handledAtMillis: Long? = null
     ) = DailyPlanItem(
         id = id,
         dateEpochDays = date.toEpochDays().toInt(),
@@ -427,6 +435,7 @@ class DayReviewUseCasesTest {
         startTimeMinutes = startTimeMinutes,
         endTimeMinutes = endTimeMinutes,
         addedAtMillis = addedAtMillis,
-        completedAtMillis = if (status == DailyPlanItemStatus.Done) 1L else null
+        completedAtMillis = if (status == DailyPlanItemStatus.Done) 1L else null,
+        handledAtMillis = handledAtMillis
     )
 }

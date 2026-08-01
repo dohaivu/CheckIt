@@ -18,12 +18,8 @@ class DailyLoopTest {
                 items = listOf(
                     planItem(1L, "Carry me", DailyPlanItemStatus.Planned),
                     planItem(2L, "Done", DailyPlanItemStatus.Done),
-                    planItem(
-                        id = 3L,
-                        title = DayReviewWinNote.Title,
-                        status = DailyPlanItemStatus.Planned,
-                        source = DailyPlanItemSource.MyDayNote
-                    )
+                    planItem(3L, "Already handled", DailyPlanItemStatus.Planned)
+                        .copy(handledAtMillis = 1L)
                 )
             )
         )

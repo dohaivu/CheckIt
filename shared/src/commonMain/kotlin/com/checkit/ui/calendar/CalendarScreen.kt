@@ -816,7 +816,7 @@ private fun HallOfFameHandle(
 
 @Composable
 private fun MonthlyWinsGallery(
-    wins: List<Pair<LocalDate, DailyPlanItem>>,
+    wins: List<Pair<LocalDate, String>>,
     onDateClick: (LocalDate) -> Unit
 ) {
     if (wins.isEmpty()) {
@@ -837,8 +837,8 @@ private fun MonthlyWinsGallery(
             contentPadding = PaddingValues(bottom = 64.dp, top = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(wins) { (date, win) ->
-                WinCard(date, win, onClick = { onDateClick(date) })
+            items(wins) { (date, winNote) ->
+                WinCard(date, winNote, onClick = { onDateClick(date) })
             }
         }
     }
@@ -847,7 +847,7 @@ private fun MonthlyWinsGallery(
 @Composable
 private fun WinCard(
     date: LocalDate,
-    win: DailyPlanItem,
+    winNote: String,
     onClick: () -> Unit
 ) {
     Card(
@@ -890,7 +890,7 @@ private fun WinCard(
                     )
                 }
                 RichTextPreview(
-                    markdown = win.note ?: "A great day!",
+                    markdown = winNote,
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                 )
             }

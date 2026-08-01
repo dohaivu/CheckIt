@@ -4,6 +4,8 @@ import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
+import com.checkit.domain.DayReviewCommitResult
+import com.checkit.domain.DayReviewRecord
 import com.checkit.domain.DueDatePreset
 import com.checkit.domain.Goal
 import com.checkit.domain.KeyResult
@@ -27,6 +29,7 @@ import com.checkit.notifications.TaskReminderNotificationScheduler
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.LocalDate
@@ -76,6 +79,25 @@ interface CheckItRepository {
     suspend fun deleteDailyPlanItem(itemId: Long)
     suspend fun getDailyPlanItem(itemId: Long): DailyPlanItem?
     suspend fun dailyPlanForDate(date: LocalDate): DailyPlan?
+    fun observeDayReviews(): Flow<List<DayReviewRecord>>
+    suspend fun dayReviewForDate(date: LocalDate): DayReviewRecord?
+    /**
+     * Applies a complete evening review atomically.
+     * @return result with carry/skip counts; goal note handling.
+     */
+    suspend fun completeDayReview(
+        date: LocalDate,
+        markDoneItemIds: List<Long>,
+        carryItemIds: List<Long>,
+        dropItemIds: List<Long>,
+        winNote: String?,
+        tomorrowGoal: String?,
+        doneCount: Int,
+        plannedCount: Int,
+        doneMinutes: Int,
+        targetDate: LocalDate,
+        nowMillis: Long
+    ): DayReviewCommitResult
     /**
      * Copies a plan item onto [targetDate] as Planned.
      * @return new item id, or null if skipped (same taskId already on that date,
@@ -667,8 +689,11 @@ class RoomCheckItRepository(
             (source.taskId != null && item.taskId == source.taskId) ||
                 (item.carriedFromItemId != null && item.carriedFromItemId == source.id)
         }
-        if (alreadyPresent) return null
         val now = Clock.System.now().toEpochMilliseconds()
+        if (alreadyPresent) {
+            dao.markDailyPlanItemsHandled(listOf(source.id), now)
+            return null
+        }
         val startTime = if (clearTimes) null else source.startTimeMinutes
         val endTime = when {
             clearTimes -> null
@@ -692,9 +717,43 @@ class RoomCheckItRepository(
             )
         )
         source.tags.forEach { tag -> addDailyPlanItemTag(itemId, tag.id) }
+        dao.markDailyPlanItemsHandled(listOf(source.id), now)
         dailyPlanScheduleReminderScheduler.rescheduleNext()
         return itemId
     }
+
+    override fun observeDayReviews(): Flow<List<DayReviewRecord>> =
+        dao.observeDayReviews().map { entities -> entities.map { it.toDomain() } }
+
+    override suspend fun dayReviewForDate(date: LocalDate): DayReviewRecord? =
+        dao.dayReviewForDate(date.toEpochDays().toInt())?.toDomain()
+
+    override suspend fun completeDayReview(
+        date: LocalDate,
+        markDoneItemIds: List<Long>,
+        carryItemIds: List<Long>,
+        dropItemIds: List<Long>,
+        winNote: String?,
+        tomorrowGoal: String?,
+        doneCount: Int,
+        plannedCount: Int,
+        doneMinutes: Int,
+        targetDate: LocalDate,
+        nowMillis: Long
+    ): DayReviewCommitResult =
+        dao.completeDayReview(
+            dateEpochDays = date.toEpochDays().toInt(),
+            markDoneItemIds = markDoneItemIds,
+            carryItemIds = carryItemIds,
+            dropItemIds = dropItemIds,
+            winNote = winNote,
+            tomorrowGoal = tomorrowGoal,
+            doneCount = doneCount,
+            plannedCount = plannedCount,
+            doneMinutes = doneMinutes,
+            targetDateEpochDays = targetDate.toEpochDays().toInt(),
+            nowMillis = nowMillis
+        )
 
     override suspend fun countDoneDailyPlanItemsForTaskOnDate(
         taskId: Long,
@@ -1010,7 +1069,18 @@ private fun DailyPlanItemEntity.toDomain(tags: List<TaskTag> = emptyList()) = Da
     endTimeMinutes = endTimeMinutes,
     addedAtMillis = addedAtMillis,
     completedAtMillis = completedAtMillis,
-    carriedFromItemId = carriedFromItemId
+    carriedFromItemId = carriedFromItemId,
+    handledAtMillis = handledAtMillis
+)
+
+private fun DayReviewEntity.toDomain() = DayReviewRecord(
+    date = LocalDate.fromEpochDays(dateEpochDays),
+    doneCount = doneCount,
+    plannedCount = plannedCount,
+    doneMinutes = doneMinutes,
+    winNote = winNote.orEmpty(),
+    tomorrowGoal = tomorrowGoal.orEmpty(),
+    completedAtMillis = completedAtMillis
 )
 
 private fun SubTaskEntity.toDomain() = SubTaskItem(

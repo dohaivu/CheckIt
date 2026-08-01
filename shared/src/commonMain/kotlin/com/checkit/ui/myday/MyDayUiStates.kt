@@ -4,6 +4,7 @@ import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
+import com.checkit.domain.DayReviewRecord
 import com.checkit.domain.DayReviewSummary
 import com.checkit.domain.LeftoverAction
 import com.checkit.domain.TaskBoard
@@ -11,6 +12,7 @@ import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskTag
 import com.checkit.domain.YesterdayLeftovers
+import com.checkit.domain.defaultLeftoverAction
 import com.checkit.ui.tasks.EditorMode
 import com.checkit.ui.tasks.isOverdue
 import com.checkit.ui.today
@@ -53,6 +55,8 @@ data class MyDayUiState(
     val suggestionEndTimeMinutes: Int? = null,
     val recentTags: List<TaskTag> = emptyList(),
     val lastFabAction: FabAction = FabAction.QuickSprint,
+    val dayReviews: List<DayReviewRecord> = emptyList(),
+    val reviewStreak: Int = 0,
     val isLoading: Boolean = true
 ) {
     val today: LocalDate = today()
@@ -94,12 +98,12 @@ data class DayReviewUiState(
     val summary: DayReviewSummary,
     val leftoverActions: Map<Long, LeftoverAction> = emptyMap(),
     val winNote: String = "",
-    val winNoteItemId: Long? = null,
     val tomorrowGoal: String = "",
+    val streak: Int = 0,
     val isSubmitting: Boolean = false
 ) {
-    fun actionFor(itemId: Long): LeftoverAction =
-        leftoverActions[itemId] ?: LeftoverAction.CarryOver
+    fun actionFor(item: DailyPlanItem): LeftoverAction =
+        leftoverActions[item.id] ?: item.defaultLeftoverAction()
 }
 
 enum class MyDayView {

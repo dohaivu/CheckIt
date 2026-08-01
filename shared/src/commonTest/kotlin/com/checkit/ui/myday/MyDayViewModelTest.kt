@@ -4,14 +4,14 @@ import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DailyPlanItemSource
-import com.checkit.domain.DayReviewWinNote
+import com.checkit.domain.DayReviewRecord
 import com.checkit.domain.LeftoverAction
 import com.checkit.domain.usecase.AddDailyPlanItemUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.BuildDayReviewSummaryUseCase
 import com.checkit.domain.usecase.CarryOverDailyPlanItemsUseCase
 import com.checkit.domain.usecase.CompleteDayReviewUseCase
-import com.checkit.domain.usecase.UpsertDayReviewWinNoteUseCase
+import com.checkit.domain.usecase.ObserveDayReviewsUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
@@ -40,6 +40,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MyDayViewModelTest {
@@ -57,6 +58,7 @@ class MyDayViewModelTest {
         val carryOver = CarryOverDailyPlanItemsUseCase(repository, dispatcher)
         val observeTaskBoard = ObserveTaskBoardUseCase(repository)
         val observeDailyPlans = ObserveDailyPlansUseCase(repository)
+        val observeDayReviews = ObserveDayReviewsUseCase(repository)
         val syncKeyResult = SyncKeyResultFromDailyPlanUseCase(repository)
         val addTaskToDailyPlan = AddTaskToDailyPlanUseCase(repository)
         val updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository)
@@ -71,12 +73,11 @@ class MyDayViewModelTest {
             completeDayReview = CompleteDayReviewUseCase(
                 repository = repository,
                 settingsRepository = settingsRepository,
-                carryOverDailyPlanItems = carryOver,
-                upsertWinNote = UpsertDayReviewWinNoteUseCase(repository, dispatcher),
                 buildSummary = buildSummary,
                 dispatcher = dispatcher
             ),
             carryOverDailyPlanItems = carryOver,
+            observeDayReviews = observeDayReviews,
             upsertDailyPlanItem = UpsertDailyPlanItemUseCase(repository, syncKeyResult),
             addSuggestedTaskToMyDay = AddSuggestedTaskToMyDayUseCase(
                 repository = repository,
@@ -108,24 +109,17 @@ class MyDayViewModelTest {
     }
 
     @Test
-    fun openDayReviewPrefillsExistingWinNote() = runTest(dispatcher) {
+    fun openDayReviewPrefillsExistingWinNoteFromHistory() = runTest(dispatcher) {
         val today = today()
-        repository.setDailyPlans(
+        repository.setDayReviews(
             listOf(
-                DailyPlan(
+                DayReviewRecord(
                     date = today,
-                    items = listOf(
-                        DailyPlanItem(
-                            id = 50L,
-                            dateEpochDays = today.toEpochDays().toInt(),
-                            title = DayReviewWinNote.Title,
-                            note = "Shipped the review loop",
-                            source = DailyPlanItemSource.MyDayNote,
-                            status = DailyPlanItemStatus.Done,
-                            sortOrder = 0,
-                            addedAtMillis = 1L
-                        )
-                    )
+                    doneCount = 1,
+                    plannedCount = 0,
+                    doneMinutes = 30,
+                    winNote = "Shipped the review loop",
+                    completedAtMillis = 1L
                 )
             )
         )
@@ -136,7 +130,6 @@ class MyDayViewModelTest {
 
         val review = viewModel.uiState.value.dayReview
         assertNotNull(review)
-        assertEquals(50L, review.winNoteItemId)
         assertEquals("Shipped the review loop", review.winNote)
     }
 
@@ -247,7 +240,7 @@ class MyDayViewModelTest {
     }
 
     @Test
-    fun reOpenDayReviewRemembersChosenLeftoverActions() = runTest(dispatcher) {
+    fun reOpenDayReviewExcludesAlreadyHandledItems() = runTest(dispatcher) {
         val today = today()
         repository.setDailyPlans(
             listOf(
@@ -273,7 +266,7 @@ class MyDayViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
         val first = viewModel.uiState.value.dayReview
         assertNotNull(first)
-        assertEquals(LeftoverAction.CarryOver, first.actionFor(7L))
+        assertEquals(LeftoverAction.Drop, first.actionFor(first.summary.plannedItems.single()))
 
         viewModel.setLeftoverAction(7L, LeftoverAction.Drop)
         viewModel.confirmDayReview()
@@ -283,7 +276,7 @@ class MyDayViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
         val reopened = viewModel.uiState.value.dayReview
         assertNotNull(reopened)
-        assertEquals(LeftoverAction.Drop, reopened.actionFor(7L))
+        assertTrue(reopened.summary.plannedItems.none { it.id == 7L })
     }
 
     private fun dailyPlanItem(

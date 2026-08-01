@@ -14,6 +14,8 @@ import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
+import com.checkit.domain.DayReviewCommitResult
+import com.checkit.domain.DayReviewRecord
 import com.checkit.domain.Goal
 import com.checkit.domain.KeyResult
 import com.checkit.domain.SubTaskItem
@@ -69,12 +71,18 @@ internal class FakeCheckItRepository(
     private val dailyPlansFlow = MutableStateFlow<List<DailyPlan>>(emptyList())
     val copiedDailyPlanItems = mutableListOf<DailyPlanItem>()
     val statusUpdates = mutableListOf<Pair<Long, DailyPlanItemStatus>>()
+    val markedHandledItemIds = mutableListOf<Long>()
+    private val dayReviewsFlow = MutableStateFlow<List<DayReviewRecord>>(emptyList())
 
     override fun observeTaskBoard(): Flow<TaskBoard> = boardFlow
     override fun observeDailyPlans(): Flow<List<DailyPlan>> = dailyPlansFlow
 
     fun setDailyPlans(plans: List<DailyPlan>) {
         dailyPlansFlow.value = plans
+    }
+
+    fun setDayReviews(records: List<DayReviewRecord>) {
+        dayReviewsFlow.value = records
     }
 
     override suspend fun ensureDefaultTaskData() = Unit
@@ -457,7 +465,10 @@ internal class FakeCheckItRepository(
             (source.taskId != null && item.taskId == source.taskId) ||
                 (item.carriedFromItemId != null && item.carriedFromItemId == source.id)
         }
-        if (alreadyPresent) return null
+        if (alreadyPresent) {
+            markHandled(listOf(source.id))
+            return null
+        }
         val newId = nextDailyPlanItemId++
         val copy = source.copy(
             id = newId,
@@ -479,7 +490,101 @@ internal class FakeCheckItRepository(
                 }
             }
         }
+        markHandled(listOf(source.id))
         return newId
+    }
+
+    override fun observeDayReviews(): Flow<List<DayReviewRecord>> = dayReviewsFlow
+
+    override suspend fun dayReviewForDate(date: LocalDate): DayReviewRecord? =
+        dayReviewsFlow.value.firstOrNull { it.date == date }
+
+    override suspend fun completeDayReview(
+        date: LocalDate,
+        markDoneItemIds: List<Long>,
+        carryItemIds: List<Long>,
+        dropItemIds: List<Long>,
+        winNote: String?,
+        tomorrowGoal: String?,
+        doneCount: Int,
+        plannedCount: Int,
+        doneMinutes: Int,
+        targetDate: LocalDate,
+        nowMillis: Long
+    ): DayReviewCommitResult {
+        updateDailyPlanItemsStatus(markDoneItemIds, DailyPlanItemStatus.Done)
+        markHandled(markDoneItemIds)
+        markHandled(dropItemIds)
+        val allItems = dailyPlansFlow.value.flatMap { it.items }
+        var carried = 0
+        var skipped = 0
+        carryItemIds.forEach { itemId ->
+            val source = allItems.find { it.id == itemId } ?: return@forEach
+            val targetItems = dailyPlansFlow.value
+                .firstOrNull { it.date == targetDate }
+                ?.items
+                .orEmpty()
+            val alreadyPresent = targetItems.any { item ->
+                (source.taskId != null && item.taskId == source.taskId) ||
+                    (item.carriedFromItemId != null && item.carriedFromItemId == source.id)
+            }
+            if (alreadyPresent) {
+                skipped += 1
+            } else {
+                val newId = nextDailyPlanItemId++
+                val copy = source.copy(
+                    id = newId,
+                    dateEpochDays = targetDate.toEpochDays().toInt(),
+                    status = DailyPlanItemStatus.Planned,
+                    startTimeMinutes = null,
+                    endTimeMinutes = null,
+                    completedAtMillis = null,
+                    carriedFromItemId = source.id
+                )
+                copiedDailyPlanItems.add(copy)
+                dailyPlansFlow.update { plans ->
+                    val existing = plans.firstOrNull { it.date == targetDate }
+                    if (existing == null) {
+                        plans + DailyPlan(date = targetDate, items = listOf(copy))
+                    } else {
+                        plans.map { plan ->
+                            if (plan.date == targetDate) plan.copy(items = plan.items + copy) else plan
+                        }
+                    }
+                }
+                carried += 1
+            }
+            markHandled(listOf(source.id))
+        }
+        dayReviewsFlow.update { reviews ->
+            reviews.filterNot { it.date == date } + DayReviewRecord(
+                date = date,
+                doneCount = doneCount,
+                plannedCount = plannedCount,
+                doneMinutes = doneMinutes,
+                winNote = winNote?.trim().orEmpty(),
+                tomorrowGoal = tomorrowGoal?.trim().orEmpty(),
+                completedAtMillis = nowMillis
+            )
+        }
+        return DayReviewCommitResult(
+            carriedCount = carried,
+            skippedCount = skipped
+        )
+    }
+
+    private suspend fun markHandled(itemIds: List<Long>) {
+        if (itemIds.isEmpty()) return
+        markedHandledItemIds.addAll(itemIds)
+        dailyPlansFlow.update { plans ->
+            plans.map { plan ->
+                plan.copy(
+                    items = plan.items.map { item ->
+                        if (item.id in itemIds) item.copy(handledAtMillis = 1L) else item
+                    }
+                )
+            }
+        }
     }
 
     override suspend fun countDoneDailyPlanItemsForTaskOnDate(

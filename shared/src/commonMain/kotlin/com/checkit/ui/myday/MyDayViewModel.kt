@@ -39,6 +39,7 @@ class MyDayViewModel(
     private val buildDayReviewSummary: BuildDayReviewSummaryUseCase,
     private val completeDayReview: CompleteDayReviewUseCase,
     private val carryOverDailyPlanItems: CarryOverDailyPlanItemsUseCase,
+    private val observeDayReviews: ObserveDayReviewsUseCase,
     private val upsertDailyPlanItem: UpsertDailyPlanItemUseCase,
     private val addSuggestedTaskToMyDay: AddSuggestedTaskToMyDayUseCase,
     private val syncKeyResultFromDailyPlan: SyncKeyResultFromDailyPlanUseCase,
@@ -50,8 +51,6 @@ class MyDayViewModel(
     val uiState: StateFlow<MyDayUiState> = _uiState.asStateFlow()
     private var pendingEditorTextSaveJob: Job? = null
     private val autoCarryMutex = Mutex()
-    private var lastReviewChoices: Map<Int, Map<Long, LeftoverAction>> = emptyMap()
-    private var lastReviewGoals: Map<Int, String> = emptyMap()
 
     private val _events = Channel<UiEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
@@ -62,9 +61,10 @@ class MyDayViewModel(
             combine(
                 observeTaskBoard(),
                 observeDailyPlans(),
-                settingsRepository.settings
-            ) { board, dailyPlans, settings ->
-                Triple(board, dailyPlans, settings)
+                settingsRepository.settings,
+                observeDayReviews()
+            ) { board, dailyPlans, settings, dayReviews ->
+                ReviewCombined(board, dailyPlans, settings, dayReviews)
             }
                 .catch { error ->
                     _uiState.update {
@@ -72,13 +72,14 @@ class MyDayViewModel(
                     }
                     sendEvent(UiEvent.ShowSnackbar(error.message ?: "Unable to load My Day"))
                 }
-                .collect { (board, dailyPlans, settings) ->
+                .collect { (board, dailyPlans, settings, dayReviews) ->
                     val date = today()
                     val todayEpoch = date.toEpochDays().toInt()
                     val nowMinutes = currentMyDayTimeMinutes()
                     val plan = dailyPlans.firstOrNull { it.date == date }
                     val leftovers = YesterdayLeftovers.items(dailyPlans, date)
                     val pendingLeftovers = YesterdayLeftovers.pendingForToday(leftovers, plan)
+                    val reviewStreak = ReviewStreakPolicy.currentStreak(dayReviews, date)
                     val showReviewBanner = DayReviewBannerPolicy.shouldShow(
                         hasPlanItems = plan?.items?.isNotEmpty() == true,
                         reviewReminderEnabled = settings.reviewReminderEnabled,
@@ -108,7 +109,7 @@ class MyDayViewModel(
                         existing.copy(
                             summary = summary,
                             leftoverActions = existing.leftoverActions.filterKeys { it in validIds },
-                            winNoteItemId = existing.winNoteItemId ?: summary.winNoteItemId
+                            streak = reviewStreak
                         )
                     }
                     _uiState.update { state ->
@@ -133,6 +134,8 @@ class MyDayViewModel(
                             pendingYesterdayLeftovers = pendingLeftovers,
                             recentTags = board.tags.sortedByDescending { it.lastUsedAtMillis }.take(5),
                             lastFabAction = lastFabAction,
+                            dayReviews = dayReviews,
+                            reviewStreak = reviewStreak,
                             showLeftoversBanner = showLeftoversBanner &&
                                 review == null &&
                                 !state.showLeftoversSheet,
@@ -177,21 +180,20 @@ class MyDayViewModel(
         val state = _uiState.value
         if (state.dayReview != null) return
         val date = state.today
-        val epochDay = date.toEpochDays().toInt()
         viewModelScope.launch {
             val summary = buildDayReviewSummary(date, state.plan)
-            val remembered = lastReviewChoices[epochDay].orEmpty()
+            val record = state.dayReviews.firstOrNull { it.date == date }
             val actions = summary.plannedItems.associate { item ->
-                item.id to (remembered[item.id] ?: LeftoverAction.CarryOver)
+                item.id to item.defaultLeftoverAction()
             }
             _uiState.update {
                 it.copy(
                     dayReview = DayReviewUiState(
                         summary = summary,
                         leftoverActions = actions,
-                        winNote = summary.winNote,
-                        winNoteItemId = summary.winNoteItemId,
-                        tomorrowGoal = lastReviewGoals[epochDay].orEmpty()
+                        winNote = record?.winNote.orEmpty(),
+                        tomorrowGoal = record?.tomorrowGoal.orEmpty(),
+                        streak = state.reviewStreak
                     ),
                     showDayReviewBanner = false,
                     showLeftoversSheet = false,
@@ -357,13 +359,9 @@ class MyDayViewModel(
                     date = review.summary.date,
                     leftoverActions = review.leftoverActions,
                     winNote = review.winNote,
-                    winNoteItemId = review.winNoteItemId,
                     tomorrowGoal = review.tomorrowGoal
                 )
             ).onSuccess { result ->
-                val epochDay = review.summary.date.toEpochDays().toInt()
-                lastReviewChoices = lastReviewChoices + (epochDay to review.leftoverActions)
-                lastReviewGoals = lastReviewGoals + (epochDay to review.tomorrowGoal)
                 _uiState.update { it.copy(dayReview = null, showDayReviewBanner = false, showCelebration = true) }
                 viewModelScope.launch {
                     delay(3000.milliseconds)
@@ -833,3 +831,10 @@ class MyDayViewModel(
         private const val EditorTextSaveDebounceMillis = 600L
     }
 }
+
+private data class ReviewCombined(
+    val board: TaskBoard,
+    val dailyPlans: List<DailyPlan>,
+    val settings: UserSettings,
+    val dayReviews: List<DayReviewRecord>
+)

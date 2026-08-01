@@ -27,7 +27,7 @@ import com.checkit.domain.usecase.AddTaskUseCase
 import com.checkit.domain.usecase.AutoAddTodayTasksToMyDayUseCase
 import com.checkit.domain.usecase.BuildDayReviewSummaryUseCase
 import com.checkit.domain.usecase.CarryOverDailyPlanItemsUseCase
-import com.checkit.domain.usecase.UpsertDayReviewWinNoteUseCase
+import com.checkit.domain.usecase.ObserveDayReviewsUseCase
 import com.checkit.domain.usecase.UpsertDailyPlanItemUseCase
 import com.checkit.domain.usecase.AddSuggestedTaskToMyDayUseCase
 import com.checkit.domain.usecase.CompleteDayReviewUseCase
@@ -138,8 +138,8 @@ val provideInteractorModule = module {
     single { DeleteDailyPlanItemUseCase(get()) }
     single { BuildDayReviewSummaryUseCase(get()) }
     single { CarryOverDailyPlanItemsUseCase(get(), get()) }
-    single { UpsertDayReviewWinNoteUseCase(get(), get()) }
-    single { CompleteDayReviewUseCase(get(), get(), get(), get(), get(), get()) }
+    single { ObserveDayReviewsUseCase(get()) }
+    single { CompleteDayReviewUseCase(get(), get(), get(), get()) }
     single { AddNoteUseCase(get()) }
     single { UpdateNoteUseCase(get()) }
     single { DeleteNoteUseCase(get()) }
@@ -189,7 +189,7 @@ val provideViewModelModule = module {
     viewModel { KeyResultViewModel(get()) }
     viewModel { ObjectiveViewModel(get(), get(), get()) }
     viewModel { TagViewModel(get(), get(), get(), get(), get(), get()) }
-    viewModel { CalendarViewModel(get(), get(), get()) }
+    viewModel { CalendarViewModel(get(), get(), get(), get()) }
     viewModel {
         MyDayViewModel(
             observeTaskBoard = get(),
@@ -200,6 +200,7 @@ val provideViewModelModule = module {
             buildDayReviewSummary = get(),
             completeDayReview = get(),
             carryOverDailyPlanItems = get(),
+            observeDayReviews = get(),
             upsertDailyPlanItem = get(),
             addSuggestedTaskToMyDay = get(),
             syncKeyResultFromDailyPlan = get(),

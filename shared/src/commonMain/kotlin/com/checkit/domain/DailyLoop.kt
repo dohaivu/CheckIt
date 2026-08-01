@@ -19,8 +19,7 @@ object YesterdayLeftovers {
         val plan = dailyPlans.firstOrNull { it.date == yesterday } ?: return emptyList()
         return plan.items
             .asSequence()
-            .filter { it.status == DailyPlanItemStatus.Planned }
-            .filterNot { it.isWinNote() }
+            .filter { it.status == DailyPlanItemStatus.Planned && it.handledAtMillis == null }
             .sortedBy { it.startTimeMinutes ?: Int.MAX_VALUE }
             .toList()
     }
@@ -84,5 +83,3 @@ object PlanAssistBannerPolicy {
     }
 }
 
-private fun DailyPlanItem.isWinNote(): Boolean =
-    source == DailyPlanItemSource.MyDayNote && title == DayReviewWinNote.Title
