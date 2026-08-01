@@ -36,6 +36,14 @@ data class CalendarUiState(
             .sortedByDescending { it.date }
             .map { it.date to it.winNote }
     }
+
+    /** Win-of-the-day note for the currently selected date, if one was recorded. */
+    val selectedDateWinNote: String? by lazy {
+        dayReviews
+            .firstOrNull { it.date == selectedDate }
+            ?.winNote
+            ?.takeIf { it.isNotBlank() }
+    }
     private val filteredDailyPlans: List<DailyPlan> by lazy {
         if (selectedTagIds.isEmpty()) {
             dailyPlans

@@ -60,6 +60,15 @@
     <string name="day_short_friday">周五</string>
     <string name="day_short_saturday">周六</string>
     <string name="day_short_sunday">周日</string>
+    <string name="day_monday">星期一</string>
+    <string name="day_tuesday">星期二</string>
+    <string name="day_wednesday">星期三</string>
+    <string name="day_thursday">星期四</string>
+    <string name="day_friday">星期五</string>
+    <string name="day_saturday">星期六</string>
+    <string name="day_sunday">星期日</string>
+    <string name="relative_today">今天</string>
+    <string name="relative_yesterday">昨天</string>
 
     <string name="tab_tasks">记账</string>
     <string name="tab_calendar">日历</string>

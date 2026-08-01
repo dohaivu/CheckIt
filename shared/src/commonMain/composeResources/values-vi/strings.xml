@@ -60,6 +60,15 @@
     <string name="day_short_friday">T6</string>
     <string name="day_short_saturday">T7</string>
     <string name="day_short_sunday">CN</string>
+    <string name="day_monday">Thứ Hai</string>
+    <string name="day_tuesday">Thứ Ba</string>
+    <string name="day_wednesday">Thứ Tư</string>
+    <string name="day_thursday">Thứ Năm</string>
+    <string name="day_friday">Thứ Sáu</string>
+    <string name="day_saturday">Thứ Bảy</string>
+    <string name="day_sunday">Chủ Nhật</string>
+    <string name="relative_today">Hôm nay</string>
+    <string name="relative_yesterday">Hôm qua</string>
 
     <string name="tab_tasks">Nhiệm vụ</string>
     <string name="tab_calendar">Lịch</string>

@@ -4,11 +4,16 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -19,65 +24,109 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.DailyPlanItem
-import com.checkit.domain.TaskBoard
 import com.checkit.ui.tasks.cardColor
-import com.checkit.ui.tasks.toDurationLabel
 import kotlin.math.roundToInt
 
 @Composable
 internal fun DayLinearTimeline(
     items: List<DailyPlanItem>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showTotal: Boolean = true,
+    showLabels: Boolean = true
 ) {
     val blocks = remember(items) { items.toDayTimelineBlocks() }
     val workMinutes = remember(blocks) { blocks.totalOccupiedMinutes() }
-    val trackColor = MaterialTheme.colorScheme.surfaceContainerHigh//.copy(alpha = 0.75f)
 
-    Column(
+    Row(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Canvas(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(18.dp)
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            val corner = size.height / 2f
-            drawRoundRect(
-                color = trackColor,
-                cornerRadius = CornerRadius(corner, corner),
-                size = size
-            )
-            blocks.forEach { block ->
-                val startFraction = (block.startMinutes - DayTimelineStartMinutes).toFloat() / DayTimelineTotalMinutes
-                val widthFraction = (block.endMinutes - block.startMinutes).toFloat() / DayTimelineTotalMinutes
-                drawRoundRect(
-                    color = block.color,
-                    topLeft = Offset(x = size.width * startFraction, y = 0f),
-                    size = Size(width = size.width * widthFraction, height = size.height),
-                    cornerRadius = CornerRadius(corner, corner)
+            DayTrack(blocks)
+            if (showLabels) {
+                DayTimelineLabels()
+            }
+        }
+        if (showTotal) {
+            WorkTimeChip(minutes = workMinutes)
+        }
+    }
+}
+
+/** Narrow chip matching the timeline height, showing hours/minutes on two lines. */
+@Composable
+internal fun WorkTimeChip(minutes: Int) {
+    if (minutes <= 0) return
+    val hours = minutes / 60
+    val mins = minutes % 60
+    Surface(
+        modifier = Modifier.widthIn(min = 44.dp),
+        color = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        shape = RoundedCornerShape(10.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            if (hours > 0) {
+                Text(
+                    text = "${hours}h",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            if (mins > 0 || hours == 0) {
+                Text(
+                    text = "${mins}m",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f)
                 )
             }
         }
-        DayTimelineLabels()
-        Text(
-            text = "Total work: ${workMinutes.toDurationLabel()}",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Start
-        )
     }
 }
 
 @Composable
-private fun DayTimelineLabels() {
-    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+private fun DayTrack(blocks: List<DayTimelineBlock>) {
+    val trackColor = MaterialTheme.colorScheme.surfaceContainerHigh
+    Canvas(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(16.dp)
+    ) {
+        val corner = size.height / 2f
+        drawRoundRect(
+            color = trackColor,
+            cornerRadius = CornerRadius(corner, corner),
+            size = size
+        )
+        blocks.forEach { block ->
+            val startFraction = (block.startMinutes - DayTimelineStartMinutes).toFloat() / DayTimelineTotalMinutes
+            val widthFraction = (block.endMinutes - block.startMinutes).toFloat() / DayTimelineTotalMinutes
+            drawRoundRect(
+                color = block.color,
+                topLeft = Offset(x = size.width * startFraction, y = 0f),
+                size = Size(width = size.width * widthFraction, height = size.height),
+                cornerRadius = CornerRadius(corner, corner)
+            )
+        }
+    }
+}
+
+@Composable
+private fun DayTimelineLabels(modifier: Modifier = Modifier) {
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         val labelWidth = 44.dp
         val density = LocalDensity.current
         val labelWidthPx = with(density) { labelWidth.toPx() }
