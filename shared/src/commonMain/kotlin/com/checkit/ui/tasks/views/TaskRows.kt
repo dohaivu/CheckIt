@@ -252,7 +252,7 @@ internal fun BriefTaskRowContent(task: TaskItem) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (task.type == TaskType.Habit) {
-            HabitIcon(task.status == TaskStatus.Completed)
+            HabitIcon(task.status == TaskStatus.Completed, color = task.priority.priorityColor())
         } else {
             TaskIcon(
                 completed = task.status == TaskStatus.Completed,
@@ -393,7 +393,7 @@ internal fun TaskTitleRow(
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         if (task.type == TaskType.Habit) {
-            HabitIcon(task.status == TaskStatus.Completed)
+            HabitIcon(task.status == TaskStatus.Completed, task.priority.priorityColor())
         } else {
             TaskIcon(
                 completed = task.status == TaskStatus.Completed,

@@ -75,21 +75,21 @@ internal fun TaskIcon(completed: Boolean, color: Color) {
     Icon(
         imageVector = if (completed) Icons.Rounded.CheckBox else Icons.Rounded.CheckBoxOutlineBlank,
         contentDescription = null,
-        tint = if (completed) MaterialTheme.colorScheme.onSurfaceVariant else color,
+        tint = if (completed) MaterialTheme.colorScheme.primary else color,
         modifier = Modifier.size(20.dp)
     )
 }
 
 
 @Composable
-internal fun HabitIcon(completed: Boolean) {
+internal fun HabitIcon(completed: Boolean, color: Color) {
     if (completed) {
         BadgedActionIcon(baseIcon = Icons.Rounded.Repeat, isDone = true)
     } else {
         Icon(
             imageVector = Icons.Rounded.Repeat,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = color,
             modifier = Modifier.size(20.dp)
         )
     }

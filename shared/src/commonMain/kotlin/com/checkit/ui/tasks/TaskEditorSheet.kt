@@ -408,7 +408,7 @@ private fun TaskFormContent(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                TaskIcon(
+                HabitIcon(
                     completed = form.status == TaskStatus.Completed,
                     color = form.priority.priorityColor()
                 )

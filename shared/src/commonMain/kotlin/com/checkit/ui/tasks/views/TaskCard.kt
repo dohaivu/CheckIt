@@ -237,7 +237,7 @@ internal fun TaskTimelineCard(
         color = task.cardColor(),
         leadingContent = {
             if (task.type == TaskType.Habit) {
-                HabitIcon(completed)
+                HabitIcon(completed, task.priority.priorityColor())
             } else {
                 TaskIcon(
                     completed = completed,
@@ -369,7 +369,7 @@ internal fun TaskAllDayCard(
         color = task.cardColor(),
         icon = {
             if (task.type == TaskType.Habit) {
-                HabitIcon(task.status == TaskStatus.Completed)
+                HabitIcon(completed = task.status == TaskStatus.Completed, color = task.priority.priorityColor())
             } else {
                 TaskIcon(
                     completed = task.status == TaskStatus.Completed,
