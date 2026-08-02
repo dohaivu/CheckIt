@@ -1,10 +1,12 @@
 package com.checkit.ui.myday
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -13,7 +15,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -26,6 +27,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -46,7 +48,7 @@ internal fun DayLinearTimeline(
     val workMinutes = remember(blocks) { blocks.totalOccupiedMinutes() }
 
     Row(
-        modifier = modifier,
+        modifier = modifier.height(IntrinsicSize.Max),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
@@ -60,50 +62,56 @@ internal fun DayLinearTimeline(
             }
         }
         if (showTotal) {
-            WorkTimeChip(minutes = workMinutes)
+            WorkTimeChip(
+                minutes = workMinutes,
+                modifier = Modifier.fillMaxHeight()
+            )
         }
     }
 }
 
 /** Narrow chip matching the timeline height, showing hours/minutes on two lines. */
 @Composable
-internal fun WorkTimeChip(minutes: Int) {
+internal fun WorkTimeChip(
+    minutes: Int,
+    modifier: Modifier = Modifier
+) {
     if (minutes <= 0) return
     val hours = minutes / 60
     val mins = minutes % 60
-    Surface(
-        modifier = Modifier.widthIn(min = 44.dp),
-        color = MaterialTheme.colorScheme.primaryContainer,
-        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-        shape = RoundedCornerShape(10.dp)
+    Column(
+        modifier = modifier
+            .widthIn(min = 44.dp)
+            .background(
+                color = MaterialTheme.colorScheme.primaryContainer,
+                shape = RoundedCornerShape(10.dp)
+            )
+            .padding(horizontal = 8.dp, vertical = 2.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            if (hours > 0) {
-                Text(
-                    text = "${hours}h",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            if (mins > 0 || hours == 0) {
-                Text(
-                    text = "${mins}m",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f)
-                )
-            }
+        if (hours > 0) {
+            Text(
+                text = "${hours}h",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        }
+        if (mins > 0 || hours == 0) {
+            Text(
+                text = "${mins}m",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f)
+            )
         }
     }
 }
 
 @Composable
 private fun DayTrack(blocks: List<DayTimelineBlock>) {
-    val trackColor = MaterialTheme.colorScheme.surfaceContainerHigh
-    val focusColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+    val trackColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f)
+    val focusColor = MaterialTheme.colorScheme.surfaceContainerHigh
     Canvas(
         modifier = Modifier
             .fillMaxWidth()
@@ -140,25 +148,31 @@ private fun DayTrack(blocks: List<DayTimelineBlock>) {
 
 @Composable
 private fun DayTimelineLabels(modifier: Modifier = Modifier) {
-    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        val labelWidth = 44.dp
-        val density = LocalDensity.current
-        val labelWidthPx = with(density) { labelWidth.toPx() }
-        val trackWidthPx = with(density) { maxWidth.toPx() }
-        DayTimelineTicks.forEach { tick ->
-            Text(
-                text = tick.label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
-                modifier = Modifier
-                    .width(labelWidth)
-                    .offset {
-                        val x = (trackWidthPx * tick.fraction - labelWidthPx / 2f)
-                            .coerceIn(0f, trackWidthPx - labelWidthPx)
-                        IntOffset(x = x.roundToInt(), y = 0)
-                    },
-                textAlign = TextAlign.Center
-            )
+    Layout(
+        modifier = modifier.fillMaxWidth(),
+        content = {
+            DayTimelineTicks.forEach { tick ->
+                Text(
+                    text = tick.label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+    ) { measurables, constraints ->
+        val placeables = measurables.map { it.measure(constraints.copy(minWidth = 0)) }
+        val width = constraints.maxWidth
+        val height = placeables.maxOfOrNull { it.height } ?: 0
+
+        layout(width, height) {
+            placeables.forEachIndexed { index, placeable ->
+                val tick = DayTimelineTicks[index]
+                val labelWidthPx = placeable.width.toFloat()
+                val x = (width * tick.fraction - labelWidthPx / 2f)
+                    .coerceIn(0f, width - labelWidthPx)
+                placeable.placeRelative(x.roundToInt(), 0)
+            }
         }
     }
 }

@@ -214,6 +214,7 @@ internal fun RichTextComposer(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .heightIn(min = 160.dp)
                     .clickable(enabled = enabled) { isEditing = true }
                     .padding(vertical = 8.dp)
             ) {
