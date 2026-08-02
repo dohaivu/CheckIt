@@ -6,6 +6,7 @@ import com.checkit.domain.defaultLeftoverAction
 import com.checkit.ui.UiEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -16,12 +17,15 @@ internal class DayReviewController(
     private val scope: CoroutineScope
 ) {
     fun open() {
-        val current = state.uiState.value
-        if (current.dayReview != null) return
-        val date = current.today
+        if (state.uiState.value.dayReview != null) return
         scope.launch {
-            val summary = deps.buildDayReviewSummary(date, current.plan)
-            val record = current.dayReviews.firstOrNull { it.date == date }
+            // Wait for the initial data load so a cold-start tap (e.g. review reminder
+            // notification) does not build the summary from an empty plan.
+            val loaded = state.uiState.first { !it.isLoading }
+            if (loaded.dayReview != null) return@launch
+            val date = loaded.today
+            val summary = deps.buildDayReviewSummary(date, loaded.plan)
+            val record = loaded.dayReviews.firstOrNull { it.date == date }
             val actions = summary.plannedItems.associate { item ->
                 item.id to item.defaultLeftoverAction()
             }
@@ -32,7 +36,7 @@ internal class DayReviewController(
                         leftoverActions = actions,
                         winNote = record?.winNote.orEmpty(),
                         tomorrowGoal = record?.tomorrowGoal.orEmpty(),
-                        streak = current.reviewStreak
+                        streak = loaded.reviewStreak
                     ),
                     showDayReviewBanner = false,
                     showLeftoversSheet = false,

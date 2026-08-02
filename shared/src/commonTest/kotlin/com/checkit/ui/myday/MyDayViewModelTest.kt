@@ -54,6 +54,11 @@ class MyDayViewModelTest {
         Dispatchers.setMain(dispatcher)
         repository = FakeCheckItRepository()
         settingsRepository = FakeSettingsRepository()
+        viewModel = createViewModel()
+        dispatcher.scheduler.advanceUntilIdle()
+    }
+
+    private fun createViewModel(): MyDayViewModel {
         val buildSummary = BuildDayReviewSummaryUseCase(dispatcher)
         val carryOver = CarryOverDailyPlanItemsUseCase(repository, dispatcher)
         val observeTaskBoard = ObserveTaskBoardUseCase(repository)
@@ -62,8 +67,8 @@ class MyDayViewModelTest {
         val syncKeyResult = SyncKeyResultFromDailyPlanUseCase(repository)
         val addTaskToDailyPlan = AddTaskToDailyPlanUseCase(repository)
         val updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository)
-        
-        viewModel = MyDayViewModel(
+
+        return MyDayViewModel(
             observeTaskBoard = observeTaskBoard,
             observeDailyPlans = observeDailyPlans,
             ensureDefaultTaskData = EnsureDefaultTaskDataUseCase(repository),
@@ -100,7 +105,6 @@ class MyDayViewModelTest {
                 observeTaskBoard = observeTaskBoard
             )
         )
-        dispatcher.scheduler.advanceUntilIdle()
     }
 
     @AfterTest
@@ -277,6 +281,37 @@ class MyDayViewModelTest {
         val reopened = viewModel.uiState.value.dayReview
         assertNotNull(reopened)
         assertTrue(reopened.summary.plannedItems.none { it.id == 7L })
+    }
+
+    @Test
+    fun openDayReviewBeforeDataLoadUsesLatestPlanNotEmptyState() = runTest(dispatcher) {
+        val today = today()
+        repository.setDailyPlans(
+            listOf(
+                DailyPlan(
+                    date = today,
+                    items = listOf(
+                        DailyPlanItem(
+                            id = 9L,
+                            dateEpochDays = today.toEpochDays().toInt(),
+                            title = "Real item",
+                            source = DailyPlanItemSource.MyDayTask,
+                            status = DailyPlanItemStatus.Planned,
+                            sortOrder = 0,
+                            addedAtMillis = 0L
+                        )
+                    )
+                )
+            )
+        )
+        // Notification tap on cold start: a fresh ViewModel whose loader has not emitted yet.
+        val coldStartViewModel = createViewModel()
+        coldStartViewModel.openDayReview()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val review = coldStartViewModel.uiState.value.dayReview
+        assertNotNull(review)
+        assertEquals(listOf("Real item"), review.summary.plannedItems.map { it.title })
     }
 
     private fun dailyPlanItem(
