@@ -18,12 +18,8 @@ class DailyLoopTest {
                 items = listOf(
                     planItem(1L, "Carry me", DailyPlanItemStatus.Planned),
                     planItem(2L, "Done", DailyPlanItemStatus.Done),
-                    planItem(
-                        id = 3L,
-                        title = DayReviewWinNote.Title,
-                        status = DailyPlanItemStatus.Planned,
-                        source = DailyPlanItemSource.MyDayNote
-                    )
+                    planItem(3L, "Already handled", DailyPlanItemStatus.Planned)
+                        .copy(handledAtMillis = 1L)
                 )
             )
         )
@@ -44,6 +40,25 @@ class DailyLoopTest {
         )
         val pending = YesterdayLeftovers.pendingForToday(leftovers, todayPlan)
         assertEquals(listOf(2L, 3L), pending.map { it.id })
+    }
+
+    @Test
+    fun pendingForTodaySkipsItemAlreadyCarriedToToday() {
+        val leftovers = listOf(
+            planItem(1L, "Carried A", DailyPlanItemStatus.Planned),
+            planItem(2L, "Still pending", DailyPlanItemStatus.Planned),
+            planItem(3L, "Task item", DailyPlanItemStatus.Planned, taskId = 30L)
+        )
+        val todayPlan = DailyPlan(
+            date = today,
+            items = listOf(
+                planItem(99L, "Carried A", DailyPlanItemStatus.Planned)
+                    .copy(carriedFromItemId = 1L),
+                planItem(98L, "Task item", DailyPlanItemStatus.Planned, taskId = 30L)
+            )
+        )
+        val pending = YesterdayLeftovers.pendingForToday(leftovers, todayPlan)
+        assertEquals(listOf(2L), pending.map { it.id })
     }
 
     @Test

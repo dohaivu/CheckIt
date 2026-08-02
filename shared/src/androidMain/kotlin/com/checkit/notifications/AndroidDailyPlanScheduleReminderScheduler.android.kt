@@ -21,7 +21,7 @@ class AndroidDailyPlanScheduleReminderScheduler(
     private val appContext = context.applicationContext
     private val workManager = WorkManager.getInstance(appContext)
 
-    override suspend fun rescheduleNext(afterTimeMinutes: Int?) {
+    override suspend fun rescheduleNext(afterTimeMinutes: Int?, isRescheduling: Boolean) {
         val today = LocalDate.now()
         val earliestTimeMinutes = afterTimeMinutes ?: LocalTime.now().let { it.hour * 60 + it.minute }
         val reminder = policy.nextReminderForDate(
@@ -48,7 +48,7 @@ class AndroidDailyPlanScheduleReminderScheduler(
 
         workManager.enqueueUniqueWork(
             DailyPlanScheduleReminderWorker.WorkName,
-            ExistingWorkPolicy.REPLACE,
+            if (isRescheduling) ExistingWorkPolicy.APPEND_OR_REPLACE else ExistingWorkPolicy.REPLACE,
             request
         )
         Logger.d("Scheduled My Day item reminder for ${reminder.title} at ${reminder.startTimeMinutes/60}")

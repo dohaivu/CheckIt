@@ -137,7 +137,10 @@ fun TagPicker(
                 TagPill(
                     tag = tag,
                     selected = tag.id in selectedTagIds,
-                    onClick = { onTagToggle(tag.id) }
+                    onClick = {
+                        onTagToggle(tag.id)
+                        expanded = false
+                    }
                 )
             }
             NewTagPill(onClick = {

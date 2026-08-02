@@ -7,7 +7,6 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RichTooltip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TooltipAnchorPosition
@@ -18,8 +17,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import com.mikepenz.markdown.m3.Markdown
-import com.mikepenz.markdown.m3.markdownTypography
 import kotlinx.coroutines.launch
 
 data object HelpContent {
@@ -60,19 +57,9 @@ fun HelpTooltip(
                 title = { Text(title, fontWeight = FontWeight.Bold) },
                 action = null,
             ) {
-                Markdown(
-                    modifier = modifier.verticalScroll(scrollState),
-                    content = markdownContent,
-                    typography = markdownTypography(
-                        h1 = MaterialTheme.typography.headlineSmall,
-                        h2 = MaterialTheme.typography.titleLarge,
-                        h3 = MaterialTheme.typography.titleMedium,
-                        h4 = MaterialTheme.typography.bodyMedium,
-                        h5 = MaterialTheme.typography.bodySmall,
-                        h6 = MaterialTheme.typography.bodySmall,
-                        text = MaterialTheme.typography.bodySmall,
-                        paragraph = MaterialTheme.typography.bodySmall,
-                    ),
+                RichTextPreview(
+                    markdown = markdownContent,
+                    modifier = modifier.verticalScroll(scrollState)
                 )
             }
         },

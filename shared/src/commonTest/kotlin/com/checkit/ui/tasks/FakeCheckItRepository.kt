@@ -14,6 +14,8 @@ import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
+import com.checkit.domain.DayReviewCommitResult
+import com.checkit.domain.DayReviewRecord
 import com.checkit.domain.Goal
 import com.checkit.domain.KeyResult
 import com.checkit.domain.SubTaskItem
@@ -22,6 +24,7 @@ import com.checkit.domain.TaskItem
 import com.checkit.domain.Objective
 import com.checkit.domain.TaskReminder
 import com.checkit.domain.TaskTag
+import com.checkit.domain.hasEndTime
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.datetime.LocalDate
@@ -42,6 +45,7 @@ internal class FakeCheckItRepository(
     val deletedObjectives = mutableListOf<Long>()
     val addedTags = mutableListOf<TagWriteInput>()
     val updatedTags = mutableListOf<Pair<Long, TagWriteInput>>()
+    val updatedTagSortOrders = mutableListOf<Pair<Long, Int>>()
     val deletedTags = mutableListOf<Long>()
     val addedTasks = mutableListOf<TaskWriteInput>()
     val updatedTasks = mutableListOf<Pair<Long, TaskWriteInput>>()
@@ -67,12 +71,18 @@ internal class FakeCheckItRepository(
     private val dailyPlansFlow = MutableStateFlow<List<DailyPlan>>(emptyList())
     val copiedDailyPlanItems = mutableListOf<DailyPlanItem>()
     val statusUpdates = mutableListOf<Pair<Long, DailyPlanItemStatus>>()
+    val markedHandledItemIds = mutableListOf<Long>()
+    private val dayReviewsFlow = MutableStateFlow<List<DayReviewRecord>>(emptyList())
 
     override fun observeTaskBoard(): Flow<TaskBoard> = boardFlow
     override fun observeDailyPlans(): Flow<List<DailyPlan>> = dailyPlansFlow
 
     fun setDailyPlans(plans: List<DailyPlan>) {
         dailyPlansFlow.value = plans
+    }
+
+    fun setDayReviews(records: List<DayReviewRecord>) {
+        dayReviewsFlow.value = records
     }
 
     override suspend fun ensureDefaultTaskData() = Unit
@@ -253,6 +263,15 @@ internal class FakeCheckItRepository(
         }
     }
 
+    override suspend fun updateTagSortOrder(tagId: Long, sortOrder: Int) {
+        updatedTagSortOrders.add(tagId to sortOrder)
+        boardFlow.update { board ->
+            board.copy(tags = board.tags.map { tag ->
+                if (tag.id == tagId) tag.copy(sortOrder = sortOrder) else tag
+            })
+        }
+    }
+
     override suspend fun deleteTag(tagId: Long) {
         deletedTags.add(tagId)
         boardFlow.update { board ->
@@ -326,6 +345,20 @@ internal class FakeCheckItRepository(
         status: DailyPlanItemStatus,
         tagIds: List<Long>
     ): Long {
+        val newId = nextDailyPlanItemId++
+        val item = DailyPlanItem(
+            id = newId,
+            dateEpochDays = date.toEpochDays().toInt(),
+            title = title,
+            note = note,
+            source = source,
+            status = status,
+            sortOrder = 0,
+            startTimeMinutes = startTimeMinutes,
+            endTimeMinutes = if (source.hasEndTime()) endTimeMinutes else null,
+            addedAtMillis = 0L,
+            completedAtMillis = if (status == DailyPlanItemStatus.Done) 1L else null
+        )
         addedManualDailyPlanItems.add(
             DailyPlanItemWriteInput(
                 title = title,
@@ -337,7 +370,17 @@ internal class FakeCheckItRepository(
                 tagIds = tagIds
             )
         )
-        return addedManualDailyPlanItems.size.toLong()
+        dailyPlansFlow.update { plans ->
+            val existing = plans.firstOrNull { it.date == date }
+            if (existing == null) {
+                plans + DailyPlan(date = date, items = listOf(item))
+            } else {
+                plans.map { plan ->
+                    if (plan.date == date) plan.copy(items = plan.items + item) else plan
+                }
+            }
+        }
+        return newId
     }
     override suspend fun updateDailyPlanItemTime(itemId: Long, startTimeMinutes: Int?, endTimeMinutes: Int?) = Unit
     override suspend fun updateDailyPlanItemStatus(itemId: Long, status: DailyPlanItemStatus) {
@@ -405,19 +448,26 @@ internal class FakeCheckItRepository(
         addedDailyPlanItems.find { it.id == itemId }
             ?: dailyPlansFlow.value.flatMap { it.items }.find { it.id == itemId }
 
+    override suspend fun dailyPlanForDate(date: LocalDate): DailyPlan? =
+        dailyPlansFlow.value.firstOrNull { it.date == date }
+
     override suspend fun copyDailyPlanItemToDate(
         source: DailyPlanItem,
         targetDate: LocalDate,
         clearTimes: Boolean
     ): Long? {
         val targetEpoch = targetDate.toEpochDays().toInt()
-        val taskId = source.taskId
-        if (taskId != null) {
-            val exists = dailyPlansFlow.value
-                .firstOrNull { it.date == targetDate }
-                ?.items
-                ?.any { it.taskId == taskId } == true
-            if (exists) return null
+        val targetItems = dailyPlansFlow.value
+            .firstOrNull { it.date == targetDate }
+            ?.items
+            .orEmpty()
+        val alreadyPresent = targetItems.any { item ->
+            (source.taskId != null && item.taskId == source.taskId) ||
+                (item.carriedFromItemId != null && item.carriedFromItemId == source.id)
+        }
+        if (alreadyPresent) {
+            markHandled(listOf(source.id))
+            return null
         }
         val newId = nextDailyPlanItemId++
         val copy = source.copy(
@@ -426,7 +476,8 @@ internal class FakeCheckItRepository(
             status = DailyPlanItemStatus.Planned,
             startTimeMinutes = if (clearTimes) null else source.startTimeMinutes,
             endTimeMinutes = if (clearTimes) null else source.endTimeMinutes,
-            completedAtMillis = null
+            completedAtMillis = null,
+            carriedFromItemId = source.id
         )
         copiedDailyPlanItems.add(copy)
         dailyPlansFlow.update { plans ->
@@ -439,7 +490,101 @@ internal class FakeCheckItRepository(
                 }
             }
         }
+        markHandled(listOf(source.id))
         return newId
+    }
+
+    override fun observeDayReviews(): Flow<List<DayReviewRecord>> = dayReviewsFlow
+
+    override suspend fun dayReviewForDate(date: LocalDate): DayReviewRecord? =
+        dayReviewsFlow.value.firstOrNull { it.date == date }
+
+    override suspend fun completeDayReview(
+        date: LocalDate,
+        markDoneItemIds: List<Long>,
+        carryItemIds: List<Long>,
+        dropItemIds: List<Long>,
+        winNote: String?,
+        tomorrowGoal: String?,
+        doneCount: Int,
+        plannedCount: Int,
+        doneMinutes: Int,
+        targetDate: LocalDate,
+        nowMillis: Long
+    ): DayReviewCommitResult {
+        updateDailyPlanItemsStatus(markDoneItemIds, DailyPlanItemStatus.Done)
+        markHandled(markDoneItemIds)
+        markHandled(dropItemIds)
+        val allItems = dailyPlansFlow.value.flatMap { it.items }
+        var carried = 0
+        var skipped = 0
+        carryItemIds.forEach { itemId ->
+            val source = allItems.find { it.id == itemId } ?: return@forEach
+            val targetItems = dailyPlansFlow.value
+                .firstOrNull { it.date == targetDate }
+                ?.items
+                .orEmpty()
+            val alreadyPresent = targetItems.any { item ->
+                (source.taskId != null && item.taskId == source.taskId) ||
+                    (item.carriedFromItemId != null && item.carriedFromItemId == source.id)
+            }
+            if (alreadyPresent) {
+                skipped += 1
+            } else {
+                val newId = nextDailyPlanItemId++
+                val copy = source.copy(
+                    id = newId,
+                    dateEpochDays = targetDate.toEpochDays().toInt(),
+                    status = DailyPlanItemStatus.Planned,
+                    startTimeMinutes = null,
+                    endTimeMinutes = null,
+                    completedAtMillis = null,
+                    carriedFromItemId = source.id
+                )
+                copiedDailyPlanItems.add(copy)
+                dailyPlansFlow.update { plans ->
+                    val existing = plans.firstOrNull { it.date == targetDate }
+                    if (existing == null) {
+                        plans + DailyPlan(date = targetDate, items = listOf(copy))
+                    } else {
+                        plans.map { plan ->
+                            if (plan.date == targetDate) plan.copy(items = plan.items + copy) else plan
+                        }
+                    }
+                }
+                carried += 1
+            }
+            markHandled(listOf(source.id))
+        }
+        dayReviewsFlow.update { reviews ->
+            reviews.filterNot { it.date == date } + DayReviewRecord(
+                date = date,
+                doneCount = doneCount,
+                plannedCount = plannedCount,
+                doneMinutes = doneMinutes,
+                winNote = winNote?.trim().orEmpty(),
+                tomorrowGoal = tomorrowGoal?.trim().orEmpty(),
+                completedAtMillis = nowMillis
+            )
+        }
+        return DayReviewCommitResult(
+            carriedCount = carried,
+            skippedCount = skipped
+        )
+    }
+
+    private suspend fun markHandled(itemIds: List<Long>) {
+        if (itemIds.isEmpty()) return
+        markedHandledItemIds.addAll(itemIds)
+        dailyPlansFlow.update { plans ->
+            plans.map { plan ->
+                plan.copy(
+                    items = plan.items.map { item ->
+                        if (item.id in itemIds) item.copy(handledAtMillis = 1L) else item
+                    }
+                )
+            }
+        }
     }
 
     override suspend fun countDoneDailyPlanItemsForTaskOnDate(
@@ -546,6 +691,10 @@ internal class FakeSettingsRepository(
 
     override suspend fun setLastDayPlanDismissedEpochDay(epochDay: Int) {
         settingsFlow.update { it.copy(lastDayPlanDismissedEpochDay = epochDay) }
+    }
+
+    override suspend fun setLastFabAction(type: String, id: Long?) {
+        settingsFlow.update { it.copy(lastFabActionType = type, lastFabActionId = id) }
     }
 
     fun currentSettings(): UserSettings = settingsFlow.value

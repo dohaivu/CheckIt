@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,7 +22,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.cancel
@@ -52,6 +53,7 @@ import com.checkit.domain.LeftoverAction
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.AppOutlinedTextField
+import com.checkit.ui.components.RichTextComposer
 import com.checkit.ui.tasks.isOverdue
 import com.checkit.ui.tasks.toDurationLabel
 import com.checkit.ui.tasks.views.DailyPlanTimelineCard
@@ -89,11 +91,7 @@ internal fun DayReviewSheet(
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.SemiBold
             )
-            ReviewSummaryRow(state)
-
-            if (state.summary.topTags.isNotEmpty()) {
-                TagInsightsRow(state.summary.topTags)
-            }
+            SummaryAndTagsRow(state)
 
             ReflectionSection(
                 value = state.winNote,
@@ -112,7 +110,10 @@ internal fun DayReviewSheet(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
-            if (state.summary.plannedItems.isEmpty()) {
+            val leftoverItems = remember(state.summary) {
+                state.summary.plannedItems + state.summary.alreadyCarriedItems
+            }
+            if (leftoverItems.isEmpty()) {
                 Text(
                     text = stringResource(Res.string.day_review_leftovers_empty),
                     style = MaterialTheme.typography.bodyMedium,
@@ -126,15 +127,15 @@ internal fun DayReviewSheet(
                     contentPadding = PaddingValues(bottom = 8.dp)
                 ) {
                     itemsIndexed(
-                        state.summary.plannedItems,
+                        leftoverItems,
                         key = { _, item -> item.id }) { index, item ->
                         LeftoverReviewRow(
                             item = item,
-                            action = state.actionFor(item.id),
+                            action = state.actionFor(item),
                             enabled = !state.isSubmitting,
                             onAction = { onLeftoverAction(item.id, it) }
                         )
-                        if (index < state.summary.plannedItems.lastIndex) {
+                        if (index < leftoverItems.lastIndex) {
                             AppHorizontalDivider(
                                 modifier = Modifier.padding(vertical = 12.dp),
                                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
@@ -187,17 +188,11 @@ private fun ReflectionSection(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
         )
-        AppOutlinedTextField(
+        RichTextComposer(
             value = value,
             onValueChange = onValueChange,
-            textStyle = MaterialTheme.typography.bodyMedium.copy(
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.Normal
-            ),
-            modifier = Modifier.fillMaxWidth(),
             placeholder = stringResource(Res.string.day_review_win_note_placeholder),
-            minLines = 4,
-            maxLines = 8,
+            modifier = Modifier.fillMaxWidth(),
             enabled = enabled
         )
     }
@@ -232,34 +227,47 @@ private fun TomorrowGoalSection(
 }
 
 @Composable
-private fun TagInsightsRow(tags: List<DayReviewTagMinutes>) {
+private fun SummaryAndTagsRow(state: DayReviewUiState) {
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxWidth()
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        tags.forEach { tag ->
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .clip(MaterialTheme.shapes.extraSmall)
-                    .background(tag.color.toColor().copy(alpha = 0.15f))
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .clip(MaterialTheme.shapes.extraSmall)
-                        .background(tag.color.toColor())
-                )
-                Text(
-                    text = "${tag.name} (${tag.totalMinutes.toDurationLabel()})",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
+        SummaryChip(label = stringResource(Res.string.day_review_done_count, state.summary.doneCount))
+        SummaryChip(label = stringResource(Res.string.day_review_planned_count, state.summary.plannedCount))
+        SummaryChip(label = stringResource(Res.string.day_review_done_minutes, state.summary.doneMinutes))
+        
+        if (state.streak > 0) {
+            SummaryChip(label = "${state.streak}-day review streak")
         }
+
+        state.summary.topTags.forEach { tag ->
+            TagChip(tag)
+        }
+    }
+}
+
+@Composable
+private fun TagChip(tag: DayReviewTagMinutes) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .height(32.dp)
+            .clip(MaterialTheme.shapes.small)
+            .background(tag.color.toColor().copy(alpha = 0.15f))
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .clip(MaterialTheme.shapes.extraSmall)
+                .background(tag.color.toColor())
+        )
+        Text(
+            text = "${tag.name} (${tag.totalMinutes.toDurationLabel()})",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
@@ -272,37 +280,20 @@ private val WinNotePrompts = listOf(
 )
 
 @Composable
-private fun ReviewSummaryRow(state: DayReviewUiState) {
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        SummaryChip(
-            label = stringResource(Res.string.day_review_done_count, state.summary.doneCount)
-        )
-        SummaryChip(
-            label = stringResource(Res.string.day_review_planned_count, state.summary.plannedCount)
-        )
-        SummaryChip(
-            label = stringResource(
-                Res.string.day_review_done_minutes,
-                state.summary.doneMinutes
-            )
-        )
-    }
-}
-
-@Composable
 private fun SummaryChip(label: String) {
-    Surface(
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-        shape = MaterialTheme.shapes.small
+    Box(
+        modifier = Modifier
+            .height(32.dp)
+            .clip(MaterialTheme.shapes.small)
+            .background(MaterialTheme.colorScheme.secondaryContainer)
+            .padding(horizontal = 10.dp),
+        contentAlignment = Alignment.Center
     ) {
         Text(
             text = label,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            style = MaterialTheme.typography.labelLarge
+            style = MaterialTheme.typography.labelLarge,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSecondaryContainer
         )
     }
 }
@@ -314,52 +305,51 @@ private fun LeftoverReviewRow(
     enabled: Boolean,
     onAction: (LeftoverAction) -> Unit
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-        shape = MaterialTheme.shapes.medium
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.medium)
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+            .padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 4.dp),
+        DailyPlanTimelineCard(
+            item = item,
+            isOverdue = item.isOverdue(today())
+        )
+        FlowRow(
+            modifier = Modifier.padding(start = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
-            DailyPlanTimelineCard(
-                item = item,
-                isOverdue = item.isOverdue(today())
-            )
-            FlowRow(
-                modifier = Modifier.padding(start = 14.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(0.dp)
-            ) {
-                LeftoverAction.entries.forEach { option ->
-                    FilterChip(
-                        selected = action == option,
-                        onClick = { onAction(option) },
-                        enabled = enabled,
-                        label = {
-                            Text(
-                                when (option) {
-                                    LeftoverAction.MarkDone ->
-                                        stringResource(Res.string.day_review_action_done)
-                                    LeftoverAction.CarryOver ->
-                                        stringResource(Res.string.day_review_action_carry)
-                                    LeftoverAction.Drop ->
-                                        stringResource(Res.string.day_review_action_drop)
-                                }
-                            )
-                        },
-                        leadingIcon = if (action == option) {
-                            {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
+            LeftoverAction.entries.filter { it != LeftoverAction.None }.forEach { option ->
+                FilterChip(
+                    selected = action == option,
+                    onClick = { onAction(option) },
+                    enabled = enabled,
+                    label = {
+                        Text(
+                            when (option) {
+                                LeftoverAction.MarkDone ->
+                                    stringResource(Res.string.day_review_action_done)
+                                LeftoverAction.CarryOver ->
+                                    stringResource(Res.string.day_review_action_carry)
+                                LeftoverAction.Drop ->
+                                    stringResource(Res.string.day_review_action_drop)
+                                LeftoverAction.None -> error("None is filtered out")
                             }
-                        } else null
-                    )
-                }
+                        )
+                    },
+                    leadingIcon = if (action == option) {
+                        {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    } else null
+                )
             }
         }
     }

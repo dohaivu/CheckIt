@@ -171,7 +171,6 @@ class CheckItNotificationCenter(
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             dailyPlanItemId?.let { putExtra(ExtraDailyPlanItemId, it) }
-            startSprintItemId?.let { putExtra(ExtraStartSprintForItemId, it) }
             if (openPlanAssist) putExtra(ExtraOpenPlanAssist, true)
             if (openDayReview) putExtra(ExtraOpenDayReview, true)
             if (openCheckIn) putExtra(ExtraOpenCheckIn, true)

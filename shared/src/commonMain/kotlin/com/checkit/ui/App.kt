@@ -347,6 +347,14 @@ fun CheckItApp(
                                     viewModels.myDay.deleteDailyPlanItem(itemId)
                                     viewModels.task.removeDailyPlanItemFromEditor(itemId)
                                 },
+                                onDailyPlanStartSprint = { item ->
+                                    viewModels.myDay.startSprintForItem(item)
+                                    viewModels.task.dismissEditor()
+                                },
+                                onDailyPlanStartOngoingSprint = { item ->
+                                    viewModels.myDay.startOngoingSprintForItem(item)
+                                    viewModels.task.dismissEditor()
+                                },
                                 onTaskRepeatChange = viewModels.task::updateTaskRepeat,
                                 onTaskPriorityChange = viewModels.task::updateTaskPriority,
                                 onTaskReminderToggle = viewModels.task::toggleTaskReminder,
@@ -383,7 +391,8 @@ fun CheckItApp(
                             onNewTagClick = viewModels.tag::openNewTag,
                             onAdd = viewModels.myDay::addDailyPlan,
                             onDelete = viewModels.myDay::deleteDailyPlan,
-                            onStartSprint = viewModels.myDay::startNewSprintFromEditor
+                            onStartSprint = viewModels.myDay::startNewSprintFromEditor,
+                            onStartOngoingSprint = viewModels.myDay::startOngoingSprintFromEditor
                         )
                     }
                     tagUiState.editor?.let { tagEditor ->

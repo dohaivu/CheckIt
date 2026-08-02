@@ -22,9 +22,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.RestoreFromTrash
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.Button
@@ -47,6 +49,7 @@ import androidx.compose.ui.unit.sp
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.Objective
+import com.checkit.domain.SprintState
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskTag
@@ -57,7 +60,9 @@ import com.checkit.ui.components.DatePicker
 import com.checkit.ui.components.DeleteOverflowMenu
 import com.checkit.ui.components.ListPicker
 import com.checkit.ui.components.PriorityPicker
+import com.checkit.ui.components.RichTextComposer
 import com.checkit.ui.components.TagPicker
+import com.checkit.ui.components.TagTitleAppender
 import com.checkit.ui.components.TimeRangePicker
 import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
@@ -87,6 +92,8 @@ internal fun TaskEditorSheet(
     val onDailyPlanEndTimeChange = actions.onDailyPlanEndTimeChange
     val onDailyPlanStatus = actions.onDailyPlanStatus
     val onDailyPlanDelete = actions.onDailyPlanDelete
+    val onDailyPlanStartSprint = actions.onDailyPlanStartSprint
+    val onDailyPlanStartOngoingSprint = actions.onDailyPlanStartOngoingSprint
     val onTaskRepeatChange = actions.onTaskRepeatChange
     val onTaskPriorityChange = actions.onTaskPriorityChange
     val onTaskReminderToggle = actions.onTaskReminderToggle
@@ -142,6 +149,8 @@ internal fun TaskEditorSheet(
                                 onEndTimeChange = onDailyPlanEndTimeChange,
                                 onStatusChange = onDailyPlanStatus,
                                 onDelete = onDailyPlanDelete,
+                                onStartSprint = onDailyPlanStartSprint,
+                                onStartOngoingSprint = onDailyPlanStartOngoingSprint,
                                 enabled = editor.isFormEditable()
                             )
                             Spacer(modifier = Modifier.height(16.dp))
@@ -456,7 +465,12 @@ private fun TaskFormContent(
             TagPicker(
                 availableTags = availableTags,
                 selectedTagIds = form.selectedTagIds,
-                onTagToggle = onTagToggle,
+                onTagToggle = { tagId ->
+                    onTagToggle(tagId)
+                    availableTags.find { it.id == tagId }?.let { tag ->
+                        onNameChange(TagTitleAppender.appendTagActionText(form.name, tag.name))
+                    }
+                },
                 onNewTagClick = onNewTagClick,
                 enabled = enabled
             )
@@ -471,6 +485,8 @@ private fun DailyPlanSection(
     onEndTimeChange: (Int?) -> Unit,
     onStatusChange: () -> Unit,
     onDelete: (Long) -> Unit,
+    onStartSprint: (DailyPlanItem) -> Unit,
+    onStartOngoingSprint: (DailyPlanItem) -> Unit,
     enabled: Boolean = true
 ) {
     if (item == null) return
@@ -529,6 +545,34 @@ private fun DailyPlanSection(
                         horizontalArrangement = Arrangement.spacedBy(2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        if (item.status == DailyPlanItemStatus.Planned && item.startTimeMinutes != null) {
+                            IconButton(
+                                onClick = { onStartOngoingSprint(item) },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Bolt,
+                                    contentDescription = "Focus ongoing",
+                                    modifier = Modifier.size(18.dp),
+                                    tint = colorScheme.primary
+                                )
+                            }
+                        }
+
+                        if (item.status == DailyPlanItemStatus.Planned) {
+                            IconButton(
+                                onClick = { onStartSprint(item) },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Schedule,
+                                    contentDescription = "Start Focus",
+                                    modifier = Modifier.size(18.dp),
+                                    tint = colorScheme.primary
+                                )
+                            }
+                        }
+
                         IconButton(
                             onClick = { onDelete(item.id) },
                             modifier = Modifier.size(32.dp)
@@ -601,18 +645,12 @@ private fun NoteFormContent(
             enabled = enabled,
             modifier = Modifier.fillMaxWidth()
         )
-        AppOutlinedTextField(
+        RichTextComposer(
             value = form.content,
             onValueChange = onContentChange,
-            textStyle = MaterialTheme.typography.bodyMedium.copy(
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.Normal
-            ),
-            minLines = 5,
-            maxLines = 10,
             placeholder = "Add more details",
             enabled = enabled,
-            modifier = Modifier.fillMaxWidth().height(130.dp)
+            modifier = Modifier.fillMaxWidth()
         )
 
         FlowRow(
@@ -629,7 +667,12 @@ private fun NoteFormContent(
             TagPicker(
                 availableTags = availableTags,
                 selectedTagIds = form.selectedTagIds,
-                onTagToggle = onTagToggle,
+                onTagToggle = { tagId ->
+                    onTagToggle(tagId)
+                    availableTags.find { it.id == tagId }?.let { tag ->
+                        onTitleChange(TagTitleAppender.appendTagActionText(form.title, tag.name))
+                    }
+                },
                 onNewTagClick = onNewTagClick,
                 enabled = enabled
             )

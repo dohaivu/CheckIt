@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Schedule
@@ -38,6 +39,7 @@ import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
 import com.checkit.ui.components.DateTimeRangeDetailChip
 import com.checkit.ui.components.DetailChip
+import com.checkit.ui.components.RichTextPreview
 import com.checkit.ui.components.SupportingPills
 import com.checkit.ui.duration
 import com.checkit.ui.tasks.NoteIcon
@@ -327,11 +329,10 @@ internal fun StandardNoteRowContent(note: NoteItem, list: Objective?) {
                     Text(note.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                 }
                 if (note.content.isNotBlank()) {
-                    Text(
-                        note.content,
+                    RichTextPreview(
+                        markdown = note.content,
                         style = MaterialTheme.typography.bodyMedium,
                         maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
@@ -358,11 +359,10 @@ internal fun DetailNoteRowContent(note: NoteItem, list: Objective?) {
                     Text(note.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                 }
                 if (note.content.isNotBlank()) {
-                    Text(
-                        note.content,
+                    RichTextPreview(
+                        markdown = note.content,
                         style = MaterialTheme.typography.bodyMedium,
                         maxLines = 5,
-                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }

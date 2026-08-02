@@ -1,12 +1,17 @@
 package com.checkit.domain
 
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
 
 /**
  * Actions for unfinished (Planned) items during evening review.
  * [CarryOver] is shared with PR2 morning leftovers.
  */
 enum class LeftoverAction {
+    /** No decision yet; the item is left untouched on the review day. */
+    None,
+
     /** Mark the plan item Done. Does not complete the linked task. */
     MarkDone,
 
@@ -15,6 +20,27 @@ enum class LeftoverAction {
 
     /** Leave Planned on the review day; do not copy. */
     Drop
+}
+
+/** Default action for a planned leftover item during evening review. */
+fun DailyPlanItem.defaultLeftoverAction(): LeftoverAction = LeftoverAction.None
+
+/**
+ * Pre-selected action when the review reopens. Handled items from an earlier
+ * review re-open as their prior choice: CarryOver if a copy exists on the next
+ * day (via [carriedFromItemId]), otherwise Drop. Unhandled items stay None so
+ * the user picks explicitly.
+ */
+fun DailyPlanItem.defaultReviewAction(dailyPlans: List<DailyPlan>): LeftoverAction {
+    if (handledAtMillis == null) return LeftoverAction.None
+    val tomorrowEpochDay = dateEpochDays + 1
+    val carriedFromIds = dailyPlans
+        .asSequence()
+        .filter { it.date.toEpochDays().toInt() == tomorrowEpochDay }
+        .flatMap { it.items.asSequence() }
+        .mapNotNull { it.carriedFromItemId }
+        .toSet()
+    return if (id in carriedFromIds) LeftoverAction.CarryOver else LeftoverAction.Drop
 }
 
 enum class CarryOverTimePolicy {
@@ -40,16 +66,14 @@ data class DayReviewSummary(
     val plannedItems: List<DailyPlanItem>,
     val doneItems: List<DailyPlanItem>,
     val topTags: List<DayReviewTagMinutes>,
-    /** Existing win-of-day note on this plan, if any. */
-    val winNoteItemId: Long? = null,
-    val winNote: String = ""
+    /** Items already resolved (e.g. carried to tomorrow) by an earlier review; still re-decidable. */
+    val alreadyCarriedItems: List<DailyPlanItem> = emptyList()
 )
 
 data class DayReviewConfirmInput(
     val date: LocalDate,
     val leftoverActions: Map<Long, LeftoverAction>,
     val winNote: String? = null,
-    val winNoteItemId: Long? = null,
     val tomorrowGoal: String? = null
 )
 
@@ -60,19 +84,39 @@ data class DayReviewConfirmResult(
     val winNoteSaved: Boolean
 )
 
-/** Win-of-day note stored as a My Day note with a fixed title. */
-object DayReviewWinNote {
-    const val Title = "Win"
+/** Per-day review record, the single source of truth for wins, goals and history. */
+data class DayReviewRecord(
+    val date: LocalDate,
+    val doneCount: Int,
+    val plannedCount: Int,
+    val doneMinutes: Int,
+    val winNote: String = "",
+    val tomorrowGoal: String = "",
+    val completedAtMillis: Long
+)
 
-    fun findItem(plan: DailyPlan?): DailyPlanItem? =
-        plan?.items
-            .orEmpty()
-            .asSequence()
-            .filter { it.source == DailyPlanItemSource.MyDayNote && it.title == Title }
-            .maxByOrNull { it.addedAtMillis }
+/** Outcome of persisting a complete day review. */
+data class DayReviewCommitResult(
+    val carriedCount: Int,
+    val skippedCount: Int
+)
 
-    fun textOf(item: DailyPlanItem?): String =
-        item?.note?.trim().orEmpty()
+object ReviewStreakPolicy {
+    /**
+     * Number of consecutive days (ending today) with a completed review.
+     * If today is not yet reviewed, the streak is measured from yesterday.
+     */
+    fun currentStreak(records: List<DayReviewRecord>, fromDate: LocalDate): Int {
+        val dates = records.map { it.date }.toSet()
+        val start = if (fromDate in dates) fromDate else fromDate.minus(1, DateTimeUnit.DAY)
+        var streak = 0
+        var cursor = start
+        while (cursor in dates) {
+            streak += 1
+            cursor = cursor.minus(1, DateTimeUnit.DAY)
+        }
+        return streak
+    }
 }
 
 data class CarryOverResult(

@@ -5,6 +5,8 @@ import androidx.room3.Insert
 import androidx.room3.OnConflictStrategy
 import androidx.room3.Query
 import androidx.room3.Transaction
+import com.checkit.domain.DailyPlanItemStatus
+import com.checkit.domain.DayReviewCommitResult
 import com.checkit.domain.TaskReminderWriteInput
 import kotlinx.coroutines.flow.Flow
 
@@ -33,9 +35,6 @@ interface CheckItDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertDailyPlanItem(item: DailyPlanItemEntity): Long
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertFilter(filter: TaskFilterEntity): Long
 
     @Query(
         """
@@ -81,15 +80,6 @@ interface CheckItDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertReminder(reminder: TaskReminderEntity): Long
-
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insertTaskTag(taskTag: TaskTagEntity)
-
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insertNoteTag(noteTag: NoteTagEntity)
-
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insertDailyPlanItemTag(dailyPlanItemTag: DailyPlanItemTagEntity)
 
     @Query(
         """
@@ -213,7 +203,7 @@ interface CheckItDao {
     @Query("SELECT * FROM objectives ORDER BY sortOrder ASC, title ASC")
     fun observeObjectives(): Flow<List<ObjectiveEntity>>
 
-    @Query("SELECT * FROM tags ORDER BY name ASC")
+    @Query("SELECT * FROM tags ORDER BY sortOrder ASC, lastUsedAtMillis DESC, name ASC")
     fun observeTags(): Flow<List<TagEntity>>
 
     @Query("SELECT * FROM task_filters ORDER BY sortOrder ASC, name ASC")
@@ -242,6 +232,9 @@ interface CheckItDao {
 
     @Query("SELECT * FROM daily_plan_items WHERE dateEpochDays = :dateEpochDays ORDER BY sortOrder ASC, addedAtMillis ASC")
     suspend fun dailyPlanItemsForDate(dateEpochDays: Int): List<DailyPlanItemEntity>
+
+    @Query("SELECT COUNT(*) FROM daily_plan_items WHERE dateEpochDays = :dateEpochDays AND carriedFromItemId = :sourceItemId")
+    suspend fun carriedFromCountOnDate(dateEpochDays: Int, sourceItemId: Long): Int
 
     @Query("SELECT * FROM sub_tasks ORDER BY sortOrder ASC, id ASC")
     fun observeSubTasks(): Flow<List<SubTaskEntity>>
@@ -275,6 +268,15 @@ interface CheckItDao {
 
     @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM key_results WHERE objectiveId = :objectiveId")
     suspend fun nextKeyResultSortOrder(objectiveId: Long): Int
+
+    @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM tags")
+    suspend fun nextTagSortOrder(): Int
+
+    @Query("UPDATE tags SET sortOrder = :sortOrder WHERE id = :tagId")
+    suspend fun updateTagSortOrder(tagId: Long, sortOrder: Int)
+
+    @Query("UPDATE tags SET lastUsedAtMillis = :lastUsedAtMillis WHERE id = :tagId")
+    suspend fun updateTagLastUsedAtMillis(tagId: Long, lastUsedAtMillis: Long)
 
     @Query("UPDATE key_results SET currentValue = currentValue + :delta WHERE id = :keyResultId")
     suspend fun adjustKeyResultValue(keyResultId: Long, delta: Double)
@@ -544,6 +546,92 @@ interface CheckItDao {
         status: String,
         completedAtMillis: Long?
     )
+
+    @Query("UPDATE daily_plan_items SET handledAtMillis = :handledAtMillis WHERE id IN (:itemIds)")
+    suspend fun markDailyPlanItemsHandled(itemIds: List<Long>, handledAtMillis: Long)
+
+    @Query("SELECT * FROM day_reviews ORDER BY dateEpochDays ASC")
+    fun observeDayReviews(): Flow<List<DayReviewEntity>>
+
+    @Query("SELECT * FROM day_reviews WHERE dateEpochDays = :dateEpochDays LIMIT 1")
+    suspend fun dayReviewForDate(dateEpochDays: Int): DayReviewEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertDayReview(review: DayReviewEntity)
+
+    /**
+     * Applies a complete evening review atomically: marks done items, carries
+     * leftovers onto the next day, writes tomorrow's goal note, and records the
+     * review. Idempotent: already-carried items are skipped and every resolved
+     * item is stamped as handled.
+     */
+    @Transaction
+    suspend fun completeDayReview(
+        dateEpochDays: Int,
+        markDoneItemIds: List<Long>,
+        carryItemIds: List<Long>,
+        dropItemIds: List<Long>,
+        winNote: String?,
+        tomorrowGoal: String?,
+        doneCount: Int,
+        plannedCount: Int,
+        doneMinutes: Int,
+        targetDateEpochDays: Int,
+        nowMillis: Long
+    ): DayReviewCommitResult {
+        updateDailyPlanItemsStatus(markDoneItemIds, DailyPlanItemStatus.Done.name, nowMillis)
+        markDailyPlanItemsHandled(markDoneItemIds, nowMillis)
+        markDailyPlanItemsHandled(dropItemIds, nowMillis)
+
+        var carriedCount = 0
+        var skippedCount = 0
+        carryItemIds.forEach { itemId ->
+            val source = dailyPlanItemById(itemId) ?: return@forEach
+            val alreadyCarried = carriedFromCountOnDate(targetDateEpochDays, source.id) > 0
+            if (!alreadyCarried) {
+                val newItemId = insertDailyPlanItem(
+                    DailyPlanItemEntity(
+                        dateEpochDays = targetDateEpochDays,
+                        taskId = source.taskId,
+                        title = source.title,
+                        note = source.note,
+                        source = source.source,
+                        status = DailyPlanItemStatus.Planned.name,
+                        sortOrder = nextDailyPlanItemSortOrder(targetDateEpochDays),
+                        startTimeMinutes = null,
+                        endTimeMinutes = null,
+                        addedAtMillis = nowMillis,
+                        completedAtMillis = null,
+                        carriedFromItemId = source.id
+                    )
+                )
+                tagIdsForItem(source.id).forEach { tagId ->
+                    insertDailyPlanItemTagIfParentsExist(newItemId, tagId)
+                }
+                carriedCount += 1
+            } else {
+                skippedCount += 1
+            }
+            markDailyPlanItemsHandled(listOf(source.id), nowMillis)
+        }
+
+        upsertDayReview(
+            DayReviewEntity(
+                dateEpochDays = dateEpochDays,
+                doneCount = doneCount,
+                plannedCount = plannedCount,
+                doneMinutes = doneMinutes,
+                winNote = winNote?.trim()?.takeIf { it.isNotEmpty() },
+                tomorrowGoal = tomorrowGoal?.trim()?.takeIf { it.isNotEmpty() },
+                completedAtMillis = nowMillis
+            )
+        )
+
+        return DayReviewCommitResult(
+            carriedCount = carriedCount,
+            skippedCount = skippedCount
+        )
+    }
 
     @Query(
         """

@@ -3,6 +3,7 @@ package com.checkit.ui.calendar
 import androidx.compose.ui.graphics.Color
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
+import com.checkit.domain.DayReviewRecord
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
@@ -15,7 +16,6 @@ import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
 import kotlin.collections.get
 
-import com.checkit.domain.DayReviewWinNote
 import com.checkit.ui.isSameMonth
 
 data class CalendarUiState(
@@ -24,20 +24,25 @@ data class CalendarUiState(
     val selectedDate: LocalDate = today(),
     val board: TaskBoard = TaskBoard(),
     val dailyPlans: List<DailyPlan> = emptyList(),
+    val dayReviews: List<DayReviewRecord> = emptyList(),
     val showDailyPlanSummary: Boolean = false,
     val calendarDisplayMode: CalendarDisplayMode = CalendarDisplayMode.Month,
     val selectedTagIds: Set<Long> = emptySet(),
     val isMonthlyWinsExpanded: Boolean = false
 ) {
-    val monthlyWins: List<Pair<LocalDate, DailyPlanItem>> by lazy {
-        dailyPlans
-            .filter { it.date.isSameMonth(selectedMonth) }
-            .flatMap { plan ->
-                plan.items
-                    .filter { it.title == DayReviewWinNote.Title }
-                    .map { plan.date to it }
-            }
-            .sortedByDescending { it.first }
+    val monthlyWins: List<Pair<LocalDate, String>> by lazy {
+        dayReviews
+            .filter { it.date.isSameMonth(selectedMonth) && it.winNote.isNotBlank() }
+            .sortedByDescending { it.date }
+            .map { it.date to it.winNote }
+    }
+
+    /** Win-of-the-day note for the currently selected date, if one was recorded. */
+    val selectedDateWinNote: String? by lazy {
+        dayReviews
+            .firstOrNull { it.date == selectedDate }
+            ?.winNote
+            ?.takeIf { it.isNotBlank() }
     }
     private val filteredDailyPlans: List<DailyPlan> by lazy {
         if (selectedTagIds.isEmpty()) {

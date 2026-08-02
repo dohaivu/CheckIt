@@ -26,7 +26,9 @@ data class UserSettings(
     /** Suppresses the morning leftovers banner for this epoch day. */
     val leftoversBannerDismissedEpochDay: Int? = null,
     /** Suppresses the morning plan-assist banner for this epoch day. */
-    val lastDayPlanDismissedEpochDay: Int? = null
+    val lastDayPlanDismissedEpochDay: Int? = null,
+    val lastFabActionType: String = "QuickSprint",
+    val lastFabActionId: Long? = null
 )
 
 interface SettingsRepository {
@@ -51,4 +53,5 @@ interface SettingsRepository {
     suspend fun setAutoCarryOverLastRunEpochDay(epochDay: Int)
     suspend fun setLeftoversBannerDismissedEpochDay(epochDay: Int)
     suspend fun setLastDayPlanDismissedEpochDay(epochDay: Int)
+    suspend fun setLastFabAction(type: String, id: Long?)
 }

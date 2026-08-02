@@ -7,6 +7,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import co.touchlab.kermit.Logger
 import java.time.Duration
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -19,20 +20,33 @@ class DailyAppReminderWorker(
 ) : CoroutineWorker(appContext, workerParams) {
     override suspend fun doWork(): Result {
         val type = inputData.getString(InputType).orEmpty()
-        val timeMinutes = inputData.getInt(InputTimeMinutes, -1).takeIf { it in 0 until MinutesPerDay } ?: return Result.failure()
+        val timeMinutesValue = inputData.getInt(InputTimeMinutes, -1)
+        val timeMinutes = timeMinutesValue.takeIf { it in 0 until MinutesPerDay }
         val title = inputData.getString(InputTitle).orEmpty()
         val body = inputData.getString(InputBody).orEmpty()
 
-        println("DailyAppReminderWorker: Running for type=$type at time=$timeMinutes")
+        if (timeMinutes == null) {
+            Logger.e("DailyAppReminderWorker failed: Invalid timeMinutes=$timeMinutesValue for type=$type")
+            return Result.failure()
+        }
 
-        CheckItNotificationCenter(applicationContext).showAppReminder(
-            notificationId = NotificationIds.appReminder(type),
-            title = title,
-            body = body,
-            type = AppReminderType.fromDailyWorkerType(type)
-        )
-        scheduleNext(applicationContext, type, timeMinutes, title, body)
-        return Result.success()
+        Logger.d("DailyAppReminderWorker starting: type=$type, time=$timeMinutes, title='$title'")
+
+        return try {
+            CheckItNotificationCenter(applicationContext).showAppReminder(
+                notificationId = NotificationIds.appReminder(type),
+                title = title,
+                body = body,
+                type = AppReminderType.fromDailyWorkerType(type)
+            )
+            scheduleNext(applicationContext, type, timeMinutes, title, body)
+            Result.success()
+        } catch (e: Exception) {
+            Logger.e("DailyAppReminderWorker failed to process type=$type", e)
+            // Even if showing notification fails, try to schedule next so the chain doesn't break
+            runCatching { scheduleNext(applicationContext, type, timeMinutes, title, body) }
+            Result.retry()
+        }
     }
 
     companion object {
@@ -61,7 +75,7 @@ class DailyAppReminderWorker(
 
             WorkManager.getInstance(context.applicationContext).enqueueUniqueWork(
                 workName(type),
-                ExistingWorkPolicy.REPLACE,
+                ExistingWorkPolicy.APPEND_OR_REPLACE,
                 request
             )
         }

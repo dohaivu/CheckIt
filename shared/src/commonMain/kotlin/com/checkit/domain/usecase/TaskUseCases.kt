@@ -81,6 +81,13 @@ class UpdateTagUseCase(
         repository.updateTag(tagId, input)
 }
 
+class UpdateTagSortOrderUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(tagId: Long, sortOrder: Int) =
+        repository.updateTagSortOrder(tagId, sortOrder)
+}
+
 class DeleteTagUseCase(
     private val repository: CheckItRepository
 ) {

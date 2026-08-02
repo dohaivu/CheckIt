@@ -120,13 +120,14 @@ class AndroidAppReminderScheduler(
         val normalized = timeMinutes.coerceIn(0, MinutesPerDay - 1)
         val now = LocalDateTime.now()
         var target = now.with(LocalTime.of(normalized / 60, normalized % 60, 0, 0))
-        // If the target time is within the next 10 seconds, we treat it as "now" or "just missed" 
-        // and schedule for tomorrow to avoid immediate or infinite loops.
-        // Otherwise, if it's earlier today, schedule for tomorrow.
-        if (target.isBefore(now.plusSeconds(10))) {
+        
+        // If the target time has already passed today, schedule for tomorrow.
+        if (target.isBefore(now)) {
             target = target.plusDays(1)
         }
-        return max(0L, Duration.between(now, target).toMillis())
+        val delay = max(0L, Duration.between(now, target).toMillis())
+        Logger.d("Daily reminder target: $target (delay: ${delay}ms)")
+        return delay
     }
 
     private companion object {

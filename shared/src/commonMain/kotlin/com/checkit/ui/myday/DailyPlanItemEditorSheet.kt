@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.Button
@@ -41,7 +42,9 @@ import com.checkit.domain.TaskTag
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DeleteOverflowMenu
+import com.checkit.ui.components.RichTextComposer
 import com.checkit.ui.components.TagPicker
+import com.checkit.ui.components.TagTitleAppender
 import com.checkit.ui.components.TimePicker
 import com.checkit.ui.components.TimeRangePicker
 import com.checkit.ui.tasks.views.currentTimeMinutes
@@ -65,7 +68,8 @@ internal fun DailyPlanItemEditorSheet(
     onNewTagClick: () -> Unit,
     onAdd: () -> Unit,
     onDelete: () -> Unit,
-    onStartSprint: () -> Unit
+    onStartSprint: () -> Unit,
+    onStartOngoingSprint: () -> Unit
 ) {
     val enabled = state.isEditableByDate()
 
@@ -108,7 +112,8 @@ internal fun DailyPlanItemEditorSheet(
             state = state,
             enabled = enabled,
             onAdd = onAdd,
-            onStartSprint = onStartSprint
+            onStartSprint = onStartSprint,
+            onStartOngoingSprint = onStartOngoingSprint
         )
     }
 }
@@ -157,12 +162,13 @@ private fun DailyPlanItemSheetFooter(
     state: DailyPlanItemEditorState,
     enabled: Boolean,
     onAdd: () -> Unit,
-    onStartSprint: () -> Unit
+    onStartSprint: () -> Unit,
+    onStartOngoingSprint: () -> Unit
 ) {
     if (enabled) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.Center,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (state.isAddMode) {
@@ -172,14 +178,31 @@ private fun DailyPlanItemSheetFooter(
                 ) {
                     Text("Add to My Day")
                 }
-            } else if (state.source == DailyPlanItemSource.MyDayTask) {
-                Button(
-                    onClick = onStartSprint,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Default.Schedule, contentDescription = null)
-                    Spacer(Modifier.size(8.dp))
-                    Text("Start focus session")
+            } else {
+                if (state.source == DailyPlanItemSource.MyDayTask) {
+                    if (state.status == DailyPlanItemStatus.Planned && state.startTimeMinutes != null) {
+                        Button(
+                            onClick = onStartOngoingSprint,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.Bolt, contentDescription = null)
+                            Spacer(Modifier.size(8.dp))
+                            Text("Focus ongoing")
+                        }
+                    }
+
+                    Button(
+                        onClick = onStartSprint,
+                        modifier = if (state.status == DailyPlanItemStatus.Planned && state.startTimeMinutes != null) {
+                            Modifier.weight(1f)
+                        } else {
+                            Modifier.fillMaxWidth()
+                        }
+                    ) {
+                        Icon(Icons.Default.Schedule, contentDescription = null)
+                        Spacer(Modifier.size(8.dp))
+                        Text(if (state.status == DailyPlanItemStatus.Done) "Start new session" else "Start focus")
+                    }
                 }
             }
         }
@@ -239,17 +262,12 @@ private fun DailyPlanItemFormContent(
             modifier = Modifier.fillMaxWidth()
         )
 
-        AppOutlinedTextField(
+        RichTextComposer(
             value = state.note,
             onValueChange = onNoteChange,
-            textStyle = MaterialTheme.typography.bodyMedium.copy(
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.Normal
-            ),
-            minLines = 5,
-            maxLines = 10,
             placeholder = displaySource.notePlaceholder(),
-            enabled = enabled
+            enabled = enabled,
+            modifier = Modifier.fillMaxWidth()
         )
 
         if (sourceLocked) {
@@ -305,7 +323,12 @@ private fun DailyPlanItemFormContent(
             source = displaySource,
             availableTags = availableTags,
             selectedTagIds = state.selectedTagIds,
-            onTagToggle = onTagToggle,
+            onTagToggle = { tagId ->
+                onTagToggle(tagId)
+                availableTags.find { it.id == tagId }?.let { tag ->
+                    onTitleChange(TagTitleAppender.appendTagActionText(state.title, tag.name))
+                }
+            },
             onNewTagClick = onNewTagClick,
             enabled = enabled
         )

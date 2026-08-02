@@ -19,26 +19,25 @@ object YesterdayLeftovers {
         val plan = dailyPlans.firstOrNull { it.date == yesterday } ?: return emptyList()
         return plan.items
             .asSequence()
-            .filter { it.status == DailyPlanItemStatus.Planned }
-            .filterNot { it.isWinNote() }
+            .filter { it.status == DailyPlanItemStatus.Planned && it.handledAtMillis == null }
             .sortedBy { it.startTimeMinutes ?: Int.MAX_VALUE }
             .toList()
     }
 
     /**
-     * Leftovers that still need carrying (task-linked items already on today are omitted).
+     * Leftovers that still need carrying (task-linked items already on today,
+     * and items already carried onto today, are omitted).
      */
     fun pendingForToday(
         leftovers: List<DailyPlanItem>,
         todayPlan: DailyPlan?
     ): List<DailyPlanItem> {
-        val todayTaskIds = todayPlan?.items
-            .orEmpty()
-            .mapNotNull { it.taskId }
-            .toSet()
+        val todayItems = todayPlan?.items.orEmpty()
+        val todayTaskIds = todayItems.mapNotNull { it.taskId }.toSet()
+        val todayCarriedFromIds = todayItems.mapNotNull { it.carriedFromItemId }.toSet()
         return leftovers.filter { item ->
             val taskId = item.taskId
-            taskId == null || taskId !in todayTaskIds
+            (taskId == null || taskId !in todayTaskIds) && item.id !in todayCarriedFromIds
         }
     }
 }
@@ -84,5 +83,3 @@ object PlanAssistBannerPolicy {
     }
 }
 
-private fun DailyPlanItem.isWinNote(): Boolean =
-    source == DailyPlanItemSource.MyDayNote && title == DayReviewWinNote.Title

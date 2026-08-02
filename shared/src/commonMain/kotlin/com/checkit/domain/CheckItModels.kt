@@ -133,7 +133,11 @@ data class DailyPlanItem(
     val startTimeMinutes: Int? = null,
     val endTimeMinutes: Int? = null,
     val addedAtMillis: Long,
-    val completedAtMillis: Long? = null
+    val completedAtMillis: Long? = null,
+    /** Id of the source item this was copied from via carry-over, if any. */
+    val carriedFromItemId: Long? = null,
+    /** Timestamp (epoch millis) when this item was resolved by a review or carry-over. */
+    val handledAtMillis: Long? = null
 )
 
 enum class DailyPlanItemSource {
@@ -179,7 +183,9 @@ data class NoteItem(
 data class TaskTag(
     val id: Long,
     val name: String,
-    val color: String
+    val color: String,
+    val sortOrder: Int = 0,
+    val lastUsedAtMillis: Long = 0L
 ) {
     companion object {
         val None = TaskTag(id = -1, name = "None", color = "#FFFFFF")
