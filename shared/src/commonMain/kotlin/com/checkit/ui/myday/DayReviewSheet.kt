@@ -22,7 +22,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -306,53 +305,51 @@ private fun LeftoverReviewRow(
     enabled: Boolean,
     onAction: (LeftoverAction) -> Unit
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-        shape = MaterialTheme.shapes.medium
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.medium)
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+            .padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 4.dp),
+        DailyPlanTimelineCard(
+            item = item,
+            isOverdue = item.isOverdue(today())
+        )
+        FlowRow(
+            modifier = Modifier.padding(start = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
-            DailyPlanTimelineCard(
-                item = item,
-                isOverdue = item.isOverdue(today())
-            )
-            FlowRow(
-                modifier = Modifier.padding(start = 14.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(0.dp)
-            ) {
-                LeftoverAction.entries.filter { it != LeftoverAction.None }.forEach { option ->
-                    FilterChip(
-                        selected = action == option,
-                        onClick = { onAction(option) },
-                        enabled = enabled,
-                        label = {
-                            Text(
-                                when (option) {
-                                    LeftoverAction.MarkDone ->
-                                        stringResource(Res.string.day_review_action_done)
-                                    LeftoverAction.CarryOver ->
-                                        stringResource(Res.string.day_review_action_carry)
-                                    LeftoverAction.Drop ->
-                                        stringResource(Res.string.day_review_action_drop)
-                                    LeftoverAction.None -> error("None is filtered out")
-                                }
-                            )
-                        },
-                        leadingIcon = if (action == option) {
-                            {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
+            LeftoverAction.entries.filter { it != LeftoverAction.None }.forEach { option ->
+                FilterChip(
+                    selected = action == option,
+                    onClick = { onAction(option) },
+                    enabled = enabled,
+                    label = {
+                        Text(
+                            when (option) {
+                                LeftoverAction.MarkDone ->
+                                    stringResource(Res.string.day_review_action_done)
+                                LeftoverAction.CarryOver ->
+                                    stringResource(Res.string.day_review_action_carry)
+                                LeftoverAction.Drop ->
+                                    stringResource(Res.string.day_review_action_drop)
+                                LeftoverAction.None -> error("None is filtered out")
                             }
-                        } else null
-                    )
-                }
+                        )
+                    },
+                    leadingIcon = if (action == option) {
+                        {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    } else null
+                )
             }
         }
     }
