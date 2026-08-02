@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.ViewAgenda
 import androidx.compose.material.icons.rounded.CheckBox
 import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
+import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -79,12 +80,27 @@ internal fun TaskIcon(completed: Boolean, color: Color) {
     )
 }
 
+
 @Composable
-internal fun DailyPlanIcon(source: DailyPlanItemSource, isDone: Boolean) {
+internal fun HabitIcon(completed: Boolean) {
+    if (completed) {
+        BadgedActionIcon(baseIcon = Icons.Rounded.Repeat, isDone = true)
+    } else {
+        Icon(
+            imageVector = Icons.Rounded.Repeat,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(20.dp)
+        )
+    }
+}
+
+@Composable
+internal fun DailyPlanIcon(source: DailyPlanItemSource, isDone: Boolean, isHabit: Boolean) {
     val icon = when (source) {
         DailyPlanItemSource.MyDayNote -> Icons.AutoMirrored.Filled.EventNote
         DailyPlanItemSource.MyDayReminder -> Icons.Default.Schedule
-        else -> Icons.Default.EventAvailable
+        else -> if (isHabit) Icons.Default.Repeat else Icons.Default.EventAvailable
     }
     if (source == DailyPlanItemSource.MyDayNote) {
         Icon(

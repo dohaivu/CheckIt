@@ -98,6 +98,33 @@ class HabitCheckinsTest {
     }
 
     @Test
+    fun buildCheckinsSumsMinutesPerDate() {
+        val today = LocalDate(2026, 8, 2)
+        val plans = listOf(
+            DailyPlan(
+                date = today,
+                items = listOf(
+                    doneHabitItem(id = 1L, taskId = 10L, title = "Meditate")
+                        .copy(startTimeMinutes = 480, endTimeMinutes = 540)
+                )
+            ),
+            DailyPlan(
+                date = today.minus(1, DateTimeUnit.DAY),
+                items = listOf(
+                    doneHabitItem(id = 2L, taskId = 10L, title = "Meditate")
+                        .copy(startTimeMinutes = 540, endTimeMinutes = 600)
+                )
+            )
+        )
+
+        val checkins = buildHabitCheckins(plans, today)
+
+        val meditate = checkins.first { it.taskId == 10L }
+        assertEquals(60, meditate.doneMinutesByDate[today])
+        assertEquals(60, meditate.doneMinutesByDate[today.minus(1, DateTimeUnit.DAY)])
+    }
+
+    @Test
     fun buildCheckinsIgnoresPlannedAndNonHabitItems() {
         val today = LocalDate(2026, 8, 2)
         val plannedHabit = doneHabitItem(id = 1L, taskId = 10L, title = "Meditate").copy(
@@ -142,16 +169,29 @@ class HabitCheckinsTest {
     }
 
     @Test
-    fun heatmapColumnsAreWeekAlignedAndFutureCellsAreNull() {
+    fun heatmapMonthsRenderWeeksAsHorizontalRows() {
         val today = LocalDate(2026, 8, 4)
-        val columns = buildHeatmapColumns(today, weekCount = 2)
+        val months = buildHeatmapMonths(today)
 
-        assertEquals(2, columns.size)
-        assertEquals(7, columns[0].size)
-        val lastColumn = columns.last()
-        assertEquals(LocalDate(2026, 8, 3), lastColumn.first())
-        assertEquals(today, lastColumn[1])
-        assertEquals(null, lastColumn[2])
-        assertEquals(null, lastColumn.last())
+        assertEquals(1, months.size)
+        val weeks = months.single().weeks
+        val firstWeek = weeks.first()
+        assertEquals(7, firstWeek.size)
+        assertEquals(null, firstWeek[0])
+        assertEquals(LocalDate(2026, 8, 1), firstWeek[5])
+        val lastWeek = weeks.last()
+        assertEquals(LocalDate(2026, 8, 31), lastWeek.first())
+        assertEquals(null, lastWeek[1])
+    }
+
+    @Test
+    fun buildHeatmapMonthsReturnsRequestedCountOldestFirst() {
+        val today = LocalDate(2026, 8, 4)
+        val months = buildHeatmapMonths(today, monthCount = 3)
+
+        assertEquals(3, months.size)
+        assertEquals(LocalDate(2026, 6, 1), months[0].monthStart)
+        assertEquals(LocalDate(2026, 7, 1), months[1].monthStart)
+        assertEquals(LocalDate(2026, 8, 1), months[2].monthStart)
     }
 }

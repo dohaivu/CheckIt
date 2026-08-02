@@ -44,7 +44,9 @@ import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
+import com.checkit.domain.TaskType
 import com.checkit.ui.tasks.DailyPlanIcon
+import com.checkit.ui.tasks.HabitIcon
 import com.checkit.ui.tasks.NoteIcon
 import com.checkit.ui.tasks.TaskIcon
 import com.checkit.ui.tasks.cardColor
@@ -234,10 +236,14 @@ internal fun TaskTimelineCard(
         timeLabel = timeLabel,
         color = task.cardColor(),
         leadingContent = {
-            TaskIcon(
-                completed = completed,
-                color = task.priority.priorityColor()
-            )
+            if (task.type == TaskType.Habit) {
+                HabitIcon(completed)
+            } else {
+                TaskIcon(
+                    completed = completed,
+                    color = task.priority.priorityColor()
+                )
+            }
         },
         trailingContent = trailingContent,
         completedOverlay = completedOverlay,
@@ -320,7 +326,7 @@ internal fun DailyPlanTimelineCard(
         timeLabel = timeLabel,
         color =  item.cardColor(),
         leadingContent = {
-            DailyPlanIcon(item.source, item.status == DailyPlanItemStatus.Done)
+            DailyPlanIcon(item.source, item.status == DailyPlanItemStatus.Done, item.isHabit)
         },
         trailingContent = trailingContent,
         titleBadge = if (item.isHabit) { { HabitChip() } } else null,
@@ -362,10 +368,14 @@ internal fun TaskAllDayCard(
         title = task.name.ifBlank { "Untitled task" },
         color = task.cardColor(),
         icon = {
-            TaskIcon(
-                completed = task.status == TaskStatus.Completed,
-                color = task.priority.priorityColor()
-            )
+            if (task.type == TaskType.Habit) {
+                HabitIcon(task.status == TaskStatus.Completed)
+            } else {
+                TaskIcon(
+                    completed = task.status == TaskStatus.Completed,
+                    color = task.priority.priorityColor()
+                )
+            }
         },
         trailingContent = trailingContent,
         modifier = modifier,
@@ -401,7 +411,7 @@ internal fun DailyPlanAllDayCard(
     AllDayTypeCard(
         title = title,
         color = item.cardColor(),
-        icon = { DailyPlanIcon(item.source, item.status == DailyPlanItemStatus.Done) },
+        icon = { DailyPlanIcon(item.source, item.status == DailyPlanItemStatus.Done, item.isHabit) },
         trailingContent = trailingContent,
         modifier = modifier,
         completedOverlay = completedOverlay

@@ -41,10 +41,12 @@ data class ReportUiState(
 data class HabitCheckin(
     val taskId: Long,
     val title: String,
-    val doneDates: Set<LocalDate>,
+    val doneMinutesByDate: Map<LocalDate, Int>,
     val streak: Int,
     val totalDone: Int
-)
+) {
+    val doneDates: Set<LocalDate> get() = doneMinutesByDate.keys
+}
 
 internal fun buildHabitCheckins(
     dailyPlans: List<DailyPlan>,
@@ -58,13 +60,15 @@ internal fun buildHabitCheckins(
             { (date, item) -> date to item }
         )
     return grouped.map { (key, entries) ->
-        val doneDates = entries.map { it.first }.distinct().toSet()
+        val minutesByDate = entries
+            .groupBy({ it.first }, { it.second.workMinutes() })
+            .mapValues { (_, minutes) -> minutes.sum() }
         HabitCheckin(
             taskId = key,
             title = entries.first().second.title.ifBlank { "Habit" },
-            doneDates = doneDates,
-            streak = calculateStreak(doneDates, today),
-            totalDone = doneDates.size
+            doneMinutesByDate = minutesByDate,
+            streak = calculateStreak(minutesByDate.keys, today),
+            totalDone = minutesByDate.size
         )
     }.sortedWith(compareByDescending<HabitCheckin> { it.streak }.thenBy { it.title.lowercase() })
 }

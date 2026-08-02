@@ -153,7 +153,7 @@ internal fun DigestReport(
                 }
             }
             if (state.habitCheckins.isNotEmpty()) {
-                HabitHeatmapSection(checkins = state.habitCheckins)
+                HabitHeatmapSection(checkins = state.habitCheckins, monthCount = 2)
             }
         }
     }

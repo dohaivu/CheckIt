@@ -6,9 +6,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -24,20 +24,32 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.checkit.ui.localizedMonthTitle
+import com.checkit.ui.localizedShortMonthName
 import com.checkit.ui.today
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 
-private val HeatmapWeekCount = 12
-private val HeatmapCellSize = 11.dp
-private val HeatmapCellSpacing = 3.dp
+private val HeatmapCellSpacing = 6.dp
+private val HeatmapCellCornerRadius = 6.dp
+
+private const val DefaultHeatmapMonthCount = 1
+private const val HeatmapMaxMinutes = 8 * 60
+private const val HeatmapMinAlpha = 0.22f
+private const val HeatmapMaxAlpha = 1f
+
+data class HeatmapMonth(
+    val monthStart: LocalDate,
+    val weeks: List<List<LocalDate?>>
+)
 
 @Composable
 internal fun HabitHeatmapSection(
     checkins: List<HabitCheckin>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    monthCount: Int = DefaultHeatmapMonthCount
 ) {
     if (checkins.isEmpty()) return
     Card(
@@ -66,7 +78,7 @@ internal fun HabitHeatmapSection(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Your consistency over the last $HeatmapWeekCount weeks.",
+                        text = consistencySubtitle(today(), monthCount),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -76,19 +88,28 @@ internal fun HabitHeatmapSection(
                 if (index > 0) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                 }
-                HabitHeatmapCard(checkin = checkin)
+                HabitHeatmapCard(checkin = checkin, monthCount = monthCount)
             }
         }
     }
 }
 
 @Composable
+private fun consistencySubtitle(today: LocalDate, monthCount: Int): String =
+    if (monthCount <= 1) {
+        "Your consistency in ${today.localizedMonthTitle()}."
+    } else {
+        "Your consistency over the last $monthCount months."
+    }
+
+@Composable
 private fun HabitHeatmapCard(
     checkin: HabitCheckin,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    monthCount: Int = DefaultHeatmapMonthCount
 ) {
     val today = today()
-    val columns = remember(checkin.doneDates, today) { buildHeatmapColumns(today) }
+    val months = remember(checkin.doneMinutesByDate, today, monthCount) { buildHeatmapMonths(today, monthCount) }
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -117,15 +138,52 @@ private fun HabitHeatmapCard(
             )
         }
         Row(
-            horizontalArrangement = Arrangement.spacedBy(HeatmapCellSpacing)
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            columns.forEach { week ->
-                Column(verticalArrangement = Arrangement.spacedBy(HeatmapCellSpacing)) {
+            months.forEach { month ->
+                HeatmapMonthColumn(
+                    month = month,
+                    minutesByDate = checkin.doneMinutesByDate,
+                    today = today,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeatmapMonthColumn(
+    month: HeatmapMonth,
+    minutesByDate: Map<LocalDate, Int>,
+    today: LocalDate,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = month.monthStart.localizedMonthTitle(),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(HeatmapCellSpacing)) {
+            month.weeks.forEach { week ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(HeatmapCellSpacing)
+                ) {
                     week.forEach { date ->
                         HeatmapCell(
                             date = date,
-                            doneDates = checkin.doneDates,
-                            today = today
+                            minutesByDate = minutesByDate,
+                            today = today,
+                            modifier = Modifier.weight(1f)
                         )
                     }
                 }
@@ -137,28 +195,35 @@ private fun HabitHeatmapCard(
 @Composable
 private fun HeatmapCell(
     date: LocalDate?,
-    doneDates: Set<LocalDate>,
-    today: LocalDate
+    minutesByDate: Map<LocalDate, Int>,
+    today: LocalDate,
+    modifier: Modifier = Modifier
 ) {
     val color = when {
         date == null -> Color.Transparent
-        date in doneDates -> HabitHeatmapDone
+        date in minutesByDate -> minutesIntensityColor(minutesByDate.getValue(date))
         else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
     }
     val isToday = date == today
     Box(
-        modifier = Modifier
-            .size(HeatmapCellSize)
-            .clip(RoundedCornerShape(3.dp))
+        modifier = modifier
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(HeatmapCellCornerRadius))
             .background(color)
             .then(
                 if (isToday) {
-                    Modifier.border(1.5.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(3.dp))
+                    Modifier.border(1.5.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(HeatmapCellCornerRadius))
                 } else {
                     Modifier
                 }
             )
     )
+}
+
+private fun minutesIntensityColor(minutes: Int): Color {
+    val fraction = (minutes.toFloat() / HeatmapMaxMinutes).coerceIn(0f, 1f)
+    val alpha = HeatmapMinAlpha + (HeatmapMaxAlpha - HeatmapMinAlpha) * fraction
+    return HabitHeatmapDone.copy(alpha = alpha)
 }
 
 @Composable
@@ -179,17 +244,27 @@ private fun HabitStreakBadge(
     )
 }
 
-internal fun buildHeatmapColumns(
+internal fun buildHeatmapMonths(
     today: LocalDate,
-    weekCount: Int = HeatmapWeekCount
-): List<List<LocalDate?>> {
-    val monday = today.minus(today.dayOfWeek.ordinal, DateTimeUnit.DAY)
-    val firstWeek = monday.minus((weekCount - 1) * 7, DateTimeUnit.DAY)
-    return (0 until weekCount).map { col ->
-        (0 until 7).map { row ->
-            val date = firstWeek.plus(col * 7 + row, DateTimeUnit.DAY)
-            if (date <= today) date else null
+    monthCount: Int = DefaultHeatmapMonthCount
+): List<HeatmapMonth> {
+    val currentMonthStart = LocalDate(today.year, today.month, 1)
+    val firstMonthStart = currentMonthStart.minus(monthCount.coerceAtLeast(1) - 1, DateTimeUnit.MONTH)
+    return (0 until monthCount.coerceAtLeast(1)).map { offset ->
+        val monthStart = firstMonthStart.plus(offset, DateTimeUnit.MONTH)
+        val monthEnd = monthStart.plus(1, DateTimeUnit.MONTH).minus(1, DateTimeUnit.DAY)
+        val firstWeekStart = monthStart.minus(monthStart.dayOfWeek.ordinal, DateTimeUnit.DAY)
+        val weeks = buildList {
+            var weekStart = firstWeekStart
+            while (weekStart <= monthEnd) {
+                add((0 until 7).map { row ->
+                    val date = weekStart.plus(row, DateTimeUnit.DAY)
+                    if (date >= monthStart && date <= monthEnd) date else null
+                })
+                weekStart = weekStart.plus(7, DateTimeUnit.DAY)
+            }
         }
+        HeatmapMonth(monthStart = monthStart, weeks = weeks)
     }
 }
 
