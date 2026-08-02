@@ -392,6 +392,7 @@ fun CheckItApp(
                             onNewTagClick = viewModels.tag::openNewTag,
                             onAdd = viewModels.myDay::addDailyPlan,
                             onDelete = viewModels.myDay::deleteDailyPlan,
+                            onDuplicate = viewModels.myDay::duplicateDailyPlanItem,
                             onStartSprint = viewModels.myDay::startNewSprintFromEditor,
                             onStartOngoingSprint = viewModels.myDay::startOngoingSprintFromEditor
                         )

@@ -135,6 +135,7 @@ class MyDayViewModel(
     fun toggleTag(tagId: Long) = dailyPlanEditor.toggleTag(tagId)
     fun deleteDailyPlan() = dailyPlanEditor.deleteDailyPlan()
     fun deleteDailyPlanItem(itemId: Long) = dailyPlanEditor.deleteDailyPlanItem(itemId)
+    fun duplicateDailyPlanItem() = dailyPlanEditor.duplicateDailyPlanItem()
 
     // Sprints
     fun executeFabAction(action: FabAction) = sprints.executeFabAction(action)

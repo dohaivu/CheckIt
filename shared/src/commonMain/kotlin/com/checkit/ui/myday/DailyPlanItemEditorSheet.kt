@@ -20,12 +20,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -68,6 +70,7 @@ internal fun DailyPlanItemEditorSheet(
     onNewTagClick: () -> Unit,
     onAdd: () -> Unit,
     onDelete: () -> Unit,
+    onDuplicate: () -> Unit,
     onStartSprint: () -> Unit,
     onStartOngoingSprint: () -> Unit
 ) {
@@ -112,6 +115,7 @@ internal fun DailyPlanItemEditorSheet(
             state = state,
             enabled = enabled,
             onAdd = onAdd,
+            onDuplicate = onDuplicate,
             onStartSprint = onStartSprint,
             onStartOngoingSprint = onStartOngoingSprint
         )
@@ -162,28 +166,34 @@ private fun DailyPlanItemSheetFooter(
     state: DailyPlanItemEditorState,
     enabled: Boolean,
     onAdd: () -> Unit,
+    onDuplicate: () -> Unit,
     onStartSprint: () -> Unit,
     onStartOngoingSprint: () -> Unit
 ) {
     if (enabled) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (state.isAddMode) {
+        if (state.isAddMode) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Button(
                     onClick = onAdd,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Add to My Day")
                 }
-            } else {
+            }
+        } else {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
                 if (state.source == DailyPlanItemSource.MyDayTask) {
                     if (state.status == DailyPlanItemStatus.Planned && state.startTimeMinutes != null) {
                         Button(
                             onClick = onStartOngoingSprint,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             Icon(Icons.Default.Bolt, contentDescription = null)
                             Spacer(Modifier.size(8.dp))
@@ -193,15 +203,20 @@ private fun DailyPlanItemSheetFooter(
 
                     Button(
                         onClick = onStartSprint,
-                        modifier = if (state.status == DailyPlanItemStatus.Planned && state.startTimeMinutes != null) {
-                            Modifier.weight(1f)
-                        } else {
-                            Modifier.fillMaxWidth()
-                        }
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(Icons.Default.Schedule, contentDescription = null)
                         Spacer(Modifier.size(8.dp))
                         Text(if (state.status == DailyPlanItemStatus.Done) "Start new session" else "Start focus")
+                    }
+
+                    OutlinedButton(
+                        onClick = onDuplicate,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.ContentCopy, contentDescription = null)
+                        Spacer(Modifier.size(8.dp))
+                        Text("Copy to new")
                     }
                 }
             }

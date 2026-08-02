@@ -74,8 +74,10 @@ internal fun DatePicker(
     isOverdue: Boolean = false
 ) {
     var showPicker by remember { mutableStateOf(false) }
-    var startTime by remember { mutableStateOf(startTimeMinutes) }
-    var endTime by remember { mutableStateOf(validTimeRangeEnd(startTimeMinutes, endTimeMinutes)) }
+    var startTime by remember(startTimeMinutes) { mutableStateOf(startTimeMinutes) }
+    var endTime by remember(endTimeMinutes, startTimeMinutes) {
+        mutableStateOf(validTimeRangeEnd(startTimeMinutes, endTimeMinutes))
+    }
     val durationMinutes by remember(startTime, endTime) { derivedStateOf { duration(startTime, endTime) } }
 
     Column(
@@ -275,8 +277,10 @@ internal fun TimeRangePicker(
     modifier: Modifier = Modifier.fillMaxWidth()
 ) {
     var showPicker by remember { mutableStateOf(false) }
-    var startTime by remember { mutableStateOf(startTimeMinutes) }
-    var endTime by remember { mutableStateOf(validTimeRangeEnd(startTimeMinutes, endTimeMinutes)) }
+    var startTime by remember(startTimeMinutes) { mutableStateOf(startTimeMinutes) }
+    var endTime by remember(endTimeMinutes, startTimeMinutes) {
+        mutableStateOf(validTimeRangeEnd(startTimeMinutes, endTimeMinutes))
+    }
     val durationMinutes by remember(startTime, endTime) { derivedStateOf { duration(startTime, endTime) } }
 
     Column(

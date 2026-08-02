@@ -246,6 +246,50 @@ class MyDayViewModelTest {
     }
 
     @Test
+    fun duplicateDailyPlanItemCopiesFieldsAndPlacesAtNextAvailableSlot() = runTest(dispatcher) {
+        val today = today()
+        repository.setDailyPlans(
+            listOf(
+                DailyPlan(
+                    date = today,
+                    items = listOf(
+                        DailyPlanItem(
+                            id = 42L,
+                            dateEpochDays = today.toEpochDays().toInt(),
+                            title = "Original",
+                            note = "Old note",
+                            source = DailyPlanItemSource.MyDayTask,
+                            status = DailyPlanItemStatus.Planned,
+                            sortOrder = 0,
+                            startTimeMinutes = 600,
+                            endTimeMinutes = 645,
+                            addedAtMillis = 0L
+                        )
+                    )
+                )
+            )
+        )
+        dispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.openItemEditor(viewModel.uiState.value.plan!!.items.single(), today)
+        viewModel.duplicateDailyPlanItem()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val editor = viewModel.uiState.value.itemEditor
+        assertNotNull(editor)
+        assertTrue(editor.isAddMode)
+        assertEquals(null, editor.itemId)
+        assertEquals("Original", editor.title)
+        assertEquals("Old note", editor.note)
+        assertEquals(DailyPlanItemSource.MyDayTask, editor.source)
+        assertNotNull(editor.startTimeMinutes)
+        assertNotNull(editor.endTimeMinutes)
+        // The copy lands in a free slot, never reusing the source item's (600, 645) range.
+        assertTrue(editor.startTimeMinutes >= 645 || editor.endTimeMinutes <= 600)
+        assertEquals(45, editor.endTimeMinutes - editor.startTimeMinutes)
+    }
+
+    @Test
     fun reOpenDayReviewExcludesAlreadyHandledItems() = runTest(dispatcher) {
         val today = today()
         repository.setDailyPlans(
