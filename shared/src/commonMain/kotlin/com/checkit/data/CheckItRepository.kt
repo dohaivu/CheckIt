@@ -20,6 +20,7 @@ import com.checkit.domain.TaskReminder
 import com.checkit.domain.TaskReminderWriteInput
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskTag
+import com.checkit.domain.TaskType
 import com.checkit.domain.hasEndTime
 import com.checkit.notifications.DailyPlanScheduleReminderScheduler
 import com.checkit.notifications.NoOpDailyPlanScheduleReminderScheduler
@@ -155,6 +156,7 @@ data class TaskWriteInput(
     val subtasks: List<SubTaskWriteInput>,
     val status: TaskStatus,
     val priority: TaskPriority,
+    val type: TaskType = TaskType.Task,
     val doDate: LocalDate?,
     val startTimeMinutes: Int?,
     val endTimeMinutes: Int?,
@@ -445,6 +447,7 @@ class RoomCheckItRepository(
     override suspend fun addTask(input: TaskWriteInput): Long {
         val now = Clock.System.now().toEpochMilliseconds()
         val keyResultId = input.keyResultIdForObjective()
+        val isHabit = input.type == TaskType.Habit
         val taskId = dao.insertTask(
             TaskEntity(
                 objectiveId = input.objectiveId,
@@ -453,10 +456,11 @@ class RoomCheckItRepository(
                 description = input.description,
                 status = input.status.name,
                 priority = input.priority.name,
-                doDateEpochDays = input.doDate?.toEpochDays()?.toInt(),
-                startTimeMinutes = input.startTimeMinutes,
-                endTimeMinutes = input.endTimeMinutes,
-                repeatRRule = input.repeatRRule,
+                type = input.type.name,
+                doDateEpochDays = if (isHabit) null else input.doDate?.toEpochDays()?.toInt(),
+                startTimeMinutes = if (isHabit) null else input.startTimeMinutes,
+                endTimeMinutes = if (isHabit) null else input.endTimeMinutes,
+                repeatRRule = if (isHabit) null else input.repeatRRule,
                 sortOrder = dao.nextTaskSortOrder(input.objectiveId),
                 createdAtMillis = now,
                 updatedAtMillis = now
@@ -473,6 +477,7 @@ class RoomCheckItRepository(
         val existingTask = dao.taskById(taskId)
         val shouldRemoveOpenDailyPlanItems = existingTask?.hasDifferentScheduleThan(input) == true
         val keyResultId = input.keyResultIdForObjective()
+        val isHabit = input.type == TaskType.Habit
         dao.updateTask(
             taskId = taskId,
             objectiveId = input.objectiveId,
@@ -481,10 +486,11 @@ class RoomCheckItRepository(
             description = input.description,
             status = input.status.name,
             priority = input.priority.name,
-            doDateEpochDays = input.doDate?.toEpochDays()?.toInt(),
-            startTimeMinutes = input.startTimeMinutes,
-            endTimeMinutes = input.endTimeMinutes,
-            repeatRRule = input.repeatRRule,
+            type = input.type.name,
+            doDateEpochDays = if (isHabit) null else input.doDate?.toEpochDays()?.toInt(),
+            startTimeMinutes = if (isHabit) null else input.startTimeMinutes,
+            endTimeMinutes = if (isHabit) null else input.endTimeMinutes,
+            repeatRRule = if (isHabit) null else input.repeatRRule,
             updatedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
         dao.deleteTaskTags(taskId)
@@ -553,6 +559,7 @@ class RoomCheckItRepository(
                 sortOrder = dao.nextDailyPlanItemSortOrder(dateEpochDays),
                 startTimeMinutes = task.startTimeMinutes,
                 endTimeMinutes = task.endTimeMinutes,
+                isHabit = task.type == TaskType.Habit,
                 addedAtMillis = now,
                 completedAtMillis = if (task.status == TaskStatus.Completed) now else null
             )
@@ -1023,7 +1030,8 @@ private fun TaskFilterEntity.toDomain() = TaskFilter(
 )
 
 private fun TaskEntity.hasDifferentScheduleThan(input: TaskWriteInput): Boolean =
-    doDateEpochDays != input.doDate?.toEpochDays()?.toInt() ||
+    type != input.type.name ||
+        doDateEpochDays != input.doDate?.toEpochDays()?.toInt() ||
         startTimeMinutes != input.startTimeMinutes ||
         endTimeMinutes != input.endTimeMinutes
 
@@ -1041,6 +1049,7 @@ private fun TaskEntity.toDomain(
     description = description,
     subtasks = subtasks,
     status = enumValueOf(status),
+    type = enumValueOf(type),
     tags = tags,
     priority = enumValueOf(priority),
     doDate = doDateEpochDays?.let { LocalDate.fromEpochDays(it) },
@@ -1064,6 +1073,7 @@ private fun DailyPlanItemEntity.toDomain(tags: List<TaskTag> = emptyList()) = Da
     source = enumValueOf(source),
     status = enumValueOf(status),
     tags = tags,
+    isHabit = isHabit,
     sortOrder = sortOrder,
     startTimeMinutes = startTimeMinutes,
     endTimeMinutes = endTimeMinutes,

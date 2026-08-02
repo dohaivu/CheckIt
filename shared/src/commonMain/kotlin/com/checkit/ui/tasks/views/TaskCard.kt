@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -62,6 +63,7 @@ internal fun TaskCard(
     supportingText: String? = null,
     leadingContent: (@Composable () -> Unit)? = null,
     trailingContent: (@Composable () -> Unit)? = null,
+    titleBadge: (@Composable () -> Unit)? = null,
     minHeight: Dp = 64.dp,
     contentPadding: PaddingValues = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
     titleMaxLines: Int = 2,
@@ -134,13 +136,22 @@ internal fun TaskCard(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
-                Text(
-                    text = titleText,
-                    style = titleTextStyle ?: typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = titleMaxLines,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = titleText,
+                        style = titleTextStyle ?: typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = titleMaxLines,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    if (titleBadge != null) {
+                        titleBadge()
+                    }
+                }
                 if (showSupportingText) {
                     Text(
                         text = timeLabel ?: supportingText.orEmpty(),
@@ -312,6 +323,7 @@ internal fun DailyPlanTimelineCard(
             DailyPlanIcon(item.source, item.status == DailyPlanItemStatus.Done)
         },
         trailingContent = trailingContent,
+        titleBadge = if (item.isHabit) { { HabitChip() } } else null,
         completedOverlay = completedOverlay,
         onClick = onClick,
         modifier = modifier,
@@ -476,6 +488,33 @@ internal fun BoxScope.CompletedOverlay() {
             .matchParentSize()
             .background(MaterialTheme.colorScheme.surface.copy(alpha = CompletedRowCoverAlpha))
     )
+}
+
+@Composable
+internal fun HabitChip(modifier: Modifier = Modifier) {
+    val colorScheme = MaterialTheme.colorScheme
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(colorScheme.secondaryContainer)
+            .padding(horizontal = 6.dp, vertical = 1.dp),
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Default.Repeat,
+            contentDescription = null,
+            tint = colorScheme.onSecondaryContainer,
+            modifier = Modifier.size(12.dp)
+        )
+        Text(
+            text = "Habit",
+            style = MaterialTheme.typography.labelSmall,
+            color = colorScheme.onSecondaryContainer,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1
+        )
+    }
 }
 
 internal fun DailyPlanItem.timelineTimeLabel(): String? {

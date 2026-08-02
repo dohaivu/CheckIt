@@ -41,5 +41,6 @@ data class TaskEditorActions(
     val onNoteTagToggle: (Long) -> Unit,
     val onNewTagClick: () -> Unit,
     val onSwitchAddModeToTask: () -> Unit,
+    val onSwitchAddModeToHabit: () -> Unit,
     val onSwitchAddModeToNote: () -> Unit
 )

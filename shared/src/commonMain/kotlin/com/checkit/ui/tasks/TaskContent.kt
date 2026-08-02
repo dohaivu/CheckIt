@@ -61,7 +61,8 @@ internal fun TaskContent(
         Spacer(Modifier.height(4.dp))
         when (state.selectedView) {
             TaskWorkspaceView.Goal,
-            TaskWorkspaceView.List -> TaskListView(
+            TaskWorkspaceView.List,
+            TaskWorkspaceView.Habits -> TaskListView(
                 items = state.visibleListItems,
                 showListName = showListName,
                 displayType = state.listDisplayType,

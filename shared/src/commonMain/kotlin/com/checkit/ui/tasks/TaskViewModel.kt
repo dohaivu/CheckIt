@@ -15,6 +15,7 @@ import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskReminderPlanner
 import com.checkit.domain.TaskReminderPreset
+import com.checkit.domain.TaskType
 import com.checkit.domain.usecase.AddNoteUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
@@ -181,6 +182,7 @@ class TaskViewModel(
             } else {
                 shouldPersist = true
                 it.copy(options = it.options.copy(selectedView = view))
+                    .refreshVisibleItems()
             }
         }
         if (shouldPersist && view != TaskWorkspaceView.Goal) {
@@ -255,6 +257,20 @@ class TaskViewModel(
         openNewTaskOnDate(today(), addToMyDayOnSave)
     }
 
+    fun openNewHabit() {
+        val objectiveId = editableListId() ?: return sendEvent(UiEvent.ShowSnackbar("Create a list before adding habits"))
+        cancelPendingTaskTextSave()
+        _uiState.update {
+            it.copy(
+                editor = TaskEditorState.TaskForm(
+                    mode = EditorMode.Add,
+                    objectiveId = objectiveId,
+                    type = TaskType.Habit,
+                )
+            )
+        }
+    }
+
     fun openNewTaskOnKeyResult(keyResult: KeyResult) {
         cancelPendingTaskTextSave()
         _uiState.update {
@@ -317,18 +333,60 @@ class TaskViewModel(
 
     fun switchAddEditorToTask() {
         _uiState.update { state ->
-            val note = state.editor as? TaskEditorState.NoteForm ?: return@update state
-            if (note.mode != EditorMode.Add) return@update state
-            state.copy(
-                editor = TaskEditorState.TaskForm(
-                    mode = EditorMode.Add,
-                    objectiveId = note.objectiveId,
-                    name = note.title,
-                    description = note.content,
-                    doDate = note.date,
-                    selectedTagIds = note.selectedTagIds
-                )
-            )
+            when (val current = state.editor) {
+                is TaskEditorState.TaskForm -> {
+                    if (current.mode != EditorMode.Add || current.type == TaskType.Task) return@update state
+                    state.copy(editor = current.copy(type = TaskType.Task))
+                }
+                is TaskEditorState.NoteForm -> {
+                    if (current.mode != EditorMode.Add) return@update state
+                    state.copy(
+                        editor = TaskEditorState.TaskForm(
+                            mode = EditorMode.Add,
+                            objectiveId = current.objectiveId,
+                            name = current.title,
+                            description = current.content,
+                            doDate = current.date,
+                            selectedTagIds = current.selectedTagIds
+                        )
+                    )
+                }
+                null -> state
+            }
+        }
+    }
+
+    fun switchAddEditorToHabit() {
+        _uiState.update { state ->
+            when (val current = state.editor) {
+                is TaskEditorState.TaskForm -> {
+                    if (current.mode != EditorMode.Add || current.type == TaskType.Habit) return@update state
+                    state.copy(
+                        editor = current.copy(
+                            type = TaskType.Habit,
+                            doDate = null,
+                            startTimeMinutes = null,
+                            endTimeMinutes = null,
+                            repeatPreset = RepeatPreset.None,
+                            reminderOffsets = emptySet()
+                        )
+                    )
+                }
+                is TaskEditorState.NoteForm -> {
+                    if (current.mode != EditorMode.Add) return@update state
+                    state.copy(
+                        editor = TaskEditorState.TaskForm(
+                            mode = EditorMode.Add,
+                            objectiveId = current.objectiveId,
+                            name = current.title,
+                            description = current.content,
+                            type = TaskType.Habit,
+                            selectedTagIds = current.selectedTagIds
+                        )
+                    )
+                }
+                null -> state
+            }
         }
     }
 
@@ -369,6 +427,7 @@ class TaskViewModel(
                     reminderOffsets = TaskReminderPlanner.selectedOffsetsFor(task),
                     status = task.status,
                     priority = task.priority,
+                    type = task.type,
                     selectedTagIds = task.tags.map { it.id }.toSet(),
                     dailyPlanItem = dailyPlan,
                     trashedAtMillis = task.trashedAtMillis
@@ -674,6 +733,7 @@ class TaskViewModel(
             description = description.trim(),
             status = status,
             priority = priority,
+            type = type,
             doDate = doDate,
             startTimeMinutes = startTimeMinutes,
             endTimeMinutes = endTimeMinutes,
@@ -703,6 +763,7 @@ class TaskViewModel(
             description = description,
             status = status,
             priority = priority,
+            type = type,
             doDate = doDate,
             startTimeMinutes = startTimeMinutes,
             endTimeMinutes = endTimeMinutes,

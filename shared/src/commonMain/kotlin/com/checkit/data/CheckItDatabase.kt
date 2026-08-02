@@ -97,6 +97,7 @@ data class TaskEntity(
     val description: String = "",
     val status: String,
     val priority: String,
+    val type: String = "Task",
     val doDateEpochDays: Int? = null,
     val completedDateEpochDays: Int? = null,
     val startTimeMinutes: Int? = null,
@@ -203,6 +204,7 @@ data class DailyPlanItemEntity(
     val sortOrder: Int,
     val startTimeMinutes: Int? = null,
     val endTimeMinutes: Int? = null,
+    val isHabit: Boolean = false,
     val addedAtMillis: Long,
     val completedAtMillis: Long? = null,
     /** Id of the source item this was copied from via carry-over, if any. */
@@ -358,7 +360,7 @@ data class TaskFilterEntity(
         TaskReminderEntity::class,
         TaskFilterEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)
@@ -407,6 +409,16 @@ fun buildCheckItDatabase(
                     )
                     connection.execSQL(
                         "DELETE FROM daily_plan_items WHERE source = 'MyDayNote' AND title = 'Win'"
+                    )
+                }
+            },
+            object : Migration(5, 6) {
+                override suspend fun migrate(connection: SQLiteConnection) {
+                    connection.execSQL(
+                        "ALTER TABLE tasks ADD COLUMN type TEXT NOT NULL DEFAULT 'Task'"
+                    )
+                    connection.execSQL(
+                        "ALTER TABLE daily_plan_items ADD COLUMN isHabit INTEGER NOT NULL DEFAULT 0"
                     )
                 }
             }

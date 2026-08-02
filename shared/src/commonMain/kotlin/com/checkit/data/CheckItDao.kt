@@ -393,6 +393,7 @@ interface CheckItDao {
             description = :description,
             status = :status,
             priority = :priority,
+            type = :type,
             doDateEpochDays = :doDateEpochDays,
             startTimeMinutes = :startTimeMinutes,
             endTimeMinutes = :endTimeMinutes,
@@ -409,6 +410,7 @@ interface CheckItDao {
         description: String,
         status: String,
         priority: String,
+        type: String,
         doDateEpochDays: Int?,
         startTimeMinutes: Int?,
         endTimeMinutes: Int?,
@@ -600,6 +602,7 @@ interface CheckItDao {
                         sortOrder = nextDailyPlanItemSortOrder(targetDateEpochDays),
                         startTimeMinutes = null,
                         endTimeMinutes = null,
+                        isHabit = source.isHabit,
                         addedAtMillis = nowMillis,
                         completedAtMillis = null,
                         carriedFromItemId = source.id

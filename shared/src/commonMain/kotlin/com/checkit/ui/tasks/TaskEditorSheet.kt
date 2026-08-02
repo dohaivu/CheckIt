@@ -25,6 +25,7 @@ import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RestoreFromTrash
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.TaskAlt
@@ -53,6 +54,7 @@ import com.checkit.domain.SprintState
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskTag
+import com.checkit.domain.TaskType
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.AppOutlinedTextField
@@ -111,6 +113,7 @@ internal fun TaskEditorSheet(
     val onNoteDateChange = actions.onNoteDateChange
     val onNoteStartTimeChange = actions.onNoteStartTimeChange
     val onSwitchAddModeToTask = actions.onSwitchAddModeToTask
+    val onSwitchAddModeToHabit = actions.onSwitchAddModeToHabit
     val onSwitchAddModeToNote = actions.onSwitchAddModeToNote
 
     AppEditorBottomSheet(
@@ -121,8 +124,10 @@ internal fun TaskEditorSheet(
     ) {
         SheetHeader(
             isAddMode = editor.isAddMode(),
-            isTaskSelected = editor is TaskEditorState.TaskForm,
+            isTaskSelected = editor is TaskEditorState.TaskForm && editor.type == TaskType.Task,
+            isHabitSelected = editor is TaskEditorState.TaskForm && editor.type == TaskType.Habit,
             onSwitchAddModeToTask = onSwitchAddModeToTask,
+            onSwitchAddModeToHabit = onSwitchAddModeToHabit,
             onSwitchAddModeToNote = onSwitchAddModeToNote,
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
         )
@@ -224,22 +229,32 @@ internal fun TaskEditorSheet(
 @Composable
 private fun AddModeSwitch(
     isTaskSelected: Boolean,
+    isHabitSelected: Boolean,
     onTaskClick: () -> Unit,
+    onHabitClick: () -> Unit,
     onNoteClick: () -> Unit
 ) {
     SingleChoiceSegmentedButtonRow {
         SegmentedButton(
             selected = isTaskSelected,
             onClick = onTaskClick,
-            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
             icon = { Icon(Icons.Default.TaskAlt, contentDescription = null) },
             label = { Text("Task") },
             colors = SegmentedButtonDefaults.colors(activeContainerColor = MaterialTheme.colorScheme.primaryContainer, activeContentColor = MaterialTheme.colorScheme.primary)
         )
         SegmentedButton(
-            selected = !isTaskSelected,
+            selected = isHabitSelected,
+            onClick = onHabitClick,
+            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
+            icon = { Icon(Icons.Default.Repeat, contentDescription = null) },
+            label = { Text("Habit") },
+            colors = SegmentedButtonDefaults.colors(activeContainerColor = MaterialTheme.colorScheme.primaryContainer, activeContentColor = MaterialTheme.colorScheme.primary)
+        )
+        SegmentedButton(
+            selected = !isTaskSelected && !isHabitSelected,
             onClick = onNoteClick,
-            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+            shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
             icon = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null) },
             label = { Text("Note") },
             colors = SegmentedButtonDefaults.colors(activeContainerColor = MaterialTheme.colorScheme.primaryContainer, activeContentColor = MaterialTheme.colorScheme.primary)
@@ -251,7 +266,9 @@ private fun AddModeSwitch(
 private fun SheetHeader(
     isAddMode: Boolean,
     isTaskSelected: Boolean,
+    isHabitSelected: Boolean,
     onSwitchAddModeToTask: () -> Unit,
+    onSwitchAddModeToHabit: () -> Unit,
     onSwitchAddModeToNote: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -260,7 +277,9 @@ private fun SheetHeader(
             Box(modifier = Modifier.align(Alignment.Center)) {
                 AddModeSwitch(
                     isTaskSelected = isTaskSelected,
+                    isHabitSelected = isHabitSelected,
                     onTaskClick = onSwitchAddModeToTask,
+                    onHabitClick = onSwitchAddModeToHabit,
                     onNoteClick = onSwitchAddModeToNote
                 )
             }
@@ -382,27 +401,47 @@ private fun TaskFormContent(
     onNewTagClick: () -> Unit,
     enabled: Boolean = true
 ) {
+    val isHabit = form.type == TaskType.Habit
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            TaskIcon(
-                completed = form.status == TaskStatus.Completed,
-                color = form.priority.priorityColor()
-            )
-            DatePicker(
-                modifier = Modifier.weight(1f),
-                date = form.doDate,
-                onDateChange = onDoDateChange,
-                startTimeMinutes = form.startTimeMinutes,
-                endTimeMinutes = form.endTimeMinutes,
-                onStartTimeChange = onStartTimeChange,
-                onEndTimeChange = onEndTimeChange,
-                enabled = enabled,
-                isOverdue = form.isOverdue()
-            )
-            PriorityPicker(selected = form.priority, onSelect = onPriorityChange, enabled = enabled)
+        if (isHabit) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                TaskIcon(
+                    completed = form.status == TaskStatus.Completed,
+                    color = form.priority.priorityColor()
+                )
+                Text(
+                    text = "Every day · auto-added to My Day",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                PriorityPicker(selected = form.priority, onSelect = onPriorityChange, enabled = enabled)
+            }
+        } else {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                TaskIcon(
+                    completed = form.status == TaskStatus.Completed,
+                    color = form.priority.priorityColor()
+                )
+                DatePicker(
+                    modifier = Modifier.weight(1f),
+                    date = form.doDate,
+                    onDateChange = onDoDateChange,
+                    startTimeMinutes = form.startTimeMinutes,
+                    endTimeMinutes = form.endTimeMinutes,
+                    onStartTimeChange = onStartTimeChange,
+                    onEndTimeChange = onEndTimeChange,
+                    enabled = enabled,
+                    isOverdue = form.isOverdue()
+                )
+                PriorityPicker(selected = form.priority, onSelect = onPriorityChange, enabled = enabled)
+            }
         }
 
         AppOutlinedTextField(

@@ -11,6 +11,7 @@ import com.checkit.domain.TaskFilter
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
+import com.checkit.domain.TaskType
 import com.checkit.ui.theme.AppIconColorDefaults
 import kotlinx.datetime.LocalDate
 
@@ -84,7 +85,8 @@ enum class TaskWorkspaceView {
     List,
     Agenda,
     Goal,
-    Timeline;
+    Timeline,
+    Habits;
 
     companion object {
         fun fromCode(code: String): TaskWorkspaceView =
@@ -137,6 +139,7 @@ sealed interface TaskEditorState {
         val reminderOffsets: Set<Int> = emptySet(),
         val status: TaskStatus = TaskStatus.Open,
         val priority: TaskPriority = TaskPriority.None,
+        val type: TaskType = TaskType.Task,
         val selectedTagIds: Set<Long> = emptySet(),
         val addToMyDayOnSave: Boolean = false,
         val dailyPlanItem: DailyPlanItem? = null,

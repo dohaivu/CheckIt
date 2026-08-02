@@ -14,6 +14,7 @@ import com.checkit.domain.TaskFilter
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
+import com.checkit.domain.TaskType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
@@ -51,13 +52,19 @@ class AutoAddTodayTasksToMyDayUseCase(
         }
 
         repository.ensureDefaultTaskData()
+        val alreadyPlannedTaskIds = repository.dailyPlanForDate(today)
+            ?.items
+            ?.mapNotNull { it.taskId }
+            ?.toSet()
+            .orEmpty()
         val tasksToAdd = repository.observeTaskBoard()
             .first()
             .tasks
             .filter { task ->
                 !task.isTrashed &&
                     task.status == TaskStatus.Open &&
-                    task.doDate == today
+                    task.qualifiesForToday(today) &&
+                    task.id !in alreadyPlannedTaskIds
             }
 
         tasksToAdd.forEach { task ->
@@ -67,6 +74,12 @@ class AutoAddTodayTasksToMyDayUseCase(
         tasksToAdd.size
     }
 }
+
+private fun TaskItem.qualifiesForToday(today: LocalDate): Boolean =
+    when (type) {
+        TaskType.Task -> doDate == today
+        TaskType.Habit -> completedDate == null
+    }
 
 class AddTagUseCase(
     private val repository: CheckItRepository

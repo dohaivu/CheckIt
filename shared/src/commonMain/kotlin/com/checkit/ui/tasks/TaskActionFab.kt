@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -22,6 +23,7 @@ import com.checkit.ui.components.icons.Target
 @Composable
 internal fun TaskActionFab(
     onTaskClick: (() -> Unit)? = null,
+    onHabitClick: (() -> Unit)? = null,
     onNoteClick: (() -> Unit)? = null,
     onObjectiveClick: (() -> Unit)? = null,
     onKeyResultClick: (() -> Unit)? = null
@@ -42,6 +44,16 @@ internal fun TaskActionFab(
                     onClick = {
                         expanded = false
                         onTaskClick()
+                    }
+                )
+            }
+            if (onHabitClick != null) {
+                DropdownMenuItem(
+                    text = { Text("Habit") },
+                    leadingIcon = { Icon(Icons.Default.Repeat, contentDescription = null) },
+                    onClick = {
+                        expanded = false
+                        onHabitClick()
                     }
                 )
             }

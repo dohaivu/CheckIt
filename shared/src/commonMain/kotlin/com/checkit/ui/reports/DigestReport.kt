@@ -152,6 +152,9 @@ internal fun DigestReport(
                     )
                 }
             }
+            if (state.habitCheckins.isNotEmpty()) {
+                HabitHeatmapSection(checkins = state.habitCheckins)
+            }
         }
     }
 }

@@ -1,10 +1,15 @@
 package com.checkit.domain.usecase
 
 import com.checkit.data.UserSettings
+import com.checkit.domain.DailyPlan
+import com.checkit.domain.DailyPlanItem
+import com.checkit.domain.DailyPlanItemSource
+import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.Objective
 import com.checkit.domain.TaskStatus
+import com.checkit.domain.TaskType
 import com.checkit.ui.tasks.FakeCheckItRepository
 import com.checkit.ui.tasks.FakeSettingsRepository
 import kotlinx.coroutines.flow.first
@@ -87,6 +92,81 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
         assertEquals(listOf(1L), repository.addedDailyPlanTasks.map { it.second.id })
     }
 
+    @Test
+    fun addsOpenHabitsToMyDayWithoutDate() = runTest {
+        val today = today()
+        val repository = FakeCheckItRepository(
+            initialBoard = TaskBoard(
+                tasks = listOf(
+                    task(id = 1L, doDate = null, type = TaskType.Habit),
+                    task(id = 2L, doDate = null, type = TaskType.Task)
+                )
+            )
+        )
+        val settingsRepository = FakeSettingsRepository()
+        val useCase = AutoAddTodayTasksToMyDayUseCase(repository, settingsRepository)
+
+        val addedCount = useCase()
+
+        assertEquals(1, addedCount)
+        assertEquals(listOf(1L), repository.addedDailyPlanTasks.map { it.second.id })
+    }
+
+    @Test
+    fun skipsHabitsAlreadyCompleted() = runTest {
+        val today = today()
+        val yesterday = today.minus(1, DateTimeUnit.DAY)
+        val repository = FakeCheckItRepository(
+            initialBoard = TaskBoard(
+                tasks = listOf(
+                    task(id = 1L, doDate = null, type = TaskType.Habit),
+                    task(id = 2L, doDate = null, type = TaskType.Habit, completedDate = yesterday)
+                )
+            )
+        )
+        val settingsRepository = FakeSettingsRepository()
+        val useCase = AutoAddTodayTasksToMyDayUseCase(repository, settingsRepository)
+
+        val addedCount = useCase()
+
+        assertEquals(1, addedCount)
+        assertEquals(listOf(1L), repository.addedDailyPlanTasks.map { it.second.id })
+    }
+
+    @Test
+    fun doesNotDuplicateTaskAlreadyPlannedToday() = runTest {
+        val today = today()
+        val repository = FakeCheckItRepository(
+            initialBoard = TaskBoard(tasks = listOf(task(id = 1L, doDate = today)))
+        )
+        repository.setDailyPlans(
+            listOf(
+                DailyPlan(
+                    date = today,
+                    items = listOf(
+                        DailyPlanItem(
+                            id = 10L,
+                            dateEpochDays = today.toEpochDays().toInt(),
+                            taskId = 1L,
+                            title = "Task 1",
+                            source = DailyPlanItemSource.ExistingTask,
+                            status = DailyPlanItemStatus.Planned,
+                            sortOrder = 0,
+                            addedAtMillis = 0L
+                        )
+                    )
+                )
+            )
+        )
+        val settingsRepository = FakeSettingsRepository()
+        val useCase = AutoAddTodayTasksToMyDayUseCase(repository, settingsRepository)
+
+        val addedCount = useCase()
+
+        assertEquals(0, addedCount)
+        assertEquals(emptyList(), repository.addedDailyPlanTasks)
+    }
+
     private fun today(): LocalDate =
         Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 
@@ -94,13 +174,17 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
         id: Long,
         doDate: LocalDate?,
         status: TaskStatus = TaskStatus.Open,
-        trashedAtMillis: Long? = null
+        type: TaskType = TaskType.Task,
+        trashedAtMillis: Long? = null,
+        completedDate: LocalDate? = null
     ) = TaskItem(
         id = id,
         objective = Objective.None,
         name = "Task $id",
         status = status,
+        type = type,
         doDate = doDate,
+        completedDate = completedDate,
         sortOrder = id.toInt(),
         createdAtMillis = 0L,
         updatedAtMillis = 0L,

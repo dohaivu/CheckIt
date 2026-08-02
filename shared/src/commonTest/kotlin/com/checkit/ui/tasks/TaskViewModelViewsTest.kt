@@ -7,6 +7,7 @@ import com.checkit.domain.TaskFilter
 import com.checkit.domain.TaskItem
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskPriority
+import com.checkit.domain.TaskType
 import com.checkit.domain.usecase.AddNoteUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
@@ -226,6 +227,28 @@ class TaskViewModelViewsTest {
         assertEquals(listOf("task:Budget", "note:Ideas"), labels)
     }
 
+    @Test
+    fun habitsViewShowsOnlyHabitTasks() = runTest(dispatcher) {
+        val inbox = Objective(id = 1L, name = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
+        viewModel = createViewModel(
+            TaskBoard(
+                objectives = listOf(inbox),
+                tasks = listOf(
+                    task(id = 1L, objective = inbox, name = "Read"),
+                    task(id = 2L, objective = inbox, name = "Meditate", type = TaskType.Habit),
+                    task(id = 3L, objective = inbox, name = "Write")
+                )
+            )
+        )
+        dispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.selectView(TaskWorkspaceView.Habits)
+
+        val state = viewModel.uiState.value
+        assertEquals(listOf("Meditate"), state.visibleTasks.map { it.name })
+        assertTrue(state.visibleNotes.isEmpty())
+    }
+
     private fun createViewModel(board: TaskBoard): TaskViewModel {
         repository = FakeCheckItRepository(initialBoard = board)
         return TaskViewModel(
@@ -256,12 +279,14 @@ class TaskViewModelViewsTest {
         id: Long,
         objective: Objective,
         name: String,
-        description: String = ""
+        description: String = "",
+        type: TaskType = TaskType.Task
     ) = TaskItem(
         id = id,
         objective = objective,
         name = name,
         description = description,
+        type = type,
         sortOrder = id.toInt(),
         createdAtMillis = 0L,
         updatedAtMillis = 0L

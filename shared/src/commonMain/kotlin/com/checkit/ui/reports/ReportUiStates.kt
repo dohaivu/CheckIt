@@ -33,6 +33,53 @@ data class ReportUiState(
     val digestReport: DigestReportSummary by lazy {
         reportIndex.toDigest(selectedPeriod, selectedDate)
     }
+    val habitCheckins: List<HabitCheckin> by lazy {
+        buildHabitCheckins(dailyPlans, today())
+    }
+}
+
+data class HabitCheckin(
+    val taskId: Long,
+    val title: String,
+    val doneDates: Set<LocalDate>,
+    val streak: Int,
+    val totalDone: Int
+)
+
+internal fun buildHabitCheckins(
+    dailyPlans: List<DailyPlan>,
+    today: LocalDate
+): List<HabitCheckin> {
+    val grouped = dailyPlans.asSequence()
+        .flatMap { plan -> plan.items.asSequence().map { item -> plan.date to item } }
+        .filter { (_, item) -> item.isHabit && item.status == DailyPlanItemStatus.Done }
+        .groupBy(
+            { (_, item) -> item.taskId ?: item.id },
+            { (date, item) -> date to item }
+        )
+    return grouped.map { (key, entries) ->
+        val doneDates = entries.map { it.first }.distinct().toSet()
+        HabitCheckin(
+            taskId = key,
+            title = entries.first().second.title.ifBlank { "Habit" },
+            doneDates = doneDates,
+            streak = calculateStreak(doneDates, today),
+            totalDone = doneDates.size
+        )
+    }.sortedWith(compareByDescending<HabitCheckin> { it.streak }.thenBy { it.title.lowercase() })
+}
+
+internal fun calculateStreak(doneDates: Set<LocalDate>, today: LocalDate): Int {
+    var day = today
+    if (day !in doneDates) {
+        day = day.minus(1, DateTimeUnit.DAY)
+    }
+    var streak = 0
+    while (day in doneDates) {
+        streak += 1
+        day = day.minus(1, DateTimeUnit.DAY)
+    }
+    return streak
 }
 
 data class TagReportItem(

@@ -372,6 +372,7 @@ fun CheckItApp(
                                 onNoteTagToggle = viewModels.task::toggleNoteTag,
                                 onNewTagClick = viewModels.tag::openNewTag,
                                 onSwitchAddModeToTask = viewModels.task::switchAddEditorToTask,
+                                onSwitchAddModeToHabit = viewModels.task::switchAddEditorToHabit,
                                 onSwitchAddModeToNote = viewModels.task::switchAddEditorToNote
                             )
                         )
