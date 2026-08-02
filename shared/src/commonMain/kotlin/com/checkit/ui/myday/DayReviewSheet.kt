@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -31,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.cancel
@@ -90,11 +92,7 @@ internal fun DayReviewSheet(
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.SemiBold
             )
-            ReviewSummaryRow(state)
-
-            if (state.summary.topTags.isNotEmpty()) {
-                TagInsightsRow(state.summary.topTags)
-            }
+            SummaryAndTagsRow(state)
 
             ReflectionSection(
                 value = state.winNote,
@@ -230,34 +228,47 @@ private fun TomorrowGoalSection(
 }
 
 @Composable
-private fun TagInsightsRow(tags: List<DayReviewTagMinutes>) {
+private fun SummaryAndTagsRow(state: DayReviewUiState) {
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxWidth()
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        tags.forEach { tag ->
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .clip(MaterialTheme.shapes.extraSmall)
-                    .background(tag.color.toColor().copy(alpha = 0.15f))
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .clip(MaterialTheme.shapes.extraSmall)
-                        .background(tag.color.toColor())
-                )
-                Text(
-                    text = "${tag.name} (${tag.totalMinutes.toDurationLabel()})",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
+        SummaryChip(label = stringResource(Res.string.day_review_done_count, state.summary.doneCount))
+        SummaryChip(label = stringResource(Res.string.day_review_planned_count, state.summary.plannedCount))
+        SummaryChip(label = stringResource(Res.string.day_review_done_minutes, state.summary.doneMinutes))
+        
+        if (state.streak > 0) {
+            SummaryChip(label = "${state.streak}-day review streak")
         }
+
+        state.summary.topTags.forEach { tag ->
+            TagChip(tag)
+        }
+    }
+}
+
+@Composable
+private fun TagChip(tag: DayReviewTagMinutes) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .height(32.dp)
+            .clip(MaterialTheme.shapes.small)
+            .background(tag.color.toColor().copy(alpha = 0.15f))
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .clip(MaterialTheme.shapes.extraSmall)
+                .background(tag.color.toColor())
+        )
+        Text(
+            text = "${tag.name} (${tag.totalMinutes.toDurationLabel()})",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
@@ -270,42 +281,20 @@ private val WinNotePrompts = listOf(
 )
 
 @Composable
-private fun ReviewSummaryRow(state: DayReviewUiState) {
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        SummaryChip(
-            label = stringResource(Res.string.day_review_done_count, state.summary.doneCount)
-        )
-        SummaryChip(
-            label = stringResource(Res.string.day_review_planned_count, state.summary.plannedCount)
-        )
-        SummaryChip(
-            label = stringResource(
-                Res.string.day_review_done_minutes,
-                state.summary.doneMinutes
-            )
-        )
-        if (state.streak > 0) {
-            SummaryChip(
-                label = "${state.streak}-day review streak"
-            )
-        }
-    }
-}
-
-@Composable
 private fun SummaryChip(label: String) {
-    Surface(
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-        shape = MaterialTheme.shapes.small
+    Box(
+        modifier = Modifier
+            .height(32.dp)
+            .clip(MaterialTheme.shapes.small)
+            .background(MaterialTheme.colorScheme.secondaryContainer)
+            .padding(horizontal = 10.dp),
+        contentAlignment = Alignment.Center
     ) {
         Text(
             text = label,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            style = MaterialTheme.typography.labelLarge
+            style = MaterialTheme.typography.labelLarge,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSecondaryContainer
         )
     }
 }
