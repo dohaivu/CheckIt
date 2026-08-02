@@ -3,15 +3,16 @@ package com.checkit.ui.myday
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -20,21 +21,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.DailyPlanItem
+import com.checkit.domain.TaskTag
+import com.checkit.ui.shortcutDurationLabel
 import com.checkit.ui.tasks.cardColor
+import com.checkit.ui.theme.toColor
 import kotlin.math.roundToInt
 
 @Composable
@@ -42,7 +42,8 @@ internal fun DayLinearTimeline(
     items: List<DailyPlanItem>,
     modifier: Modifier = Modifier,
     showTotal: Boolean = true,
-    showLabels: Boolean = true
+    showLabels: Boolean = true,
+    showTagTotals: Boolean = true
 ) {
     val blocks = remember(items) { items.toDayTimelineBlocks() }
     val workMinutes = remember(blocks) { blocks.totalOccupiedMinutes() }
@@ -60,6 +61,9 @@ internal fun DayLinearTimeline(
             if (showLabels) {
                 DayTimelineLabels()
             }
+            if (showTagTotals) {
+                DayTagTotals(items)
+            }
         }
         if (showTotal) {
             WorkTimeChip(
@@ -68,6 +72,34 @@ internal fun DayLinearTimeline(
             )
         }
     }
+}
+
+@Composable
+private fun DayTagTotals(items: List<DailyPlanItem>) {
+    val aggregates = remember(items) { items.tagTimeTotals() }
+    if (aggregates.isEmpty()) return
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        aggregates.forEach { aggregate ->
+            TagTimeChip(tag = aggregate.tag, minutes = aggregate.minutes)
+        }
+    }
+}
+
+@Composable
+private fun TagTimeChip(tag: TaskTag, minutes: Int) {
+    val tagColor = remember(tag) { tag.color.toColor() }
+    Text(
+        text = "${tag.name} ${minutes.shortcutDurationLabel()}",
+        style = MaterialTheme.typography.labelSmall,
+        color = Color.White,
+        modifier = Modifier
+            .background(tagColor, RoundedCornerShape(8.dp))
+            .padding(horizontal = 8.dp, vertical = 3.dp)
+    )
 }
 
 /** Narrow chip matching the timeline height, showing hours/minutes on two lines. */
@@ -112,33 +144,27 @@ internal fun WorkTimeChip(
 private fun DayTrack(blocks: List<DayTimelineBlock>) {
     val trackColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f)
     val focusColor = MaterialTheme.colorScheme.surfaceContainerHigh
-    Canvas(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(16.dp)
+            .clip(RoundedCornerShape(50))
     ) {
-        val corner = size.height / 2f
-        val pill = Path().apply {
-            addRoundRect(RoundRect(0f, 0f, size.width, size.height, CornerRadius(corner, corner)))
-        }
-        clipPath(pill) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val corner = size.height / 2f
             drawRect(color = trackColor)
-            DayFocusRanges.forEach { (startMinutes, endMinutes) ->
-                val left = (startMinutes - DayTimelineStartMinutes).toFloat() / DayTimelineTotalMinutes * size.width
-                val right = (endMinutes - DayTimelineStartMinutes).toFloat() / DayTimelineTotalMinutes * size.width
+            DayFocusRanges.forEach { (startRatio, endRatio) ->
                 drawRect(
                     color = focusColor,
-                    topLeft = Offset(x = left, y = 0f),
-                    size = Size(width = right - left, height = size.height)
+                    topLeft = Offset(x = startRatio * size.width, y = 0f),
+                    size = Size(width = (endRatio - startRatio) * size.width, height = size.height)
                 )
             }
             blocks.forEach { block ->
-                val startFraction = (block.startMinutes - DayTimelineStartMinutes).toFloat() / DayTimelineTotalMinutes
-                val widthFraction = (block.endMinutes - block.startMinutes).toFloat() / DayTimelineTotalMinutes
                 drawRoundRect(
                     color = block.color,
-                    topLeft = Offset(x = size.width * startFraction, y = 0f),
-                    size = Size(width = size.width * widthFraction, height = size.height),
+                    topLeft = Offset(x = size.width * block.startFraction, y = 0f),
+                    size = Size(width = size.width * block.widthFraction, height = size.height),
                     cornerRadius = CornerRadius(corner, corner)
                 )
             }
@@ -181,7 +207,32 @@ private data class DayTimelineBlock(
     val startMinutes: Int,
     val endMinutes: Int,
     val color: Color
+) {
+    val startFraction: Float =
+        (startMinutes - DayTimelineStartMinutes).toFloat() / DayTimelineTotalMinutes
+    val widthFraction: Float =
+        (endMinutes - startMinutes).toFloat() / DayTimelineTotalMinutes
+}
+
+internal data class TagTimeAggregate(
+    val tag: TaskTag,
+    val minutes: Int
 )
+
+internal fun List<DailyPlanItem>.tagTimeTotals(): List<TagTimeAggregate> {
+    val totals = mutableMapOf<Long, TagTimeAggregate>()
+    this.forEach { item ->
+        val minutes = item.workMinutes()
+        if (minutes <= 0) return@forEach
+        item.tags.forEach { tag ->
+            val current = totals[tag.id] ?: TagTimeAggregate(tag, 0)
+            totals[tag.id] = current.copy(minutes = current.minutes + minutes)
+        }
+    }
+    return totals.values.sortedWith(
+        compareByDescending<TagTimeAggregate> { it.minutes }.thenBy { it.tag.name.lowercase() }
+    )
+}
 
 private data class DayTimelineTick(
     val label: String,
@@ -227,16 +278,19 @@ private fun List<DayTimelineBlock>.totalOccupiedMinutes(): Int {
     return total + currentEnd - currentStart
 }
 
-private const val DayTimelineStartMinutes = 6 * 60
+private const val DayTimelineStartMinutes = 5 * 60
 private const val DayTimelineEndMinutes = 22 * 60
 private const val DayTimelineTotalMinutes = DayTimelineEndMinutes - DayTimelineStartMinutes
 
-/** Prime hours (9-11, 13-17, 19-22) highlighted on the track so users see time spent in focus windows. */
+/** Prime hours (9-11, 13-17, 19-22) highlighted on the track, precomputed as [startRatio, endRatio] fractions. */
 private val DayFocusRanges = listOf(
     8 * 60 to 11 * 60,
     13 * 60 to 16 * 60,
     19 * 60 to 22 * 60
-)
+).map { (startMinutes, endMinutes) ->
+    (startMinutes - DayTimelineStartMinutes).toFloat() / DayTimelineTotalMinutes to
+        (endMinutes - DayTimelineStartMinutes).toFloat() / DayTimelineTotalMinutes
+}
 
 private val DayTimelineTicks = listOf(
     DayTimelineTick(label = "6am", minutes = 6 * 60),
