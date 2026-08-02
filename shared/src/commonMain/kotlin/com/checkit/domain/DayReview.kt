@@ -9,6 +9,9 @@ import kotlinx.datetime.minus
  * [CarryOver] is shared with PR2 morning leftovers.
  */
 enum class LeftoverAction {
+    /** No decision yet; the item is left untouched on the review day. */
+    None,
+
     /** Mark the plan item Done. Does not complete the linked task. */
     MarkDone,
 
@@ -20,8 +23,25 @@ enum class LeftoverAction {
 }
 
 /** Default action for a planned leftover item during evening review. */
-fun DailyPlanItem.defaultLeftoverAction(): LeftoverAction =
-    if (taskId != null) LeftoverAction.CarryOver else LeftoverAction.Drop
+fun DailyPlanItem.defaultLeftoverAction(): LeftoverAction = LeftoverAction.None
+
+/**
+ * Pre-selected action when the review reopens. Handled items from an earlier
+ * review re-open as their prior choice: CarryOver if a copy exists on the next
+ * day (via [carriedFromItemId]), otherwise Drop. Unhandled items stay None so
+ * the user picks explicitly.
+ */
+fun DailyPlanItem.defaultReviewAction(dailyPlans: List<DailyPlan>): LeftoverAction {
+    if (handledAtMillis == null) return LeftoverAction.None
+    val tomorrowEpochDay = dateEpochDays + 1
+    val carriedFromIds = dailyPlans
+        .asSequence()
+        .filter { it.date.toEpochDays().toInt() == tomorrowEpochDay }
+        .flatMap { it.items.asSequence() }
+        .mapNotNull { it.carriedFromItemId }
+        .toSet()
+    return if (id in carriedFromIds) LeftoverAction.CarryOver else LeftoverAction.Drop
+}
 
 enum class CarryOverTimePolicy {
     /** Clear start/end so the next day can be re-timed (review default). */
@@ -46,8 +66,8 @@ data class DayReviewSummary(
     val plannedItems: List<DailyPlanItem>,
     val doneItems: List<DailyPlanItem>,
     val topTags: List<DayReviewTagMinutes>,
-    /** Number of items already resolved (e.g. carried to tomorrow) by an earlier review. */
-    val alreadyCarriedCount: Int = 0
+    /** Items already resolved (e.g. carried to tomorrow) by an earlier review; still re-decidable. */
+    val alreadyCarriedItems: List<DailyPlanItem> = emptyList()
 )
 
 data class DayReviewConfirmInput(

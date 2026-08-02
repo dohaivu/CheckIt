@@ -35,7 +35,9 @@ class BuildDayReviewSummaryUseCase(
         val plannedItems = items
             .filter { it.status == DailyPlanItemStatus.Planned && it.handledAtMillis == null }
             .sortedBy { it.startTimeMinutes ?: Int.MAX_VALUE }
-        val alreadyCarriedCount = items.count { it.status == DailyPlanItemStatus.Planned && it.handledAtMillis != null }
+        val alreadyCarriedItems = items
+            .filter { it.status == DailyPlanItemStatus.Planned && it.handledAtMillis != null }
+            .sortedBy { it.startTimeMinutes ?: Int.MAX_VALUE }
         val doneMinutes = doneItems.sumOf { it.planWorkMinutes() }
         val topTags = doneItems
             .asSequence()
@@ -67,7 +69,7 @@ class BuildDayReviewSummaryUseCase(
             plannedItems = plannedItems,
             doneItems = doneItems,
             topTags = topTags,
-            alreadyCarriedCount = alreadyCarriedCount
+            alreadyCarriedItems = alreadyCarriedItems
         )
     }
 
@@ -151,7 +153,8 @@ class CompleteDayReviewUseCase(
     ): Result<DayReviewConfirmResult> = runCatching {
         withContext(dispatcher) {
             val summary = buildSummary(input.date, plan)
-            val resolution = resolveLeftovers(summary.plannedItems, input.leftoverActions)
+            val redecidableItems = summary.plannedItems + summary.alreadyCarriedItems
+            val resolution = resolveLeftovers(redecidableItems, input.leftoverActions)
             val tomorrow = input.date.plus(1, DateTimeUnit.DAY)
             val commit = repository.completeDayReview(
                 date = input.date,
@@ -189,6 +192,7 @@ class CompleteDayReviewUseCase(
         for ((itemId, action) in actions) {
             val item = plannedById[itemId] ?: continue
             when (action) {
+                LeftoverAction.None -> Unit // No decision yet; leave the item untouched.
                 LeftoverAction.MarkDone -> markDoneIds += item.id
                 LeftoverAction.CarryOver -> carryIds += item.id
                 LeftoverAction.Drop -> dropIds += item.id

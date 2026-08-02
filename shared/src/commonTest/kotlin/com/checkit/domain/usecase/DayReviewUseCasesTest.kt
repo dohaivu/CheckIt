@@ -12,6 +12,7 @@ import com.checkit.domain.LeftoverAction
 import com.checkit.domain.ReviewStreakPolicy
 import com.checkit.domain.TaskTag
 import com.checkit.domain.defaultLeftoverAction
+import com.checkit.domain.defaultReviewAction
 import com.checkit.ui.tasks.FakeCheckItRepository
 import com.checkit.ui.tasks.FakeSettingsRepository
 import kotlinx.coroutines.Dispatchers
@@ -77,7 +78,7 @@ class DayReviewUseCasesTest {
     }
 
     @Test
-    fun summaryExcludesHandledItemsAndCountsAlreadyCarried() = runTest {
+    fun summaryExcludesUnhandledItemsAndListsAlreadyCarried() = runTest {
         val plan = DailyPlan(
             date = date,
             items = listOf(
@@ -103,7 +104,7 @@ class DayReviewUseCasesTest {
         )
 
         val summary = buildSummary(date, plan)
-        assertEquals(1, summary.alreadyCarriedCount)
+        assertEquals(listOf(50L), summary.alreadyCarriedItems.map { it.id })
         assertEquals(listOf(51L), summary.plannedItems.map { it.id })
         assertEquals(listOf(1L), summary.doneItems.map { it.id })
         assertEquals(1, summary.doneCount)
@@ -281,6 +282,69 @@ class DayReviewUseCasesTest {
     }
 
     @Test
+    fun completeReviewLeavesNoneItemsUntouched() = runTest {
+        val repository = FakeCheckItRepository()
+        val settings = FakeSettingsRepository()
+        val complete = CompleteDayReviewUseCase(
+            repository = repository,
+            settingsRepository = settings,
+            buildSummary = buildSummary,
+            dispatcher = Dispatchers.Unconfined
+        )
+        val plannedA = item(id = 1L, title = "A", status = DailyPlanItemStatus.Planned)
+        val plannedB = item(id = 2L, title = "B", status = DailyPlanItemStatus.Planned)
+        val plan = DailyPlan(date = date, items = listOf(plannedA, plannedB))
+        repository.setDailyPlans(listOf(plan))
+
+        val result = complete(
+            plan = plan,
+            input = DayReviewConfirmInput(
+                date = date,
+                leftoverActions = mapOf(1L to LeftoverAction.None, 2L to LeftoverAction.None)
+            )
+        ).getOrThrow()
+
+        assertEquals(0, result.markedDoneCount)
+        assertEquals(0, result.carriedCount)
+        assertEquals(0, result.droppedCount)
+        assertTrue(repository.statusUpdates.isEmpty())
+        assertTrue(repository.copiedDailyPlanItems.isEmpty())
+        assertTrue(repository.markedHandledItemIds.isEmpty())
+    }
+
+    @Test
+    fun completeReviewCanReDecideAlreadyCarriedItem() = runTest {
+        val repository = FakeCheckItRepository()
+        val settings = FakeSettingsRepository()
+        val complete = CompleteDayReviewUseCase(
+            repository = repository,
+            settingsRepository = settings,
+            buildSummary = buildSummary,
+            dispatcher = Dispatchers.Unconfined
+        )
+        val alreadyCarried = item(
+            id = 5L,
+            title = "Already carried",
+            status = DailyPlanItemStatus.Planned,
+            handledAtMillis = 1L
+        )
+        val plan = DailyPlan(date = date, items = listOf(alreadyCarried))
+        repository.setDailyPlans(listOf(plan))
+
+        val result = complete(
+            plan = plan,
+            input = DayReviewConfirmInput(
+                date = date,
+                leftoverActions = mapOf(5L to LeftoverAction.MarkDone)
+            )
+        ).getOrThrow()
+
+        assertEquals(1, result.markedDoneCount)
+        assertEquals(listOf(5L to DailyPlanItemStatus.Done), repository.statusUpdates)
+        assertTrue(repository.markedHandledItemIds.contains(5L))
+    }
+
+    @Test
     fun completeReviewClearsBlankWinNoteFromRecord() = runTest {
         val repository = FakeCheckItRepository()
         val settings = FakeSettingsRepository()
@@ -308,11 +372,48 @@ class DayReviewUseCasesTest {
     }
 
     @Test
-    fun defaultLeftoverActionCarriesTaskLinkedItemsOnly() {
+    fun defaultLeftoverActionIsNoneRequiringExplicitChoice() {
         val linked = item(id = 1L, taskId = 100L, title = "Linked", status = DailyPlanItemStatus.Planned)
         val standalone = item(id = 2L, title = "Standalone", status = DailyPlanItemStatus.Planned)
-        assertEquals(LeftoverAction.CarryOver, linked.defaultLeftoverAction())
-        assertEquals(LeftoverAction.Drop, standalone.defaultLeftoverAction())
+        assertEquals(LeftoverAction.None, linked.defaultLeftoverAction())
+        assertEquals(LeftoverAction.None, standalone.defaultLeftoverAction())
+    }
+
+    @Test
+    fun defaultReviewActionIsNoneForUnhandledItems() {
+        val item = item(id = 1L, title = "Pending", status = DailyPlanItemStatus.Planned)
+        assertEquals(LeftoverAction.None, item.defaultReviewAction(emptyList()))
+    }
+
+    @Test
+    fun defaultReviewActionInfersCarryOverFromTomorrowCopy() {
+        val today = LocalDate(2026, 7, 10)
+        val source = item(
+            id = 1L,
+            title = "Carried",
+            status = DailyPlanItemStatus.Planned,
+            handledAtMillis = 10L
+        )
+        val copy = item(
+            id = 2L,
+            title = "Carried (tomorrow)",
+            status = DailyPlanItemStatus.Planned,
+            carriedFromItemId = 1L,
+            dateEpochDays = today.toEpochDays().toInt() + 1
+        )
+        assertEquals(LeftoverAction.CarryOver, source.defaultReviewAction(listOf(DailyPlan(today, listOf(copy)))))
+    }
+
+    @Test
+    fun defaultReviewActionInfersDropWhenHandledWithoutTomorrowCopy() {
+        val today = LocalDate(2026, 7, 10)
+        val source = item(
+            id = 1L,
+            title = "Dropped",
+            status = DailyPlanItemStatus.Planned,
+            handledAtMillis = 10L
+        )
+        assertEquals(LeftoverAction.Drop, source.defaultReviewAction(listOf(DailyPlan(today, emptyList()))))
     }
 
     @Test
@@ -421,10 +522,12 @@ class DayReviewUseCasesTest {
         },
         note: String? = null,
         addedAtMillis: Long = 0L,
-        handledAtMillis: Long? = null
+        handledAtMillis: Long? = null,
+        carriedFromItemId: Long? = null,
+        dateEpochDays: Int = date.toEpochDays().toInt()
     ) = DailyPlanItem(
         id = id,
-        dateEpochDays = date.toEpochDays().toInt(),
+        dateEpochDays = dateEpochDays,
         taskId = taskId,
         title = title,
         note = note,
@@ -436,6 +539,7 @@ class DayReviewUseCasesTest {
         endTimeMinutes = endTimeMinutes,
         addedAtMillis = addedAtMillis,
         completedAtMillis = if (status == DailyPlanItemStatus.Done) 1L else null,
-        handledAtMillis = handledAtMillis
+        handledAtMillis = handledAtMillis,
+        carriedFromItemId = carriedFromItemId
     )
 }

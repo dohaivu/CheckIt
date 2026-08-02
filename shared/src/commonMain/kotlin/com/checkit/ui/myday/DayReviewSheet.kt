@@ -113,14 +113,10 @@ internal fun DayReviewSheet(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
-            if (state.summary.alreadyCarriedCount > 0) {
-                Text(
-                    text = "${state.summary.alreadyCarriedCount} already moved to tomorrow",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
+            val leftoverItems = remember(state.summary) {
+                state.summary.plannedItems + state.summary.alreadyCarriedItems
             }
-            if (state.summary.plannedItems.isEmpty()) {
+            if (leftoverItems.isEmpty()) {
                 Text(
                     text = stringResource(Res.string.day_review_leftovers_empty),
                     style = MaterialTheme.typography.bodyMedium,
@@ -134,7 +130,7 @@ internal fun DayReviewSheet(
                     contentPadding = PaddingValues(bottom = 8.dp)
                 ) {
                     itemsIndexed(
-                        state.summary.plannedItems,
+                        leftoverItems,
                         key = { _, item -> item.id }) { index, item ->
                         LeftoverReviewRow(
                             item = item,
@@ -142,7 +138,7 @@ internal fun DayReviewSheet(
                             enabled = !state.isSubmitting,
                             onAction = { onLeftoverAction(item.id, it) }
                         )
-                        if (index < state.summary.plannedItems.lastIndex) {
+                        if (index < leftoverItems.lastIndex) {
                             AppHorizontalDivider(
                                 modifier = Modifier.padding(vertical = 12.dp),
                                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
@@ -339,7 +335,7 @@ private fun LeftoverReviewRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
-                LeftoverAction.entries.forEach { option ->
+                LeftoverAction.entries.filter { it != LeftoverAction.None }.forEach { option ->
                     FilterChip(
                         selected = action == option,
                         onClick = { onAction(option) },
@@ -353,6 +349,7 @@ private fun LeftoverReviewRow(
                                         stringResource(Res.string.day_review_action_carry)
                                     LeftoverAction.Drop ->
                                         stringResource(Res.string.day_review_action_drop)
+                                    LeftoverAction.None -> error("None is filtered out")
                                 }
                             )
                         },

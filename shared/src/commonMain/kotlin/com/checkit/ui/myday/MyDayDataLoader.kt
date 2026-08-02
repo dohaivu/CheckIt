@@ -11,6 +11,7 @@ import com.checkit.domain.PlanAssistBannerPolicy
 import com.checkit.domain.ReviewStreakPolicy
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.YesterdayLeftovers
+import com.checkit.domain.defaultReviewAction
 import com.checkit.ui.UiEvent
 import com.checkit.ui.currentMyDayTimeMinutes
 import com.checkit.ui.today
@@ -78,10 +79,14 @@ internal class MyDayDataLoader(
                     maybeAutoCarryOver(settings, pendingLeftovers, date)
                     val review = state.uiState.value.dayReview?.let { existing ->
                         val summary = deps.buildDayReviewSummary(date, plan)
-                        val validIds = summary.plannedItems.map { it.id }.toSet()
+                        val validItems = summary.plannedItems + summary.alreadyCarriedItems
+                        val validIds = validItems.map { it.id }.toSet()
                         existing.copy(
                             summary = summary,
-                            leftoverActions = existing.leftoverActions.filterKeys { it in validIds },
+                            leftoverActions = existing.leftoverActions.filterKeys { it in validIds } +
+                                validItems
+                                    .filter { it.id !in existing.leftoverActions }
+                                    .associate { it.id to it.defaultReviewAction(dailyPlans) },
                             streak = reviewStreak
                         )
                     }

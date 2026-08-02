@@ -2,7 +2,7 @@ package com.checkit.ui.myday
 
 import com.checkit.domain.DayReviewConfirmInput
 import com.checkit.domain.LeftoverAction
-import com.checkit.domain.defaultLeftoverAction
+import com.checkit.domain.defaultReviewAction
 import com.checkit.ui.UiEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -26,8 +26,9 @@ internal class DayReviewController(
             val date = loaded.today
             val summary = deps.buildDayReviewSummary(date, loaded.plan)
             val record = loaded.dayReviews.firstOrNull { it.date == date }
-            val actions = summary.plannedItems.associate { item ->
-                item.id to item.defaultLeftoverAction()
+            val allItems = summary.plannedItems + summary.alreadyCarriedItems
+            val actions = allItems.associate { item ->
+                item.id to item.defaultReviewAction(loaded.dailyPlans)
             }
             state.update {
                 it.copy(
