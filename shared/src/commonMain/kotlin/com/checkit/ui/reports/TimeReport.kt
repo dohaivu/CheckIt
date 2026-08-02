@@ -50,13 +50,14 @@ internal fun TimeReport(
     modifier: Modifier = Modifier
 ) {
     val selectedPeriod = when (state.selectedPeriod) {
-        ReportPeriod.Daily -> ReportPeriod.Week
+        ReportPeriod.Daily,
+        ReportPeriod.Habit -> ReportPeriod.Week
         else -> state.selectedPeriod
     }
     val timeReports = state.timeReportsFor(selectedPeriod)
     val totalMinutes = timeReports.sumOf { it.totalMinutes }
     LaunchedEffect(state.selectedPeriod) {
-        if (state.selectedPeriod == ReportPeriod.Daily) {
+        if (state.selectedPeriod == ReportPeriod.Daily || state.selectedPeriod == ReportPeriod.Habit) {
             onPeriodSelected(ReportPeriod.Week)
         }
     }

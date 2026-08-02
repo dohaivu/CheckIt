@@ -84,6 +84,7 @@ internal fun DigestReport(
         ReportPeriod.Week -> state.selectedPeriod
         ReportPeriod.Month,
         ReportPeriod.Annual -> ReportPeriod.Week
+        ReportPeriod.Habit -> ReportPeriod.Habit
     }
     val reportState = if (state.selectedPeriod == selectedPeriod) {
         state
@@ -118,7 +119,16 @@ internal fun DigestReport(
                 .padding(bottom = 10.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            if (digest.totalItemCount == 0) {
+            if (selectedPeriod == ReportPeriod.Habit) {
+                if (state.habitCheckins.isNotEmpty()) {
+                    HabitHeatmapSection(
+                        checkins = state.habitCheckins,
+                        monthCount = 2
+                    )
+                } else {
+                    EmptyHabitsCard()
+                }
+            } else if (digest.totalItemCount == 0) {
                 EmptyDigestCard()
                 if (selectedPeriod == ReportPeriod.Daily) {
                     WeeklyActivityChart(
@@ -151,9 +161,6 @@ internal fun DigestReport(
                         selectedPeriod = selectedPeriod
                     )
                 }
-            }
-            if (state.habitCheckins.isNotEmpty()) {
-                HabitHeatmapSection(checkins = state.habitCheckins, monthCount = 2)
             }
         }
     }
@@ -333,7 +340,7 @@ private fun activityChartSubtitle(selectedPeriod: ReportPeriod): AnnotatedString
         }
     }
 
-private val DigestReportPeriods = listOf(ReportPeriod.Daily, ReportPeriod.Week)
+private val DigestReportPeriods = listOf(ReportPeriod.Daily, ReportPeriod.Week, ReportPeriod.Habit)
 
 @Composable
 private fun ActivityBar(
@@ -686,6 +693,23 @@ private fun TopTagsCard(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun EmptyHabitsCard(modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = CardDefaults.outlinedCardBorder()
+    ) {
+        Text(
+            text = "No habit check-ins yet. Complete a habit on My Day to start your heatmap.",
+            modifier = Modifier.padding(22.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

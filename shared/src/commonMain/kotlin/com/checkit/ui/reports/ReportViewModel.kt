@@ -78,4 +78,5 @@ private fun ReportPeriod.move(date: LocalDate, amount: Int): LocalDate = when (t
     ReportPeriod.Week -> date.plus(amount * 7, DateTimeUnit.DAY)
     ReportPeriod.Month -> date.plus(amount, DateTimeUnit.MONTH).firstDayOfMonth()
     ReportPeriod.Annual -> date.plus(amount, DateTimeUnit.YEAR)
+    ReportPeriod.Habit -> date
 }

@@ -202,6 +202,7 @@ private class DailyPlanReportIndex(
                     }
                     .toList()
             }
+            ReportPeriod.Habit -> emptyList()
         }
 
     fun toDigest(period: ReportPeriod, selectedDate: LocalDate): DigestReportSummary {
@@ -299,6 +300,7 @@ private fun ReportPeriod.periodStart(date: LocalDate): LocalDate = when (this) {
     ReportPeriod.Week -> date.firstDayOfWeek()
     ReportPeriod.Month -> date.firstDayOfMonth()
     ReportPeriod.Annual -> LocalDate(date.year, 1, 1)
+    ReportPeriod.Habit -> date
 }
 
 private fun ReportPeriod.periodEndExclusive(date: LocalDate): LocalDate = when (this) {
@@ -306,6 +308,7 @@ private fun ReportPeriod.periodEndExclusive(date: LocalDate): LocalDate = when (
     ReportPeriod.Week -> periodStart(date).plus(7, DateTimeUnit.DAY)
     ReportPeriod.Month -> periodStart(date).plus(1, DateTimeUnit.MONTH)
     ReportPeriod.Annual -> periodStart(date).plus(1, DateTimeUnit.YEAR)
+    ReportPeriod.Habit -> periodStart(date).plus(1, DateTimeUnit.DAY)
 }
 
 private fun LocalDate.firstDayOfWeek(): LocalDate =
