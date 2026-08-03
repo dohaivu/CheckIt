@@ -31,6 +31,7 @@ import com.checkit.domain.usecase.RestoreTaskUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
+import com.checkit.domain.usecase.UpdateDailyPlanItemTagUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.domain.usecase.UpdateNoteUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
@@ -69,6 +70,7 @@ class TaskViewModel(
     private val restoreNote: RestoreNoteUseCase,
     private val updateDailyPlanItemTime: UpdateDailyPlanItemTimeUseCase,
     private val updateDailyPlanItemStatus: UpdateDailyPlanItemStatusUseCase,
+    private val updateDailyPlanItemTag: UpdateDailyPlanItemTagUseCase,
     private val syncKeyResultFromDailyPlan: SyncKeyResultFromDailyPlanUseCase,
     private val settingsRepository: SettingsRepository
 ) : ViewModel() {
@@ -485,13 +487,6 @@ class TaskViewModel(
         )
     }
     fun updateTaskEndTime(endTimeMinutes: Int?) = updateTaskForm { it.copy(endTimeMinutes = endTimeMinutes) }
-    fun updateDailyPlanStartTime(startTimeMinutes: Int?) = updateTaskDailyPlanItem { item ->
-        item.copy(
-            startTimeMinutes = startTimeMinutes,
-            endTimeMinutes = if (startTimeMinutes == null) null else item.endTimeMinutes
-        )
-    }
-    fun updateDailyPlanEndTime(endTimeMinutes: Int?) = updateTaskDailyPlanItem { it.copy(endTimeMinutes = endTimeMinutes) }
     fun updateTaskRepeat(repeatPreset: RepeatPreset) = updateTaskForm { it.copy(repeatPreset = repeatPreset) }
     fun updateTaskPriority(priority: TaskPriority) = updateTaskForm { it.copy(priority = priority) }
     fun toggleTaskReminder(offsetMinutes: Int) = updateTaskForm { form ->
@@ -532,8 +527,15 @@ class TaskViewModel(
             persistTaskInPlace(nextForm)
         }
     }
-    fun toggleTaskTag(tagId: Long) = updateTaskForm { form ->
-        form.copy(selectedTagIds = form.selectedTagIds.toggle(tagId))
+    fun toggleTaskTag(tagId: Long) {
+        val previousForm = _uiState.value.editor as? TaskEditorState.TaskForm ?: return
+        val nextTagIds = previousForm.selectedTagIds.toggle(tagId)
+        updateTaskForm { it.copy(selectedTagIds = nextTagIds) }
+        previousForm.dailyPlanItem?.let { item ->
+            viewModelScope.launch {
+                updateDailyPlanItemTag(item.id, nextTagIds.toList())
+            }
+        }
     }
     fun updateNoteTitle(title: String) = updateNoteForm { it.copy(title = title) }
     fun updateNoteContent(content: String) = updateNoteForm { it.copy(content = content) }
@@ -610,6 +612,33 @@ class TaskViewModel(
                 }.copy(editor = null)
             }
             sendEvent(UiEvent.ShowSnackbar("Restored"))
+        }
+    }
+
+    fun updateDailyPlanStartTime(startTimeMinutes: Int?) = updateTaskDailyPlanItem { item ->
+        item.copy(
+            startTimeMinutes = startTimeMinutes,
+            endTimeMinutes = if (startTimeMinutes == null) null else item.endTimeMinutes
+        )
+    }
+    fun updateDailyPlanEndTime(endTimeMinutes: Int?) = updateTaskDailyPlanItem { it.copy(endTimeMinutes = endTimeMinutes) }
+
+    private fun updateTaskDailyPlanItem(transform: (DailyPlanItem) -> DailyPlanItem) {
+        val updatedItem = (_uiState.value.editor as? TaskEditorState.TaskForm)
+            ?.dailyPlanItem
+            ?.let(transform)
+            ?: return
+        _uiState.update { state ->
+            val form = state.editor as? TaskEditorState.TaskForm ?: return@update state
+            state.copy(editor = form.copy(dailyPlanItem = updatedItem))
+        }
+        viewModelScope.launch {
+            syncKeyResultFromDailyPlan(
+                itemId = updatedItem.id,
+                proposedStartTime = updatedItem.startTimeMinutes,
+                proposedEndTime = updatedItem.endTimeMinutes
+            )
+            updateDailyPlanItemTime(updatedItem.id, updatedItem.startTimeMinutes, updatedItem.endTimeMinutes)
         }
     }
 
@@ -809,25 +838,6 @@ class TaskViewModel(
             val updatedForm = transform(form)
             if (form.mode == EditorMode.Edit) saveNote(updatedForm)
             state.copy(editor = updatedForm)
-        }
-    }
-
-    private fun updateTaskDailyPlanItem(transform: (DailyPlanItem) -> DailyPlanItem) {
-        val updatedItem = (_uiState.value.editor as? TaskEditorState.TaskForm)
-            ?.dailyPlanItem
-            ?.let(transform)
-            ?: return
-        _uiState.update { state ->
-            val form = state.editor as? TaskEditorState.TaskForm ?: return@update state
-            state.copy(editor = form.copy(dailyPlanItem = updatedItem))
-        }
-        viewModelScope.launch {
-            syncKeyResultFromDailyPlan(
-                itemId = updatedItem.id,
-                proposedStartTime = updatedItem.startTimeMinutes,
-                proposedEndTime = updatedItem.endTimeMinutes
-            )
-            updateDailyPlanItemTime(updatedItem.id, updatedItem.startTimeMinutes, updatedItem.endTimeMinutes)
         }
     }
 

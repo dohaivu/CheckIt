@@ -430,6 +430,22 @@ internal class FakeCheckItRepository(
             }
         }
     }
+    override suspend fun updateDailyPlanItemTags(itemId: Long, tagIds: List<Long>) {
+        val tagById = boardFlow.value.tags.associateBy { it.id }
+        dailyPlansFlow.update { plans ->
+            plans.map { plan ->
+                plan.copy(
+                    items = plan.items.map { item ->
+                        if (item.id == itemId) {
+                            item.copy(tags = tagIds.mapNotNull { tagById[it] })
+                        } else {
+                            item
+                        }
+                    }
+                )
+            }
+        }
+    }
     val deletedDailyPlanItemIds = mutableListOf<Long>()
     override suspend fun deleteDailyPlanItem(itemId: Long) {
         deletedDailyPlanItemIds.add(itemId)

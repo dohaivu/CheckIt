@@ -1,5 +1,9 @@
 package com.checkit.ui.tasks
 
+import com.checkit.domain.DailyPlan
+import com.checkit.domain.DailyPlanItem
+import com.checkit.domain.DailyPlanItemSource
+import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DueDatePreset
 import com.checkit.domain.Objective
 import com.checkit.domain.TaskBoard
@@ -7,6 +11,7 @@ import com.checkit.domain.TaskFilter
 import com.checkit.domain.TaskItem
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskPriority
+import com.checkit.domain.TaskTag
 import com.checkit.domain.TaskType
 import com.checkit.domain.usecase.AddNoteUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
@@ -24,6 +29,7 @@ import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
+import com.checkit.domain.usecase.UpdateDailyPlanItemTagUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.domain.usecase.UpdateNoteUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
@@ -80,6 +86,7 @@ class TaskViewModelViewsTest {
             restoreNote = RestoreNoteUseCase(repository),
             updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository),
             updateDailyPlanItemStatus = UpdateDailyPlanItemStatusUseCase(repository),
+            updateDailyPlanItemTag = UpdateDailyPlanItemTagUseCase(repository),
             syncKeyResultFromDailyPlan = SyncKeyResultFromDailyPlanUseCase(repository),
             settingsRepository = FakeSettingsRepository()
         )
@@ -247,6 +254,51 @@ class TaskViewModelViewsTest {
         assertTrue(state.visibleNotes.isEmpty())
     }
 
+    @Test
+    fun togglingTaskTagAlsoUpdatesDailyPlanItemTags() = runTest(dispatcher) {
+        val inbox = Objective(id = 1L, name = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
+        val workTag = TaskTag(id = 1L, name = "Work", color = "#DC2626", sortOrder = 0)
+        val homeTag = TaskTag(id = 2L, name = "Home", color = "#0891B2", sortOrder = 1)
+        val item = task(id = 5L, objective = inbox, name = "Gym", tags = listOf(workTag))
+        viewModel = createViewModel(
+            TaskBoard(
+                objectives = listOf(inbox),
+                tags = listOf(workTag, homeTag),
+                tasks = listOf(item)
+            )
+        )
+        val today = LocalDate(2026, 6, 14)
+        repository.setDailyPlans(
+            listOf(
+                DailyPlan(
+                    date = today,
+                    items = listOf(
+                        DailyPlanItem(
+                            id = 10L,
+                            dateEpochDays = today.toEpochDays().toInt(),
+                            taskId = item.id,
+                            title = "Gym",
+                            source = DailyPlanItemSource.ExistingTask,
+                            status = DailyPlanItemStatus.Planned,
+                            tags = listOf(workTag),
+                            sortOrder = 0,
+                            addedAtMillis = 0L
+                        )
+                    )
+                )
+            )
+        )
+        dispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.openTask(item, repository.dailyPlanForDate(today)?.items?.first())
+        viewModel.toggleTaskTag(homeTag.id)
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val updatedItem = repository.dailyPlanForDate(today)?.items?.first()
+        assertEquals(setOf(workTag.id, homeTag.id), updatedItem?.tags?.map { it.id }?.toSet())
+    }
+
+
     private fun createViewModel(board: TaskBoard): TaskViewModel {
         repository = FakeCheckItRepository(initialBoard = board)
         return TaskViewModel(
@@ -267,6 +319,7 @@ class TaskViewModelViewsTest {
             restoreNote = RestoreNoteUseCase(repository),
             updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository),
             updateDailyPlanItemStatus = UpdateDailyPlanItemStatusUseCase(repository),
+            updateDailyPlanItemTag = UpdateDailyPlanItemTagUseCase(repository),
             syncKeyResultFromDailyPlan = SyncKeyResultFromDailyPlanUseCase(repository),
             settingsRepository = FakeSettingsRepository()
         )
@@ -277,13 +330,15 @@ class TaskViewModelViewsTest {
         objective: Objective,
         name: String,
         description: String = "",
-        type: TaskType = TaskType.Task
+        type: TaskType = TaskType.Task,
+        tags: List<TaskTag> = emptyList()
     ) = TaskItem(
         id = id,
         objective = objective,
         name = name,
         description = description,
         type = type,
+        tags = tags,
         sortOrder = id.toInt(),
         createdAtMillis = 0L,
         updatedAtMillis = 0L

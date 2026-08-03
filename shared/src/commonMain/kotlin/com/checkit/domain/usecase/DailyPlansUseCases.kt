@@ -105,6 +105,13 @@ class UpdateDailyPlanItemUseCase(
         repository.updateDailyPlanItem(itemId, input)
 }
 
+class UpdateDailyPlanItemTagUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(itemId: Long, tagIds: List<Long>) =
+        repository.updateDailyPlanItemTags(itemId, tagIds)
+}
+
 class DeleteDailyPlanItemUseCase(
     private val repository: CheckItRepository
 ) {

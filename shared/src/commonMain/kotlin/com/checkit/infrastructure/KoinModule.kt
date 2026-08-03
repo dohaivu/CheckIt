@@ -48,6 +48,7 @@ import com.checkit.domain.usecase.RestoreNoteUseCase
 import com.checkit.domain.usecase.RestoreTaskUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.UpdateNoteUseCase
+import com.checkit.domain.usecase.UpdateDailyPlanItemTagUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
@@ -133,6 +134,7 @@ val provideInteractorModule = module {
     single { UpdateDailyPlanItemStatusUseCase(get()) }
     single { SyncKeyResultFromDailyPlanUseCase(get()) }
     single { UpdateDailyPlanItemUseCase(get()) }
+    single { UpdateDailyPlanItemTagUseCase(get()) }
     single { DeleteDailyPlanItemUseCase(get()) }
     single { BuildDayReviewSummaryUseCase(get()) }
     single { CarryOverDailyPlanItemsUseCase(get(), get()) }
@@ -178,6 +180,7 @@ val provideViewModelModule = module {
             restoreNote = get(),
             updateDailyPlanItemTime = get(),
             updateDailyPlanItemStatus = get(),
+            updateDailyPlanItemTag = get(),
             syncKeyResultFromDailyPlan = get(),
             settingsRepository = get()
         )
