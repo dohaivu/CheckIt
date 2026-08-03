@@ -50,7 +50,6 @@ import androidx.compose.ui.unit.sp
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.Objective
-import com.checkit.domain.SprintState
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskTag
@@ -64,7 +63,6 @@ import com.checkit.ui.components.ListPicker
 import com.checkit.ui.components.PriorityPicker
 import com.checkit.ui.components.RichTextComposer
 import com.checkit.ui.components.TagPicker
-import com.checkit.ui.components.TagTitleAppender
 import com.checkit.ui.components.TimeRangePicker
 import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
@@ -504,12 +502,7 @@ private fun TaskFormContent(
             TagPicker(
                 availableTags = availableTags,
                 selectedTagIds = form.selectedTagIds,
-                onTagToggle = { tagId ->
-                    onTagToggle(tagId)
-                    availableTags.find { it.id == tagId }?.let { tag ->
-                        onNameChange(TagTitleAppender.appendTagActionText(form.name, tag.name))
-                    }
-                },
+                onTagToggle = onTagToggle,
                 onNewTagClick = onNewTagClick,
                 enabled = enabled
             )
@@ -706,12 +699,7 @@ private fun NoteFormContent(
             TagPicker(
                 availableTags = availableTags,
                 selectedTagIds = form.selectedTagIds,
-                onTagToggle = { tagId ->
-                    onTagToggle(tagId)
-                    availableTags.find { it.id == tagId }?.let { tag ->
-                        onTitleChange(TagTitleAppender.appendTagActionText(form.title, tag.name))
-                    }
-                },
+                onTagToggle = onTagToggle,
                 onNewTagClick = onNewTagClick,
                 enabled = enabled
             )

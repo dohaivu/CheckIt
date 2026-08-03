@@ -38,15 +38,14 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DailyPlanItemSource
+import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.TaskTag
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DeleteOverflowMenu
 import com.checkit.ui.components.RichTextComposer
 import com.checkit.ui.components.TagPicker
-import com.checkit.ui.components.TagTitleAppender
 import com.checkit.ui.components.TimePicker
 import com.checkit.ui.components.TimeRangePicker
 import com.checkit.ui.tasks.views.currentTimeMinutes
@@ -338,12 +337,7 @@ private fun DailyPlanItemFormContent(
             source = displaySource,
             availableTags = availableTags,
             selectedTagIds = state.selectedTagIds,
-            onTagToggle = { tagId ->
-                onTagToggle(tagId)
-                availableTags.find { it.id == tagId }?.let { tag ->
-                    onTitleChange(TagTitleAppender.appendTagActionText(state.title, tag.name))
-                }
-            },
+            onTagToggle = onTagToggle,
             onNewTagClick = onNewTagClick,
             enabled = enabled
         )
