@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -58,7 +59,7 @@ import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DatePicker
-import com.checkit.ui.components.DeleteOverflowMenu
+import com.checkit.ui.components.EditorOverflowMenu
 import com.checkit.ui.components.ListPicker
 import com.checkit.ui.components.PriorityPicker
 import com.checkit.ui.components.RichTextComposer
@@ -340,38 +341,58 @@ private fun SheetFooter(
     onOpen: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val showOptionsMenu = canDelete && !isTrashed
-    if (!showOptionsMenu && !isAddMode && !showAddToMyDay && !isCompletable && !isOpenable) return
+    val showOptionsMenu = (canDelete || isCompletable || isOpenable) && !isTrashed
+    if (!showOptionsMenu && !isAddMode && !showAddToMyDay) return
 
-    Row(modifier = modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (showAddToMyDay) {
-                OutlinedButton(onClick = onAddToMyDay) {
-                    Text("Add to MyDay")
-                }
-            }
-            if (isAddMode) {
-                Button(onClick = onSave) {
-                    Text("Save")
-                }
-            }
-            if (isCompletable) {
-                Button(onClick = onComplete) {
-                    Text("Complete")
-                }
-            }
-            if (isOpenable) {
-                Button(onClick = onOpen) {
-                    Text("Open")
-                }
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (showAddToMyDay) {
+            OutlinedButton(onClick = onAddToMyDay) {
+                Text("Schedule")
             }
         }
+        Spacer(modifier = Modifier.weight(1f))
+        if (isAddMode) {
+            Button(onClick = onSave) {
+                Text("Save")
+            }
+        }
+
         if (showOptionsMenu) {
-            DeleteOverflowMenu(onDelete = onDelete)
+            EditorOverflowMenu { onDismiss ->
+                if (isCompletable) {
+                    DropdownMenuItem(
+                        text = { Text("Complete") },
+                        leadingIcon = { Icon(Icons.Default.Check, contentDescription = null) },
+                        onClick = {
+                            onDismiss()
+                            onComplete()
+                        }
+                    )
+                }
+                if (isOpenable) {
+                    DropdownMenuItem(
+                        text = { Text("Reopen") },
+                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null) },
+                        onClick = {
+                            onDismiss()
+                            onOpen()
+                        }
+                    )
+                }
+                if (canDelete) {
+                    DropdownMenuItem(
+                        text = { Text("Delete") },
+                        leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
+                        onClick = {
+                            onDismiss()
+                            onDelete()
+                        }
+                    )
+                }
+            }
         }
     }
 }

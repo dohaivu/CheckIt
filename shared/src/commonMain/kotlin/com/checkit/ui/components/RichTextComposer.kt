@@ -220,7 +220,7 @@ internal fun RichTextComposer(
             ) {
                 if (value.isBlank()) {
                     Text(
-                        text = placeholder ?: "Add notes...",
+                        text = placeholder ?: "",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodyMedium
                     )

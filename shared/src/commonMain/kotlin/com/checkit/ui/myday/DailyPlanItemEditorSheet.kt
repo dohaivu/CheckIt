@@ -206,7 +206,7 @@ private fun DailyPlanItemSheetFooter(
                     ) {
                         Icon(Icons.Default.Schedule, contentDescription = null)
                         Spacer(Modifier.size(8.dp))
-                        Text(if (state.status == DailyPlanItemStatus.Done) "Start new session" else "Start focus")
+                        Text(if (state.status == DailyPlanItemStatus.Done) "Start new Focus" else "Start focus")
                     }
 
                     OutlinedButton(
@@ -215,7 +215,7 @@ private fun DailyPlanItemSheetFooter(
                     ) {
                         Icon(Icons.Default.ContentCopy, contentDescription = null)
                         Spacer(Modifier.size(8.dp))
-                        Text("Copy to new")
+                        Text("Schedule new Session")
                     }
                 }
             }
@@ -279,7 +279,7 @@ private fun DailyPlanItemFormContent(
         RichTextComposer(
             value = state.note,
             onValueChange = onNoteChange,
-            placeholder = displaySource.notePlaceholder(),
+            placeholder = if (sourceLocked) null else "Add details",
             enabled = enabled,
             modifier = Modifier.fillMaxWidth()
         )
@@ -549,13 +549,6 @@ private fun DailyPlanItemSource.titlePlaceholder(): String = when (this) {
     DailyPlanItemSource.MyDayTask -> "Task name"
     DailyPlanItemSource.MyDayNote -> "Note title"
     DailyPlanItemSource.MyDayReminder -> "Reminder"
-}
-
-private fun DailyPlanItemSource.notePlaceholder(): String? = when (this) {
-    DailyPlanItemSource.ExistingTask,
-    DailyPlanItemSource.MyDayTask,
-    DailyPlanItemSource.MyDayNote,
-    DailyPlanItemSource.MyDayReminder -> "Add details"
 }
 
 private fun DailyPlanItemSource.statusTitle(doneChecked: Boolean): String = when (this) {
