@@ -22,6 +22,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
@@ -40,7 +41,8 @@ class EnsureDefaultTaskDataUseCase(
 
 class AutoAddTodayTasksToMyDayUseCase(
     private val repository: CheckItRepository,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val deleteDailyPlanItem: DeleteDailyPlanItemUseCase
 ) {
     private val mutex = Mutex()
 
@@ -52,6 +54,7 @@ class AutoAddTodayTasksToMyDayUseCase(
         }
 
         repository.ensureDefaultTaskData()
+        removeIncompleteHabitsFromYesterday(today)
         val alreadyPlannedTaskIds = repository.dailyPlanForDate(today)
             ?.items
             ?.mapNotNull { it.taskId }
@@ -72,6 +75,14 @@ class AutoAddTodayTasksToMyDayUseCase(
         }
         settingsRepository.setAutoMyDayLastRunEpochDay(todayEpochDay)
         tasksToAdd.size
+    }
+
+    private suspend fun removeIncompleteHabitsFromYesterday(today: LocalDate) {
+        val yesterday = today.minus(1, DateTimeUnit.DAY)
+        repository.dailyPlanForDate(yesterday)
+            ?.items
+            ?.filter { it.isHabit && it.status != DailyPlanItemStatus.Done }
+            ?.forEach { deleteDailyPlanItem(it.id) }
     }
 }
 

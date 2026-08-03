@@ -33,7 +33,11 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
         val settingsRepository = FakeSettingsRepository(
             UserSettings(autoMyDayLastRunEpochDay = today.toEpochDays().toInt())
         )
-        val useCase = AutoAddTodayTasksToMyDayUseCase(repository, settingsRepository)
+        val useCase = AutoAddTodayTasksToMyDayUseCase(
+            repository,
+            settingsRepository,
+            DeleteDailyPlanItemUseCase(repository)
+        )
 
         val addedCount = useCase()
 
@@ -56,7 +60,11 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
         val settingsRepository = FakeSettingsRepository(
             UserSettings(autoMyDayLastRunEpochDay = yesterday.toEpochDays().toInt())
         )
-        val useCase = AutoAddTodayTasksToMyDayUseCase(repository, settingsRepository)
+        val useCase = AutoAddTodayTasksToMyDayUseCase(
+            repository,
+            settingsRepository,
+            DeleteDailyPlanItemUseCase(repository)
+        )
 
         val addedCount = useCase()
 
@@ -84,7 +92,11 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
             )
         )
         val settingsRepository = FakeSettingsRepository()
-        val useCase = AutoAddTodayTasksToMyDayUseCase(repository, settingsRepository)
+        val useCase = AutoAddTodayTasksToMyDayUseCase(
+            repository,
+            settingsRepository,
+            DeleteDailyPlanItemUseCase(repository)
+        )
 
         val addedCount = useCase()
 
@@ -104,7 +116,11 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
             )
         )
         val settingsRepository = FakeSettingsRepository()
-        val useCase = AutoAddTodayTasksToMyDayUseCase(repository, settingsRepository)
+        val useCase = AutoAddTodayTasksToMyDayUseCase(
+            repository,
+            settingsRepository,
+            DeleteDailyPlanItemUseCase(repository)
+        )
 
         val addedCount = useCase()
 
@@ -125,7 +141,11 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
             )
         )
         val settingsRepository = FakeSettingsRepository()
-        val useCase = AutoAddTodayTasksToMyDayUseCase(repository, settingsRepository)
+        val useCase = AutoAddTodayTasksToMyDayUseCase(
+            repository,
+            settingsRepository,
+            DeleteDailyPlanItemUseCase(repository)
+        )
 
         val addedCount = useCase()
 
@@ -159,13 +179,83 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
             )
         )
         val settingsRepository = FakeSettingsRepository()
-        val useCase = AutoAddTodayTasksToMyDayUseCase(repository, settingsRepository)
+        val useCase = AutoAddTodayTasksToMyDayUseCase(
+            repository,
+            settingsRepository,
+            DeleteDailyPlanItemUseCase(repository)
+        )
 
         val addedCount = useCase()
 
         assertEquals(0, addedCount)
         assertEquals(emptyList(), repository.addedDailyPlanTasks)
     }
+
+    @Test
+    fun removesIncompleteHabitsFromYesterday() = runTest {
+        val today = today()
+        val yesterday = today.minus(1, DateTimeUnit.DAY)
+        val repository = FakeCheckItRepository(
+            initialBoard = TaskBoard(tasks = listOf(task(id = 1L, doDate = today)))
+        )
+        repository.setDailyPlans(
+            listOf(
+                DailyPlan(
+                    date = yesterday,
+                    items = listOf(
+                        habitItem(id = 100L, taskId = 1L),
+                        habitItem(id = 101L, taskId = 1L, status = DailyPlanItemStatus.Done),
+                        item(id = 102L, taskId = 1L, source = DailyPlanItemSource.MyDayTask)
+                    )
+                )
+            )
+        )
+        val settingsRepository = FakeSettingsRepository()
+        val useCase = AutoAddTodayTasksToMyDayUseCase(
+            repository,
+            settingsRepository,
+            DeleteDailyPlanItemUseCase(repository)
+        )
+
+        useCase()
+
+        assertEquals(listOf(100L), repository.deletedDailyPlanItemIds)
+        assertEquals(
+            listOf(101L, 102L),
+            repository.dailyPlanForDate(yesterday)?.items?.map { it.id }
+        )
+    }
+
+    private fun habitItem(
+        id: Long,
+        taskId: Long,
+        status: DailyPlanItemStatus = DailyPlanItemStatus.Planned
+    ) = DailyPlanItem(
+        id = id,
+        dateEpochDays = 0,
+        taskId = taskId,
+        title = "Habit $id",
+        source = DailyPlanItemSource.ExistingTask,
+        status = status,
+        isHabit = true,
+        sortOrder = 0,
+        addedAtMillis = 0L
+    )
+
+    private fun item(
+        id: Long,
+        taskId: Long,
+        source: DailyPlanItemSource
+    ) = DailyPlanItem(
+        id = id,
+        dateEpochDays = 0,
+        taskId = taskId,
+        title = "Item $id",
+        source = source,
+        status = DailyPlanItemStatus.Planned,
+        sortOrder = 0,
+        addedAtMillis = 0L
+    )
 
     private fun today(): LocalDate =
         Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
