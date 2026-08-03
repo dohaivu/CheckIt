@@ -126,7 +126,7 @@ internal fun SuggestionsSheet(
                             selectedTagIds + tagId
                         }
                         availableTags.firstOrNull { it.id == tagId }?.let { tag ->
-                            quickAddText = tag.name
+                            quickAddText = quickAddText.ifEmpty { tag.name }
                         }
                     },
                     onNewTagClick = onNewTagClick,

@@ -363,7 +363,7 @@ fun QuickSprintSheet(
                         selectedTagIds + tagId
                     }
                     availableTags.firstOrNull { it.id == tagId }?.let { tag ->
-                        text = tag.name
+                        text = text.ifEmpty { tag.name }
                     }
                 },
                 onNewTagClick = onNewTagClick,
