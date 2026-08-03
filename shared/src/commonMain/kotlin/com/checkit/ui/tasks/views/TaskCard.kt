@@ -329,7 +329,7 @@ internal fun DailyPlanTimelineCard(
             DailyPlanIcon(item.source, item.status == DailyPlanItemStatus.Done, item.isHabit)
         },
         trailingContent = trailingContent,
-        titleBadge = if (item.isHabit) { { HabitChip() } } else null,
+        titleBadge = null,
         completedOverlay = completedOverlay,
         onClick = onClick,
         modifier = modifier,
@@ -500,33 +500,6 @@ internal fun BoxScope.CompletedOverlay() {
     )
 }
 
-@Composable
-internal fun HabitChip(modifier: Modifier = Modifier) {
-    val colorScheme = MaterialTheme.colorScheme
-    Row(
-        modifier = modifier
-            .clip(RoundedCornerShape(6.dp))
-            .background(colorScheme.secondaryContainer)
-            .padding(horizontal = 6.dp, vertical = 1.dp),
-        horizontalArrangement = Arrangement.spacedBy(3.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = Icons.Default.Repeat,
-            contentDescription = null,
-            tint = colorScheme.onSecondaryContainer,
-            modifier = Modifier.size(12.dp)
-        )
-        Text(
-            text = "Habit",
-            style = MaterialTheme.typography.labelSmall,
-            color = colorScheme.onSecondaryContainer,
-            fontWeight = FontWeight.Medium,
-            maxLines = 1
-        )
-    }
-}
-
 internal fun DailyPlanItem.timelineTimeLabel(): String? {
     val start = startTimeMinutes ?: return null
     val end = endTimeMinutes
@@ -542,15 +515,15 @@ internal fun DailyPlanItem.timelineTitle(): String =
 
 internal fun DailyPlanItem.timelineSupportingText(): String =
     when {
-        source == DailyPlanItemSource.MyDayNote || source == DailyPlanItemSource.MyDayReminder -> source.timelineLabel()
+        source == DailyPlanItemSource.MyDayNote || source == DailyPlanItemSource.MyDayReminder -> timelineLabel()
         !note.isNullOrBlank() -> note.orEmpty()
-        else -> source.timelineLabel()
+        else -> timelineLabel()
     }
 
-internal fun DailyPlanItemSource.timelineLabel(): String = when (this) {
-    DailyPlanItemSource.ExistingTask -> "Task"
-    DailyPlanItemSource.MyDayTask -> "CheckIn done"
-    DailyPlanItemSource.MyDayNote -> "CheckIn note"
+internal fun DailyPlanItem.timelineLabel(): String = when (this.source) {
+    DailyPlanItemSource.ExistingTask -> if (this.isHabit) "Habit" else  "Task"
+    DailyPlanItemSource.MyDayTask -> "MyDay Task"
+    DailyPlanItemSource.MyDayNote -> "MyDay Note"
     DailyPlanItemSource.MyDayReminder -> "Reminder"
 }
 

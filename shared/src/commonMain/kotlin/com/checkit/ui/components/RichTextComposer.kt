@@ -158,7 +158,7 @@ internal fun RichTextComposer(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 160.dp)
+                    .heightIn(min = 130.dp)
                     .padding(0.dp),
             ) {
                 if (isWriteTab) {
@@ -214,7 +214,7 @@ internal fun RichTextComposer(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 160.dp)
+                    .heightIn(min = 120.dp)
                     .clickable(enabled = enabled) { isEditing = true }
                     .padding(vertical = 8.dp)
             ) {
