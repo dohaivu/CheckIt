@@ -7,7 +7,6 @@ import com.checkit.domain.usecase.BuildDayReviewSummaryUseCase
 import com.checkit.domain.usecase.CarryOverDailyPlanItemsUseCase
 import com.checkit.domain.usecase.CompleteDayReviewUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
-import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveDayReviewsUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
@@ -20,7 +19,6 @@ import com.checkit.domain.usecase.UpsertDailyPlanItemUseCase
 internal class MyDayDependencies(
     val observeTaskBoard: ObserveTaskBoardUseCase,
     val observeDailyPlans: ObserveDailyPlansUseCase,
-    val ensureDefaultTaskData: EnsureDefaultTaskDataUseCase,
     val deleteDailyPlanItem: DeleteDailyPlanItemUseCase,
     val settingsRepository: SettingsRepository,
     val buildDayReviewSummary: BuildDayReviewSummaryUseCase,

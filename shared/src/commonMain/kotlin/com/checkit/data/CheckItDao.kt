@@ -12,9 +12,6 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface CheckItDao {
-    @Query("SELECT COUNT(*) FROM objectives")
-    suspend fun objectiveCount(): Int
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertGoal(goal: GoalEntity): Long
 
@@ -35,45 +32,6 @@ interface CheckItDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertDailyPlanItem(item: DailyPlanItemEntity): Long
-
-    @Query(
-        """
-        INSERT INTO task_filters(
-            name,
-            icon,
-            color,
-            tagId,
-            dueDatePreset,
-            status,
-            priority,
-            includeTrashed,
-            sortOrder
-        )
-        SELECT
-            :name,
-            :icon,
-            :color,
-            NULL,
-            :dueDatePreset,
-            :status,
-            :priority,
-            :includeTrashed,
-            :sortOrder
-        WHERE NOT EXISTS(
-            SELECT 1 FROM task_filters WHERE name = :name
-        )
-        """
-    )
-    suspend fun insertFilterIfNameMissing(
-        name: String,
-        icon: String,
-        color: String,
-        dueDatePreset: String?,
-        status: String?,
-        priority: String?,
-        includeTrashed: Boolean,
-        sortOrder: Int
-    )
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSubTask(subTask: SubTaskEntity): Long
@@ -125,77 +83,6 @@ interface CheckItDao {
 
     @Query("DELETE FROM daily_plan_item_tags WHERE itemId = :itemId")
     suspend fun deleteDailyPlanItemTags(itemId: Long)
-
-    @Query(
-        """
-        DELETE FROM tasks
-        WHERE name = 'Plan the day'
-          AND description = 'Review agenda, timeline, and the next task to start.'
-          AND id NOT IN (
-              SELECT MIN(id)
-              FROM tasks
-              WHERE name = 'Plan the day'
-                AND description = 'Review agenda, timeline, and the next task to start.'
-          )
-        """
-    )
-    suspend fun deleteDuplicateSeedTasks()
-
-    @Query(
-        """
-        DELETE FROM notes
-        WHERE content = 'Ideas, meeting notes, and loose thoughts live beside tasks in each list.'
-          AND id NOT IN (
-              SELECT MIN(id)
-              FROM notes
-              WHERE content = 'Ideas, meeting notes, and loose thoughts live beside tasks in each list.'
-          )
-        """
-    )
-    suspend fun deleteDuplicateSeedNotes()
-
-    @Query(
-        """
-        DELETE FROM task_filters
-        WHERE name IN ('All', 'Today', 'Upcoming', 'Overdue', 'Completed', 'High priority', 'Trashed')
-          AND id NOT IN (
-              SELECT MIN(id)
-              FROM task_filters
-              WHERE name IN ('All', 'Today', 'Upcoming', 'Overdue', 'Completed', 'High priority', 'Trashed')
-              GROUP BY name
-          )
-        """
-    )
-    suspend fun deleteDuplicateSeedFilters()
-
-    @Query(
-        """
-        DELETE FROM tags
-        WHERE name IN ('Work', 'Home')
-          AND id NOT IN (
-              SELECT MIN(id)
-              FROM tags
-              WHERE name IN ('Work', 'Home')
-              GROUP BY name
-          )
-        """
-    )
-    suspend fun deleteDuplicateSeedTags()
-
-    @Query(
-        """
-        DELETE FROM objectives
-        WHERE title = 'Inbox'
-          AND id NOT IN (
-              SELECT MIN(id)
-              FROM objectives
-              WHERE title = 'Inbox'
-          )
-          AND id NOT IN (SELECT DISTINCT objectiveId FROM tasks)
-          AND id NOT IN (SELECT DISTINCT objectiveId FROM notes)
-        """
-    )
-    suspend fun deleteDuplicateEmptySeedObjectives()
 
     @Query("SELECT * FROM goals ORDER BY sortOrder ASC, title ASC")
     fun observeGoals(): Flow<List<GoalEntity>>

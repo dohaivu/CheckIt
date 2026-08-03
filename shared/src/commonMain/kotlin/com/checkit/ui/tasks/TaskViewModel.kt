@@ -23,7 +23,6 @@ import com.checkit.domain.usecase.CompleteNoteUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
-import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.OpenNoteUseCase
 import com.checkit.domain.usecase.OpenTaskUseCase
@@ -54,7 +53,6 @@ import kotlinx.datetime.LocalDate
 
 class TaskViewModel(
     private val observeTaskBoard: ObserveTaskBoardUseCase,
-    private val ensureDefaultTaskData: EnsureDefaultTaskDataUseCase,
     private val selectTaskBoardItems: SelectTaskBoardItemsUseCase,
     private val addTask: AddTaskUseCase,
     private val addTaskToDailyPlan: AddTaskToDailyPlanUseCase,
@@ -84,7 +82,6 @@ class TaskViewModel(
 
     init {
         viewModelScope.launch {
-            ensureDefaultTaskData()
             observeTaskBoard()
                 .catch { error ->
                     _uiState.update {

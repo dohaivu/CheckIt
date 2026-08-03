@@ -31,8 +31,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -41,9 +39,7 @@ import kotlin.time.Clock
 interface CheckItRepository {
     fun observeTaskBoard(): Flow<TaskBoard>
     fun observeDailyPlans(): Flow<List<DailyPlan>>
-    suspend fun ensureDefaultTaskData()
-    suspend fun addGoal(input: GoalWriteInput): Long
-    suspend fun updateGoal(goalId: Long, input: GoalWriteInput)
+    suspend fun addGoal(input: GoalWriteInput): Long    suspend fun updateGoal(goalId: Long, input: GoalWriteInput)
     suspend fun deleteGoal(goalId: Long)
     suspend fun addObjective(input: ObjectiveWriteInput): Long
     suspend fun updateObjective(objectiveId: Long, input: ObjectiveWriteInput)
@@ -196,8 +192,6 @@ class RoomCheckItRepository(
     private val dailyPlanScheduleReminderScheduler: DailyPlanScheduleReminderScheduler =
         NoOpDailyPlanScheduleReminderScheduler()
 ) : CheckItRepository {
-    private val seedMutex = Mutex()
-
     override fun observeTaskBoard(): Flow<TaskBoard> =
         combine(
             combine(
@@ -279,66 +273,6 @@ class RoomCheckItRepository(
                 }
                 .sortedByDescending { it.date }
         }
-
-    override suspend fun ensureDefaultTaskData() = seedMutex.withLock {
-        cleanupDuplicateSeedData()
-        ensureDefaultFilters()
-        if (dao.objectiveCount() > 0) return@withLock
-
-        val instant = Clock.System.now()
-        val now = instant.toEpochMilliseconds()
-        val today = instant.toLocalDateTime(TimeZone.currentSystemDefault()).date
-        val inboxId = dao.insertObjective(
-            ObjectiveEntity(
-                title = "Inbox",
-                color = "#2563EB",
-                icon = "Inbox",
-                sortOrder = 0
-            )
-        )
-        val workId = dao.insertTag(TagEntity(name = "work", color = "#7C3AED", sortOrder = 0))
-        val homeId = dao.insertTag(TagEntity(name = "home", color = "#059669", sortOrder = 1))
-        val todayTaskId = dao.insertTask(
-            TaskEntity(
-                objectiveId = inboxId,
-                name = "Plan the day",
-                description = "Review agenda, timeline, and the next task to start.",
-                status = TaskStatus.Open.name,
-                priority = TaskPriority.High.name,
-                doDateEpochDays = today.toEpochDays().toInt(),
-                startTimeMinutes = 9 * 60,
-                endTimeMinutes = 9 * 60 + 30,
-                repeatRRule = "FREQ=DAILY;INTERVAL=1",
-                sortOrder = 0,
-                createdAtMillis = now,
-                updatedAtMillis = now
-            )
-        )
-        addTaskTag(todayTaskId, workId)
-        dao.insertSubTask(SubTaskEntity(taskId = todayTaskId, name = "Check calendar", sortOrder = 0))
-        dao.insertSubTask(SubTaskEntity(taskId = todayTaskId, name = "Pick top priority", sortOrder = 1))
-        dao.insertReminder(
-            TaskReminderEntity(
-                taskId = todayTaskId,
-                remindAtMillis = now + 15 * 60 * 1000,
-                label = "Before focus block"
-            )
-        )
-
-        val noteId = dao.insertNote(
-            NoteEntity(
-                objectiveId = inboxId,
-                title = "Note basics",
-                content = "Ideas, meeting notes, and loose thoughts live beside tasks in each list.",
-                status = TaskStatus.Open.name,
-                dateEpochDays = today.toEpochDays().toInt(),
-                createdAtMillis = now,
-                editedAtMillis = now,
-                sortOrder = 1
-            )
-        )
-        addNoteTag(noteId, homeId)
-    }
 
     override suspend fun addGoal(input: GoalWriteInput): Long =
         dao.insertGoal(
@@ -872,88 +806,7 @@ class RoomCheckItRepository(
         val keyResult = dao.keyResultById(keyResultId) ?: return null
         return keyResultId.takeIf { keyResult.objectiveId == objectiveId }
     }
-
-    private suspend fun cleanupDuplicateSeedData() {
-        dao.deleteDuplicateSeedTasks()
-        dao.deleteDuplicateSeedNotes()
-        dao.deleteDuplicateSeedFilters()
-        dao.deleteDuplicateSeedTags()
-        dao.deleteDuplicateEmptySeedObjectives()
-    }
-
-    private suspend fun ensureDefaultFilters() {
-        DefaultTaskFilters.forEach { filter ->
-            dao.insertFilterIfNameMissing(
-                name = filter.name,
-                icon = filter.icon,
-                color = filter.color,
-                dueDatePreset = filter.dueDatePreset?.name,
-                status = filter.status?.name,
-                priority = filter.priority?.name,
-                includeTrashed = filter.includeTrashed,
-                sortOrder = filter.sortOrder
-            )
-        }
-    }
 }
-
-private val DefaultTaskFilters = listOf(
-    TaskFilterSeed(name = "All", icon = "AllInclusive", color = "#475569", sortOrder = 0),
-    TaskFilterSeed(
-        name = "Today",
-        icon = "Today",
-        color = "#2563EB",
-        dueDatePreset = DueDatePreset.Today,
-        sortOrder = 1
-    ),
-    TaskFilterSeed(
-        name = "Upcoming",
-        icon = "Schedule",
-        color = "#0891B2",
-        dueDatePreset = DueDatePreset.Upcoming,
-        sortOrder = 2
-    ),
-    TaskFilterSeed(
-        name = "Overdue",
-        icon = "Flag",
-        color = "#EA580C",
-        dueDatePreset = DueDatePreset.Overdue,
-        sortOrder = 3
-    ),
-    TaskFilterSeed(
-        name = "No date",
-        icon = "Schedule",
-        color = "#7C3AED",
-        dueDatePreset = DueDatePreset.NoDate,
-        sortOrder = 4
-    ),
-    TaskFilterSeed(
-        name = "Completed",
-        icon = "TaskAlt",
-        color = "#059669",
-        status = TaskStatus.Completed,
-        sortOrder = 5
-    ),
-    TaskFilterSeed(
-        name = "High priority",
-        icon = "PriorityHigh",
-        color = "#DC2626",
-        priority = TaskPriority.High,
-        sortOrder = 6
-    ),
-    TaskFilterSeed(name = "Trashed", icon = "Delete", color = "#6B7280", includeTrashed = true, sortOrder = 7)
-)
-
-private data class TaskFilterSeed(
-    val name: String,
-    val icon: String,
-    val color: String,
-    val dueDatePreset: DueDatePreset? = null,
-    val status: TaskStatus? = null,
-    val priority: TaskPriority? = null,
-    val includeTrashed: Boolean = false,
-    val sortOrder: Int
-)
 
 private data class TaskBoardRows(
     val goals: List<GoalEntity>,

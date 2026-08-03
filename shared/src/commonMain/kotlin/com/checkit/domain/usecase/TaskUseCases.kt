@@ -33,12 +33,6 @@ class ObserveTaskBoardUseCase(
     operator fun invoke(): Flow<TaskBoard> = repository.observeTaskBoard()
 }
 
-class EnsureDefaultTaskDataUseCase(
-    private val repository: CheckItRepository
-) {
-    suspend operator fun invoke() = repository.ensureDefaultTaskData()
-}
-
 class AutoAddTodayTasksToMyDayUseCase(
     private val repository: CheckItRepository,
     private val settingsRepository: SettingsRepository,
@@ -53,7 +47,6 @@ class AutoAddTodayTasksToMyDayUseCase(
             return@withLock 0
         }
 
-        repository.ensureDefaultTaskData()
         removeIncompleteHabitsFromYesterday(today)
         val alreadyPlannedTaskIds = repository.dailyPlanForDate(today)
             ?.items

@@ -20,7 +20,6 @@ import com.checkit.domain.usecase.RestoreNoteUseCase
 import com.checkit.domain.usecase.RestoreTaskUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
-import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
@@ -65,7 +64,6 @@ class TaskViewModelViewsTest {
         repository = FakeCheckItRepository(initialBoard = board)
         viewModel = TaskViewModel(
             observeTaskBoard = ObserveTaskBoardUseCase(repository),
-            ensureDefaultTaskData = EnsureDefaultTaskDataUseCase(repository),
             selectTaskBoardItems = SelectTaskBoardItemsUseCase(),
             addTask = AddTaskUseCase(repository),
             addTaskToDailyPlan = AddTaskToDailyPlanUseCase(repository),
@@ -253,7 +251,6 @@ class TaskViewModelViewsTest {
         repository = FakeCheckItRepository(initialBoard = board)
         return TaskViewModel(
             observeTaskBoard = ObserveTaskBoardUseCase(repository),
-            ensureDefaultTaskData = EnsureDefaultTaskDataUseCase(repository),
             selectTaskBoardItems = SelectTaskBoardItemsUseCase(),
             addTask = AddTaskUseCase(repository),
             addTaskToDailyPlan = AddTaskToDailyPlanUseCase(repository),

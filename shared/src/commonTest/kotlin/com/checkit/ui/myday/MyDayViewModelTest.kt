@@ -13,7 +13,6 @@ import com.checkit.domain.usecase.CarryOverDailyPlanItemsUseCase
 import com.checkit.domain.usecase.CompleteDayReviewUseCase
 import com.checkit.domain.usecase.ObserveDayReviewsUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
-import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
@@ -73,7 +72,6 @@ class MyDayViewModelTest {
         return MyDayViewModel(
             observeTaskBoard = observeTaskBoard,
             observeDailyPlans = observeDailyPlans,
-            ensureDefaultTaskData = EnsureDefaultTaskDataUseCase(repository),
             deleteDailyPlanItemUseCase = DeleteDailyPlanItemUseCase(repository),
             settingsRepository = settingsRepository,
             buildDayReviewSummary = buildSummary,

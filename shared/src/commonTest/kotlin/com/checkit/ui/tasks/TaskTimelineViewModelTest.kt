@@ -15,7 +15,6 @@ import com.checkit.domain.usecase.RestoreNoteUseCase
 import com.checkit.domain.usecase.RestoreTaskUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
-import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
@@ -48,7 +47,6 @@ class TaskTimelineViewModelTest {
         repository = FakeCheckItRepository(initialBoard = TaskBoard(objectives = listOf(inbox)))
         viewModel = TaskViewModel(
             observeTaskBoard = ObserveTaskBoardUseCase(repository),
-            ensureDefaultTaskData = EnsureDefaultTaskDataUseCase(repository),
             selectTaskBoardItems = SelectTaskBoardItemsUseCase(),
             addTask = AddTaskUseCase(repository),
             addTaskToDailyPlan = AddTaskToDailyPlanUseCase(repository),

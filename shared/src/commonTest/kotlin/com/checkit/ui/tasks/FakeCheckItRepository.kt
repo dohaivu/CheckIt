@@ -85,8 +85,6 @@ internal class FakeCheckItRepository(
         dayReviewsFlow.value = records
     }
 
-    override suspend fun ensureDefaultTaskData() = Unit
-
     override suspend fun addGoal(input: GoalWriteInput): Long {
         addedGoals.add(input)
         val id = nextGoalId++

@@ -425,5 +425,96 @@ fun buildCheckItDatabase(
         )
         .setQueryCoroutineContext(Dispatchers.IO)
         .setDriver(BundledSQLiteDriver())
+        .addCallback(object : RoomDatabase.Callback() {
+            override suspend fun onCreate(connection: SQLiteConnection) {
+                super.onCreate(connection)
+                seedDefaultFilters(connection)
+                seedInboxObjective(connection)
+            }
+        })
         .build()
 }
+
+private fun seedDefaultFilters(connection: SQLiteConnection) {
+    DefaultTaskFilters.forEach { filter ->
+        val dueDatePreset = filter.dueDatePreset?.let { "'$it'" } ?: "NULL"
+        val status = filter.status?.let { "'$it'" } ?: "NULL"
+        val priority = filter.priority?.let { "'$it'" } ?: "NULL"
+        val includeTrashed = if (filter.includeTrashed) 1 else 0
+        connection.execSQL(
+            """
+            INSERT INTO task_filters(name, icon, color, tagId, dueDatePreset, status, priority, includeTrashed, sortOrder)
+            SELECT '${filter.name}', '${filter.icon}', '${filter.color}', NULL, $dueDatePreset, $status, $priority, $includeTrashed, ${filter.sortOrder}
+            WHERE NOT EXISTS(SELECT 1 FROM task_filters WHERE name = '${filter.name}')
+            """.trimIndent()
+        )
+    }
+}
+
+private fun seedInboxObjective(connection: SQLiteConnection) {
+    connection.execSQL(
+        """
+        INSERT INTO objectives(title, goalId, startDateEpochDays, endDateEpochDays, color, icon, sortOrder, isArchived)
+        SELECT 'Inbox', NULL, NULL, NULL, '#2563EB', 'Inbox', 0, 0
+        WHERE NOT EXISTS(SELECT 1 FROM objectives)
+        """.trimIndent()
+    )
+}
+
+private data class TaskFilterSeed(
+    val name: String,
+    val icon: String,
+    val color: String,
+    val dueDatePreset: String? = null,
+    val status: String? = null,
+    val priority: String? = null,
+    val includeTrashed: Boolean = false,
+    val sortOrder: Int
+)
+
+private val DefaultTaskFilters = listOf(
+    TaskFilterSeed(name = "All", icon = "AllInclusive", color = "#475569", sortOrder = 0),
+    TaskFilterSeed(
+        name = "Today",
+        icon = "Today",
+        color = "#2563EB",
+        dueDatePreset = "Today",
+        sortOrder = 1
+    ),
+    TaskFilterSeed(
+        name = "Upcoming",
+        icon = "Schedule",
+        color = "#0891B2",
+        dueDatePreset = "Upcoming",
+        sortOrder = 2
+    ),
+    TaskFilterSeed(
+        name = "Overdue",
+        icon = "Flag",
+        color = "#EA580C",
+        dueDatePreset = "Overdue",
+        sortOrder = 3
+    ),
+    TaskFilterSeed(
+        name = "No date",
+        icon = "Schedule",
+        color = "#7C3AED",
+        dueDatePreset = "NoDate",
+        sortOrder = 4
+    ),
+    TaskFilterSeed(
+        name = "Completed",
+        icon = "TaskAlt",
+        color = "#059669",
+        status = "Completed",
+        sortOrder = 5
+    ),
+    TaskFilterSeed(
+        name = "High priority",
+        icon = "PriorityHigh",
+        color = "#DC2626",
+        priority = "High",
+        sortOrder = 6
+    ),
+    TaskFilterSeed(name = "Trashed", icon = "Delete", color = "#6B7280", includeTrashed = true, sortOrder = 7)
+)

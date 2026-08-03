@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DayReviewRecord
 import com.checkit.domain.TaskBoard
-import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveDayReviewsUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
@@ -27,14 +26,12 @@ class CalendarViewModel(
     private val observeTaskBoard: ObserveTaskBoardUseCase,
     private val observeDailyPlans: ObserveDailyPlansUseCase,
     private val observeDayReviews: ObserveDayReviewsUseCase,
-    private val ensureDefaultTaskData: EnsureDefaultTaskDataUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(CalendarUiState())
     val uiState: StateFlow<CalendarUiState> = _uiState.asStateFlow()
 
     init {
         viewModelScope.launch {
-            ensureDefaultTaskData()
             combine(
                 observeTaskBoard(),
                 observeDailyPlans(),

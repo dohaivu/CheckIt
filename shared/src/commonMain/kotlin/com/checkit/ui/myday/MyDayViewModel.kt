@@ -13,7 +13,6 @@ import com.checkit.domain.usecase.BuildDayReviewSummaryUseCase
 import com.checkit.domain.usecase.CarryOverDailyPlanItemsUseCase
 import com.checkit.domain.usecase.CompleteDayReviewUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
-import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveDayReviewsUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
@@ -36,7 +35,6 @@ import kotlinx.datetime.LocalDate
 class MyDayViewModel(
     observeTaskBoard: ObserveTaskBoardUseCase,
     observeDailyPlans: ObserveDailyPlansUseCase,
-    ensureDefaultTaskData: EnsureDefaultTaskDataUseCase,
     deleteDailyPlanItemUseCase: DeleteDailyPlanItemUseCase,
     settingsRepository: SettingsRepository,
     buildDayReviewSummary: BuildDayReviewSummaryUseCase,
@@ -53,7 +51,6 @@ class MyDayViewModel(
     private val deps = MyDayDependencies(
         observeTaskBoard = observeTaskBoard,
         observeDailyPlans = observeDailyPlans,
-        ensureDefaultTaskData = ensureDefaultTaskData,
         deleteDailyPlanItem = deleteDailyPlanItemUseCase,
         settingsRepository = settingsRepository,
         buildDayReviewSummary = buildDayReviewSummary,

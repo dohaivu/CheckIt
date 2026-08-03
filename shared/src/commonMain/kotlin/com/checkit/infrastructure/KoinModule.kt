@@ -12,7 +12,6 @@ import com.checkit.data.provideDatabaseBuilder
 import com.checkit.data.SettingsRepository
 import com.checkit.domain.CheckInReminderPolicy
 import com.checkit.domain.DailyPlanScheduleReminderPolicy
-import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.notifications.AppReminderScheduler
 import com.checkit.domain.SprintManager
 import com.checkit.domain.usecase.SaveSprintAsWinUseCase
@@ -108,7 +107,6 @@ val provideInteractorModule = module {
     single<CheckItRepository> { RoomCheckItRepository(get(), get(), get()) }
     single { ObserveTaskBoardUseCase(get()) }
     single { ObserveDailyPlansUseCase(get()) }
-    single { EnsureDefaultTaskDataUseCase(get()) }
     single { AutoAddTodayTasksToMyDayUseCase(get(), get(), get()) }
     single { AddGoalUseCase(get()) }
     single { UpdateGoalUseCase(get()) }
@@ -164,7 +162,6 @@ val provideViewModelModule = module {
     viewModel {
         TaskViewModel(
             observeTaskBoard = get(),
-            ensureDefaultTaskData = get(),
             selectTaskBoardItems = get(),
             addTask = get(),
             addTaskToDailyPlan = get(),
@@ -189,12 +186,11 @@ val provideViewModelModule = module {
     viewModel { KeyResultViewModel(get()) }
     viewModel { ObjectiveViewModel(get(), get(), get()) }
     viewModel { TagViewModel(get(), get(), get(), get(), get(), get()) }
-    viewModel { CalendarViewModel(get(), get(), get(), get()) }
+    viewModel { CalendarViewModel(get(), get(), get()) }
     viewModel {
         MyDayViewModel(
             observeTaskBoard = get(),
             observeDailyPlans = get(),
-            ensureDefaultTaskData = get(),
             deleteDailyPlanItemUseCase = get(),
             settingsRepository = get(),
             buildDayReviewSummary = get(),
