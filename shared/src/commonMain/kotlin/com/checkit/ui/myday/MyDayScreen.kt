@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.AddTask
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
@@ -120,6 +121,12 @@ internal fun MyDayScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = viewModel::smartSchedule) {
+                        Icon(
+                            Icons.Default.AutoAwesome,
+                            contentDescription = "Smart Schedule"
+                        )
+                    }
                     IconButton(onClick = viewModel::openDayReview) {
                         Icon(
                             Icons.Default.RateReview,

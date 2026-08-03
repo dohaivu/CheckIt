@@ -47,6 +47,7 @@ import com.checkit.domain.usecase.OpenTaskUseCase
 import com.checkit.domain.usecase.RestoreNoteUseCase
 import com.checkit.domain.usecase.RestoreTaskUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
+import com.checkit.domain.usecase.SmartScheduleDailyPlanUseCase
 import com.checkit.domain.usecase.UpdateNoteUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTagUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemUseCase
@@ -131,6 +132,7 @@ val provideInteractorModule = module {
     single { AddTaskToDailyPlanUseCase(get()) }
     single { AddDailyPlanItemUseCase(get()) }
     single { UpdateDailyPlanItemTimeUseCase(get()) }
+    single { SmartScheduleDailyPlanUseCase(get()) }
     single { UpdateDailyPlanItemStatusUseCase(get()) }
     single { SyncKeyResultFromDailyPlanUseCase(get()) }
     single { UpdateDailyPlanItemUseCase(get()) }
@@ -204,6 +206,7 @@ val provideViewModelModule = module {
             addSuggestedTaskToMyDay = get(),
             syncKeyResultFromDailyPlan = get(),
             updateDailyPlanItemTime = get(),
+            smartSchedule = get(),
             sprintManager = get(),
             sprintTransition = get()
         )

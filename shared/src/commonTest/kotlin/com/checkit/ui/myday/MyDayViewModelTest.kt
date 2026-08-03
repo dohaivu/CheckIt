@@ -23,6 +23,7 @@ import com.checkit.domain.usecase.UpsertDailyPlanItemUseCase
 import com.checkit.domain.usecase.AddSuggestedTaskToMyDayUseCase
 import com.checkit.domain.usecase.SprintTransitionUseCase
 import com.checkit.domain.usecase.SaveSprintAsWinUseCase
+import com.checkit.domain.usecase.SmartScheduleDailyPlanUseCase
 import com.checkit.notifications.NoOpSprintNotificationScheduler
 import com.checkit.ui.tasks.FakeCheckItRepository
 import com.checkit.ui.tasks.FakeSettingsRepository
@@ -91,6 +92,7 @@ class MyDayViewModelTest {
             ),
             syncKeyResultFromDailyPlan = syncKeyResult,
             updateDailyPlanItemTime = updateDailyPlanItemTime,
+            smartSchedule = SmartScheduleDailyPlanUseCase(repository),
             sprintManager = SprintManager(NoOpSprintNotificationScheduler()),
             sprintTransition = SprintTransitionUseCase(
                 sprintManager = SprintManager(NoOpSprintNotificationScheduler()), // Separate instance for transition if needed or reuse

@@ -16,6 +16,7 @@ import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveDayReviewsUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
+import com.checkit.domain.usecase.SmartScheduleDailyPlanUseCase
 import com.checkit.domain.usecase.SprintTransitionUseCase
 import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
@@ -45,6 +46,7 @@ class MyDayViewModel(
     addSuggestedTaskToMyDay: AddSuggestedTaskToMyDayUseCase,
     syncKeyResultFromDailyPlan: SyncKeyResultFromDailyPlanUseCase,
     updateDailyPlanItemTime: UpdateDailyPlanItemTimeUseCase,
+    smartSchedule: SmartScheduleDailyPlanUseCase,
     val sprintManager: SprintManager,
     sprintTransition: SprintTransitionUseCase
 ) : ViewModel() {
@@ -61,6 +63,7 @@ class MyDayViewModel(
         addSuggestedTaskToMyDay = addSuggestedTaskToMyDay,
         syncKeyResultFromDailyPlan = syncKeyResultFromDailyPlan,
         updateDailyPlanItemTime = updateDailyPlanItemTime,
+        smartSchedule = smartSchedule,
         sprintManager = sprintManager,
         sprintTransition = sprintTransition
     )
@@ -75,6 +78,7 @@ class MyDayViewModel(
     private val planAssist = PlanAssistController(deps, state, viewModelScope)
     private val dailyPlanEditor = DailyPlanEditorController(deps, state, viewModelScope)
     private val sprints = SprintController(deps, state, viewModelScope)
+    private val smartScheduler = SmartSchedulerController(deps, state, viewModelScope)
 
     init {
         loader.start()
@@ -110,6 +114,9 @@ class MyDayViewModel(
     fun addTaskFromSuggestion(task: TaskItem) = planAssist.addTaskFromSuggestion(task)
     fun addTaskToMyDay(task: TaskItem) = planAssist.addTaskToMyDay(task)
     fun quickAddDailyPlanItem(title: String, tagIds: List<Long>) = planAssist.quickAddDailyPlanItem(title, tagIds)
+
+    // Smart scheduler
+    fun smartSchedule() = smartScheduler.scheduleAll()
 
     // Daily plan item editor
     fun updateItemTime(item: DailyPlanItem, startTimeMinutes: Int, endTimeMinutes: Int) =

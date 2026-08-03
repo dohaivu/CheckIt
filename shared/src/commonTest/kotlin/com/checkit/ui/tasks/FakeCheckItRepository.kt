@@ -53,6 +53,7 @@ internal class FakeCheckItRepository(
     val addedDailyPlanTasks = mutableListOf<Pair<LocalDate, TaskItem>>()
     val addedManualDailyPlanItems = mutableListOf<DailyPlanItemWriteInput>()
     val updatedDailyPlanItems = mutableListOf<Pair<Long, DailyPlanItemWriteInput>>()
+    val updatedDailyPlanItemTimes = mutableListOf<Triple<Long, Int?, Int?>>()
     val adjustedKeyResults = mutableListOf<Pair<Long, Double>>()
     val currentBoard: TaskBoard get() = boardFlow.value
 
@@ -380,7 +381,25 @@ internal class FakeCheckItRepository(
         }
         return newId
     }
-    override suspend fun updateDailyPlanItemTime(itemId: Long, startTimeMinutes: Int?, endTimeMinutes: Int?) = Unit
+    override suspend fun updateDailyPlanItemTime(itemId: Long, startTimeMinutes: Int?, endTimeMinutes: Int?) {
+        updatedDailyPlanItemTimes.add(Triple(itemId, startTimeMinutes, endTimeMinutes))
+        dailyPlansFlow.update { plans ->
+            plans.map { plan ->
+                plan.copy(
+                    items = plan.items.map { item ->
+                        if (item.id == itemId) {
+                            item.copy(
+                                startTimeMinutes = startTimeMinutes,
+                                endTimeMinutes = endTimeMinutes
+                            )
+                        } else {
+                            item
+                        }
+                    }
+                )
+            }
+        }
+    }
     override suspend fun updateDailyPlanItemStatus(itemId: Long, status: DailyPlanItemStatus) {
         statusUpdates.add(itemId to status)
         dailyPlansFlow.update { plans ->
