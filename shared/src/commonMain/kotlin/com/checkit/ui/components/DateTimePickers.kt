@@ -37,6 +37,7 @@ import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -238,12 +239,14 @@ internal fun TimePicker(
         }
     )
     if (showPicker && enabled) {
-        val initial = timeMinutes ?: initialTimeMinutes.coerceIn(0, MinutesPerDay - 1)
-        val timePickerState = rememberTimePickerState(
-            initialHour = initial / 60,
-            initialMinute = initial % 60,
-            is24Hour = false
-        )
+        var initial by remember(timeMinutes) { mutableStateOf(timeMinutes ?: initialTimeMinutes.coerceIn(0, MinutesPerDay - 1)) }
+        val timePickerState = key(initial) {
+            rememberTimePickerState(
+                initialHour = initial / 60,
+                initialMinute = initial % 60,
+                is24Hour = false
+            )
+        }
         AppPickerDialog(
             onDismissRequest = {
                 showPicker = false
@@ -260,6 +263,16 @@ internal fun TimePicker(
         ) {
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 TimePicker(state = timePickerState)
+                PickerShortcutRow(
+                    modifier = Modifier.padding(start = 10.dp).align(Alignment.BottomStart)
+                ) {
+                    PickerShortcut(
+                        text = "Now",
+                        onClick = {
+                            initial = currentTimeMinutes()
+                        }
+                    )
+                }
             }
         }
     }
