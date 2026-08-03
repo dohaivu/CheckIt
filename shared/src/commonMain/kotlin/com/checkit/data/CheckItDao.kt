@@ -408,6 +408,17 @@ interface CheckItDao {
         endTimeMinutes: Int?
     )
 
+    @Transaction
+    suspend fun updateDailyPlanItemTimes(updates: List<DailyPlanItemTimeUpdate>) {
+        updates.forEach { update ->
+            updateDailyPlanItemTime(
+                itemId = update.itemId,
+                startTimeMinutes = update.startTimeMinutes,
+                endTimeMinutes = update.endTimeMinutes
+            )
+        }
+    }
+
     @Query(
         """
         UPDATE daily_plan_items

@@ -70,6 +70,11 @@ interface CheckItRepository {
         tagIds: List<Long> = emptyList()
     ): Long
     suspend fun updateDailyPlanItemTime(itemId: Long, startTimeMinutes: Int?, endTimeMinutes: Int?)
+    suspend fun updateDailyPlanItemTimes(updates: List<DailyPlanItemTimeUpdate>) {
+        updates.forEach { update ->
+            updateDailyPlanItemTime(update.itemId, update.startTimeMinutes, update.endTimeMinutes)
+        }
+    }
     suspend fun updateDailyPlanItemStatus(itemId: Long, status: DailyPlanItemStatus)
     suspend fun updateDailyPlanItemsStatus(itemIds: List<Long>, status: DailyPlanItemStatus)
     suspend fun updateDailyPlanItem(itemId: Long, input: DailyPlanItemWriteInput)
@@ -116,6 +121,12 @@ interface CheckItRepository {
     suspend fun trashNote(noteId: Long)
     suspend fun restoreNote(noteId: Long)
 }
+
+data class DailyPlanItemTimeUpdate(
+    val itemId: Long,
+    val startTimeMinutes: Int?,
+    val endTimeMinutes: Int?
+)
 
 data class GoalWriteInput(
     val title: String,
@@ -542,6 +553,16 @@ class RoomCheckItRepository(
         val item = dao.dailyPlanItemById(itemId)
         dao.updateDailyPlanItemTime(itemId, startTimeMinutes, endTimeMinutes)
         item?.taskId?.let { taskId ->
+            dao.clearTaskTime(taskId, Clock.System.now().toEpochMilliseconds())
+        }
+        dailyPlanScheduleReminderScheduler.rescheduleNext()
+    }
+
+    override suspend fun updateDailyPlanItemTimes(updates: List<DailyPlanItemTimeUpdate>) {
+        if (updates.isEmpty()) return
+        val items = updates.map { update -> dao.dailyPlanItemById(update.itemId) }
+        dao.updateDailyPlanItemTimes(updates)
+        items.mapNotNull { it?.taskId }.forEach { taskId ->
             dao.clearTaskTime(taskId, Clock.System.now().toEpochMilliseconds())
         }
         dailyPlanScheduleReminderScheduler.rescheduleNext()

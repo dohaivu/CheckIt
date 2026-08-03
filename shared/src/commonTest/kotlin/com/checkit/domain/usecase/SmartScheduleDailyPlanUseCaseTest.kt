@@ -238,6 +238,65 @@ class SmartScheduleDailyPlanUseCaseTest {
         assertEquals(Triple(1L, 600, 660), repository.updatedDailyPlanItemTimes.single())
     }
 
+    @Test
+    fun protectsCandidateWithNarrowerPreferenceInsteadOfInputOrder() = runTest {
+        val repository = repositoryWithHistory(
+            pastPlans = listOf(
+                plan(day(9), item(3, day(9), workTag, Done, 540, 600)),
+                plan(day(8), item(4, day(8), workTag, Done, 540, 600)),
+                plan(day(9), item(5, day(9), lifeTag, Done, 540, 585)),
+                plan(day(8), item(6, day(8), lifeTag, Done, 540, 585))
+            ),
+            todayItems = listOf(
+                item(2, today, lifeTag, Planned),
+                item(1, today, workTag, Planned),
+                item(7, today, emptyList(), Planned, start = 600, end = 660)
+            )
+        )
+
+        val result = useCase(repository)()
+
+        assertEquals(2, result.getOrThrow().scheduledCount)
+        assertEquals(
+            setOf(
+                Triple(1L, 540, 600),
+                Triple(2L, 660, 705)
+            ),
+            repository.updatedDailyPlanItemTimes.toSet()
+        )
+    }
+
+    @Test
+    fun doesNotScheduleBeforeNowWhenOnlyPastSpaceIsAvailable() = runTest {
+        val repository = repositoryWithHistory(
+            pastPlans = emptyList(),
+            todayItems = listOf(
+                item(1, today, workTag, Planned),
+                item(2, today, emptyList(), Planned, start = 600, end = 1440)
+            )
+        )
+
+        val result = useCase(repository, nowMinutes = 600)()
+
+        assertEquals(SmartScheduleResult(scheduledCount = 0, candidateCount = 1), result.getOrThrow())
+        assertEquals(emptyList(), repository.updatedDailyPlanItemTimes)
+    }
+
+    @Test
+    fun choosesAnActualHistoricalRangeInsteadOfCombiningIndependentModes() {
+        assertEquals(
+            540 to 60,
+            bestSmartScheduleRange(
+                samples = listOf(
+                    SmartTimeSample(540, 600),
+                    SmartTimeSample(540, 660),
+                    SmartTimeSample(600, 660)
+                ),
+                nowMinutes = 0
+            )
+        )
+    }
+
     private fun useCase(
         repository: FakeCheckItRepository,
         nowMinutes: Int = 0
