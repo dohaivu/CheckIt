@@ -109,7 +109,7 @@ val provideInteractorModule = module {
     single<CheckItRepository> { RoomCheckItRepository(get(), get(), get()) }
     single { ObserveTaskBoardUseCase(get()) }
     single { ObserveDailyPlansUseCase(get()) }
-    single { AutoAddTodayTasksToMyDayUseCase(get(), get(), get()) }
+    single { AutoAddTodayTasksToMyDayUseCase(get(), get(), get(), get()) }
     single { AddGoalUseCase(get()) }
     single { UpdateGoalUseCase(get()) }
     single { DeleteGoalUseCase(get()) }

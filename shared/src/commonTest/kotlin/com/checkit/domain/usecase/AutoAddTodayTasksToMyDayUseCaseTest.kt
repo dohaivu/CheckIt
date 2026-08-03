@@ -9,6 +9,7 @@ import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.Objective
 import com.checkit.domain.TaskStatus
+import com.checkit.domain.TaskTag
 import com.checkit.domain.TaskType
 import com.checkit.ui.tasks.FakeCheckItRepository
 import com.checkit.ui.tasks.FakeSettingsRepository
@@ -36,7 +37,12 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
         val useCase = AutoAddTodayTasksToMyDayUseCase(
             repository,
             settingsRepository,
-            DeleteDailyPlanItemUseCase(repository)
+            DeleteDailyPlanItemUseCase(repository),
+            SmartScheduleDailyPlanUseCase(
+                repository = repository,
+                todayDate = { today },
+                nowMinutes = { 0 }
+            )
         )
 
         val addedCount = useCase()
@@ -63,7 +69,12 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
         val useCase = AutoAddTodayTasksToMyDayUseCase(
             repository,
             settingsRepository,
-            DeleteDailyPlanItemUseCase(repository)
+            DeleteDailyPlanItemUseCase(repository),
+            SmartScheduleDailyPlanUseCase(
+                repository = repository,
+                todayDate = { today },
+                nowMinutes = { 0 }
+            )
         )
 
         val addedCount = useCase()
@@ -74,6 +85,44 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
             today.toEpochDays().toInt(),
             settingsRepository.settings.first().autoMyDayLastRunEpochDay
         )
+    }
+
+    @Test
+    fun smartSchedulesTasksAddedToMyDay() = runTest {
+        val today = today()
+        val yesterday = today.minus(1, DateTimeUnit.DAY)
+        val workTag = TaskTag(id = 1L, name = "Work", color = "#2563EB")
+        val repository = FakeCheckItRepository(
+            initialBoard = TaskBoard(
+                tasks = listOf(task(id = 1L, doDate = today, tags = listOf(workTag)))
+            )
+        )
+        repository.setDailyPlans(
+            listOf(
+                DailyPlan(
+                    date = yesterday,
+                    items = listOf(
+                        historyItem(10L, yesterday, workTag, 540, 600)
+                    )
+                )
+            )
+        )
+        val settingsRepository = FakeSettingsRepository()
+        val useCase = AutoAddTodayTasksToMyDayUseCase(
+            repository,
+            settingsRepository,
+            DeleteDailyPlanItemUseCase(repository),
+            SmartScheduleDailyPlanUseCase(
+                repository = repository,
+                todayDate = { today },
+                nowMinutes = { 0 }
+            )
+        )
+
+        useCase()
+
+        assertEquals(1, repository.updatedDailyPlanItemTimes.size)
+        assertEquals(Triple(10_000L, 540, 600), repository.updatedDailyPlanItemTimes.single())
     }
 
     @Test
@@ -95,7 +144,8 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
         val useCase = AutoAddTodayTasksToMyDayUseCase(
             repository,
             settingsRepository,
-            DeleteDailyPlanItemUseCase(repository)
+            DeleteDailyPlanItemUseCase(repository),
+            SmartScheduleDailyPlanUseCase(repository)
         )
 
         val addedCount = useCase()
@@ -119,7 +169,8 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
         val useCase = AutoAddTodayTasksToMyDayUseCase(
             repository,
             settingsRepository,
-            DeleteDailyPlanItemUseCase(repository)
+            DeleteDailyPlanItemUseCase(repository),
+            SmartScheduleDailyPlanUseCase(repository)
         )
 
         val addedCount = useCase()
@@ -144,7 +195,8 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
         val useCase = AutoAddTodayTasksToMyDayUseCase(
             repository,
             settingsRepository,
-            DeleteDailyPlanItemUseCase(repository)
+            DeleteDailyPlanItemUseCase(repository),
+            SmartScheduleDailyPlanUseCase(repository)
         )
 
         val addedCount = useCase()
@@ -182,7 +234,8 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
         val useCase = AutoAddTodayTasksToMyDayUseCase(
             repository,
             settingsRepository,
-            DeleteDailyPlanItemUseCase(repository)
+            DeleteDailyPlanItemUseCase(repository),
+            SmartScheduleDailyPlanUseCase(repository)
         )
 
         val addedCount = useCase()
@@ -214,7 +267,8 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
         val useCase = AutoAddTodayTasksToMyDayUseCase(
             repository,
             settingsRepository,
-            DeleteDailyPlanItemUseCase(repository)
+            DeleteDailyPlanItemUseCase(repository),
+            SmartScheduleDailyPlanUseCase(repository)
         )
 
         useCase()
@@ -257,6 +311,26 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
         addedAtMillis = 0L
     )
 
+    private fun historyItem(
+        id: Long,
+        date: LocalDate,
+        tag: TaskTag,
+        start: Int,
+        end: Int
+    ) = DailyPlanItem(
+        id = id,
+        dateEpochDays = date.toEpochDays().toInt(),
+        title = "History $id",
+        source = DailyPlanItemSource.ExistingTask,
+        status = DailyPlanItemStatus.Done,
+        tags = listOf(tag),
+        sortOrder = 0,
+        startTimeMinutes = start,
+        endTimeMinutes = end,
+        addedAtMillis = 0L,
+        completedAtMillis = 1L
+    )
+
     private fun today(): LocalDate =
         Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 
@@ -266,7 +340,8 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
         status: TaskStatus = TaskStatus.Open,
         type: TaskType = TaskType.Task,
         trashedAtMillis: Long? = null,
-        completedDate: LocalDate? = null
+        completedDate: LocalDate? = null,
+        tags: List<TaskTag> = emptyList()
     ) = TaskItem(
         id = id,
         objective = Objective.None,
@@ -275,6 +350,7 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
         type = type,
         doDate = doDate,
         completedDate = completedDate,
+        tags = tags,
         sortOrder = id.toInt(),
         createdAtMillis = 0L,
         updatedAtMillis = 0L,

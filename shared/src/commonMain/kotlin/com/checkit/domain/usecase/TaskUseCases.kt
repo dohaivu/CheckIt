@@ -36,7 +36,8 @@ class ObserveTaskBoardUseCase(
 class AutoAddTodayTasksToMyDayUseCase(
     private val repository: CheckItRepository,
     private val settingsRepository: SettingsRepository,
-    private val deleteDailyPlanItem: DeleteDailyPlanItemUseCase
+    private val deleteDailyPlanItem: DeleteDailyPlanItemUseCase,
+    private val smartScheduleDailyPlan: SmartScheduleDailyPlanUseCase
 ) {
     private val mutex = Mutex()
 
@@ -65,6 +66,9 @@ class AutoAddTodayTasksToMyDayUseCase(
 
         tasksToAdd.forEach { task ->
             repository.addTaskToDailyPlan(today, task)
+        }
+        if (tasksToAdd.isNotEmpty()) {
+            smartScheduleDailyPlan().getOrThrow()
         }
         settingsRepository.setAutoMyDayLastRunEpochDay(todayEpochDay)
         tasksToAdd.size

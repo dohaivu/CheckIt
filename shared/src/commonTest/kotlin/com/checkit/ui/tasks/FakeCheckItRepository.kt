@@ -332,7 +332,38 @@ internal class FakeCheckItRepository(
     override suspend fun openNote(noteId: Long) = Unit
     override suspend fun addTaskToDailyPlan(date: LocalDate, task: TaskItem): Long {
         addedDailyPlanTasks.add(date to task)
-        return addedDailyPlanTasks.size.toLong()
+        val itemId = nextDailyPlanItemId++
+        val status = if (task.status == com.checkit.domain.TaskStatus.Completed) {
+            DailyPlanItemStatus.Done
+        } else {
+            DailyPlanItemStatus.Planned
+        }
+        val item = DailyPlanItem(
+            id = itemId,
+            dateEpochDays = date.toEpochDays().toInt(),
+            taskId = task.id,
+            title = task.name,
+            source = DailyPlanItemSource.ExistingTask,
+            status = status,
+            tags = task.tags,
+            isHabit = task.type == com.checkit.domain.TaskType.Habit,
+            sortOrder = task.sortOrder,
+            startTimeMinutes = task.startTimeMinutes,
+            endTimeMinutes = task.endTimeMinutes,
+            addedAtMillis = 0L,
+            completedAtMillis = if (status == DailyPlanItemStatus.Done) 1L else null
+        )
+        dailyPlansFlow.update { plans ->
+            val existing = plans.firstOrNull { it.date == date }
+            if (existing == null) {
+                plans + DailyPlan(date = date, items = listOf(item))
+            } else {
+                plans.map { plan ->
+                    if (plan.date == date) plan.copy(items = plan.items + item) else plan
+                }
+            }
+        }
+        return itemId
     }
     override suspend fun addDailyPlanItem(
         date: LocalDate,
