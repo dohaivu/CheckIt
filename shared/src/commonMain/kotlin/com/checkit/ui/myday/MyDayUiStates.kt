@@ -6,6 +6,7 @@ import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DayReviewRecord
 import com.checkit.domain.DayReviewSummary
+import com.checkit.domain.JournalEntry
 import com.checkit.domain.LeftoverAction
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
@@ -57,6 +58,10 @@ data class MyDayUiState(
     val lastFabAction: FabAction = FabAction.QuickSprint,
     val dayReviews: List<DayReviewRecord> = emptyList(),
     val reviewStreak: Int = 0,
+    val journalEntries: List<JournalEntry> = emptyList(),
+    val journalCapture: JournalCaptureState = JournalCaptureState(),
+    val journalEditor: JournalEntryEditorState? = null,
+    val journalTagFilter: Long? = null,
     val isLoading: Boolean = true
 ) {
     val today: LocalDate = today()
@@ -64,6 +69,26 @@ data class MyDayUiState(
     val items: List<DailyPlanItem> = plan?.items.orEmpty()
     val plannedItems: List<DailyPlanItem> = items.filter { it.status != DailyPlanItemStatus.Done }
     val doneItems: List<DailyPlanItem> = items.filter { it.status == DailyPlanItemStatus.Done }
+
+    /** Journal entries for today, filtered by the active tag filter. */
+    val journalVisibleEntries: List<JournalEntry> =
+        journalEntries
+            .filter { it.dateEpochDays == today.toEpochDays().toInt() }
+            .filter { entry ->
+                journalTagFilter == null || entry.tags.any { it.id == journalTagFilter }
+            }
+
+    /** Recently used contexts, most recent first, for quick-capture suggestions. */
+    val journalRecentContexts: List<String> =
+        journalEntries
+            .asSequence()
+            .filter { it.dateEpochDays == today.toEpochDays().toInt() }
+            .mapNotNull { it.context }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .take(JournalContextSuggestionLimit)
+            .toList()
+
     val suggestedTasks: List<TaskItem> = board.tasks
         .filter { task ->
             !task.isTrashed &&
@@ -123,6 +148,28 @@ enum class MyDayView {
     Agenda,
     Timeline,
     Board
+}
+
+/** Mutable quick-capture bar state for today's journal. */
+data class JournalCaptureState(
+    val context: String = "",
+    val content: String = "",
+    val selectedMoods: Set<String> = emptySet(),
+    val selectedTagIds: Set<Long> = emptySet()
+) {
+    val canSubmit: Boolean get() = context.isNotBlank() || content.isNotBlank()
+}
+
+/** Bottom-sheet editor state for a single journal entry. */
+data class JournalEntryEditorState(
+    val entryId: Long? = null,
+    val date: LocalDate = today(),
+    val context: String = "",
+    val content: String = "",
+    val moods: List<String> = emptyList(),
+    val selectedTagIds: Set<Long> = emptySet()
+) {
+    val isEditMode: Boolean get() = entryId != null
 }
 
 data class DailyPlanItemEditorState(
@@ -185,3 +232,5 @@ internal fun DailyPlan?.doneWorkMinutes(): Int =
         .orEmpty()
         .filter { it.status == DailyPlanItemStatus.Done }
         .sumOf { it.workMinutes() }
+
+internal const val JournalContextSuggestionLimit = 5

@@ -298,6 +298,44 @@ data class DailyPlanItemTagEntity(
 )
 
 @Entity(
+    tableName = "journal_entries",
+    indices = [Index("dateEpochDays")]
+)
+data class JournalEntryEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0L,
+    val dateEpochDays: Int,
+    val context: String? = null,
+    val content: String,
+    val moods: String = "",
+    val createdAtMillis: Long
+)
+
+@Entity(
+    tableName = "journal_entry_tags",
+    primaryKeys = ["entryId", "tagId"],
+    foreignKeys = [
+        ForeignKey(
+            entity = JournalEntryEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["entryId"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = TagEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["tagId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("entryId"), Index("tagId")]
+)
+data class JournalEntryTagEntity(
+    val entryId: Long,
+    val tagId: Long
+)
+
+@Entity(
     tableName = "task_reminders",
     foreignKeys = [
         ForeignKey(
@@ -357,10 +395,12 @@ data class TaskFilterEntity(
         TaskTagEntity::class,
         NoteTagEntity::class,
         DailyPlanItemTagEntity::class,
+        JournalEntryEntity::class,
+        JournalEntryTagEntity::class,
         TaskReminderEntity::class,
         TaskFilterEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)
@@ -420,6 +460,36 @@ fun buildCheckItDatabase(
                     connection.execSQL(
                         "ALTER TABLE daily_plan_items ADD COLUMN isHabit INTEGER NOT NULL DEFAULT 0"
                     )
+                }
+            },
+            object : Migration(6, 7) {
+                override suspend fun migrate(connection: SQLiteConnection) {
+                    connection.execSQL(
+                        """
+                        CREATE TABLE IF NOT EXISTS journal_entries (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                            dateEpochDays INTEGER NOT NULL,
+                            context TEXT,
+                            content TEXT NOT NULL,
+                            moods TEXT NOT NULL DEFAULT '',
+                            createdAtMillis INTEGER NOT NULL
+                        )
+                        """.trimIndent()
+                    )
+                    connection.execSQL(
+                        """
+                        CREATE TABLE IF NOT EXISTS journal_entry_tags (
+                            entryId INTEGER NOT NULL,
+                            tagId INTEGER NOT NULL,
+                            PRIMARY KEY(entryId, tagId),
+                            FOREIGN KEY(entryId) REFERENCES journal_entries(id) ON UPDATE NO ACTION ON DELETE CASCADE,
+                            FOREIGN KEY(tagId) REFERENCES tags(id) ON UPDATE NO ACTION ON DELETE CASCADE
+                        )
+                        """.trimIndent()
+                    )
+                    connection.execSQL("CREATE INDEX IF NOT EXISTS index_journal_entries_dateEpochDays ON journal_entries(dateEpochDays)")
+                    connection.execSQL("CREATE INDEX IF NOT EXISTS index_journal_entry_tags_entryId ON journal_entry_tags(entryId)")
+                    connection.execSQL("CREATE INDEX IF NOT EXISTS index_journal_entry_tags_tagId ON journal_entry_tags(tagId)")
                 }
             }
         )

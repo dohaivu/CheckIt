@@ -56,6 +56,7 @@ internal fun AgendaView(
     dayLimit: Int? = null,
     focusedDate: LocalDate = today(),
     modifier: Modifier = Modifier,
+    header: (@Composable () -> Unit)? = null,
     itemContent: @Composable (TimelineItem) -> Unit
 ) {
     val today = today()
@@ -121,6 +122,14 @@ internal fun AgendaView(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
+            if (header != null) {
+                item(
+                    key = "agenda-header",
+                    contentType = "Header"
+                ) {
+                    header()
+                }
+            }
             agendaListItems.forEach { item ->
                 when (item) {
                     is AgendaListItem.MonthHeader -> {

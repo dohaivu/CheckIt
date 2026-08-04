@@ -69,6 +69,48 @@ interface CheckItDao {
     )
     suspend fun insertDailyPlanItemTagIfParentsExist(itemId: Long, tagId: Long)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertJournalEntry(entry: JournalEntryEntity): Long
+
+    @Query(
+        """
+        INSERT OR IGNORE INTO journal_entry_tags(entryId, tagId)
+        SELECT :entryId, :tagId
+        WHERE EXISTS(SELECT 1 FROM journal_entries WHERE id = :entryId)
+          AND EXISTS(SELECT 1 FROM tags WHERE id = :tagId)
+        """
+    )
+    suspend fun insertJournalEntryTagIfParentsExist(entryId: Long, tagId: Long)
+
+    @Query("DELETE FROM journal_entry_tags WHERE entryId = :entryId")
+    suspend fun deleteJournalEntryTags(entryId: Long)
+
+    @Query("SELECT * FROM journal_entries ORDER BY createdAtMillis ASC")
+    fun observeJournalEntries(): Flow<List<JournalEntryEntity>>
+
+    @Query("SELECT * FROM journal_entries WHERE dateEpochDays = :dateEpochDays ORDER BY createdAtMillis ASC")
+    fun observeJournalEntriesForDate(dateEpochDays: Int): Flow<List<JournalEntryEntity>>
+
+    @Query("SELECT * FROM journal_entry_tags")
+    fun observeJournalEntryTags(): Flow<List<JournalEntryTagEntity>>
+
+    @Query("SELECT * FROM journal_entries WHERE id = :entryId LIMIT 1")
+    suspend fun journalEntryById(entryId: Long): JournalEntryEntity?
+
+    @Query(
+        """
+        UPDATE journal_entries
+        SET context = :context,
+            content = :content,
+            moods = :moods
+        WHERE id = :entryId
+        """
+    )
+    suspend fun updateJournalEntry(entryId: Long, context: String?, content: String, moods: String)
+
+    @Query("DELETE FROM journal_entries WHERE id = :entryId")
+    suspend fun deleteJournalEntry(entryId: Long)
+
     @Query("DELETE FROM task_tags WHERE taskId = :taskId")
     suspend fun deleteTaskTags(taskId: Long)
 

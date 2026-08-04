@@ -37,6 +37,7 @@ import com.checkit.ui.calendar.CalendarScreen
 import com.checkit.ui.components.LocalSnackbarHostState
 import com.checkit.ui.localization.AppLocaleProvider
 import com.checkit.ui.myday.DailyPlanItemEditorSheet
+import com.checkit.ui.myday.JournalEntryEditorSheet
 import com.checkit.ui.myday.MyDayScreen
 import com.checkit.ui.reports.ReportScreen
 import com.checkit.ui.reports.TagsReport
@@ -392,6 +393,20 @@ fun CheckItApp(
                             onDuplicate = viewModels.myDay::duplicateDailyPlanItem,
                             onStartSprint = viewModels.myDay::startNewSprintFromEditor,
                             onStartOngoingSprint = viewModels.myDay::startOngoingSprintFromEditor
+                        )
+                    }
+                    myDayUiState.journalEditor?.let { editor ->
+                        JournalEntryEditorSheet(
+                            state = editor,
+                            availableTags = myDayUiState.board.tags,
+                            onDismiss = viewModels.myDay::dismissJournalEditor,
+                            onContextChange = viewModels.myDay::updateJournalEditorContext,
+                            onContentChange = viewModels.myDay::updateJournalEditorContent,
+                            onMoodToggle = viewModels.myDay::toggleJournalEditorMood,
+                            onTagToggle = viewModels.myDay::toggleJournalEditorTag,
+                            onNewTagClick = viewModels.tag::openNewTag,
+                            onSave = viewModels.myDay::saveJournalEditor,
+                            onDelete = { editor.entryId?.let { viewModels.myDay.deleteJournalEntry(it) } }
                         )
                     }
                     tagUiState.editor?.let { tagEditor ->

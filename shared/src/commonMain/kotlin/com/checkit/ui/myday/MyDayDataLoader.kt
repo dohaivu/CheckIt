@@ -6,6 +6,7 @@ import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DayReviewBannerPolicy
 import com.checkit.domain.DayReviewRecord
+import com.checkit.domain.JournalEntry
 import com.checkit.domain.LeftoversBannerPolicy
 import com.checkit.domain.PlanAssistBannerPolicy
 import com.checkit.domain.ReviewStreakPolicy
@@ -37,15 +38,16 @@ internal class MyDayDataLoader(
                 deps.observeTaskBoard(),
                 deps.observeDailyPlans(),
                 deps.settingsRepository.settings,
-                deps.observeDayReviews()
-            ) { board, dailyPlans, settings, dayReviews ->
-                ReviewCombined(board, dailyPlans, settings, dayReviews)
+                deps.observeDayReviews(),
+                deps.observeJournalEntries()
+            ) { board, dailyPlans, settings, dayReviews, journalEntries ->
+                ReviewCombined(board, dailyPlans, settings, dayReviews, journalEntries)
             }
                 .catch { error ->
                     state.update { it.copy(isLoading = false) }
                     state.sendEvent(UiEvent.ShowSnackbar(error.message ?: "Unable to load My Day"))
                 }
-                .collect { (board, dailyPlans, settings, dayReviews) ->
+                .collect { (board, dailyPlans, settings, dayReviews, journalEntries) ->
                     val date = today()
                     val todayEpoch = date.toEpochDays().toInt()
                     val nowMinutes = currentMyDayTimeMinutes()
@@ -98,6 +100,7 @@ internal class MyDayDataLoader(
                             board = board,
                             dailyPlans = dailyPlans,
                             dayReview = review,
+                            journalEntries = journalEntries,
                             showDayReviewBanner = showReviewBanner && review == null,
                             reviewReminderEnabled = settings.reviewReminderEnabled,
                             reviewReminderTimeMinutes = settings.reviewReminderTimeMinutes,
@@ -158,5 +161,6 @@ private data class ReviewCombined(
     val board: TaskBoard,
     val dailyPlans: List<DailyPlan>,
     val settings: UserSettings,
-    val dayReviews: List<DayReviewRecord>
+    val dayReviews: List<DayReviewRecord>,
+    val journalEntries: List<JournalEntry>
 )

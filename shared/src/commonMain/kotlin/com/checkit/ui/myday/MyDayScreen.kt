@@ -67,6 +67,7 @@ import checkit.shared.generated.resources.plan_assist_banner_subtitle
 import checkit.shared.generated.resources.plan_assist_banner_title
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
+import com.checkit.domain.JournalEntry
 import com.checkit.domain.NoteItem
 import com.checkit.domain.SprintState
 import com.checkit.domain.TaskBoard
@@ -202,10 +203,23 @@ internal fun MyDayScreen(
                         board = state.board,
                         date = state.today,
                         activeSprint = activeSprint,
+                        journalEntries = state.journalVisibleEntries,
+                        journalCapture = state.journalCapture,
+                        journalRecentContexts = state.journalRecentContexts,
+                        journalTagFilter = state.journalTagFilter,
                         onItemClick = { viewModel.openItemEditor(it, state.today) },
                         onTaskClick = onTaskClick,
                         onNoteClick = onNoteClick,
                         onSprintClick = viewModel::startSprint,
+                        onJournalContextChange = viewModel::updateJournalCaptureContext,
+                        onJournalContentChange = viewModel::updateJournalCaptureContent,
+                        onJournalContextSuggestion = viewModel::useJournalContextSuggestion,
+                        onJournalMoodToggle = viewModel::toggleJournalCaptureMood,
+                        onJournalTagToggle = viewModel::toggleJournalCaptureTag,
+                        onSubmitJournal = viewModel::submitJournalCapture,
+                        onJournalEntryClick = viewModel::openJournalEditor,
+                        onJournalTagFilter = viewModel::setJournalTagFilter,
+                        onNewTagClick = onNewTagClick,
                         modifier = Modifier.weight(1f)
                     )
                     MyDayView.Timeline -> MyDayTimeline(
@@ -558,10 +572,24 @@ internal fun MyDayAgenda(
     board: TaskBoard,
     date: LocalDate,
     activeSprint: SprintState.Running?,
+    showJournal: Boolean = true,
+    journalEntries: List<JournalEntry> = emptyList(),
+    journalCapture: JournalCaptureState = JournalCaptureState(),
+    journalRecentContexts: List<String> = emptyList(),
+    journalTagFilter: Long? = null,
     onItemClick: (DailyPlanItem) -> Unit,
     onTaskClick: (TaskItem, DailyPlanItem?) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
     onSprintClick: ((Long?, Long?, String) -> Unit)? = null,
+    onJournalContextChange: (String) -> Unit = {},
+    onJournalContentChange: (String) -> Unit = {},
+    onJournalContextSuggestion: (String) -> Unit = {},
+    onJournalMoodToggle: (String) -> Unit = {},
+    onJournalTagToggle: (Long) -> Unit = {},
+    onSubmitJournal: () -> Unit = {},
+    onJournalEntryClick: (JournalEntry) -> Unit = {},
+    onJournalTagFilter: (Long?) -> Unit = {},
+    onNewTagClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val projection = remember(items, board, date) { items.toTaskViewProjection(board = board, date = date) }
@@ -571,6 +599,28 @@ internal fun MyDayAgenda(
 
     AgendaView(
         items = timelineItems,
+        header = if (showJournal) {
+            {
+                JournalSection(
+                    entries = journalEntries,
+                    capture = journalCapture,
+                    availableTags = board.tags,
+                    recentContexts = journalRecentContexts,
+                    activeTagFilter = journalTagFilter,
+                    onContextChange = onJournalContextChange,
+                    onContentChange = onJournalContentChange,
+                    onContextSuggestion = onJournalContextSuggestion,
+                    onMoodToggle = onJournalMoodToggle,
+                    onTagToggle = onJournalTagToggle,
+                    onSubmit = onSubmitJournal,
+                    onEntryClick = onJournalEntryClick,
+                    onTagFilter = onJournalTagFilter,
+                    onNewTagClick = onNewTagClick
+                )
+            }
+        } else {
+            null
+        },
         onItemClick = { item ->
             when (val tag = item.tag) {
                 is DailyPlanItem -> onItemClick(tag)

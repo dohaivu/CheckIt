@@ -182,6 +182,20 @@ data class NoteItem(
     val isTrashed: Boolean get() = trashedAtMillis != null
 }
 
+data class JournalEntry(
+    val id: Long,
+    val dateEpochDays: Int,
+    /** Activity, location, or any specific thing this entry is about, e.g. "Biking", "Cafe". */
+    val context: String? = null,
+    /** Freeform status text. */
+    val content: String,
+    val moods: List<String> = emptyList(),
+    val tags: List<TagItem> = emptyList(),
+    val createdAtMillis: Long
+) {
+    val hasContent: Boolean get() = content.isNotBlank()
+}
+
 data class TagItem(
     val id: Long,
     val name: String,

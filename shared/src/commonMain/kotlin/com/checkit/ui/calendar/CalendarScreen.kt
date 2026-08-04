@@ -266,6 +266,7 @@ private fun SelectedDateContent(
                 onTaskClick = onTaskClick,
                 onNoteClick = onNoteClick,
                 onSprintClick = null,
+                showJournal = false,
                 modifier = modifier
             )
         } else {

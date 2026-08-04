@@ -5,21 +5,26 @@ import androidx.lifecycle.viewModelScope
 import com.checkit.data.SettingsRepository
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
+import com.checkit.domain.JournalEntry
 import com.checkit.domain.LeftoverAction
 import com.checkit.domain.SprintManager
 import com.checkit.domain.TaskItem
+import com.checkit.domain.usecase.AddJournalEntryUseCase
 import com.checkit.domain.usecase.AddSuggestedTaskToMyDayUseCase
 import com.checkit.domain.usecase.BuildDayReviewSummaryUseCase
 import com.checkit.domain.usecase.CarryOverDailyPlanItemsUseCase
 import com.checkit.domain.usecase.CompleteDayReviewUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
+import com.checkit.domain.usecase.DeleteJournalEntryUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveDayReviewsUseCase
+import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.SmartScheduleDailyPlanUseCase
 import com.checkit.domain.usecase.SprintTransitionUseCase
 import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
+import com.checkit.domain.usecase.UpdateJournalEntryUseCase
 import com.checkit.domain.usecase.UpsertDailyPlanItemUseCase
 import com.checkit.ui.UiEvent
 import com.checkit.ui.currentMyDayTimeMinutes
@@ -31,11 +36,15 @@ import kotlinx.datetime.LocalDate
 /**
  * Orchestrates the My Day feature. Heavy lifting is split into small controllers:
  * [MyDayDataLoader], [DayReviewController], [LeftoversController], [PlanAssistController],
- * [DailyPlanEditorController], and [SprintController].
+ * [DailyPlanEditorController], [SprintController], and [JournalController].
  */
 class MyDayViewModel(
     observeTaskBoard: ObserveTaskBoardUseCase,
     observeDailyPlans: ObserveDailyPlansUseCase,
+    observeJournalEntries: ObserveJournalEntriesUseCase,
+    addJournalEntry: AddJournalEntryUseCase,
+    updateJournalEntry: UpdateJournalEntryUseCase,
+    deleteJournalEntry: DeleteJournalEntryUseCase,
     deleteDailyPlanItemUseCase: DeleteDailyPlanItemUseCase,
     settingsRepository: SettingsRepository,
     buildDayReviewSummary: BuildDayReviewSummaryUseCase,
@@ -53,6 +62,10 @@ class MyDayViewModel(
     private val deps = MyDayDependencies(
         observeTaskBoard = observeTaskBoard,
         observeDailyPlans = observeDailyPlans,
+        observeJournalEntries = observeJournalEntries,
+        addJournalEntry = addJournalEntry,
+        updateJournalEntry = updateJournalEntry,
+        deleteJournalEntry = deleteJournalEntry,
         deleteDailyPlanItem = deleteDailyPlanItemUseCase,
         settingsRepository = settingsRepository,
         buildDayReviewSummary = buildDayReviewSummary,
@@ -79,6 +92,7 @@ class MyDayViewModel(
     private val dailyPlanEditor = DailyPlanEditorController(deps, state, viewModelScope)
     private val sprints = SprintController(deps, state, viewModelScope)
     private val smartScheduler = SmartSchedulerController(deps, state, viewModelScope)
+    private val journal = JournalController(deps, state, viewModelScope)
 
     init {
         loader.start()
@@ -117,6 +131,23 @@ class MyDayViewModel(
 
     // Smart scheduler
     fun smartSchedule() = smartScheduler.scheduleAll()
+
+    // Journal
+    fun updateJournalCaptureContext(value: String) = journal.updateCaptureContext(value)
+    fun updateJournalCaptureContent(value: String) = journal.updateCaptureContent(value)
+    fun toggleJournalCaptureMood(mood: String) = journal.toggleCaptureMood(mood)
+    fun toggleJournalCaptureTag(tagId: Long) = journal.toggleCaptureTag(tagId)
+    fun useJournalContextSuggestion(context: String) = journal.useContextSuggestion(context)
+    fun submitJournalCapture() = journal.submitCapture()
+    fun setJournalTagFilter(tagId: Long?) = journal.setJournalTagFilter(tagId)
+    fun openJournalEditor(entry: JournalEntry) = journal.openJournalEditor(entry)
+    fun dismissJournalEditor() = journal.dismissJournalEditor()
+    fun updateJournalEditorContext(value: String) = journal.updateJournalEditorContext(value)
+    fun updateJournalEditorContent(value: String) = journal.updateJournalEditorContent(value)
+    fun toggleJournalEditorMood(mood: String) = journal.toggleJournalEditorMood(mood)
+    fun toggleJournalEditorTag(tagId: Long) = journal.toggleJournalEditorTag(tagId)
+    fun saveJournalEditor() = journal.saveJournalEditor()
+    fun deleteJournalEntry(entryId: Long) = journal.deleteJournalEntry(entryId)
 
     // Daily plan item editor
     fun updateItemTime(item: DailyPlanItem, startTimeMinutes: Int, endTimeMinutes: Int) =

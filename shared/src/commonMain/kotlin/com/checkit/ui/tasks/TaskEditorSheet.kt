@@ -618,19 +618,21 @@ private fun DailyPlanSection(
                                 )
                             }
                         }
+                    }
 
-                        IconButton(
-                            onClick = { onDelete(item.id) },
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = "Delete from My Day",
-                                modifier = Modifier.size(18.dp),
-                                tint = colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                            )
-                        }
+                    IconButton(
+                        onClick = { onDelete(item.id) },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete from My Day",
+                            modifier = Modifier.size(18.dp),
+                            tint = colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        )
+                    }
 
+                    if (enabled) {
                         IconButton(
                             onClick = onStatusChange,
                             modifier = Modifier.size(32.dp)
