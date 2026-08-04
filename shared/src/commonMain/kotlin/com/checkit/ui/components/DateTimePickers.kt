@@ -69,8 +69,8 @@ internal fun DatePicker(
     startTimeMinutes: Int?,
     endTimeMinutes: Int?,
     onDateChange: (LocalDate?) -> Unit,
-    onStartTimeChange: ((Int?) -> Unit),
-    onEndTimeChange: ((Int?) -> Unit)?,
+    onTimeChange: (Int?, Int?) -> Unit,
+    supportsEndTime: Boolean = true,
     enabled: Boolean = true,
     isOverdue: Boolean = false
 ) {
@@ -110,15 +110,15 @@ internal fun DatePicker(
             },
             onClear = {
                 onDateChange(null)
-                onStartTimeChange(null)
-                onEndTimeChange?.invoke(null)
+                onTimeChange(null, null)
                 showPicker = false
             },
             onConfirm = {
                 val nextDate = datePickerState.selectedDateMillis?.toUtcLocalDate()
                 if (nextDate != date) onDateChange(nextDate)
-                if (startTime != startTimeMinutes) onStartTimeChange.invoke(startTime)
-                if (endTime != validTimeRangeEnd(startTimeMinutes, endTimeMinutes)) onEndTimeChange?.invoke(endTime)
+                if (startTime != startTimeMinutes || endTime != endTimeMinutes) {
+                    onTimeChange(startTime, endTime)
+                }
                 showPicker = false
             }
         ) {
@@ -145,7 +145,7 @@ internal fun DatePicker(
                         startTime = value
                         endTime = validTimeRangeEnd(value, endTime)
                     },
-                    onEndTimeChange = if (onEndTimeChange != null) {
+                    onEndTimeChange = if (supportsEndTime) {
                         { endTime = validTimeRangeEnd(startTime, it) }
                     } else null,
                     enabled = enabled
@@ -282,8 +282,7 @@ internal fun TimePicker(
 internal fun TimeRangePicker(
     startTimeMinutes: Int?,
     endTimeMinutes: Int?,
-    onStartTimeChange: ((Int?) -> Unit),
-    onEndTimeChange: ((Int?) -> Unit)?,
+    onTimeChange: (Int?, Int?) -> Unit,
     enabled: Boolean = true,
     isOverdue: Boolean = false,
     clearEnabled: Boolean = true,
@@ -319,14 +318,15 @@ internal fun TimeRangePicker(
             },
             onClear = if (clearEnabled) {
                         {
-                            onStartTimeChange(null)
-                            onEndTimeChange?.invoke(null)
+                            onTimeChange(null, null)
                             showPicker = false
                         }
                     } else null,
             onConfirm = {
-                if (startTime != startTimeMinutes) onStartTimeChange.invoke(startTime)
-                if (endTime != validTimeRangeEnd(startTimeMinutes, endTimeMinutes)) onEndTimeChange?.invoke(endTime)
+                if (startTime != startTimeMinutes || endTime != endTimeMinutes) {
+                    onTimeChange(startTime, endTime)
+                }
+
                 showPicker = false
             }
         ) {
@@ -338,9 +338,7 @@ internal fun TimeRangePicker(
                     startTime = value
                     endTime = validTimeRangeEnd(value, endTime)
                 },
-                onEndTimeChange = if (onEndTimeChange != null) {
-                    { endTime = validTimeRangeEnd(startTime, it) }
-                } else null,
+                onEndTimeChange = { endTime = validTimeRangeEnd(startTime, it) },
                 enabled = enabled
             )
         }

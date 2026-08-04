@@ -137,13 +137,13 @@ internal class DailyPlanEditorController(
             endTimeMinutes = if (source.hasEndTime()) it.endTimeMinutes else null
         )
     }
-    fun updateStartTime(timeMinutes: Int?) = updateItemEditor {
+    fun updateTime(startTimeMinutes: Int?, endTimeMinutes: Int?) = updateItemEditor {
         it.copy(
-            startTimeMinutes = timeMinutes,
-            status = if (it.isAddMode) it.source.inferredAddStatus(timeMinutes) else it.status
+            startTimeMinutes = startTimeMinutes,
+            endTimeMinutes = endTimeMinutes,
+            status = if (it.isAddMode) it.source.inferredAddStatus(startTimeMinutes) else it.status
         )
     }
-    fun updateEndTime(timeMinutes: Int?) = updateItemEditor { it.copy(endTimeMinutes = timeMinutes) }
     fun toggleTag(tagId: Long) = updateItemEditor {
         val newTagIds = if (it.selectedTagIds.contains(tagId)) {
             it.selectedTagIds - tagId

@@ -87,10 +87,8 @@ internal fun TaskEditorSheet(
     val onTaskListChange = actions.onTaskListChange
     val onTaskDescriptionChange = actions.onTaskDescriptionChange
     val onTaskDoDateChange = actions.onTaskDoDateChange
-    val onTaskStartTimeChange = actions.onTaskStartTimeChange
-    val onTaskEndTimeChange = actions.onTaskEndTimeChange
-    val onDailyPlanStartTimeChange = actions.onDailyPlanStartTimeChange
-    val onDailyPlanEndTimeChange = actions.onDailyPlanEndTimeChange
+    val onTaskTimeChange = actions.onTaskTimeChange
+    val onDailyPlanTimeChange = actions.onDailyPlanTimeChange
     val onDailyPlanStatus = actions.onDailyPlanStatus
     val onDailyPlanDelete = actions.onDailyPlanDelete
     val onDailyPlanStartSprint = actions.onDailyPlanStartSprint
@@ -149,8 +147,7 @@ internal fun TaskEditorSheet(
                         item {
                             DailyPlanSection(
                                 item = dailyPlanItem,
-                                onStartTimeChange = onDailyPlanStartTimeChange,
-                                onEndTimeChange = onDailyPlanEndTimeChange,
+                                onTimeChange = onDailyPlanTimeChange,
                                 onStatusChange = onDailyPlanStatus,
                                 onDelete = onDailyPlanDelete,
                                 onStartSprint = onDailyPlanStartSprint,
@@ -171,8 +168,7 @@ internal fun TaskEditorSheet(
                             onListChange = onTaskListChange,
                             onDescriptionChange = onTaskDescriptionChange,
                             onDoDateChange = onTaskDoDateChange,
-                            onStartTimeChange = onTaskStartTimeChange,
-                            onEndTimeChange = onTaskEndTimeChange,
+                            onTimeChange = onTaskTimeChange,
                             onRepeatChange = onTaskRepeatChange,
                             onPriorityChange = onTaskPriorityChange,
                             onReminderToggle = onTaskReminderToggle,
@@ -406,8 +402,7 @@ private fun TaskFormContent(
     onListChange: (Long) -> Unit,
     onDescriptionChange: (String) -> Unit,
     onDoDateChange: (LocalDate?) -> Unit,
-    onStartTimeChange: (Int?) -> Unit,
-    onEndTimeChange: (Int?) -> Unit,
+    onTimeChange: (Int?, Int?) -> Unit,
     onRepeatChange: (RepeatPreset) -> Unit,
     onPriorityChange: (TaskPriority) -> Unit,
     onReminderToggle: (Int) -> Unit,
@@ -454,8 +449,8 @@ private fun TaskFormContent(
                     onDateChange = onDoDateChange,
                     startTimeMinutes = form.startTimeMinutes,
                     endTimeMinutes = form.endTimeMinutes,
-                    onStartTimeChange = onStartTimeChange,
-                    onEndTimeChange = onEndTimeChange,
+                    onTimeChange = onTimeChange,
+                    supportsEndTime = !isHabit,
                     enabled = enabled,
                     isOverdue = form.isOverdue()
                 )
@@ -534,8 +529,7 @@ private fun TaskFormContent(
 @Composable
 private fun DailyPlanSection(
     item: DailyPlanItem?,
-    onStartTimeChange: (Int?) -> Unit,
-    onEndTimeChange: (Int?) -> Unit,
+    onTimeChange: (Int?, Int?) -> Unit,
     onStatusChange: () -> Unit,
     onDelete: (Long) -> Unit,
     onStartSprint: (DailyPlanItem) -> Unit,
@@ -584,8 +578,7 @@ private fun DailyPlanSection(
                 TimeRangePicker(
                     startTimeMinutes = item.startTimeMinutes,
                     endTimeMinutes = item.endTimeMinutes,
-                    onStartTimeChange = onStartTimeChange,
-                    onEndTimeChange = onEndTimeChange,
+                    onTimeChange = onTimeChange,
                     modifier = Modifier.weight(1f),
                     enabled = enabled,
                     isOverdue = item.isOverdue(today()),
@@ -681,8 +674,8 @@ private fun NoteFormContent(
                 onDateChange = onDateChange,
                 startTimeMinutes = form.startTimeMinutes,
                 endTimeMinutes = null,
-                onStartTimeChange = onStartTimeChange,
-                onEndTimeChange = null,
+                onTimeChange = { start, _ -> onStartTimeChange(start) },
+                supportsEndTime = false,
                 enabled = enabled
             )
         }

@@ -480,13 +480,13 @@ class TaskViewModel(
             reminderOffsets = if (doDate == null) emptySet() else it.reminderOffsets
         )
     }
-    fun updateTaskStartTime(startTimeMinutes: Int?) = updateTaskForm {
+    fun updateTaskTime(startTimeMinutes: Int?, endTimeMinutes: Int?) = updateTaskForm {
         it.copy(
             startTimeMinutes = startTimeMinutes,
+            endTimeMinutes = if ((startTimeMinutes == null) || ((endTimeMinutes != null) && (startTimeMinutes > endTimeMinutes))) null else endTimeMinutes,
             reminderOffsets = TaskReminderPreset.normalizeOffsets(startTimeMinutes, it.reminderOffsets)
         )
     }
-    fun updateTaskEndTime(endTimeMinutes: Int?) = updateTaskForm { it.copy(endTimeMinutes = endTimeMinutes) }
     fun updateTaskRepeat(repeatPreset: RepeatPreset) = updateTaskForm { it.copy(repeatPreset = repeatPreset) }
     fun updateTaskPriority(priority: TaskPriority) = updateTaskForm { it.copy(priority = priority) }
     fun toggleTaskReminder(offsetMinutes: Int) = updateTaskForm { form ->
@@ -615,13 +615,12 @@ class TaskViewModel(
         }
     }
 
-    fun updateDailyPlanStartTime(startTimeMinutes: Int?) = updateTaskDailyPlanItem { item ->
+    fun updateDailyPlanTime(startTimeMinutes: Int?, endTimeMinutes: Int?) = updateTaskDailyPlanItem { item ->
         item.copy(
             startTimeMinutes = startTimeMinutes,
-            endTimeMinutes = if (startTimeMinutes == null) null else item.endTimeMinutes
+            endTimeMinutes = if ((startTimeMinutes == null) || ((endTimeMinutes != null) && (startTimeMinutes > endTimeMinutes))) null else endTimeMinutes
         )
     }
-    fun updateDailyPlanEndTime(endTimeMinutes: Int?) = updateTaskDailyPlanItem { it.copy(endTimeMinutes = endTimeMinutes) }
 
     private fun updateTaskDailyPlanItem(transform: (DailyPlanItem) -> DailyPlanItem) {
         val updatedItem = (_uiState.value.editor as? TaskEditorState.TaskForm)

@@ -338,10 +338,8 @@ fun CheckItApp(
                                 onTaskListChange = viewModels.task::updateTaskListId,
                                 onTaskDescriptionChange = viewModels.task::updateTaskDescription,
                                 onTaskDoDateChange = viewModels.task::updateTaskDoDate,
-                                onTaskStartTimeChange = viewModels.task::updateTaskStartTime,
-                                onTaskEndTimeChange = viewModels.task::updateTaskEndTime,
-                                onDailyPlanStartTimeChange = viewModels.task::updateDailyPlanStartTime,
-                                onDailyPlanEndTimeChange = viewModels.task::updateDailyPlanEndTime,
+                                onTaskTimeChange = viewModels.task::updateTaskTime,
+                                onDailyPlanTimeChange = viewModels.task::updateDailyPlanTime,
                                 onDailyPlanStatus = viewModels.task::updateDailyPlanStatus,
                                 onDailyPlanDelete = { itemId ->
                                     viewModels.myDay.deleteDailyPlanItem(itemId)
@@ -386,8 +384,7 @@ fun CheckItApp(
                             onNoteChange = viewModels.myDay::updateNote,
                             onStatusChange = viewModels.myDay::updateStatus,
                             onSourceChange = viewModels.myDay::updateEditorSource,
-                            onStartTimeChange = viewModels.myDay::updateStartTime,
-                            onEndTimeChange = viewModels.myDay::updateEndTime,
+                            onTimeChange = viewModels.myDay::updateTime,
                             onTagToggle = viewModels.myDay::toggleTag,
                             onNewTagClick = viewModels.tag::openNewTag,
                             onAdd = viewModels.myDay::addDailyPlan,

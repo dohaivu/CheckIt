@@ -63,8 +63,7 @@ internal fun DailyPlanItemEditorSheet(
     onNoteChange: (String) -> Unit,
     onStatusChange: (Boolean) -> Unit,
     onSourceChange: (DailyPlanItemSource) -> Unit,
-    onStartTimeChange: (Int?) -> Unit,
-    onEndTimeChange: (Int?) -> Unit,
+    onTimeChange: (Int?, Int?) -> Unit,
     onTagToggle: (Long) -> Unit,
     onNewTagClick: () -> Unit,
     onAdd: () -> Unit,
@@ -102,8 +101,7 @@ internal fun DailyPlanItemEditorSheet(
                     onNoteChange = onNoteChange,
                     onStatusChange = onStatusChange,
                     onSourceChange = onSourceChange,
-                    onStartTimeChange = onStartTimeChange,
-                    onEndTimeChange = onEndTimeChange,
+                    onTimeChange = onTimeChange,
                     onTagToggle = onTagToggle,
                     onNewTagClick = onNewTagClick,
                     enabled = enabled
@@ -249,8 +247,7 @@ private fun DailyPlanItemFormContent(
     onNoteChange: (String) -> Unit,
     onStatusChange: (Boolean) -> Unit,
     onSourceChange: (DailyPlanItemSource) -> Unit,
-    onStartTimeChange: (Int?) -> Unit,
-    onEndTimeChange: (Int?) -> Unit,
+    onTimeChange: (Int?, Int?) -> Unit,
     onTagToggle: (Long) -> Unit,
     onNewTagClick: () -> Unit,
     enabled: Boolean
@@ -322,14 +319,13 @@ private fun DailyPlanItemFormContent(
             startTimeMinutes = state.startTimeMinutes,
             endTimeMinutes = state.endTimeMinutes,
             isOverdue = state.isOverdue,
-            onStartTimeChange = { timeMinutes ->
-                onStartTimeChange(timeMinutes)
+            onTimeChange = { startTime, endTime ->
+                onTimeChange(startTime, endTime)
                 if (!sourceLocked) {
-                    val nextStatus = displaySource.inferredAddStatus(timeMinutes)
+                    val nextStatus = displaySource.inferredAddStatus(startTime)
                     onStatusChange(nextStatus == DailyPlanItemStatus.Done)
                 }
             },
-            onEndTimeChange = onEndTimeChange,
             enabled = enabled
         )
 
@@ -408,8 +404,7 @@ private fun TimeSection(
     startTimeMinutes: Int?,
     endTimeMinutes: Int?,
     isOverdue: Boolean,
-    onStartTimeChange: (Int?) -> Unit,
-    onEndTimeChange: (Int?) -> Unit,
+    onTimeChange: (Int?, Int?) -> Unit,
     enabled: Boolean
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -424,7 +419,7 @@ private fun TimeSection(
                 label = "",
                 timeMinutes = startTimeMinutes,
                 initialTimeMinutes = currentTimeMinutes(),
-                onTimeChange = onStartTimeChange,
+                onTimeChange = { start -> onTimeChange(start, endTimeMinutes) },
                 enabled = enabled,
                 isOverdue = isOverdue
             )
@@ -432,8 +427,7 @@ private fun TimeSection(
             TimeRangePicker(
                 startTimeMinutes = startTimeMinutes,
                 endTimeMinutes = endTimeMinutes,
-                onStartTimeChange = onStartTimeChange,
-                onEndTimeChange = onEndTimeChange,
+                onTimeChange = onTimeChange,
                 enabled = enabled,
                 isOverdue = isOverdue
             )
