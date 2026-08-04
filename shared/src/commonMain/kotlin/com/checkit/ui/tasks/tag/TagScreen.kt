@@ -55,7 +55,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import com.checkit.domain.TaskTag
+import com.checkit.domain.TagItem
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.theme.toColor
 import kotlinx.coroutines.launch
@@ -63,7 +63,7 @@ import kotlin.math.roundToInt
 
 @Composable
 internal fun TagScreen(
-    tags: List<TaskTag>,
+    tags: List<TagItem>,
     selectedTagId: Long?,
     tagViewModel: TagViewModel,
     onTagClick: (Long) -> Unit,
@@ -160,7 +160,7 @@ internal fun TagScreen(
 
 @Composable
 private fun TagRow(
-    tag: TaskTag,
+    tag: TagItem,
     usageCount: Int,
     selected: Boolean,
     isDragging: Boolean,

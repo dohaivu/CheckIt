@@ -10,7 +10,7 @@ import com.checkit.domain.LeftoverAction
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
-import com.checkit.domain.TaskTag
+import com.checkit.domain.TagItem
 import com.checkit.domain.YesterdayLeftovers
 import com.checkit.domain.defaultLeftoverAction
 import com.checkit.ui.tasks.EditorMode
@@ -25,7 +25,7 @@ sealed class SprintChoice {
 
 sealed interface FabAction {
     data object QuickSprint : FabAction
-    data class TagSprint(val tag: TaskTag) : FabAction
+    data class TagSprint(val tag: TagItem) : FabAction
 }
 
 data class MyDayUiState(
@@ -53,7 +53,7 @@ data class MyDayUiState(
     val showCelebration: Boolean = false,
     val suggestionStartTimeMinutes: Int? = null,
     val suggestionEndTimeMinutes: Int? = null,
-    val recentTags: List<TaskTag> = emptyList(),
+    val recentTags: List<TagItem> = emptyList(),
     val lastFabAction: FabAction = FabAction.QuickSprint,
     val dayReviews: List<DayReviewRecord> = emptyList(),
     val reviewStreak: Int = 0,

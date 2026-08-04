@@ -19,7 +19,7 @@ import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskReminder
 import com.checkit.domain.TaskReminderWriteInput
 import com.checkit.domain.TaskStatus
-import com.checkit.domain.TaskTag
+import com.checkit.domain.TagItem
 import com.checkit.domain.TaskType
 import com.checkit.domain.hasEndTime
 import com.checkit.notifications.DailyPlanScheduleReminderScheduler
@@ -29,7 +29,6 @@ import com.checkit.notifications.ScheduledTaskReminder
 import com.checkit.notifications.TaskReminderNotificationScheduler
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -888,7 +887,7 @@ private fun KeyResultEntity.toDomain() = KeyResult(
     sortOrder = sortOrder
 )
 
-private fun TagEntity.toDomain() = TaskTag(
+private fun TagEntity.toDomain() = TagItem(
     id = id,
     name = name,
     color = color,
@@ -920,7 +919,7 @@ private fun TaskEntity.toDomain(
     keyResult: KeyResult?,
     subtasks: List<SubTaskItem>,
     reminders: List<TaskReminder>,
-    tags: List<TaskTag>
+    tags: List<TagItem>
 ) = TaskItem(
     id = id,
     objective = objective,
@@ -944,7 +943,7 @@ private fun TaskEntity.toDomain(
     trashedAtMillis = trashedAtMillis
 )
 
-private fun DailyPlanItemEntity.toDomain(tags: List<TaskTag> = emptyList()) = DailyPlanItem(
+private fun DailyPlanItemEntity.toDomain(tags: List<TagItem> = emptyList()) = DailyPlanItem(
     id = id,
     dateEpochDays = dateEpochDays,
     taskId = taskId,
@@ -988,7 +987,7 @@ private fun TaskReminderEntity.toDomain() = TaskReminder(
     label = label
 )
 
-private fun NoteEntity.toDomain(objective: Objective, tags: List<TaskTag>) = NoteItem(
+private fun NoteEntity.toDomain(objective: Objective, tags: List<TagItem>) = NoteItem(
     id = id,
     objective = objective,
     title = title,

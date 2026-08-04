@@ -1,7 +1,7 @@
 package com.checkit.ui.tasks
 
 import com.checkit.domain.TaskBoard
-import com.checkit.domain.TaskTag
+import com.checkit.domain.TagItem
 import com.checkit.domain.usecase.AddTagUseCase
 import com.checkit.domain.usecase.DeleteTagUseCase
 import com.checkit.domain.usecase.IsTagNameTakenUseCase
@@ -27,7 +27,7 @@ class TaskTagEditorViewModelTest {
     private lateinit var repository: FakeCheckItRepository
     private lateinit var viewModel: TagViewModel
 
-    private val existingTag = TaskTag(
+    private val existingTag = TagItem(
         id = 42L,
         name = "Work",
         color = "#7C3AED"

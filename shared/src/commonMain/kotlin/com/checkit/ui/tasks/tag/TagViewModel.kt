@@ -3,7 +3,7 @@ package com.checkit.ui.tasks.tag
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.checkit.data.TagWriteInput
-import com.checkit.domain.TaskTag
+import com.checkit.domain.TagItem
 import com.checkit.domain.usecase.AddTagUseCase
 import com.checkit.domain.usecase.DeleteTagUseCase
 import com.checkit.domain.usecase.IsTagNameTakenUseCase
@@ -70,7 +70,7 @@ class TagViewModel(
         _uiState.update { it.copy(editor = TagEditorState(mode = EditorMode.Add)) }
     }
 
-    fun openEditTag(tag: TaskTag) {
+    fun openEditTag(tag: TagItem) {
         _uiState.update {
             it.copy(
                 editor = TagEditorState(
@@ -128,7 +128,7 @@ class TagViewModel(
         }
     }
 
-    fun updateTagSortOrders(tags: List<TaskTag>) {
+    fun updateTagSortOrders(tags: List<TagItem>) {
         val updater = updateTagSortOrder ?: return
         viewModelScope.launch {
             tags.forEachIndexed { index, tag ->

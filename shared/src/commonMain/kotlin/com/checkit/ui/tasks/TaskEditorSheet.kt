@@ -53,7 +53,7 @@ import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.Objective
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
-import com.checkit.domain.TaskTag
+import com.checkit.domain.TagItem
 import com.checkit.domain.TaskType
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppHorizontalDivider
@@ -73,7 +73,7 @@ import kotlinx.datetime.LocalDate
 internal fun TaskEditorSheet(
     editor: TaskEditorState,
     availableLists: List<Objective>,
-    availableTags: List<TaskTag>,
+    availableTags: List<TagItem>,
     actions: TaskEditorActions
 ) {
     val onDismiss = actions.onDismiss
@@ -397,7 +397,7 @@ private fun SheetFooter(
 private fun TaskFormContent(
     form: TaskEditorState.TaskForm,
     availableLists: List<Objective>,
-    availableTags: List<TaskTag>,
+    availableTags: List<TagItem>,
     onNameChange: (String) -> Unit,
     onListChange: (Long) -> Unit,
     onDescriptionChange: (String) -> Unit,
@@ -653,7 +653,7 @@ private fun DailyPlanSection(
 private fun NoteFormContent(
     form: TaskEditorState.NoteForm,
     availableLists: List<Objective>,
-    availableTags: List<TaskTag>,
+    availableTags: List<TagItem>,
     onTitleChange: (String) -> Unit,
     onContentChange: (String) -> Unit,
     onListChange: (Long) -> Unit,

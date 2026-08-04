@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -31,7 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.DailyPlanItem
-import com.checkit.domain.TaskTag
+import com.checkit.domain.TagItem
 import com.checkit.ui.shortcutDurationLabel
 import com.checkit.ui.tasks.cardColor
 import com.checkit.ui.theme.toColor
@@ -90,7 +89,7 @@ private fun DayTagTotals(items: List<DailyPlanItem>) {
 }
 
 @Composable
-private fun TagTimeChip(tag: TaskTag, minutes: Int) {
+private fun TagTimeChip(tag: TagItem, minutes: Int) {
     val tagColor = remember(tag) { tag.color.toColor() }
     Text(
         text = "${tag.name} ${minutes.shortcutDurationLabel()}",
@@ -214,7 +213,7 @@ private data class DayTimelineBlock(
 }
 
 internal data class TagTimeAggregate(
-    val tag: TaskTag,
+    val tag: TagItem,
     val minutes: Int
 )
 

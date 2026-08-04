@@ -9,7 +9,7 @@ import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.Objective
 import com.checkit.domain.TaskStatus
-import com.checkit.domain.TaskTag
+import com.checkit.domain.TagItem
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -20,8 +20,8 @@ class BuildDailyPlanMarkdownSummaryUseCaseTest {
 
     @Test
     fun buildsMinimalChronologicalMarkdownForDoneItems() {
-        val work = TaskTag(id = 1L, name = "Work", color = "#2563EB")
-        val planning = TaskTag(id = 2L, name = "Planning", color = "#059669")
+        val work = TagItem(id = 1L, name = "Work", color = "#2563EB")
+        val planning = TagItem(id = 2L, name = "Planning", color = "#059669")
         val task = task(
             id = 10L,
             name = "Plan the day",
@@ -46,7 +46,7 @@ class BuildDailyPlanMarkdownSummaryUseCaseTest {
                     source = DailyPlanItemSource.MyDayNote,
                     startTimeMinutes = 10 * 60 + 15,
                     endTimeMinutes = null,
-                    tags = listOf(TaskTag(id = 3L, name = "Product", color = "#7C3AED"))
+                    tags = listOf(TagItem(id = 3L, name = "Product", color = "#7C3AED"))
                 ),
                 item(
                     id = 3L,
@@ -139,7 +139,7 @@ class BuildDailyPlanMarkdownSummaryUseCaseTest {
                     title = "   ",
                     note = "No title needed.",
                     startTimeMinutes = 9 * 60,
-                    tags = listOf(TaskTag(id = 1L, name = "Hidden", color = "#2563EB"))
+                    tags = listOf(TagItem(id = 1L, name = "Hidden", color = "#2563EB"))
                 )
             )
         )
@@ -201,7 +201,7 @@ class BuildDailyPlanMarkdownSummaryUseCaseTest {
         status: DailyPlanItemStatus = DailyPlanItemStatus.Done,
         startTimeMinutes: Int? = null,
         endTimeMinutes: Int? = null,
-        tags: List<TaskTag> = emptyList()
+        tags: List<TagItem> = emptyList()
     ) = DailyPlanItem(
         id = id,
         dateEpochDays = date.toEpochDays().toInt(),

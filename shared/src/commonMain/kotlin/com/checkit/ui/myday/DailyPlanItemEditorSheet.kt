@@ -40,7 +40,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
-import com.checkit.domain.TaskTag
+import com.checkit.domain.TagItem
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DeleteOverflowMenu
@@ -57,7 +57,7 @@ import kotlinx.datetime.minus
 @Composable
 internal fun DailyPlanItemEditorSheet(
     state: DailyPlanItemEditorState,
-    availableTags: List<TaskTag>,
+    availableTags: List<TagItem>,
     onDismiss: () -> Unit,
     onTitleChange: (String) -> Unit,
     onNoteChange: (String) -> Unit,
@@ -242,7 +242,7 @@ private fun SourceIconBadge(source: DailyPlanItemSource) {
 @Composable
 private fun DailyPlanItemFormContent(
     state: DailyPlanItemEditorState,
-    availableTags: List<TaskTag>,
+    availableTags: List<TagItem>,
     onTitleChange: (String) -> Unit,
     onNoteChange: (String) -> Unit,
     onStatusChange: (Boolean) -> Unit,
@@ -499,7 +499,7 @@ private fun AddModeIntentControls(
 @Composable
 private fun LabeledTagPicker(
     source: DailyPlanItemSource,
-    availableTags: List<TaskTag>,
+    availableTags: List<TagItem>,
     selectedTagIds: Set<Long>,
     onTagToggle: (Long) -> Unit,
     onNewTagClick: () -> Unit,

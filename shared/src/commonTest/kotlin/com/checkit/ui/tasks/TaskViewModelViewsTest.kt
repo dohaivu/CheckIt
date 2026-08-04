@@ -11,7 +11,7 @@ import com.checkit.domain.TaskFilter
 import com.checkit.domain.TaskItem
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskPriority
-import com.checkit.domain.TaskTag
+import com.checkit.domain.TagItem
 import com.checkit.domain.TaskType
 import com.checkit.domain.usecase.AddNoteUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
@@ -25,7 +25,6 @@ import com.checkit.domain.usecase.RestoreNoteUseCase
 import com.checkit.domain.usecase.RestoreTaskUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
-import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
@@ -257,8 +256,8 @@ class TaskViewModelViewsTest {
     @Test
     fun togglingTaskTagAlsoUpdatesDailyPlanItemTags() = runTest(dispatcher) {
         val inbox = Objective(id = 1L, name = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
-        val workTag = TaskTag(id = 1L, name = "Work", color = "#DC2626", sortOrder = 0)
-        val homeTag = TaskTag(id = 2L, name = "Home", color = "#0891B2", sortOrder = 1)
+        val workTag = TagItem(id = 1L, name = "Work", color = "#DC2626", sortOrder = 0)
+        val homeTag = TagItem(id = 2L, name = "Home", color = "#0891B2", sortOrder = 1)
         val item = task(id = 5L, objective = inbox, name = "Gym", tags = listOf(workTag))
         viewModel = createViewModel(
             TaskBoard(
@@ -331,7 +330,7 @@ class TaskViewModelViewsTest {
         name: String,
         description: String = "",
         type: TaskType = TaskType.Task,
-        tags: List<TaskTag> = emptyList()
+        tags: List<TagItem> = emptyList()
     ) = TaskItem(
         id = id,
         objective = objective,

@@ -23,7 +23,7 @@ import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.Objective
 import com.checkit.domain.TaskReminder
-import com.checkit.domain.TaskTag
+import com.checkit.domain.TagItem
 import com.checkit.domain.hasEndTime
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -237,7 +237,7 @@ internal class FakeCheckItRepository(
         lastAssignedTagId = id
         boardFlow.update { board ->
             board.copy(
-                tags = board.tags + TaskTag(
+                tags = board.tags + TagItem(
                     id = id,
                     name = input.name,
                     color = input.color

@@ -40,14 +40,14 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEachReversed
-import com.checkit.domain.TaskTag
+import com.checkit.domain.TagItem
 import com.checkit.ui.theme.toColor
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SpeedSprintFab(
     lastAction: FabAction,
-    recentTags: List<TaskTag>,
+    recentTags: List<TagItem>,
     onExecuteAction: (FabAction) -> Unit,
     modifier: Modifier = Modifier
 ) {

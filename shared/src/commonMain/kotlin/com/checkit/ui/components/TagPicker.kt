@@ -3,7 +3,6 @@ package com.checkit.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.padding
@@ -13,8 +12,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.LocalOffer
-import androidx.compose.material.icons.outlined.Sell
-import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -26,14 +23,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.checkit.domain.TaskTag
+import com.checkit.domain.TagItem
 import com.checkit.ui.tasks.views.ContentAlpha
 import com.checkit.ui.theme.toColor
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TagOptionMenu(
-    availableTags: List<TaskTag>,
+    availableTags: List<TagItem>,
     selectedTagIds: Set<Long>,
     onTagToggle: (Long) -> Unit,
     onNewTagClick: () -> Unit = {}
@@ -92,7 +89,7 @@ fun TagOptionMenu(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TagPicker(
-    availableTags: List<TaskTag>,
+    availableTags: List<TagItem>,
     selectedTagIds: Set<Long>,
     onTagToggle: (Long) -> Unit,
     onNewTagClick: () -> Unit = {},
@@ -110,7 +107,7 @@ fun TagPicker(
         modifier = modifier,
         anchor = {
             if (selectedTags.isEmpty()) {
-                TagPill(tag = TaskTag.None, selected = false, onClick = { if (enabled) expanded = true })
+                TagPill(tag = TagItem.None, selected = false, onClick = { if (enabled) expanded = true })
             } else {
                 FlowRow(
                     modifier = Modifier,
@@ -169,7 +166,7 @@ internal fun NewTagPill(
 
 @Composable
 internal fun TagPill(
-    tag: TaskTag,
+    tag: TagItem,
     selected: Boolean = false,
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier

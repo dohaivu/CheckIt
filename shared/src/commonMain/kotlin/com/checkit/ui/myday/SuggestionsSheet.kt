@@ -42,7 +42,7 @@ import checkit.shared.generated.resources.leftovers_section_title
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.Objective
 import com.checkit.domain.TaskItem
-import com.checkit.domain.TaskTag
+import com.checkit.domain.TagItem
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.localizedCompactDateWithDayName
@@ -58,7 +58,7 @@ import org.jetbrains.compose.resources.stringResource
 internal fun SuggestionsSheet(
     tasks: List<TaskItem>,
     leftovers: List<DailyPlanItem>,
-    availableTags: List<TaskTag>,
+    availableTags: List<TagItem>,
     onDismiss: () -> Unit,
     onTaskClick: (TaskItem) -> Unit,
     onAddTask: (TaskItem) -> Unit,
