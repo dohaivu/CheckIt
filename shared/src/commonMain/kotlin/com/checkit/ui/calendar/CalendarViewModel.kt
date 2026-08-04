@@ -4,9 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DayReviewRecord
+import com.checkit.domain.JournalEntry
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveDayReviewsUseCase
+import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.ui.firstDayOfMonth
 import com.checkit.ui.today
@@ -26,6 +28,7 @@ class CalendarViewModel(
     private val observeTaskBoard: ObserveTaskBoardUseCase,
     private val observeDailyPlans: ObserveDailyPlansUseCase,
     private val observeDayReviews: ObserveDayReviewsUseCase,
+    private val observeJournalEntries: ObserveJournalEntriesUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(CalendarUiState())
     val uiState: StateFlow<CalendarUiState> = _uiState.asStateFlow()
@@ -35,20 +38,22 @@ class CalendarViewModel(
             combine(
                 observeTaskBoard(),
                 observeDailyPlans(),
-                observeDayReviews()
-            ) { board, dailyPlans, dayReviews ->
-                CalendarCombined(board, dailyPlans, dayReviews)
+                observeDayReviews(),
+                observeJournalEntries()
+            ) { board, dailyPlans, dayReviews, journalEntries ->
+                CalendarCombined(board, dailyPlans, dayReviews, journalEntries)
             }
                 .catch { _ ->
                     _uiState.update { it.copy() }
                 }
-                .collect { (board, dailyPlans, dayReviews) ->
+                .collect { (board, dailyPlans, dayReviews, journalEntries) ->
                     _uiState.update { state ->
                         val availableTagIds = board.tags.map { it.id }.toSet()
                         state.copy(
                             board = board,
                             dailyPlans = dailyPlans,
                             dayReviews = dayReviews,
+                            journalEntries = journalEntries,
                             selectedTagIds = state.selectedTagIds.intersect(availableTagIds)
                         )
                     }
@@ -141,5 +146,6 @@ class CalendarViewModel(
 private data class CalendarCombined(
     val board: TaskBoard,
     val dailyPlans: List<DailyPlan>,
-    val dayReviews: List<DayReviewRecord>
+    val dayReviews: List<DayReviewRecord>,
+    val journalEntries: List<JournalEntry>
 )

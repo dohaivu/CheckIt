@@ -37,7 +37,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.checkit.ui.shortName
 import com.checkit.ui.shortMonthName
+import androidx.compose.material3.RichTooltip
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.rememberTooltipState
+import androidx.compose.ui.unit.sp
+import com.checkit.domain.JournalEntry
 import com.checkit.ui.tasks.TimelineItem
+import com.checkit.ui.tasks.TimelineItemType
 import com.checkit.ui.tasks.toClockLabel
 import com.checkit.ui.today
 import kotlinx.coroutines.launch
@@ -343,14 +351,65 @@ private fun AgendaTimedRow(
     onItemClick: (TimelineItem) -> Unit,
     itemContent: @Composable (TimelineItem) -> Unit
 ) {
-    AgendaAxisRow(
-        label = item.startTimeMinutes?.toClockLabel() ?: "",
-        showTopLine = showTopLine,
-        showBottomLine = showBottomLine,
-        isHighlighted = isHighlighted
-    ) {
-        Box(Modifier.clickable { onItemClick(item) }) {
+    if (item.type == TimelineItemType.Journal) {
+        val entry = item.tag as? JournalEntry
+        AgendaAxisRow(
+            label = item.startTimeMinutes?.toClockLabel() ?: "",
+            showTopLine = showTopLine,
+            showBottomLine = showBottomLine,
+            isHighlighted = isHighlighted,
+            marker = {
+                if (entry != null) {
+                    JournalMoodMarker(entry)
+                } else {
+                    AgendaAxisMarker(showTopLine, showBottomLine, isHighlighted)
+                }
+            }
+        ) {
             itemContent(item)
+        }
+    } else {
+        AgendaAxisRow(
+            label = item.startTimeMinutes?.toClockLabel() ?: "",
+            showTopLine = showTopLine,
+            showBottomLine = showBottomLine,
+            isHighlighted = isHighlighted
+        ) {
+            Box(Modifier.clickable { onItemClick(item) }) {
+                itemContent(item)
+            }
+        }
+    }
+}
+
+@Composable
+private fun JournalMoodMarker(entry: JournalEntry) {
+    val tooltipState = rememberTooltipState(isPersistent = true)
+    val scope = rememberCoroutineScope()
+
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+            positioning = TooltipAnchorPosition.Above
+        ),
+        tooltip = {
+            RichTooltip(
+                title = { Text(entry.context ?: "Check-In") }
+            ) {
+                Text(entry.content)
+            }
+        },
+        state = tooltipState
+    ) {
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .clickable { scope.launch { tooltipState.show() } },
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = entry.moods.firstOrNull() ?: "📝",
+                fontSize = 16.sp
+            )
         }
     }
 }
@@ -361,6 +420,9 @@ private fun AgendaAxisRow(
     showTopLine: Boolean,
     showBottomLine: Boolean,
     isHighlighted: Boolean,
+    marker: @Composable () -> Unit = {
+        AgendaAxisMarker(showTopLine = showTopLine, showBottomLine = showBottomLine, isHighlighted = isHighlighted)
+    },
     content: @Composable () -> Unit
 ) {
     Row(
@@ -371,7 +433,14 @@ private fun AgendaAxisRow(
         verticalAlignment = Alignment.Top
     ) {
         AgendaAxisLabel(text = label, isHighlighted)
-        AgendaAxisMarker(showTopLine = showTopLine, showBottomLine = showBottomLine, isHighlighted = isHighlighted)
+        Box(
+            modifier = Modifier
+                .width(14.dp)
+                .fillMaxHeight(),
+            contentAlignment = Alignment.TopCenter
+        ) {
+            marker()
+        }
         Box(
             Modifier
                 .weight(1f)

@@ -9,7 +9,7 @@ import kotlinx.datetime.LocalDate
 data class MyDayTaskViewProjection(
     val plannedTasks: List<PlannedTaskProjection>,
     val notes: List<NoteItem>,
-    val checkIns: List<DailyPlanItem>,
+    val dailyPlanItems: List<DailyPlanItem>,
 ) {
     val tasks: List<TaskItem> = plannedTasks.map { it.task }
 }
@@ -46,6 +46,6 @@ fun List<DailyPlanItem>.toTaskViewProjection(
     return MyDayTaskViewProjection(
         plannedTasks = projectedTasks,
         notes = projectedNotes,
-        checkIns = projectedCheckIns
+        dailyPlanItems = projectedCheckIns
     )
 }

@@ -532,7 +532,7 @@ private sealed class GlanceAgendaItem {
 private fun MyDayTaskViewProjection.toWidgetItems(timed: Boolean): List<GlanceAgendaItem> {
     val items = plannedTasks.map { GlanceAgendaItem.Task(it) } +
         notes.map { GlanceAgendaItem.Note(it) } +
-        checkIns.map { GlanceAgendaItem.DailyPlan(it) }
+        dailyPlanItems.map { GlanceAgendaItem.DailyPlan(it) }
     return items
         .asSequence()
         .filter { (it.startTimeMinutes != null) == timed }

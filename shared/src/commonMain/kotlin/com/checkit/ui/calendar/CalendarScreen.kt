@@ -67,6 +67,7 @@ import checkit.shared.generated.resources.relative_yesterday
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
+import com.checkit.domain.JournalEntry
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
@@ -262,6 +263,7 @@ private fun SelectedDateContent(
                 board = content.board,
                 date = content.date,
                 activeSprint = null,
+                journalEntries = content.journalEntries,
                 onItemClick = { onDailyPlanItemClick(it, content.date) },
                 onTaskClick = onTaskClick,
                 onNoteClick = onNoteClick,
@@ -567,6 +569,7 @@ private data class SelectedCalendarDateContent(
     val showDailyPlan: Boolean,
     val dailyPlan: DailyPlan?,
     val dailyPlanItems: List<DailyPlanItem>,
+    val journalEntries: List<JournalEntry>,
     val tasks: List<TaskItem>,
     val notes: List<NoteItem>
 ) {
@@ -578,12 +581,14 @@ private data class SelectedCalendarDateContent(
 private fun CalendarUiState.selectedDateContent(today: LocalDate): SelectedCalendarDateContent {
     val showDailyPlan = selectedDate <= today
     val dailyPlan = dailyPlanForDate(selectedDate)
+    val dateEpochDays = selectedDate.toEpochDays()
     return SelectedCalendarDateContent(
         date = selectedDate,
         board = board,
         showDailyPlan = showDailyPlan,
         dailyPlan = dailyPlan,
         dailyPlanItems = dailyPlan?.items.orEmpty(),
+        journalEntries = journalEntries.filter { it.dateEpochDays == dateEpochDays.toInt() },
         tasks = tasksForDate(selectedDate),
         notes = notesForDate(selectedDate)
     )
