@@ -82,16 +82,29 @@ data class MyDayUiState(
     val yesterdayDate: LocalDate get() = YesterdayLeftovers.sourceDate(today)
 
     val sprintSuggestedToday: List<SprintChoice> = plannedItems
-        .take(3)
+        .take(5)
         .map { item -> SprintChoice.PlanItem(item, board.tasksById[item.taskId]) }
 
     val sprintSuggestedYesterday: List<SprintChoice> = pendingYesterdayLeftovers
         .take(3)
         .map { item -> SprintChoice.PlanItem(item, board.tasksById[item.taskId]) }
 
+    val sprintSuggestedTasks: List<TaskItem> = suggestedTasks
+        .filter { task ->
+            val excludedTaskIds = (sprintSuggestedToday + sprintSuggestedYesterday).mapNotNull { choice ->
+                when (choice) {
+                    is SprintChoice.Task -> choice.task.id
+                    is SprintChoice.PlanItem -> choice.task?.id
+                }
+            }.toSet()
+            task.id !in excludedTaskIds
+        }
+        .take(5)
+
     val continueSprintItem: SprintChoice? = doneItems.lastOrNull()?.let { SprintChoice.PlanItem(it, board.tasksById[it.taskId]) }
         ?: sprintSuggestedToday.firstOrNull()
         ?: sprintSuggestedYesterday.firstOrNull()
+        ?: sprintSuggestedTasks.firstOrNull()?.let { SprintChoice.Task(it) }
 }
 
 data class DayReviewUiState(

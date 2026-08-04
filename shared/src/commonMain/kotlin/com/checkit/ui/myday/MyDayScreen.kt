@@ -252,7 +252,7 @@ internal fun MyDayScreen(
         QuickSprintSheet(
             suggestedToday = state.sprintSuggestedToday,
             suggestedYesterday = state.sprintSuggestedYesterday,
-            suggestedTasks = state.suggestedTasks,
+            suggestedTasks = state.sprintSuggestedTasks,
             availableTags = state.board.tags,
             continueItem = state.continueSprintItem,
             onStartSprint = { taskId, dailyPlanItemId, description, tagIds ->
