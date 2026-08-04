@@ -1,8 +1,10 @@
 package com.checkit.ui.myday
 
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -18,11 +20,11 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -79,18 +81,15 @@ internal fun JournalSection(
             color = MaterialTheme.colorScheme.onSurface
         )
         if (entries.isNotEmpty()) {
-            Surface(
-                color = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text(
-                    text = "${entries.size}",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                )
-            }
+            Text(
+                text = "${entries.size}",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier
+                    .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(8.dp))
+                    .padding(horizontal = 8.dp, vertical = 2.dp)
+            )
         }
         Spacer(Modifier.weight(1f))
         IconButton(onClick = onAddClick) {
@@ -124,27 +123,23 @@ internal fun MoodRow(
     ) {
         JournalMoodOptions.forEach { mood ->
             val selected = mood in moods
-            Surface(
-                color = if (selected) {
-                    MaterialTheme.colorScheme.primaryContainer
-                } else {
-                    MaterialTheme.colorScheme.surface
-                },
-                shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(
-                    width = 1.dp,
-                    color = if (selected) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.outlineVariant
-                    }
-                ),
-                modifier = Modifier.clickable { onToggle(mood) }
+            Box(
+                modifier = Modifier
+                    .background(
+                        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .border(
+                        width = 1.dp,
+                        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .clickable { onToggle(mood) }
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Text(
                     text = mood,
-                    fontSize = 18.sp,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    fontSize = 18.sp
                 )
             }
         }
@@ -189,63 +184,60 @@ internal fun JournalEntryCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Surface(
-        onClick = onClick,
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(12.dp),
-        tonalElevation = 1.dp,
-        modifier = modifier.fillMaxWidth()
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Top,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                if (entry.hasContent || !entry.context.isNullOrBlank()) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        if (!entry.context.isNullOrBlank()) {
-                            Text(
-                                text = entry.context,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                        if (entry.hasContent) {
-                            Text(
-                                text = entry.content,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    if (entry.moods.isNotEmpty()) {
+            if (entry.hasContent || !entry.context.isNullOrBlank()) {
+                Column(modifier = Modifier.weight(1f)) {
+                    if (!entry.context.isNullOrBlank()) {
                         Text(
-                            text = entry.moods.joinToString(" "),
-                            fontSize = 15.sp
+                            text = entry.context,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
-                    Text(
-                        text = entry.createdAtMillis.toTimeMinutes().toClockLabel(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    if (entry.hasContent) {
+                        Text(
+                            text = entry.content,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
-            if (entry.tags.isNotEmpty()) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    entry.tags.forEach { tag ->
-                        TagPill(tag = tag)
-                    }
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                if (entry.moods.isNotEmpty()) {
+                    Text(
+                        text = entry.moods.joinToString(" "),
+                        fontSize = 15.sp
+                    )
+                }
+                Text(
+                    text = entry.createdAtMillis.toTimeMinutes().toClockLabel(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        if (entry.tags.isNotEmpty()) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                entry.tags.forEach { tag ->
+                    TagPill(tag = tag)
                 }
             }
         }
