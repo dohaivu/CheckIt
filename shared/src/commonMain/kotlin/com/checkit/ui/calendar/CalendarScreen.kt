@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Star
@@ -101,6 +102,7 @@ internal fun CalendarScreen(
     calendarViewModel: CalendarViewModel,
     onDateDoubleClick: (LocalDate) -> Unit,
     onDailyPlanItemClick: (DailyPlanItem, LocalDate) -> Unit,
+    onJournalListClick: (LocalDate) -> Unit,
     onAddDailyPlanItem: (LocalDate) -> Unit,
     onTaskClick: (TaskItem, DailyPlanItem?) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
@@ -191,9 +193,11 @@ internal fun CalendarScreen(
                                 today = today,
                                 taskCount = selectedContent.taskCount,
                                 noteCount = selectedContent.noteCount,
+                                journalCount = selectedContent.journalEntries.size,
                                 summaryEnabled = selectedContent.showDailyPlan && state.showDailyPlanSummary,
                                 summaryAvailable = selectedContent.showDailyPlan,
                                 onSummaryToggle = calendarViewModel::toggleDailyPlanSummary,
+                                onJournalClick = { onJournalListClick(state.selectedDate) },
                                 winNote = state.selectedDateWinNote
                             )
                             if (selectedContent.showDailyPlan) {
@@ -377,9 +381,11 @@ private fun SelectedDateHeader(
     today: LocalDate,
     taskCount: Int,
     noteCount: Int,
+    journalCount: Int,
     summaryEnabled: Boolean,
     summaryAvailable: Boolean,
     onSummaryToggle: () -> Unit,
+    onJournalClick: () -> Unit,
     winNote: String?
 ) {
     val isToday = date == today
@@ -484,6 +490,11 @@ private fun SelectedDateHeader(
                 ) {
                     CountBadge(icon = Icons.Default.TaskAlt, count = taskCount)
                     CountBadge(icon = Icons.AutoMirrored.Filled.Notes, count = noteCount)
+                    CountBadge(
+                        icon = Icons.Default.EditNote,
+                        count = journalCount,
+                        onClick = onJournalClick
+                    )
                     if (summaryAvailable) {
                         IconButton(
                             onClick = onSummaryToggle,
@@ -595,9 +606,15 @@ private fun CalendarUiState.selectedDateContent(today: LocalDate): SelectedCalen
 }
 
 @Composable
-private fun CountBadge(icon: androidx.compose.ui.graphics.vector.ImageVector, count: Int) {
+private fun CountBadge(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    count: Int,
+    onClick: (() -> Unit)? = null
+) {
     if (count <= 0) return
     Surface(
+        onClick = onClick ?: {},
+        enabled = onClick != null,
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
         shape = RoundedCornerShape(8.dp)
     ) {

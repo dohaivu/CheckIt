@@ -133,7 +133,7 @@ class MyDayViewModel(
     fun smartSchedule() = smartScheduler.scheduleAll()
 
     // Journal
-    fun openJournalList() = journal.openJournalList()
+    fun openJournalList(date: LocalDate? = null) = journal.openJournalList(date)
     fun dismissJournalList() = journal.dismissJournalList()
     fun openNewJournalEntry() = journal.openNewJournalEntry()
     fun openJournalEditor(entry: JournalEntry) = journal.openJournalEditor(entry)

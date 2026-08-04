@@ -271,6 +271,7 @@ fun CheckItApp(
                                             calendarViewModel = viewModels.calendar,
                                             onDateDoubleClick = { date -> viewModels.task.openNewTaskOnDate(date) },
                                             onDailyPlanItemClick = viewModels.myDay::openItemEditor,
+                                            onJournalListClick = viewModels.myDay::openJournalList,
                                             onAddDailyPlanItem = { date -> viewModels.myDay.openDailyPlan(date = date) },
                                             onTaskClick = viewModels.task::openTask,
                                             onNoteClick = viewModels.task::openNote,
@@ -412,7 +413,7 @@ fun CheckItApp(
                     }
                     if (myDayUiState.showJournalList) {
                         JournalListSheet(
-                            entries = myDayUiState.journalVisibleEntries,
+                            entries = myDayUiState.journalSheetEntries,
                             onEntryClick = { entry ->
                                 viewModels.myDay.dismissJournalList()
                                 viewModels.myDay.openJournalEditor(entry)
