@@ -113,19 +113,18 @@ internal fun WorkTimeChip(
     val mins = minutes % 60
     Column(
         modifier = modifier
-            .widthIn(min = 44.dp)
             .background(
                 color = MaterialTheme.colorScheme.primaryContainer,
                 shape = RoundedCornerShape(10.dp)
             )
-            .padding(horizontal = 8.dp, vertical = 2.dp),
+            .padding(horizontal = 6.dp, vertical = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         if (hours > 0) {
             Text(
                 text = "${hours}h",
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )
