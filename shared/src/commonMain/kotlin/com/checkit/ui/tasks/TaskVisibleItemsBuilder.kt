@@ -5,6 +5,7 @@ import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
+import com.checkit.domain.TaskType
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.TaskBoardSelection
 import kotlinx.datetime.LocalDate
@@ -71,15 +72,24 @@ internal class TaskVisibleItemsBuilder(
             tagFilteredItems
         }
 
+        val viewItems = if (options.selectedView == TaskWorkspaceView.Habits) {
+            SelectedTaskItems(
+                tasks = selectedItems.tasks.filter { it.type == TaskType.Habit },
+                notes = emptyList()
+            )
+        } else {
+            selectedItems
+        }
+
         val visibleEntries = mutableListOf<TaskListEntry>()
         val query = options.searchText.trim()
         val shouldHideCompleted = !options.showCompleted && selectedFilter?.status != TaskStatus.Completed
-        selectedItems.tasks.forEach { task ->
+        viewItems.tasks.forEach { task ->
             if (task.isVisible(shouldHideCompleted, query)) {
                 visibleEntries += TaskListEntry.Task(task)
             }
         }
-        selectedItems.notes.forEach { note ->
+        viewItems.notes.forEach { note ->
             if (note.isVisible(shouldHideCompleted, query)) {
                 visibleEntries += TaskListEntry.Note(note)
             }

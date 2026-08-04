@@ -5,11 +5,13 @@ import com.checkit.ui.currentMyDayTimeMinutes
 fun nextAvailableTimeRange(
     preferredStartTimeMinutes: Int,
     durationMinutes: Int,
-    items: List<DailyPlanItem>
+    items: List<DailyPlanItem>,
+    earliestStartTimeMinutes: Int = 0
 ): Pair<Int?, Int?> {
     val duration = durationMinutes.coerceIn(MinimumPlanDurationMinutes, MyDayMinutesPerDay)
     val lastStart = MyDayMinutesPerDay - duration
-    val preferredStart = preferredStartTimeMinutes.coerceIn(0, lastStart)
+    val earliestStart = earliestStartTimeMinutes.coerceIn(0, lastStart)
+    val preferredStart = preferredStartTimeMinutes.coerceIn(earliestStart, lastStart)
     val occupiedRanges = items
         .mapNotNull { it.occupiedTimeRange() }
         .sortedBy { it.first }
@@ -17,7 +19,7 @@ fun nextAvailableTimeRange(
     findAvailableStart(preferredStart, duration, occupiedRanges)?.let { start ->
         return start to start + duration
     }
-    findAvailableStart(0, duration, occupiedRanges)?.let { start ->
+    findAvailableStart(earliestStart, duration, occupiedRanges)?.let { start ->
         return start to start + duration
     }
     return null to null

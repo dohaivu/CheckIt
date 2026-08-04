@@ -37,11 +37,13 @@ import com.checkit.domain.Objective
 import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
+import com.checkit.domain.TaskType
 import com.checkit.ui.components.DateTimeRangeDetailChip
 import com.checkit.ui.components.DetailChip
 import com.checkit.ui.components.RichTextPreview
 import com.checkit.ui.components.SupportingPills
 import com.checkit.ui.duration
+import com.checkit.ui.tasks.HabitIcon
 import com.checkit.ui.tasks.NoteIcon
 import com.checkit.ui.tasks.SubtaskBriefList
 import com.checkit.ui.tasks.TaskIcon
@@ -249,10 +251,14 @@ internal fun BriefTaskRowContent(task: TaskItem) {
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        TaskIcon(
-            completed = task.status == TaskStatus.Completed,
-            color = task.priority.priorityColor()
-        )
+        if (task.type == TaskType.Habit) {
+            HabitIcon(task.status == TaskStatus.Completed, color = task.priority.priorityColor())
+        } else {
+            TaskIcon(
+                completed = task.status == TaskStatus.Completed,
+                color = task.priority.priorityColor()
+            )
+        }
         Text(
             text = task.name,
             modifier = Modifier.weight(1f),
@@ -386,10 +392,14 @@ internal fun TaskTitleRow(
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        TaskIcon(
-            completed = task.status == TaskStatus.Completed,
-            color = task.priority.priorityColor()
-        )
+        if (task.type == TaskType.Habit) {
+            HabitIcon(task.status == TaskStatus.Completed, task.priority.priorityColor())
+        } else {
+            TaskIcon(
+                completed = task.status == TaskStatus.Completed,
+                color = task.priority.priorityColor()
+            )
+        }
         Column(Modifier.weight(1f)) {
             Text(task.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             if (descriptionMaxLines > 0 && task.description.isNotBlank()) {

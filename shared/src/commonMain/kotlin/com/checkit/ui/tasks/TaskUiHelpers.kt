@@ -12,10 +12,12 @@ import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.EventAvailable
+import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.ViewAgenda
 import androidx.compose.material.icons.rounded.CheckBox
 import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
+import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -55,6 +57,7 @@ internal fun TaskWorkspaceView.icon(): ImageVector = when (this) {
     TaskWorkspaceView.Agenda -> Icons.Default.ViewAgenda
     TaskWorkspaceView.Goal -> AppIcons.Target
     TaskWorkspaceView.Timeline -> Icons.Default.Schedule
+    TaskWorkspaceView.Habits -> Icons.Default.Repeat
 }
 
 @Composable
@@ -72,17 +75,32 @@ internal fun TaskIcon(completed: Boolean, color: Color) {
     Icon(
         imageVector = if (completed) Icons.Rounded.CheckBox else Icons.Rounded.CheckBoxOutlineBlank,
         contentDescription = null,
-        tint = if (completed) MaterialTheme.colorScheme.onSurfaceVariant else color,
+        tint = if (completed) MaterialTheme.colorScheme.primary else color,
         modifier = Modifier.size(20.dp)
     )
 }
 
+
 @Composable
-internal fun DailyPlanIcon(source: DailyPlanItemSource, isDone: Boolean) {
+internal fun HabitIcon(completed: Boolean, color: Color) {
+    if (completed) {
+        BadgedActionIcon(baseIcon = Icons.Rounded.Repeat, isDone = true)
+    } else {
+        Icon(
+            imageVector = Icons.Rounded.Repeat,
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.size(20.dp)
+        )
+    }
+}
+
+@Composable
+internal fun DailyPlanIcon(source: DailyPlanItemSource, isDone: Boolean, isHabit: Boolean) {
     val icon = when (source) {
         DailyPlanItemSource.MyDayNote -> Icons.AutoMirrored.Filled.EventNote
         DailyPlanItemSource.MyDayReminder -> Icons.Default.Schedule
-        else -> Icons.Default.EventAvailable
+        else -> if (isHabit) Icons.Default.Repeat else Icons.Default.EventAvailable
     }
     if (source == DailyPlanItemSource.MyDayNote) {
         Icon(

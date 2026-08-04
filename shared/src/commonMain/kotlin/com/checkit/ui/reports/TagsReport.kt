@@ -15,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -36,6 +37,15 @@ internal fun TagsReport(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val selectedPeriod = when (state.selectedPeriod) {
+        ReportPeriod.Habit -> ReportPeriod.Week
+        else -> state.selectedPeriod
+    }
+    LaunchedEffect(state.selectedPeriod) {
+        if (state.selectedPeriod == ReportPeriod.Habit) {
+            onPeriodSelected(ReportPeriod.Week)
+        }
+    }
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
@@ -64,13 +74,13 @@ internal fun TagsReport(
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             ReportPeriodHeader(
-                selectedPeriod = state.selectedPeriod,
+                selectedPeriod = selectedPeriod,
                 selectedDate = state.selectedDate,
                 onPeriodSelected = onPeriodSelected,
                 onPreviousPeriod = onPreviousPeriod,
                 onNextPeriod = onNextPeriod,
                 onCurrentPeriod = onCurrentPeriod,
-                periods = ReportPeriod.entries
+                periods = ReportPeriod.entries.filter { it != ReportPeriod.Habit }
             )
             Column(
                 modifier = Modifier

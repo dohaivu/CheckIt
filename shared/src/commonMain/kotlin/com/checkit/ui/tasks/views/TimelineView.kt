@@ -49,8 +49,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import com.checkit.ui.HoursPerDay
-import com.checkit.ui.MinutesPerDay
 import com.checkit.ui.tasks.TimelineItem
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
@@ -164,7 +162,7 @@ private fun TimelineGrid(
             .fillMaxWidth()
     ) {
         val minHourHeight = if (maxHeight.value.isFinite() && maxHeight > 0.dp) {
-            (maxHeight / HoursPerDay).coerceAtLeast(MinTimelineHourHeight)
+            (maxHeight / TimelineVisibleHours).coerceAtLeast(MinTimelineHourHeight)
         } else {
             MinTimelineHourHeight
         }
@@ -175,13 +173,14 @@ private fun TimelineGrid(
             hourHeight = hourHeight.coerceIn(minHourHeight, maxHourHeight)
         }
 
-        val totalHeight = timelineHourHeight * HoursPerDay
+        val totalHeight = timelineHourHeight * TimelineVisibleHours + TimelineTopPadding
         val hourHeightPx = with(density) { timelineHourHeight.toPx() }
+        val topPaddingPx = with(density) { TimelineTopPadding.toPx() }
         val timelineViewportHeight = maxHeight
         val taskAreaWidth = (maxWidth - axisWidth - 8.dp).coerceAtLeast(1.dp)
-        LaunchedEffect(currentTimeMinutes, hasScrolledToCurrentTime) {
+        LaunchedEffect(currentTimeMinutes, hasScrolledToCurrentTime, topPaddingPx) {
             if (hasScrolledToCurrentTime) return@LaunchedEffect
-            scrollState.scrollToCurrentTime(currentTimeMinutes, hourHeightPx)
+            scrollState.scrollToCurrentTime(currentTimeMinutes, hourHeightPx, topPaddingPx)
             hasScrolledToCurrentTime = true
         }
         Box(
@@ -193,7 +192,7 @@ private fun TimelineGrid(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(totalHeight)
-                    .pointerInput(hourHeightPx, minHourHeight, maxHourHeight) {
+                    .pointerInput(hourHeightPx, minHourHeight, maxHourHeight, topPaddingPx) {
                         detectTimelineZoomGestures { centroid, pan, zoom ->
                             if (abs(zoom - 1f) < TimelineZoomEpsilon) return@detectTimelineZoomGestures
 
@@ -204,10 +203,10 @@ private fun TimelineGrid(
 
                             val previousHourHeightPx = with(density) { previousHourHeight.toPx() }
                             val nextHourHeightPx = with(density) { nextHourHeight.toPx() }
-                            val focalMinutes = centroid.y.toMinutes(previousHourHeightPx)
-                                .coerceIn(0, MinutesPerDay)
-                            val previousFocalY = minutesToY(focalMinutes, previousHourHeightPx)
-                            val nextFocalY = minutesToY(focalMinutes, nextHourHeightPx)
+                            val focalMinutes = centroid.y.toMinutes(previousHourHeightPx, topPaddingPx)
+                                .coerceIn(TimelineStartHour * 60, TimelineEndHour * 60)
+                            val previousFocalY = minutesToY(focalMinutes, previousHourHeightPx, topPaddingPx)
+                            val nextFocalY = minutesToY(focalMinutes, nextHourHeightPx, topPaddingPx)
                             val scrollDelta = nextFocalY - previousFocalY - pan.y
 
                             isWorkdayZoomed = false
@@ -234,7 +233,8 @@ private fun TimelineGrid(
                                     coroutineScope.launch {
                                         scrollState.scrollToCurrentTime(
                                             currentTimeMinutes,
-                                            with(density) { nextHourHeight.toPx() }
+                                            with(density) { nextHourHeight.toPx() },
+                                            topPaddingPx
                                         )
                                     }
                                 } else {
@@ -245,16 +245,17 @@ private fun TimelineGrid(
                                     coroutineScope.launch {
                                         scrollState.scrollToStartMinute(
                                             WorkdayStartMinutes,
-                                            with(density) { nextHourHeight.toPx() }
+                                            with(density) { nextHourHeight.toPx() },
+                                            topPaddingPx
                                         )
                                     }
                                 }
                             },
                             onLongPress = { offset ->
                                 if (offset.x >= axisWidthPx) {
-                                    val start = offset.y.toMinutes(hourHeightPx)
+                                    val start = offset.y.toMinutes(hourHeightPx, topPaddingPx)
                                         .snapToQuarterHour()
-                                        .coerceIn(0, LastStartMinute)
+                                        .coerceIn(TimelineStartHour * 60, TimelineEndHour * 60 - MinimumDurationMinutes)
                                     onCreateRequest(start, start + DefaultDurationMinutes)
                                 }
                             }
@@ -263,12 +264,14 @@ private fun TimelineGrid(
             ) {
                 HourRows(
                     hourHeight = timelineHourHeight,
-                    axisWidth = axisWidth
+                    axisWidth = axisWidth,
+                    modifier = Modifier.padding(top = TimelineTopPadding)
                 )
                 CurrentTimeLine(
                     currentTimeMinutes = currentTimeMinutes,
                     hourHeight = timelineHourHeight,
-                    axisWidth = axisWidth
+                    axisWidth = axisWidth,
+                    topPadding = TimelineTopPadding
                 )
                 layouts.forEach { layout ->
                     TimelineItemCard(
@@ -278,6 +281,7 @@ private fun TimelineGrid(
                         taskAreaWidth = taskAreaWidth,
                         hourHeight = timelineHourHeight,
                         hourHeightPx = hourHeightPx,
+                        topPadding = TimelineTopPadding,
                         isSelected = selectedItemId == layout.item.id,
                         onClick = { onItemClick(layout.item) },
                         onSelect = { selectedItemId = layout.item.id },
@@ -293,10 +297,12 @@ private fun TimelineGrid(
 @Composable
 private fun HourRows(
     hourHeight: Dp,
-    axisWidth: Dp
+    axisWidth: Dp,
+    modifier: Modifier = Modifier
 ) {
-    Column {
-        repeat(HoursPerDay) { hour ->
+    Column(modifier = modifier) {
+        repeat(TimelineVisibleHours) { index ->
+            val hour = TimelineStartHour + index
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -335,6 +341,34 @@ private fun HourRows(
                 }
             }
         }
+        // Last hour label and line
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp) // The line itself
+        ) {
+            Box(
+                modifier = Modifier
+                    .offset(y = (-12).dp)
+                    .width(axisWidth)
+                    .height(24.dp)
+                    .padding(end = 4.dp),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                Text(
+                    text = TimelineEndHour.hourLabel(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .padding(start = axisWidth)
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.75f))
+            )
+        }
     }
 }
 
@@ -342,10 +376,12 @@ private fun HourRows(
 private fun CurrentTimeLine(
     currentTimeMinutes: Int,
     hourHeight: Dp,
-    axisWidth: Dp
+    axisWidth: Dp,
+    topPadding: Dp
 ) {
+    if (currentTimeMinutes < TimelineStartHour * 60 || currentTimeMinutes > TimelineEndHour * 60) return
     val color = MaterialTheme.colorScheme.error
-    val y = hourHeight * (currentTimeMinutes / 60f)
+    val y = topPadding + hourHeight * ((currentTimeMinutes - TimelineStartHour * 60) / 60f)
     Box(
         modifier = Modifier
             .offset(y = y - 4.dp)
@@ -379,6 +415,7 @@ private fun TimelineItemCard(
     taskAreaWidth: Dp,
     hourHeight: Dp,
     hourHeightPx: Float,
+    topPadding: Dp,
     isSelected: Boolean,
     onClick: () -> Unit,
     onSelect: () -> Unit,
@@ -387,8 +424,12 @@ private fun TimelineItemCard(
 ) {
     val start = item.startTimeMinutes ?: return
     val end = item.endTimeMinutes ?: (start + DefaultDurationMinutes)
+    
+    // Skip items completely outside the visible range
+    if (end <= TimelineStartHour * 60 || start >= TimelineEndHour * 60) return
+    
     val duration = (end - start).coerceAtLeast(MinimumDurationMinutes)
-    val y = hourHeight * (start / 60f)
+    val y = topPadding + hourHeight * ((start - TimelineStartHour * 60) / 60f)
     val minimumHeight = hourHeight / 4f
     val height = (hourHeight * (duration / 60f)).coerceAtLeast(minimumHeight)
     val density = LocalDensity.current
@@ -434,7 +475,7 @@ private fun TimelineItemCard(
                 detectDragGesturesAfterLongPress(
                     onDragStart = { latestOnSelect() },
                     onDragEnd = {
-                        val deltaMinutes = dragOffsetY.toMinutes(hourHeightPx)
+                        val deltaMinutes = dragOffsetY.toDeltaMinutes(hourHeightPx)
                         val (nextStart, nextEnd) = moveTimelineRange(start, end, deltaMinutes)
                         latestOnTimeChange(latestItem, nextStart, nextEnd)
                         dragOffsetY = 0f
@@ -455,7 +496,7 @@ private fun TimelineItemCard(
                     .pointerInput(item.id, start, end, hourHeightPx) {
                         detectDragGestures(
                             onDragEnd = {
-                                val deltaMinutes = topResizeOffsetY.toMinutes(hourHeightPx)
+                                val deltaMinutes = topResizeOffsetY.toDeltaMinutes(hourHeightPx)
                                 val (nextStart, nextEnd) = resizeTimelineStart(start, end, deltaMinutes)
                                 latestOnTimeChange(latestItem, nextStart, nextEnd)
                                 topResizeOffsetY = 0f
@@ -474,7 +515,7 @@ private fun TimelineItemCard(
                     .pointerInput(item.id, start, end, hourHeightPx) {
                         detectDragGestures(
                             onDragEnd = {
-                                val deltaMinutes = bottomResizeOffsetY.toMinutes(hourHeightPx)
+                                val deltaMinutes = bottomResizeOffsetY.toDeltaMinutes(hourHeightPx)
                                 val (nextStart, nextEnd) = resizeTimelineEnd(start, end, deltaMinutes)
                                 latestOnTimeChange(latestItem, nextStart, nextEnd)
                                 bottomResizeOffsetY = 0f
@@ -591,18 +632,23 @@ private suspend fun PointerInputScope.detectTimelineZoomGestures(
     }
 }
 
-private fun Offset.toMinutes(hourHeightPx: Float): Int =
-    y.toMinutes(hourHeightPx)
+private fun Offset.toMinutes(hourHeightPx: Float, topPaddingPx: Float): Int =
+    y.toMinutes(hourHeightPx, topPaddingPx)
 
-private fun Float.toMinutes(hourHeightPx: Float): Int =
+private fun Float.toMinutes(hourHeightPx: Float, topPaddingPx: Float): Int =
+    ((((this - topPaddingPx) / hourHeightPx) * 60f) + TimelineStartHour * 60).roundToInt()
+
+private fun Float.toDeltaMinutes(hourHeightPx: Float): Int =
     ((this / hourHeightPx) * 60f).roundToInt()
 
 private suspend fun ScrollState.scrollToCurrentTime(
     currentTimeMinutes: Int,
-    hourHeightPx: Float
+    hourHeightPx: Float,
+    topPaddingPx: Float
 ) {
+    val visibleMinutes = currentTimeMinutes.coerceIn(TimelineStartHour * 60, TimelineEndHour * 60)
     scrollTo(
-        (minutesToY(currentTimeMinutes, hourHeightPx) -
+        (minutesToY(visibleMinutes, hourHeightPx, topPaddingPx) -
             hourHeightPx * CurrentTimeVisibleHoursBefore)
             .roundToInt()
             .coerceAtLeast(0)
@@ -611,13 +657,15 @@ private suspend fun ScrollState.scrollToCurrentTime(
 
 private suspend fun ScrollState.scrollToStartMinute(
     startTimeMinutes: Int,
-    hourHeightPx: Float
+    hourHeightPx: Float,
+    topPaddingPx: Float
 ) {
-    scrollTo(minutesToY(startTimeMinutes, hourHeightPx).roundToInt().coerceAtLeast(0))
+    val visibleMinutes = startTimeMinutes.coerceIn(TimelineStartHour * 60, TimelineEndHour * 60)
+    scrollTo(minutesToY(visibleMinutes, hourHeightPx, topPaddingPx).roundToInt().coerceAtLeast(0))
 }
 
-private fun minutesToY(minutes: Int, hourHeightPx: Float): Float =
-    (minutes / 60f) * hourHeightPx
+private fun minutesToY(minutes: Int, hourHeightPx: Float, topPaddingPx: Float): Float =
+    ((minutes - TimelineStartHour * 60) / 60f) * hourHeightPx + topPaddingPx
 
 internal fun currentTimeMinutes(): Int {
     val time = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).time
@@ -635,7 +683,7 @@ internal fun moveTimelineRange(
     val duration = (endTimeMinutes - startTimeMinutes).coerceAtLeast(MinimumDurationMinutes)
     val nextStart = (startTimeMinutes + deltaMinutes)
         .snapToQuarterHour()
-        .coerceIn(0, MinutesPerDay - duration)
+        .coerceIn(TimelineStartHour * 60, TimelineEndHour * 60 - duration)
     return nextStart to nextStart + duration
 }
 
@@ -646,10 +694,10 @@ internal fun resizeTimelineStart(
 ): Pair<Int, Int> {
     val maxStart = (endTimeMinutes - MinimumDurationMinutes)
         .floorToQuarterHour()
-        .coerceAtLeast(0)
+        .coerceAtLeast(TimelineStartHour * 60)
     val nextStart = (startTimeMinutes + deltaMinutes)
         .snapToQuarterHour()
-        .coerceIn(0, maxStart)
+        .coerceIn(TimelineStartHour * 60, maxStart)
     return nextStart to endTimeMinutes
 }
 
@@ -660,10 +708,10 @@ internal fun resizeTimelineEnd(
 ): Pair<Int, Int> {
     val minEnd = (startTimeMinutes + MinimumDurationMinutes)
         .ceilToQuarterHour()
-        .coerceAtMost(MinutesPerDay)
+        .coerceAtMost(TimelineEndHour * 60)
     val nextEnd = (endTimeMinutes + deltaMinutes)
         .snapToQuarterHour()
-        .coerceIn(minEnd, MinutesPerDay)
+        .coerceIn(minEnd, TimelineEndHour * 60)
     return startTimeMinutes to nextEnd
 }
 
@@ -690,7 +738,10 @@ internal const val TimelineStepMinutes = 15
 internal const val DefaultDurationMinutes = 30
 internal const val NoteDurationMinutes = 30
 internal const val MinimumDurationMinutes = 15
-internal const val LastStartMinute = MinutesPerDay - MinimumDurationMinutes
+internal const val TimelineStartHour = 5
+internal const val TimelineEndHour = 23
+internal const val TimelineVisibleHours = TimelineEndHour - TimelineStartHour
+internal val TimelineTopPadding = 16.dp
 internal const val CurrentTimeVisibleHoursBefore = 2f
 internal const val CollapsedAllDayItemCount = 2
 internal const val DefaultTaskCardAlpha = 0.15f

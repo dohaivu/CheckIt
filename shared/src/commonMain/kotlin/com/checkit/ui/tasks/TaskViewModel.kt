@@ -15,6 +15,7 @@ import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskReminderPlanner
 import com.checkit.domain.TaskReminderPreset
+import com.checkit.domain.TaskType
 import com.checkit.domain.usecase.AddNoteUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
@@ -22,7 +23,6 @@ import com.checkit.domain.usecase.CompleteNoteUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
-import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.OpenNoteUseCase
 import com.checkit.domain.usecase.OpenTaskUseCase
@@ -31,6 +31,7 @@ import com.checkit.domain.usecase.RestoreTaskUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
+import com.checkit.domain.usecase.UpdateDailyPlanItemTagUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.domain.usecase.UpdateNoteUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
@@ -53,7 +54,6 @@ import kotlinx.datetime.LocalDate
 
 class TaskViewModel(
     private val observeTaskBoard: ObserveTaskBoardUseCase,
-    private val ensureDefaultTaskData: EnsureDefaultTaskDataUseCase,
     private val selectTaskBoardItems: SelectTaskBoardItemsUseCase,
     private val addTask: AddTaskUseCase,
     private val addTaskToDailyPlan: AddTaskToDailyPlanUseCase,
@@ -70,6 +70,7 @@ class TaskViewModel(
     private val restoreNote: RestoreNoteUseCase,
     private val updateDailyPlanItemTime: UpdateDailyPlanItemTimeUseCase,
     private val updateDailyPlanItemStatus: UpdateDailyPlanItemStatusUseCase,
+    private val updateDailyPlanItemTag: UpdateDailyPlanItemTagUseCase,
     private val syncKeyResultFromDailyPlan: SyncKeyResultFromDailyPlanUseCase,
     private val settingsRepository: SettingsRepository
 ) : ViewModel() {
@@ -83,7 +84,6 @@ class TaskViewModel(
 
     init {
         viewModelScope.launch {
-            ensureDefaultTaskData()
             observeTaskBoard()
                 .catch { error ->
                     _uiState.update {
@@ -181,6 +181,7 @@ class TaskViewModel(
             } else {
                 shouldPersist = true
                 it.copy(options = it.options.copy(selectedView = view))
+                    .refreshVisibleItems()
             }
         }
         if (shouldPersist && view != TaskWorkspaceView.Goal) {
@@ -255,6 +256,20 @@ class TaskViewModel(
         openNewTaskOnDate(today(), addToMyDayOnSave)
     }
 
+    fun openNewHabit() {
+        val objectiveId = editableListId() ?: return sendEvent(UiEvent.ShowSnackbar("Create a list before adding habits"))
+        cancelPendingTaskTextSave()
+        _uiState.update {
+            it.copy(
+                editor = TaskEditorState.TaskForm(
+                    mode = EditorMode.Add,
+                    objectiveId = objectiveId,
+                    type = TaskType.Habit,
+                )
+            )
+        }
+    }
+
     fun openNewTaskOnKeyResult(keyResult: KeyResult) {
         cancelPendingTaskTextSave()
         _uiState.update {
@@ -317,18 +332,60 @@ class TaskViewModel(
 
     fun switchAddEditorToTask() {
         _uiState.update { state ->
-            val note = state.editor as? TaskEditorState.NoteForm ?: return@update state
-            if (note.mode != EditorMode.Add) return@update state
-            state.copy(
-                editor = TaskEditorState.TaskForm(
-                    mode = EditorMode.Add,
-                    objectiveId = note.objectiveId,
-                    name = note.title,
-                    description = note.content,
-                    doDate = note.date,
-                    selectedTagIds = note.selectedTagIds
-                )
-            )
+            when (val current = state.editor) {
+                is TaskEditorState.TaskForm -> {
+                    if (current.mode != EditorMode.Add || current.type == TaskType.Task) return@update state
+                    state.copy(editor = current.copy(type = TaskType.Task))
+                }
+                is TaskEditorState.NoteForm -> {
+                    if (current.mode != EditorMode.Add) return@update state
+                    state.copy(
+                        editor = TaskEditorState.TaskForm(
+                            mode = EditorMode.Add,
+                            objectiveId = current.objectiveId,
+                            name = current.title,
+                            description = current.content,
+                            doDate = current.date,
+                            selectedTagIds = current.selectedTagIds
+                        )
+                    )
+                }
+                null -> state
+            }
+        }
+    }
+
+    fun switchAddEditorToHabit() {
+        _uiState.update { state ->
+            when (val current = state.editor) {
+                is TaskEditorState.TaskForm -> {
+                    if (current.mode != EditorMode.Add || current.type == TaskType.Habit) return@update state
+                    state.copy(
+                        editor = current.copy(
+                            type = TaskType.Habit,
+                            doDate = null,
+                            startTimeMinutes = null,
+                            endTimeMinutes = null,
+                            repeatPreset = RepeatPreset.None,
+                            reminderOffsets = emptySet()
+                        )
+                    )
+                }
+                is TaskEditorState.NoteForm -> {
+                    if (current.mode != EditorMode.Add) return@update state
+                    state.copy(
+                        editor = TaskEditorState.TaskForm(
+                            mode = EditorMode.Add,
+                            objectiveId = current.objectiveId,
+                            name = current.title,
+                            description = current.content,
+                            type = TaskType.Habit,
+                            selectedTagIds = current.selectedTagIds
+                        )
+                    )
+                }
+                null -> state
+            }
         }
     }
 
@@ -369,6 +426,7 @@ class TaskViewModel(
                     reminderOffsets = TaskReminderPlanner.selectedOffsetsFor(task),
                     status = task.status,
                     priority = task.priority,
+                    type = task.type,
                     selectedTagIds = task.tags.map { it.id }.toSet(),
                     dailyPlanItem = dailyPlan,
                     trashedAtMillis = task.trashedAtMillis
@@ -422,20 +480,13 @@ class TaskViewModel(
             reminderOffsets = if (doDate == null) emptySet() else it.reminderOffsets
         )
     }
-    fun updateTaskStartTime(startTimeMinutes: Int?) = updateTaskForm {
+    fun updateTaskTime(startTimeMinutes: Int?, endTimeMinutes: Int?) = updateTaskForm {
         it.copy(
             startTimeMinutes = startTimeMinutes,
+            endTimeMinutes = if ((startTimeMinutes == null) || ((endTimeMinutes != null) && (startTimeMinutes > endTimeMinutes))) null else endTimeMinutes,
             reminderOffsets = TaskReminderPreset.normalizeOffsets(startTimeMinutes, it.reminderOffsets)
         )
     }
-    fun updateTaskEndTime(endTimeMinutes: Int?) = updateTaskForm { it.copy(endTimeMinutes = endTimeMinutes) }
-    fun updateDailyPlanStartTime(startTimeMinutes: Int?) = updateTaskDailyPlanItem { item ->
-        item.copy(
-            startTimeMinutes = startTimeMinutes,
-            endTimeMinutes = if (startTimeMinutes == null) null else item.endTimeMinutes
-        )
-    }
-    fun updateDailyPlanEndTime(endTimeMinutes: Int?) = updateTaskDailyPlanItem { it.copy(endTimeMinutes = endTimeMinutes) }
     fun updateTaskRepeat(repeatPreset: RepeatPreset) = updateTaskForm { it.copy(repeatPreset = repeatPreset) }
     fun updateTaskPriority(priority: TaskPriority) = updateTaskForm { it.copy(priority = priority) }
     fun toggleTaskReminder(offsetMinutes: Int) = updateTaskForm { form ->
@@ -476,8 +527,15 @@ class TaskViewModel(
             persistTaskInPlace(nextForm)
         }
     }
-    fun toggleTaskTag(tagId: Long) = updateTaskForm { form ->
-        form.copy(selectedTagIds = form.selectedTagIds.toggle(tagId))
+    fun toggleTaskTag(tagId: Long) {
+        val previousForm = _uiState.value.editor as? TaskEditorState.TaskForm ?: return
+        val nextTagIds = previousForm.selectedTagIds.toggle(tagId)
+        updateTaskForm { it.copy(selectedTagIds = nextTagIds) }
+        previousForm.dailyPlanItem?.let { item ->
+            viewModelScope.launch {
+                updateDailyPlanItemTag(item.id, nextTagIds.toList())
+            }
+        }
     }
     fun updateNoteTitle(title: String) = updateNoteForm { it.copy(title = title) }
     fun updateNoteContent(content: String) = updateNoteForm { it.copy(content = content) }
@@ -554,6 +612,32 @@ class TaskViewModel(
                 }.copy(editor = null)
             }
             sendEvent(UiEvent.ShowSnackbar("Restored"))
+        }
+    }
+
+    fun updateDailyPlanTime(startTimeMinutes: Int?, endTimeMinutes: Int?) = updateTaskDailyPlanItem { item ->
+        item.copy(
+            startTimeMinutes = startTimeMinutes,
+            endTimeMinutes = if ((startTimeMinutes == null) || ((endTimeMinutes != null) && (startTimeMinutes > endTimeMinutes))) null else endTimeMinutes
+        )
+    }
+
+    private fun updateTaskDailyPlanItem(transform: (DailyPlanItem) -> DailyPlanItem) {
+        val updatedItem = (_uiState.value.editor as? TaskEditorState.TaskForm)
+            ?.dailyPlanItem
+            ?.let(transform)
+            ?: return
+        _uiState.update { state ->
+            val form = state.editor as? TaskEditorState.TaskForm ?: return@update state
+            state.copy(editor = form.copy(dailyPlanItem = updatedItem))
+        }
+        viewModelScope.launch {
+            syncKeyResultFromDailyPlan(
+                itemId = updatedItem.id,
+                proposedStartTime = updatedItem.startTimeMinutes,
+                proposedEndTime = updatedItem.endTimeMinutes
+            )
+            updateDailyPlanItemTime(updatedItem.id, updatedItem.startTimeMinutes, updatedItem.endTimeMinutes)
         }
     }
 
@@ -674,6 +758,7 @@ class TaskViewModel(
             description = description.trim(),
             status = status,
             priority = priority,
+            type = type,
             doDate = doDate,
             startTimeMinutes = startTimeMinutes,
             endTimeMinutes = endTimeMinutes,
@@ -703,6 +788,7 @@ class TaskViewModel(
             description = description,
             status = status,
             priority = priority,
+            type = type,
             doDate = doDate,
             startTimeMinutes = startTimeMinutes,
             endTimeMinutes = endTimeMinutes,
@@ -751,25 +837,6 @@ class TaskViewModel(
             val updatedForm = transform(form)
             if (form.mode == EditorMode.Edit) saveNote(updatedForm)
             state.copy(editor = updatedForm)
-        }
-    }
-
-    private fun updateTaskDailyPlanItem(transform: (DailyPlanItem) -> DailyPlanItem) {
-        val updatedItem = (_uiState.value.editor as? TaskEditorState.TaskForm)
-            ?.dailyPlanItem
-            ?.let(transform)
-            ?: return
-        _uiState.update { state ->
-            val form = state.editor as? TaskEditorState.TaskForm ?: return@update state
-            state.copy(editor = form.copy(dailyPlanItem = updatedItem))
-        }
-        viewModelScope.launch {
-            syncKeyResultFromDailyPlan(
-                itemId = updatedItem.id,
-                proposedStartTime = updatedItem.startTimeMinutes,
-                proposedEndTime = updatedItem.endTimeMinutes
-            )
-            updateDailyPlanItemTime(updatedItem.id, updatedItem.startTimeMinutes, updatedItem.endTimeMinutes)
         }
     }
 

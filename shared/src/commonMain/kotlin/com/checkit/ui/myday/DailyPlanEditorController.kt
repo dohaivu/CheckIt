@@ -3,8 +3,11 @@ package com.checkit.ui.myday
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
+import com.checkit.domain.DefaultTaskDurationMinutes
 import com.checkit.domain.hasEndTime
+import com.checkit.domain.nextAvailableTimeRange
 import com.checkit.ui.UiEvent
+import com.checkit.ui.currentMyDayTimeMinutes
 import com.checkit.ui.tasks.EditorMode
 import com.checkit.ui.today
 import kotlinx.coroutines.CoroutineScope
@@ -90,9 +93,40 @@ internal class DailyPlanEditorController(
             )
         }
     }
-
     fun updateTitle(title: String) = updateItemEditor(saveImmediately = false) { it.copy(title = title) }
     fun updateNote(note: String) = updateItemEditor(saveImmediately = false) { it.copy(note = note) }
+
+    fun duplicateDailyPlanItem() {
+        val current = state.uiState.value
+        val editor = current.itemEditor ?: return
+        cancelPendingEditorTextSave()
+
+        val planItems = current.dailyPlans.firstOrNull { it.date == editor.date }?.items.orEmpty()
+        val durationMinutes = editor.durationMinutes() ?: DefaultTaskDurationMinutes
+        val (startTimeMinutes, endTimeMinutes) =
+            nextAvailableTimeRange(currentMyDayTimeMinutes(), durationMinutes, planItems)
+
+        state.update {
+            it.copy(
+                itemEditor = DailyPlanItemEditorState(
+                    mode = EditorMode.Add,
+                    date = editor.date,
+                    source = editor.source,
+                    title = editor.title,
+                    note = editor.note,
+                    status = if (editor.source == DailyPlanItemSource.MyDayNote) {
+                        DailyPlanItemStatus.Done
+                    } else {
+                        editor.source.inferredAddStatus(startTimeMinutes)
+                    },
+                    startTimeMinutes = startTimeMinutes,
+                    endTimeMinutes = endTimeMinutes,
+                    selectedTagIds = editor.selectedTagIds
+                )
+            )
+        }
+    }
+
     fun updateStatus(isDone: Boolean) = updateItemEditor {
         it.copy(status = if (isDone) DailyPlanItemStatus.Done else DailyPlanItemStatus.Planned)
     }
@@ -103,13 +137,13 @@ internal class DailyPlanEditorController(
             endTimeMinutes = if (source.hasEndTime()) it.endTimeMinutes else null
         )
     }
-    fun updateStartTime(timeMinutes: Int?) = updateItemEditor {
+    fun updateTime(startTimeMinutes: Int?, endTimeMinutes: Int?) = updateItemEditor {
         it.copy(
-            startTimeMinutes = timeMinutes,
-            status = if (it.isAddMode) it.source.inferredAddStatus(timeMinutes) else it.status
+            startTimeMinutes = startTimeMinutes,
+            endTimeMinutes = endTimeMinutes,
+            status = if (it.isAddMode) it.source.inferredAddStatus(startTimeMinutes) else it.status
         )
     }
-    fun updateEndTime(timeMinutes: Int?) = updateItemEditor { it.copy(endTimeMinutes = timeMinutes) }
     fun toggleTag(tagId: Long) = updateItemEditor {
         val newTagIds = if (it.selectedTagIds.contains(tagId)) {
             it.selectedTagIds - tagId
@@ -188,6 +222,12 @@ internal class DailyPlanEditorController(
     private fun saveCurrentEditor() {
         val editor = state.uiState.value.itemEditor?.takeIf { it.isEditMode } ?: return
         saveDailyPlan(editor)
+    }
+
+    private fun DailyPlanItemEditorState.durationMinutes(): Int? {
+        val start = startTimeMinutes ?: return null
+        val end = endTimeMinutes ?: return null
+        return (end - start).takeIf { it > 0 }
     }
 
     private companion object {

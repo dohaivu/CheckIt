@@ -33,7 +33,6 @@ internal class MyDayDataLoader(
 
     fun start() {
         scope.launch {
-            deps.ensureDefaultTaskData()
             combine(
                 deps.observeTaskBoard(),
                 deps.observeDailyPlans(),

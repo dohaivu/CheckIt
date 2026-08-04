@@ -99,6 +99,7 @@ data class TaskItem(
     val description: String = "",
     val subtasks: List<SubTaskItem> = emptyList(),
     val status: TaskStatus = TaskStatus.Open,
+    val type: TaskType = TaskType.Task,
     val tags: List<TaskTag> = emptyList(),
     val priority: TaskPriority = TaskPriority.None,
     val doDate: LocalDate? = null,
@@ -129,6 +130,7 @@ data class DailyPlanItem(
     val source: DailyPlanItemSource,
     val status: DailyPlanItemStatus,
     val tags: List<TaskTag> = emptyList(),
+    val isHabit: Boolean = false,
     val sortOrder: Int,
     val startTimeMinutes: Int? = null,
     val endTimeMinutes: Int? = null,
@@ -211,6 +213,11 @@ data class TaskFilter(
     val includeTrashed: Boolean = false,
     val sortOrder: Int
 )
+
+enum class TaskType {
+    Task,
+    Habit
+}
 
 enum class TaskStatus {
     Open,

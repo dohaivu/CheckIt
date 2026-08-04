@@ -26,7 +26,7 @@ data class CalendarUiState(
     val dailyPlans: List<DailyPlan> = emptyList(),
     val dayReviews: List<DayReviewRecord> = emptyList(),
     val showDailyPlanSummary: Boolean = false,
-    val calendarDisplayMode: CalendarDisplayMode = CalendarDisplayMode.Month,
+    val calendarDisplayMode: CalendarDisplayMode = CalendarDisplayMode.Week,
     val selectedTagIds: Set<Long> = emptySet(),
     val isMonthlyWinsExpanded: Boolean = false
 ) {

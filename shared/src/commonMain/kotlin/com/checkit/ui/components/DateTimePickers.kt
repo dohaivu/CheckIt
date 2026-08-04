@@ -37,6 +37,7 @@ import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -68,14 +69,16 @@ internal fun DatePicker(
     startTimeMinutes: Int?,
     endTimeMinutes: Int?,
     onDateChange: (LocalDate?) -> Unit,
-    onStartTimeChange: ((Int?) -> Unit),
-    onEndTimeChange: ((Int?) -> Unit)?,
+    onTimeChange: (Int?, Int?) -> Unit,
+    supportsEndTime: Boolean = true,
     enabled: Boolean = true,
     isOverdue: Boolean = false
 ) {
     var showPicker by remember { mutableStateOf(false) }
-    var startTime by remember { mutableStateOf(startTimeMinutes) }
-    var endTime by remember { mutableStateOf(validTimeRangeEnd(startTimeMinutes, endTimeMinutes)) }
+    var startTime by remember(startTimeMinutes) { mutableStateOf(startTimeMinutes) }
+    var endTime by remember(endTimeMinutes, startTimeMinutes) {
+        mutableStateOf(validTimeRangeEnd(startTimeMinutes, endTimeMinutes))
+    }
     val durationMinutes by remember(startTime, endTime) { derivedStateOf { duration(startTime, endTime) } }
 
     Column(
@@ -107,15 +110,15 @@ internal fun DatePicker(
             },
             onClear = {
                 onDateChange(null)
-                onStartTimeChange(null)
-                onEndTimeChange?.invoke(null)
+                onTimeChange(null, null)
                 showPicker = false
             },
             onConfirm = {
                 val nextDate = datePickerState.selectedDateMillis?.toUtcLocalDate()
                 if (nextDate != date) onDateChange(nextDate)
-                if (startTime != startTimeMinutes) onStartTimeChange.invoke(startTime)
-                if (endTime != validTimeRangeEnd(startTimeMinutes, endTimeMinutes)) onEndTimeChange?.invoke(endTime)
+                if (startTime != startTimeMinutes || endTime != endTimeMinutes) {
+                    onTimeChange(startTime, endTime)
+                }
                 showPicker = false
             }
         ) {
@@ -142,7 +145,7 @@ internal fun DatePicker(
                         startTime = value
                         endTime = validTimeRangeEnd(value, endTime)
                     },
-                    onEndTimeChange = if (onEndTimeChange != null) {
+                    onEndTimeChange = if (supportsEndTime) {
                         { endTime = validTimeRangeEnd(startTime, it) }
                     } else null,
                     enabled = enabled
@@ -236,12 +239,14 @@ internal fun TimePicker(
         }
     )
     if (showPicker && enabled) {
-        val initial = timeMinutes ?: initialTimeMinutes.coerceIn(0, MinutesPerDay - 1)
-        val timePickerState = rememberTimePickerState(
-            initialHour = initial / 60,
-            initialMinute = initial % 60,
-            is24Hour = false
-        )
+        var initial by remember(timeMinutes) { mutableStateOf(timeMinutes ?: initialTimeMinutes.coerceIn(0, MinutesPerDay - 1)) }
+        val timePickerState = key(initial) {
+            rememberTimePickerState(
+                initialHour = initial / 60,
+                initialMinute = initial % 60,
+                is24Hour = false
+            )
+        }
         AppPickerDialog(
             onDismissRequest = {
                 showPicker = false
@@ -258,6 +263,16 @@ internal fun TimePicker(
         ) {
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 TimePicker(state = timePickerState)
+                PickerShortcutRow(
+                    modifier = Modifier.padding(start = 10.dp).align(Alignment.BottomStart)
+                ) {
+                    PickerShortcut(
+                        text = "Now",
+                        onClick = {
+                            initial = currentTimeMinutes()
+                        }
+                    )
+                }
             }
         }
     }
@@ -267,16 +282,17 @@ internal fun TimePicker(
 internal fun TimeRangePicker(
     startTimeMinutes: Int?,
     endTimeMinutes: Int?,
-    onStartTimeChange: ((Int?) -> Unit),
-    onEndTimeChange: ((Int?) -> Unit)?,
+    onTimeChange: (Int?, Int?) -> Unit,
     enabled: Boolean = true,
     isOverdue: Boolean = false,
     clearEnabled: Boolean = true,
     modifier: Modifier = Modifier.fillMaxWidth()
 ) {
     var showPicker by remember { mutableStateOf(false) }
-    var startTime by remember { mutableStateOf(startTimeMinutes) }
-    var endTime by remember { mutableStateOf(validTimeRangeEnd(startTimeMinutes, endTimeMinutes)) }
+    var startTime by remember(startTimeMinutes) { mutableStateOf(startTimeMinutes) }
+    var endTime by remember(endTimeMinutes, startTimeMinutes) {
+        mutableStateOf(validTimeRangeEnd(startTimeMinutes, endTimeMinutes))
+    }
     val durationMinutes by remember(startTime, endTime) { derivedStateOf { duration(startTime, endTime) } }
 
     Column(
@@ -302,14 +318,15 @@ internal fun TimeRangePicker(
             },
             onClear = if (clearEnabled) {
                         {
-                            onStartTimeChange(null)
-                            onEndTimeChange?.invoke(null)
+                            onTimeChange(null, null)
                             showPicker = false
                         }
                     } else null,
             onConfirm = {
-                if (startTime != startTimeMinutes) onStartTimeChange.invoke(startTime)
-                if (endTime != validTimeRangeEnd(startTimeMinutes, endTimeMinutes)) onEndTimeChange?.invoke(endTime)
+                if (startTime != startTimeMinutes || endTime != endTimeMinutes) {
+                    onTimeChange(startTime, endTime)
+                }
+
                 showPicker = false
             }
         ) {
@@ -321,9 +338,7 @@ internal fun TimeRangePicker(
                     startTime = value
                     endTime = validTimeRangeEnd(value, endTime)
                 },
-                onEndTimeChange = if (onEndTimeChange != null) {
-                    { endTime = validTimeRangeEnd(startTime, it) }
-                } else null,
+                onEndTimeChange = { endTime = validTimeRangeEnd(startTime, it) },
                 enabled = enabled
             )
         }

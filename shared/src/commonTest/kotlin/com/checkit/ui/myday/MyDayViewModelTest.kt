@@ -13,7 +13,6 @@ import com.checkit.domain.usecase.CarryOverDailyPlanItemsUseCase
 import com.checkit.domain.usecase.CompleteDayReviewUseCase
 import com.checkit.domain.usecase.ObserveDayReviewsUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
-import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
@@ -24,6 +23,7 @@ import com.checkit.domain.usecase.UpsertDailyPlanItemUseCase
 import com.checkit.domain.usecase.AddSuggestedTaskToMyDayUseCase
 import com.checkit.domain.usecase.SprintTransitionUseCase
 import com.checkit.domain.usecase.SaveSprintAsWinUseCase
+import com.checkit.domain.usecase.SmartScheduleDailyPlanUseCase
 import com.checkit.notifications.NoOpSprintNotificationScheduler
 import com.checkit.ui.tasks.FakeCheckItRepository
 import com.checkit.ui.tasks.FakeSettingsRepository
@@ -73,7 +73,6 @@ class MyDayViewModelTest {
         return MyDayViewModel(
             observeTaskBoard = observeTaskBoard,
             observeDailyPlans = observeDailyPlans,
-            ensureDefaultTaskData = EnsureDefaultTaskDataUseCase(repository),
             deleteDailyPlanItemUseCase = DeleteDailyPlanItemUseCase(repository),
             settingsRepository = settingsRepository,
             buildDayReviewSummary = buildSummary,
@@ -93,6 +92,7 @@ class MyDayViewModelTest {
             ),
             syncKeyResultFromDailyPlan = syncKeyResult,
             updateDailyPlanItemTime = updateDailyPlanItemTime,
+            smartSchedule = SmartScheduleDailyPlanUseCase(repository),
             sprintManager = SprintManager(NoOpSprintNotificationScheduler()),
             sprintTransition = SprintTransitionUseCase(
                 sprintManager = SprintManager(NoOpSprintNotificationScheduler()), // Separate instance for transition if needed or reuse
@@ -243,6 +243,50 @@ class MyDayViewModelTest {
 
         val (_, input) = repository.updatedDailyPlanItems.single()
         assertEquals("Closed quickly", input.title)
+    }
+
+    @Test
+    fun duplicateDailyPlanItemCopiesFieldsAndPlacesAtNextAvailableSlot() = runTest(dispatcher) {
+        val today = today()
+        repository.setDailyPlans(
+            listOf(
+                DailyPlan(
+                    date = today,
+                    items = listOf(
+                        DailyPlanItem(
+                            id = 42L,
+                            dateEpochDays = today.toEpochDays().toInt(),
+                            title = "Original",
+                            note = "Old note",
+                            source = DailyPlanItemSource.MyDayTask,
+                            status = DailyPlanItemStatus.Planned,
+                            sortOrder = 0,
+                            startTimeMinutes = 600,
+                            endTimeMinutes = 645,
+                            addedAtMillis = 0L
+                        )
+                    )
+                )
+            )
+        )
+        dispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.openItemEditor(viewModel.uiState.value.plan!!.items.single(), today)
+        viewModel.duplicateDailyPlanItem()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val editor = viewModel.uiState.value.itemEditor
+        assertNotNull(editor)
+        assertTrue(editor.isAddMode)
+        assertEquals(null, editor.itemId)
+        assertEquals("Original", editor.title)
+        assertEquals("Old note", editor.note)
+        assertEquals(DailyPlanItemSource.MyDayTask, editor.source)
+        assertNotNull(editor.startTimeMinutes)
+        assertNotNull(editor.endTimeMinutes)
+        // The copy lands in a free slot, never reusing the source item's (600, 645) range.
+        assertTrue(editor.startTimeMinutes >= 645 || editor.endTimeMinutes <= 600)
+        assertEquals(45, editor.endTimeMinutes - editor.startTimeMinutes)
     }
 
     @Test

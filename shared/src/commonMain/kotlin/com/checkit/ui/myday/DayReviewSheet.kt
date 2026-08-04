@@ -93,39 +93,48 @@ internal fun DayReviewSheet(
             )
             SummaryAndTagsRow(state)
 
-            ReflectionSection(
-                value = state.winNote,
-                onValueChange = onWinNoteChange,
-                enabled = !state.isSubmitting
-            )
-
-            TomorrowGoalSection(
-                value = state.tomorrowGoal,
-                onValueChange = onTomorrowGoalChange,
-                enabled = !state.isSubmitting
-            )
-
-            Text(
-                text = stringResource(Res.string.day_review_leftovers_title),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
             val leftoverItems = remember(state.summary) {
                 state.summary.plannedItems + state.summary.alreadyCarriedItems
             }
-            if (leftoverItems.isEmpty()) {
-                Text(
-                    text = stringResource(Res.string.day_review_leftovers_empty),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f, fill = true),
-                    contentPadding = PaddingValues(bottom = 8.dp)
-                ) {
+
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = true),
+                contentPadding = PaddingValues(bottom = 8.dp)
+            ) {
+                item {
+                    ReflectionSection(
+                        value = state.winNote,
+                        onValueChange = onWinNoteChange,
+                        enabled = !state.isSubmitting
+                    )
+                }
+
+                item {
+                    TomorrowGoalSection(
+                        value = state.tomorrowGoal,
+                        onValueChange = onTomorrowGoalChange,
+                        enabled = !state.isSubmitting
+                    )
+                }
+
+                item {
+                    Text(
+                        text = stringResource(Res.string.day_review_leftovers_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                if (leftoverItems.isEmpty()) {
+                    item {
+                        Text(
+                            text = stringResource(Res.string.day_review_leftovers_empty),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
                     itemsIndexed(
                         leftoverItems,
                         key = { _, item -> item.id }) { index, item ->
@@ -135,12 +144,7 @@ internal fun DayReviewSheet(
                             enabled = !state.isSubmitting,
                             onAction = { onLeftoverAction(item.id, it) }
                         )
-                        if (index < leftoverItems.lastIndex) {
-                            AppHorizontalDivider(
-                                modifier = Modifier.padding(vertical = 12.dp),
-                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                            )
-                        }
+                        Spacer(modifier = Modifier.height(4.dp))
                     }
                 }
             }
@@ -310,17 +314,17 @@ private fun LeftoverReviewRow(
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.medium)
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
-            .padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(0.dp)
+            .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 0.dp),
+        verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
         DailyPlanTimelineCard(
             item = item,
             isOverdue = item.isOverdue(today())
         )
         FlowRow(
-            modifier = Modifier.padding(start = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(0.dp)
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            verticalArrangement = Arrangement.Center
         ) {
             LeftoverAction.entries.filter { it != LeftoverAction.None }.forEach { option ->
                 FilterChip(

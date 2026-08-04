@@ -16,10 +16,8 @@ data class TaskEditorActions(
     val onTaskListChange: (Long) -> Unit,
     val onTaskDescriptionChange: (String) -> Unit,
     val onTaskDoDateChange: (LocalDate?) -> Unit,
-    val onTaskStartTimeChange: (Int?) -> Unit,
-    val onTaskEndTimeChange: (Int?) -> Unit,
-    val onDailyPlanStartTimeChange: (Int?) -> Unit,
-    val onDailyPlanEndTimeChange: (Int?) -> Unit,
+    val onTaskTimeChange: (Int?, Int?) -> Unit,
+    val onDailyPlanTimeChange: (Int?, Int?) -> Unit,
     val onDailyPlanStatus: () -> Unit,
     val onDailyPlanDelete: (Long) -> Unit,
     val onDailyPlanStartSprint: (DailyPlanItem) -> Unit,
@@ -41,5 +39,6 @@ data class TaskEditorActions(
     val onNoteTagToggle: (Long) -> Unit,
     val onNewTagClick: () -> Unit,
     val onSwitchAddModeToTask: () -> Unit,
+    val onSwitchAddModeToHabit: () -> Unit,
     val onSwitchAddModeToNote: () -> Unit
 )

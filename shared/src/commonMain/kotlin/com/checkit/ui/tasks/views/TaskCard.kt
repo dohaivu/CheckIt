@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -43,7 +44,9 @@ import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
+import com.checkit.domain.TaskType
 import com.checkit.ui.tasks.DailyPlanIcon
+import com.checkit.ui.tasks.HabitIcon
 import com.checkit.ui.tasks.NoteIcon
 import com.checkit.ui.tasks.TaskIcon
 import com.checkit.ui.tasks.cardColor
@@ -62,6 +65,7 @@ internal fun TaskCard(
     supportingText: String? = null,
     leadingContent: (@Composable () -> Unit)? = null,
     trailingContent: (@Composable () -> Unit)? = null,
+    titleBadge: (@Composable () -> Unit)? = null,
     minHeight: Dp = 64.dp,
     contentPadding: PaddingValues = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
     titleMaxLines: Int = 2,
@@ -134,13 +138,22 @@ internal fun TaskCard(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
-                Text(
-                    text = titleText,
-                    style = titleTextStyle ?: typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = titleMaxLines,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = titleText,
+                        style = titleTextStyle ?: typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = titleMaxLines,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    if (titleBadge != null) {
+                        titleBadge()
+                    }
+                }
                 if (showSupportingText) {
                     Text(
                         text = timeLabel ?: supportingText.orEmpty(),
@@ -223,10 +236,14 @@ internal fun TaskTimelineCard(
         timeLabel = timeLabel,
         color = task.cardColor(),
         leadingContent = {
-            TaskIcon(
-                completed = completed,
-                color = task.priority.priorityColor()
-            )
+            if (task.type == TaskType.Habit) {
+                HabitIcon(completed, task.priority.priorityColor())
+            } else {
+                TaskIcon(
+                    completed = completed,
+                    color = task.priority.priorityColor()
+                )
+            }
         },
         trailingContent = trailingContent,
         completedOverlay = completedOverlay,
@@ -309,9 +326,10 @@ internal fun DailyPlanTimelineCard(
         timeLabel = timeLabel,
         color =  item.cardColor(),
         leadingContent = {
-            DailyPlanIcon(item.source, item.status == DailyPlanItemStatus.Done)
+            DailyPlanIcon(item.source, item.status == DailyPlanItemStatus.Done, item.isHabit)
         },
         trailingContent = trailingContent,
+        titleBadge = null,
         completedOverlay = completedOverlay,
         onClick = onClick,
         modifier = modifier,
@@ -350,10 +368,14 @@ internal fun TaskAllDayCard(
         title = task.name.ifBlank { "Untitled task" },
         color = task.cardColor(),
         icon = {
-            TaskIcon(
-                completed = task.status == TaskStatus.Completed,
-                color = task.priority.priorityColor()
-            )
+            if (task.type == TaskType.Habit) {
+                HabitIcon(completed = task.status == TaskStatus.Completed, color = task.priority.priorityColor())
+            } else {
+                TaskIcon(
+                    completed = task.status == TaskStatus.Completed,
+                    color = task.priority.priorityColor()
+                )
+            }
         },
         trailingContent = trailingContent,
         modifier = modifier,
@@ -389,7 +411,7 @@ internal fun DailyPlanAllDayCard(
     AllDayTypeCard(
         title = title,
         color = item.cardColor(),
-        icon = { DailyPlanIcon(item.source, item.status == DailyPlanItemStatus.Done) },
+        icon = { DailyPlanIcon(item.source, item.status == DailyPlanItemStatus.Done, item.isHabit) },
         trailingContent = trailingContent,
         modifier = modifier,
         completedOverlay = completedOverlay
@@ -493,15 +515,15 @@ internal fun DailyPlanItem.timelineTitle(): String =
 
 internal fun DailyPlanItem.timelineSupportingText(): String =
     when {
-        source == DailyPlanItemSource.MyDayNote || source == DailyPlanItemSource.MyDayReminder -> source.timelineLabel()
+        source == DailyPlanItemSource.MyDayNote || source == DailyPlanItemSource.MyDayReminder -> timelineLabel()
         !note.isNullOrBlank() -> note.orEmpty()
-        else -> source.timelineLabel()
+        else -> timelineLabel()
     }
 
-internal fun DailyPlanItemSource.timelineLabel(): String = when (this) {
-    DailyPlanItemSource.ExistingTask -> "Task"
-    DailyPlanItemSource.MyDayTask -> "CheckIn done"
-    DailyPlanItemSource.MyDayNote -> "CheckIn note"
+internal fun DailyPlanItem.timelineLabel(): String = when (this.source) {
+    DailyPlanItemSource.ExistingTask -> if (this.isHabit) "Habit" else  "Task"
+    DailyPlanItemSource.MyDayTask -> "MyDay Task"
+    DailyPlanItemSource.MyDayNote -> "MyDay Note"
     DailyPlanItemSource.MyDayReminder -> "Reminder"
 }
 

@@ -131,8 +131,9 @@ sealed interface WidgetLaunchTarget {
                 }
             }
             if (dailyPlanItemId != null && dailyPlanTarget == null) return null
-            if (taskId != null) {
-                val task = taskUiState.board.tasksById[taskId] ?: return null
+            val targetTaskId = taskId ?: dailyPlanTarget?.first?.taskId
+            if (targetTaskId != null) {
+                val task = taskUiState.board.tasksById[targetTaskId] ?: return null
                 return Task(task = task, dailyPlanItem = dailyPlanTarget?.first)
             }
             if (noteId != null) {

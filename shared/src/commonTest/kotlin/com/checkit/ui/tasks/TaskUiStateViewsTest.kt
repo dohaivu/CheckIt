@@ -43,7 +43,7 @@ class TaskUiStateViewsTest {
 
         assertNull(state.dayLimit)
         assertEquals(
-            listOf(TaskWorkspaceView.List, TaskWorkspaceView.Agenda),
+            listOf(TaskWorkspaceView.List, TaskWorkspaceView.Agenda, TaskWorkspaceView.Habits),
             state.availableViews
         )
     }
@@ -64,7 +64,7 @@ class TaskUiStateViewsTest {
 
         assertEquals(1, state.dayLimit)
         assertEquals(
-            listOf(TaskWorkspaceView.List, TaskWorkspaceView.Agenda, TaskWorkspaceView.Timeline),
+            listOf(TaskWorkspaceView.List, TaskWorkspaceView.Agenda, TaskWorkspaceView.Timeline, TaskWorkspaceView.Habits),
             state.availableViews
         )
     }
@@ -76,7 +76,7 @@ class TaskUiStateViewsTest {
 
         assertNull(state.dayLimit)
         assertEquals(
-            listOf(TaskWorkspaceView.List, TaskWorkspaceView.Agenda),
+            listOf(TaskWorkspaceView.List, TaskWorkspaceView.Agenda, TaskWorkspaceView.Habits),
             state.availableViews
         )
     }

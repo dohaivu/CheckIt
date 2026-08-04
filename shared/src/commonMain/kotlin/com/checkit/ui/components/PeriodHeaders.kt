@@ -53,7 +53,8 @@ enum class ReportPeriod {
     Daily,
     Week,
     Month,
-    Annual
+    Annual,
+    Habit
 }
 
 @Composable
@@ -133,6 +134,7 @@ private fun ReportPeriod.label(): String = when (this) {
     ReportPeriod.Week -> stringResource(Res.string.weekly)
     ReportPeriod.Month -> stringResource(Res.string.monthly)
     ReportPeriod.Annual -> stringResource(Res.string.annual)
+    ReportPeriod.Habit -> stringResource(Res.string.habits)
 }
 
 @Composable
@@ -156,6 +158,7 @@ internal fun ReportPeriodHeader(
             periods = periods
         )
         when (selectedPeriod) {
+            ReportPeriod.Habit -> Unit
             ReportPeriod.Daily -> DayHeader(
                 day = selectedDate,
                 onPreviousDay = onPreviousPeriod,

@@ -63,13 +63,13 @@ internal fun AppEditorBottomSheet(
 }
 
 @Composable
-internal fun DeleteOverflowMenu(
-    onDelete: () -> Unit,
+internal fun EditorOverflowMenu(
     modifier: Modifier = Modifier,
     contentDescription: String = "Options",
-    label: String = "Delete"
+    content: @Composable ColumnScope.(onDismiss: () -> Unit) -> Unit
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
+    val onDismiss = { menuExpanded = false }
 
     Box(modifier = modifier) {
         IconButton(onClick = { menuExpanded = true }) {
@@ -77,16 +77,31 @@ internal fun DeleteOverflowMenu(
         }
         DropdownMenu(
             expanded = menuExpanded,
-            onDismissRequest = { menuExpanded = false }
+            onDismissRequest = onDismiss
         ) {
-            DropdownMenuItem(
-                text = { androidx.compose.material3.Text(label) },
-                leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
-                onClick = {
-                    menuExpanded = false
-                    onDelete()
-                }
-            )
+            content(onDismiss)
         }
+    }
+}
+
+@Composable
+internal fun DeleteOverflowMenu(
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+    contentDescription: String = "Options",
+    label: String = "Delete"
+) {
+    EditorOverflowMenu(
+        modifier = modifier,
+        contentDescription = contentDescription
+    ) { onDismiss ->
+        DropdownMenuItem(
+            text = { androidx.compose.material3.Text(label) },
+            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
+            onClick = {
+                onDismiss()
+                onDelete()
+            }
+        )
     }
 }

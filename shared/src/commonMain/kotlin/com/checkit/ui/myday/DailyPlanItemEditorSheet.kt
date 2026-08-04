@@ -20,12 +20,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,15 +38,14 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DailyPlanItemSource
+import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.TaskTag
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DeleteOverflowMenu
 import com.checkit.ui.components.RichTextComposer
 import com.checkit.ui.components.TagPicker
-import com.checkit.ui.components.TagTitleAppender
 import com.checkit.ui.components.TimePicker
 import com.checkit.ui.components.TimeRangePicker
 import com.checkit.ui.tasks.views.currentTimeMinutes
@@ -62,12 +63,12 @@ internal fun DailyPlanItemEditorSheet(
     onNoteChange: (String) -> Unit,
     onStatusChange: (Boolean) -> Unit,
     onSourceChange: (DailyPlanItemSource) -> Unit,
-    onStartTimeChange: (Int?) -> Unit,
-    onEndTimeChange: (Int?) -> Unit,
+    onTimeChange: (Int?, Int?) -> Unit,
     onTagToggle: (Long) -> Unit,
     onNewTagClick: () -> Unit,
     onAdd: () -> Unit,
     onDelete: () -> Unit,
+    onDuplicate: () -> Unit,
     onStartSprint: () -> Unit,
     onStartOngoingSprint: () -> Unit
 ) {
@@ -100,8 +101,7 @@ internal fun DailyPlanItemEditorSheet(
                     onNoteChange = onNoteChange,
                     onStatusChange = onStatusChange,
                     onSourceChange = onSourceChange,
-                    onStartTimeChange = onStartTimeChange,
-                    onEndTimeChange = onEndTimeChange,
+                    onTimeChange = onTimeChange,
                     onTagToggle = onTagToggle,
                     onNewTagClick = onNewTagClick,
                     enabled = enabled
@@ -112,6 +112,7 @@ internal fun DailyPlanItemEditorSheet(
             state = state,
             enabled = enabled,
             onAdd = onAdd,
+            onDuplicate = onDuplicate,
             onStartSprint = onStartSprint,
             onStartOngoingSprint = onStartOngoingSprint
         )
@@ -162,28 +163,34 @@ private fun DailyPlanItemSheetFooter(
     state: DailyPlanItemEditorState,
     enabled: Boolean,
     onAdd: () -> Unit,
+    onDuplicate: () -> Unit,
     onStartSprint: () -> Unit,
     onStartOngoingSprint: () -> Unit
 ) {
     if (enabled) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (state.isAddMode) {
+        if (state.isAddMode) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Button(
                     onClick = onAdd,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Add to My Day")
                 }
-            } else {
+            }
+        } else {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
                 if (state.source == DailyPlanItemSource.MyDayTask) {
                     if (state.status == DailyPlanItemStatus.Planned && state.startTimeMinutes != null) {
                         Button(
                             onClick = onStartOngoingSprint,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             Icon(Icons.Default.Bolt, contentDescription = null)
                             Spacer(Modifier.size(8.dp))
@@ -193,15 +200,20 @@ private fun DailyPlanItemSheetFooter(
 
                     Button(
                         onClick = onStartSprint,
-                        modifier = if (state.status == DailyPlanItemStatus.Planned && state.startTimeMinutes != null) {
-                            Modifier.weight(1f)
-                        } else {
-                            Modifier.fillMaxWidth()
-                        }
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(Icons.Default.Schedule, contentDescription = null)
                         Spacer(Modifier.size(8.dp))
-                        Text(if (state.status == DailyPlanItemStatus.Done) "Start new session" else "Start focus")
+                        Text(if (state.status == DailyPlanItemStatus.Done) "Start new Focus" else "Start focus")
+                    }
+
+                    OutlinedButton(
+                        onClick = onDuplicate,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.ContentCopy, contentDescription = null)
+                        Spacer(Modifier.size(8.dp))
+                        Text("Schedule new Session")
                     }
                 }
             }
@@ -235,8 +247,7 @@ private fun DailyPlanItemFormContent(
     onNoteChange: (String) -> Unit,
     onStatusChange: (Boolean) -> Unit,
     onSourceChange: (DailyPlanItemSource) -> Unit,
-    onStartTimeChange: (Int?) -> Unit,
-    onEndTimeChange: (Int?) -> Unit,
+    onTimeChange: (Int?, Int?) -> Unit,
     onTagToggle: (Long) -> Unit,
     onNewTagClick: () -> Unit,
     enabled: Boolean
@@ -265,7 +276,7 @@ private fun DailyPlanItemFormContent(
         RichTextComposer(
             value = state.note,
             onValueChange = onNoteChange,
-            placeholder = displaySource.notePlaceholder(),
+            placeholder = if (sourceLocked) null else "Add details",
             enabled = enabled,
             modifier = Modifier.fillMaxWidth()
         )
@@ -308,14 +319,13 @@ private fun DailyPlanItemFormContent(
             startTimeMinutes = state.startTimeMinutes,
             endTimeMinutes = state.endTimeMinutes,
             isOverdue = state.isOverdue,
-            onStartTimeChange = { timeMinutes ->
-                onStartTimeChange(timeMinutes)
+            onTimeChange = { startTime, endTime ->
+                onTimeChange(startTime, endTime)
                 if (!sourceLocked) {
-                    val nextStatus = displaySource.inferredAddStatus(timeMinutes)
+                    val nextStatus = displaySource.inferredAddStatus(startTime)
                     onStatusChange(nextStatus == DailyPlanItemStatus.Done)
                 }
             },
-            onEndTimeChange = onEndTimeChange,
             enabled = enabled
         )
 
@@ -323,12 +333,7 @@ private fun DailyPlanItemFormContent(
             source = displaySource,
             availableTags = availableTags,
             selectedTagIds = state.selectedTagIds,
-            onTagToggle = { tagId ->
-                onTagToggle(tagId)
-                availableTags.find { it.id == tagId }?.let { tag ->
-                    onTitleChange(TagTitleAppender.appendTagActionText(state.title, tag.name))
-                }
-            },
+            onTagToggle = onTagToggle,
             onNewTagClick = onNewTagClick,
             enabled = enabled
         )
@@ -399,8 +404,7 @@ private fun TimeSection(
     startTimeMinutes: Int?,
     endTimeMinutes: Int?,
     isOverdue: Boolean,
-    onStartTimeChange: (Int?) -> Unit,
-    onEndTimeChange: (Int?) -> Unit,
+    onTimeChange: (Int?, Int?) -> Unit,
     enabled: Boolean
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -415,7 +419,7 @@ private fun TimeSection(
                 label = "",
                 timeMinutes = startTimeMinutes,
                 initialTimeMinutes = currentTimeMinutes(),
-                onTimeChange = onStartTimeChange,
+                onTimeChange = { start -> onTimeChange(start, endTimeMinutes) },
                 enabled = enabled,
                 isOverdue = isOverdue
             )
@@ -423,8 +427,7 @@ private fun TimeSection(
             TimeRangePicker(
                 startTimeMinutes = startTimeMinutes,
                 endTimeMinutes = endTimeMinutes,
-                onStartTimeChange = onStartTimeChange,
-                onEndTimeChange = onEndTimeChange,
+                onTimeChange = onTimeChange,
                 enabled = enabled,
                 isOverdue = isOverdue
             )
@@ -540,13 +543,6 @@ private fun DailyPlanItemSource.titlePlaceholder(): String = when (this) {
     DailyPlanItemSource.MyDayTask -> "Task name"
     DailyPlanItemSource.MyDayNote -> "Note title"
     DailyPlanItemSource.MyDayReminder -> "Reminder"
-}
-
-private fun DailyPlanItemSource.notePlaceholder(): String? = when (this) {
-    DailyPlanItemSource.ExistingTask,
-    DailyPlanItemSource.MyDayTask,
-    DailyPlanItemSource.MyDayNote,
-    DailyPlanItemSource.MyDayReminder -> "Add details"
 }
 
 private fun DailyPlanItemSource.statusTitle(doneChecked: Boolean): String = when (this) {

@@ -33,6 +33,57 @@ data class ReportUiState(
     val digestReport: DigestReportSummary by lazy {
         reportIndex.toDigest(selectedPeriod, selectedDate)
     }
+    val habitCheckins: List<HabitCheckin> by lazy {
+        buildHabitCheckins(dailyPlans, today())
+    }
+}
+
+data class HabitCheckin(
+    val taskId: Long,
+    val title: String,
+    val doneMinutesByDate: Map<LocalDate, Int>,
+    val streak: Int,
+    val totalDone: Int
+) {
+    val doneDates: Set<LocalDate> get() = doneMinutesByDate.keys
+}
+
+internal fun buildHabitCheckins(
+    dailyPlans: List<DailyPlan>,
+    today: LocalDate
+): List<HabitCheckin> {
+    val grouped = dailyPlans.asSequence()
+        .flatMap { plan -> plan.items.asSequence().map { item -> plan.date to item } }
+        .filter { (_, item) -> item.isHabit && item.status == DailyPlanItemStatus.Done }
+        .groupBy(
+            { (_, item) -> item.taskId ?: item.id },
+            { (date, item) -> date to item }
+        )
+    return grouped.map { (key, entries) ->
+        val minutesByDate = entries
+            .groupBy({ it.first }, { it.second.workMinutes() })
+            .mapValues { (_, minutes) -> minutes.sum() }
+        HabitCheckin(
+            taskId = key,
+            title = entries.first().second.title.ifBlank { "Habit" },
+            doneMinutesByDate = minutesByDate,
+            streak = calculateStreak(minutesByDate.keys, today),
+            totalDone = minutesByDate.size
+        )
+    }.sortedWith(compareByDescending<HabitCheckin> { it.streak }.thenBy { it.title.lowercase() })
+}
+
+internal fun calculateStreak(doneDates: Set<LocalDate>, today: LocalDate): Int {
+    var day = today
+    if (day !in doneDates) {
+        day = day.minus(1, DateTimeUnit.DAY)
+    }
+    var streak = 0
+    while (day in doneDates) {
+        streak += 1
+        day = day.minus(1, DateTimeUnit.DAY)
+    }
+    return streak
 }
 
 data class TagReportItem(
@@ -151,6 +202,7 @@ private class DailyPlanReportIndex(
                     }
                     .toList()
             }
+            ReportPeriod.Habit -> emptyList()
         }
 
     fun toDigest(period: ReportPeriod, selectedDate: LocalDate): DigestReportSummary {
@@ -248,6 +300,7 @@ private fun ReportPeriod.periodStart(date: LocalDate): LocalDate = when (this) {
     ReportPeriod.Week -> date.firstDayOfWeek()
     ReportPeriod.Month -> date.firstDayOfMonth()
     ReportPeriod.Annual -> LocalDate(date.year, 1, 1)
+    ReportPeriod.Habit -> date
 }
 
 private fun ReportPeriod.periodEndExclusive(date: LocalDate): LocalDate = when (this) {
@@ -255,6 +308,7 @@ private fun ReportPeriod.periodEndExclusive(date: LocalDate): LocalDate = when (
     ReportPeriod.Week -> periodStart(date).plus(7, DateTimeUnit.DAY)
     ReportPeriod.Month -> periodStart(date).plus(1, DateTimeUnit.MONTH)
     ReportPeriod.Annual -> periodStart(date).plus(1, DateTimeUnit.YEAR)
+    ReportPeriod.Habit -> periodStart(date).plus(1, DateTimeUnit.DAY)
 }
 
 private fun LocalDate.firstDayOfWeek(): LocalDate =

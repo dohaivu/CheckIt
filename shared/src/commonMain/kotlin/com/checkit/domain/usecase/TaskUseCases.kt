@@ -14,6 +14,7 @@ import com.checkit.domain.TaskFilter
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
+import com.checkit.domain.TaskType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
@@ -21,6 +22,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
@@ -31,15 +33,11 @@ class ObserveTaskBoardUseCase(
     operator fun invoke(): Flow<TaskBoard> = repository.observeTaskBoard()
 }
 
-class EnsureDefaultTaskDataUseCase(
-    private val repository: CheckItRepository
-) {
-    suspend operator fun invoke() = repository.ensureDefaultTaskData()
-}
-
 class AutoAddTodayTasksToMyDayUseCase(
     private val repository: CheckItRepository,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val deleteDailyPlanItem: DeleteDailyPlanItemUseCase,
+    private val smartScheduleDailyPlan: SmartScheduleDailyPlanUseCase
 ) {
     private val mutex = Mutex()
 
@@ -50,23 +48,46 @@ class AutoAddTodayTasksToMyDayUseCase(
             return@withLock 0
         }
 
-        repository.ensureDefaultTaskData()
+        removeIncompleteHabitsFromYesterday(today)
+        val alreadyPlannedTaskIds = repository.dailyPlanForDate(today)
+            ?.items
+            ?.mapNotNull { it.taskId }
+            ?.toSet()
+            .orEmpty()
         val tasksToAdd = repository.observeTaskBoard()
             .first()
             .tasks
             .filter { task ->
                 !task.isTrashed &&
                     task.status == TaskStatus.Open &&
-                    task.doDate == today
+                    task.qualifiesForToday(today) &&
+                    task.id !in alreadyPlannedTaskIds
             }
 
         tasksToAdd.forEach { task ->
             repository.addTaskToDailyPlan(today, task)
         }
+        if (tasksToAdd.isNotEmpty()) {
+            smartScheduleDailyPlan().getOrThrow()
+        }
         settingsRepository.setAutoMyDayLastRunEpochDay(todayEpochDay)
         tasksToAdd.size
     }
+
+    private suspend fun removeIncompleteHabitsFromYesterday(today: LocalDate) {
+        val yesterday = today.minus(1, DateTimeUnit.DAY)
+        repository.dailyPlanForDate(yesterday)
+            ?.items
+            ?.filter { it.isHabit && it.status != DailyPlanItemStatus.Done }
+            ?.forEach { deleteDailyPlanItem(it.id) }
+    }
 }
+
+private fun TaskItem.qualifiesForToday(today: LocalDate): Boolean =
+    when (type) {
+        TaskType.Task -> doDate == today
+        TaskType.Habit -> completedDate == null
+    }
 
 class AddTagUseCase(
     private val repository: CheckItRepository

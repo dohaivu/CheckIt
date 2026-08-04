@@ -25,11 +25,13 @@ import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RestoreFromTrash
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -49,20 +51,19 @@ import androidx.compose.ui.unit.sp
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.Objective
-import com.checkit.domain.SprintState
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskTag
+import com.checkit.domain.TaskType
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DatePicker
-import com.checkit.ui.components.DeleteOverflowMenu
+import com.checkit.ui.components.EditorOverflowMenu
 import com.checkit.ui.components.ListPicker
 import com.checkit.ui.components.PriorityPicker
 import com.checkit.ui.components.RichTextComposer
 import com.checkit.ui.components.TagPicker
-import com.checkit.ui.components.TagTitleAppender
 import com.checkit.ui.components.TimeRangePicker
 import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
@@ -86,10 +87,8 @@ internal fun TaskEditorSheet(
     val onTaskListChange = actions.onTaskListChange
     val onTaskDescriptionChange = actions.onTaskDescriptionChange
     val onTaskDoDateChange = actions.onTaskDoDateChange
-    val onTaskStartTimeChange = actions.onTaskStartTimeChange
-    val onTaskEndTimeChange = actions.onTaskEndTimeChange
-    val onDailyPlanStartTimeChange = actions.onDailyPlanStartTimeChange
-    val onDailyPlanEndTimeChange = actions.onDailyPlanEndTimeChange
+    val onTaskTimeChange = actions.onTaskTimeChange
+    val onDailyPlanTimeChange = actions.onDailyPlanTimeChange
     val onDailyPlanStatus = actions.onDailyPlanStatus
     val onDailyPlanDelete = actions.onDailyPlanDelete
     val onDailyPlanStartSprint = actions.onDailyPlanStartSprint
@@ -111,6 +110,7 @@ internal fun TaskEditorSheet(
     val onNoteDateChange = actions.onNoteDateChange
     val onNoteStartTimeChange = actions.onNoteStartTimeChange
     val onSwitchAddModeToTask = actions.onSwitchAddModeToTask
+    val onSwitchAddModeToHabit = actions.onSwitchAddModeToHabit
     val onSwitchAddModeToNote = actions.onSwitchAddModeToNote
 
     AppEditorBottomSheet(
@@ -121,8 +121,10 @@ internal fun TaskEditorSheet(
     ) {
         SheetHeader(
             isAddMode = editor.isAddMode(),
-            isTaskSelected = editor is TaskEditorState.TaskForm,
+            isTaskSelected = editor is TaskEditorState.TaskForm && editor.type == TaskType.Task,
+            isHabitSelected = editor is TaskEditorState.TaskForm && editor.type == TaskType.Habit,
             onSwitchAddModeToTask = onSwitchAddModeToTask,
+            onSwitchAddModeToHabit = onSwitchAddModeToHabit,
             onSwitchAddModeToNote = onSwitchAddModeToNote,
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
         )
@@ -145,8 +147,7 @@ internal fun TaskEditorSheet(
                         item {
                             DailyPlanSection(
                                 item = dailyPlanItem,
-                                onStartTimeChange = onDailyPlanStartTimeChange,
-                                onEndTimeChange = onDailyPlanEndTimeChange,
+                                onTimeChange = onDailyPlanTimeChange,
                                 onStatusChange = onDailyPlanStatus,
                                 onDelete = onDailyPlanDelete,
                                 onStartSprint = onDailyPlanStartSprint,
@@ -167,8 +168,7 @@ internal fun TaskEditorSheet(
                             onListChange = onTaskListChange,
                             onDescriptionChange = onTaskDescriptionChange,
                             onDoDateChange = onTaskDoDateChange,
-                            onStartTimeChange = onTaskStartTimeChange,
-                            onEndTimeChange = onTaskEndTimeChange,
+                            onTimeChange = onTaskTimeChange,
                             onRepeatChange = onTaskRepeatChange,
                             onPriorityChange = onTaskPriorityChange,
                             onReminderToggle = onTaskReminderToggle,
@@ -224,22 +224,32 @@ internal fun TaskEditorSheet(
 @Composable
 private fun AddModeSwitch(
     isTaskSelected: Boolean,
+    isHabitSelected: Boolean,
     onTaskClick: () -> Unit,
+    onHabitClick: () -> Unit,
     onNoteClick: () -> Unit
 ) {
     SingleChoiceSegmentedButtonRow {
         SegmentedButton(
             selected = isTaskSelected,
             onClick = onTaskClick,
-            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
             icon = { Icon(Icons.Default.TaskAlt, contentDescription = null) },
             label = { Text("Task") },
             colors = SegmentedButtonDefaults.colors(activeContainerColor = MaterialTheme.colorScheme.primaryContainer, activeContentColor = MaterialTheme.colorScheme.primary)
         )
         SegmentedButton(
-            selected = !isTaskSelected,
+            selected = isHabitSelected,
+            onClick = onHabitClick,
+            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
+            icon = { Icon(Icons.Default.Repeat, contentDescription = null) },
+            label = { Text("Habit") },
+            colors = SegmentedButtonDefaults.colors(activeContainerColor = MaterialTheme.colorScheme.primaryContainer, activeContentColor = MaterialTheme.colorScheme.primary)
+        )
+        SegmentedButton(
+            selected = !isTaskSelected && !isHabitSelected,
             onClick = onNoteClick,
-            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+            shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
             icon = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null) },
             label = { Text("Note") },
             colors = SegmentedButtonDefaults.colors(activeContainerColor = MaterialTheme.colorScheme.primaryContainer, activeContentColor = MaterialTheme.colorScheme.primary)
@@ -251,7 +261,9 @@ private fun AddModeSwitch(
 private fun SheetHeader(
     isAddMode: Boolean,
     isTaskSelected: Boolean,
+    isHabitSelected: Boolean,
     onSwitchAddModeToTask: () -> Unit,
+    onSwitchAddModeToHabit: () -> Unit,
     onSwitchAddModeToNote: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -260,7 +272,9 @@ private fun SheetHeader(
             Box(modifier = Modifier.align(Alignment.Center)) {
                 AddModeSwitch(
                     isTaskSelected = isTaskSelected,
+                    isHabitSelected = isHabitSelected,
                     onTaskClick = onSwitchAddModeToTask,
+                    onHabitClick = onSwitchAddModeToHabit,
                     onNoteClick = onSwitchAddModeToNote
                 )
             }
@@ -323,38 +337,58 @@ private fun SheetFooter(
     onOpen: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val showOptionsMenu = canDelete && !isTrashed
-    if (!showOptionsMenu && !isAddMode && !showAddToMyDay && !isCompletable && !isOpenable) return
+    val showOptionsMenu = (canDelete || isCompletable || isOpenable) && !isTrashed
+    if (!showOptionsMenu && !isAddMode && !showAddToMyDay) return
 
-    Row(modifier = modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (showAddToMyDay) {
-                OutlinedButton(onClick = onAddToMyDay) {
-                    Text("Add to MyDay")
-                }
-            }
-            if (isAddMode) {
-                Button(onClick = onSave) {
-                    Text("Save")
-                }
-            }
-            if (isCompletable) {
-                Button(onClick = onComplete) {
-                    Text("Complete")
-                }
-            }
-            if (isOpenable) {
-                Button(onClick = onOpen) {
-                    Text("Open")
-                }
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (showAddToMyDay) {
+            OutlinedButton(onClick = onAddToMyDay) {
+                Text("Schedule")
             }
         }
+        Spacer(modifier = Modifier.weight(1f))
+        if (isAddMode) {
+            Button(onClick = onSave) {
+                Text("Save")
+            }
+        }
+
         if (showOptionsMenu) {
-            DeleteOverflowMenu(onDelete = onDelete)
+            EditorOverflowMenu { onDismiss ->
+                if (isCompletable) {
+                    DropdownMenuItem(
+                        text = { Text("Complete") },
+                        leadingIcon = { Icon(Icons.Default.Check, contentDescription = null) },
+                        onClick = {
+                            onDismiss()
+                            onComplete()
+                        }
+                    )
+                }
+                if (isOpenable) {
+                    DropdownMenuItem(
+                        text = { Text("Reopen") },
+                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null) },
+                        onClick = {
+                            onDismiss()
+                            onOpen()
+                        }
+                    )
+                }
+                if (canDelete) {
+                    DropdownMenuItem(
+                        text = { Text("Delete") },
+                        leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
+                        onClick = {
+                            onDismiss()
+                            onDelete()
+                        }
+                    )
+                }
+            }
         }
     }
 }
@@ -368,8 +402,7 @@ private fun TaskFormContent(
     onListChange: (Long) -> Unit,
     onDescriptionChange: (String) -> Unit,
     onDoDateChange: (LocalDate?) -> Unit,
-    onStartTimeChange: (Int?) -> Unit,
-    onEndTimeChange: (Int?) -> Unit,
+    onTimeChange: (Int?, Int?) -> Unit,
     onRepeatChange: (RepeatPreset) -> Unit,
     onPriorityChange: (TaskPriority) -> Unit,
     onReminderToggle: (Int) -> Unit,
@@ -382,27 +415,47 @@ private fun TaskFormContent(
     onNewTagClick: () -> Unit,
     enabled: Boolean = true
 ) {
+    val isHabit = form.type == TaskType.Habit
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            TaskIcon(
-                completed = form.status == TaskStatus.Completed,
-                color = form.priority.priorityColor()
-            )
-            DatePicker(
-                modifier = Modifier.weight(1f),
-                date = form.doDate,
-                onDateChange = onDoDateChange,
-                startTimeMinutes = form.startTimeMinutes,
-                endTimeMinutes = form.endTimeMinutes,
-                onStartTimeChange = onStartTimeChange,
-                onEndTimeChange = onEndTimeChange,
-                enabled = enabled,
-                isOverdue = form.isOverdue()
-            )
-            PriorityPicker(selected = form.priority, onSelect = onPriorityChange, enabled = enabled)
+        if (isHabit) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                HabitIcon(
+                    completed = form.status == TaskStatus.Completed,
+                    color = form.priority.priorityColor()
+                )
+                Text(
+                    text = "Every day · auto-added to My Day",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                PriorityPicker(selected = form.priority, onSelect = onPriorityChange, enabled = enabled)
+            }
+        } else {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                TaskIcon(
+                    completed = form.status == TaskStatus.Completed,
+                    color = form.priority.priorityColor()
+                )
+                DatePicker(
+                    modifier = Modifier.weight(1f),
+                    date = form.doDate,
+                    onDateChange = onDoDateChange,
+                    startTimeMinutes = form.startTimeMinutes,
+                    endTimeMinutes = form.endTimeMinutes,
+                    onTimeChange = onTimeChange,
+                    supportsEndTime = !isHabit,
+                    enabled = enabled,
+                    isOverdue = form.isOverdue()
+                )
+                PriorityPicker(selected = form.priority, onSelect = onPriorityChange, enabled = enabled)
+            }
         }
 
         AppOutlinedTextField(
@@ -465,12 +518,7 @@ private fun TaskFormContent(
             TagPicker(
                 availableTags = availableTags,
                 selectedTagIds = form.selectedTagIds,
-                onTagToggle = { tagId ->
-                    onTagToggle(tagId)
-                    availableTags.find { it.id == tagId }?.let { tag ->
-                        onNameChange(TagTitleAppender.appendTagActionText(form.name, tag.name))
-                    }
-                },
+                onTagToggle = onTagToggle,
                 onNewTagClick = onNewTagClick,
                 enabled = enabled
             )
@@ -481,8 +529,7 @@ private fun TaskFormContent(
 @Composable
 private fun DailyPlanSection(
     item: DailyPlanItem?,
-    onStartTimeChange: (Int?) -> Unit,
-    onEndTimeChange: (Int?) -> Unit,
+    onTimeChange: (Int?, Int?) -> Unit,
     onStatusChange: () -> Unit,
     onDelete: (Long) -> Unit,
     onStartSprint: (DailyPlanItem) -> Unit,
@@ -531,8 +578,7 @@ private fun DailyPlanSection(
                 TimeRangePicker(
                     startTimeMinutes = item.startTimeMinutes,
                     endTimeMinutes = item.endTimeMinutes,
-                    onStartTimeChange = onStartTimeChange,
-                    onEndTimeChange = onEndTimeChange,
+                    onTimeChange = onTimeChange,
                     modifier = Modifier.weight(1f),
                     enabled = enabled,
                     isOverdue = item.isOverdue(today()),
@@ -628,8 +674,8 @@ private fun NoteFormContent(
                 onDateChange = onDateChange,
                 startTimeMinutes = form.startTimeMinutes,
                 endTimeMinutes = null,
-                onStartTimeChange = onStartTimeChange,
-                onEndTimeChange = null,
+                onTimeChange = { start, _ -> onStartTimeChange(start) },
+                supportsEndTime = false,
                 enabled = enabled
             )
         }
@@ -667,12 +713,7 @@ private fun NoteFormContent(
             TagPicker(
                 availableTags = availableTags,
                 selectedTagIds = form.selectedTagIds,
-                onTagToggle = { tagId ->
-                    onTagToggle(tagId)
-                    availableTags.find { it.id == tagId }?.let { tag ->
-                        onTitleChange(TagTitleAppender.appendTagActionText(form.title, tag.name))
-                    }
-                },
+                onTagToggle = onTagToggle,
                 onNewTagClick = onNewTagClick,
                 enabled = enabled
             )

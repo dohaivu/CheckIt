@@ -13,10 +13,10 @@ import com.checkit.domain.usecase.BuildDayReviewSummaryUseCase
 import com.checkit.domain.usecase.CarryOverDailyPlanItemsUseCase
 import com.checkit.domain.usecase.CompleteDayReviewUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
-import com.checkit.domain.usecase.EnsureDefaultTaskDataUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveDayReviewsUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
+import com.checkit.domain.usecase.SmartScheduleDailyPlanUseCase
 import com.checkit.domain.usecase.SprintTransitionUseCase
 import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
@@ -36,7 +36,6 @@ import kotlinx.datetime.LocalDate
 class MyDayViewModel(
     observeTaskBoard: ObserveTaskBoardUseCase,
     observeDailyPlans: ObserveDailyPlansUseCase,
-    ensureDefaultTaskData: EnsureDefaultTaskDataUseCase,
     deleteDailyPlanItemUseCase: DeleteDailyPlanItemUseCase,
     settingsRepository: SettingsRepository,
     buildDayReviewSummary: BuildDayReviewSummaryUseCase,
@@ -47,13 +46,13 @@ class MyDayViewModel(
     addSuggestedTaskToMyDay: AddSuggestedTaskToMyDayUseCase,
     syncKeyResultFromDailyPlan: SyncKeyResultFromDailyPlanUseCase,
     updateDailyPlanItemTime: UpdateDailyPlanItemTimeUseCase,
+    smartSchedule: SmartScheduleDailyPlanUseCase,
     val sprintManager: SprintManager,
     sprintTransition: SprintTransitionUseCase
 ) : ViewModel() {
     private val deps = MyDayDependencies(
         observeTaskBoard = observeTaskBoard,
         observeDailyPlans = observeDailyPlans,
-        ensureDefaultTaskData = ensureDefaultTaskData,
         deleteDailyPlanItem = deleteDailyPlanItemUseCase,
         settingsRepository = settingsRepository,
         buildDayReviewSummary = buildDayReviewSummary,
@@ -64,6 +63,7 @@ class MyDayViewModel(
         addSuggestedTaskToMyDay = addSuggestedTaskToMyDay,
         syncKeyResultFromDailyPlan = syncKeyResultFromDailyPlan,
         updateDailyPlanItemTime = updateDailyPlanItemTime,
+        smartSchedule = smartSchedule,
         sprintManager = sprintManager,
         sprintTransition = sprintTransition
     )
@@ -78,6 +78,7 @@ class MyDayViewModel(
     private val planAssist = PlanAssistController(deps, state, viewModelScope)
     private val dailyPlanEditor = DailyPlanEditorController(deps, state, viewModelScope)
     private val sprints = SprintController(deps, state, viewModelScope)
+    private val smartScheduler = SmartSchedulerController(deps, state, viewModelScope)
 
     init {
         loader.start()
@@ -114,6 +115,9 @@ class MyDayViewModel(
     fun addTaskToMyDay(task: TaskItem) = planAssist.addTaskToMyDay(task)
     fun quickAddDailyPlanItem(title: String, tagIds: List<Long>) = planAssist.quickAddDailyPlanItem(title, tagIds)
 
+    // Smart scheduler
+    fun smartSchedule() = smartScheduler.scheduleAll()
+
     // Daily plan item editor
     fun updateItemTime(item: DailyPlanItem, startTimeMinutes: Int, endTimeMinutes: Int) =
         dailyPlanEditor.updateItemTime(item, startTimeMinutes, endTimeMinutes)
@@ -130,11 +134,11 @@ class MyDayViewModel(
     fun updateNote(note: String) = dailyPlanEditor.updateNote(note)
     fun updateStatus(isDone: Boolean) = dailyPlanEditor.updateStatus(isDone)
     fun updateEditorSource(source: DailyPlanItemSource) = dailyPlanEditor.updateEditorSource(source)
-    fun updateStartTime(timeMinutes: Int?) = dailyPlanEditor.updateStartTime(timeMinutes)
-    fun updateEndTime(timeMinutes: Int?) = dailyPlanEditor.updateEndTime(timeMinutes)
+    fun updateTime(startTimeMinutes: Int?, endTimeMinutes: Int?) = dailyPlanEditor.updateTime(startTimeMinutes, endTimeMinutes)
     fun toggleTag(tagId: Long) = dailyPlanEditor.toggleTag(tagId)
     fun deleteDailyPlan() = dailyPlanEditor.deleteDailyPlan()
     fun deleteDailyPlanItem(itemId: Long) = dailyPlanEditor.deleteDailyPlanItem(itemId)
+    fun duplicateDailyPlanItem() = dailyPlanEditor.duplicateDailyPlanItem()
 
     // Sprints
     fun executeFabAction(action: FabAction) = sprints.executeFabAction(action)

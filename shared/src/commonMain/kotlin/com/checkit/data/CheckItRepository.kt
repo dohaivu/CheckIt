@@ -20,6 +20,7 @@ import com.checkit.domain.TaskReminder
 import com.checkit.domain.TaskReminderWriteInput
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskTag
+import com.checkit.domain.TaskType
 import com.checkit.domain.hasEndTime
 import com.checkit.notifications.DailyPlanScheduleReminderScheduler
 import com.checkit.notifications.NoOpDailyPlanScheduleReminderScheduler
@@ -30,8 +31,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -40,9 +39,7 @@ import kotlin.time.Clock
 interface CheckItRepository {
     fun observeTaskBoard(): Flow<TaskBoard>
     fun observeDailyPlans(): Flow<List<DailyPlan>>
-    suspend fun ensureDefaultTaskData()
-    suspend fun addGoal(input: GoalWriteInput): Long
-    suspend fun updateGoal(goalId: Long, input: GoalWriteInput)
+    suspend fun addGoal(input: GoalWriteInput): Long    suspend fun updateGoal(goalId: Long, input: GoalWriteInput)
     suspend fun deleteGoal(goalId: Long)
     suspend fun addObjective(input: ObjectiveWriteInput): Long
     suspend fun updateObjective(objectiveId: Long, input: ObjectiveWriteInput)
@@ -73,9 +70,15 @@ interface CheckItRepository {
         tagIds: List<Long> = emptyList()
     ): Long
     suspend fun updateDailyPlanItemTime(itemId: Long, startTimeMinutes: Int?, endTimeMinutes: Int?)
+    suspend fun updateDailyPlanItemTimes(updates: List<DailyPlanItemTimeUpdate>) {
+        updates.forEach { update ->
+            updateDailyPlanItemTime(update.itemId, update.startTimeMinutes, update.endTimeMinutes)
+        }
+    }
     suspend fun updateDailyPlanItemStatus(itemId: Long, status: DailyPlanItemStatus)
     suspend fun updateDailyPlanItemsStatus(itemIds: List<Long>, status: DailyPlanItemStatus)
     suspend fun updateDailyPlanItem(itemId: Long, input: DailyPlanItemWriteInput)
+    suspend fun updateDailyPlanItemTags(itemId: Long, tagIds: List<Long>)
     suspend fun deleteDailyPlanItem(itemId: Long)
     suspend fun getDailyPlanItem(itemId: Long): DailyPlanItem?
     suspend fun dailyPlanForDate(date: LocalDate): DailyPlan?
@@ -119,6 +122,12 @@ interface CheckItRepository {
     suspend fun restoreNote(noteId: Long)
 }
 
+data class DailyPlanItemTimeUpdate(
+    val itemId: Long,
+    val startTimeMinutes: Int?,
+    val endTimeMinutes: Int?
+)
+
 data class GoalWriteInput(
     val title: String,
     val color: String,
@@ -155,6 +164,7 @@ data class TaskWriteInput(
     val subtasks: List<SubTaskWriteInput>,
     val status: TaskStatus,
     val priority: TaskPriority,
+    val type: TaskType = TaskType.Task,
     val doDate: LocalDate?,
     val startTimeMinutes: Int?,
     val endTimeMinutes: Int?,
@@ -194,8 +204,6 @@ class RoomCheckItRepository(
     private val dailyPlanScheduleReminderScheduler: DailyPlanScheduleReminderScheduler =
         NoOpDailyPlanScheduleReminderScheduler()
 ) : CheckItRepository {
-    private val seedMutex = Mutex()
-
     override fun observeTaskBoard(): Flow<TaskBoard> =
         combine(
             combine(
@@ -277,66 +285,6 @@ class RoomCheckItRepository(
                 }
                 .sortedByDescending { it.date }
         }
-
-    override suspend fun ensureDefaultTaskData() = seedMutex.withLock {
-        cleanupDuplicateSeedData()
-        ensureDefaultFilters()
-        if (dao.objectiveCount() > 0) return@withLock
-
-        val instant = Clock.System.now()
-        val now = instant.toEpochMilliseconds()
-        val today = instant.toLocalDateTime(TimeZone.currentSystemDefault()).date
-        val inboxId = dao.insertObjective(
-            ObjectiveEntity(
-                title = "Inbox",
-                color = "#2563EB",
-                icon = "Inbox",
-                sortOrder = 0
-            )
-        )
-        val workId = dao.insertTag(TagEntity(name = "work", color = "#7C3AED", sortOrder = 0))
-        val homeId = dao.insertTag(TagEntity(name = "home", color = "#059669", sortOrder = 1))
-        val todayTaskId = dao.insertTask(
-            TaskEntity(
-                objectiveId = inboxId,
-                name = "Plan the day",
-                description = "Review agenda, timeline, and the next task to start.",
-                status = TaskStatus.Open.name,
-                priority = TaskPriority.High.name,
-                doDateEpochDays = today.toEpochDays().toInt(),
-                startTimeMinutes = 9 * 60,
-                endTimeMinutes = 9 * 60 + 30,
-                repeatRRule = "FREQ=DAILY;INTERVAL=1",
-                sortOrder = 0,
-                createdAtMillis = now,
-                updatedAtMillis = now
-            )
-        )
-        addTaskTag(todayTaskId, workId)
-        dao.insertSubTask(SubTaskEntity(taskId = todayTaskId, name = "Check calendar", sortOrder = 0))
-        dao.insertSubTask(SubTaskEntity(taskId = todayTaskId, name = "Pick top priority", sortOrder = 1))
-        dao.insertReminder(
-            TaskReminderEntity(
-                taskId = todayTaskId,
-                remindAtMillis = now + 15 * 60 * 1000,
-                label = "Before focus block"
-            )
-        )
-
-        val noteId = dao.insertNote(
-            NoteEntity(
-                objectiveId = inboxId,
-                title = "Note basics",
-                content = "Ideas, meeting notes, and loose thoughts live beside tasks in each list.",
-                status = TaskStatus.Open.name,
-                dateEpochDays = today.toEpochDays().toInt(),
-                createdAtMillis = now,
-                editedAtMillis = now,
-                sortOrder = 1
-            )
-        )
-        addNoteTag(noteId, homeId)
-    }
 
     override suspend fun addGoal(input: GoalWriteInput): Long =
         dao.insertGoal(
@@ -445,6 +393,7 @@ class RoomCheckItRepository(
     override suspend fun addTask(input: TaskWriteInput): Long {
         val now = Clock.System.now().toEpochMilliseconds()
         val keyResultId = input.keyResultIdForObjective()
+        val isHabit = input.type == TaskType.Habit
         val taskId = dao.insertTask(
             TaskEntity(
                 objectiveId = input.objectiveId,
@@ -453,10 +402,11 @@ class RoomCheckItRepository(
                 description = input.description,
                 status = input.status.name,
                 priority = input.priority.name,
-                doDateEpochDays = input.doDate?.toEpochDays()?.toInt(),
-                startTimeMinutes = input.startTimeMinutes,
-                endTimeMinutes = input.endTimeMinutes,
-                repeatRRule = input.repeatRRule,
+                type = input.type.name,
+                doDateEpochDays = if (isHabit) null else input.doDate?.toEpochDays()?.toInt(),
+                startTimeMinutes = if (isHabit) null else input.startTimeMinutes,
+                endTimeMinutes = if (isHabit) null else input.endTimeMinutes,
+                repeatRRule = if (isHabit) null else input.repeatRRule,
                 sortOrder = dao.nextTaskSortOrder(input.objectiveId),
                 createdAtMillis = now,
                 updatedAtMillis = now
@@ -473,6 +423,7 @@ class RoomCheckItRepository(
         val existingTask = dao.taskById(taskId)
         val shouldRemoveOpenDailyPlanItems = existingTask?.hasDifferentScheduleThan(input) == true
         val keyResultId = input.keyResultIdForObjective()
+        val isHabit = input.type == TaskType.Habit
         dao.updateTask(
             taskId = taskId,
             objectiveId = input.objectiveId,
@@ -481,10 +432,11 @@ class RoomCheckItRepository(
             description = input.description,
             status = input.status.name,
             priority = input.priority.name,
-            doDateEpochDays = input.doDate?.toEpochDays()?.toInt(),
-            startTimeMinutes = input.startTimeMinutes,
-            endTimeMinutes = input.endTimeMinutes,
-            repeatRRule = input.repeatRRule,
+            type = input.type.name,
+            doDateEpochDays = if (isHabit) null else input.doDate?.toEpochDays()?.toInt(),
+            startTimeMinutes = if (isHabit) null else input.startTimeMinutes,
+            endTimeMinutes = if (isHabit) null else input.endTimeMinutes,
+            repeatRRule = if (isHabit) null else input.repeatRRule,
             updatedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
         dao.deleteTaskTags(taskId)
@@ -553,6 +505,7 @@ class RoomCheckItRepository(
                 sortOrder = dao.nextDailyPlanItemSortOrder(dateEpochDays),
                 startTimeMinutes = task.startTimeMinutes,
                 endTimeMinutes = task.endTimeMinutes,
+                isHabit = task.type == TaskType.Habit,
                 addedAtMillis = now,
                 completedAtMillis = if (task.status == TaskStatus.Completed) now else null
             )
@@ -600,6 +553,16 @@ class RoomCheckItRepository(
         val item = dao.dailyPlanItemById(itemId)
         dao.updateDailyPlanItemTime(itemId, startTimeMinutes, endTimeMinutes)
         item?.taskId?.let { taskId ->
+            dao.clearTaskTime(taskId, Clock.System.now().toEpochMilliseconds())
+        }
+        dailyPlanScheduleReminderScheduler.rescheduleNext()
+    }
+
+    override suspend fun updateDailyPlanItemTimes(updates: List<DailyPlanItemTimeUpdate>) {
+        if (updates.isEmpty()) return
+        val items = updates.map { update -> dao.dailyPlanItemById(update.itemId) }
+        dao.updateDailyPlanItemTimes(updates)
+        items.mapNotNull { it?.taskId }.forEach { taskId ->
             dao.clearTaskTime(taskId, Clock.System.now().toEpochMilliseconds())
         }
         dailyPlanScheduleReminderScheduler.rescheduleNext()
@@ -653,6 +616,11 @@ class RoomCheckItRepository(
         dao.deleteDailyPlanItemTags(itemId)
         input.tagIds.forEach { tagId -> addDailyPlanItemTag(itemId, tagId) }
         dailyPlanScheduleReminderScheduler.rescheduleNext()
+    }
+
+    override suspend fun updateDailyPlanItemTags(itemId: Long, tagIds: List<Long>) {
+        dao.deleteDailyPlanItemTags(itemId)
+        tagIds.forEach { tagId -> addDailyPlanItemTag(itemId, tagId) }
     }
 
     override suspend fun deleteDailyPlanItem(itemId: Long) {
@@ -865,88 +833,7 @@ class RoomCheckItRepository(
         val keyResult = dao.keyResultById(keyResultId) ?: return null
         return keyResultId.takeIf { keyResult.objectiveId == objectiveId }
     }
-
-    private suspend fun cleanupDuplicateSeedData() {
-        dao.deleteDuplicateSeedTasks()
-        dao.deleteDuplicateSeedNotes()
-        dao.deleteDuplicateSeedFilters()
-        dao.deleteDuplicateSeedTags()
-        dao.deleteDuplicateEmptySeedObjectives()
-    }
-
-    private suspend fun ensureDefaultFilters() {
-        DefaultTaskFilters.forEach { filter ->
-            dao.insertFilterIfNameMissing(
-                name = filter.name,
-                icon = filter.icon,
-                color = filter.color,
-                dueDatePreset = filter.dueDatePreset?.name,
-                status = filter.status?.name,
-                priority = filter.priority?.name,
-                includeTrashed = filter.includeTrashed,
-                sortOrder = filter.sortOrder
-            )
-        }
-    }
 }
-
-private val DefaultTaskFilters = listOf(
-    TaskFilterSeed(name = "All", icon = "AllInclusive", color = "#475569", sortOrder = 0),
-    TaskFilterSeed(
-        name = "Today",
-        icon = "Today",
-        color = "#2563EB",
-        dueDatePreset = DueDatePreset.Today,
-        sortOrder = 1
-    ),
-    TaskFilterSeed(
-        name = "Upcoming",
-        icon = "Schedule",
-        color = "#0891B2",
-        dueDatePreset = DueDatePreset.Upcoming,
-        sortOrder = 2
-    ),
-    TaskFilterSeed(
-        name = "Overdue",
-        icon = "Flag",
-        color = "#EA580C",
-        dueDatePreset = DueDatePreset.Overdue,
-        sortOrder = 3
-    ),
-    TaskFilterSeed(
-        name = "No date",
-        icon = "Schedule",
-        color = "#7C3AED",
-        dueDatePreset = DueDatePreset.NoDate,
-        sortOrder = 4
-    ),
-    TaskFilterSeed(
-        name = "Completed",
-        icon = "TaskAlt",
-        color = "#059669",
-        status = TaskStatus.Completed,
-        sortOrder = 5
-    ),
-    TaskFilterSeed(
-        name = "High priority",
-        icon = "PriorityHigh",
-        color = "#DC2626",
-        priority = TaskPriority.High,
-        sortOrder = 6
-    ),
-    TaskFilterSeed(name = "Trashed", icon = "Delete", color = "#6B7280", includeTrashed = true, sortOrder = 7)
-)
-
-private data class TaskFilterSeed(
-    val name: String,
-    val icon: String,
-    val color: String,
-    val dueDatePreset: DueDatePreset? = null,
-    val status: TaskStatus? = null,
-    val priority: TaskPriority? = null,
-    val includeTrashed: Boolean = false,
-    val sortOrder: Int
-)
 
 private data class TaskBoardRows(
     val goals: List<GoalEntity>,
@@ -1023,7 +910,8 @@ private fun TaskFilterEntity.toDomain() = TaskFilter(
 )
 
 private fun TaskEntity.hasDifferentScheduleThan(input: TaskWriteInput): Boolean =
-    doDateEpochDays != input.doDate?.toEpochDays()?.toInt() ||
+    type != input.type.name ||
+        doDateEpochDays != input.doDate?.toEpochDays()?.toInt() ||
         startTimeMinutes != input.startTimeMinutes ||
         endTimeMinutes != input.endTimeMinutes
 
@@ -1041,6 +929,7 @@ private fun TaskEntity.toDomain(
     description = description,
     subtasks = subtasks,
     status = enumValueOf(status),
+    type = enumValueOf(type),
     tags = tags,
     priority = enumValueOf(priority),
     doDate = doDateEpochDays?.let { LocalDate.fromEpochDays(it) },
@@ -1064,6 +953,7 @@ private fun DailyPlanItemEntity.toDomain(tags: List<TaskTag> = emptyList()) = Da
     source = enumValueOf(source),
     status = enumValueOf(status),
     tags = tags,
+    isHabit = isHabit,
     sortOrder = sortOrder,
     startTimeMinutes = startTimeMinutes,
     endTimeMinutes = endTimeMinutes,

@@ -39,7 +39,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -70,17 +69,15 @@ import checkit.shared.generated.resources.sprint_start
 import com.checkit.domain.SprintState
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskTag
-import com.checkit.ui.toTimeMinutes
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.TagPicker
-import com.checkit.ui.components.TagTitleAppender
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.tasks.toClockLabel
-import com.checkit.ui.myday.SprintChoice
 import com.checkit.ui.tasks.views.DailyPlanTimelineCard
 import com.checkit.ui.tasks.views.SprintButton
 import com.checkit.ui.tasks.views.TaskTimelineCard
+import com.checkit.ui.toTimeMinutes
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -365,8 +362,8 @@ fun QuickSprintSheet(
                     } else {
                         selectedTagIds + tagId
                     }
-                    availableTags.find { it.id == tagId }?.let { tag ->
-                        text = TagTitleAppender.appendTagActionText(text, tag.name)
+                    availableTags.firstOrNull { it.id == tagId }?.let { tag ->
+                        text = text.ifEmpty { tag.name }
                     }
                 },
                 onNewTagClick = onNewTagClick,

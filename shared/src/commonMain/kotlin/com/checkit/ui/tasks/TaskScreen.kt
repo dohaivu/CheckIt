@@ -124,6 +124,7 @@ internal fun TaskScreen(
                 } else {
                     TaskActionFab(
                         onTaskClick = { viewModel.openNewTask() },
+                        onHabitClick = viewModel::openNewHabit,
                         onNoteClick = viewModel::openNewNote,
                     )
                 }
