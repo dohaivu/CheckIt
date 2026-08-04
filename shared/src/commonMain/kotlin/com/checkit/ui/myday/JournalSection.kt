@@ -1,6 +1,6 @@
 package com.checkit.ui.myday
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -9,15 +9,12 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -26,21 +23,20 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.TagItem
-import com.checkit.ui.components.AppOutlinedTextField
-import com.checkit.ui.components.TagPicker
 import com.checkit.ui.components.TagPill
 import com.checkit.ui.toTimeMinutes
 import com.checkit.ui.tasks.toClockLabel
 
 internal val JournalMoodOptions = listOf("😀", "🙂", "😐", "😢", "😡", "🔥", "💪", "😴", "🎉", "❤️")
+
+/** Quick context presets shown as tappable chips in the entry editor. */
+internal val JournalContextPresets = listOf("cafe", "important event", "at home", "code", "surf web")
 
 internal enum class JournalPeriod(val label: String) {
     Morning("Morning"),
@@ -57,199 +53,62 @@ internal fun Long.toJournalPeriod(): JournalPeriod {
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+/** Compact single-line header for today's journal: name, entry count, and add/view actions. */
 @Composable
 internal fun JournalSection(
     entries: List<JournalEntry>,
-    capture: JournalCaptureState,
-    availableTags: List<TagItem>,
-    recentContexts: List<String>,
-    activeTagFilter: Long?,
-    onContextChange: (String) -> Unit,
-    onContentChange: (String) -> Unit,
-    onContextSuggestion: (String) -> Unit,
-    onMoodToggle: (String) -> Unit,
-    onTagToggle: (Long) -> Unit,
-    onSubmit: () -> Unit,
-    onEntryClick: (JournalEntry) -> Unit,
-    onTagFilter: (Long?) -> Unit,
-    onNewTagClick: () -> Unit,
+    onAddClick: () -> Unit,
+    onViewClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val entryTags = entries.flatMap { it.tags }.distinctBy { it.id }
-
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        JournalHeader()
-
-        Surface(
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
-            shape = RoundedCornerShape(16.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    AppOutlinedTextField(
-                        value = capture.context,
-                        onValueChange = onContextChange,
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontWeight = FontWeight.SemiBold
-                        ),
-                        placeholder = "Context (Biking, Cafe…)",
-                        maxLines = 1,
-                        modifier = Modifier.weight(0.42f)
-                    )
-                    AppOutlinedTextField(
-                        value = capture.content,
-                        onValueChange = onContentChange,
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(
-                            color = MaterialTheme.colorScheme.onSurface
-                        ),
-                        placeholder = "Freeform status…",
-                        maxLines = 1,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(onDone = { onSubmit() }),
-                        modifier = Modifier.weight(0.58f)
-                    )
-                    IconButton(onClick = onSubmit, enabled = capture.canSubmit) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "Save journal entry",
-                            tint = if (capture.canSubmit) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                            }
-                        )
-                    }
-                }
-
-                if (recentContexts.isNotEmpty()) {
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        recentContexts.forEach { context ->
-                            JournalContextChip(
-                                label = context,
-                                onClick = { onContextSuggestion(context) }
-                            )
-                        }
-                    }
-                }
-
-                MoodRow(
-                    moods = capture.selectedMoods,
-                    onToggle = onMoodToggle
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    TagPicker(
-                        availableTags = availableTags,
-                        selectedTagIds = capture.selectedTagIds,
-                        onTagToggle = onTagToggle,
-                        onNewTagClick = onNewTagClick
-                    )
-                    Spacer(Modifier.weight(1f))
-                    Text(
-                        text = if (capture.selectedMoods.isEmpty() && capture.selectedTagIds.isEmpty() && capture.context.isBlank() && capture.content.isBlank()) {
-                            "Tap ✓ to save"
-                        } else {
-                            ""
-                        },
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-
-        if (entryTags.isNotEmpty() || activeTagFilter != null) {
-            JournalTagFilterRow(
-                tags = entryTags,
-                activeTagFilter = activeTagFilter,
-                onTagFilter = onTagFilter
-            )
-        }
-
-        if (entries.isEmpty()) {
-            Text(
-                text = "No journal entries yet. Capture a thought above.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
-            )
-        } else {
-            JournalEntryList(
-                entries = entries,
-                onEntryClick = onEntryClick
-            )
-        }
-    }
-}
-
-@Composable
-private fun JournalHeader() {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Icon(
             imageVector = Icons.AutoMirrored.Filled.Notes,
             contentDescription = null,
-            modifier = Modifier.size(20.dp),
+            modifier = Modifier.size(18.dp),
             tint = MaterialTheme.colorScheme.primary
         )
         Text(
-            text = "Journal",
+            text = "Check-Ins",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface
         )
-    }
-}
-
-@Composable
-private fun JournalContextChip(
-    label: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        contentColor = MaterialTheme.colorScheme.primary,
-        shape = RoundedCornerShape(8.dp),
-        border = androidx.compose.foundation.BorderStroke(
-            width = 1.dp,
-            color = MaterialTheme.colorScheme.outlineVariant
-        ),
-        modifier = modifier
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Medium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .clickable(onClick = onClick)
-                .padding(horizontal = 10.dp, vertical = 6.dp)
-        )
+        if (entries.isNotEmpty()) {
+            Surface(
+                color = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(
+                    text = "${entries.size}",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                )
+            }
+        }
+        Spacer(Modifier.weight(1f))
+        IconButton(onClick = onAddClick) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = "Add check-in",
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+        IconButton(onClick = onViewClick) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.Notes,
+                contentDescription = "View check-ins",
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
     }
 }
 
@@ -272,7 +131,7 @@ internal fun MoodRow(
                     MaterialTheme.colorScheme.surface
                 },
                 shape = RoundedCornerShape(8.dp),
-                border = androidx.compose.foundation.BorderStroke(
+                border = BorderStroke(
                     width = 1.dp,
                     color = if (selected) {
                         MaterialTheme.colorScheme.primary
@@ -292,62 +151,16 @@ internal fun MoodRow(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun JournalTagFilterRow(
-    tags: List<TagItem>,
-    activeTagFilter: Long?,
-    onTagFilter: (Long?) -> Unit
-) {
-    FlowRow(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        JournalFilterChip(
-            label = "All",
-            selected = activeTagFilter == null,
-            onClick = { onTagFilter(null) }
-        )
-        tags.forEach { tag ->
-            JournalFilterChip(
-                label = tag.name,
-                selected = activeTagFilter == tag.id,
-                onClick = { onTagFilter(tag.id) }
-            )
-        }
-    }
-}
-
-@Composable
-private fun JournalFilterChip(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    Surface(
-        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
-        contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-        shape = RoundedCornerShape(8.dp),
-        modifier = Modifier
-            .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 6.dp)
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Medium,
-            maxLines = 1
-        )
-    }
-}
-
-@Composable
-private fun JournalEntryList(
+internal fun JournalEntryList(
     entries: List<JournalEntry>,
-    onEntryClick: (JournalEntry) -> Unit
+    onEntryClick: (JournalEntry) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
         JournalPeriod.entries.forEach { period ->
             val periodEntries = entries.filter { it.createdAtMillis.toJournalPeriod() == period }
             if (periodEntries.isNotEmpty()) {
@@ -397,7 +210,7 @@ internal fun JournalEntryCard(
                         if (!entry.context.isNullOrBlank()) {
                             Text(
                                 text = entry.context,
-                                style = MaterialTheme.typography.bodyLarge,
+                                style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )

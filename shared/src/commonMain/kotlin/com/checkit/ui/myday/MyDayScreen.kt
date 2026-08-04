@@ -204,22 +204,12 @@ internal fun MyDayScreen(
                         date = state.today,
                         activeSprint = activeSprint,
                         journalEntries = state.journalVisibleEntries,
-                        journalCapture = state.journalCapture,
-                        journalRecentContexts = state.journalRecentContexts,
-                        journalTagFilter = state.journalTagFilter,
                         onItemClick = { viewModel.openItemEditor(it, state.today) },
                         onTaskClick = onTaskClick,
                         onNoteClick = onNoteClick,
                         onSprintClick = viewModel::startSprint,
-                        onJournalContextChange = viewModel::updateJournalCaptureContext,
-                        onJournalContentChange = viewModel::updateJournalCaptureContent,
-                        onJournalContextSuggestion = viewModel::useJournalContextSuggestion,
-                        onJournalMoodToggle = viewModel::toggleJournalCaptureMood,
-                        onJournalTagToggle = viewModel::toggleJournalCaptureTag,
-                        onSubmitJournal = viewModel::submitJournalCapture,
-                        onJournalEntryClick = viewModel::openJournalEditor,
-                        onJournalTagFilter = viewModel::setJournalTagFilter,
-                        onNewTagClick = onNewTagClick,
+                        onJournalAddClick = viewModel::openNewJournalEntry,
+                        onJournalViewClick = viewModel::openJournalList,
                         modifier = Modifier.weight(1f)
                     )
                     MyDayView.Timeline -> MyDayTimeline(
@@ -574,22 +564,12 @@ internal fun MyDayAgenda(
     activeSprint: SprintState.Running?,
     showJournal: Boolean = true,
     journalEntries: List<JournalEntry> = emptyList(),
-    journalCapture: JournalCaptureState = JournalCaptureState(),
-    journalRecentContexts: List<String> = emptyList(),
-    journalTagFilter: Long? = null,
     onItemClick: (DailyPlanItem) -> Unit,
     onTaskClick: (TaskItem, DailyPlanItem?) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
     onSprintClick: ((Long?, Long?, String) -> Unit)? = null,
-    onJournalContextChange: (String) -> Unit = {},
-    onJournalContentChange: (String) -> Unit = {},
-    onJournalContextSuggestion: (String) -> Unit = {},
-    onJournalMoodToggle: (String) -> Unit = {},
-    onJournalTagToggle: (Long) -> Unit = {},
-    onSubmitJournal: () -> Unit = {},
-    onJournalEntryClick: (JournalEntry) -> Unit = {},
-    onJournalTagFilter: (Long?) -> Unit = {},
-    onNewTagClick: () -> Unit = {},
+    onJournalAddClick: () -> Unit = {},
+    onJournalViewClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val projection = remember(items, board, date) { items.toTaskViewProjection(board = board, date = date) }
@@ -603,19 +583,8 @@ internal fun MyDayAgenda(
             {
                 JournalSection(
                     entries = journalEntries,
-                    capture = journalCapture,
-                    availableTags = board.tags,
-                    recentContexts = journalRecentContexts,
-                    activeTagFilter = journalTagFilter,
-                    onContextChange = onJournalContextChange,
-                    onContentChange = onJournalContentChange,
-                    onContextSuggestion = onJournalContextSuggestion,
-                    onMoodToggle = onJournalMoodToggle,
-                    onTagToggle = onJournalTagToggle,
-                    onSubmit = onSubmitJournal,
-                    onEntryClick = onJournalEntryClick,
-                    onTagFilter = onJournalTagFilter,
-                    onNewTagClick = onNewTagClick
+                    onAddClick = onJournalAddClick,
+                    onViewClick = onJournalViewClick
                 )
             }
         } else {

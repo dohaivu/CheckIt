@@ -38,6 +38,7 @@ import com.checkit.ui.components.LocalSnackbarHostState
 import com.checkit.ui.localization.AppLocaleProvider
 import com.checkit.ui.myday.DailyPlanItemEditorSheet
 import com.checkit.ui.myday.JournalEntryEditorSheet
+import com.checkit.ui.myday.JournalListSheet
 import com.checkit.ui.myday.MyDayScreen
 import com.checkit.ui.reports.ReportScreen
 import com.checkit.ui.reports.TagsReport
@@ -407,6 +408,16 @@ fun CheckItApp(
                             onNewTagClick = viewModels.tag::openNewTag,
                             onSave = viewModels.myDay::saveJournalEditor,
                             onDelete = { editor.entryId?.let { viewModels.myDay.deleteJournalEntry(it) } }
+                        )
+                    }
+                    if (myDayUiState.showJournalList) {
+                        JournalListSheet(
+                            entries = myDayUiState.journalVisibleEntries,
+                            onEntryClick = { entry ->
+                                viewModels.myDay.dismissJournalList()
+                                viewModels.myDay.openJournalEditor(entry)
+                            },
+                            onDismiss = viewModels.myDay::dismissJournalList
                         )
                     }
                     tagUiState.editor?.let { tagEditor ->

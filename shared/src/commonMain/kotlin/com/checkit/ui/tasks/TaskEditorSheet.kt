@@ -585,12 +585,12 @@ private fun DailyPlanSection(
                     clearEnabled = false
                 )
 
-                if (enabled) {
-                    Row(
-                        modifier = Modifier.padding(start = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(2.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                Row(
+                    modifier = Modifier.padding(start = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (enabled) {
                         if (item.status == DailyPlanItemStatus.Planned && item.startTimeMinutes != null) {
                             IconButton(
                                 onClick = { onStartOngoingSprint(item) },
@@ -619,6 +619,7 @@ private fun DailyPlanSection(
                             }
                         }
                     }
+
 
                     IconButton(
                         onClick = { onDelete(item.id) },

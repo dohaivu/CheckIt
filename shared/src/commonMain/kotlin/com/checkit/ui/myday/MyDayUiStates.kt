@@ -59,9 +59,8 @@ data class MyDayUiState(
     val dayReviews: List<DayReviewRecord> = emptyList(),
     val reviewStreak: Int = 0,
     val journalEntries: List<JournalEntry> = emptyList(),
-    val journalCapture: JournalCaptureState = JournalCaptureState(),
     val journalEditor: JournalEntryEditorState? = null,
-    val journalTagFilter: Long? = null,
+    val showJournalList: Boolean = false,
     val isLoading: Boolean = true
 ) {
     val today: LocalDate = today()
@@ -70,24 +69,9 @@ data class MyDayUiState(
     val plannedItems: List<DailyPlanItem> = items.filter { it.status != DailyPlanItemStatus.Done }
     val doneItems: List<DailyPlanItem> = items.filter { it.status == DailyPlanItemStatus.Done }
 
-    /** Journal entries for today, filtered by the active tag filter. */
+    /** Journal entries for today. */
     val journalVisibleEntries: List<JournalEntry> =
-        journalEntries
-            .filter { it.dateEpochDays == today.toEpochDays().toInt() }
-            .filter { entry ->
-                journalTagFilter == null || entry.tags.any { it.id == journalTagFilter }
-            }
-
-    /** Recently used contexts, most recent first, for quick-capture suggestions. */
-    val journalRecentContexts: List<String> =
-        journalEntries
-            .asSequence()
-            .filter { it.dateEpochDays == today.toEpochDays().toInt() }
-            .mapNotNull { it.context }
-            .filter { it.isNotBlank() }
-            .distinct()
-            .take(JournalContextSuggestionLimit)
-            .toList()
+        journalEntries.filter { it.dateEpochDays == today.toEpochDays().toInt() }
 
     val suggestedTasks: List<TaskItem> = board.tasks
         .filter { task ->
@@ -148,16 +132,6 @@ enum class MyDayView {
     Agenda,
     Timeline,
     Board
-}
-
-/** Mutable quick-capture bar state for today's journal. */
-data class JournalCaptureState(
-    val context: String = "",
-    val content: String = "",
-    val selectedMoods: Set<String> = emptySet(),
-    val selectedTagIds: Set<Long> = emptySet()
-) {
-    val canSubmit: Boolean get() = context.isNotBlank() || content.isNotBlank()
 }
 
 /** Bottom-sheet editor state for a single journal entry. */
@@ -232,5 +206,3 @@ internal fun DailyPlan?.doneWorkMinutes(): Int =
         .orEmpty()
         .filter { it.status == DailyPlanItemStatus.Done }
         .sumOf { it.workMinutes() }
-
-internal const val JournalContextSuggestionLimit = 5

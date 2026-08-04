@@ -422,16 +422,22 @@ class MyDayViewModelTest {
     }
 
     @Test
-    fun submitJournalCapturePersistsEntryAndClearsCapture() = runTest(dispatcher) {
+    fun openJournalEditorAddModeSavesNewEntry() = runTest(dispatcher) {
         val tag = TagItem(id = 1L, name = "Work", color = "#FF0000")
         repository.addTag(com.checkit.data.TagWriteInput(name = "Work", color = "#FF0000"))
         dispatcher.scheduler.advanceUntilIdle()
 
-        viewModel.updateJournalCaptureContext("Biking")
-        viewModel.updateJournalCaptureContent("Covered 20 km")
-        viewModel.toggleJournalCaptureMood("🔥")
-        viewModel.toggleJournalCaptureTag(tag.id)
-        viewModel.submitJournalCapture()
+        viewModel.openNewJournalEntry()
+        val editor = viewModel.uiState.value.journalEditor
+        assertNotNull(editor)
+        assertEquals(false, editor.isEditMode)
+        assertEquals(today(), editor.date)
+
+        viewModel.updateJournalEditorContext("Biking")
+        viewModel.updateJournalEditorContent("Covered 20 km")
+        viewModel.toggleJournalEditorMood("🔥")
+        viewModel.toggleJournalEditorTag(tag.id)
+        viewModel.saveJournalEditor()
         dispatcher.scheduler.advanceUntilIdle()
 
         val input = repository.addedJournalEntries.single()
@@ -441,26 +447,32 @@ class MyDayViewModelTest {
         assertEquals(listOf(tag.id), input.tagIds)
         assertEquals(today(), input.date)
 
-        val capture = viewModel.uiState.value.journalCapture
-        assertEquals("", capture.context)
-        assertEquals("", capture.content)
-        assertTrue(capture.selectedMoods.isEmpty())
-        assertTrue(capture.selectedTagIds.isEmpty())
-
-        val entries = viewModel.uiState.value.journalEntries
-        assertEquals(1, entries.size)
-        assertEquals("Biking", entries.single().context)
+        assertEquals(null, viewModel.uiState.value.journalEditor)
+        assertEquals(1, viewModel.uiState.value.journalEntries.size)
+        assertEquals("Biking", viewModel.uiState.value.journalEntries.single().context)
     }
 
     @Test
-    fun submitJournalCaptureIgnoresBlankInput() = runTest(dispatcher) {
-        viewModel.submitJournalCapture()
+    fun saveBlankJournalEditorDoesNotPersist() = runTest(dispatcher) {
+        viewModel.openNewJournalEntry()
+        viewModel.saveJournalEditor()
         dispatcher.scheduler.advanceUntilIdle()
         assertTrue(repository.addedJournalEntries.isEmpty())
     }
 
     @Test
-    fun journalVisibleEntriesFilterByTagAndDate() = runTest(dispatcher) {
+    fun openAndDismissJournalListSheet() = runTest(dispatcher) {
+        assertEquals(false, viewModel.uiState.value.showJournalList)
+
+        viewModel.openJournalList()
+        assertEquals(true, viewModel.uiState.value.showJournalList)
+
+        viewModel.dismissJournalList()
+        assertEquals(false, viewModel.uiState.value.showJournalList)
+    }
+
+    @Test
+    fun journalVisibleEntriesIncludeOnlyToday() = runTest(dispatcher) {
         val today = today()
         repository.setJournalEntries(
             listOf(
@@ -469,7 +481,6 @@ class MyDayViewModelTest {
                     dateEpochDays = today.toEpochDays().toInt(),
                     context = "Biking",
                     content = "Ride",
-                    tags = listOf(TagItem(id = 1L, name = "Work", color = "#FF0000")),
                     createdAtMillis = 1L
                 ),
                 JournalEntry(
@@ -477,7 +488,6 @@ class MyDayViewModelTest {
                     dateEpochDays = today.toEpochDays().toInt(),
                     context = "Cafe",
                     content = "Coffee",
-                    tags = listOf(TagItem(id = 2L, name = "Home", color = "#00FF00")),
                     createdAtMillis = 2L
                 ),
                 JournalEntry(
@@ -485,53 +495,13 @@ class MyDayViewModelTest {
                     dateEpochDays = today.toEpochDays().toInt() - 1,
                     context = "Old",
                     content = "Yesterday",
-                    tags = listOf(TagItem(id = 1L, name = "Work", color = "#FF0000")),
                     createdAtMillis = 3L
                 )
             )
         )
         dispatcher.scheduler.advanceUntilIdle()
 
-        assertEquals(2, viewModel.uiState.value.journalVisibleEntries.size)
-
-        viewModel.setJournalTagFilter(1L)
-        dispatcher.scheduler.advanceUntilIdle()
-
-        val visible = viewModel.uiState.value.journalVisibleEntries
-        assertEquals(listOf(1L), visible.map { it.id })
-    }
-
-    @Test
-    fun journalRecentContextsAreDistinctAndMostRecentFirst() = runTest(dispatcher) {
-        val today = today()
-        repository.setJournalEntries(
-            listOf(
-                JournalEntry(
-                    id = 1L,
-                    dateEpochDays = today.toEpochDays().toInt(),
-                    context = "Cafe",
-                    content = "A",
-                    createdAtMillis = 1L
-                ),
-                JournalEntry(
-                    id = 2L,
-                    dateEpochDays = today.toEpochDays().toInt(),
-                    context = "Biking",
-                    content = "B",
-                    createdAtMillis = 2L
-                ),
-                JournalEntry(
-                    id = 3L,
-                    dateEpochDays = today.toEpochDays().toInt(),
-                    context = "Cafe",
-                    content = "C",
-                    createdAtMillis = 3L
-                )
-            )
-        )
-        dispatcher.scheduler.advanceUntilIdle()
-
-        assertEquals(listOf("Cafe", "Biking"), viewModel.uiState.value.journalRecentContexts)
+        assertEquals(listOf(1L, 2L), viewModel.uiState.value.journalVisibleEntries.map { it.id })
     }
 
     @Test

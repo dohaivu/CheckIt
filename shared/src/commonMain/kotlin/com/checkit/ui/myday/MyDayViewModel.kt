@@ -133,13 +133,9 @@ class MyDayViewModel(
     fun smartSchedule() = smartScheduler.scheduleAll()
 
     // Journal
-    fun updateJournalCaptureContext(value: String) = journal.updateCaptureContext(value)
-    fun updateJournalCaptureContent(value: String) = journal.updateCaptureContent(value)
-    fun toggleJournalCaptureMood(mood: String) = journal.toggleCaptureMood(mood)
-    fun toggleJournalCaptureTag(tagId: Long) = journal.toggleCaptureTag(tagId)
-    fun useJournalContextSuggestion(context: String) = journal.useContextSuggestion(context)
-    fun submitJournalCapture() = journal.submitCapture()
-    fun setJournalTagFilter(tagId: Long?) = journal.setJournalTagFilter(tagId)
+    fun openJournalList() = journal.openJournalList()
+    fun dismissJournalList() = journal.dismissJournalList()
+    fun openNewJournalEntry() = journal.openNewJournalEntry()
     fun openJournalEditor(entry: JournalEntry) = journal.openJournalEditor(entry)
     fun dismissJournalEditor() = journal.dismissJournalEditor()
     fun updateJournalEditorContext(value: String) = journal.updateJournalEditorContext(value)
