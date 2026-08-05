@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -602,7 +601,7 @@ internal fun MyDayAgenda(
         focusedDate = date,
         itemContent = { item ->
             when (val tag = item.tag) {
-                is JournalEntry -> Spacer(Modifier.height(0.dp))
+                is JournalEntry -> JournalThoughtCard(entry = tag)
                 is DailyPlanItem -> if (item.startTimeMinutes == null) {
                     DailyPlanAllDayCard(
                         item = tag,

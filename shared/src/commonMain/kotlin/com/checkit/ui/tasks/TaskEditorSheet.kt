@@ -582,7 +582,7 @@ private fun DailyPlanSection(
                     modifier = Modifier.weight(1f),
                     enabled = enabled,
                     isOverdue = item.isOverdue(today()),
-                    clearEnabled = false
+                    clearEnabled = true
                 )
 
                 Row(

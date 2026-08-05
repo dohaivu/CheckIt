@@ -3,14 +3,14 @@ package com.checkit.ui.tasks.views
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -35,15 +35,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.checkit.ui.shortName
-import com.checkit.ui.shortMonthName
-import androidx.compose.material3.RichTooltip
-import androidx.compose.material3.TooltipAnchorPosition
-import androidx.compose.material3.TooltipBox
-import androidx.compose.material3.TooltipDefaults
-import androidx.compose.material3.rememberTooltipState
 import androidx.compose.ui.unit.sp
 import com.checkit.domain.JournalEntry
+import com.checkit.ui.shortMonthName
+import com.checkit.ui.shortName
 import com.checkit.ui.tasks.TimelineItem
 import com.checkit.ui.tasks.TimelineItemType
 import com.checkit.ui.tasks.toClockLabel
@@ -384,33 +379,14 @@ private fun AgendaTimedRow(
 
 @Composable
 private fun JournalMoodMarker(entry: JournalEntry) {
-    val tooltipState = rememberTooltipState(isPersistent = true)
-    val scope = rememberCoroutineScope()
-
-    TooltipBox(
-        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
-            positioning = TooltipAnchorPosition.Above
-        ),
-        tooltip = {
-            RichTooltip(
-                title = { Text(entry.context ?: "Check-In") }
-            ) {
-                Text(entry.content)
-            }
-        },
-        state = tooltipState
+    Box(
+        modifier = Modifier.size(28.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Box(
-            modifier = Modifier
-                .size(28.dp)
-                .clickable { scope.launch { tooltipState.show() } },
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = entry.moods.firstOrNull() ?: "📝",
-                fontSize = 16.sp
-            )
-        }
+        Text(
+            text = entry.moods.firstOrNull() ?: "📝",
+            fontSize = 16.sp
+        )
     }
 }
 
@@ -544,4 +520,3 @@ private fun AgendaMonthHeader(label: String, modifier: Modifier = Modifier) {
             .padding(horizontal = 16.dp, vertical = 8.dp)
     )
 }
-

@@ -20,20 +20,29 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RichTooltip
 import androidx.compose.material3.Text
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.checkit.domain.JournalEntry
-import com.checkit.domain.TagItem
 import com.checkit.ui.components.TagPill
-import com.checkit.ui.toTimeMinutes
 import com.checkit.ui.tasks.toClockLabel
+import com.checkit.ui.toTimeMinutes
+import kotlinx.coroutines.launch
 
 internal val JournalMoodOptions = listOf("😀", "🙂", "😐", "😢", "😡", "🔥", "💪", "😴", "🎉", "❤️")
 
@@ -240,6 +249,58 @@ internal fun JournalEntryCard(
                     TagPill(tag = tag)
                 }
             }
+        }
+    }
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+internal fun JournalThoughtCard(
+    entry: JournalEntry,
+    modifier: Modifier = Modifier
+) {
+    val tooltipState = rememberTooltipState(isPersistent = false)
+    val scope = rememberCoroutineScope()
+    val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+            positioning = TooltipAnchorPosition.Above
+        ),
+        tooltip = {
+            RichTooltip(
+                title = { Text(entry.context ?: "Check-In") }
+            ) {
+                Text(entry.content)
+            }
+        },
+        state = tooltipState
+    ) {
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f))
+                .drawBehind {
+                    drawLine(
+                        color = onSurfaceVariant.copy(alpha = 0.3f),
+                        start = Offset(0f, 0f),
+                        end = Offset(0f, size.height),
+                        strokeWidth = 3.dp.toPx()
+                    )
+                }
+                .clickable { scope.launch { tooltipState.show() } }
+                .padding(horizontal = 12.dp, vertical = 6.dp)
+        ) {
+            Text(
+                text = entry.content.ifBlank { entry.context.orEmpty() },
+                style = MaterialTheme.typography.bodyMedium,
+                fontFamily = FontFamily.Cursive,
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
