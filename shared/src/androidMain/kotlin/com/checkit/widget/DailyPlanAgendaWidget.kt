@@ -134,6 +134,21 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                             modifier = GlanceModifier
                                 .size(32.dp)
                                 .cornerRadius(16.dp)
+                                .clickable(openNewJournalEntryAction()),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Image(
+                                provider = ImageProvider(R.drawable.notes_24px),
+                                contentDescription = "Add journal entry",
+                                modifier = GlanceModifier.size(22.dp),
+                                colorFilter = ColorFilter.tint(GlanceTheme.colors.primary)
+                            )
+                        }
+                        Spacer(modifier = GlanceModifier.width(8.dp))
+                        Box(
+                            modifier = GlanceModifier
+                                .size(32.dp)
+                                .cornerRadius(16.dp)
                                 .clickable(openQuickSprintAction()),
                             contentAlignment = Alignment.Center
                         ) {
@@ -221,6 +236,10 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
 
     private fun openQuickSprintAction(): Action = actionStartActivity<MainActivity>(
         parameters = actionParametersOf(OpenQuickSprintParameterKey to true)
+    )
+
+    private fun openNewJournalEntryAction(): Action = actionStartActivity<MainActivity>(
+        parameters = actionParametersOf(OpenNewJournalEntryParameterKey to true)
     )
 
     @Composable
