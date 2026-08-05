@@ -89,6 +89,11 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                 projection.toWidgetItems(timed = true)
             }
 
+            val totalCount = remember(allDayItems, timedItems) { allDayItems.size + timedItems.size }
+            val doneCount = remember(allDayItems, timedItems) {
+                allDayItems.count { it.completed } + timedItems.count { it.completed }
+            }
+
             // Find the index of the first item that starts AFTER now
             val nextTimedItemIndex = remember(timedItems, nowMinutes) {
                 timedItems.indexOfFirst { (it.startTimeMinutes ?: -1) > nowMinutes }
@@ -119,17 +124,31 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                             contentScale = ContentScale.Fit
                         )
                         Spacer(modifier = GlanceModifier.width(8.dp))
-                        Text(
-                            text = "My Day",
-                            style = TextStyle(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp,
-                                color = GlanceTheme.colors.onSurface
-                            ),
+                        Row(
                             modifier = GlanceModifier
                                 .defaultWeight()
-                                .clickable(actionStartActivity<MainActivity>())
-                        )
+                                .clickable(actionStartActivity<MainActivity>()),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "My Day",
+                                style = TextStyle(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp,
+                                    color = GlanceTheme.colors.onSurface
+                                )
+                            )
+                            if (totalCount > 0) {
+                                Spacer(modifier = GlanceModifier.width(6.dp))
+                                Text(
+                                    text = "$doneCount/$totalCount",
+                                    style = TextStyle(
+                                        fontSize = 12.sp,
+                                        color = GlanceTheme.colors.onSurfaceVariant
+                                    )
+                                )
+                            }
+                        }
                         Box(
                             modifier = GlanceModifier
                                 .size(32.dp)
@@ -261,7 +280,7 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
         ) {
             // Label
             Box(
-                modifier = GlanceModifier.width(44.dp).height(32.dp),
+                modifier = GlanceModifier.width(48.dp).height(32.dp),
                 contentAlignment = Alignment.CenterEnd
             ) {
                 Text(
