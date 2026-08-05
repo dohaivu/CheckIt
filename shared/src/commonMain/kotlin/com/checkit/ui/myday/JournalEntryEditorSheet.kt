@@ -1,8 +1,11 @@
 package com.checkit.ui.myday
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -10,6 +13,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -29,6 +33,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -55,25 +60,23 @@ internal fun JournalEntryEditorSheet(
     AppEditorBottomSheet(
         onDismiss = onDismiss,
         modifier = Modifier
-            .heightIn(max = 700.dp)
-            .windowInsetsPadding(WindowInsets.ime)
+            .fillMaxHeight()
+            .windowInsetsPadding(WindowInsets.ime),
+        sheetGesturesEnabled = false
     ) {
         var contextFocused by remember { mutableStateOf(false) }
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 10.dp),
+                .padding(horizontal = 20.dp, vertical = 0.dp),
             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.End
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = if (state.isEditMode) "Edit entry" else "Add entry",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+            Button(
+                onClick = onSave
+            ) {
+                Text(if (state.isEditMode) "Save" else "Add Entry")
             }
             if (state.isEditMode) {
                 DeleteOverflowMenu(onDelete = onDelete)
@@ -88,75 +91,78 @@ internal fun JournalEntryEditorSheet(
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             item {
-                AppOutlinedTextField(
-                    value = state.context,
-                    onValueChange = onContextChange,
-                    textStyle = MaterialTheme.typography.bodyLarge.copy(
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.SemiBold
-                    ),
-                    placeholder = "Context (Biking, Cafe…)",
-                    maxLines = 1,
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .onFocusChanged { contextFocused = it.isFocused }
-                )
-                if (contextFocused) {
-                    Spacer(Modifier.height(8.dp))
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        JournalContextPresets.forEach { preset ->
-                            PresetChip(
-                                label = preset,
-                                onClick = { onContextChange(appendContextPreset(state.context, preset)) }
-                            )
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                ) {
+                    AppOutlinedTextField(
+                        value = state.context,
+                        onValueChange = onContextChange,
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        placeholder = "Where are you? What's the context?",
+                        maxLines = 1,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onFocusChanged { contextFocused = it.isFocused }
+                    )
+                    if (contextFocused) {
+                        Spacer(Modifier.height(8.dp))
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            JournalContextPresets.forEach { preset ->
+                                PresetChip(
+                                    label = preset,
+                                    onClick = { onContextChange(appendContextPreset(state.context, preset)) }
+                                )
+                            }
                         }
                     }
                 }
             }
             item {
-                AppOutlinedTextField(
-                    value = state.content,
-                    onValueChange = onContentChange,
-                    textStyle = MaterialTheme.typography.bodyLarge.copy(
-                        color = MaterialTheme.colorScheme.onSurface
-                    ),
-                    placeholder = "Freeform status…",
-                    minLines = 3,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f))
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                ) {
+                    AppOutlinedTextField(
+                        value = state.content,
+                        onValueChange = onContentChange,
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(
+                            color = MaterialTheme.colorScheme.onSurface
+                        ),
+                        placeholder = "What's on your mind? Share your thoughts...",
+                        minLines = 5,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
             item {
                 MoodRow(
                     moods = state.moods.toSet(),
-                    onToggle = onMoodToggle
+                    onToggle = onMoodToggle,
+                    isEditMode = state.isEditMode
                 )
             }
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = "Tags",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.Medium
-                    )
-                    TagPicker(
-                        availableTags = availableTags,
-                        selectedTagIds = state.selectedTagIds,
-                        onTagToggle = onTagToggle,
-                        onNewTagClick = onNewTagClick
-                    )
-                }
-            }
-            item {
-                Button(
-                    onClick = onSave,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(if (state.isEditMode) "Save" else "Add")
-                }
+                TagPicker(
+                    availableTags = availableTags,
+                    selectedTagIds = state.selectedTagIds,
+                    onTagToggle = onTagToggle,
+                    onNewTagClick = onNewTagClick
+                )
             }
         }
     }
