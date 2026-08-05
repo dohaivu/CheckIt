@@ -197,6 +197,12 @@ internal fun MyDayScreen(
                     items = state.items,
                     modifier = Modifier.fillMaxWidth()
                 )
+                JournalSection(
+                    entries = state.journalVisibleEntries,
+                    onAddClick = viewModel::openNewJournalEntry,
+                    onViewClick = viewModel::openJournalList,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
                 when (state.selectedView) {
                     MyDayView.Agenda -> MyDayAgenda(
                         items = state.items,
@@ -208,8 +214,6 @@ internal fun MyDayScreen(
                         onTaskClick = onTaskClick,
                         onNoteClick = onNoteClick,
                         onSprintClick = viewModel::startSprint,
-                        onJournalAddClick = viewModel::openNewJournalEntry,
-                        onJournalViewClick = viewModel::openJournalList,
                         modifier = Modifier.weight(1f)
                     )
                     MyDayView.Timeline -> MyDayTimeline(
@@ -562,14 +566,11 @@ internal fun MyDayAgenda(
     board: TaskBoard,
     date: LocalDate,
     activeSprint: SprintState.Running?,
-    showJournal: Boolean = true,
     journalEntries: List<JournalEntry> = emptyList(),
     onItemClick: (DailyPlanItem) -> Unit,
     onTaskClick: (TaskItem, DailyPlanItem?) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
     onSprintClick: ((Long?, Long?, String) -> Unit)? = null,
-    onJournalAddClick: () -> Unit = {},
-    onJournalViewClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val projection = remember(items, board, date) { items.toTaskViewProjection(board = board, date = date) }
@@ -579,17 +580,6 @@ internal fun MyDayAgenda(
 
     AgendaView(
         items = timelineItems,
-        header = if (showJournal) {
-            {
-                JournalSection(
-                    entries = journalEntries,
-                    onAddClick = onJournalAddClick,
-                    onViewClick = onJournalViewClick
-                )
-            }
-        } else {
-            null
-        },
         onItemClick = { item ->
             when (val tag = item.tag) {
                 is DailyPlanItem -> onItemClick(tag)
