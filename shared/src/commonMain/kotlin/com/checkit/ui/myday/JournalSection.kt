@@ -57,6 +57,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.checkit.domain.JournalEntry
+import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.EmojiPicker
 import com.checkit.ui.components.TagPill
 import com.checkit.ui.tasks.TimelineItem
@@ -465,35 +466,15 @@ internal fun JournalHistorySheet(
     onEntryClick: (JournalEntry) -> Unit,
     onDismiss: () -> Unit
 ) {
-    com.checkit.ui.components.AppEditorBottomSheet(
+    AppEditorBottomSheet(
         onDismiss = onDismiss,
         modifier = Modifier.fillMaxHeight(0.9f)
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Journal History",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f)
-                )
-                IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Add, null, modifier = Modifier.graphicsLayer { rotationZ = 45f })
-                }
-            }
-
-            JournalAgendaView(
-                journalEntries = entries,
-                onEntryClick = onEntryClick,
-                modifier = Modifier.weight(1f)
-            )
-        }
+        JournalAgendaView(
+            journalEntries = entries,
+            onEntryClick = onEntryClick,
+            modifier = Modifier.fillMaxSize()
+        )
     }
 }
 
@@ -525,15 +506,72 @@ internal fun JournalAgendaView(
         },
         itemContent = { item ->
             (item.tag as? JournalEntry)?.let { entry ->
-                JournalEntryCard(
+                JournalHistoryEntryCard(
                     entry = entry,
                     onClick = { onEntryClick(entry) },
-                    modifier = Modifier.padding(horizontal = 16.dp)
+                    modifier = Modifier.padding(horizontal = 8.dp)
                 )
             }
         },
         modifier = modifier
     )
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun JournalHistoryEntryCard(
+    entry: JournalEntry,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val moodColor = entry.moods.firstOrNull()?.let { getMoodColorFromEmoji(it) } ?: MaterialTheme.colorScheme.surfaceVariant
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(moodColor.copy(alpha = 0.08f))
+            .drawBehind {
+                drawLine(
+                    color = moodColor.copy(alpha = 0.4f),
+                    start = Offset(0f, 0f),
+                    end = Offset(0f, size.height),
+                    strokeWidth = 6.dp.toPx()
+                )
+            }
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        if (!entry.context.isNullOrBlank()) {
+            Text(
+                text = entry.context,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        Text(
+            text = entry.content,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            lineHeight = 24.sp
+        )
+
+        if (entry.tags.isNotEmpty()) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                entry.tags.forEach { tag ->
+                    TagPill(tag = tag)
+                }
+            }
+        }
+    }
 }
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)

@@ -380,7 +380,7 @@ private fun AgendaTimedRow(
 @Composable
 private fun JournalMoodMarker(entry: JournalEntry) {
     Box(
-        modifier = Modifier.size(28.dp),
+        modifier = Modifier.size(width = 14.dp, height = 34.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
