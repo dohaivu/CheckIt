@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -57,9 +59,13 @@ import androidx.compose.ui.unit.sp
 import com.checkit.domain.JournalEntry
 import com.checkit.ui.components.EmojiPicker
 import com.checkit.ui.components.TagPill
+import com.checkit.ui.tasks.TimelineItem
+import com.checkit.ui.tasks.TimelineItemType
 import com.checkit.ui.tasks.toClockLabel
+import com.checkit.ui.tasks.views.AgendaView
 import com.checkit.ui.toTimeMinutes
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalDate
 import org.kodein.emoji.Emoji
 
 /** Quick context presets shown as tappable chips in the entry editor. */
@@ -450,6 +456,84 @@ internal fun JournalEntryCard(
             }
         }
     }
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+internal fun JournalHistorySheet(
+    entries: List<JournalEntry>,
+    onEntryClick: (JournalEntry) -> Unit,
+    onDismiss: () -> Unit
+) {
+    com.checkit.ui.components.AppEditorBottomSheet(
+        onDismiss = onDismiss,
+        modifier = Modifier.fillMaxHeight(0.9f)
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Journal History",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Default.Add, null, modifier = Modifier.graphicsLayer { rotationZ = 45f })
+                }
+            }
+
+            JournalAgendaView(
+                journalEntries = entries,
+                onEntryClick = onEntryClick,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+internal fun JournalAgendaView(
+    journalEntries: List<JournalEntry>,
+    onEntryClick: (JournalEntry) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val timelineItems = remember(journalEntries) {
+        journalEntries.map { entry ->
+            TimelineItem(
+                id = "journal-${entry.id}",
+                type = TimelineItemType.Journal,
+                date = LocalDate.fromEpochDays(entry.dateEpochDays),
+                startTimeMinutes = entry.createdAtMillis.toTimeMinutes(),
+                endTimeMinutes = null,
+                sortOrder = 0,
+                isResizable = false,
+                tag = entry
+            )
+        }.sortedByDescending { it.date }
+    }
+
+    AgendaView(
+        items = timelineItems,
+        onItemClick = { item ->
+            (item.tag as? JournalEntry)?.let(onEntryClick)
+        },
+        itemContent = { item ->
+            (item.tag as? JournalEntry)?.let { entry ->
+                JournalEntryCard(
+                    entry = entry,
+                    onClick = { onEntryClick(entry) },
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+            }
+        },
+        modifier = modifier
+    )
 }
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)

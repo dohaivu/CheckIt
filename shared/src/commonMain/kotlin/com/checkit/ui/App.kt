@@ -279,6 +279,7 @@ fun CheckItApp(
                                             calendarViewModel = viewModels.calendar,
                                             onDateDoubleClick = { date -> viewModels.task.openNewTaskOnDate(date) },
                                             onDailyPlanItemClick = viewModels.myDay::openItemEditor,
+                                            onJournalEntryClick = viewModels.myDay::openJournalEditor,
                                             onJournalListClick = viewModels.myDay::openJournalList,
                                             onAddDailyPlanItem = { date -> viewModels.myDay.openDailyPlan(date = date) },
                                             onTaskClick = viewModels.task::openTask,
