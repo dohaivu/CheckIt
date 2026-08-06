@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -27,6 +28,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RichTooltip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TooltipAnchorPosition
@@ -53,10 +55,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.checkit.domain.JournalEntry
+import com.checkit.ui.components.EmojiPicker
 import com.checkit.ui.components.TagPill
 import com.checkit.ui.tasks.toClockLabel
 import com.checkit.ui.toTimeMinutes
 import kotlinx.coroutines.launch
+import org.kodein.emoji.Emoji
 
 /** Quick context presets shown as tappable chips in the entry editor. */
 internal val JournalContextPresets = listOf(
@@ -189,11 +193,13 @@ internal fun MoodRow(
     isEditMode: Boolean = false
 ) {
     var isExpanded by remember { mutableStateOf(!isEditMode) }
+    var showFullEmojiPicker by remember { mutableStateOf(false) }
     val rotation by animateFloatAsState(if (isExpanded) 180f else 0f)
     val shape = RoundedCornerShape(12.dp)
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         // Selected moods row (Header/Toggle)
+        // ... (existing code for Selected moods row)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -286,8 +292,33 @@ internal fun MoodRow(
                         }
                     }
                 }
+
+                // Inline EmojiPicker Toggle
+                OutlinedButton(
+                    onClick = { showFullEmojiPicker = true },
+                    modifier = Modifier.padding(top = 8.dp),
+                    shape = shape
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "More Emojis...",
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
             }
         }
+    }
+
+    if (showFullEmojiPicker) {
+        EmojiPicker(
+            onDismiss = { showFullEmojiPicker = false },
+            onEmojiSelect = { emoji -> onToggle(emoji.details.string) }
+        )
     }
 }
 
