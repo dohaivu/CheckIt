@@ -201,13 +201,13 @@ fun DailyPlanItemSource.defaultStatus(): DailyPlanItemStatus = when (this) {
     else -> DailyPlanItemStatus.Done
 }
 
-internal fun DailyPlanItem.workMinutes(): Int {
+fun DailyPlanItem.workMinutes(): Int {
     val start = startTimeMinutes ?: return 0
     val end = endTimeMinutes ?: return 0
     return (end - start).coerceAtLeast(0)
 }
 
-internal fun DailyPlan?.doneWorkMinutes(): Int =
+fun DailyPlan?.doneWorkMinutes(): Int =
     this
         ?.items
         .orEmpty()

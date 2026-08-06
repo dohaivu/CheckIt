@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.checkit.ui.MinutesPerDay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -138,7 +139,6 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
     }
 
     private companion object {
-        const val MinutesPerDay = 24 * 60
         val KEY_LANGUAGE = stringPreferencesKey("language")
         val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
         val KEY_COLOR_SCHEME = stringPreferencesKey("color_scheme_mode")

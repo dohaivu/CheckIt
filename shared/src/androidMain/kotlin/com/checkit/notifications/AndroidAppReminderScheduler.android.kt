@@ -10,6 +10,7 @@ import androidx.work.WorkManager
 import androidx.work.workDataOf
 import co.touchlab.kermit.Logger
 import com.checkit.data.UserSettings
+import com.checkit.ui.MinutesPerDay
 import java.time.Duration
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -128,9 +129,5 @@ class AndroidAppReminderScheduler(
         val delay = max(0L, Duration.between(now, target).toMillis())
         Logger.d("Daily reminder target: $target (delay: ${delay}ms)")
         return delay
-    }
-
-    private companion object {
-        const val MinutesPerDay = 24 * 60
     }
 }

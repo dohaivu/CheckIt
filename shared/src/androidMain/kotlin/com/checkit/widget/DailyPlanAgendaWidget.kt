@@ -51,11 +51,13 @@ import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.shared.R
 import com.checkit.ui.myday.MyDayTaskViewProjection
 import com.checkit.ui.myday.PlannedTaskProjection
+import com.checkit.ui.myday.doneWorkMinutes
 import com.checkit.ui.myday.toTaskViewProjection
 import com.checkit.ui.tasks.cardColor
 import com.checkit.ui.tasks.isOverdue
 import com.checkit.ui.tasks.priorityColor
 import com.checkit.ui.tasks.toClockLabel
+import com.checkit.ui.tasks.toDurationLabel
 import com.checkit.ui.today
 import kotlinx.coroutines.flow.first
 import kotlinx.datetime.TimeZone
@@ -140,8 +142,14 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                             )
                             if (totalCount > 0) {
                                 Spacer(modifier = GlanceModifier.width(6.dp))
+                                val doneMinutes = todayPlan.doneWorkMinutes()
+                                val countLabel = if (doneMinutes > 0) {
+                                    "$doneCount/$totalCount (${doneMinutes.toDurationLabel(compact = true)})"
+                                } else {
+                                    "$doneCount/$totalCount"
+                                }
                                 Text(
-                                    text = "$doneCount/$totalCount",
+                                    text = countLabel,
                                     style = TextStyle(
                                         fontSize = 12.sp,
                                         color = GlanceTheme.colors.onSurfaceVariant

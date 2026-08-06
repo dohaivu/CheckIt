@@ -10,6 +10,7 @@ import com.checkit.notifications.AppReminderScheduler
 import com.checkit.ui.AppColorSchemeMode
 import com.checkit.ui.AppLanguage
 import com.checkit.ui.AppThemeMode
+import com.checkit.ui.MinutesPerDay
 import com.checkit.ui.UiEvent
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -122,10 +123,6 @@ class SettingsViewModel(
 
     private fun sendEvent(event: UiEvent) {
         viewModelScope.launch { _events.send(event) }
-    }
-
-    private companion object {
-        const val MinutesPerDay = 24 * 60
     }
 }
 
