@@ -552,7 +552,9 @@ private fun SelectedDateHeader(
                             MarkdownView(
                                 modifier = Modifier.weight(1f),
                                 markdown = winNote,
-                                style = MaterialTheme.typography.bodySmall
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
                             )
                         }
                     }
@@ -1082,7 +1084,10 @@ private fun WinCardContent(
             }
             MarkdownView(
                 markdown = winNote,
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             )
         }
     }

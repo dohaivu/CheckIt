@@ -99,6 +99,7 @@ kotlin {
             implementation(libs.markdown.renderer)
             implementation(libs.richeditor.compose)
             implementation(libs.compose.colorpicker)
+            implementation(libs.emoji.kt)
 
             implementation(project.dependencies.platform(libs.koin.bom))
             implementation(libs.koin.core)
