@@ -57,7 +57,7 @@ fun HelpTooltip(
                 title = { Text(title, fontWeight = FontWeight.Bold) },
                 action = null,
             ) {
-                RichTextPreview(
+                MarkdownView(
                     markdown = markdownContent,
                     modifier = modifier.verticalScroll(scrollState)
                 )

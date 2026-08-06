@@ -344,11 +344,6 @@ internal fun StandardNoteRowContent(note: NoteItem, list: Objective?) {
             }
         }
         note.date?.let { DetailChip(Icons.Default.Event, it.compact(), isHighlighted = note.isOverdue()) }
-//        SupportingPills(
-//            list = list,
-//            tags = note.tags.take(2),
-//            overflowCount = (note.tags.size - 2).coerceAtLeast(0)
-//        )
     }
 }
 

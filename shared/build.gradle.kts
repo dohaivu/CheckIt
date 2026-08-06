@@ -96,6 +96,7 @@ kotlin {
 //            implementation(libs.vico.compose)
 //            implementation(libs.vico.compose.m3)
             implementation(libs.doist.normalize)
+            implementation(libs.markdown.renderer)
             implementation(libs.richeditor.compose)
             implementation(libs.compose.colorpicker)
 

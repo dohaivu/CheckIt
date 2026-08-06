@@ -73,6 +73,7 @@ import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.usecase.BuildDailyPlanMarkdownSummaryUseCase
+import com.checkit.ui.components.MarkdownView
 import com.checkit.ui.components.RichTextPreview
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TinyTopAppBar
@@ -548,9 +549,9 @@ private fun SelectedDateHeader(
                                     tint = Color(0xFFEAB308)
                                 )
                             }
-                            RichTextPreview(
-                                markdown = winNote,
+                            MarkdownView(
                                 modifier = Modifier.weight(1f),
+                                markdown = winNote,
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }
@@ -1079,7 +1080,7 @@ private fun WinCardContent(
                     color = Color(0xFFEAB308)
                 )
             }
-            RichTextPreview(
+            MarkdownView(
                 markdown = winNote,
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
             )
