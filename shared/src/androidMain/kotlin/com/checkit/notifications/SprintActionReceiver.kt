@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.checkit.domain.usecase.SprintTransitionUseCase
+import com.checkit.domain.SprintManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -15,6 +16,7 @@ import android.app.NotificationManager
 
 class SprintActionReceiver : BroadcastReceiver(), KoinComponent {
     private val transitionUseCase: SprintTransitionUseCase by inject()
+    private val sprintManager: SprintManager by inject()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     companion object {
@@ -23,6 +25,9 @@ class SprintActionReceiver : BroadcastReceiver(), KoinComponent {
         const val ACTION_SAVE_CONTINUE = "com.checkit.ACTION_SAVE_CONTINUE"
         const val ACTION_START_NEXT = "com.checkit.ACTION_START_NEXT"
         const val ACTION_UPGRADE = "com.checkit.ACTION_UPGRADE"
+        const val ACTION_PAUSE = "com.checkit.ACTION_PAUSE"
+        const val ACTION_RESUME = "com.checkit.ACTION_RESUME"
+        const val ACTION_STOP = "com.checkit.ACTION_STOP"
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -42,6 +47,9 @@ class SprintActionReceiver : BroadcastReceiver(), KoinComponent {
                     ACTION_SAVE_CONTINUE -> transitionUseCase.saveAndContinue()
                     ACTION_START_NEXT -> transitionUseCase.startNext()
                     ACTION_UPGRADE -> transitionUseCase.upgradeToPomodoro()
+                    ACTION_PAUSE -> sprintManager.pauseSprint()
+                    ACTION_RESUME -> sprintManager.resumeSprint()
+                    ACTION_STOP -> sprintManager.completeSprintManually()
                 }
             } finally {
                 pendingResult.finish()

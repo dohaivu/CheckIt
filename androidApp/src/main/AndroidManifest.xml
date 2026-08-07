@@ -64,6 +64,9 @@
                 <action android:name="com.checkit.ACTION_SAVE_CONTINUE" />
                 <action android:name="com.checkit.ACTION_START_NEXT" />
                 <action android:name="com.checkit.ACTION_UPGRADE" />
+                <action android:name="com.checkit.ACTION_PAUSE" />
+                <action android:name="com.checkit.ACTION_RESUME" />
+                <action android:name="com.checkit.ACTION_STOP" />
             </intent-filter>
         </receiver>
     </application>
