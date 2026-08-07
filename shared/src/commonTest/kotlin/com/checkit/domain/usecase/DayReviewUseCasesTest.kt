@@ -10,7 +10,7 @@ import com.checkit.domain.DayReviewConfirmInput
 import com.checkit.domain.DayReviewRecord
 import com.checkit.domain.LeftoverAction
 import com.checkit.domain.ReviewStreakPolicy
-import com.checkit.domain.TaskTag
+import com.checkit.domain.TagItem
 import com.checkit.domain.defaultLeftoverAction
 import com.checkit.domain.defaultReviewAction
 import com.checkit.ui.tasks.FakeCheckItRepository
@@ -32,7 +32,7 @@ class DayReviewUseCasesTest {
 
     @Test
     fun summaryCountsMinutesAndTopTags() = runTest {
-        val work = TaskTag(id = 1L, name = "Work", color = "#2563EB")
+        val work = TagItem(id = 1L, name = "Work", color = "#2563EB")
         val plan = DailyPlan(
             date = date,
             items = listOf(
@@ -121,7 +121,7 @@ class DayReviewUseCasesTest {
             status = DailyPlanItemStatus.Planned,
             startTimeMinutes = 10 * 60,
             endTimeMinutes = 11 * 60,
-            tags = listOf(TaskTag(id = 5L, name = "Code", color = "#059669"))
+            tags = listOf(TagItem(id = 5L, name = "Code", color = "#059669"))
         )
         repository.setDailyPlans(
             listOf(
@@ -514,7 +514,7 @@ class DayReviewUseCasesTest {
         taskId: Long? = null,
         startTimeMinutes: Int? = null,
         endTimeMinutes: Int? = null,
-        tags: List<TaskTag> = emptyList(),
+        tags: List<TagItem> = emptyList(),
         source: DailyPlanItemSource = if (taskId != null) {
             DailyPlanItemSource.ExistingTask
         } else {

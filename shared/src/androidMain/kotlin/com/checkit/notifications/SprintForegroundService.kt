@@ -10,7 +10,6 @@ import android.content.Intent
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
-import com.checkit.MainActivity
 import com.checkit.domain.SprintManager
 import com.checkit.domain.SprintState
 import com.checkit.shared.R
@@ -72,6 +71,7 @@ class SprintForegroundService : Service(), KoinComponent {
                 }
             }
             .onEach { state ->
+                android.util.Log.d("SprintService", "State update: $state")
                 when (state) {
                     is SprintState.Running -> {
                         startForeground(NOTIFICATION_ID, createNotification(state, isPaused = false))
@@ -80,6 +80,7 @@ class SprintForegroundService : Service(), KoinComponent {
                         startForeground(NOTIFICATION_ID, createNotification(state.runningState, isPaused = true))
                     }
                     is SprintState.Finished, SprintState.Idle -> {
+                        android.util.Log.d("SprintService", "Stopping service")
                         stopForeground(true)
                         stopSelf()
                     }
@@ -88,6 +89,7 @@ class SprintForegroundService : Service(), KoinComponent {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        android.util.Log.d("SprintService", "onStartCommand")
         return START_STICKY
     }
 
@@ -106,28 +108,48 @@ class SprintForegroundService : Service(), KoinComponent {
         }
 
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(applicationInfo.icon.takeIf { it != 0 } ?: R.mipmap.ic_launcher_round)
+            .setSmallIcon(R.drawable.bolt_24px)
             .setContentTitle(headline)
             .setContentText(state.description)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setShowWhen(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
 
         if (isPaused) {
-            // Static text for frozen time when paused
             val minutes = state.remainingSeconds / 60
             val seconds = state.remainingSeconds % 60
             builder.setSubText(String.format(Locale.US, "%02d:%02d remaining", minutes, seconds))
             builder.setUsesChronometer(false)
+            
+            builder.addAction(
+                NotificationCompat.Action.Builder(
+                    null, "Resume",
+                    getPendingActionIntent(SprintActionReceiver.ACTION_RESUME)
+                ).build()
+            )
         } else {
-            // Live countdown using system Chronometer for best performance
-            builder.setSubText(if (state.isBreak) "Time for a breather" else "In progress")
+            builder.setSubText(if (state.isBreak) "Take a breather" else "In progress")
             builder.setUsesChronometer(true)
             builder.setChronometerCountDown(true)
             builder.setWhen(state.endsAtEpochMillis)
+
+            builder.addAction(
+                NotificationCompat.Action.Builder(
+                    null, "Pause",
+                    getPendingActionIntent(SprintActionReceiver.ACTION_PAUSE)
+                ).build()
+            )
         }
+        
+        builder.addAction(
+            NotificationCompat.Action.Builder(
+                null, "Stop",
+                getPendingActionIntent(SprintActionReceiver.ACTION_STOP)
+            ).build()
+        )
         
         val intent = Intent().setClassName(packageName, "com.checkit.MainActivity").apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -141,6 +163,16 @@ class SprintForegroundService : Service(), KoinComponent {
         return builder.build()
     }
 
+    private fun getPendingActionIntent(action: String): PendingIntent {
+        val intent = Intent(this, SprintActionReceiver::class.java).apply {
+            this.action = action
+        }
+        return PendingIntent.getBroadcast(
+            this, action.hashCode(), intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+
     private fun SprintState.isPaused() = this is SprintState.Paused
 
     private fun createNotificationChannel() {
@@ -148,7 +180,7 @@ class SprintForegroundService : Service(), KoinComponent {
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "Sprint Timer",
-                NotificationManager.IMPORTANCE_LOW
+                NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "Shows active focus timer"
                 setShowBadge(false)

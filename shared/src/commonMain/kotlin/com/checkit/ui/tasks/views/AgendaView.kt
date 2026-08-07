@@ -3,14 +3,14 @@ package com.checkit.ui.tasks.views
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -35,9 +35,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.checkit.ui.shortName
+import androidx.compose.ui.unit.sp
+import com.checkit.domain.JournalEntry
 import com.checkit.ui.shortMonthName
+import com.checkit.ui.shortName
 import com.checkit.ui.tasks.TimelineItem
+import com.checkit.ui.tasks.TimelineItemType
 import com.checkit.ui.tasks.toClockLabel
 import com.checkit.ui.today
 import kotlinx.coroutines.launch
@@ -56,6 +59,7 @@ internal fun AgendaView(
     dayLimit: Int? = null,
     focusedDate: LocalDate = today(),
     modifier: Modifier = Modifier,
+    header: (@Composable () -> Unit)? = null,
     itemContent: @Composable (TimelineItem) -> Unit
 ) {
     val today = today()
@@ -121,6 +125,14 @@ internal fun AgendaView(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
+            if (header != null) {
+                item(
+                    key = "agenda-header",
+                    contentType = "Header"
+                ) {
+                    header()
+                }
+            }
             agendaListItems.forEach { item ->
                 when (item) {
                     is AgendaListItem.MonthHeader -> {
@@ -334,15 +346,47 @@ private fun AgendaTimedRow(
     onItemClick: (TimelineItem) -> Unit,
     itemContent: @Composable (TimelineItem) -> Unit
 ) {
-    AgendaAxisRow(
-        label = item.startTimeMinutes?.toClockLabel() ?: "",
-        showTopLine = showTopLine,
-        showBottomLine = showBottomLine,
-        isHighlighted = isHighlighted
-    ) {
-        Box(Modifier.clickable { onItemClick(item) }) {
+    if (item.type == TimelineItemType.Journal) {
+        val entry = item.tag as? JournalEntry
+        AgendaAxisRow(
+            label = item.startTimeMinutes?.toClockLabel() ?: "",
+            showTopLine = showTopLine,
+            showBottomLine = showBottomLine,
+            isHighlighted = isHighlighted,
+            marker = {
+                if (entry != null) {
+                    JournalMoodMarker(entry)
+                } else {
+                    AgendaAxisMarker(showTopLine, showBottomLine, isHighlighted)
+                }
+            }
+        ) {
             itemContent(item)
         }
+    } else {
+        AgendaAxisRow(
+            label = item.startTimeMinutes?.toClockLabel() ?: "",
+            showTopLine = showTopLine,
+            showBottomLine = showBottomLine,
+            isHighlighted = isHighlighted
+        ) {
+            Box(Modifier.clickable { onItemClick(item) }) {
+                itemContent(item)
+            }
+        }
+    }
+}
+
+@Composable
+private fun JournalMoodMarker(entry: JournalEntry) {
+    Box(
+        modifier = Modifier.size(width = 14.dp, height = 34.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = entry.moods.firstOrNull() ?: "📝",
+            fontSize = 16.sp
+        )
     }
 }
 
@@ -352,6 +396,9 @@ private fun AgendaAxisRow(
     showTopLine: Boolean,
     showBottomLine: Boolean,
     isHighlighted: Boolean,
+    marker: @Composable () -> Unit = {
+        AgendaAxisMarker(showTopLine = showTopLine, showBottomLine = showBottomLine, isHighlighted = isHighlighted)
+    },
     content: @Composable () -> Unit
 ) {
     Row(
@@ -362,7 +409,14 @@ private fun AgendaAxisRow(
         verticalAlignment = Alignment.Top
     ) {
         AgendaAxisLabel(text = label, isHighlighted)
-        AgendaAxisMarker(showTopLine = showTopLine, showBottomLine = showBottomLine, isHighlighted = isHighlighted)
+        Box(
+            modifier = Modifier
+                .width(14.dp)
+                .fillMaxHeight(),
+            contentAlignment = Alignment.TopCenter
+        ) {
+            marker()
+        }
         Box(
             Modifier
                 .weight(1f)
@@ -462,8 +516,7 @@ private fun AgendaMonthHeader(label: String, modifier: Modifier = Modifier) {
         color = MaterialTheme.colorScheme.primary,
         modifier = modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.background)
+            .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.9f))
             .padding(horizontal = 16.dp, vertical = 8.dp)
     )
 }
-

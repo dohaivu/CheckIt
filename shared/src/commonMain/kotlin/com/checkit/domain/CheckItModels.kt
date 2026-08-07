@@ -11,7 +11,7 @@ data class TaskBoard(
     val filters: List<TaskFilter> = emptyList(),
     val tasks: List<TaskItem> = emptyList(),
     val notes: List<NoteItem> = emptyList(),
-    val tags: List<TaskTag> = emptyList()
+    val tags: List<TagItem> = emptyList()
 ) {
     val tasksById: Map<Long, TaskItem> by lazy { tasks.associateBy { it.id } }
     val notesById: Map<Long, NoteItem> by lazy { notes.associateBy { it.id } }
@@ -100,7 +100,7 @@ data class TaskItem(
     val subtasks: List<SubTaskItem> = emptyList(),
     val status: TaskStatus = TaskStatus.Open,
     val type: TaskType = TaskType.Task,
-    val tags: List<TaskTag> = emptyList(),
+    val tags: List<TagItem> = emptyList(),
     val priority: TaskPriority = TaskPriority.None,
     val doDate: LocalDate? = null,
     val completedDate: LocalDate? = null,
@@ -129,7 +129,7 @@ data class DailyPlanItem(
     val note: String? = null,
     val source: DailyPlanItemSource,
     val status: DailyPlanItemStatus,
-    val tags: List<TaskTag> = emptyList(),
+    val tags: List<TagItem> = emptyList(),
     val isHabit: Boolean = false,
     val sortOrder: Int,
     val startTimeMinutes: Int? = null,
@@ -170,7 +170,7 @@ data class NoteItem(
     val objective: Objective,
     val title: String = "",
     val content: String,
-    val tags: List<TaskTag> = emptyList(),
+    val tags: List<TagItem> = emptyList(),
     val status: TaskStatus = TaskStatus.Open,
     val date: LocalDate? = null,
     val startTimeMinutes: Int? = null,
@@ -182,7 +182,21 @@ data class NoteItem(
     val isTrashed: Boolean get() = trashedAtMillis != null
 }
 
-data class TaskTag(
+data class JournalEntry(
+    val id: Long,
+    val dateEpochDays: Int,
+    /** Activity, location, or any specific thing this entry is about, e.g. "Biking", "Cafe". */
+    val context: String? = null,
+    /** Freeform status text. */
+    val content: String,
+    val moods: List<String> = emptyList(),
+    val tags: List<TagItem> = emptyList(),
+    val createdTimeMinutes: Int
+) {
+    val hasContent: Boolean get() = content.isNotBlank()
+}
+
+data class TagItem(
     val id: Long,
     val name: String,
     val color: String,
@@ -190,7 +204,7 @@ data class TaskTag(
     val lastUsedAtMillis: Long = 0L
 ) {
     companion object {
-        val None = TaskTag(id = -1, name = "None", color = "#FFFFFF")
+        val None = TagItem(id = -1, name = "None", color = "#FFFFFF")
     }
 }
 

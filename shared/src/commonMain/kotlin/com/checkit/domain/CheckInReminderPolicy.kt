@@ -2,6 +2,7 @@ package com.checkit.domain
 
 import com.checkit.data.CheckItDao
 import com.checkit.data.SettingsRepository
+import com.checkit.ui.MinutesPerDay
 import kotlinx.coroutines.flow.first
 
 data class CheckInReminderPlanItem(
@@ -43,7 +44,6 @@ class CheckInReminderPolicy(
     companion object {
         const val NearbyWindowMinutes = 15
         const val MinimumRepeatIntervalMillis = 2L * 60L * 60L * 1000L
-        private const val MinutesPerDay = 24 * 60
 
         suspend fun shouldShowReminder(
             nowMinutes: Int,

@@ -68,7 +68,7 @@ import checkit.shared.generated.resources.sprint_pomodoro_finish_title
 import checkit.shared.generated.resources.sprint_start
 import com.checkit.domain.SprintState
 import com.checkit.domain.TaskItem
-import com.checkit.domain.TaskTag
+import com.checkit.domain.TagItem
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.TagPicker
@@ -315,7 +315,7 @@ fun QuickSprintSheet(
     suggestedToday: List<SprintChoice>,
     suggestedYesterday: List<SprintChoice>,
     suggestedTasks: List<TaskItem>,
-    availableTags: List<TaskTag>,
+    availableTags: List<TagItem>,
     continueItem: SprintChoice?,
     onStartSprint: (taskId: Long?, dailyPlanItemId: Long?, description: String, tagIds: List<Long>) -> Unit,
     onStartSprintWithChoice: (SprintChoice) -> Unit,

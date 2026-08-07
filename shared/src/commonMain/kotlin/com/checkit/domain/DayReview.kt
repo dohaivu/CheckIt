@@ -1,5 +1,6 @@
 package com.checkit.domain
 
+import com.checkit.ui.MinutesPerDay
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
@@ -141,12 +142,4 @@ object DayReviewBannerPolicy {
         val threshold = reviewReminderTimeMinutes.coerceIn(0, MinutesPerDay - 1)
         return nowMinutes >= threshold
     }
-
-    private const val MinutesPerDay = 24 * 60
-}
-
-fun DailyPlanItem.planWorkMinutes(): Int {
-    val start = startTimeMinutes ?: return 0
-    val end = endTimeMinutes ?: return 0
-    return (end - start).coerceAtLeast(0)
 }

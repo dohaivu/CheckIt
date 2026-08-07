@@ -192,11 +192,25 @@ private fun ReflectionSection(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
         )
-        RichTextComposer(
+//        RichTextComposer(
+//            value = value,
+//            onValueChange = onValueChange,
+//            placeholder = stringResource(Res.string.day_review_win_note_placeholder),
+//            modifier = Modifier.fillMaxWidth(),
+//            enabled = enabled
+//        )
+
+        AppOutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            placeholder = stringResource(Res.string.day_review_win_note_placeholder),
+            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Normal
+            ),
             modifier = Modifier.fillMaxWidth(),
+            placeholder = stringResource(Res.string.day_review_win_note_placeholder),
+            minLines = 4,
+            maxLines = 8,
             enabled = enabled
         )
     }

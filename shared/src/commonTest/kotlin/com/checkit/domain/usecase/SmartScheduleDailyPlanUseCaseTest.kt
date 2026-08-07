@@ -4,7 +4,7 @@ import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
-import com.checkit.domain.TaskTag
+import com.checkit.domain.TagItem
 import com.checkit.ui.tasks.FakeCheckItRepository
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
@@ -14,8 +14,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class SmartScheduleDailyPlanUseCaseTest {
-    private val workTag = TaskTag(id = 1, name = "Work", color = "#2563EB")
-    private val lifeTag = TaskTag(id = 2, name = "Life", color = "#7C3AED")
+    private val workTag = TagItem(id = 1, name = "Work", color = "#2563EB")
+    private val lifeTag = TagItem(id = 2, name = "Life", color = "#7C3AED")
     private val today = LocalDate(2026, 6, 10)
 
     @Test
@@ -323,7 +323,7 @@ class SmartScheduleDailyPlanUseCaseTest {
     private fun item(
         id: Long,
         date: LocalDate,
-        tag: TaskTag,
+        tag: TagItem,
         status: DailyPlanItemStatus,
         start: Int? = null,
         end: Int? = null,
@@ -333,7 +333,7 @@ class SmartScheduleDailyPlanUseCaseTest {
     private fun item(
         id: Long,
         date: LocalDate,
-        tags: List<TaskTag>,
+        tags: List<TagItem>,
         status: DailyPlanItemStatus,
         start: Int? = null,
         end: Int? = null,

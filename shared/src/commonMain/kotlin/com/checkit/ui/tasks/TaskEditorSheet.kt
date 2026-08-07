@@ -53,7 +53,7 @@ import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.Objective
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
-import com.checkit.domain.TaskTag
+import com.checkit.domain.TagItem
 import com.checkit.domain.TaskType
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppHorizontalDivider
@@ -73,7 +73,7 @@ import kotlinx.datetime.LocalDate
 internal fun TaskEditorSheet(
     editor: TaskEditorState,
     availableLists: List<Objective>,
-    availableTags: List<TaskTag>,
+    availableTags: List<TagItem>,
     actions: TaskEditorActions
 ) {
     val onDismiss = actions.onDismiss
@@ -397,7 +397,7 @@ private fun SheetFooter(
 private fun TaskFormContent(
     form: TaskEditorState.TaskForm,
     availableLists: List<Objective>,
-    availableTags: List<TaskTag>,
+    availableTags: List<TagItem>,
     onNameChange: (String) -> Unit,
     onListChange: (Long) -> Unit,
     onDescriptionChange: (String) -> Unit,
@@ -582,15 +582,15 @@ private fun DailyPlanSection(
                     modifier = Modifier.weight(1f),
                     enabled = enabled,
                     isOverdue = item.isOverdue(today()),
-                    clearEnabled = false
+                    clearEnabled = true
                 )
 
-                if (enabled) {
-                    Row(
-                        modifier = Modifier.padding(start = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(2.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                Row(
+                    modifier = Modifier.padding(start = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (enabled) {
                         if (item.status == DailyPlanItemStatus.Planned && item.startTimeMinutes != null) {
                             IconButton(
                                 onClick = { onStartOngoingSprint(item) },
@@ -618,19 +618,22 @@ private fun DailyPlanSection(
                                 )
                             }
                         }
+                    }
 
-                        IconButton(
-                            onClick = { onDelete(item.id) },
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = "Delete from My Day",
-                                modifier = Modifier.size(18.dp),
-                                tint = colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                            )
-                        }
 
+                    IconButton(
+                        onClick = { onDelete(item.id) },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete from My Day",
+                            modifier = Modifier.size(18.dp),
+                            tint = colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        )
+                    }
+
+                    if (enabled) {
                         IconButton(
                             onClick = onStatusChange,
                             modifier = Modifier.size(32.dp)
@@ -653,7 +656,7 @@ private fun DailyPlanSection(
 private fun NoteFormContent(
     form: TaskEditorState.NoteForm,
     availableLists: List<Objective>,
-    availableTags: List<TaskTag>,
+    availableTags: List<TagItem>,
     onTitleChange: (String) -> Unit,
     onContentChange: (String) -> Unit,
     onListChange: (Long) -> Unit,

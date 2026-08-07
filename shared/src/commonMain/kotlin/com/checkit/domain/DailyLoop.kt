@@ -1,5 +1,6 @@
 package com.checkit.domain
 
+import com.checkit.ui.MinutesPerDay
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
@@ -55,8 +56,6 @@ object LeftoversBannerPolicy {
 }
 
 object PlanAssistBannerPolicy {
-    private const val MinutesPerDay = 24 * 60
-
     /**
      * Morning plan assist: after plan reminder time, before review time,
      * when today's plan is empty and the user has not dismissed for the day.

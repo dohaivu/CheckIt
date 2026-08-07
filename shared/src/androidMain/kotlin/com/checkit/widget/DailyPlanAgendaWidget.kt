@@ -13,10 +13,13 @@ import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.action.Action
+import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.action.ActionCallback
+import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.lazy.itemsIndexed
@@ -51,11 +54,13 @@ import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.shared.R
 import com.checkit.ui.myday.MyDayTaskViewProjection
 import com.checkit.ui.myday.PlannedTaskProjection
+import com.checkit.ui.myday.doneWorkMinutes
 import com.checkit.ui.myday.toTaskViewProjection
 import com.checkit.ui.tasks.cardColor
 import com.checkit.ui.tasks.isOverdue
 import com.checkit.ui.tasks.priorityColor
 import com.checkit.ui.tasks.toClockLabel
+import com.checkit.ui.tasks.toDurationLabel
 import com.checkit.ui.today
 import kotlinx.coroutines.flow.first
 import kotlinx.datetime.TimeZone
@@ -89,6 +94,11 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                 projection.toWidgetItems(timed = true)
             }
 
+            val totalCount = remember(allDayItems, timedItems) { allDayItems.size + timedItems.size }
+            val doneCount = remember(allDayItems, timedItems) {
+                allDayItems.count { it.completed } + timedItems.count { it.completed }
+            }
+
             // Find the index of the first item that starts AFTER now
             val nextTimedItemIndex = remember(timedItems, nowMinutes) {
                 timedItems.indexOfFirst { (it.startTimeMinutes ?: -1) > nowMinutes }
@@ -119,17 +129,52 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                             contentScale = ContentScale.Fit
                         )
                         Spacer(modifier = GlanceModifier.width(8.dp))
-                        Text(
-                            text = "My Day",
-                            style = TextStyle(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp,
-                                color = GlanceTheme.colors.onSurface
-                            ),
+                        Row(
                             modifier = GlanceModifier
                                 .defaultWeight()
-                                .clickable(actionStartActivity<MainActivity>())
-                        )
+                                .clickable(actionStartActivity<MainActivity>()),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "My Day",
+                                style = TextStyle(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp,
+                                    color = GlanceTheme.colors.onSurface
+                                )
+                            )
+                            if (totalCount > 0) {
+                                Spacer(modifier = GlanceModifier.width(6.dp))
+                                val doneMinutes = todayPlan.doneWorkMinutes()
+                                val countLabel = if (doneMinutes > 0) {
+                                    "$doneCount/$totalCount (${doneMinutes.toDurationLabel(compact = true)})"
+                                } else {
+                                    "$doneCount/$totalCount"
+                                }
+                                Text(
+                                    text = countLabel,
+                                    style = TextStyle(
+                                        fontSize = 12.sp,
+                                        color = GlanceTheme.colors.onSurfaceVariant
+                                    )
+                                )
+                            }
+                        }
+                        Box(
+                            modifier = GlanceModifier
+                                .size(32.dp)
+                                .cornerRadius(16.dp)
+                                .clickable(openNewJournalEntryAction()),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Image(
+                                provider = ImageProvider(R.drawable.notes_24px),
+                                contentDescription = "Add journal entry",
+                                modifier = GlanceModifier.size(22.dp),
+                                colorFilter = ColorFilter.tint(GlanceTheme.colors.primary)
+                            )
+                        }
+                        Spacer(modifier = GlanceModifier.width(8.dp))
                         Box(
                             modifier = GlanceModifier
                                 .size(32.dp)
@@ -155,6 +200,21 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                             Image(
                                 provider = ImageProvider(R.drawable.lightbulb_24px),
                                 contentDescription = "Open suggestions",
+                                modifier = GlanceModifier.size(20.dp),
+                                colorFilter = ColorFilter.tint(GlanceTheme.colors.primary)
+                            )
+                        }
+                        Spacer(modifier = GlanceModifier.width(8.dp))
+                        Box(
+                            modifier = GlanceModifier
+                                .size(32.dp)
+                                .cornerRadius(16.dp)
+                                .clickable(actionRunCallback<RefreshAction>()),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Image(
+                                provider = ImageProvider(R.drawable.refresh_24px),
+                                contentDescription = "Refresh data",
                                 modifier = GlanceModifier.size(20.dp),
                                 colorFilter = ColorFilter.tint(GlanceTheme.colors.primary)
                             )
@@ -223,6 +283,10 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
         parameters = actionParametersOf(OpenQuickSprintParameterKey to true)
     )
 
+    private fun openNewJournalEntryAction(): Action = actionStartActivity<MainActivity>(
+        parameters = actionParametersOf(OpenNewJournalEntryParameterKey to true)
+    )
+
     @Composable
     private fun GlanceAgendaAxisRow(
         label: String,
@@ -242,7 +306,7 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
         ) {
             // Label
             Box(
-                modifier = GlanceModifier.width(44.dp).height(32.dp),
+                modifier = GlanceModifier.width(48.dp).height(32.dp),
                 contentAlignment = Alignment.CenterEnd
             ) {
                 Text(
@@ -440,6 +504,16 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
     }
 }
 
+class RefreshAction : ActionCallback {
+    override suspend fun onAction(
+        context: Context,
+        glanceId: GlanceId,
+        parameters: ActionParameters
+    ) {
+        DailyPlanAgendaWidget().update(context, glanceId)
+    }
+}
+
 private sealed class GlanceAgendaItem {
     abstract val startTimeMinutes: Int?
     abstract val endTimeMinutes: Int?
@@ -532,7 +606,7 @@ private sealed class GlanceAgendaItem {
 private fun MyDayTaskViewProjection.toWidgetItems(timed: Boolean): List<GlanceAgendaItem> {
     val items = plannedTasks.map { GlanceAgendaItem.Task(it) } +
         notes.map { GlanceAgendaItem.Note(it) } +
-        checkIns.map { GlanceAgendaItem.DailyPlan(it) }
+        dailyPlanItems.map { GlanceAgendaItem.DailyPlan(it) }
     return items
         .asSequence()
         .filter { (it.startTimeMinutes != null) == timed }

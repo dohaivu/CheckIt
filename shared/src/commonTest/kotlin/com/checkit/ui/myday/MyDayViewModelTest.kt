@@ -5,21 +5,27 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DayReviewRecord
+import com.checkit.domain.JournalEntry
 import com.checkit.domain.LeftoverAction
+import com.checkit.domain.TagItem
 import com.checkit.domain.usecase.AddDailyPlanItemUseCase
+import com.checkit.domain.usecase.AddJournalEntryUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.BuildDayReviewSummaryUseCase
 import com.checkit.domain.usecase.CarryOverDailyPlanItemsUseCase
 import com.checkit.domain.usecase.CompleteDayReviewUseCase
 import com.checkit.domain.usecase.ObserveDayReviewsUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
+import com.checkit.domain.usecase.DeleteJournalEntryUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
+import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.SprintManager
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.domain.usecase.UpsertDailyPlanItemUseCase
+import com.checkit.domain.usecase.UpdateJournalEntryUseCase
 import com.checkit.domain.usecase.AddSuggestedTaskToMyDayUseCase
 import com.checkit.domain.usecase.SprintTransitionUseCase
 import com.checkit.domain.usecase.SaveSprintAsWinUseCase
@@ -65,6 +71,7 @@ class MyDayViewModelTest {
         val carryOver = CarryOverDailyPlanItemsUseCase(repository, dispatcher)
         val observeTaskBoard = ObserveTaskBoardUseCase(repository)
         val observeDailyPlans = ObserveDailyPlansUseCase(repository)
+        val observeJournalEntries = ObserveJournalEntriesUseCase(repository)
         val observeDayReviews = ObserveDayReviewsUseCase(repository)
         val syncKeyResult = SyncKeyResultFromDailyPlanUseCase(repository)
         val addTaskToDailyPlan = AddTaskToDailyPlanUseCase(repository)
@@ -73,6 +80,10 @@ class MyDayViewModelTest {
         return MyDayViewModel(
             observeTaskBoard = observeTaskBoard,
             observeDailyPlans = observeDailyPlans,
+            observeJournalEntries = observeJournalEntries,
+            addJournalEntry = AddJournalEntryUseCase(repository),
+            updateJournalEntry = UpdateJournalEntryUseCase(repository),
+            deleteJournalEntry = DeleteJournalEntryUseCase(repository),
             deleteDailyPlanItemUseCase = DeleteDailyPlanItemUseCase(repository),
             settingsRepository = settingsRepository,
             buildDayReviewSummary = buildSummary,
@@ -408,6 +419,146 @@ class MyDayViewModelTest {
         val review = coldStartViewModel.uiState.value.dayReview
         assertNotNull(review)
         assertEquals(listOf("Real item"), review.summary.plannedItems.map { it.title })
+    }
+
+    @Test
+    fun openJournalEditorAddModeSavesNewEntry() = runTest(dispatcher) {
+        val tag = TagItem(id = 1L, name = "Work", color = "#FF0000")
+        repository.addTag(com.checkit.data.TagWriteInput(name = "Work", color = "#FF0000"))
+        dispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.openNewJournalEntry()
+        val editor = viewModel.uiState.value.journalEditor
+        assertNotNull(editor)
+        assertEquals(false, editor.isEditMode)
+        assertEquals(today(), editor.date)
+
+        viewModel.updateJournalEditorContext("Biking")
+        viewModel.updateJournalEditorContent("Covered 20 km")
+        viewModel.toggleJournalEditorMood("🔥")
+        viewModel.toggleJournalEditorTag(tag.id)
+        viewModel.saveJournalEditor()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val input = repository.addedJournalEntries.single()
+        assertEquals("Biking", input.context)
+        assertEquals("Covered 20 km", input.content)
+        assertEquals(listOf("🔥"), input.moods)
+        assertEquals(listOf(tag.id), input.tagIds)
+        assertEquals(today(), input.date)
+
+        assertEquals(null, viewModel.uiState.value.journalEditor)
+        assertEquals(1, viewModel.uiState.value.journalEntries.size)
+        assertEquals("Biking", viewModel.uiState.value.journalEntries.single().context)
+    }
+
+    @Test
+    fun saveBlankJournalEditorDoesNotPersist() = runTest(dispatcher) {
+        viewModel.openNewJournalEntry()
+        viewModel.saveJournalEditor()
+        dispatcher.scheduler.advanceUntilIdle()
+        assertTrue(repository.addedJournalEntries.isEmpty())
+    }
+
+    @Test
+    fun openAndDismissJournalListSheet() = runTest(dispatcher) {
+        assertEquals(false, viewModel.uiState.value.showJournalList)
+
+        viewModel.openJournalList()
+        assertEquals(true, viewModel.uiState.value.showJournalList)
+
+        viewModel.dismissJournalList()
+        assertEquals(false, viewModel.uiState.value.showJournalList)
+    }
+
+    @Test
+    fun journalVisibleEntriesIncludeOnlyToday() = runTest(dispatcher) {
+        val today = today()
+        repository.setJournalEntries(
+            listOf(
+                JournalEntry(
+                    id = 1L,
+                    dateEpochDays = today.toEpochDays().toInt(),
+                    context = "Biking",
+                    content = "Ride",
+                    createdTimeMinutes = 1
+                ),
+                JournalEntry(
+                    id = 2L,
+                    dateEpochDays = today.toEpochDays().toInt(),
+                    context = "Cafe",
+                    content = "Coffee",
+                    createdTimeMinutes = 2
+                ),
+                JournalEntry(
+                    id = 3L,
+                    dateEpochDays = today.toEpochDays().toInt() - 1,
+                    context = "Old",
+                    content = "Yesterday",
+                    createdTimeMinutes = 3
+                )
+            )
+        )
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(listOf(1L, 2L), viewModel.uiState.value.journalVisibleEntries.map { it.id })
+    }
+
+    @Test
+    fun openJournalEditorPrefillsAndSavePersistsUpdates() = runTest(dispatcher) {
+        val today = today()
+        repository.setJournalEntries(
+            listOf(
+                JournalEntry(
+                    id = 5L,
+                    dateEpochDays = today.toEpochDays().toInt(),
+                    context = "Biking",
+                    content = "Ride",
+                    moods = listOf("😀"),
+                    createdTimeMinutes = 1
+                )
+            )
+        )
+        dispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.openJournalEditor(repository.currentJournalEntry(5L)!!)
+        val editor = viewModel.uiState.value.journalEditor
+        assertNotNull(editor)
+        assertEquals("Biking", editor.context)
+        assertEquals("Ride", editor.content)
+
+        viewModel.updateJournalEditorContent("Ride + sprint")
+        viewModel.saveJournalEditor()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val (entryId, input) = repository.updatedJournalEntries.single()
+        assertEquals(5L, entryId)
+        assertEquals("Ride + sprint", input.content)
+        assertEquals(null, viewModel.uiState.value.journalEditor)
+    }
+
+    @Test
+    fun deleteJournalEntryRemovesEntryAndClosesEditor() = runTest(dispatcher) {
+        val today = today()
+        repository.setJournalEntries(
+            listOf(
+                JournalEntry(
+                    id = 7L,
+                    dateEpochDays = today.toEpochDays().toInt(),
+                    content = "Doomed",
+                    createdTimeMinutes = 1
+                )
+            )
+        )
+        dispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.openJournalEditor(repository.currentJournalEntry(7L)!!)
+        viewModel.deleteJournalEntry(7L)
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(listOf(7L), repository.deletedJournalEntryIds)
+        assertEquals(null, viewModel.uiState.value.journalEditor)
+        assertTrue(viewModel.uiState.value.journalEntries.isEmpty())
     }
 
     private fun dailyPlanItem(

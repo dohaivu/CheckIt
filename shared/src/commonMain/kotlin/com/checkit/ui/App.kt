@@ -37,6 +37,8 @@ import com.checkit.ui.calendar.CalendarScreen
 import com.checkit.ui.components.LocalSnackbarHostState
 import com.checkit.ui.localization.AppLocaleProvider
 import com.checkit.ui.myday.DailyPlanItemEditorSheet
+import com.checkit.ui.myday.JournalEntryEditorSheet
+import com.checkit.ui.myday.JournalListSheet
 import com.checkit.ui.myday.MyDayScreen
 import com.checkit.ui.reports.ReportScreen
 import com.checkit.ui.reports.TagsReport
@@ -66,6 +68,7 @@ fun CheckItApp(
     openDayReviewLaunch: Boolean = false,
     openPlanAssistLaunch: Boolean = false,
     openCheckInLaunch: Boolean = false,
+    openNewJournalEntryLaunch: Boolean = false,
     openQuickSprintLaunch: Boolean = false,
     startSprintItemIdLaunch: Long? = null,
     onWidgetLaunchConsumed: () -> Unit = {}
@@ -155,6 +158,13 @@ fun CheckItApp(
         if (!openCheckInLaunch) return@LaunchedEffect
         navState.resetTo(AppRoute.MyDay)
         viewModels.myDay.openQuickSprint()
+        onWidgetLaunchConsumed()
+    }
+
+    LaunchedEffect(openNewJournalEntryLaunch) {
+        if (!openNewJournalEntryLaunch) return@LaunchedEffect
+        navState.resetTo(AppRoute.MyDay)
+        viewModels.myDay.openNewJournalEntry()
         onWidgetLaunchConsumed()
     }
 
@@ -269,6 +279,8 @@ fun CheckItApp(
                                             calendarViewModel = viewModels.calendar,
                                             onDateDoubleClick = { date -> viewModels.task.openNewTaskOnDate(date) },
                                             onDailyPlanItemClick = viewModels.myDay::openItemEditor,
+                                            onJournalEntryClick = viewModels.myDay::openJournalEditor,
+                                            onJournalListClick = viewModels.myDay::openJournalList,
                                             onAddDailyPlanItem = { date -> viewModels.myDay.openDailyPlan(date = date) },
                                             onTaskClick = viewModels.task::openTask,
                                             onNoteClick = viewModels.task::openNote,
@@ -392,6 +404,30 @@ fun CheckItApp(
                             onDuplicate = viewModels.myDay::duplicateDailyPlanItem,
                             onStartSprint = viewModels.myDay::startNewSprintFromEditor,
                             onStartOngoingSprint = viewModels.myDay::startOngoingSprintFromEditor
+                        )
+                    }
+                    myDayUiState.journalEditor?.let { editor ->
+                        JournalEntryEditorSheet(
+                            state = editor,
+                            availableTags = myDayUiState.board.tags,
+                            onDismiss = viewModels.myDay::dismissJournalEditor,
+                            onContextChange = viewModels.myDay::updateJournalEditorContext,
+                            onContentChange = viewModels.myDay::updateJournalEditorContent,
+                            onMoodToggle = viewModels.myDay::toggleJournalEditorMood,
+                            onTagToggle = viewModels.myDay::toggleJournalEditorTag,
+                            onNewTagClick = viewModels.tag::openNewTag,
+                            onSave = viewModels.myDay::saveJournalEditor,
+                            onDelete = { editor.entryId?.let { viewModels.myDay.deleteJournalEntry(it) } }
+                        )
+                    }
+                    if (myDayUiState.showJournalList) {
+                        JournalListSheet(
+                            entries = myDayUiState.journalSheetEntries,
+                            onEntryClick = { entry ->
+                                viewModels.myDay.dismissJournalList()
+                                viewModels.myDay.openJournalEditor(entry)
+                            },
+                            onDismiss = viewModels.myDay::dismissJournalList
                         )
                     }
                     tagUiState.editor?.let { tagEditor ->

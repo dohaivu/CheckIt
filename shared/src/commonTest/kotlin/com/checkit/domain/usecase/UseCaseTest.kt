@@ -8,7 +8,7 @@ import com.checkit.domain.TaskItem
 import com.checkit.domain.Objective
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
-import com.checkit.domain.TaskTag
+import com.checkit.domain.TagItem
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -67,7 +67,7 @@ class UseCaseTest {
 
     @Test
     fun tagAndPriorityFilterCanBeCombined() {
-        val tag = TaskTag(id = 7, name = "Work", color = "#7C3AED")
+        val tag = TagItem(id = 7, name = "Work", color = "#7C3AED")
         val board = TaskBoard(
             tasks = listOf(
                 task(id = 1, tags = listOf(tag), priority = TaskPriority.High),
@@ -92,7 +92,7 @@ class UseCaseTest {
 
     @Test
     fun tagFilterReturnsMatchingTasksAndNotes() {
-        val tag = TaskTag(id = 7, name = "Work", color = "#7C3AED")
+        val tag = TagItem(id = 7, name = "Work", color = "#7C3AED")
         val board = TaskBoard(
             tasks = listOf(
                 task(id = 1, tags = listOf(tag)),
@@ -254,7 +254,7 @@ class UseCaseTest {
     private fun task(
         id: Long,
         doDate: LocalDate? = null,
-        tags: List<TaskTag> = emptyList(),
+        tags: List<TagItem> = emptyList(),
         priority: TaskPriority = TaskPriority.None,
         status: TaskStatus = TaskStatus.Open,
         trashedAtMillis: Long? = null
@@ -274,7 +274,7 @@ class UseCaseTest {
 
     private fun note(
         id: Long,
-        tags: List<TaskTag> = emptyList(),
+        tags: List<TagItem> = emptyList(),
         date: LocalDate = today,
         trashedAtMillis: Long? = null
     ) = NoteItem(

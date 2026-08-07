@@ -1,5 +1,7 @@
 package com.checkit.domain
 
+import com.checkit.ui.MinutesPerDay
+
 data class DailyPlanScheduleReminderItem(
     val id: Long,
     val title: String,
@@ -34,6 +36,4 @@ object DailyPlanScheduleReminderPlanner {
             }
             .minWithOrNull(compareBy<DailyPlanScheduleReminder> { it.startTimeMinutes }.thenBy { it.itemId })
     }
-
-    private const val MinutesPerDay = 24 * 60
 }

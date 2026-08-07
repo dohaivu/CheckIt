@@ -8,7 +8,7 @@ import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.Objective
-import com.checkit.domain.TaskTag
+import com.checkit.domain.TagItem
 import com.checkit.ui.calendar.CalendarDateMarkers
 import com.checkit.ui.calendar.CalendarUiState
 import kotlinx.datetime.DateTimeUnit
@@ -125,7 +125,7 @@ class CalendarUiStateMarkersTest {
     private fun dailyPlanItem(
         id: Long,
         source: DailyPlanItemSource,
-        tags: List<TaskTag> = emptyList()
+        tags: List<TagItem> = emptyList()
     ) = DailyPlanItem(
         id = id,
         dateEpochDays = 1,
@@ -137,7 +137,7 @@ class CalendarUiStateMarkersTest {
         addedAtMillis = 0L
     )
 
-    private fun tag(id: Long) = TaskTag(
+    private fun tag(id: Long) = TagItem(
         id = id,
         name = "Tag $id",
         color = "#FFFFFF"

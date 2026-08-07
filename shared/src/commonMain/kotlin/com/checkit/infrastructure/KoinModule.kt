@@ -42,6 +42,10 @@ import com.checkit.domain.usecase.DeleteTagUseCase
 import com.checkit.domain.usecase.IsTagNameTakenUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
+import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
+import com.checkit.domain.usecase.AddJournalEntryUseCase
+import com.checkit.domain.usecase.UpdateJournalEntryUseCase
+import com.checkit.domain.usecase.DeleteJournalEntryUseCase
 import com.checkit.domain.usecase.OpenNoteUseCase
 import com.checkit.domain.usecase.OpenTaskUseCase
 import com.checkit.domain.usecase.RestoreNoteUseCase
@@ -109,6 +113,10 @@ val provideInteractorModule = module {
     single<CheckItRepository> { RoomCheckItRepository(get(), get(), get()) }
     single { ObserveTaskBoardUseCase(get()) }
     single { ObserveDailyPlansUseCase(get()) }
+    single { ObserveJournalEntriesUseCase(get()) }
+    single { AddJournalEntryUseCase(get()) }
+    single { UpdateJournalEntryUseCase(get()) }
+    single { DeleteJournalEntryUseCase(get()) }
     single { AutoAddTodayTasksToMyDayUseCase(get(), get(), get(), get()) }
     single { AddGoalUseCase(get()) }
     single { UpdateGoalUseCase(get()) }
@@ -191,11 +199,15 @@ val provideViewModelModule = module {
     viewModel { KeyResultViewModel(get()) }
     viewModel { ObjectiveViewModel(get(), get(), get()) }
     viewModel { TagViewModel(get(), get(), get(), get(), get(), get()) }
-    viewModel { CalendarViewModel(get(), get(), get()) }
+    viewModel { CalendarViewModel(get(), get(), get(), get()) }
     viewModel {
         MyDayViewModel(
             observeTaskBoard = get(),
             observeDailyPlans = get(),
+            observeJournalEntries = get(),
+            addJournalEntry = get(),
+            updateJournalEntry = get(),
+            deleteJournalEntry = get(),
             deleteDailyPlanItemUseCase = get(),
             settingsRepository = get(),
             buildDayReviewSummary = get(),

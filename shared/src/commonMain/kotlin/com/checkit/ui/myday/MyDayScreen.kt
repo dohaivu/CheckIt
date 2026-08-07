@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -32,8 +33,6 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -67,6 +66,7 @@ import checkit.shared.generated.resources.plan_assist_banner_subtitle
 import checkit.shared.generated.resources.plan_assist_banner_title
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
+import com.checkit.domain.JournalEntry
 import com.checkit.domain.NoteItem
 import com.checkit.domain.SprintState
 import com.checkit.domain.TaskBoard
@@ -88,6 +88,7 @@ import com.checkit.ui.tasks.views.TaskAllDayCard
 import com.checkit.ui.tasks.views.TaskTimelineCard
 import com.checkit.ui.tasks.views.TimelineView
 import com.checkit.ui.today
+import com.checkit.ui.toTimeMinutes
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.stringResource
 
@@ -196,12 +197,19 @@ internal fun MyDayScreen(
                     items = state.items,
                     modifier = Modifier.fillMaxWidth()
                 )
+                JournalSection(
+                    entries = state.journalVisibleEntries,
+                    onAddClick = viewModel::openNewJournalEntry,
+                    onViewClick = viewModel::openJournalList,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
                 when (state.selectedView) {
                     MyDayView.Agenda -> MyDayAgenda(
                         items = state.items,
                         board = state.board,
                         date = state.today,
                         activeSprint = activeSprint,
+                        journalEntries = state.journalVisibleEntries,
                         onItemClick = { viewModel.openItemEditor(it, state.today) },
                         onTaskClick = onTaskClick,
                         onNoteClick = onNoteClick,
@@ -558,6 +566,7 @@ internal fun MyDayAgenda(
     board: TaskBoard,
     date: LocalDate,
     activeSprint: SprintState.Running?,
+    journalEntries: List<JournalEntry> = emptyList(),
     onItemClick: (DailyPlanItem) -> Unit,
     onTaskClick: (TaskItem, DailyPlanItem?) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
@@ -565,8 +574,8 @@ internal fun MyDayAgenda(
     modifier: Modifier = Modifier
 ) {
     val projection = remember(items, board, date) { items.toTaskViewProjection(board = board, date = date) }
-    val timelineItems = remember(projection, date) {
-        projection.toTimelineItems(date = date)
+    val timelineItems = remember(projection, date, journalEntries) {
+        projection.toTimelineItems(date = date, journalEntries = journalEntries)
     }
 
     AgendaView(
@@ -582,6 +591,7 @@ internal fun MyDayAgenda(
         focusedDate = date,
         itemContent = { item ->
             when (val tag = item.tag) {
+                is JournalEntry -> JournalThoughtCard(entry = tag)
                 is DailyPlanItem -> if (item.startTimeMinutes == null) {
                     DailyPlanAllDayCard(
                         item = tag,
@@ -875,6 +885,7 @@ private fun DailyPlanItem.isDone(): Boolean = status == DailyPlanItemStatus.Done
 
 private fun MyDayTaskViewProjection.toTimelineItems(
     date: LocalDate? = null,
+    journalEntries: List<JournalEntry> = emptyList(),
     resizable: Boolean = false
 ): List<TimelineItem> {
     val tasks = plannedTasks.map { plannedTask ->
@@ -902,10 +913,10 @@ private fun MyDayTaskViewProjection.toTimelineItems(
             tag = note
         )
     }
-    val checkInItems = checkIns.map { checkIn ->
+    val dailyPlanItems = dailyPlanItems.map { checkIn ->
         TimelineItem(
-            id = "checkin-${checkIn.id}",
-            type = TimelineItemType.CheckIn,
+            id = "dailyplan-${checkIn.id}",
+            type = TimelineItemType.DailyPlan,
             date = date,
             startTimeMinutes = checkIn.startTimeMinutes,
             endTimeMinutes = checkIn.endTimeMinutes,
@@ -914,7 +925,19 @@ private fun MyDayTaskViewProjection.toTimelineItems(
             tag = checkIn
         )
     }
-    return (tasks + noteItems + checkInItems)
+    val journalItems = journalEntries.map { entry ->
+        TimelineItem(
+            id = "journal-${entry.id}",
+            type = TimelineItemType.Journal,
+            date = date,
+            startTimeMinutes = entry.createdTimeMinutes,
+            endTimeMinutes = null,
+            sortOrder = 0,
+            isResizable = false,
+            tag = entry
+        )
+    }
+    return (tasks + noteItems + dailyPlanItems + journalItems)
         .sortedWith(compareBy<TimelineItem> { it.startTimeMinutes ?: -1 }.thenBy { it.sortOrder })
 }
 

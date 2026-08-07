@@ -50,12 +50,14 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.checkit.ui.tasks.TimelineItem
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.minutes
 
 @Composable
 internal fun TimelineView(
@@ -152,10 +154,17 @@ private fun TimelineGrid(
     val axisWidth = 44.dp
     val axisWidthPx = with(density) { axisWidth.toPx() }
     val layouts = remember(items) { buildTimelineLayouts(items) }
-    val currentTimeMinutes = remember { currentTimeMinutes() }
+    var currentTimeMinutes by remember { mutableStateOf(currentTimeMinutes()) }
     var selectedItemId by remember { mutableStateOf<String?>(null) }
     var hasScrolledToCurrentTime by remember { mutableStateOf(false) }
     var isWorkdayZoomed by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(5.minutes)
+            currentTimeMinutes = currentTimeMinutes()
+        }
+    }
 
     BoxWithConstraints(
         modifier = modifier

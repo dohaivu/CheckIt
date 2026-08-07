@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.checkit.domain.DailyPlanScheduleReminderPolicy
+import com.checkit.ui.MinutesPerDay
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
@@ -42,6 +43,5 @@ class DailyPlanScheduleReminderWorker(
         const val InputTitle = "title"
         const val InputDateEpochDays = "date_epoch_days"
         const val InputTimeMinutes = "time_minutes"
-        private const val MinutesPerDay = 24 * 60
     }
 }

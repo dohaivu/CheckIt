@@ -4,7 +4,7 @@ import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.Objective
-import com.checkit.domain.TaskTag
+import com.checkit.domain.TagItem
 import com.checkit.domain.usecase.AddObjectiveUseCase
 import com.checkit.domain.usecase.AddTagUseCase
 import com.checkit.domain.usecase.DeleteObjectiveUseCase
@@ -33,7 +33,7 @@ class TaskCollectionDeleteViewModelTest {
 
     private val inbox = Objective(id = 1L, name = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
     private val errands = Objective(id = 2L, name = "Errands", color = "#059669", icon = "List", sortOrder = 1)
-    private val tag = TaskTag(id = 10L, name = "Work", color = "#7C3AED")
+    private val tag = TagItem(id = 10L, name = "Work", color = "#7C3AED")
 
     @BeforeTest
     fun setUp() {
@@ -105,7 +105,7 @@ class TaskCollectionDeleteViewModelTest {
         isTagNameTaken = IsTagNameTakenUseCase(repository)
     )
 
-    private fun task(id: Long, objective: Objective, tags: List<TaskTag> = emptyList()) = TaskItem(
+    private fun task(id: Long, objective: Objective, tags: List<TagItem> = emptyList()) = TaskItem(
         id = id,
         objective = objective,
         name = "Task $id",
@@ -115,7 +115,7 @@ class TaskCollectionDeleteViewModelTest {
         updatedAtMillis = 0L
     )
 
-    private fun note(id: Long, objective: Objective, tags: List<TaskTag> = emptyList()) = NoteItem(
+    private fun note(id: Long, objective: Objective, tags: List<TagItem> = emptyList()) = NoteItem(
         id = id,
         objective = objective,
         content = "Note $id",

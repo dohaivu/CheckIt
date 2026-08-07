@@ -9,7 +9,7 @@ import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.Objective
 import com.checkit.domain.TaskStatus
-import com.checkit.domain.TaskTag
+import com.checkit.domain.TagItem
 import com.checkit.domain.TaskType
 import com.checkit.ui.tasks.FakeCheckItRepository
 import com.checkit.ui.tasks.FakeSettingsRepository
@@ -91,7 +91,7 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
     fun smartSchedulesTasksAddedToMyDay() = runTest {
         val today = today()
         val yesterday = today.minus(1, DateTimeUnit.DAY)
-        val workTag = TaskTag(id = 1L, name = "Work", color = "#2563EB")
+        val workTag = TagItem(id = 1L, name = "Work", color = "#2563EB")
         val repository = FakeCheckItRepository(
             initialBoard = TaskBoard(
                 tasks = listOf(task(id = 1L, doDate = today, tags = listOf(workTag)))
@@ -314,7 +314,7 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
     private fun historyItem(
         id: Long,
         date: LocalDate,
-        tag: TaskTag,
+        tag: TagItem,
         start: Int,
         end: Int
     ) = DailyPlanItem(
@@ -341,7 +341,7 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
         type: TaskType = TaskType.Task,
         trashedAtMillis: Long? = null,
         completedDate: LocalDate? = null,
-        tags: List<TaskTag> = emptyList()
+        tags: List<TagItem> = emptyList()
     ) = TaskItem(
         id = id,
         objective = Objective.None,

@@ -8,6 +8,7 @@ import com.checkit.domain.DayReviewCommitResult
 import com.checkit.domain.DayReviewRecord
 import com.checkit.domain.DueDatePreset
 import com.checkit.domain.Goal
+import com.checkit.domain.JournalEntry
 import com.checkit.domain.KeyResult
 import com.checkit.domain.NoteItem
 import com.checkit.domain.SubTaskItem
@@ -19,7 +20,7 @@ import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskReminder
 import com.checkit.domain.TaskReminderWriteInput
 import com.checkit.domain.TaskStatus
-import com.checkit.domain.TaskTag
+import com.checkit.domain.TagItem
 import com.checkit.domain.TaskType
 import com.checkit.domain.hasEndTime
 import com.checkit.notifications.DailyPlanScheduleReminderScheduler
@@ -27,9 +28,9 @@ import com.checkit.notifications.NoOpDailyPlanScheduleReminderScheduler
 import com.checkit.notifications.NoOpTaskReminderNotificationScheduler
 import com.checkit.notifications.ScheduledTaskReminder
 import com.checkit.notifications.TaskReminderNotificationScheduler
+import com.checkit.ui.tasks.views.currentTimeMinutes
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -39,6 +40,10 @@ import kotlin.time.Clock
 interface CheckItRepository {
     fun observeTaskBoard(): Flow<TaskBoard>
     fun observeDailyPlans(): Flow<List<DailyPlan>>
+    fun observeJournalEntries(): Flow<List<JournalEntry>>
+    suspend fun addJournalEntry(input: JournalEntryWriteInput): Long
+    suspend fun updateJournalEntry(entryId: Long, input: JournalEntryWriteInput)
+    suspend fun deleteJournalEntry(entryId: Long)
     suspend fun addGoal(input: GoalWriteInput): Long    suspend fun updateGoal(goalId: Long, input: GoalWriteInput)
     suspend fun deleteGoal(goalId: Long)
     suspend fun addObjective(input: ObjectiveWriteInput): Long
@@ -198,6 +203,14 @@ data class DailyPlanItemWriteInput(
     val tagIds: List<Long>
 )
 
+data class JournalEntryWriteInput(
+    val date: LocalDate,
+    val context: String?,
+    val content: String,
+    val moods: List<String> = emptyList(),
+    val tagIds: List<Long> = emptyList()
+)
+
 class RoomCheckItRepository(
     private val dao: CheckItDao,
     private val reminderNotificationScheduler: TaskReminderNotificationScheduler = NoOpTaskReminderNotificationScheduler(),
@@ -284,6 +297,23 @@ class RoomCheckItRepository(
                     )
                 }
                 .sortedByDescending { it.date }
+        }
+
+    override fun observeJournalEntries(): Flow<List<JournalEntry>> =
+        combine(
+            dao.observeJournalEntries(),
+            dao.observeJournalEntryTags(),
+            dao.observeTags()
+        ) { entries, entryTags, tags ->
+            val domainTags = tags.map { it.toDomain() }
+            val tagsById = domainTags.associateBy { it.id }
+            val entryTagIds = entryTags.groupBy { it.entryId }.mapValues { it.value.map { it.tagId } }
+
+            entries.map { entry ->
+                entry.toDomain(
+                    tags = entryTagIds[entry.id].orEmpty().mapNotNull { tagsById[it] }
+                )
+            }
         }
 
     override suspend fun addGoal(input: GoalWriteInput): Long =
@@ -628,6 +658,35 @@ class RoomCheckItRepository(
         dailyPlanScheduleReminderScheduler.rescheduleNext()
     }
 
+    override suspend fun addJournalEntry(input: JournalEntryWriteInput): Long {
+        val entryId = dao.insertJournalEntry(
+            JournalEntryEntity(
+                dateEpochDays = input.date.toEpochDays().toInt(),
+                context = input.context?.trim()?.takeIf { it.isNotBlank() },
+                content = input.content.trim(),
+                moods = input.moods.joinToString(","),
+                createdTimeMinutes = currentTimeMinutes()
+            )
+        )
+        input.tagIds.forEach { tagId -> addJournalEntryTag(entryId, tagId) }
+        return entryId
+    }
+
+    override suspend fun updateJournalEntry(entryId: Long, input: JournalEntryWriteInput) {
+        dao.updateJournalEntry(
+            entryId = entryId,
+            context = input.context?.trim()?.takeIf { it.isNotBlank() },
+            content = input.content.trim(),
+            moods = input.moods.joinToString(",")
+        )
+        dao.deleteJournalEntryTags(entryId)
+        input.tagIds.forEach { tagId -> addJournalEntryTag(entryId, tagId) }
+    }
+
+    override suspend fun deleteJournalEntry(entryId: Long) {
+        dao.deleteJournalEntry(entryId)
+    }
+
     override suspend fun getDailyPlanItem(itemId: Long): DailyPlanItem? {
         val item = dao.dailyPlanItemById(itemId) ?: return null
         val tagIds = dao.tagIdsForItem(itemId)
@@ -794,6 +853,11 @@ class RoomCheckItRepository(
         dao.updateTagLastUsedAtMillis(tagId, Clock.System.now().toEpochMilliseconds())
     }
 
+    private suspend fun addJournalEntryTag(entryId: Long, tagId: Long) {
+        dao.insertJournalEntryTagIfParentsExist(entryId, tagId)
+        dao.updateTagLastUsedAtMillis(tagId, Clock.System.now().toEpochMilliseconds())
+    }
+
     override suspend fun completeNote(noteId: Long) {
         dao.updateNoteStatus(
             noteId = noteId,
@@ -888,7 +952,7 @@ private fun KeyResultEntity.toDomain() = KeyResult(
     sortOrder = sortOrder
 )
 
-private fun TagEntity.toDomain() = TaskTag(
+private fun TagEntity.toDomain() = TagItem(
     id = id,
     name = name,
     color = color,
@@ -920,7 +984,7 @@ private fun TaskEntity.toDomain(
     keyResult: KeyResult?,
     subtasks: List<SubTaskItem>,
     reminders: List<TaskReminder>,
-    tags: List<TaskTag>
+    tags: List<TagItem>
 ) = TaskItem(
     id = id,
     objective = objective,
@@ -944,7 +1008,7 @@ private fun TaskEntity.toDomain(
     trashedAtMillis = trashedAtMillis
 )
 
-private fun DailyPlanItemEntity.toDomain(tags: List<TaskTag> = emptyList()) = DailyPlanItem(
+private fun DailyPlanItemEntity.toDomain(tags: List<TagItem> = emptyList()) = DailyPlanItem(
     id = id,
     dateEpochDays = dateEpochDays,
     taskId = taskId,
@@ -973,6 +1037,16 @@ private fun DayReviewEntity.toDomain() = DayReviewRecord(
     completedAtMillis = completedAtMillis
 )
 
+private fun JournalEntryEntity.toDomain(tags: List<TagItem> = emptyList()) = JournalEntry(
+    id = id,
+    dateEpochDays = dateEpochDays,
+    context = context,
+    content = content,
+    moods = moods.split(",").map { it.trim() }.filter { it.isNotEmpty() },
+    tags = tags,
+    createdTimeMinutes = createdTimeMinutes
+)
+
 private fun SubTaskEntity.toDomain() = SubTaskItem(
     id = id,
     taskId = taskId,
@@ -988,7 +1062,7 @@ private fun TaskReminderEntity.toDomain() = TaskReminder(
     label = label
 )
 
-private fun NoteEntity.toDomain(objective: Objective, tags: List<TaskTag>) = NoteItem(
+private fun NoteEntity.toDomain(objective: Objective, tags: List<TagItem>) = NoteItem(
     id = id,
     objective = objective,
     title = title,

@@ -27,6 +27,6 @@ internal fun duration(startTimeMinutes: Int?, endTimeMinutes: Int?): Int? {
     }
 }
 
-internal const val HoursPerDay = 24
-internal const val MinutesPerDay = 24 * 60
-internal val TimeRangeShortcutDurations = listOf(30, 60, 120)
+const val HoursPerDay = 24
+const val MinutesPerDay = 24 * 60
+val TimeRangeShortcutDurations = listOf(30, 60, 120)

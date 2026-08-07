@@ -1,0 +1,636 @@
+package com.checkit.ui.myday
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Notes
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RichTooltip
+import androidx.compose.material3.Text
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.rememberTooltipState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.checkit.domain.JournalEntry
+import com.checkit.ui.components.AppEditorBottomSheet
+import com.checkit.ui.components.EmojiPicker
+import com.checkit.ui.components.TagPill
+import com.checkit.ui.components.TagPlain
+import com.checkit.ui.tasks.TimelineItem
+import com.checkit.ui.tasks.TimelineItemType
+import com.checkit.ui.tasks.toClockLabel
+import com.checkit.ui.tasks.views.AgendaView
+import com.checkit.ui.toTimeMinutes
+import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalDate
+import org.kodein.emoji.Emoji
+
+/** Quick context presets shown as tappable chips in the entry editor. */
+internal val JournalContextPresets = listOf(
+    "deep thoughts", "idea", "random", "lazying",
+    "cafe", "biking", "code", "reading", "learning language",
+    "event", "at home")
+
+internal val MoodHappyEmojis = listOf("😀", "😃", "😄", "😊", "🥳", "✨", "💛", "🌈", "🎈", "☀️")
+internal val MoodEnergeticEmojis = listOf("🔥", "⚡", "🤩", "🚀", "🎉", "💪", "🧡", "🎸", "🏆", "🏃")
+internal val MoodCalmEmojis = listOf("😌", "🌿", "🌊", "🧘", "🕊️", "☁️", "💚", "🍃", "🛶", "🕯️")
+internal val MoodSadEmojis = listOf("😢", "😭", "😔", "🌧️", "💔", "☁️", "💙", "🥀", "🌑", "📻")
+internal val MoodFocusedEmojis = listOf("🎯", "💻", "📚", "🧠", "✍️", "🧐", "💜", "🛠️", "♟️", "🧪")
+internal val MoodTiredEmojis = listOf("😴", "🥱", "🔋", "💤", "🛌", "🚶", "🤎", "☕", "🔌", "🏠")
+internal val MoodStressedEmojis = listOf("😫", "😤", "🤯", "🆘", "📉", "⚠️", "❤️‍🔥", "⚡", "🌪️", "🧨")
+internal val MoodLovedEmojis = listOf("🥰", "😍", "😘", "💖", "🌹", "🧸", "❤️", "🥂", "💍", "💌")
+
+private val MoodCategories = listOf(
+    "Happy" to MoodHappyEmojis,
+    "Energetic" to MoodEnergeticEmojis,
+    "Calm" to MoodCalmEmojis,
+    "Loved" to MoodLovedEmojis,
+    "Focused" to MoodFocusedEmojis,
+    "Tired" to MoodTiredEmojis,
+    "Stressed" to MoodStressedEmojis,
+    "Sad" to MoodSadEmojis,
+)
+
+// Define your app's mood palette
+val MoodHappy = Color(0xFFFFD54F)      // Warm Yellow
+val MoodEnergetic = Color(0xFFFF8A65)  // Vibrant Orange
+val MoodCalm = Color(0xFF81C784)       // Soft Green
+val MoodSad = Color(0xFF64B5F6)        // Soft Blue
+val MoodFocused = Color(0xFF9575CD)    // Deep Purple
+val MoodTired = Color(0xFFA1887F)      // Muted Brown
+val MoodStressed = Color(0xFFEF5350)   // Urgent Red
+val MoodLoved = Color(0xFFF06292)      // Soft Pink
+val MoodDefault = Color(0xFF9E9E9E)    // Neutral Gray
+
+// Helper function to extract color from emoji
+fun getMoodColorFromEmoji(emoji: String): Color {
+    return when (emoji) {
+        in MoodHappyEmojis -> MoodHappy
+        in MoodEnergeticEmojis -> MoodEnergetic
+        in MoodCalmEmojis -> MoodCalm
+        in MoodSadEmojis -> MoodSad
+        in MoodFocusedEmojis -> MoodFocused
+        in MoodTiredEmojis -> MoodTired
+        in MoodStressedEmojis -> MoodStressed
+        in MoodLovedEmojis -> MoodLoved
+        else -> MoodDefault
+    }
+}
+
+internal enum class JournalPeriod(val label: String) {
+    Morning("Morning"),
+    Afternoon("Afternoon"),
+    Evening("Evening")
+}
+
+internal fun Int.toJournalPeriod(): JournalPeriod {
+    return when {
+        this < 12 * 60 -> JournalPeriod.Morning
+        this < 18 * 60 -> JournalPeriod.Afternoon
+        else -> JournalPeriod.Evening
+    }
+}
+
+/** Compact single-line header for today's journal: name, entry count, and add/view actions. */
+@Composable
+internal fun JournalSection(
+    entries: List<JournalEntry>,
+    onAddClick: () -> Unit,
+    onViewClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.Notes,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            text = "Check-Ins",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        if (entries.isNotEmpty()) {
+            Text(
+                text = "${entries.size}",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier
+                    .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(8.dp))
+                    .padding(horizontal = 8.dp, vertical = 2.dp)
+            )
+        }
+        Spacer(Modifier.weight(1f))
+        IconButton(onClick = onAddClick) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = "Add check-in",
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+        IconButton(onClick = onViewClick) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.Notes,
+                contentDescription = "View check-ins",
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun MoodRow(
+    moods: Set<String>,
+    onToggle: (String) -> Unit,
+    isEditMode: Boolean = false
+) {
+    var isExpanded by remember { mutableStateOf(!isEditMode) }
+    var showFullEmojiPicker by remember { mutableStateOf(false) }
+    val rotation by animateFloatAsState(if (isExpanded) 180f else 0f)
+    val shape = RoundedCornerShape(12.dp)
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // Selected moods row (Header/Toggle)
+        // ... (existing code for Selected moods row)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(shape)
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                .clickable { isExpanded = !isExpanded }
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Mood",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold
+                )
+                if (moods.isEmpty()) {
+                    Text(
+                        text = "How are you feeling?",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                } else {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.padding(top = 4.dp)
+                    ) {
+                        items(moods.toList()) { mood ->
+                            val moodColor = getMoodColorFromEmoji(mood)
+                            Box(
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .background(moodColor.copy(alpha = 0.2f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(text = mood, fontSize = 16.sp)
+                            }
+                        }
+                    }
+                }
+            }
+            Icon(
+                imageVector = Icons.Default.ExpandMore,
+                contentDescription = null,
+                modifier = Modifier.graphicsLayer { rotationZ = rotation },
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        AnimatedVisibility(visible = isExpanded) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                MoodCategories.forEach { (name, emojis) ->
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = name,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(start = 4.dp)
+                        )
+
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            emojis.forEach { mood ->
+                                val selected = mood in moods
+                                val moodColor = getMoodColorFromEmoji(mood)
+                                Box(
+                                    modifier = Modifier
+                                        .clip(shape)
+                                        .background(
+                                            color = if (selected) moodColor.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                            shape = shape
+                                        )
+                                        .border(
+                                            width = if (selected) 2.dp else 1.dp,
+                                            color = if (selected) moodColor else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                            shape = shape
+                                        )
+                                        .clickable { onToggle(mood) }
+                                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                                ) {
+                                    Text(
+                                        text = mood,
+                                        fontSize = 20.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Inline EmojiPicker Toggle
+                OutlinedButton(
+                    onClick = { showFullEmojiPicker = true },
+                    modifier = Modifier.padding(top = 8.dp),
+                    shape = shape
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "More Emojis...",
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
+            }
+        }
+    }
+
+    if (showFullEmojiPicker) {
+        EmojiPicker(
+            onDismiss = { showFullEmojiPicker = false },
+            onEmojiSelect = { emoji -> onToggle(emoji.details.string) }
+        )
+    }
+}
+
+@Composable
+internal fun JournalEntryList(
+    entries: List<JournalEntry>,
+    onEntryClick: (JournalEntry) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        JournalPeriod.entries.forEach { period ->
+            val periodEntries = entries.filter { it.createdTimeMinutes.toJournalPeriod() == period }
+            if (periodEntries.isNotEmpty()) {
+                Text(
+                    text = period.label,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    periodEntries.forEach { entry ->
+                        JournalEntryCard(
+                            entry = entry,
+                            onClick = { onEntryClick(entry) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+internal fun JournalHistorySheet(
+    entries: List<JournalEntry>,
+    onEntryClick: (JournalEntry) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AppEditorBottomSheet(
+        onDismiss = onDismiss,
+        modifier = Modifier.fillMaxHeight(0.9f)
+    ) {
+        JournalAgendaView(
+            journalEntries = entries,
+            onEntryClick = onEntryClick,
+            modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp)
+        )
+    }
+}
+
+@Composable
+internal fun JournalAgendaView(
+    journalEntries: List<JournalEntry>,
+    onEntryClick: (JournalEntry) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val timelineItems = remember(journalEntries) {
+        journalEntries.map { entry ->
+            TimelineItem(
+                id = "journal-${entry.id}",
+                type = TimelineItemType.Journal,
+                date = LocalDate.fromEpochDays(entry.dateEpochDays),
+                startTimeMinutes = entry.createdTimeMinutes,
+                endTimeMinutes = null,
+                sortOrder = 0,
+                isResizable = false,
+                tag = entry
+            )
+        }.sortedByDescending { it.date }
+    }
+
+    AgendaView(
+        items = timelineItems,
+        onItemClick = { item ->
+            (item.tag as? JournalEntry)?.let(onEntryClick)
+        },
+        itemContent = { item ->
+            (item.tag as? JournalEntry)?.let { entry ->
+                JournalHistoryEntryCard(
+                    entry = entry,
+                    onClick = { onEntryClick(entry) },
+                    modifier = Modifier.padding(start = 8.dp)
+                )
+            }
+        },
+        modifier = modifier
+    )
+}
+
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun JournalEntryCard(
+    entry: JournalEntry,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val moodColor = entry.moods.firstOrNull()?.let { getMoodColorFromEmoji(it) } ?: MaterialTheme.colorScheme.surfaceVariant
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Max)
+            .clip(RoundedCornerShape(12.dp))
+            .background(moodColor.copy(alpha = 0.15f))
+            .drawBehind {
+                drawLine(
+                    color = moodColor.copy(alpha = 0.5f),
+                    start = Offset(0f, 0f),
+                    end = Offset(0f, size.height),
+                    strokeWidth = 8.dp.toPx()
+                )
+            }
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Column(
+            modifier = Modifier.weight(1f).fillMaxHeight(),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = entry.content,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                lineHeight = 20.sp
+            )
+
+            Spacer(Modifier.weight(1f))
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = entry.createdTimeMinutes.toClockLabel(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    textAlign = TextAlign.Start
+                )
+
+                if (!entry.context.isNullOrBlank()) {
+                    Text(
+                        text = entry.context,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                        maxLines = 1
+                    )
+                }
+
+                if (entry.tags.isNotEmpty()) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        entry.tags.forEach { tag ->
+                            TagPlain(tag = tag)
+                        }
+                    }
+                }
+            }
+        }
+
+        if (entry.moods.isNotEmpty()) {
+            Column(
+                modifier = Modifier.width(IntrinsicSize.Min),
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                entry.moods.forEach { mood ->
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .background(moodColor.copy(alpha = 0.2f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = mood,
+                            fontSize = 24.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun JournalHistoryEntryCard(
+    entry: JournalEntry,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val moodColor = entry.moods.firstOrNull()?.let { getMoodColorFromEmoji(it) } ?: MaterialTheme.colorScheme.surfaceVariant
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(moodColor.copy(alpha = 0.08f))
+            .drawBehind {
+                drawLine(
+                    color = moodColor.copy(alpha = 0.4f),
+                    start = Offset(0f, 0f),
+                    end = Offset(0f, size.height),
+                    strokeWidth = 8.dp.toPx()
+                )
+            }
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(
+            text = entry.content,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            lineHeight = 24.sp
+        )
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (!entry.context.isNullOrBlank()) {
+                Text(
+                    text = entry.context,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                    maxLines = 1
+                )
+            }
+
+            if (entry.tags.isNotEmpty()) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    entry.tags.forEach { tag ->
+                        TagPlain(tag = tag)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+internal fun JournalThoughtCard(
+    entry: JournalEntry,
+    modifier: Modifier = Modifier
+) {
+    val tooltipState = rememberTooltipState(isPersistent = false)
+    val scope = rememberCoroutineScope()
+    
+    val moodColor = entry.moods.firstOrNull()?.let { getMoodColorFromEmoji(it) } ?: MaterialTheme.colorScheme.primary
+
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+            positioning = TooltipAnchorPosition.Above
+        ),
+        tooltip = {
+            RichTooltip(
+                title = { Text(entry.context ?: "Check-In") }
+            ) {
+                Text(entry.content)
+            }
+        },
+        state = tooltipState
+    ) {
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .background(moodColor.copy(alpha = 0.12f))
+                .drawBehind {
+                    drawLine(
+                        color = moodColor.copy(alpha = 0.6f),
+                        start = Offset(0f, 0f),
+                        end = Offset(0f, size.height),
+                        strokeWidth = 8.dp.toPx()
+                    )
+                }
+                .clickable { scope.launch { tooltipState.show() } }
+                .padding(horizontal = 12.dp, vertical = 6.dp)
+        ) {
+            Text(
+                text = entry.content.ifBlank { entry.context.orEmpty() },
+                style = MaterialTheme.typography.bodyMedium,
+                fontFamily = FontFamily.Cursive,
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}

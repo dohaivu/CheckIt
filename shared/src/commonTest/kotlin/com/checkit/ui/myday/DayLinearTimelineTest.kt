@@ -3,17 +3,17 @@ package com.checkit.ui.myday
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
-import com.checkit.domain.TaskTag
+import com.checkit.domain.TagItem
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class DayLinearTimelineTest {
-    private val workTag = TaskTag(id = 1L, name = "Work", color = "#000000", sortOrder = 0)
-    private val deepTag = TaskTag(id = 2L, name = "Deep", color = "#000000", sortOrder = 1)
+    private val workTag = TagItem(id = 1L, name = "Work", color = "#000000", sortOrder = 0)
+    private val deepTag = TagItem(id = 2L, name = "Deep", color = "#000000", sortOrder = 1)
 
     private fun item(
         id: Long,
-        tags: List<TaskTag>,
+        tags: List<TagItem>,
         startTimeMinutes: Int?,
         endTimeMinutes: Int?
     ) = DailyPlanItem(
@@ -57,7 +57,7 @@ class DayLinearTimelineTest {
 
     @Test
     fun tagTimeTotalsSortsByMinutesDescending() {
-        val lowTag = TaskTag(id = 3L, name = "Low", color = "#000000", sortOrder = 2)
+        val lowTag = TagItem(id = 3L, name = "Low", color = "#000000", sortOrder = 2)
         val items = listOf(
             item(1L, listOf(lowTag), 60, 90),
             item(2L, listOf(workTag), 60, 150),

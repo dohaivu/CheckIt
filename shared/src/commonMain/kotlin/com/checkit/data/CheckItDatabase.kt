@@ -298,6 +298,44 @@ data class DailyPlanItemTagEntity(
 )
 
 @Entity(
+    tableName = "journal_entries",
+    indices = [Index("dateEpochDays")]
+)
+data class JournalEntryEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0L,
+    val dateEpochDays: Int,
+    val context: String? = null,
+    val content: String,
+    val moods: String = "",
+    val createdTimeMinutes: Int
+)
+
+@Entity(
+    tableName = "journal_entry_tags",
+    primaryKeys = ["entryId", "tagId"],
+    foreignKeys = [
+        ForeignKey(
+            entity = JournalEntryEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["entryId"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = TagEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["tagId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("entryId"), Index("tagId")]
+)
+data class JournalEntryTagEntity(
+    val entryId: Long,
+    val tagId: Long
+)
+
+@Entity(
     tableName = "task_reminders",
     foreignKeys = [
         ForeignKey(
@@ -357,10 +395,12 @@ data class TaskFilterEntity(
         TaskTagEntity::class,
         NoteTagEntity::class,
         DailyPlanItemTagEntity::class,
+        JournalEntryEntity::class,
+        JournalEntryTagEntity::class,
         TaskReminderEntity::class,
         TaskFilterEntity::class
     ],
-    version = 6,
+    version = 1,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)
@@ -379,50 +419,7 @@ fun buildCheckItDatabase(
     return builder
         .fallbackToDestructiveMigration(false)
         .fallbackToDestructiveMigrationOnDowngrade(false)
-        .addMigrations(
-            object : Migration(2, 3) {
-                override suspend fun migrate(connection: SQLiteConnection) {
-                    connection.execSQL("ALTER TABLE tags ADD COLUMN sortOrder INTEGER NOT NULL DEFAULT 0")
-                    connection.execSQL("ALTER TABLE tags ADD COLUMN lastUsedAtMillis INTEGER NOT NULL DEFAULT 0")
-                }
-            },
-            object : Migration(3, 4) {
-                override suspend fun migrate(connection: SQLiteConnection) {
-                    connection.execSQL("ALTER TABLE daily_plan_items ADD COLUMN carriedFromItemId INTEGER")
-                }
-            },
-            object : Migration(4, 5) {
-                override suspend fun migrate(connection: SQLiteConnection) {
-                    connection.execSQL("ALTER TABLE daily_plan_items ADD COLUMN handledAtMillis INTEGER")
-                    connection.execSQL(
-                        """
-                        CREATE TABLE IF NOT EXISTS day_reviews (
-                            dateEpochDays INTEGER NOT NULL PRIMARY KEY,
-                            doneCount INTEGER NOT NULL,
-                            plannedCount INTEGER NOT NULL,
-                            doneMinutes INTEGER NOT NULL,
-                            winNote TEXT,
-                            tomorrowGoal TEXT,
-                            completedAtMillis INTEGER NOT NULL
-                        )
-                        """.trimIndent()
-                    )
-                    connection.execSQL(
-                        "DELETE FROM daily_plan_items WHERE source = 'MyDayNote' AND title = 'Win'"
-                    )
-                }
-            },
-            object : Migration(5, 6) {
-                override suspend fun migrate(connection: SQLiteConnection) {
-                    connection.execSQL(
-                        "ALTER TABLE tasks ADD COLUMN type TEXT NOT NULL DEFAULT 'Task'"
-                    )
-                    connection.execSQL(
-                        "ALTER TABLE daily_plan_items ADD COLUMN isHabit INTEGER NOT NULL DEFAULT 0"
-                    )
-                }
-            }
-        )
+        .addMigrations()
         .setQueryCoroutineContext(Dispatchers.IO)
         .setDriver(BundledSQLiteDriver())
         .addCallback(object : RoomDatabase.Callback() {

@@ -235,7 +235,7 @@ fun Int.toClockLabel(): String {
     return "$displayHour:${minute.toString().padStart(2, '0')} $suffix"
 }
 
-enum class TimelineItemType { Task, Note, CheckIn }
+enum class TimelineItemType { Task, Note, DailyPlan, Journal }
 
 data class TimelineItem(
     val id: String,

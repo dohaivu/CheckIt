@@ -3,6 +3,7 @@ package com.checkit.ui.tasks
 import com.checkit.data.CheckItRepository
 import com.checkit.data.DailyPlanItemWriteInput
 import com.checkit.data.GoalWriteInput
+import com.checkit.data.JournalEntryWriteInput
 import com.checkit.data.KeyResultWriteInput
 import com.checkit.data.NoteWriteInput
 import com.checkit.data.SettingsRepository
@@ -17,13 +18,14 @@ import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DayReviewCommitResult
 import com.checkit.domain.DayReviewRecord
 import com.checkit.domain.Goal
+import com.checkit.domain.JournalEntry
 import com.checkit.domain.KeyResult
 import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.Objective
 import com.checkit.domain.TaskReminder
-import com.checkit.domain.TaskTag
+import com.checkit.domain.TagItem
 import com.checkit.domain.hasEndTime
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -75,8 +77,63 @@ internal class FakeCheckItRepository(
     val markedHandledItemIds = mutableListOf<Long>()
     private val dayReviewsFlow = MutableStateFlow<List<DayReviewRecord>>(emptyList())
 
+    private val journalEntriesFlow = MutableStateFlow<List<JournalEntry>>(emptyList())
+    val addedJournalEntries = mutableListOf<JournalEntryWriteInput>()
+    val updatedJournalEntries = mutableListOf<Pair<Long, JournalEntryWriteInput>>()
+    val deletedJournalEntryIds = mutableListOf<Long>()
+    private var nextJournalEntryId: Long = 20_000L
+
     override fun observeTaskBoard(): Flow<TaskBoard> = boardFlow
     override fun observeDailyPlans(): Flow<List<DailyPlan>> = dailyPlansFlow
+
+    override fun observeJournalEntries(): Flow<List<JournalEntry>> = journalEntriesFlow
+
+    fun setJournalEntries(entries: List<JournalEntry>) {
+        journalEntriesFlow.value = entries
+    }
+
+    override suspend fun addJournalEntry(input: JournalEntryWriteInput): Long {
+        addedJournalEntries.add(input)
+        val id = nextJournalEntryId++
+        val entry = JournalEntry(
+            id = id,
+            dateEpochDays = input.date.toEpochDays().toInt(),
+            context = input.context,
+            content = input.content,
+            moods = input.moods,
+            tags = boardFlow.value.tags.filter { it.id in input.tagIds },
+            createdTimeMinutes = 1
+        )
+        journalEntriesFlow.update { it + entry }
+        return id
+    }
+
+    fun currentJournalEntry(entryId: Long): JournalEntry? =
+        journalEntriesFlow.value.firstOrNull { it.id == entryId }
+
+    override suspend fun updateJournalEntry(entryId: Long, input: JournalEntryWriteInput) {
+        updatedJournalEntries.add(entryId to input)
+        journalEntriesFlow.update { entries ->
+            entries.map { entry ->
+                if (entry.id == entryId) {
+                    entry.copy(
+                        dateEpochDays = input.date.toEpochDays().toInt(),
+                        context = input.context,
+                        content = input.content,
+                        moods = input.moods,
+                        tags = boardFlow.value.tags.filter { tag -> tag.id in input.tagIds }
+                    )
+                } else {
+                    entry
+                }
+            }
+        }
+    }
+
+    override suspend fun deleteJournalEntry(entryId: Long) {
+        deletedJournalEntryIds.add(entryId)
+        journalEntriesFlow.update { entries -> entries.filterNot { it.id == entryId } }
+    }
 
     fun setDailyPlans(plans: List<DailyPlan>) {
         dailyPlansFlow.value = plans
@@ -237,7 +294,7 @@ internal class FakeCheckItRepository(
         lastAssignedTagId = id
         boardFlow.update { board ->
             board.copy(
-                tags = board.tags + TaskTag(
+                tags = board.tags + TagItem(
                     id = id,
                     name = input.name,
                     color = input.color

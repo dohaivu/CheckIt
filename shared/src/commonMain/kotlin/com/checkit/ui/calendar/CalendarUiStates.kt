@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.Color
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DayReviewRecord
+import com.checkit.domain.JournalEntry
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
@@ -25,6 +26,7 @@ data class CalendarUiState(
     val board: TaskBoard = TaskBoard(),
     val dailyPlans: List<DailyPlan> = emptyList(),
     val dayReviews: List<DayReviewRecord> = emptyList(),
+    val journalEntries: List<JournalEntry> = emptyList(),
     val showDailyPlanSummary: Boolean = false,
     val calendarDisplayMode: CalendarDisplayMode = CalendarDisplayMode.Week,
     val selectedTagIds: Set<Long> = emptySet(),

@@ -6,11 +6,12 @@ import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DayReviewRecord
 import com.checkit.domain.DayReviewSummary
+import com.checkit.domain.JournalEntry
 import com.checkit.domain.LeftoverAction
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
-import com.checkit.domain.TaskTag
+import com.checkit.domain.TagItem
 import com.checkit.domain.YesterdayLeftovers
 import com.checkit.domain.defaultLeftoverAction
 import com.checkit.ui.tasks.EditorMode
@@ -25,7 +26,7 @@ sealed class SprintChoice {
 
 sealed interface FabAction {
     data object QuickSprint : FabAction
-    data class TagSprint(val tag: TaskTag) : FabAction
+    data class TagSprint(val tag: TagItem) : FabAction
 }
 
 data class MyDayUiState(
@@ -53,10 +54,14 @@ data class MyDayUiState(
     val showCelebration: Boolean = false,
     val suggestionStartTimeMinutes: Int? = null,
     val suggestionEndTimeMinutes: Int? = null,
-    val recentTags: List<TaskTag> = emptyList(),
+    val recentTags: List<TagItem> = emptyList(),
     val lastFabAction: FabAction = FabAction.QuickSprint,
     val dayReviews: List<DayReviewRecord> = emptyList(),
     val reviewStreak: Int = 0,
+    val journalEntries: List<JournalEntry> = emptyList(),
+    val journalEditor: JournalEntryEditorState? = null,
+    val showJournalList: Boolean = false,
+    val journalListDate: LocalDate? = null,
     val isLoading: Boolean = true
 ) {
     val today: LocalDate = today()
@@ -64,6 +69,17 @@ data class MyDayUiState(
     val items: List<DailyPlanItem> = plan?.items.orEmpty()
     val plannedItems: List<DailyPlanItem> = items.filter { it.status != DailyPlanItemStatus.Done }
     val doneItems: List<DailyPlanItem> = items.filter { it.status == DailyPlanItemStatus.Done }
+
+    /** Journal entries for today (used in the MyDay header). */
+    val journalVisibleEntries: List<JournalEntry> =
+        journalEntries.filter { it.dateEpochDays == today.toEpochDays().toInt() }
+
+    /** Journal entries for the list viewer (can be a different date when opened from Calendar). */
+    val journalSheetEntries: List<JournalEntry> =
+        journalEntries.filter {
+            it.dateEpochDays == (journalListDate ?: today).toEpochDays().toInt()
+        }
+
     val suggestedTasks: List<TaskItem> = board.tasks
         .filter { task ->
             !task.isTrashed &&
@@ -125,6 +141,18 @@ enum class MyDayView {
     Board
 }
 
+/** Bottom-sheet editor state for a single journal entry. */
+data class JournalEntryEditorState(
+    val entryId: Long? = null,
+    val date: LocalDate = today(),
+    val context: String = "",
+    val content: String = "",
+    val moods: List<String> = emptyList(),
+    val selectedTagIds: Set<Long> = emptySet()
+) {
+    val isEditMode: Boolean get() = entryId != null
+}
+
 data class DailyPlanItemEditorState(
     val mode: EditorMode = EditorMode.Add,
     val itemId: Long? = null,
@@ -173,13 +201,13 @@ fun DailyPlanItemSource.defaultStatus(): DailyPlanItemStatus = when (this) {
     else -> DailyPlanItemStatus.Done
 }
 
-internal fun DailyPlanItem.workMinutes(): Int {
+fun DailyPlanItem.workMinutes(): Int {
     val start = startTimeMinutes ?: return 0
     val end = endTimeMinutes ?: return 0
     return (end - start).coerceAtLeast(0)
 }
 
-internal fun DailyPlan?.doneWorkMinutes(): Int =
+fun DailyPlan?.doneWorkMinutes(): Int =
     this
         ?.items
         .orEmpty()

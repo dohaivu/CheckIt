@@ -8,6 +8,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import co.touchlab.kermit.Logger
+import com.checkit.ui.MinutesPerDay
 import java.time.Duration
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -56,7 +57,6 @@ class DailyAppReminderWorker(
         const val InputTimeMinutes = "time_minutes"
         const val InputTitle = "title"
         const val InputBody = "body"
-        private const val MinutesPerDay = 24 * 60
 
         fun workName(type: String): String = "app-reminder-$type"
 

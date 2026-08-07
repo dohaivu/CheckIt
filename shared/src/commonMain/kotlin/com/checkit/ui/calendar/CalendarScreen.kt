@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Star
@@ -67,10 +68,12 @@ import checkit.shared.generated.resources.relative_yesterday
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
+import com.checkit.domain.JournalEntry
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.usecase.BuildDailyPlanMarkdownSummaryUseCase
+import com.checkit.ui.components.MarkdownView
 import com.checkit.ui.components.RichTextPreview
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TinyTopAppBar
@@ -80,12 +83,13 @@ import com.checkit.ui.localizedMonthTitle
 import com.checkit.ui.localizedShortMonthName
 import com.checkit.ui.localizedWeekdayName
 import com.checkit.ui.myday.DayLinearTimeline
+import com.checkit.ui.myday.JournalHistorySheet
 import com.checkit.ui.myday.MyDayAgenda
 import com.checkit.ui.shortName
 import com.checkit.ui.tasks.TaskAgendaView
-import com.checkit.ui.tasks.toDurationLabel
 import com.checkit.ui.tasks.views.ContentContainerAlpha
 import com.checkit.ui.today
+import com.checkit.ui.tasks.toDurationLabel
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
@@ -100,6 +104,8 @@ internal fun CalendarScreen(
     calendarViewModel: CalendarViewModel,
     onDateDoubleClick: (LocalDate) -> Unit,
     onDailyPlanItemClick: (DailyPlanItem, LocalDate) -> Unit,
+    onJournalEntryClick: (JournalEntry) -> Unit,
+    onJournalListClick: (LocalDate) -> Unit,
     onAddDailyPlanItem: (LocalDate) -> Unit,
     onTaskClick: (TaskItem, DailyPlanItem?) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
@@ -108,6 +114,8 @@ internal fun CalendarScreen(
 ) {
     val today = today()
     val selectedContent = remember(state, today) { state.selectedDateContent(today) }
+    var showJournalHistory by remember { mutableStateOf(false) }
+
     val handleDateDoubleClick: (LocalDate) -> Unit = { date ->
         calendarViewModel.selectDate(date)
         if (date <= today) {
@@ -126,6 +134,9 @@ internal fun CalendarScreen(
                     Text(stringResource(Res.string.calendar_title), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
                 },
                 actions = {
+                    IconButton(onClick = { showJournalHistory = true }) {
+                        Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = "Journal history")
+                    }
                     TagOptionMenu(
                         availableTags = state.board.tags,
                         selectedTagIds = state.selectedTagIds,
@@ -190,9 +201,11 @@ internal fun CalendarScreen(
                                 today = today,
                                 taskCount = selectedContent.taskCount,
                                 noteCount = selectedContent.noteCount,
+                                journalCount = selectedContent.journalEntries.size,
                                 summaryEnabled = selectedContent.showDailyPlan && state.showDailyPlanSummary,
                                 summaryAvailable = selectedContent.showDailyPlan,
                                 onSummaryToggle = calendarViewModel::toggleDailyPlanSummary,
+                                onJournalClick = { onJournalListClick(state.selectedDate) },
                                 winNote = state.selectedDateWinNote
                             )
                             if (selectedContent.showDailyPlan) {
@@ -230,6 +243,17 @@ internal fun CalendarScreen(
                 )
             }
         }
+
+        if (showJournalHistory) {
+            JournalHistorySheet(
+                entries = state.journalEntries,
+                onEntryClick = { entry ->
+                    showJournalHistory = false
+                    onJournalEntryClick(entry)
+                },
+                onDismiss = { showJournalHistory = false }
+            )
+        }
     }
 }
 
@@ -262,6 +286,7 @@ private fun SelectedDateContent(
                 board = content.board,
                 date = content.date,
                 activeSprint = null,
+                journalEntries = content.journalEntries,
                 onItemClick = { onDailyPlanItemClick(it, content.date) },
                 onTaskClick = onTaskClick,
                 onNoteClick = onNoteClick,
@@ -374,9 +399,11 @@ private fun SelectedDateHeader(
     today: LocalDate,
     taskCount: Int,
     noteCount: Int,
+    journalCount: Int,
     summaryEnabled: Boolean,
     summaryAvailable: Boolean,
     onSummaryToggle: () -> Unit,
+    onJournalClick: () -> Unit,
     winNote: String?
 ) {
     val isToday = date == today
@@ -481,6 +508,11 @@ private fun SelectedDateHeader(
                 ) {
                     CountBadge(icon = Icons.Default.TaskAlt, count = taskCount)
                     CountBadge(icon = Icons.AutoMirrored.Filled.Notes, count = noteCount)
+                    CountBadge(
+                        icon = Icons.Default.EditNote,
+                        count = journalCount,
+                        onClick = onJournalClick
+                    )
                     if (summaryAvailable) {
                         IconButton(
                             onClick = onSummaryToggle,
@@ -535,10 +567,12 @@ private fun SelectedDateHeader(
                                     tint = Color(0xFFEAB308)
                                 )
                             }
-                            RichTextPreview(
-                                markdown = winNote,
+                            MarkdownView(
                                 modifier = Modifier.weight(1f),
-                                style = MaterialTheme.typography.bodySmall
+                                markdown = winNote,
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
                             )
                         }
                     }
@@ -566,6 +600,7 @@ private data class SelectedCalendarDateContent(
     val showDailyPlan: Boolean,
     val dailyPlan: DailyPlan?,
     val dailyPlanItems: List<DailyPlanItem>,
+    val journalEntries: List<JournalEntry>,
     val tasks: List<TaskItem>,
     val notes: List<NoteItem>
 ) {
@@ -577,21 +612,29 @@ private data class SelectedCalendarDateContent(
 private fun CalendarUiState.selectedDateContent(today: LocalDate): SelectedCalendarDateContent {
     val showDailyPlan = selectedDate <= today
     val dailyPlan = dailyPlanForDate(selectedDate)
+    val dateEpochDays = selectedDate.toEpochDays()
     return SelectedCalendarDateContent(
         date = selectedDate,
         board = board,
         showDailyPlan = showDailyPlan,
         dailyPlan = dailyPlan,
         dailyPlanItems = dailyPlan?.items.orEmpty(),
+        journalEntries = journalEntries.filter { it.dateEpochDays == dateEpochDays.toInt() },
         tasks = tasksForDate(selectedDate),
         notes = notesForDate(selectedDate)
     )
 }
 
 @Composable
-private fun CountBadge(icon: androidx.compose.ui.graphics.vector.ImageVector, count: Int) {
+private fun CountBadge(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    count: Int,
+    onClick: (() -> Unit)? = null
+) {
     if (count <= 0) return
     Surface(
+        onClick = onClick ?: {},
+        enabled = onClick != null,
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
         shape = RoundedCornerShape(8.dp)
     ) {
@@ -1057,9 +1100,12 @@ private fun WinCardContent(
                     color = Color(0xFFEAB308)
                 )
             }
-            RichTextPreview(
+            MarkdownView(
                 markdown = winNote,
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             )
         }
     }

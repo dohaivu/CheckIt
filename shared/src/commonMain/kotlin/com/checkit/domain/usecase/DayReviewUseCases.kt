@@ -13,8 +13,7 @@ import com.checkit.domain.DayReviewRecord
 import com.checkit.domain.DayReviewSummary
 import com.checkit.domain.DayReviewTagMinutes
 import com.checkit.domain.LeftoverAction
-import com.checkit.domain.planWorkMinutes
-import kotlin.time.Clock
+import com.checkit.ui.myday.workMinutes
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -22,6 +21,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.plus
+import kotlin.time.Clock
 
 /** Pure builder for evening review summary. */
 class BuildDayReviewSummaryUseCase(
@@ -38,11 +38,11 @@ class BuildDayReviewSummaryUseCase(
         val alreadyCarriedItems = items
             .filter { it.status == DailyPlanItemStatus.Planned && it.handledAtMillis != null }
             .sortedBy { it.startTimeMinutes ?: Int.MAX_VALUE }
-        val doneMinutes = doneItems.sumOf { it.planWorkMinutes() }
+        val doneMinutes = doneItems.sumOf { it.workMinutes() }
         val topTags = doneItems
             .asSequence()
             .flatMap { item ->
-                val minutes = item.planWorkMinutes()
+                val minutes = item.workMinutes()
                 if (minutes <= 0) emptySequence()
                 else item.tags.asSequence().map { tag -> tag to minutes }
             }
