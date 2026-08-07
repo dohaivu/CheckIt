@@ -516,7 +516,7 @@ private fun AgendaMonthHeader(label: String, modifier: Modifier = Modifier) {
         color = MaterialTheme.colorScheme.primary,
         modifier = modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.background)
+            .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.9f))
             .padding(horizontal = 16.dp, vertical = 8.dp)
     )
 }

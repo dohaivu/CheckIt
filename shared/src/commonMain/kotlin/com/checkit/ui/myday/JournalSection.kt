@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -53,6 +54,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -60,6 +62,7 @@ import com.checkit.domain.JournalEntry
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.EmojiPicker
 import com.checkit.ui.components.TagPill
+import com.checkit.ui.components.TagPlain
 import com.checkit.ui.tasks.TimelineItem
 import com.checkit.ui.tasks.TimelineItemType
 import com.checkit.ui.tasks.toClockLabel
@@ -361,104 +364,6 @@ internal fun JournalEntryList(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-internal fun JournalEntryCard(
-    entry: JournalEntry,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val moodColor = entry.moods.firstOrNull()?.let { getMoodColorFromEmoji(it) } ?: MaterialTheme.colorScheme.surfaceVariant
-    
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(moodColor.copy(alpha = 0.15f))
-            .drawBehind {
-                drawLine(
-                    color = moodColor.copy(alpha = 0.5f),
-                    start = Offset(0f, 0f),
-                    end = Offset(0f, size.height),
-                    strokeWidth = 10.dp.toPx()
-                )
-            }
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            if (entry.moods.isNotEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(moodColor.copy(alpha = 0.2f), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = entry.moods.first(),
-                        fontSize = 22.sp
-                    )
-                }
-            }
-
-            Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                ) {
-                    if (!entry.context.isNullOrBlank()) {
-                        Text(
-                            text = entry.context,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                    }
-                    if (entry.moods.size > 1) {
-                        Text(
-                            text = entry.moods.drop(1).joinToString(" "),
-                            fontSize = 14.sp,
-                            modifier = Modifier.alpha(0.8f)
-                        )
-                    }
-                }
-                Text(
-                    text = entry.createdAtMillis.toTimeMinutes().toClockLabel(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                )
-            }
-        }
-
-        if (entry.hasContent) {
-            Text(
-                text = entry.content,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
-                lineHeight = 20.sp
-            )
-        }
-
-        if (entry.tags.isNotEmpty()) {
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                entry.tags.forEach { tag ->
-                    TagPill(tag = tag)
-                }
-            }
-        }
-    }
-}
-
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 internal fun JournalHistorySheet(
@@ -473,7 +378,7 @@ internal fun JournalHistorySheet(
         JournalAgendaView(
             journalEntries = entries,
             onEntryClick = onEntryClick,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp)
         )
     }
 }
@@ -509,12 +414,112 @@ internal fun JournalAgendaView(
                 JournalHistoryEntryCard(
                     entry = entry,
                     onClick = { onEntryClick(entry) },
-                    modifier = Modifier.padding(horizontal = 8.dp)
+                    modifier = Modifier.padding(start = 8.dp)
                 )
             }
         },
         modifier = modifier
     )
+}
+
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun JournalEntryCard(
+    entry: JournalEntry,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val moodColor = entry.moods.firstOrNull()?.let { getMoodColorFromEmoji(it) } ?: MaterialTheme.colorScheme.surfaceVariant
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Max)
+            .clip(RoundedCornerShape(12.dp))
+            .background(moodColor.copy(alpha = 0.15f))
+            .drawBehind {
+                drawLine(
+                    color = moodColor.copy(alpha = 0.5f),
+                    start = Offset(0f, 0f),
+                    end = Offset(0f, size.height),
+                    strokeWidth = 8.dp.toPx()
+                )
+            }
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Column(
+            modifier = Modifier.weight(1f).fillMaxHeight(),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = entry.content,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                lineHeight = 20.sp
+            )
+
+            Spacer(Modifier.weight(1f))
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = entry.createdAtMillis.toTimeMinutes().toClockLabel(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    textAlign = TextAlign.Start
+                )
+
+                if (!entry.context.isNullOrBlank()) {
+                    Text(
+                        text = entry.context,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                        maxLines = 1
+                    )
+                }
+
+                if (entry.tags.isNotEmpty()) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        entry.tags.forEach { tag ->
+                            TagPlain(tag = tag)
+                        }
+                    }
+                }
+            }
+        }
+
+        if (entry.moods.isNotEmpty()) {
+            Column(
+                modifier = Modifier.width(IntrinsicSize.Min),
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                entry.moods.forEach { mood ->
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .background(moodColor.copy(alpha = 0.2f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = mood,
+                            fontSize = 24.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -536,38 +541,42 @@ internal fun JournalHistoryEntryCard(
                     color = moodColor.copy(alpha = 0.4f),
                     start = Offset(0f, 0f),
                     end = Offset(0f, size.height),
-                    strokeWidth = 6.dp.toPx()
+                    strokeWidth = 8.dp.toPx()
                 )
             }
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        if (!entry.context.isNullOrBlank()) {
-            Text(
-                text = entry.context,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-
         Text(
             text = entry.content,
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
             lineHeight = 24.sp
         )
 
-        if (entry.tags.isNotEmpty()) {
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                entry.tags.forEach { tag ->
-                    TagPill(tag = tag)
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (!entry.context.isNullOrBlank()) {
+                Text(
+                    text = entry.context,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                    maxLines = 1
+                )
+            }
+
+            if (entry.tags.isNotEmpty()) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    entry.tags.forEach { tag ->
+                        TagPlain(tag = tag)
+                    }
                 }
             }
         }
