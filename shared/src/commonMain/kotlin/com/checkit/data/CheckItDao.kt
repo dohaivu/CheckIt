@@ -85,10 +85,10 @@ interface CheckItDao {
     @Query("DELETE FROM journal_entry_tags WHERE entryId = :entryId")
     suspend fun deleteJournalEntryTags(entryId: Long)
 
-    @Query("SELECT * FROM journal_entries ORDER BY createdAtMillis ASC")
+    @Query("SELECT * FROM journal_entries ORDER BY createdTimeMinutes ASC")
     fun observeJournalEntries(): Flow<List<JournalEntryEntity>>
 
-    @Query("SELECT * FROM journal_entries WHERE dateEpochDays = :dateEpochDays ORDER BY createdAtMillis ASC")
+    @Query("SELECT * FROM journal_entries WHERE dateEpochDays = :dateEpochDays ORDER BY createdTimeMinutes ASC")
     fun observeJournalEntriesForDate(dateEpochDays: Int): Flow<List<JournalEntryEntity>>
 
     @Query("SELECT * FROM journal_entry_tags")

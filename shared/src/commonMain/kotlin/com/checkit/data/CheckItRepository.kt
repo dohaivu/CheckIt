@@ -28,6 +28,7 @@ import com.checkit.notifications.NoOpDailyPlanScheduleReminderScheduler
 import com.checkit.notifications.NoOpTaskReminderNotificationScheduler
 import com.checkit.notifications.ScheduledTaskReminder
 import com.checkit.notifications.TaskReminderNotificationScheduler
+import com.checkit.ui.tasks.views.currentTimeMinutes
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -664,7 +665,7 @@ class RoomCheckItRepository(
                 context = input.context?.trim()?.takeIf { it.isNotBlank() },
                 content = input.content.trim(),
                 moods = input.moods.joinToString(","),
-                createdAtMillis = Clock.System.now().toEpochMilliseconds()
+                createdTimeMinutes = currentTimeMinutes()
             )
         )
         input.tagIds.forEach { tagId -> addJournalEntryTag(entryId, tagId) }
@@ -1043,7 +1044,7 @@ private fun JournalEntryEntity.toDomain(tags: List<TagItem> = emptyList()) = Jou
     content = content,
     moods = moods.split(",").map { it.trim() }.filter { it.isNotEmpty() },
     tags = tags,
-    createdAtMillis = createdAtMillis
+    createdTimeMinutes = createdTimeMinutes
 )
 
 private fun SubTaskEntity.toDomain() = SubTaskItem(

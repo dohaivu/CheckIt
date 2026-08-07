@@ -130,11 +130,10 @@ internal enum class JournalPeriod(val label: String) {
     Evening("Evening")
 }
 
-internal fun Long.toJournalPeriod(): JournalPeriod {
-    val minutes = toTimeMinutes()
+internal fun Int.toJournalPeriod(): JournalPeriod {
     return when {
-        minutes < 12 * 60 -> JournalPeriod.Morning
-        minutes < 18 * 60 -> JournalPeriod.Afternoon
+        this < 12 * 60 -> JournalPeriod.Morning
+        this < 18 * 60 -> JournalPeriod.Afternoon
         else -> JournalPeriod.Evening
     }
 }
@@ -343,7 +342,7 @@ internal fun JournalEntryList(
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         JournalPeriod.entries.forEach { period ->
-            val periodEntries = entries.filter { it.createdAtMillis.toJournalPeriod() == period }
+            val periodEntries = entries.filter { it.createdTimeMinutes.toJournalPeriod() == period }
             if (periodEntries.isNotEmpty()) {
                 Text(
                     text = period.label,
@@ -395,7 +394,7 @@ internal fun JournalAgendaView(
                 id = "journal-${entry.id}",
                 type = TimelineItemType.Journal,
                 date = LocalDate.fromEpochDays(entry.dateEpochDays),
-                startTimeMinutes = entry.createdAtMillis.toTimeMinutes(),
+                startTimeMinutes = entry.createdTimeMinutes,
                 endTimeMinutes = null,
                 sortOrder = 0,
                 isResizable = false,
@@ -469,7 +468,7 @@ internal fun JournalEntryCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = entry.createdAtMillis.toTimeMinutes().toClockLabel(),
+                    text = entry.createdTimeMinutes.toClockLabel(),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     textAlign = TextAlign.Start

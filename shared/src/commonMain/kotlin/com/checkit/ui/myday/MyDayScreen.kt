@@ -930,7 +930,7 @@ private fun MyDayTaskViewProjection.toTimelineItems(
             id = "journal-${entry.id}",
             type = TimelineItemType.Journal,
             date = date,
-            startTimeMinutes = entry.createdAtMillis.toTimeMinutes(),
+            startTimeMinutes = entry.createdTimeMinutes,
             endTimeMinutes = null,
             sortOrder = 0,
             isResizable = false,

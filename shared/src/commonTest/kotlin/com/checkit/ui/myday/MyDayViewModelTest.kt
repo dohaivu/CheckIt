@@ -481,21 +481,21 @@ class MyDayViewModelTest {
                     dateEpochDays = today.toEpochDays().toInt(),
                     context = "Biking",
                     content = "Ride",
-                    createdAtMillis = 1L
+                    createdTimeMinutes = 1
                 ),
                 JournalEntry(
                     id = 2L,
                     dateEpochDays = today.toEpochDays().toInt(),
                     context = "Cafe",
                     content = "Coffee",
-                    createdAtMillis = 2L
+                    createdTimeMinutes = 2
                 ),
                 JournalEntry(
                     id = 3L,
                     dateEpochDays = today.toEpochDays().toInt() - 1,
                     context = "Old",
                     content = "Yesterday",
-                    createdAtMillis = 3L
+                    createdTimeMinutes = 3
                 )
             )
         )
@@ -515,7 +515,7 @@ class MyDayViewModelTest {
                     context = "Biking",
                     content = "Ride",
                     moods = listOf("😀"),
-                    createdAtMillis = 1L
+                    createdTimeMinutes = 1
                 )
             )
         )
@@ -546,7 +546,7 @@ class MyDayViewModelTest {
                     id = 7L,
                     dateEpochDays = today.toEpochDays().toInt(),
                     content = "Doomed",
-                    createdAtMillis = 1L
+                    createdTimeMinutes = 1
                 )
             )
         )

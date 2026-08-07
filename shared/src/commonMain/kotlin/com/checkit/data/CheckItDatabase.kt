@@ -308,7 +308,7 @@ data class JournalEntryEntity(
     val context: String? = null,
     val content: String,
     val moods: String = "",
-    val createdAtMillis: Long
+    val createdTimeMinutes: Int
 )
 
 @Entity(
@@ -400,7 +400,7 @@ data class TaskFilterEntity(
         TaskReminderEntity::class,
         TaskFilterEntity::class
     ],
-    version = 7,
+    version = 1,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)
@@ -419,80 +419,7 @@ fun buildCheckItDatabase(
     return builder
         .fallbackToDestructiveMigration(false)
         .fallbackToDestructiveMigrationOnDowngrade(false)
-        .addMigrations(
-            object : Migration(2, 3) {
-                override suspend fun migrate(connection: SQLiteConnection) {
-                    connection.execSQL("ALTER TABLE tags ADD COLUMN sortOrder INTEGER NOT NULL DEFAULT 0")
-                    connection.execSQL("ALTER TABLE tags ADD COLUMN lastUsedAtMillis INTEGER NOT NULL DEFAULT 0")
-                }
-            },
-            object : Migration(3, 4) {
-                override suspend fun migrate(connection: SQLiteConnection) {
-                    connection.execSQL("ALTER TABLE daily_plan_items ADD COLUMN carriedFromItemId INTEGER")
-                }
-            },
-            object : Migration(4, 5) {
-                override suspend fun migrate(connection: SQLiteConnection) {
-                    connection.execSQL("ALTER TABLE daily_plan_items ADD COLUMN handledAtMillis INTEGER")
-                    connection.execSQL(
-                        """
-                        CREATE TABLE IF NOT EXISTS day_reviews (
-                            dateEpochDays INTEGER NOT NULL PRIMARY KEY,
-                            doneCount INTEGER NOT NULL,
-                            plannedCount INTEGER NOT NULL,
-                            doneMinutes INTEGER NOT NULL,
-                            winNote TEXT,
-                            tomorrowGoal TEXT,
-                            completedAtMillis INTEGER NOT NULL
-                        )
-                        """.trimIndent()
-                    )
-                    connection.execSQL(
-                        "DELETE FROM daily_plan_items WHERE source = 'MyDayNote' AND title = 'Win'"
-                    )
-                }
-            },
-            object : Migration(5, 6) {
-                override suspend fun migrate(connection: SQLiteConnection) {
-                    connection.execSQL(
-                        "ALTER TABLE tasks ADD COLUMN type TEXT NOT NULL DEFAULT 'Task'"
-                    )
-                    connection.execSQL(
-                        "ALTER TABLE daily_plan_items ADD COLUMN isHabit INTEGER NOT NULL DEFAULT 0"
-                    )
-                }
-            },
-            object : Migration(6, 7) {
-                override suspend fun migrate(connection: SQLiteConnection) {
-                    connection.execSQL(
-                        """
-                        CREATE TABLE IF NOT EXISTS journal_entries (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-                            dateEpochDays INTEGER NOT NULL,
-                            context TEXT,
-                            content TEXT NOT NULL,
-                            moods TEXT NOT NULL DEFAULT '',
-                            createdAtMillis INTEGER NOT NULL
-                        )
-                        """.trimIndent()
-                    )
-                    connection.execSQL(
-                        """
-                        CREATE TABLE IF NOT EXISTS journal_entry_tags (
-                            entryId INTEGER NOT NULL,
-                            tagId INTEGER NOT NULL,
-                            PRIMARY KEY(entryId, tagId),
-                            FOREIGN KEY(entryId) REFERENCES journal_entries(id) ON UPDATE NO ACTION ON DELETE CASCADE,
-                            FOREIGN KEY(tagId) REFERENCES tags(id) ON UPDATE NO ACTION ON DELETE CASCADE
-                        )
-                        """.trimIndent()
-                    )
-                    connection.execSQL("CREATE INDEX IF NOT EXISTS index_journal_entries_dateEpochDays ON journal_entries(dateEpochDays)")
-                    connection.execSQL("CREATE INDEX IF NOT EXISTS index_journal_entry_tags_entryId ON journal_entry_tags(entryId)")
-                    connection.execSQL("CREATE INDEX IF NOT EXISTS index_journal_entry_tags_tagId ON journal_entry_tags(tagId)")
-                }
-            }
-        )
+        .addMigrations()
         .setQueryCoroutineContext(Dispatchers.IO)
         .setDriver(BundledSQLiteDriver())
         .addCallback(object : RoomDatabase.Callback() {
