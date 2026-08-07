@@ -13,10 +13,13 @@ import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.action.Action
+import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.action.ActionCallback
+import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.lazy.itemsIndexed
@@ -197,6 +200,21 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                             Image(
                                 provider = ImageProvider(R.drawable.lightbulb_24px),
                                 contentDescription = "Open suggestions",
+                                modifier = GlanceModifier.size(20.dp),
+                                colorFilter = ColorFilter.tint(GlanceTheme.colors.primary)
+                            )
+                        }
+                        Spacer(modifier = GlanceModifier.width(8.dp))
+                        Box(
+                            modifier = GlanceModifier
+                                .size(32.dp)
+                                .cornerRadius(16.dp)
+                                .clickable(actionRunCallback<RefreshAction>()),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Image(
+                                provider = ImageProvider(R.drawable.refresh_24px),
+                                contentDescription = "Refresh data",
                                 modifier = GlanceModifier.size(20.dp),
                                 colorFilter = ColorFilter.tint(GlanceTheme.colors.primary)
                             )
@@ -483,6 +501,16 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                 ColorProvider(tintColor)
             )
         )
+    }
+}
+
+class RefreshAction : ActionCallback {
+    override suspend fun onAction(
+        context: Context,
+        glanceId: GlanceId,
+        parameters: ActionParameters
+    ) {
+        DailyPlanAgendaWidget().update(context, glanceId)
     }
 }
 
