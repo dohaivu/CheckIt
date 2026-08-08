@@ -83,9 +83,7 @@
     <string name="reflect_review_draft_note">Nháp tự động từ %1$s của bạn. Hãy xem lại và lưu.</string>
     <string name="reflect_review_saved">Đã lưu bài nhìn lại</string>
     <string name="reflect_review_error">Không thể lưu bài nhìn lại</string>
-    <string name="reflect_review_content_label">Nhìn lại</string>
     <string name="reflect_review_content_placeholder">Điều gì tốt? Điều gì làm bạn mệt?</string>
-    <string name="reflect_review_intent_label">Hướng tới kỳ tới</string>
     <string name="reflect_review_intent_placeholder">Bạn sẽ tập trung vào điều gì?</string>
     <string name="reflect_review_save">Lưu</string>
     <string name="reflect_period_day">ngày</string>

@@ -83,9 +83,7 @@
     <string name="reflect_review_draft_note">根据你的%1$s自动生成草稿。请查看并保存。</string>
     <string name="reflect_review_saved">反思已保存</string>
     <string name="reflect_review_error">无法保存反思</string>
-    <string name="reflect_review_content_label">反思</string>
     <string name="reflect_review_content_placeholder">什么做得好？什么让你疲惫？</string>
-    <string name="reflect_review_intent_label">下一阶段打算</string>
     <string name="reflect_review_intent_placeholder">接下来你想专注什么？</string>
     <string name="reflect_review_save">保存</string>
     <string name="reflect_period_day">天</string>

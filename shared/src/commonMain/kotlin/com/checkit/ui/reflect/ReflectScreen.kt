@@ -32,7 +32,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -53,13 +52,11 @@ import checkit.shared.generated.resources.reflect_period_month
 import checkit.shared.generated.resources.reflect_period_week
 import checkit.shared.generated.resources.reflect_period_year
 import checkit.shared.generated.resources.reflect_review_card_title
-import checkit.shared.generated.resources.reflect_review_content_label
 import checkit.shared.generated.resources.reflect_review_content_placeholder
 import checkit.shared.generated.resources.reflect_review_draft_note
 import checkit.shared.generated.resources.reflect_review_edit
 import checkit.shared.generated.resources.reflect_review_empty
 import checkit.shared.generated.resources.reflect_review_generate_draft
-import checkit.shared.generated.resources.reflect_review_intent_label
 import checkit.shared.generated.resources.reflect_review_intent_placeholder
 import checkit.shared.generated.resources.reflect_review_save
 import checkit.shared.generated.resources.reflect_review_status_complete
@@ -73,6 +70,7 @@ import checkit.shared.generated.resources.tab_reflect
 import com.checkit.domain.PeriodReview
 import com.checkit.domain.ReviewPeriod
 import com.checkit.ui.components.AppEditorBottomSheet
+import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.ReportPeriod
 import com.checkit.ui.components.ReportPeriodHeader
 import com.checkit.ui.components.TinyTopAppBar
@@ -542,21 +540,19 @@ internal fun PeriodReviewEditorSheet(
                     color = MaterialTheme.colorScheme.primary
                 )
             }
-            OutlinedTextField(
+            AppOutlinedTextField(
                 value = editor.content,
                 onValueChange = onContentChange,
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(Res.string.reflect_review_content_label)) },
-                placeholder = { Text(stringResource(Res.string.reflect_review_content_placeholder)) },
+                placeholder = stringResource(Res.string.reflect_review_content_placeholder),
                 minLines = 4,
                 enabled = !editor.isSaving
             )
-            OutlinedTextField(
+            AppOutlinedTextField(
                 value = editor.intentNext,
                 onValueChange = onIntentNextChange,
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(Res.string.reflect_review_intent_label)) },
-                placeholder = { Text(stringResource(Res.string.reflect_review_intent_placeholder)) },
+                placeholder = stringResource(Res.string.reflect_review_intent_placeholder),
                 minLines = 2,
                 enabled = !editor.isSaving
             )
