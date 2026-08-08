@@ -94,8 +94,6 @@
     <string name="reflect_period_year">年</string>
     <string name="reflect_history_title">最近的反思</string>
     <string name="reflect_history_empty">还没有反思。请在上方撰写或生成草稿。</string>
-    <string name="reflect_zoom_in">放大</string>
-    <string name="reflect_zoom_out">缩小</string>
     <string name="reflect_stats_done">%1$d 已完成</string>
     <string name="reflect_stats_minutes">%1$d 分钟</string>
     <string name="reflect_stats_entries">%1$d 个签到</string>

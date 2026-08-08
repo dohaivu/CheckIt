@@ -94,8 +94,6 @@
     <string name="reflect_period_year">năm</string>
     <string name="reflect_history_title">Bài nhìn lại gần đây</string>
     <string name="reflect_history_empty">Chưa có bài nhìn lại nào. Hãy viết hoặc tạo nháp ở trên.</string>
-    <string name="reflect_zoom_in">Phóng to</string>
-    <string name="reflect_zoom_out">Thu nhỏ</string>
     <string name="reflect_stats_done">%1$d hoàn thành</string>
     <string name="reflect_stats_minutes">%1$d phút</string>
     <string name="reflect_stats_entries">%1$d check-in</string>

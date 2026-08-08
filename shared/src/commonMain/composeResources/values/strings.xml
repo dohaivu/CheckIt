@@ -96,8 +96,6 @@
     <string name="reflect_reviews_empty">No %1$s review yet. Write or draft one above.</string>
     <string name="reflect_review_status_draft">Draft</string>
     <string name="reflect_review_status_complete">Complete</string>
-    <string name="reflect_zoom_in">Zoom in</string>
-    <string name="reflect_zoom_out">Zoom out</string>
     <string name="reflect_stats_done">%1$d done</string>
     <string name="reflect_stats_minutes">%1$d min</string>
     <string name="reflect_stats_entries">%1$d check-ins</string>
