@@ -16,6 +16,7 @@ import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
 import com.checkit.domain.usecase.SavePeriodReviewUseCase
 import com.checkit.ui.UiEvent
 import com.checkit.ui.components.ReportPeriod
+import com.checkit.ui.firstDayOfMonth
 import com.checkit.ui.tasks.FakeCheckItRepository
 import com.checkit.ui.today
 import kotlinx.coroutines.Dispatchers
@@ -316,31 +317,50 @@ class ReflectViewModelTest {
     }
 
     @Test
-    fun reviewsForSelectedPeriodFilterByZoomLevelNewestFirst() = runTest(dispatcher) {
-        val todayDate = today()
-        val yesterday = todayDate.minus(1, DateTimeUnit.DAY)
-        val lastWeek = todayDate.minus(7, DateTimeUnit.DAY)
-        val twoWeeksAgo = todayDate.minus(14, DateTimeUnit.DAY)
+    fun reviewsForSelectedPeriodShowChildPeriodWithinWindow() = runTest(dispatcher) {
+        val weekStart = today().minus(today().dayOfWeek.ordinal, DateTimeUnit.DAY)
         repository.savePeriodReview(
-            review(period = ReviewPeriod.Day, start = todayDate, content = "Today")
+            review(period = ReviewPeriod.Day, start = weekStart, content = "Mon")
         )
         repository.savePeriodReview(
-            review(period = ReviewPeriod.Day, start = yesterday, content = "Yesterday")
+            review(period = ReviewPeriod.Day, start = weekStart.plus(1, DateTimeUnit.DAY), content = "Tue")
         )
         repository.savePeriodReview(
-            review(period = ReviewPeriod.Week, start = lastWeek, content = "Last week")
+            review(period = ReviewPeriod.Day, start = weekStart.minus(1, DateTimeUnit.DAY), content = "Outside")
         )
         repository.savePeriodReview(
-            review(period = ReviewPeriod.Week, start = twoWeeksAgo, content = "Two weeks ago")
+            review(period = ReviewPeriod.Week, start = weekStart, content = "Week excluded")
         )
         advanceUntilIdle()
 
-        val state = viewModel.uiState.value
-        assertEquals(listOf(lastWeek, twoWeeksAgo), state.reviewsForSelectedPeriod.map { it.periodStartDate })
+        // Week view shows only this week's Day reviews, newest first.
+        val weekDates = viewModel.uiState.value.reviewsForSelectedPeriod.map { it.periodStartDate }
+        assertEquals(listOf(weekStart.plus(1, DateTimeUnit.DAY), weekStart), weekDates)
 
+        // Daily behaves like Week: the same week's Day reviews.
         viewModel.selectPeriod(ReportPeriod.Daily)
-        val dayDates = viewModel.uiState.value.reviewsForSelectedPeriod.map { it.periodStartDate }
-        assertEquals(listOf(todayDate, yesterday), dayDates)
+        assertEquals(weekDates, viewModel.uiState.value.reviewsForSelectedPeriod.map { it.periodStartDate })
+    }
+
+    @Test
+    fun monthViewShowsWeekReviewsWithinMonth() = runTest(dispatcher) {
+        val monthStart = today().firstDayOfMonth()
+        val inside = monthStart
+        val outside = monthStart.minus(1, DateTimeUnit.DAY)
+        repository.savePeriodReview(
+            review(period = ReviewPeriod.Week, start = inside, content = "Week inside")
+        )
+        repository.savePeriodReview(
+            review(period = ReviewPeriod.Week, start = outside, content = "Week outside")
+        )
+        repository.savePeriodReview(
+            review(period = ReviewPeriod.Month, start = monthStart, content = "Month excluded")
+        )
+        advanceUntilIdle()
+
+        viewModel.selectPeriod(ReportPeriod.Month)
+        val dates = viewModel.uiState.value.reviewsForSelectedPeriod.map { it.periodStartDate }
+        assertEquals(listOf(inside), dates)
     }
 
     @Test

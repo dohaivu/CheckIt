@@ -160,16 +160,16 @@ internal fun ReflectScreen(
                     val digest = remember(state.selectedPeriod, state.selectedDate, state.dailyPlans) {
                         state.digestReport
                     }
-                    ReviewCard(
-                        state = state,
-                        onOpenEditor = viewModel::openEditor,
-                        onGenerateDraft = viewModel::generateDraft
-                    )
                     DigestCards(
                         digest = digest,
                         selectedDate = state.selectedDate,
                         selectedPeriod = state.selectedPeriod,
                         onZoomInTo = viewModel::zoomInTo
+                    )
+                    ReviewCard(
+                        state = state,
+                        onOpenEditor = viewModel::openEditor,
+                        onGenerateDraft = viewModel::generateDraft
                     )
                     ReviewsSection(
                         reviews = state.reviewsForSelectedPeriod,

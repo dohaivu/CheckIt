@@ -54,10 +54,20 @@ data class ReflectUiState(
         }
     }
 
-    /** Reviews at the selected zoom level, newest period first, for the Reviews section. */
+    /**
+     * Reviews of the child zoom level within the current window, newest first.
+     * Week shows that week's Day reviews, Month shows that month's Week reviews,
+     * Annual shows that year's Month reviews; Daily behaves like Week.
+     */
     val reviewsForSelectedPeriod: List<PeriodReview> by lazy {
+        val rangeFocus = if (selectedPeriod == ReportPeriod.Daily) focus.zoomOut() else focus
+        val startEpoch = rangeFocus.start.toEpochDays().toInt()
+        val endEpoch = rangeFocus.endExclusive.toEpochDays().toInt()
         reviews
-            .filter { it.period == selectedPeriod.toReviewPeriod() }
+            .filter {
+                it.period == selectedPeriod.childReviewPeriod() &&
+                    it.periodStartEpochDays in startEpoch until endEpoch
+            }
             .sortedWith(
                 compareByDescending<PeriodReview> { it.periodStartEpochDays }
                     .thenByDescending { it.id }
@@ -79,6 +89,15 @@ internal fun ReportPeriod.toReviewPeriod(): ReviewPeriod = when (this) {
     ReportPeriod.Month -> ReviewPeriod.Month
     ReportPeriod.Annual -> ReviewPeriod.Year
     ReportPeriod.Habit -> ReviewPeriod.Week
+}
+
+/** The child zoom level shown in the Reviews section for the selected period. */
+internal fun ReportPeriod.childReviewPeriod(): ReviewPeriod = when (this) {
+    ReportPeriod.Daily -> ReviewPeriod.Day
+    ReportPeriod.Week -> ReviewPeriod.Day
+    ReportPeriod.Month -> ReviewPeriod.Week
+    ReportPeriod.Annual -> ReviewPeriod.Month
+    ReportPeriod.Habit -> ReviewPeriod.Day
 }
 
 internal fun ReviewPeriod.toReportPeriod(): ReportPeriod = when (this) {
