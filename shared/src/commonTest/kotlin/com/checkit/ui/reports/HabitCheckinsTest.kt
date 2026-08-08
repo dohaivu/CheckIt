@@ -4,6 +4,9 @@ import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
+import com.checkit.ui.reflect.buildHabitCheckins
+import com.checkit.ui.reflect.buildHeatmapMonths
+import com.checkit.ui.reflect.calculateStreak
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus

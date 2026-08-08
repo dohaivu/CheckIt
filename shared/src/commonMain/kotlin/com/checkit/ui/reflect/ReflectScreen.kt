@@ -70,7 +70,6 @@ import checkit.shared.generated.resources.reflect_review_save
 import checkit.shared.generated.resources.reflect_review_write
 import checkit.shared.generated.resources.tab_reflect
 import com.checkit.domain.DailyPlanItemStatus
-import com.checkit.domain.PeriodFocus
 import com.checkit.domain.PeriodReview
 import com.checkit.domain.ReviewPeriod
 import com.checkit.ui.components.AppEditorBottomSheet
@@ -81,11 +80,7 @@ import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.localizedMonthTitle
 import com.checkit.ui.localizedShortMonthName
 import com.checkit.ui.myday.doneWorkMinutes
-import com.checkit.ui.reports.HabitHeatmapSection
-import com.checkit.ui.reports.buildHabitCheckins
-import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.plus
 import org.jetbrains.compose.resources.stringResource
 
 private val ReflectPeriods = listOf(
@@ -146,7 +141,7 @@ internal fun ReflectScreen(
 
             when (state.selectedPeriod) {
                 ReportPeriod.Habit -> {
-                    val checkins = remember(state.dailyPlans) { buildHabitCheckins(state.dailyPlans, today()) }
+                    val checkins = state.habitCheckins
                     if (checkins.isEmpty()) {
                         EmptyHabitsCard()
                     } else {

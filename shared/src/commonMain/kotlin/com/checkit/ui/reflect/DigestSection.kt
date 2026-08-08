@@ -60,14 +60,10 @@ import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.ui.components.ReportPeriod
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.localizedShortMonthName
-import com.checkit.ui.reports.DigestHighlight
-import com.checkit.ui.reports.DigestReportSummary
-import com.checkit.ui.reports.TagReportBarRow
-import com.checkit.ui.reports.TagReportItem
-import com.checkit.ui.reports.TimeReportItem
 import com.checkit.ui.shortName
 import com.checkit.ui.tasks.cardColor
 import com.checkit.ui.tasks.toDurationLabel
+import com.checkit.ui.theme.toColor
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.abs
@@ -711,6 +707,50 @@ private fun EmptyDigestCard(modifier: Modifier = Modifier) {
         )
     }
 }
+
+
+@Composable
+internal fun TagReportBarRow(
+    item: TagReportItem,
+    fraction: Float,
+    modifier: Modifier = Modifier
+) {
+    val tagColor = item.color.toColor()
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Text(
+            text = item.name,
+            modifier = Modifier.widthIn(min = 72.dp, max = 118.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(18.dp)
+                .background(tagColor.copy(alpha = 0.16f), RoundedCornerShape(6.dp))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(fraction.coerceIn(0.04f, 1f))
+                    .height(18.dp)
+                    .background(tagColor, RoundedCornerShape(6.dp))
+            )
+        }
+        Text(
+            text = item.totalMinutes.toDurationLabel(),
+            modifier = Modifier.widthIn(min = 54.dp),
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1
+        )
+    }
+}
+
 
 private fun DigestHighlight.icon(): ImageVector = when (item.source) {
     DailyPlanItemSource.MyDayTask -> Icons.Default.EventAvailable

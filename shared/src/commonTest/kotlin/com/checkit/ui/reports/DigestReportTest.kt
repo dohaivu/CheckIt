@@ -5,6 +5,8 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.ui.components.ReportPeriod
+import com.checkit.ui.reflect.DigestReportSummary
+import com.checkit.ui.reflect.buildDigestReport
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.plus
