@@ -91,8 +91,12 @@
     <string name="reflect_period_week">week</string>
     <string name="reflect_period_month">month</string>
     <string name="reflect_period_year">year</string>
-    <string name="reflect_history_title">Recent reviews</string>
-    <string name="reflect_history_empty">No reviews yet. Write or draft one above.</string>
+    <string name="reflect_reviews_title">Reviews</string>
+    <string name="reflect_reviews_subtitle">For this %1$s</string>
+    <string name="reflect_reviews_written">%1$d written</string>
+    <string name="reflect_reviews_empty">No %1$s review yet. Write or draft one above.</string>
+    <string name="reflect_review_status_draft">Draft</string>
+    <string name="reflect_review_status_complete">Complete</string>
     <string name="reflect_zoom_in">Zoom in</string>
     <string name="reflect_zoom_out">Zoom out</string>
     <string name="reflect_stats_done">%1$d done</string>

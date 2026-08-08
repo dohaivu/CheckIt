@@ -54,13 +54,14 @@ data class ReflectUiState(
         }
     }
 
-    /** All reviews, newest period first, for the Recent Reviews section. */
-    val history: List<PeriodReview> by lazy {
-        reviews.sortedWith(
-            compareByDescending<PeriodReview> { it.periodStartEpochDays }
-                .thenByDescending { it.period.ordinal }
-                .thenByDescending { it.id }
-        )
+    /** Reviews at the selected zoom level, newest period first, for the Reviews section. */
+    val reviewsForSelectedPeriod: List<PeriodReview> by lazy {
+        reviews
+            .filter { it.period == selectedPeriod.toReviewPeriod() }
+            .sortedWith(
+                compareByDescending<PeriodReview> { it.periodStartEpochDays }
+                    .thenByDescending { it.id }
+            )
     }
 
     /** Child periods to show under the review card; tapping one zooms in. */

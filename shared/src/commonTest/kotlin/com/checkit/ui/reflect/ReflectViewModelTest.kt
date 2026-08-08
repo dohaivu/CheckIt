@@ -316,9 +316,10 @@ class ReflectViewModelTest {
     }
 
     @Test
-    fun historyListsReviewsNewestFirst() = runTest(dispatcher) {
+    fun reviewsForSelectedPeriodFilterByZoomLevelNewestFirst() = runTest(dispatcher) {
         val todayDate = today()
         val yesterday = todayDate.minus(1, DateTimeUnit.DAY)
+        val lastWeek = todayDate.minus(7, DateTimeUnit.DAY)
         val twoWeeksAgo = todayDate.minus(14, DateTimeUnit.DAY)
         repository.savePeriodReview(
             review(period = ReviewPeriod.Day, start = todayDate, content = "Today")
@@ -327,12 +328,19 @@ class ReflectViewModelTest {
             review(period = ReviewPeriod.Day, start = yesterday, content = "Yesterday")
         )
         repository.savePeriodReview(
+            review(period = ReviewPeriod.Week, start = lastWeek, content = "Last week")
+        )
+        repository.savePeriodReview(
             review(period = ReviewPeriod.Week, start = twoWeeksAgo, content = "Two weeks ago")
         )
         advanceUntilIdle()
 
-        val dates = viewModel.uiState.value.history.map { it.periodStartDate }
-        assertEquals(listOf(todayDate, yesterday, twoWeeksAgo), dates)
+        val state = viewModel.uiState.value
+        assertEquals(listOf(lastWeek, twoWeeksAgo), state.reviewsForSelectedPeriod.map { it.periodStartDate })
+
+        viewModel.selectPeriod(ReportPeriod.Daily)
+        val dayDates = viewModel.uiState.value.reviewsForSelectedPeriod.map { it.periodStartDate }
+        assertEquals(listOf(todayDate, yesterday), dayDates)
     }
 
     @Test
