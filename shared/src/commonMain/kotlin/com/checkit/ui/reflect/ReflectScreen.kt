@@ -52,9 +52,6 @@ import checkit.shared.generated.resources.reflect_period_week
 import checkit.shared.generated.resources.reflect_period_year
 import checkit.shared.generated.resources.reflect_history_empty
 import checkit.shared.generated.resources.reflect_history_title
-import checkit.shared.generated.resources.reflect_stats_done
-import checkit.shared.generated.resources.reflect_stats_entries
-import checkit.shared.generated.resources.reflect_stats_minutes
 import checkit.shared.generated.resources.reflect_zoom_in
 import checkit.shared.generated.resources.reflect_zoom_out
 import checkit.shared.generated.resources.reflect_review_card_title
@@ -155,7 +152,6 @@ internal fun ReflectScreen(
                     val digest = remember(state.selectedPeriod, state.selectedDate, state.dailyPlans) {
                         state.digestReport
                     }
-                    StatsStrip(stats = state.stats)
                     ChildrenStrip(
                         state = state,
                         onZoomInTo = viewModel::zoomInTo
@@ -177,29 +173,6 @@ internal fun ReflectScreen(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun StatsStrip(stats: PeriodStats) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        StatsChip(stringResource(Res.string.reflect_stats_done, stats.doneCount))
-        StatsChip(stringResource(Res.string.reflect_stats_minutes, stats.totalMinutes))
-        StatsChip(stringResource(Res.string.reflect_stats_entries, stats.journalCount))
-    }
-}
-
-@Composable
-private fun StatsChip(text: String) {
-    Box(
-        modifier = Modifier
-            .background(
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                shape = RoundedCornerShape(50)
-            )
-            .padding(horizontal = 12.dp, vertical = 6.dp)
-    ) {
-        Text(text = text, style = MaterialTheme.typography.labelMedium)
     }
 }
 

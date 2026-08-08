@@ -92,7 +92,8 @@ internal fun DigestCards(
                 trendItems = digest.trendItems,
                 progressItems = digest.progressItems,
                 doneCount = digest.doneItemCount,
-                plannedCount = digest.plannedItemCount
+                plannedCount = digest.plannedItemCount,
+                journalCount = digest.journalCount
             )
             ActivityChart(
                 items = digest.activityItems,
@@ -121,14 +122,15 @@ private fun HeroSummaryCard(
     progressItems: List<DailyPlanItem>,
     doneCount: Int,
     plannedCount: Int,
+    journalCount: Int,
     modifier: Modifier = Modifier
 ) {
     val doneTotal = doneCount + plannedCount
     val trend = remember(totalMinutes, previousTotalMinutes, selectedPeriod) {
         totalMinutes.trendSummary(previousTotalMinutes, selectedPeriod)
     }
-    val encouragement = remember(doneCount, plannedCount, selectedPeriod) {
-        heroEncouragement(doneCount, plannedCount, selectedPeriod)
+    val encouragement = remember(doneCount, plannedCount, selectedPeriod, journalCount) {
+        heroEncouragement(doneCount, plannedCount, selectedPeriod, journalCount)
     }
     val progressSegments = remember(progressItems) {
         progressItems.toProgressRingSegments()
@@ -177,7 +179,7 @@ private fun HeroSummaryCard(
                         text = encouragement,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
+                        maxLines = 5,
                         overflow = TextOverflow.Ellipsis
                     )
                     Surface(
@@ -762,7 +764,8 @@ private fun DigestHighlight.icon(): ImageVector = when (item.source) {
 private fun heroEncouragement(
     doneCount: Int,
     plannedCount: Int,
-    selectedPeriod: ReportPeriod
+    selectedPeriod: ReportPeriod,
+    journalCount: Int
 ): AnnotatedString {
     val period = when (selectedPeriod) {
         ReportPeriod.Daily -> "today"
@@ -791,6 +794,11 @@ private fun heroEncouragement(
                 append(". ")
                 highlight("Keep going.", ReportGreenDark, fontStyle = FontStyle.Italic)
             }
+        }
+        if (journalCount > 0) {
+            append(" You also logged ")
+            highlight("$journalCount ${if (journalCount == 1) "check-in" else "check-ins"}", ReportPurple)
+            append(".")
         }
     }
 }

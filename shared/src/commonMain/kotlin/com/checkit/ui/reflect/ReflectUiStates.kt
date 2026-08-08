@@ -63,15 +63,12 @@ data class ReflectUiState(
         )
     }
 
-    /** Live stats derived from plans/journal inside the focused period. */
-    val stats: PeriodStats by lazy { buildPeriodStats(focus, dailyPlans, journalEntries) }
-
     /** Child periods to show under the review card; tapping one zooms in. */
     val children: List<PeriodFocus> by lazy { childrenFor(focus) }
 
     /** Digest (progress/trend/tags/highlights) for the focused period. */
     val digestReport: DigestReportSummary by lazy {
-        buildDigestReport(dailyPlans, selectedPeriod, selectedDate)
+        buildDigestReport(dailyPlans, journalEntries, selectedPeriod, selectedDate)
     }
 
     /** Habit check-ins for the heatmap. */
@@ -80,28 +77,6 @@ data class ReflectUiState(
     fun hasReview(child: PeriodFocus): Boolean = reviews.any {
         it.period == child.period && it.periodStartEpochDays == child.start.toEpochDays().toInt()
     }
-}
-
-/** Aggregate statistics for a focused period, derived live from plans + journals. */
-data class PeriodStats(
-    val doneCount: Int = 0,
-    val totalMinutes: Int = 0,
-    val journalCount: Int = 0
-)
-
-fun buildPeriodStats(
-    focus: PeriodFocus,
-    dailyPlans: List<DailyPlan>,
-    journalEntries: List<JournalEntry>
-): PeriodStats {
-    val startEpoch = focus.start.toEpochDays().toInt()
-    val endEpoch = focus.endExclusive.toEpochDays().toInt()
-    val plans = dailyPlans.filter { it.date.toEpochDays().toInt() in startEpoch until endEpoch }
-    return PeriodStats(
-        doneCount = plans.sumOf { plan -> plan.items.count { it.status == DailyPlanItemStatus.Done } },
-        totalMinutes = plans.sumOf { it.doneWorkMinutes() },
-        journalCount = journalEntries.count { it.dateEpochDays in startEpoch until endEpoch }
-    )
 }
 
 /** The zoom-in targets shown beneath the review card for the current focus. */
@@ -224,6 +199,7 @@ data class DigestReportSummary(
     val previousTotalMinutes: Int,
     val doneItemCount: Int,
     val plannedItemCount: Int,
+    val journalCount: Int,
     val trendItems: List<TimeReportItem>,
     val activityItems: List<TimeReportItem>,
     val progressItems: List<DailyPlanItem>,
@@ -241,10 +217,11 @@ data class DigestHighlight(
 
 internal fun buildDigestReport(
     dailyPlans: List<DailyPlan>,
+    journalEntries: List<JournalEntry>,
     period: ReportPeriod,
     selectedDate: LocalDate
 ): DigestReportSummary =
-    DailyPlanReportIndex(dailyPlans).toDigest(period, selectedDate)
+    DailyPlanReportIndex(dailyPlans).toDigest(journalEntries, period, selectedDate)
 
 private class DailyPlanReportIndex(
     private val plans: List<DailyPlan>
@@ -324,7 +301,11 @@ private class DailyPlanReportIndex(
             }
             .sortedWith(compareByDescending<TagReportItem> { it.totalMinutes }.thenBy { it.name.lowercase() })
 
-    fun toDigest(period: ReportPeriod, selectedDate: LocalDate): DigestReportSummary {
+    fun toDigest(
+        journalEntries: List<JournalEntry>,
+        period: ReportPeriod,
+        selectedDate: LocalDate
+    ): DigestReportSummary {
         val start = period.periodStart(selectedDate)
         val endExclusive = period.periodEndExclusive(selectedDate)
 
@@ -364,6 +345,9 @@ private class DailyPlanReportIndex(
         val actionItems = periodItems.map { it.second }.filter { it.isActionableDigestItem() }
         val doneItemCount = actionItems.count { it.status == DailyPlanItemStatus.Done }
         val plannedItemCount = actionItems.count { it.status == DailyPlanItemStatus.Planned }
+        val journalCount = journalEntries.count { entry ->
+            entry.dateEpochDays >= start.toEpochDays().toInt() && entry.dateEpochDays < endExclusive.toEpochDays().toInt()
+        }
         val highlights = periodItems.asSequence()
             .filter { (_, item) -> item.status == DailyPlanItemStatus.Done }
             .sortedWith(
@@ -392,6 +376,7 @@ private class DailyPlanReportIndex(
             previousTotalMinutes = previousTotalMinutes,
             doneItemCount = doneItemCount,
             plannedItemCount = plannedItemCount,
+            journalCount = journalCount,
             trendItems = trendItems,
             activityItems = activityItems,
             progressItems = actionItems,

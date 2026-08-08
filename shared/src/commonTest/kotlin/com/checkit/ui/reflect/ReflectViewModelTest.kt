@@ -394,10 +394,10 @@ class ReflectViewModelTest {
         )
         advanceUntilIdle()
 
-        val stats = viewModel.uiState.value.stats
-        assertEquals(1, stats.doneCount)
-        assertEquals(60, stats.totalMinutes)
-        assertEquals(1, stats.journalCount)
+        val digest = viewModel.uiState.value.digestReport
+        assertEquals(1, digest.doneItemCount)
+        assertEquals(60, digest.totalMinutes)
+        assertEquals(1, digest.journalCount)
     }
 
     @Test

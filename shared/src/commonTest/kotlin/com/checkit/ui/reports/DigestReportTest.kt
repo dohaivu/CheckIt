@@ -41,6 +41,7 @@ class DigestReportTest {
     ): DigestReportSummary =
         buildDigestReport(
             dailyPlans = plans,
+            journalEntries = emptyList(),
             period = period,
             selectedDate = selectedDate
         )
