@@ -130,7 +130,7 @@ class ReflectViewModelTest {
         advanceUntilIdle()
 
         viewModel.openEditor()
-        val editor = assertNotNull(viewModel.uiState.value.editor)
+        val editor = assertNotNull(viewModel.editor.value)
         assertEquals("Existing content", editor.content)
         assertEquals("Existing intent", editor.intentNext)
     }
@@ -143,7 +143,7 @@ class ReflectViewModelTest {
         viewModel.saveEditor()
         advanceUntilIdle()
 
-        assertNull(viewModel.uiState.value.editor)
+        assertNull(viewModel.editor.value)
         val saved = repository.observePeriodReviews().first().single()
         assertEquals("Great week", saved.content)
         assertEquals("Ship more", saved.intentNext)
@@ -192,7 +192,7 @@ class ReflectViewModelTest {
         viewModel.generateDraft()
         advanceUntilIdle()
 
-        val editor = assertNotNull(viewModel.uiState.value.editor)
+        val editor = assertNotNull(viewModel.editor.value)
         assertTrue(editor.isDraft)
         assertEquals(ReviewSource.Hybrid, editor.source)
         assertTrue(editor.content.contains("2 items"))
@@ -206,7 +206,7 @@ class ReflectViewModelTest {
         viewModel.generateDraft()
         advanceUntilIdle()
 
-        val editor = assertNotNull(viewModel.uiState.value.editor)
+        val editor = assertNotNull(viewModel.editor.value)
         assertEquals(false, editor.isDraft)
         assertEquals(ReviewSource.Manual, editor.source)
         assertEquals("", editor.content)
@@ -244,7 +244,7 @@ class ReflectViewModelTest {
         viewModel.generateDraft()
         advanceUntilIdle()
 
-        val editor = assertNotNull(viewModel.uiState.value.editor)
+        val editor = assertNotNull(viewModel.editor.value)
         assertTrue(editor.isDraft)
         assertTrue(editor.content.startsWith("Annual context"))
     }
@@ -312,7 +312,7 @@ class ReflectViewModelTest {
         val state = viewModel.uiState.value
         assertEquals(ReportPeriod.Month, state.selectedPeriod)
         assertEquals(monthStart, state.selectedDate)
-        val editor = assertNotNull(state.editor)
+        val editor = assertNotNull(viewModel.editor.value)
         assertEquals("Monthly recap", editor.content)
     }
 

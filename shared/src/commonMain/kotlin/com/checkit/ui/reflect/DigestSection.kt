@@ -132,6 +132,7 @@ internal fun HeroSummaryCard(
                         text = encouragement,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        minLines = 3,
                         maxLines = 5,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -717,6 +718,10 @@ private fun heroEncouragement(
             doneCount > 0 -> {
                 append("You finished ")
                 highlight(doneCount.itemCountLabel(), ReportBlue)
+                if (journalCount > 0) {
+                    append(" and logged ")
+                    highlight("$journalCount ${if (journalCount == 1) "check-in" else "check-ins"}", ReportPurple)
+                }
                 append(" $period. ")
                 highlight("That is real progress.", ReportGreenDark, fontStyle = FontStyle.Italic)
             }
@@ -732,11 +737,6 @@ private fun heroEncouragement(
                 append(". ")
                 highlight("Keep going.", ReportGreenDark, fontStyle = FontStyle.Italic)
             }
-        }
-        if (journalCount > 0) {
-            append(" You also logged ")
-            highlight("$journalCount ${if (journalCount == 1) "check-in" else "check-ins"}", ReportPurple)
-            append(".")
         }
     }
 }

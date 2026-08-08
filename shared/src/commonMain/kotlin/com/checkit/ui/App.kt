@@ -109,7 +109,7 @@ fun CheckItApp(
     val tagUiState by viewModels.tag.uiState.collectAsState()
     val myDayUiState by viewModels.myDay.uiState.collectAsState()
     val calendarUiState by viewModels.calendar.uiState.collectAsState()
-    val reflectUiState by viewModels.reflect.uiState.collectAsState()
+    val reflectEditorState by viewModels.reflect.editor.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
     val appScope = rememberCoroutineScope()
 
@@ -420,7 +420,7 @@ fun CheckItApp(
                             onColorChange = viewModels.tag::updateColor
                         )
                     }
-                    reflectUiState.editor?.let { editor ->
+                    reflectEditorState?.let { editor ->
                         PeriodReviewEditorSheet(
                             editor = editor,
                             onContentChange = viewModels.reflect::updateEditorContent,

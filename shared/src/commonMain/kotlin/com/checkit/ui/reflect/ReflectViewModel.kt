@@ -35,6 +35,9 @@ class ReflectViewModel(
     private val _uiState = MutableStateFlow(ReflectUiState())
     val uiState: StateFlow<ReflectUiState> = _uiState.asStateFlow()
 
+    private val _editor = MutableStateFlow<ReflectReviewEditorState?>(null)
+    val editor: StateFlow<ReflectReviewEditorState?> = _editor.asStateFlow()
+
     private val _events = Channel<UiEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
@@ -123,42 +126,33 @@ class ReflectViewModel(
 
     fun openEditor() {
         val state = _uiState.value
-        val review = state.focusReview
-        _uiState.update {
-            it.copy(
-                editor = ReflectReviewEditorState(
-                    focus = it.focus,
-                    review = review,
-                    content = review?.content.orEmpty(),
-                    intentNext = review?.intentNext.orEmpty(),
-                    source = review?.source ?: ReviewSource.Manual,
-                    statsJson = review?.statsJson,
-                    highlightsJson = review?.highlightsJson,
-                    isDraft = review?.source == ReviewSource.Hybrid
-                )
-            )
-        }
+        _editor.value = ReflectReviewEditorState(
+            focus = state.focus,
+            review = state.focusReview,
+            content = state.focusReview?.content.orEmpty(),
+            intentNext = state.focusReview?.intentNext.orEmpty(),
+            source = state.focusReview?.source ?: ReviewSource.Manual,
+            statsJson = state.focusReview?.statsJson,
+            highlightsJson = state.focusReview?.highlightsJson,
+            isDraft = state.focusReview?.source == ReviewSource.Hybrid
+        )
     }
 
     fun generateDraft() {
         val current = _uiState.value
-        if (current.editor != null) return
+        if (_editor.value != null) return
         val focus = current.focus
         viewModelScope.launch {
             val draft = buildDraft(focus, current.dailyPlans, current.reviews)
-            _uiState.update {
-                it.copy(
-                    editor = ReflectReviewEditorState(
-                        focus = focus,
-                        review = it.focusReview,
-                        content = draft?.content.orEmpty(),
-                        source = if (draft != null) ReviewSource.Hybrid else ReviewSource.Manual,
-                        statsJson = draft?.statsJson,
-                        highlightsJson = draft?.highlightsJson,
-                        isDraft = draft != null
-                    )
-                )
-            }
+            _editor.value = ReflectReviewEditorState(
+                focus = focus,
+                review = current.focusReview,
+                content = draft?.content.orEmpty(),
+                source = if (draft != null) ReviewSource.Hybrid else ReviewSource.Manual,
+                statsJson = draft?.statsJson,
+                highlightsJson = draft?.highlightsJson,
+                isDraft = draft != null
+            )
             if (draft == null) {
                 sendEvent(UiEvent.ShowSnackbar("No activity in this period to draft from"))
             }
@@ -166,28 +160,21 @@ class ReflectViewModel(
     }
 
     fun updateEditorContent(value: String) {
-        _uiState.update { current ->
-            val editor = current.editor ?: return@update current
-            current.copy(editor = editor.copy(content = value))
-        }
+        _editor.update { editor -> editor?.copy(content = value) }
     }
 
     fun updateEditorIntentNext(value: String) {
-        _uiState.update { current ->
-            val editor = current.editor ?: return@update current
-            current.copy(editor = editor.copy(intentNext = value))
-        }
+        _editor.update { editor -> editor?.copy(intentNext = value) }
     }
 
     fun dismissEditor() {
-        _uiState.update { it.copy(editor = null) }
+        _editor.value = null
     }
 
     fun saveEditor() {
-        val current = _uiState.value
-        val editor = current.editor ?: return
+        val editor = _editor.value ?: return
         if (editor.isSaving) return
-        _uiState.update { it.copy(editor = editor.copy(isSaving = true)) }
+        _editor.value = editor.copy(isSaving = true)
         viewModelScope.launch {
             runCatching {
                 savePeriodReview(
@@ -199,12 +186,10 @@ class ReflectViewModel(
                     highlightsJson = editor.highlightsJson
                 )
             }.onSuccess {
-                _uiState.update { it.copy(editor = null) }
+                _editor.value = null
                 sendEvent(UiEvent.ShowSnackbar("Review saved"))
             }.onFailure { error ->
-                _uiState.update { state ->
-                    state.copy(editor = state.editor?.copy(isSaving = false))
-                }
+                _editor.update { it?.copy(isSaving = false) }
                 sendEvent(UiEvent.ShowSnackbar(error.message ?: "Unable to save review"))
             }
         }

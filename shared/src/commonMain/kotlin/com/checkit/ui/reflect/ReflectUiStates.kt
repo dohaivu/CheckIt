@@ -43,8 +43,7 @@ data class ReflectUiState(
     val dailyPlans: List<DailyPlan> = emptyList(),
     val journalEntries: List<JournalEntry> = emptyList(),
     val reviews: List<PeriodReview> = emptyList(),
-    val isLoading: Boolean = true,
-    val editor: ReflectReviewEditorState? = null
+    val isLoading: Boolean = true
 ) {
     val focus: PeriodFocus by lazy { PeriodFocus(selectedPeriod.toReviewPeriod(), selectedDate) }
     val focusStartEpochDays: Int get() = focus.start.toEpochDays().toInt()
