@@ -2,7 +2,6 @@ package com.checkit.ui.reflect
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -183,11 +182,8 @@ internal fun ReflectScreen(
                 onPreviousPeriod = viewModel::previousPeriod,
                 onNextPeriod = viewModel::nextPeriod,
                 onCurrentPeriod = viewModel::resetToCurrentPeriod,
+                onZoomOutTo = viewModel::zoomOutTo,
                 periods = ReflectPeriods
-            )
-            BreadcrumbRow(
-                selectedPeriod = state.selectedPeriod,
-                onZoomOutTo = viewModel::zoomOutTo
             )
             StatsStrip(stats = state.stats)
             ChildrenStrip(
@@ -203,52 +199,6 @@ internal fun ReflectScreen(
                 history = state.history,
                 onOpenReview = viewModel::openReview
             )
-        }
-    }
-}
-
-@Composable
-private fun BreadcrumbRow(
-    selectedPeriod: ReportPeriod,
-    onZoomOutTo: (ReportPeriod) -> Unit
-) {
-    val levels = buildList {
-        if (selectedPeriod.ordinal <= ReportPeriod.Annual.ordinal) add(ReportPeriod.Annual)
-        if (selectedPeriod.ordinal <= ReportPeriod.Month.ordinal) add(ReportPeriod.Month)
-        if (selectedPeriod.ordinal <= ReportPeriod.Week.ordinal) add(ReportPeriod.Week)
-        if (selectedPeriod.ordinal <= ReportPeriod.Daily.ordinal) add(ReportPeriod.Daily)
-    }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        levels.forEachIndexed { index, level ->
-            if (index > 0) {
-                Text(
-                    text = "›",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            if (level == selectedPeriod) {
-                Text(
-                    text = level.label(),
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            } else {
-                Text(
-                    text = level.label(),
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.clickable { onZoomOutTo(level) }
-                )
-            }
         }
     }
 }
@@ -698,13 +648,4 @@ private fun ReviewPeriod.label(): String = when (this) {
     ReviewPeriod.Week -> stringResource(Res.string.reflect_period_week)
     ReviewPeriod.Month -> stringResource(Res.string.reflect_period_month)
     ReviewPeriod.Year -> stringResource(Res.string.reflect_period_year)
-}
-
-@Composable
-private fun ReportPeriod.label(): String = when (this) {
-    ReportPeriod.Daily -> stringResource(Res.string.reflect_period_day)
-    ReportPeriod.Week -> stringResource(Res.string.reflect_period_week)
-    ReportPeriod.Month -> stringResource(Res.string.reflect_period_month)
-    ReportPeriod.Annual -> stringResource(Res.string.reflect_period_year)
-    ReportPeriod.Habit -> stringResource(Res.string.reflect_period_week)
 }
