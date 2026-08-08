@@ -408,50 +408,6 @@ class ReflectViewModelTest {
         assertEquals(1, digest.journalCount)
     }
 
-    @Test
-    fun weekChildrenReturnSevenDays() {
-        val weekStart = today().minus(today().dayOfWeek.ordinal, DateTimeUnit.DAY)
-        val children = viewModel.uiState.value.children
-        assertEquals(7, children.size)
-        assertEquals(ReviewPeriod.Day, children.first().period)
-        assertEquals(weekStart, children.first().start)
-        assertEquals(weekStart.plus(6, DateTimeUnit.DAY), children.last().start)
-    }
-
-    @Test
-    fun monthChildrenReturnWeeksInsideMonth() {
-        viewModel.selectPeriod(ReportPeriod.Month)
-        val children = viewModel.uiState.value.children
-        assertTrue(children.isNotEmpty())
-        assertTrue(children.all { it.period == ReviewPeriod.Week })
-        assertTrue(children.all { it.start < viewModel.uiState.value.focus.endExclusive })
-        assertEquals(children.first().start, viewModel.uiState.value.focus.start.minus(
-            viewModel.uiState.value.focus.start.dayOfWeek.ordinal, DateTimeUnit.DAY
-        ))
-    }
-
-    @Test
-    fun yearChildrenReturnTwelveMonths() {
-        viewModel.selectPeriod(ReportPeriod.Annual)
-        val children = viewModel.uiState.value.children
-        assertEquals(12, children.size)
-        assertEquals(LocalDate(today().year, 1, 1), children.first().start)
-        assertEquals(LocalDate(today().year, 12, 1), children.last().start)
-    }
-
-    @Test
-    fun hasReviewFlagsChildDay() = runTest(dispatcher) {
-        val weekStart = today().minus(today().dayOfWeek.ordinal, DateTimeUnit.DAY)
-        repository.savePeriodReview(
-            review(period = ReviewPeriod.Day, start = weekStart, content = "Won the day")
-        )
-        advanceUntilIdle()
-
-        val state = viewModel.uiState.value
-        assertTrue(state.hasReview(state.children.first()))
-        assertTrue(!state.hasReview(state.children.last()))
-    }
-
     private fun review(
         period: ReviewPeriod,
         start: LocalDate,

@@ -22,7 +22,6 @@
     <string name="next_year">下一年</string>
     <string name="year_range">1月1日 - 12月31日</string>
     <string name="weekly_digest_title">摘要</string>
-    <string name="weekly_digest_empty">此周期内没有可总结的已完成工作。</string>
     <string name="weekly_digest_total_items">项目总数</string>
     <string name="weekly_digest_total_time">已完成工作时间</string>
     <string name="weekly_digest_done_items">已完成项目</string>
@@ -100,9 +99,6 @@
     <string name="reflect_stats_done">%1$d 已完成</string>
     <string name="reflect_stats_minutes">%1$d 分钟</string>
     <string name="reflect_stats_entries">%1$d 个签到</string>
-    <string name="reflect_children_day_plan">每日计划</string>
-    <string name="reflect_day_empty_plan">还没有已完成的事项。</string>
-    <string name="reflect_children_checkins">%1$d 个签到</string>
     <string name="journal_agenda_review_card_title">回顾 · 第 %1$d 天</string>
 
     <string name="settings_title">设置</string>

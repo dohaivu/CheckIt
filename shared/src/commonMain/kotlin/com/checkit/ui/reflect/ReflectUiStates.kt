@@ -64,9 +64,6 @@ data class ReflectUiState(
             )
     }
 
-    /** Child periods to show under the review card; tapping one zooms in. */
-    val children: List<PeriodFocus> by lazy { childrenFor(focus) }
-
     /** Digest (progress/trend/tags/highlights) for the focused period. */
     val digestReport: DigestReportSummary by lazy {
         buildDigestReport(dailyPlans, journalEntries, selectedPeriod, selectedDate)
@@ -74,30 +71,6 @@ data class ReflectUiState(
 
     /** Habit check-ins for the heatmap. */
     val habitCheckins: List<HabitCheckin> by lazy { buildHabitCheckins(dailyPlans, today()) }
-
-    fun hasReview(child: PeriodFocus): Boolean = reviews.any {
-        it.period == child.period && it.periodStartEpochDays == child.start.toEpochDays().toInt()
-    }
-}
-
-/** The zoom-in targets shown beneath the review card for the current focus. */
-fun childrenFor(focus: PeriodFocus): List<PeriodFocus> = when (focus.period) {
-    ReviewPeriod.Day -> emptyList()
-    ReviewPeriod.Week -> (0..6).map { offset ->
-        PeriodFocus(ReviewPeriod.Day, focus.start.plus(offset, DateTimeUnit.DAY))
-    }
-    ReviewPeriod.Month -> {
-        val end = focus.endExclusive
-        generateSequence(focus.start.minus(focus.start.dayOfWeek.ordinal, DateTimeUnit.DAY)) { anchor ->
-            anchor.plus(7, DateTimeUnit.DAY)
-        }
-            .takeWhile { it < end }
-            .map { PeriodFocus(ReviewPeriod.Week, it) }
-            .toList()
-    }
-    ReviewPeriod.Year -> (0..11).map { monthIndex ->
-        PeriodFocus(ReviewPeriod.Month, LocalDate(focus.start.year, monthIndex + 1, 1))
-    }
 }
 
 internal fun ReportPeriod.toReviewPeriod(): ReviewPeriod = when (this) {

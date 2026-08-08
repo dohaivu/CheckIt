@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -54,9 +52,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.cancel
-import checkit.shared.generated.resources.reflect_children_checkins
-import checkit.shared.generated.resources.reflect_children_day_plan
-import checkit.shared.generated.resources.reflect_day_empty_plan
 import checkit.shared.generated.resources.reflect_period_day
 import checkit.shared.generated.resources.reflect_period_month
 import checkit.shared.generated.resources.reflect_period_week
@@ -81,7 +76,6 @@ import checkit.shared.generated.resources.reflect_review_intent_placeholder
 import checkit.shared.generated.resources.reflect_review_save
 import checkit.shared.generated.resources.reflect_review_write
 import checkit.shared.generated.resources.tab_reflect
-import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.PeriodReview
 import com.checkit.domain.ReviewPeriod
 import com.checkit.ui.components.AppEditorBottomSheet
@@ -91,7 +85,6 @@ import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.localizedMonthTitle
 import com.checkit.ui.localizedShortMonthName
-import com.checkit.ui.myday.doneWorkMinutes
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.stringResource
 
@@ -167,10 +160,6 @@ internal fun ReflectScreen(
                     val digest = remember(state.selectedPeriod, state.selectedDate, state.dailyPlans) {
                         state.digestReport
                     }
-                    ChildrenStrip(
-                        state = state,
-                        onZoomInTo = viewModel::zoomInTo
-                    )
                     ReviewCard(
                         state = state,
                         onOpenEditor = viewModel::openEditor,
@@ -179,194 +168,13 @@ internal fun ReflectScreen(
                     DigestCards(
                         digest = digest,
                         selectedDate = state.selectedDate,
-                        selectedPeriod = state.selectedPeriod
+                        selectedPeriod = state.selectedPeriod,
+                        onZoomInTo = viewModel::zoomInTo
                     )
                     ReviewsSection(
                         reviews = state.reviewsForSelectedPeriod,
                         selectedPeriod = state.selectedPeriod,
                         onOpenReview = viewModel::openReview
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ChildrenStrip(
-    state: ReflectUiState,
-    onZoomInTo: (LocalDate) -> Unit
-) {
-    when (state.focus.period) {
-        ReviewPeriod.Day -> DayHighlights(state)
-        ReviewPeriod.Week -> WeekChildren(state, onZoomInTo)
-        ReviewPeriod.Month -> MonthChildren(state, onZoomInTo)
-        ReviewPeriod.Year -> YearChildren(state, onZoomInTo)
-    }
-}
-
-@Composable
-private fun WeekChildren(
-    state: ReflectUiState,
-    onZoomInTo: (LocalDate) -> Unit
-) {
-    Row(modifier = Modifier.fillMaxWidth()) {
-        state.children.forEach { child ->
-            val hasReview = state.hasReview(child)
-            val minutes = state.dailyPlans
-                .firstOrNull { it.date.toEpochDays().toInt() == child.start.toEpochDays().toInt() }
-                ?.doneWorkMinutes() ?: 0
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                    .clickable { onZoomInTo(child.start) }
-                    .padding(vertical = 8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                Text(
-                    text = child.start.dayOfWeek.name.take(3),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = child.start.day.toString(),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                if (hasReview) {
-                    Box(
-                        modifier = Modifier
-                            .width(6.dp)
-                            .height(6.dp)
-                            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(50))
-                    )
-                } else if (minutes > 0) {
-                    Text(
-                        text = "${minutes}m",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                } else {
-                    Spacer(Modifier.height(6.dp))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun MonthChildren(
-    state: ReflectUiState,
-    onZoomInTo: (LocalDate) -> Unit
-) {
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(state.children) { child ->
-            ChildChip(
-                label = "${child.start.localizedShortMonthName()} ${child.start.day}",
-                hasReview = state.hasReview(child),
-                onClick = { onZoomInTo(child.start) }
-            )
-        }
-    }
-}
-
-@Composable
-private fun YearChildren(
-    state: ReflectUiState,
-    onZoomInTo: (LocalDate) -> Unit
-) {
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(state.children) { child ->
-            ChildChip(
-                label = child.start.localizedShortMonthName(),
-                hasReview = state.hasReview(child),
-                onClick = { onZoomInTo(child.start) }
-            )
-        }
-    }
-}
-
-@Composable
-private fun ChildChip(
-    label: String,
-    hasReview: Boolean,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(text = label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
-        if (hasReview) {
-            Box(
-                modifier = Modifier
-                    .width(6.dp)
-                    .height(6.dp)
-                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(50))
-            )
-        }
-    }
-}
-
-@Composable
-private fun DayHighlights(state: ReflectUiState) {
-    val dayStart = state.focus.start
-    val dayEpoch = dayStart.toEpochDays().toInt()
-    val plan = state.dailyPlans.firstOrNull { it.date.toEpochDays().toInt() == dayEpoch }
-    val doneItems = plan?.items.orEmpty().filter { it.status == DailyPlanItemStatus.Done }
-    val dayJournals = state.journalEntries.filter { it.dateEpochDays == dayEpoch }
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = stringResource(Res.string.reflect_children_day_plan),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
-            )
-            if (doneItems.isEmpty()) {
-                Text(
-                    text = stringResource(Res.string.reflect_day_empty_plan),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            } else {
-                doneItems.take(5).forEach { item ->
-                    Text(
-                        text = item.title,
-                        style = MaterialTheme.typography.bodySmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-            if (dayJournals.isNotEmpty()) {
-                Text(
-                    text = stringResource(Res.string.reflect_children_checkins, dayJournals.size),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                dayJournals.take(3).forEach { entry ->
-                    Text(
-                        text = entry.content,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }

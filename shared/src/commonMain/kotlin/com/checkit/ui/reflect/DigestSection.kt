@@ -3,6 +3,7 @@ package com.checkit.ui.reflect
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -52,8 +53,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import checkit.shared.generated.resources.Res
-import checkit.shared.generated.resources.weekly_digest_empty
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
@@ -65,50 +64,40 @@ import com.checkit.ui.tasks.cardColor
 import com.checkit.ui.tasks.toDurationLabel
 import com.checkit.ui.theme.toColor
 import kotlinx.datetime.LocalDate
-import org.jetbrains.compose.resources.stringResource
 import kotlin.math.abs
 
 @Composable
 internal fun DigestCards(
     digest: DigestReportSummary,
     selectedDate: LocalDate,
-    selectedPeriod: ReportPeriod
+    selectedPeriod: ReportPeriod,
+    onZoomInTo: (LocalDate) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        if (digest.totalItemCount == 0) {
-            EmptyDigestCard()
-            if (selectedPeriod == ReportPeriod.Daily) {
-                ActivityChart(
-                    items = digest.activityItems,
-                    selectedDate = selectedDate,
-                    selectedPeriod = selectedPeriod
-                )
-            }
-        } else {
-            HeroSummaryCard(
-                totalMinutes = digest.totalMinutes,
-                previousTotalMinutes = digest.previousTotalMinutes,
-                selectedPeriod = selectedPeriod,
-                trendItems = digest.trendItems,
-                progressItems = digest.progressItems,
-                doneCount = digest.doneItemCount,
-                plannedCount = digest.plannedItemCount,
-                journalCount = digest.journalCount
-            )
-            ActivityChart(
-                items = digest.activityItems,
-                selectedDate = selectedDate,
+        HeroSummaryCard(
+            totalMinutes = digest.totalMinutes,
+            previousTotalMinutes = digest.previousTotalMinutes,
+            selectedPeriod = selectedPeriod,
+            trendItems = digest.trendItems,
+            progressItems = digest.progressItems,
+            doneCount = digest.doneItemCount,
+            plannedCount = digest.plannedItemCount,
+            journalCount = digest.journalCount
+        )
+        ActivityChart(
+            items = digest.activityItems,
+            selectedDate = selectedDate,
+            selectedPeriod = selectedPeriod,
+            onZoomInTo = onZoomInTo
+        )
+        if (digest.topTags.isNotEmpty()) {
+            TopTagsCard(items = digest.topTags)
+        }
+        if (digest.highlights.isNotEmpty()) {
+            CompletedHighlightsCard(
+                highlights = digest.highlights,
                 selectedPeriod = selectedPeriod
             )
-            if (digest.topTags.isNotEmpty()) {
-                TopTagsCard(items = digest.topTags)
-            }
-            if (digest.highlights.isNotEmpty()) {
-                CompletedHighlightsCard(
-                    highlights = digest.highlights,
-                    selectedPeriod = selectedPeriod
-                )
-            }
         }
     }
 }
@@ -217,6 +206,7 @@ private fun ActivityChart(
     items: List<TimeReportItem>,
     selectedDate: LocalDate,
     selectedPeriod: ReportPeriod,
+    onZoomInTo: (LocalDate) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val maxMinutes = remember(items) { items.maxOfOrNull { it.totalMinutes } ?: 0 }
@@ -266,6 +256,7 @@ private fun ActivityChart(
                             else -> item.totalMinutes == maxMinutes && maxMinutes > 0
                         },
                         label = item.startDate.activityLabel(selectedPeriod),
+                        onClick = { onZoomInTo(item.startDate) },
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -319,6 +310,7 @@ private fun ActivityBar(
     selected: Boolean,
     showValue: Boolean,
     label: String,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val fraction = if (maxMinutes == 0) 0f else item.totalMinutes.toFloat() / maxMinutes.toFloat()
@@ -327,7 +319,7 @@ private fun ActivityBar(
     val dayColor = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
 
     Column(
-        modifier = modifier,
+        modifier = modifier.clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Bottom
     ) {
@@ -692,24 +684,6 @@ internal fun EmptyHabitsCard(modifier: Modifier = Modifier) {
         )
     }
 }
-
-@Composable
-private fun EmptyDigestCard(modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = CardDefaults.outlinedCardBorder()
-    ) {
-        Text(
-            text = stringResource(Res.string.weekly_digest_empty),
-            modifier = Modifier.padding(22.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
 
 @Composable
 internal fun TagReportBarRow(
