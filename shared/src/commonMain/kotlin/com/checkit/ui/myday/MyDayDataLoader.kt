@@ -39,7 +39,7 @@ internal class MyDayDataLoader(
                 deps.observeTaskBoard(),
                 deps.observeDailyPlans(),
                 deps.settingsRepository.settings,
-                deps.observeDayReviews(),
+                deps.observePeriodReviews(),
                 deps.observeJournalEntries()
             ) { board, dailyPlans, settings, dayReviews, journalEntries ->
                 ReviewCombined(board, dailyPlans, settings, dayReviews, journalEntries)

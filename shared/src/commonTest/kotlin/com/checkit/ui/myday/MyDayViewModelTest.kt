@@ -74,7 +74,7 @@ class MyDayViewModelTest {
         val observeTaskBoard = ObserveTaskBoardUseCase(repository)
         val observeDailyPlans = ObserveDailyPlansUseCase(repository)
         val observeJournalEntries = ObserveJournalEntriesUseCase(repository)
-        val observeDayReviews = ObservePeriodReviewsUseCase(repository)
+        val observePeriodReviews = ObservePeriodReviewsUseCase(repository)
         val syncKeyResult = SyncKeyResultFromDailyPlanUseCase(repository)
         val addTaskToDailyPlan = AddTaskToDailyPlanUseCase(repository)
         val updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository)
@@ -96,7 +96,7 @@ class MyDayViewModelTest {
                 dispatcher = dispatcher
             ),
             carryOverDailyPlanItems = carryOver,
-            observeDayReviews = observeDayReviews,
+            observePeriodReviews = observePeriodReviews,
             upsertDailyPlanItem = UpsertDailyPlanItemUseCase(repository, syncKeyResult),
             addSuggestedTaskToMyDay = AddSuggestedTaskToMyDayUseCase(
                 repository = repository,

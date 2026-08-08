@@ -107,7 +107,6 @@
     <string name="reflect_children_day_plan">每日计划</string>
     <string name="reflect_day_empty_plan">还没有已完成的事项。</string>
     <string name="reflect_children_checkins">%1$d 个签到</string>
-    <string name="journal_agenda_review_title">每日回顾</string>
     <string name="journal_agenda_review_card_title">回顾 · 第 %1$d 天</string>
 
     <string name="settings_title">设置</string>

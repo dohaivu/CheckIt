@@ -33,7 +33,7 @@ internal class MyDayDependencies(
     val buildDayCloseSummary: BuildDayCloseSummaryUseCase,
     val completeDayClose: CompleteDayCloseUseCase,
     val carryOverDailyPlanItems: CarryOverDailyPlanItemsUseCase,
-    val observeDayReviews: ObservePeriodReviewsUseCase,
+    val observePeriodReviews: ObservePeriodReviewsUseCase,
     val upsertDailyPlanItem: UpsertDailyPlanItemUseCase,
     val addSuggestedTaskToMyDay: AddSuggestedTaskToMyDayUseCase,
     val syncKeyResultFromDailyPlan: SyncKeyResultFromDailyPlanUseCase,

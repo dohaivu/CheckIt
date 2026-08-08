@@ -28,7 +28,7 @@ import kotlinx.datetime.plus
 class CalendarViewModel(
     private val observeTaskBoard: ObserveTaskBoardUseCase,
     private val observeDailyPlans: ObserveDailyPlansUseCase,
-    private val observeDayReviews: ObservePeriodReviewsUseCase,
+    private val observePeriodReviews: ObservePeriodReviewsUseCase,
     private val observeJournalEntries: ObserveJournalEntriesUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(CalendarUiState())
@@ -39,7 +39,7 @@ class CalendarViewModel(
             combine(
                 observeTaskBoard(),
                 observeDailyPlans(),
-                observeDayReviews(),
+                observePeriodReviews(),
                 observeJournalEntries()
             ) { board, dailyPlans, periodReviews, journalEntries ->
                 CalendarCombined(board, dailyPlans, periodReviews, journalEntries)

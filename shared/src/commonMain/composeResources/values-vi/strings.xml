@@ -107,7 +107,6 @@
     <string name="reflect_children_day_plan">Kế hoạch ngày</string>
     <string name="reflect_day_empty_plan">Chưa có hạng mục hoàn thành nào.</string>
     <string name="reflect_children_checkins">%1$d check-in</string>
-    <string name="journal_agenda_review_title">Đánh giá ngày</string>
     <string name="journal_agenda_review_card_title">Đánh giá · ngày %1$d</string>
 
     <string name="settings_title">Cài đặt</string>

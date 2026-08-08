@@ -108,7 +108,6 @@
     <string name="reflect_children_day_plan">Day plan</string>
     <string name="reflect_day_empty_plan">No finished plan items yet.</string>
     <string name="reflect_children_checkins">%1$d check-ins</string>
-    <string name="journal_agenda_review_title">Day reviews</string>
     <string name="journal_agenda_review_card_title">Review · day %1$d</string>
 
     <string name="settings_title">Settings</string>
