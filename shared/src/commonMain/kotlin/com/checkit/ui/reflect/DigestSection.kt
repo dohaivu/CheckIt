@@ -67,43 +67,7 @@ import kotlinx.datetime.LocalDate
 import kotlin.math.abs
 
 @Composable
-internal fun DigestCards(
-    digest: DigestReportSummary,
-    selectedDate: LocalDate,
-    selectedPeriod: ReportPeriod,
-    onZoomInTo: (LocalDate) -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        HeroSummaryCard(
-            totalMinutes = digest.totalMinutes,
-            previousTotalMinutes = digest.previousTotalMinutes,
-            selectedPeriod = selectedPeriod,
-            trendItems = digest.trendItems,
-            progressItems = digest.progressItems,
-            doneCount = digest.doneItemCount,
-            plannedCount = digest.plannedItemCount,
-            journalCount = digest.journalCount
-        )
-        ActivityChart(
-            items = digest.activityItems,
-            selectedDate = selectedDate,
-            selectedPeriod = selectedPeriod,
-            onZoomInTo = onZoomInTo
-        )
-        if (digest.topTags.isNotEmpty()) {
-            TopTagsCard(items = digest.topTags)
-        }
-        if (digest.highlights.isNotEmpty()) {
-            CompletedHighlightsCard(
-                highlights = digest.highlights,
-                selectedPeriod = selectedPeriod
-            )
-        }
-    }
-}
-
-@Composable
-private fun HeroSummaryCard(
+internal fun HeroSummaryCard(
     totalMinutes: Int,
     previousTotalMinutes: Int,
     selectedPeriod: ReportPeriod,
@@ -202,7 +166,7 @@ private fun HeroSummaryCard(
 }
 
 @Composable
-private fun ActivityChart(
+internal fun ActivityChart(
     items: List<TimeReportItem>,
     selectedDate: LocalDate,
     selectedPeriod: ReportPeriod,
@@ -361,7 +325,7 @@ private fun ActivityBar(
 }
 
 @Composable
-private fun CompletedHighlightsCard(
+internal fun CompletedHighlightsCard(
     highlights: List<DigestHighlight>,
     selectedPeriod: ReportPeriod,
     modifier: Modifier = Modifier
@@ -624,7 +588,7 @@ private fun MiniTrendLine(
 }
 
 @Composable
-private fun TopTagsCard(
+internal fun TopTagsCard(
     items: List<TagReportItem>,
     modifier: Modifier = Modifier
 ) {

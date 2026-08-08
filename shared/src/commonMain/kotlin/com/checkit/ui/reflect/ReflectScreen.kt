@@ -129,8 +129,7 @@ internal fun ReflectScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(top = padding.calculateTopPadding())
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 12.dp, vertical = 12.dp),
+                .padding(horizontal = 12.dp, vertical = 0.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             ReportPeriodHeader(
@@ -144,38 +143,68 @@ internal fun ReflectScreen(
                 periods = ReflectPeriods
             )
 
-            when (state.selectedPeriod) {
-                ReportPeriod.Habit -> {
-                    val checkins = state.habitCheckins
-                    if (checkins.isEmpty()) {
-                        EmptyHabitsCard()
-                    } else {
-                        HabitHeatmapSection(checkins = checkins, monthCount = 2)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+
+                when (state.selectedPeriod) {
+                    ReportPeriod.Habit -> {
+                        val checkins = state.habitCheckins
+                        if (checkins.isEmpty()) {
+                            EmptyHabitsCard()
+                        } else {
+                            HabitHeatmapSection(checkins = checkins, monthCount = 2)
+                        }
                     }
-                }
-                ReportPeriod.Daily,
-                ReportPeriod.Week,
-                ReportPeriod.Month,
-                ReportPeriod.Annual -> {
-                    val digest = remember(state.selectedPeriod, state.selectedDate, state.dailyPlans) {
-                        state.digestReport
+
+                    ReportPeriod.Daily,
+                    ReportPeriod.Week,
+                    ReportPeriod.Month,
+                    ReportPeriod.Annual -> {
+                        val digest = remember(state.selectedPeriod, state.selectedDate, state.dailyPlans) {
+                            state.digestReport
+                        }
+                        HeroSummaryCard(
+                            totalMinutes = digest.totalMinutes,
+                            previousTotalMinutes = digest.previousTotalMinutes,
+                            selectedPeriod = state.selectedPeriod,
+                            trendItems = digest.trendItems,
+                            progressItems = digest.progressItems,
+                            doneCount = digest.doneItemCount,
+                            plannedCount = digest.plannedItemCount,
+                            journalCount = digest.journalCount
+                        )
+                        ActivityChart(
+                            items = digest.activityItems,
+                            selectedDate = state.selectedDate,
+                            selectedPeriod = state.selectedPeriod,
+                            onZoomInTo = viewModel::zoomInTo
+                        )
+                        if (digest.topTags.isNotEmpty()) {
+                            TopTagsCard(items = digest.topTags)
+                        }
+                        if (digest.highlights.isNotEmpty()) {
+                            CompletedHighlightsCard(
+                                highlights = digest.highlights,
+                                selectedPeriod = state.selectedPeriod
+                            )
+                        }
+                        ReviewCard(
+                            state = state,
+                            onOpenEditor = viewModel::openEditor,
+                            onGenerateDraft = viewModel::generateDraft
+                        )
+                        ReviewsSection(
+                            reviews = state.reviewsForSelectedPeriod,
+                            selectedPeriod = state.selectedPeriod,
+                            onOpenReview = viewModel::openReview
+                        )
                     }
-                    DigestCards(
-                        digest = digest,
-                        selectedDate = state.selectedDate,
-                        selectedPeriod = state.selectedPeriod,
-                        onZoomInTo = viewModel::zoomInTo
-                    )
-                    ReviewCard(
-                        state = state,
-                        onOpenEditor = viewModel::openEditor,
-                        onGenerateDraft = viewModel::generateDraft
-                    )
-                    ReviewsSection(
-                        reviews = state.reviewsForSelectedPeriod,
-                        selectedPeriod = state.selectedPeriod,
-                        onOpenReview = viewModel::openReview
-                    )
                 }
             }
         }
