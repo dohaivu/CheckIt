@@ -35,20 +35,20 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.cancel
-import checkit.shared.generated.resources.day_review_action_carry
-import checkit.shared.generated.resources.day_review_action_done
-import checkit.shared.generated.resources.day_review_action_drop
-import checkit.shared.generated.resources.day_review_done_count
-import checkit.shared.generated.resources.day_review_done_minutes
-import checkit.shared.generated.resources.day_review_finish
-import checkit.shared.generated.resources.day_review_leftovers_empty
-import checkit.shared.generated.resources.day_review_leftovers_title
-import checkit.shared.generated.resources.day_review_planned_count
-import checkit.shared.generated.resources.day_review_title
-import checkit.shared.generated.resources.day_review_win_note_label
-import checkit.shared.generated.resources.day_review_win_note_placeholder
+import checkit.shared.generated.resources.day_close_action_carry
+import checkit.shared.generated.resources.day_close_action_done
+import checkit.shared.generated.resources.day_close_action_drop
+import checkit.shared.generated.resources.day_close_done_count
+import checkit.shared.generated.resources.day_close_done_minutes
+import checkit.shared.generated.resources.day_close_finish
+import checkit.shared.generated.resources.day_close_leftovers_empty
+import checkit.shared.generated.resources.day_close_leftovers_title
+import checkit.shared.generated.resources.day_close_planned_count
+import checkit.shared.generated.resources.day_close_title
+import checkit.shared.generated.resources.day_close_win_note_label
+import checkit.shared.generated.resources.day_close_win_note_placeholder
 import com.checkit.domain.DailyPlanItem
-import com.checkit.domain.DayReviewTagMinutes
+import com.checkit.domain.DayCloseTagMinutes
 import com.checkit.domain.LeftoverAction
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppHorizontalDivider
@@ -63,8 +63,8 @@ import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun DayReviewSheet(
-    state: DayReviewUiState,
+internal fun DayCloseSheet(
+    state: DayCloseUiState,
     onDismiss: () -> Unit,
     onLeftoverAction: (Long, LeftoverAction) -> Unit,
     onWinNoteChange: (String) -> Unit,
@@ -87,7 +87,7 @@ internal fun DayReviewSheet(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                text = stringResource(Res.string.day_review_title),
+                text = stringResource(Res.string.day_close_title),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.SemiBold
             )
@@ -121,7 +121,7 @@ internal fun DayReviewSheet(
 
                 item {
                     Text(
-                        text = stringResource(Res.string.day_review_leftovers_title),
+                        text = stringResource(Res.string.day_close_leftovers_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -129,7 +129,7 @@ internal fun DayReviewSheet(
                 if (leftoverItems.isEmpty()) {
                     item {
                         Text(
-                            text = stringResource(Res.string.day_review_leftovers_empty),
+                            text = stringResource(Res.string.day_close_leftovers_empty),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -166,7 +166,7 @@ internal fun DayReviewSheet(
                 onClick = onConfirm,
                 enabled = !state.isSubmitting
             ) {
-                Text(stringResource(Res.string.day_review_finish))
+                Text(stringResource(Res.string.day_close_finish))
             }
         }
     }
@@ -182,7 +182,7 @@ private fun ReflectionSection(
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
-            text = stringResource(Res.string.day_review_win_note_label),
+            text = stringResource(Res.string.day_close_win_note_label),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -195,7 +195,7 @@ private fun ReflectionSection(
 //        RichTextComposer(
 //            value = value,
 //            onValueChange = onValueChange,
-//            placeholder = stringResource(Res.string.day_review_win_note_placeholder),
+//            placeholder = stringResource(Res.string.day_close_win_note_placeholder),
 //            modifier = Modifier.fillMaxWidth(),
 //            enabled = enabled
 //        )
@@ -208,7 +208,7 @@ private fun ReflectionSection(
                 fontWeight = FontWeight.Normal
             ),
             modifier = Modifier.fillMaxWidth(),
-            placeholder = stringResource(Res.string.day_review_win_note_placeholder),
+            placeholder = stringResource(Res.string.day_close_win_note_placeholder),
             minLines = 4,
             maxLines = 8,
             enabled = enabled
@@ -245,14 +245,14 @@ private fun TomorrowGoalSection(
 }
 
 @Composable
-private fun SummaryAndTagsRow(state: DayReviewUiState) {
+private fun SummaryAndTagsRow(state: DayCloseUiState) {
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        SummaryChip(label = stringResource(Res.string.day_review_done_count, state.summary.doneCount))
-        SummaryChip(label = stringResource(Res.string.day_review_planned_count, state.summary.plannedCount))
-        SummaryChip(label = stringResource(Res.string.day_review_done_minutes, state.summary.doneMinutes))
+        SummaryChip(label = stringResource(Res.string.day_close_done_count, state.summary.doneCount))
+        SummaryChip(label = stringResource(Res.string.day_close_planned_count, state.summary.plannedCount))
+        SummaryChip(label = stringResource(Res.string.day_close_done_minutes, state.summary.doneMinutes))
         
         if (state.streak > 0) {
             SummaryChip(label = "${state.streak}-day review streak")
@@ -265,7 +265,7 @@ private fun SummaryAndTagsRow(state: DayReviewUiState) {
 }
 
 @Composable
-private fun TagChip(tag: DayReviewTagMinutes) {
+private fun TagChip(tag: DayCloseTagMinutes) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -349,11 +349,11 @@ private fun LeftoverReviewRow(
                         Text(
                             when (option) {
                                 LeftoverAction.MarkDone ->
-                                    stringResource(Res.string.day_review_action_done)
+                                    stringResource(Res.string.day_close_action_done)
                                 LeftoverAction.CarryOver ->
-                                    stringResource(Res.string.day_review_action_carry)
+                                    stringResource(Res.string.day_close_action_carry)
                                 LeftoverAction.Drop ->
-                                    stringResource(Res.string.day_review_action_drop)
+                                    stringResource(Res.string.day_close_action_drop)
                                 LeftoverAction.None -> error("None is filtered out")
                             }
                         )

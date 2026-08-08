@@ -52,52 +52,41 @@ enum class CarryOverTimePolicy {
     KeepTimes
 }
 
-data class DayReviewTagMinutes(
+data class DayCloseTagMinutes(
     val tagId: Long,
     val name: String,
     val color: String,
     val totalMinutes: Int
 )
 
-data class DayReviewSummary(
+data class DayCloseSummary(
     val date: LocalDate,
     val doneCount: Int,
     val plannedCount: Int,
     val doneMinutes: Int,
     val plannedItems: List<DailyPlanItem>,
     val doneItems: List<DailyPlanItem>,
-    val topTags: List<DayReviewTagMinutes>,
+    val topTags: List<DayCloseTagMinutes>,
     /** Items already resolved (e.g. carried to tomorrow) by an earlier review; still re-decidable. */
     val alreadyCarriedItems: List<DailyPlanItem> = emptyList()
 )
 
-data class DayReviewConfirmInput(
+data class DayCloseConfirmInput(
     val date: LocalDate,
     val leftoverActions: Map<Long, LeftoverAction>,
     val winNote: String? = null,
     val tomorrowGoal: String? = null
 )
 
-data class DayReviewConfirmResult(
+data class DayCloseConfirmResult(
     val markedDoneCount: Int,
     val carriedCount: Int,
     val droppedCount: Int,
     val winNoteSaved: Boolean
 )
 
-/** Per-day review record, the single source of truth for wins, goals and history. */
-data class DayReviewRecord(
-    val date: LocalDate,
-    val doneCount: Int,
-    val plannedCount: Int,
-    val doneMinutes: Int,
-    val winNote: String = "",
-    val tomorrowGoal: String = "",
-    val completedAtMillis: Long
-)
-
 /** Outcome of persisting a complete day review. */
-data class DayReviewCommitResult(
+data class DayCloseCommitResult(
     val carriedCount: Int,
     val skippedCount: Int
 )
@@ -107,8 +96,11 @@ object ReviewStreakPolicy {
      * Number of consecutive days (ending today) with a completed review.
      * If today is not yet reviewed, the streak is measured from yesterday.
      */
-    fun currentStreak(records: List<DayReviewRecord>, fromDate: LocalDate): Int {
-        val dates = records.map { it.date }.toSet()
+    fun currentStreak(records: List<PeriodReview>, fromDate: LocalDate): Int {
+        val dates = records
+            .filter { it.period == ReviewPeriod.Day }
+            .map { it.periodStartDate }
+            .toSet()
         val start = if (fromDate in dates) fromDate else fromDate.minus(1, DateTimeUnit.DAY)
         var streak = 0
         var cursor = start
@@ -127,18 +119,18 @@ data class CarryOverResult(
 )
 
 /** Banner / auto-prompt rules for day review. */
-object DayReviewBannerPolicy {
+object DayCloseBannerPolicy {
     fun shouldShow(
         hasPlanItems: Boolean,
         reviewReminderEnabled: Boolean,
         reviewReminderTimeMinutes: Int,
-        lastDayReviewEpochDay: Int?,
+        lastDayCloseEpochDay: Int?,
         todayEpochDay: Int,
         nowMinutes: Int
     ): Boolean {
         if (!hasPlanItems) return false
         if (!reviewReminderEnabled) return false
-        if (lastDayReviewEpochDay == todayEpochDay) return false
+        if (lastDayCloseEpochDay == todayEpochDay) return false
         val threshold = reviewReminderTimeMinutes.coerceIn(0, MinutesPerDay - 1)
         return nowMinutes >= threshold
     }

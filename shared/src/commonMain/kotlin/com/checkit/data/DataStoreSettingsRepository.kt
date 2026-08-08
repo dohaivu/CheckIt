@@ -68,8 +68,8 @@ class DataStoreSettingsRepository(
         dataStore.setAutoMyDayLastRunEpochDay(epochDay)
     }
 
-    override suspend fun setLastDayReviewEpochDay(epochDay: Int) {
-        dataStore.setLastDayReviewEpochDay(epochDay)
+    override suspend fun setLastDayCloseEpochDay(epochDay: Int) {
+        dataStore.setLastDayCloseEpochDay(epochDay)
     }
 
     override suspend fun setAutoCarryOverLeftovers(enabled: Boolean) {

@@ -16,7 +16,7 @@ import com.checkit.ui.CheckItApp
 import com.checkit.widget.ExtraDailyPlanItemId
 import com.checkit.widget.ExtraNoteId
 import com.checkit.widget.ExtraOpenCheckIn
-import com.checkit.widget.ExtraOpenDayReview
+import com.checkit.widget.ExtraOpenDayClose
 import com.checkit.widget.ExtraOpenMyDaySuggestions
 import com.checkit.widget.ExtraOpenNewJournalEntry
 import com.checkit.widget.ExtraOpenPlanAssist
@@ -30,7 +30,7 @@ class MainActivity : ComponentActivity() {
     private val taskLaunchId = mutableStateOf<Long?>(null)
     private val noteLaunchId = mutableStateOf<Long?>(null)
     private val openMyDaySuggestionsLaunch = mutableStateOf(false)
-    private val openDayReviewLaunch = mutableStateOf(false)
+    private val openDayCloseLaunch = mutableStateOf(false)
     private val openPlanAssistLaunch = mutableStateOf(false)
     private val openCheckInLaunch = mutableStateOf(false)
     private val openNewJournalEntryLaunch = mutableStateOf(false)
@@ -56,7 +56,7 @@ class MainActivity : ComponentActivity() {
                 taskLaunchId = taskLaunchId.value,
                 noteLaunchId = noteLaunchId.value,
                 openMyDaySuggestionsLaunch = openMyDaySuggestionsLaunch.value,
-                openDayReviewLaunch = openDayReviewLaunch.value,
+                openDayCloseLaunch = openDayCloseLaunch.value,
                 openPlanAssistLaunch = openPlanAssistLaunch.value,
                 openCheckInLaunch = openCheckInLaunch.value,
                 openNewJournalEntryLaunch = openNewJournalEntryLaunch.value,
@@ -93,7 +93,7 @@ class MainActivity : ComponentActivity() {
         taskLaunchId.value = intent.longExtraOrNull(ExtraTaskId)
         noteLaunchId.value = intent.longExtraOrNull(ExtraNoteId)
         openMyDaySuggestionsLaunch.value = intent.getBooleanExtra(ExtraOpenMyDaySuggestions, false)
-        openDayReviewLaunch.value = intent.getBooleanExtra(ExtraOpenDayReview, false)
+        openDayCloseLaunch.value = intent.getBooleanExtra(ExtraOpenDayClose, false)
         openPlanAssistLaunch.value = intent.getBooleanExtra(ExtraOpenPlanAssist, false)
         openCheckInLaunch.value = intent.getBooleanExtra(ExtraOpenCheckIn, false)
         openNewJournalEntryLaunch.value = intent.getBooleanExtra(ExtraOpenNewJournalEntry, false)
@@ -114,7 +114,7 @@ class MainActivity : ComponentActivity() {
         taskLaunchId.value = null
         noteLaunchId.value = null
         openMyDaySuggestionsLaunch.value = false
-        openDayReviewLaunch.value = false
+        openDayCloseLaunch.value = false
         openPlanAssistLaunch.value = false
         openCheckInLaunch.value = false
         openNewJournalEntryLaunch.value = false

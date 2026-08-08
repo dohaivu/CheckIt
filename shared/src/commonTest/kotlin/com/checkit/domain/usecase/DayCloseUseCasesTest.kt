@@ -5,10 +5,12 @@ import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
-import com.checkit.domain.DayReviewBannerPolicy
-import com.checkit.domain.DayReviewConfirmInput
-import com.checkit.domain.DayReviewRecord
+import com.checkit.domain.DayCloseBannerPolicy
+import com.checkit.domain.DayCloseConfirmInput
 import com.checkit.domain.LeftoverAction
+import com.checkit.domain.PeriodReview
+import com.checkit.domain.ReviewPeriod
+import com.checkit.domain.ReviewStatus
 import com.checkit.domain.ReviewStreakPolicy
 import com.checkit.domain.TagItem
 import com.checkit.domain.defaultLeftoverAction
@@ -25,10 +27,10 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-class DayReviewUseCasesTest {
+class DayCloseUseCasesTest {
     private val date = LocalDate(2026, 7, 9)
     private val tomorrow = LocalDate(2026, 7, 10)
-    private val buildSummary = BuildDayReviewSummaryUseCase(Dispatchers.Unconfined)
+    private val buildSummary = BuildDayCloseSummaryUseCase(Dispatchers.Unconfined)
 
     @Test
     fun summaryCountsMinutesAndTopTags() = runTest {
@@ -202,7 +204,7 @@ class DayReviewUseCasesTest {
     fun completeReviewTwiceDoesNotDuplicateCarryOrGoalRecord() = runTest {
         val repository = FakeCheckItRepository()
         val settings = FakeSettingsRepository()
-        val complete = CompleteDayReviewUseCase(
+        val complete = CompleteDayCloseUseCase(
             repository = repository,
             settingsRepository = settings,
             buildSummary = buildSummary,
@@ -212,7 +214,7 @@ class DayReviewUseCasesTest {
         val plan = DailyPlan(date = date, items = listOf(planned))
         repository.setDailyPlans(listOf(plan))
 
-        val input = DayReviewConfirmInput(
+        val input = DayCloseConfirmInput(
             date = date,
             leftoverActions = mapOf(1L to LeftoverAction.CarryOver),
             tomorrowGoal = "Ship the review"
@@ -228,15 +230,15 @@ class DayReviewUseCasesTest {
         assertEquals(1, tomorrowPlan.items.size)
         assertEquals(1, tomorrowPlan.items.count { it.carriedFromItemId == 1L })
 
-        val record = assertNotNull(repository.dayReviewForDate(date))
-        assertEquals("Ship the review", record.tomorrowGoal)
+        val record = assertNotNull(repository.periodReviewFor(ReviewPeriod.Day, date))
+        assertEquals("Ship the review", record.intentNext)
     }
 
     @Test
     fun completeReviewAppliesActionsAndPersistsWinNote() = runTest {
         val repository = FakeCheckItRepository()
         val settings = FakeSettingsRepository()
-        val complete = CompleteDayReviewUseCase(
+        val complete = CompleteDayCloseUseCase(
             repository = repository,
             settingsRepository = settings,
             buildSummary = buildSummary,
@@ -257,7 +259,7 @@ class DayReviewUseCasesTest {
 
         val result = complete(
             plan = plan,
-            input = DayReviewConfirmInput(
+            input = DayCloseConfirmInput(
                 date = date,
                 leftoverActions = mapOf(
                     1L to LeftoverAction.MarkDone,
@@ -276,16 +278,16 @@ class DayReviewUseCasesTest {
         assertEquals(1, repository.copiedDailyPlanItems.size)
         assertTrue(repository.addedManualDailyPlanItems.isEmpty())
         assertTrue(repository.markedHandledItemIds.containsAll(listOf(1L, 2L, 3L)))
-        val record = assertNotNull(repository.dayReviewForDate(date))
-        assertEquals("Shipped review", record.winNote)
-        assertEquals(date.toEpochDays().toInt(), settings.currentSettings().lastDayReviewEpochDay)
+        val record = assertNotNull(repository.periodReviewFor(ReviewPeriod.Day, date))
+        assertEquals("Shipped review", record.content)
+        assertEquals(date.toEpochDays().toInt(), settings.currentSettings().lastDayCloseEpochDay)
     }
 
     @Test
     fun completeReviewLeavesNoneItemsUntouched() = runTest {
         val repository = FakeCheckItRepository()
         val settings = FakeSettingsRepository()
-        val complete = CompleteDayReviewUseCase(
+        val complete = CompleteDayCloseUseCase(
             repository = repository,
             settingsRepository = settings,
             buildSummary = buildSummary,
@@ -298,7 +300,7 @@ class DayReviewUseCasesTest {
 
         val result = complete(
             plan = plan,
-            input = DayReviewConfirmInput(
+            input = DayCloseConfirmInput(
                 date = date,
                 leftoverActions = mapOf(1L to LeftoverAction.None, 2L to LeftoverAction.None)
             )
@@ -316,7 +318,7 @@ class DayReviewUseCasesTest {
     fun completeReviewCanReDecideAlreadyCarriedItem() = runTest {
         val repository = FakeCheckItRepository()
         val settings = FakeSettingsRepository()
-        val complete = CompleteDayReviewUseCase(
+        val complete = CompleteDayCloseUseCase(
             repository = repository,
             settingsRepository = settings,
             buildSummary = buildSummary,
@@ -333,7 +335,7 @@ class DayReviewUseCasesTest {
 
         val result = complete(
             plan = plan,
-            input = DayReviewConfirmInput(
+            input = DayCloseConfirmInput(
                 date = date,
                 leftoverActions = mapOf(5L to LeftoverAction.MarkDone)
             )
@@ -348,7 +350,7 @@ class DayReviewUseCasesTest {
     fun completeReviewClearsBlankWinNoteFromRecord() = runTest {
         val repository = FakeCheckItRepository()
         val settings = FakeSettingsRepository()
-        val complete = CompleteDayReviewUseCase(
+        val complete = CompleteDayCloseUseCase(
             repository = repository,
             settingsRepository = settings,
             buildSummary = buildSummary,
@@ -359,7 +361,7 @@ class DayReviewUseCasesTest {
 
         val result = complete(
             plan = plan,
-            input = DayReviewConfirmInput(
+            input = DayCloseConfirmInput(
                 date = date,
                 leftoverActions = emptyMap(),
                 winNote = "   "
@@ -367,8 +369,8 @@ class DayReviewUseCasesTest {
         ).getOrThrow()
 
         assertFalse(result.winNoteSaved)
-        val record = assertNotNull(repository.dayReviewForDate(date))
-        assertEquals("", record.winNote)
+        val record = assertNotNull(repository.periodReviewFor(ReviewPeriod.Day, date))
+        assertEquals("", record.content)
     }
 
     @Test
@@ -448,62 +450,63 @@ class DayReviewUseCasesTest {
     @Test
     fun bannerPolicyRespectsTimeSettingsAndCompletion() {
         assertTrue(
-            DayReviewBannerPolicy.shouldShow(
+            DayCloseBannerPolicy.shouldShow(
                 hasPlanItems = true,
                 reviewReminderEnabled = true,
                 reviewReminderTimeMinutes = 21 * 60,
-                lastDayReviewEpochDay = null,
+                lastDayCloseEpochDay = null,
                 todayEpochDay = 10,
                 nowMinutes = 21 * 60
             )
         )
         assertFalse(
-            DayReviewBannerPolicy.shouldShow(
+            DayCloseBannerPolicy.shouldShow(
                 hasPlanItems = true,
                 reviewReminderEnabled = true,
                 reviewReminderTimeMinutes = 21 * 60,
-                lastDayReviewEpochDay = null,
+                lastDayCloseEpochDay = null,
                 todayEpochDay = 10,
                 nowMinutes = 20 * 60
             )
         )
         assertFalse(
-            DayReviewBannerPolicy.shouldShow(
+            DayCloseBannerPolicy.shouldShow(
                 hasPlanItems = true,
                 reviewReminderEnabled = true,
                 reviewReminderTimeMinutes = 21 * 60,
-                lastDayReviewEpochDay = 10,
+                lastDayCloseEpochDay = 10,
                 todayEpochDay = 10,
                 nowMinutes = 22 * 60
             )
         )
         assertFalse(
-            DayReviewBannerPolicy.shouldShow(
+            DayCloseBannerPolicy.shouldShow(
                 hasPlanItems = false,
                 reviewReminderEnabled = true,
                 reviewReminderTimeMinutes = 21 * 60,
-                lastDayReviewEpochDay = null,
+                lastDayCloseEpochDay = null,
                 todayEpochDay = 10,
                 nowMinutes = 22 * 60
             )
         )
         assertFalse(
-            DayReviewBannerPolicy.shouldShow(
+            DayCloseBannerPolicy.shouldShow(
                 hasPlanItems = true,
                 reviewReminderEnabled = false,
                 reviewReminderTimeMinutes = 21 * 60,
-                lastDayReviewEpochDay = null,
+                lastDayCloseEpochDay = null,
                 todayEpochDay = 10,
                 nowMinutes = 22 * 60
             )
         )
     }
 
-    private fun streakRecord(day: LocalDate) = DayReviewRecord(
-        date = day,
-        doneCount = 1,
-        plannedCount = 0,
-        doneMinutes = 0,
+    private fun streakRecord(day: LocalDate) = PeriodReview(
+        id = 0L,
+        period = ReviewPeriod.Day,
+        periodStartEpochDays = day.toEpochDays().toInt(),
+        periodEndEpochDays = day.toEpochDays().toInt() + 1,
+        status = ReviewStatus.Complete,
         completedAtMillis = 1L
     )
 

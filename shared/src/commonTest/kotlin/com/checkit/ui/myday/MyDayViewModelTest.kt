@@ -4,17 +4,19 @@ import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DailyPlanItemSource
-import com.checkit.domain.DayReviewRecord
+import com.checkit.domain.PeriodReview
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.LeftoverAction
+import com.checkit.domain.ReviewPeriod
+import com.checkit.domain.ReviewStatus
 import com.checkit.domain.TagItem
 import com.checkit.domain.usecase.AddDailyPlanItemUseCase
 import com.checkit.domain.usecase.AddJournalEntryUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
-import com.checkit.domain.usecase.BuildDayReviewSummaryUseCase
+import com.checkit.domain.usecase.BuildDayCloseSummaryUseCase
 import com.checkit.domain.usecase.CarryOverDailyPlanItemsUseCase
-import com.checkit.domain.usecase.CompleteDayReviewUseCase
-import com.checkit.domain.usecase.ObserveDayReviewsUseCase
+import com.checkit.domain.usecase.CompleteDayCloseUseCase
+import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.DeleteJournalEntryUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
@@ -67,12 +69,12 @@ class MyDayViewModelTest {
     }
 
     private fun createViewModel(): MyDayViewModel {
-        val buildSummary = BuildDayReviewSummaryUseCase(dispatcher)
+        val buildSummary = BuildDayCloseSummaryUseCase(dispatcher)
         val carryOver = CarryOverDailyPlanItemsUseCase(repository, dispatcher)
         val observeTaskBoard = ObserveTaskBoardUseCase(repository)
         val observeDailyPlans = ObserveDailyPlansUseCase(repository)
         val observeJournalEntries = ObserveJournalEntriesUseCase(repository)
-        val observeDayReviews = ObserveDayReviewsUseCase(repository)
+        val observeDayReviews = ObservePeriodReviewsUseCase(repository)
         val syncKeyResult = SyncKeyResultFromDailyPlanUseCase(repository)
         val addTaskToDailyPlan = AddTaskToDailyPlanUseCase(repository)
         val updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository)
@@ -86,8 +88,8 @@ class MyDayViewModelTest {
             deleteJournalEntry = DeleteJournalEntryUseCase(repository),
             deleteDailyPlanItemUseCase = DeleteDailyPlanItemUseCase(repository),
             settingsRepository = settingsRepository,
-            buildDayReviewSummary = buildSummary,
-            completeDayReview = CompleteDayReviewUseCase(
+            buildDayCloseSummary = buildSummary,
+            completeDayClose = CompleteDayCloseUseCase(
                 repository = repository,
                 settingsRepository = settingsRepository,
                 buildSummary = buildSummary,
@@ -126,26 +128,26 @@ class MyDayViewModelTest {
     }
 
     @Test
-    fun openDayReviewPrefillsExistingWinNoteFromHistory() = runTest(dispatcher) {
+    fun openDayClosePrefillsExistingWinNoteFromHistory() = runTest(dispatcher) {
         val today = today()
         repository.setDayReviews(
             listOf(
-                DayReviewRecord(
-                    date = today,
-                    doneCount = 1,
-                    plannedCount = 0,
-                    doneMinutes = 30,
-                    winNote = "Shipped the review loop",
+                PeriodReview(
+                    period = ReviewPeriod.Day,
+                    periodStartEpochDays = today.toEpochDays().toInt(),
+                    periodEndEpochDays = today.toEpochDays().toInt() + 1,
+                    content = "Shipped the review loop",
+                    status = ReviewStatus.Complete,
                     completedAtMillis = 1L
                 )
             )
         )
         dispatcher.scheduler.advanceUntilIdle()
 
-        viewModel.openDayReview()
+        viewModel.openDayClose()
         dispatcher.scheduler.advanceUntilIdle()
 
-        val review = viewModel.uiState.value.dayReview
+        val review = viewModel.uiState.value.dayClose
         assertNotNull(review)
         assertEquals("Shipped the review loop", review.winNote)
     }
@@ -301,7 +303,7 @@ class MyDayViewModelTest {
     }
 
     @Test
-    fun reOpenDayReviewExcludesAlreadyHandledItems() = runTest(dispatcher) {
+    fun reOpenDayCloseExcludesAlreadyHandledItems() = runTest(dispatcher) {
         val today = today()
         repository.setDailyPlans(
             listOf(
@@ -323,19 +325,19 @@ class MyDayViewModelTest {
         )
         dispatcher.scheduler.advanceUntilIdle()
 
-        viewModel.openDayReview()
+        viewModel.openDayClose()
         dispatcher.scheduler.advanceUntilIdle()
-        val first = viewModel.uiState.value.dayReview
+        val first = viewModel.uiState.value.dayClose
         assertNotNull(first)
         assertEquals(LeftoverAction.None, first.actionFor(first.summary.plannedItems.single()))
 
         viewModel.setLeftoverAction(7L, LeftoverAction.Drop)
-        viewModel.confirmDayReview()
+        viewModel.confirmDayClose()
         dispatcher.scheduler.advanceUntilIdle()
 
-        viewModel.openDayReview()
+        viewModel.openDayClose()
         dispatcher.scheduler.advanceUntilIdle()
-        val reopened = viewModel.uiState.value.dayReview
+        val reopened = viewModel.uiState.value.dayClose
         assertNotNull(reopened)
         assertTrue(reopened.summary.plannedItems.none { it.id == 7L })
         assertEquals(listOf(7L), reopened.summary.alreadyCarriedItems.map { it.id })
@@ -382,16 +384,16 @@ class MyDayViewModelTest {
         )
         dispatcher.scheduler.advanceUntilIdle()
 
-        viewModel.openDayReview()
+        viewModel.openDayClose()
         dispatcher.scheduler.advanceUntilIdle()
-        val reopened = viewModel.uiState.value.dayReview
+        val reopened = viewModel.uiState.value.dayClose
         assertNotNull(reopened)
         assertEquals(listOf(7L), reopened.summary.alreadyCarriedItems.map { it.id })
         assertEquals(LeftoverAction.CarryOver, reopened.actionFor(reopened.summary.alreadyCarriedItems.single()))
     }
 
     @Test
-    fun openDayReviewBeforeDataLoadUsesLatestPlanNotEmptyState() = runTest(dispatcher) {
+    fun openDayCloseBeforeDataLoadUsesLatestPlanNotEmptyState() = runTest(dispatcher) {
         val today = today()
         repository.setDailyPlans(
             listOf(
@@ -413,10 +415,10 @@ class MyDayViewModelTest {
         )
         // Notification tap on cold start: a fresh ViewModel whose loader has not emitted yet.
         val coldStartViewModel = createViewModel()
-        coldStartViewModel.openDayReview()
+        coldStartViewModel.openDayClose()
         dispatcher.scheduler.advanceUntilIdle()
 
-        val review = coldStartViewModel.uiState.value.dayReview
+        val review = coldStartViewModel.uiState.value.dayClose
         assertNotNull(review)
         assertEquals(listOf("Real item"), review.summary.plannedItems.map { it.title })
     }

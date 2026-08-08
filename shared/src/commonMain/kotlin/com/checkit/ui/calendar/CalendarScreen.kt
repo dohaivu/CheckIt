@@ -48,6 +48,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -60,9 +61,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import checkit.shared.generated.resources.Res
+import checkit.shared.generated.resources.calendar_review_empty
+import checkit.shared.generated.resources.calendar_review_title
 import checkit.shared.generated.resources.calendar_title
+import checkit.shared.generated.resources.calendar_open_review
+import checkit.shared.generated.resources.calendar_write_review
 import checkit.shared.generated.resources.relative_today
 import checkit.shared.generated.resources.relative_yesterday
 import com.checkit.domain.DailyPlan
@@ -70,6 +76,7 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.NoteItem
+import com.checkit.domain.PeriodReview
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.usecase.BuildDailyPlanMarkdownSummaryUseCase
@@ -110,6 +117,7 @@ internal fun CalendarScreen(
     onTaskClick: (TaskItem, DailyPlanItem?) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
     onNewTagClick: () -> Unit = {},
+    onOpenReflect: (LocalDate) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val today = today()
@@ -208,6 +216,12 @@ internal fun CalendarScreen(
                                 onJournalClick = { onJournalListClick(state.selectedDate) },
                                 winNote = state.selectedDateWinNote
                             )
+                            DayReviewCard(
+                                review = state.selectedDayReview,
+                                date = state.selectedDate,
+                                today = today,
+                                onOpenReflect = onOpenReflect
+                            )
                             if (selectedContent.showDailyPlan) {
                                 DayLinearTimeline(
                                     items = selectedContent.dailyPlanItems.filter { it.status == DailyPlanItemStatus.Done },
@@ -247,9 +261,14 @@ internal fun CalendarScreen(
         if (showJournalHistory) {
             JournalHistorySheet(
                 entries = state.journalEntries,
+                dayReviews = state.dayReviews,
                 onEntryClick = { entry ->
                     showJournalHistory = false
                     onJournalEntryClick(entry)
+                },
+                onReviewClick = { review ->
+                    showJournalHistory = false
+                    onOpenReflect(review.periodStartDate)
                 },
                 onDismiss = { showJournalHistory = false }
             )
@@ -389,6 +408,67 @@ private fun CalendarPeriodHeader(
         }
         IconButton(onClick = onNextPeriod) {
             Icon(Icons.Default.ChevronRight, contentDescription = "Next period")
+        }
+    }
+}
+
+@Composable
+private fun DayReviewCard(
+    review: PeriodReview?,
+    date: LocalDate,
+    today: LocalDate,
+    onOpenReflect: (LocalDate) -> Unit
+) {
+    val hasReview = review?.content?.isNotBlank() == true
+    if (!hasReview && date > today) return
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 2.dp),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.Notes,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(end = 8.dp)
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(Res.string.calendar_review_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+                if (hasReview) {
+                    Text(
+                        text = review.content,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                } else {
+                    Text(
+                        text = stringResource(Res.string.calendar_review_empty),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            TextButton(onClick = { onOpenReflect(date) }) {
+                Text(
+                    text = stringResource(
+                        if (hasReview) Res.string.calendar_open_review else Res.string.calendar_write_review
+                    )
+                )
+            }
         }
     }
 }

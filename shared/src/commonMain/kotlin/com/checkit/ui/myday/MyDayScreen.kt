@@ -53,9 +53,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import checkit.shared.generated.resources.Res
-import checkit.shared.generated.resources.day_review_banner_subtitle
-import checkit.shared.generated.resources.day_review_banner_title
-import checkit.shared.generated.resources.day_review_open
+import checkit.shared.generated.resources.day_close_banner_subtitle
+import checkit.shared.generated.resources.day_close_banner_title
+import checkit.shared.generated.resources.day_close_open
 import checkit.shared.generated.resources.leftovers_banner_carry_all
 import checkit.shared.generated.resources.leftovers_banner_dismiss
 import checkit.shared.generated.resources.leftovers_banner_review
@@ -128,10 +128,10 @@ internal fun MyDayScreen(
                             contentDescription = "Smart Schedule"
                         )
                     }
-                    IconButton(onClick = viewModel::openDayReview) {
+                    IconButton(onClick = viewModel::openDayClose) {
                         Icon(
                             Icons.Default.RateReview,
-                            contentDescription = stringResource(Res.string.day_review_open)
+                            contentDescription = stringResource(Res.string.day_close_open)
                         )
                     }
                     IconButton(onClick = viewModel::openSuggestions) {
@@ -185,8 +185,8 @@ internal fun MyDayScreen(
                         onDismiss = viewModel::dismissPlanAssist
                     )
                 }
-                if (state.showDayReviewBanner) {
-                    DayReviewBanner(onClick = viewModel::openDayReview)
+                if (state.showDayCloseBanner) {
+                    DayCloseBanner(onClick = viewModel::openDayClose)
                 }
 
                 MyDayViewSelector(
@@ -315,14 +315,14 @@ internal fun MyDayScreen(
         )
     }
 
-    state.dayReview?.let { review ->
-        DayReviewSheet(
+    state.dayClose?.let { review ->
+        DayCloseSheet(
             state = review,
-            onDismiss = viewModel::dismissDayReview,
+            onDismiss = viewModel::dismissDayClose,
             onLeftoverAction = viewModel::setLeftoverAction,
             onWinNoteChange = viewModel::updateWinNote,
             onTomorrowGoalChange = viewModel::updateTomorrowGoal,
-            onConfirm = viewModel::confirmDayReview
+            onConfirm = viewModel::confirmDayClose
         )
     }
 
@@ -364,7 +364,7 @@ private fun CelebrationOverlay(visible: Boolean) {
 }
 
 @Composable
-private fun DayReviewBanner(onClick: () -> Unit) {
+private fun DayCloseBanner(onClick: () -> Unit) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -395,12 +395,12 @@ private fun DayReviewBanner(onClick: () -> Unit) {
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = stringResource(Res.string.day_review_banner_title),
+                    text = stringResource(Res.string.day_close_banner_title),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = stringResource(Res.string.day_review_banner_subtitle),
+                    text = stringResource(Res.string.day_close_banner_subtitle),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                 )

@@ -4,8 +4,11 @@ import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
-import com.checkit.domain.DayReviewCommitResult
-import com.checkit.domain.DayReviewRecord
+import com.checkit.domain.DayCloseCommitResult
+import com.checkit.domain.PeriodReview
+import com.checkit.domain.ReviewPeriod
+import com.checkit.domain.ReviewSource
+import com.checkit.domain.ReviewStatus
 import com.checkit.domain.DueDatePreset
 import com.checkit.domain.Goal
 import com.checkit.domain.JournalEntry
@@ -87,13 +90,14 @@ interface CheckItRepository {
     suspend fun deleteDailyPlanItem(itemId: Long)
     suspend fun getDailyPlanItem(itemId: Long): DailyPlanItem?
     suspend fun dailyPlanForDate(date: LocalDate): DailyPlan?
-    fun observeDayReviews(): Flow<List<DayReviewRecord>>
-    suspend fun dayReviewForDate(date: LocalDate): DayReviewRecord?
+    fun observePeriodReviews(): Flow<List<PeriodReview>>
+    suspend fun periodReviewFor(period: ReviewPeriod, date: LocalDate): PeriodReview?
+    suspend fun savePeriodReview(review: PeriodReview)
     /**
      * Applies a complete evening review atomically.
      * @return result with carry/skip counts; goal note handling.
      */
-    suspend fun completeDayReview(
+    suspend fun completeDayClose(
         date: LocalDate,
         markDoneItemIds: List<Long>,
         carryItemIds: List<Long>,
@@ -105,7 +109,7 @@ interface CheckItRepository {
         doneMinutes: Int,
         targetDate: LocalDate,
         nowMillis: Long
-    ): DayReviewCommitResult
+    ): DayCloseCommitResult
     /**
      * Copies a plan item onto [targetDate] as Planned.
      * @return new item id, or null if skipped (same taskId already on that date,
@@ -749,13 +753,34 @@ class RoomCheckItRepository(
         return itemId
     }
 
-    override fun observeDayReviews(): Flow<List<DayReviewRecord>> =
-        dao.observeDayReviews().map { entities -> entities.map { it.toDomain() } }
+    override fun observePeriodReviews(): Flow<List<PeriodReview>> =
+        dao.observePeriodReviews().map { entities -> entities.map { it.toDomain() } }
 
-    override suspend fun dayReviewForDate(date: LocalDate): DayReviewRecord? =
-        dao.dayReviewForDate(date.toEpochDays().toInt())?.toDomain()
+    override suspend fun periodReviewFor(period: ReviewPeriod, date: LocalDate): PeriodReview? =
+        dao.periodReviewFor(period.name, date.toEpochDays().toInt())?.toDomain()
 
-    override suspend fun completeDayReview(
+    override suspend fun savePeriodReview(review: PeriodReview) {
+        dao.upsertPeriodReview(
+            PeriodReviewEntity(
+                id = review.id,
+                periodType = review.period.name,
+                periodStartEpochDays = review.periodStartEpochDays,
+                periodEndEpochDays = review.periodEndEpochDays,
+                title = review.title,
+                content = review.content,
+                highlightsJson = review.highlightsJson,
+                intentNext = review.intentNext,
+                source = review.source.name,
+                status = review.status.name,
+                completedAtMillis = review.completedAtMillis,
+                generatedAtMillis = review.generatedAtMillis,
+                editedAtMillis = review.editedAtMillis,
+                statsJson = review.statsJson
+            )
+        )
+    }
+
+    override suspend fun completeDayClose(
         date: LocalDate,
         markDoneItemIds: List<Long>,
         carryItemIds: List<Long>,
@@ -767,8 +792,8 @@ class RoomCheckItRepository(
         doneMinutes: Int,
         targetDate: LocalDate,
         nowMillis: Long
-    ): DayReviewCommitResult =
-        dao.completeDayReview(
+    ): DayCloseCommitResult =
+        dao.completeDayClose(
             dateEpochDays = date.toEpochDays().toInt(),
             markDoneItemIds = markDoneItemIds,
             carryItemIds = carryItemIds,
@@ -1027,14 +1052,21 @@ private fun DailyPlanItemEntity.toDomain(tags: List<TagItem> = emptyList()) = Da
     handledAtMillis = handledAtMillis
 )
 
-private fun DayReviewEntity.toDomain() = DayReviewRecord(
-    date = LocalDate.fromEpochDays(dateEpochDays),
-    doneCount = doneCount,
-    plannedCount = plannedCount,
-    doneMinutes = doneMinutes,
-    winNote = winNote.orEmpty(),
-    tomorrowGoal = tomorrowGoal.orEmpty(),
-    completedAtMillis = completedAtMillis
+private fun PeriodReviewEntity.toDomain() = PeriodReview(
+    id = id,
+    period = ReviewPeriod.valueOf(periodType),
+    periodStartEpochDays = periodStartEpochDays,
+    periodEndEpochDays = periodEndEpochDays,
+    title = title,
+    content = content,
+    highlightsJson = highlightsJson,
+    intentNext = intentNext,
+    source = ReviewSource.valueOf(source),
+    status = ReviewStatus.valueOf(status),
+    completedAtMillis = completedAtMillis,
+    generatedAtMillis = generatedAtMillis,
+    editedAtMillis = editedAtMillis,
+    statsJson = statsJson
 )
 
 private fun JournalEntryEntity.toDomain(tags: List<TagItem> = emptyList()) = JournalEntry(

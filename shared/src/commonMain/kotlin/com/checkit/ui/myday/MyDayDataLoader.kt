@@ -4,11 +4,12 @@ import com.checkit.data.UserSettings
 import com.checkit.domain.CarryOverTimePolicy
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
-import com.checkit.domain.DayReviewBannerPolicy
-import com.checkit.domain.DayReviewRecord
+import com.checkit.domain.DayCloseBannerPolicy
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.LeftoversBannerPolicy
+import com.checkit.domain.PeriodReview
 import com.checkit.domain.PlanAssistBannerPolicy
+import com.checkit.domain.ReviewPeriod
 import com.checkit.domain.ReviewStreakPolicy
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.YesterdayLeftovers
@@ -47,19 +48,20 @@ internal class MyDayDataLoader(
                     state.update { it.copy(isLoading = false) }
                     state.sendEvent(UiEvent.ShowSnackbar(error.message ?: "Unable to load My Day"))
                 }
-                .collect { (board, dailyPlans, settings, dayReviews, journalEntries) ->
+                .collect { (board, dailyPlans, settings, periodReviews, journalEntries) ->
                     val date = today()
                     val todayEpoch = date.toEpochDays().toInt()
                     val nowMinutes = currentMyDayTimeMinutes()
                     val plan = dailyPlans.firstOrNull { it.date == date }
+                    val dayReviews = periodReviews.filter { it.period == ReviewPeriod.Day }
                     val leftovers = YesterdayLeftovers.items(dailyPlans, date)
                     val pendingLeftovers = YesterdayLeftovers.pendingForToday(leftovers, plan)
                     val reviewStreak = ReviewStreakPolicy.currentStreak(dayReviews, date)
-                    val showReviewBanner = DayReviewBannerPolicy.shouldShow(
+                    val showReviewBanner = DayCloseBannerPolicy.shouldShow(
                         hasPlanItems = plan?.items?.isNotEmpty() == true,
                         reviewReminderEnabled = settings.reviewReminderEnabled,
                         reviewReminderTimeMinutes = settings.reviewReminderTimeMinutes,
-                        lastDayReviewEpochDay = settings.lastDayReviewEpochDay,
+                        lastDayCloseEpochDay = settings.lastDayCloseEpochDay,
                         todayEpochDay = todayEpoch,
                         nowMinutes = nowMinutes
                     )
@@ -78,8 +80,8 @@ internal class MyDayDataLoader(
                         nowMinutes = nowMinutes
                     )
                     maybeAutoCarryOver(settings, pendingLeftovers, date)
-                    val review = state.uiState.value.dayReview?.let { existing ->
-                        val summary = deps.buildDayReviewSummary(date, plan)
+                    val review = state.uiState.value.dayClose?.let { existing ->
+                        val summary = deps.buildDayCloseSummary(date, plan)
                         val validItems = summary.plannedItems + summary.alreadyCarriedItems
                         val validIds = validItems.map { it.id }.toSet()
                         existing.copy(
@@ -99,14 +101,14 @@ internal class MyDayDataLoader(
                         current.copy(
                             board = board,
                             dailyPlans = dailyPlans,
-                            dayReview = review,
+                            dayClose = review,
                             journalEntries = journalEntries,
-                            showDayReviewBanner = showReviewBanner && review == null,
+                            showDayCloseBanner = showReviewBanner && review == null,
                             reviewReminderEnabled = settings.reviewReminderEnabled,
                             reviewReminderTimeMinutes = settings.reviewReminderTimeMinutes,
                             planReminderEnabled = settings.planReminderEnabled,
                             planReminderTimeMinutes = settings.planReminderTimeMinutes,
-                            lastDayReviewEpochDay = settings.lastDayReviewEpochDay,
+                            lastDayCloseEpochDay = settings.lastDayCloseEpochDay,
                             lastDayPlanDismissedEpochDay = settings.lastDayPlanDismissedEpochDay,
                             leftoversBannerDismissedEpochDay = settings.leftoversBannerDismissedEpochDay,
                             autoCarryOverLeftovers = settings.autoCarryOverLeftovers,
@@ -161,6 +163,6 @@ private data class ReviewCombined(
     val board: TaskBoard,
     val dailyPlans: List<DailyPlan>,
     val settings: UserSettings,
-    val dayReviews: List<DayReviewRecord>,
+    val dayReviews: List<PeriodReview>,
     val journalEntries: List<JournalEntry>
 )

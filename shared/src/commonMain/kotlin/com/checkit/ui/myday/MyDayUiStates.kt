@@ -4,10 +4,10 @@ import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
-import com.checkit.domain.DayReviewRecord
-import com.checkit.domain.DayReviewSummary
+import com.checkit.domain.DayCloseSummary
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.LeftoverAction
+import com.checkit.domain.PeriodReview
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
@@ -34,13 +34,13 @@ data class MyDayUiState(
     val dailyPlans: List<DailyPlan> = emptyList(),
     val selectedView: MyDayView = MyDayView.Timeline,
     val itemEditor: DailyPlanItemEditorState? = null,
-    val dayReview: DayReviewUiState? = null,
-    val showDayReviewBanner: Boolean = false,
+    val dayClose: DayCloseUiState? = null,
+    val showDayCloseBanner: Boolean = false,
     val reviewReminderEnabled: Boolean = true,
     val reviewReminderTimeMinutes: Int = 21 * 60,
     val planReminderEnabled: Boolean = true,
     val planReminderTimeMinutes: Int = 7 * 60,
-    val lastDayReviewEpochDay: Int? = null,
+    val lastDayCloseEpochDay: Int? = null,
     val lastDayPlanDismissedEpochDay: Int? = null,
     val leftoversBannerDismissedEpochDay: Int? = null,
     val autoCarryOverLeftovers: Boolean = false,
@@ -56,7 +56,7 @@ data class MyDayUiState(
     val suggestionEndTimeMinutes: Int? = null,
     val recentTags: List<TagItem> = emptyList(),
     val lastFabAction: FabAction = FabAction.QuickSprint,
-    val dayReviews: List<DayReviewRecord> = emptyList(),
+    val dayReviews: List<PeriodReview> = emptyList(),
     val reviewStreak: Int = 0,
     val journalEntries: List<JournalEntry> = emptyList(),
     val journalEditor: JournalEntryEditorState? = null,
@@ -123,8 +123,8 @@ data class MyDayUiState(
         ?: sprintSuggestedTasks.firstOrNull()?.let { SprintChoice.Task(it) }
 }
 
-data class DayReviewUiState(
-    val summary: DayReviewSummary,
+data class DayCloseUiState(
+    val summary: DayCloseSummary,
     val leftoverActions: Map<Long, LeftoverAction> = emptyMap(),
     val winNote: String = "",
     val tomorrowGoal: String = "",

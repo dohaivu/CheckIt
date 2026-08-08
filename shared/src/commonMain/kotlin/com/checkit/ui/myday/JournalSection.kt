@@ -58,7 +58,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import checkit.shared.generated.resources.Res
+import checkit.shared.generated.resources.journal_agenda_review_card_title
+import checkit.shared.generated.resources.journal_agenda_review_title
 import com.checkit.domain.JournalEntry
+import com.checkit.domain.PeriodReview
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.EmojiPicker
 import com.checkit.ui.components.TagPill
@@ -70,6 +74,7 @@ import com.checkit.ui.tasks.views.AgendaView
 import com.checkit.ui.toTimeMinutes
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
+import org.jetbrains.compose.resources.stringResource
 import org.kodein.emoji.Emoji
 
 /** Quick context presets shown as tappable chips in the entry editor. */
@@ -367,7 +372,9 @@ internal fun JournalEntryList(
 @Composable
 internal fun JournalHistorySheet(
     entries: List<JournalEntry>,
+    dayReviews: List<PeriodReview> = emptyList(),
     onEntryClick: (JournalEntry) -> Unit,
+    onReviewClick: (PeriodReview) -> Unit = {},
     onDismiss: () -> Unit
 ) {
     AppEditorBottomSheet(
@@ -376,7 +383,9 @@ internal fun JournalHistorySheet(
     ) {
         JournalAgendaView(
             journalEntries = entries,
+            dayReviews = dayReviews,
             onEntryClick = onEntryClick,
+            onReviewClick = onReviewClick,
             modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp)
         )
     }
@@ -385,7 +394,9 @@ internal fun JournalHistorySheet(
 @Composable
 internal fun JournalAgendaView(
     journalEntries: List<JournalEntry>,
+    dayReviews: List<PeriodReview> = emptyList(),
     onEntryClick: (JournalEntry) -> Unit,
+    onReviewClick: (PeriodReview) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val timelineItems = remember(journalEntries) {
@@ -403,22 +414,86 @@ internal fun JournalAgendaView(
         }.sortedByDescending { it.date }
     }
 
-    AgendaView(
-        items = timelineItems,
-        onItemClick = { item ->
-            (item.tag as? JournalEntry)?.let(onEntryClick)
-        },
-        itemContent = { item ->
-            (item.tag as? JournalEntry)?.let { entry ->
-                JournalHistoryEntryCard(
-                    entry = entry,
-                    onClick = { onEntryClick(entry) },
-                    modifier = Modifier.padding(start = 8.dp)
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        if (dayReviews.isNotEmpty()) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = stringResource(Res.string.journal_agenda_review_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                dayReviews
+                    .sortedByDescending { it.periodStartDate }
+                    .forEach { review ->
+                        JournalAgendaReviewCard(
+                            review = review,
+                            onClick = { onReviewClick(review) }
+                        )
+                    }
+            }
+        }
+        AgendaView(
+            items = timelineItems,
+            onItemClick = { item ->
+                (item.tag as? JournalEntry)?.let(onEntryClick)
+            },
+            itemContent = { item ->
+                (item.tag as? JournalEntry)?.let { entry ->
+                    JournalHistoryEntryCard(
+                        entry = entry,
+                        onClick = { onEntryClick(entry) },
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+            },
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun JournalAgendaReviewCard(
+    review: PeriodReview,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.Notes,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary
+        )
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = stringResource(Res.string.journal_agenda_review_card_title, review.periodStartDate.day),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+            if (review.content.isNotBlank()) {
+                Text(
+                    text = review.content,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
-        },
-        modifier = modifier
-    )
+        }
+    }
 }
 
 

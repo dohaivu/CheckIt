@@ -3,9 +3,9 @@ package com.checkit.ui.calendar
 import androidx.compose.ui.graphics.Color
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
-import com.checkit.domain.DayReviewRecord
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.NoteItem
+import com.checkit.domain.PeriodReview
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.ui.components.ReportPeriod
@@ -25,7 +25,7 @@ data class CalendarUiState(
     val selectedDate: LocalDate = today(),
     val board: TaskBoard = TaskBoard(),
     val dailyPlans: List<DailyPlan> = emptyList(),
-    val dayReviews: List<DayReviewRecord> = emptyList(),
+    val dayReviews: List<PeriodReview> = emptyList(),
     val journalEntries: List<JournalEntry> = emptyList(),
     val showDailyPlanSummary: Boolean = false,
     val calendarDisplayMode: CalendarDisplayMode = CalendarDisplayMode.Week,
@@ -34,17 +34,22 @@ data class CalendarUiState(
 ) {
     val monthlyWins: List<Pair<LocalDate, String>> by lazy {
         dayReviews
-            .filter { it.date.isSameMonth(selectedMonth) && it.winNote.isNotBlank() }
-            .sortedByDescending { it.date }
-            .map { it.date to it.winNote }
+            .filter { it.periodStartDate.isSameMonth(selectedMonth) && it.content.isNotBlank() }
+            .sortedByDescending { it.periodStartDate }
+            .map { it.periodStartDate to it.content }
     }
 
     /** Win-of-the-day note for the currently selected date, if one was recorded. */
     val selectedDateWinNote: String? by lazy {
         dayReviews
-            .firstOrNull { it.date == selectedDate }
-            ?.winNote
+            .firstOrNull { it.periodStartDate == selectedDate }
+            ?.content
             ?.takeIf { it.isNotBlank() }
+    }
+
+    /** Full day review record for the currently selected date, if one was recorded. */
+    val selectedDayReview: PeriodReview? by lazy {
+        dayReviews.firstOrNull { it.periodStartDate == selectedDate }
     }
     private val filteredDailyPlans: List<DailyPlan> by lazy {
         if (selectedTagIds.isEmpty()) {

@@ -3,6 +3,10 @@
     <string name="clear_text">清除文本</string>
 
     <string name="calendar_title">日历</string>
+    <string name="calendar_review_title">回顾</string>
+    <string name="calendar_write_review">写回顾</string>
+    <string name="calendar_open_review">打开回顾</string>
+    <string name="calendar_review_empty">这一天还没有回顾。</string>
     <string name="daily">按日</string>
     <string name="weekly">按周</string>
     <string name="monthly">按月</string>
@@ -73,8 +77,38 @@
 
     <string name="tab_tasks">记账</string>
     <string name="tab_calendar">日历</string>
-    <string name="tab_report">报表</string>
+    <string name="tab_reflect">反思</string>
     <string name="tab_settings">更多</string>
+
+    <string name="reflect_review_card_title">%1$s反思</string>
+    <string name="reflect_review_empty">这个%1$s还没有反思。</string>
+    <string name="reflect_review_write">写反思</string>
+    <string name="reflect_review_edit">编辑反思</string>
+    <string name="reflect_review_generate_draft">生成草稿</string>
+    <string name="reflect_review_draft_note">根据你的%1$s自动生成草稿。请查看并保存。</string>
+    <string name="reflect_review_saved">反思已保存</string>
+    <string name="reflect_review_error">无法保存反思</string>
+    <string name="reflect_review_content_label">反思</string>
+    <string name="reflect_review_content_placeholder">什么做得好？什么让你疲惫？</string>
+    <string name="reflect_review_intent_label">下一阶段打算</string>
+    <string name="reflect_review_intent_placeholder">接下来你想专注什么？</string>
+    <string name="reflect_review_save">保存</string>
+    <string name="reflect_period_day">天</string>
+    <string name="reflect_period_week">周</string>
+    <string name="reflect_period_month">月</string>
+    <string name="reflect_period_year">年</string>
+    <string name="reflect_history_title">最近的反思</string>
+    <string name="reflect_history_empty">还没有反思。请在上方撰写或生成草稿。</string>
+    <string name="reflect_zoom_in">放大</string>
+    <string name="reflect_zoom_out">缩小</string>
+    <string name="reflect_stats_done">%1$d 已完成</string>
+    <string name="reflect_stats_minutes">%1$d 分钟</string>
+    <string name="reflect_stats_entries">%1$d 个签到</string>
+    <string name="reflect_children_day_plan">每日计划</string>
+    <string name="reflect_day_empty_plan">还没有已完成的事项。</string>
+    <string name="reflect_children_checkins">%1$d 个签到</string>
+    <string name="journal_agenda_review_title">每日回顾</string>
+    <string name="journal_agenda_review_card_title">回顾 · 第 %1$d 天</string>
 
     <string name="settings_title">设置</string>
     <string name="version">版本 %1$s</string>
@@ -88,23 +122,22 @@
     <string name="color_scheme_sky_blue">天空蓝</string>
     <string name="color_scheme_system_default">系统默认</string>
 
-    <string name="day_review_open">回顾今天</string>
-    <string name="day_review_title">回顾你的一天</string>
-    <string name="day_review_banner_title">该回顾了</string>
-    <string name="day_review_banner_subtitle">收尾今天，并把未完成项带到明天。</string>
-    <string name="day_review_banner_action">回顾</string>
-    <string name="day_review_done_count">完成 %1$d</string>
-    <string name="day_review_planned_count">剩余 %1$d</string>
-    <string name="day_review_done_minutes">已完成 %1$d 分钟</string>
-    <string name="day_review_leftovers_title">未完成项</string>
-    <string name="day_review_leftovers_empty">计划都完成了 — 很棒。</string>
-    <string name="day_review_action_done">完成</string>
-    <string name="day_review_action_carry">明天</string>
-    <string name="day_review_action_drop">保留</string>
-    <string name="day_review_win_note_label">今日亮点</string>
-    <string name="day_review_win_note_placeholder">今天有什么顺利的事？</string>
-    <string name="day_review_finish">完成回顾</string>
-    <string name="day_review_finish_and_report">完成并查看报告</string>
+    <string name="day_close_open">回顾今天</string>
+    <string name="day_close_title">结束今天</string>
+    <string name="day_close_banner_title">该回顾了</string>
+    <string name="day_close_banner_subtitle">收尾今天，并把未完成项带到明天。</string>
+    <string name="day_close_banner_action">回顾</string>
+    <string name="day_close_done_count">完成 %1$d</string>
+    <string name="day_close_planned_count">剩余 %1$d</string>
+    <string name="day_close_done_minutes">已完成 %1$d 分钟</string>
+    <string name="day_close_leftovers_title">未完成项</string>
+    <string name="day_close_leftovers_empty">计划都完成了 — 很棒。</string>
+    <string name="day_close_action_done">完成</string>
+    <string name="day_close_action_carry">明天</string>
+    <string name="day_close_action_drop">保留</string>
+    <string name="day_close_win_note_label">今天过得怎么样？</string>
+    <string name="day_close_win_note_placeholder">今天有什么顺利的事？</string>
+    <string name="day_close_finish">完成回顾</string>
 
     <string name="leftovers_banner_title">昨天还有 %1$d 项未完成</string>
     <string name="leftovers_banner_subtitle">可全部带到今天，或逐项处理。</string>

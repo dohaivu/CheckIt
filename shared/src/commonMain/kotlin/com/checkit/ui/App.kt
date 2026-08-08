@@ -40,7 +40,8 @@ import com.checkit.ui.myday.DailyPlanItemEditorSheet
 import com.checkit.ui.myday.JournalEntryEditorSheet
 import com.checkit.ui.myday.JournalListSheet
 import com.checkit.ui.myday.MyDayScreen
-import com.checkit.ui.reports.ReportScreen
+import com.checkit.ui.reflect.PeriodReviewEditorSheet
+import com.checkit.ui.reflect.ReflectScreen
 import com.checkit.ui.reports.TagsReport
 import com.checkit.ui.reports.TimeReport
 import com.checkit.ui.settings.SettingsScreen
@@ -65,7 +66,7 @@ fun CheckItApp(
     taskLaunchId: Long? = null,
     noteLaunchId: Long? = null,
     openMyDaySuggestionsLaunch: Boolean = false,
-    openDayReviewLaunch: Boolean = false,
+    openDayCloseLaunch: Boolean = false,
     openPlanAssistLaunch: Boolean = false,
     openCheckInLaunch: Boolean = false,
     openNewJournalEntryLaunch: Boolean = false,
@@ -94,11 +95,11 @@ fun CheckItApp(
             viewModels.tag.events,
             viewModels.myDay.events,
             viewModels.settings.events,
-            viewModels.report.events
+            viewModels.reflect.events
         ).collect { event ->
             when (event) {
                 is UiEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
-                is UiEvent.OpenReport -> navState.resetTo(AppRoute.Report)
+                is UiEvent.OpenReflect -> navState.resetTo(AppRoute.Reflect)
             }
         }
     }
@@ -110,6 +111,7 @@ fun CheckItApp(
     val tagUiState by viewModels.tag.uiState.collectAsState()
     val myDayUiState by viewModels.myDay.uiState.collectAsState()
     val calendarUiState by viewModels.calendar.uiState.collectAsState()
+    val reflectUiState by viewModels.reflect.uiState.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
     val appScope = rememberCoroutineScope()
 
@@ -140,10 +142,10 @@ fun CheckItApp(
         onWidgetLaunchConsumed()
     }
 
-    LaunchedEffect(openDayReviewLaunch) {
-        if (!openDayReviewLaunch) return@LaunchedEffect
+    LaunchedEffect(openDayCloseLaunch) {
+        if (!openDayCloseLaunch) return@LaunchedEffect
         navState.resetTo(AppRoute.MyDay)
-        viewModels.myDay.openDayReview()
+        viewModels.myDay.openDayClose()
         onWidgetLaunchConsumed()
     }
 
@@ -284,37 +286,41 @@ fun CheckItApp(
                                             onAddDailyPlanItem = { date -> viewModels.myDay.openDailyPlan(date = date) },
                                             onTaskClick = viewModels.task::openTask,
                                             onNoteClick = viewModels.task::openNote,
-                                            onNewTagClick = viewModels.tag::openNewTag
+                                            onNewTagClick = viewModels.tag::openNewTag,
+                                            onOpenReflect = { date ->
+                                                viewModels.reflect.focusDay(date)
+                                                navState.resetTo(AppRoute.Reflect)
+                                            }
                                         )
                                     }
-                                    AppRoute.Report -> {
-                                        val reportState by viewModels.report.uiState.collectAsState()
-                                        ReportScreen(
-                                            state = reportState,
-                                            reportViewModel = viewModels.report,
-                                            onShowTagsReport = { navState.push(AppRoute.TagsReport) },
-                                            onShowTimeReport = { navState.push(AppRoute.TimeReport) },
+                                    AppRoute.Reflect -> {
+                                        val reflectState by viewModels.reflect.uiState.collectAsState()
+                                        ReflectScreen(
+                                            state = reflectState,
+                                            viewModel = viewModels.reflect,
+                                            onShowTagsReport = { navState.push(AppRoute.ReflectTags) },
+                                            onShowTimeReport = { navState.push(AppRoute.ReflectTime) },
                                         )
                                     }
-                                    AppRoute.TagsReport -> {
-                                        val reportState by viewModels.report.uiState.collectAsState()
+                                    AppRoute.ReflectTags -> {
+                                        val reportState by viewModels.reflect.uiState.collectAsState()
                                         TagsReport(
-                                            state = reportState,
-                                            onPeriodSelected = viewModels.report::selectPeriod,
-                                            onPreviousPeriod = viewModels.report::previousPeriod,
-                                            onNextPeriod = viewModels.report::nextPeriod,
-                                            onCurrentPeriod = viewModels.report::resetToCurrentPeriod,
+                                            state = reportState.reportState(),
+                                            onPeriodSelected = viewModels.reflect::selectPeriod,
+                                            onPreviousPeriod = viewModels.reflect::previousPeriod,
+                                            onNextPeriod = viewModels.reflect::nextPeriod,
+                                            onCurrentPeriod = viewModels.reflect::resetToCurrentPeriod,
                                             onNavigateBack = { navState.pop() },
                                         )
                                     }
-                                    AppRoute.TimeReport -> {
-                                        val reportState by viewModels.report.uiState.collectAsState()
+                                    AppRoute.ReflectTime -> {
+                                        val reportState by viewModels.reflect.uiState.collectAsState()
                                         TimeReport(
-                                            state = reportState,
-                                            onPeriodSelected = viewModels.report::selectPeriod,
-                                            onPreviousPeriod = viewModels.report::previousPeriod,
-                                            onNextPeriod = viewModels.report::nextPeriod,
-                                            onCurrentPeriod = viewModels.report::resetToCurrentPeriod,
+                                            state = reportState.reportState(),
+                                            onPeriodSelected = viewModels.reflect::selectPeriod,
+                                            onPreviousPeriod = viewModels.reflect::previousPeriod,
+                                            onNextPeriod = viewModels.reflect::nextPeriod,
+                                            onCurrentPeriod = viewModels.reflect::resetToCurrentPeriod,
                                             onNavigateBack = { navState.pop() },
                                         )
                                     }
@@ -438,6 +444,15 @@ fun CheckItApp(
                             onDelete = { viewModels.tag.deleteEditorTag() },
                             onNameChange = viewModels.tag::updateName,
                             onColorChange = viewModels.tag::updateColor
+                        )
+                    }
+                    reflectUiState.editor?.let { editor ->
+                        PeriodReviewEditorSheet(
+                            editor = editor,
+                            onContentChange = viewModels.reflect::updateEditorContent,
+                            onIntentNextChange = viewModels.reflect::updateEditorIntentNext,
+                            onSave = viewModels.reflect::saveEditor,
+                            onDismiss = viewModels.reflect::dismissEditor
                         )
                     }
                 }
