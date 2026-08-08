@@ -9,7 +9,8 @@ import com.checkit.domain.ReviewPeriod
 import com.checkit.domain.ReviewSource
 import com.checkit.ui.components.ReportPeriod
 import com.checkit.ui.myday.doneWorkMinutes
-import com.checkit.ui.reports.ReportUiState
+import com.checkit.ui.reports.DigestReportSummary
+import com.checkit.ui.reports.buildDigestReport
 import com.checkit.ui.today
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
@@ -66,13 +67,10 @@ data class ReflectUiState(
         it.period == child.period && it.periodStartEpochDays == child.start.toEpochDays().toInt()
     }
 
-    /** Snapshot for the Time/Tags sub-reports that keeps the actual zoom level. */
-    fun reportState(): ReportUiState = ReportUiState(
-        selectedPeriod = selectedPeriod,
-        selectedDate = selectedDate,
-        dailyPlans = dailyPlans,
-        isLoading = isLoading
-    )
+    /** Digest (progress/trend/tags/highlights) for the focused period. */
+    val digestReport: DigestReportSummary by lazy {
+        buildDigestReport(dailyPlans, selectedPeriod, selectedDate)
+    }
 }
 
 /** Aggregate statistics for a focused period, derived live from plans + journals. */

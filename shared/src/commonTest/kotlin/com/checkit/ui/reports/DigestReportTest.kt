@@ -37,12 +37,11 @@ class DigestReportTest {
         selectedDate: LocalDate,
         plans: List<DailyPlan>
     ): DigestReportSummary =
-        ReportUiState(
-            selectedPeriod = period,
-            selectedDate = selectedDate,
+        buildDigestReport(
             dailyPlans = plans,
-            isLoading = false
-        ).digestReport
+            period = period,
+            selectedDate = selectedDate
+        )
 
     @Test
     fun monthDigestAggregatesAcrossWholeMonth() {

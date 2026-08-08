@@ -20,13 +20,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOut
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -37,10 +34,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -75,8 +69,6 @@ import checkit.shared.generated.resources.reflect_review_intent_placeholder
 import checkit.shared.generated.resources.reflect_review_save
 import checkit.shared.generated.resources.reflect_review_write
 import checkit.shared.generated.resources.tab_reflect
-import checkit.shared.generated.resources.tags_report_title
-import checkit.shared.generated.resources.time_report_title
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.PeriodFocus
 import com.checkit.domain.PeriodReview
@@ -108,12 +100,8 @@ private val ReflectPeriods = listOf(
 internal fun ReflectScreen(
     state: ReflectUiState,
     viewModel: ReflectViewModel,
-    onShowTagsReport: () -> Unit,
-    onShowTimeReport: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var menuExpanded by remember { mutableStateOf(false) }
-
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
@@ -132,40 +120,6 @@ internal fun ReflectScreen(
                     }
                     IconButton(onClick = viewModel::zoomOut) {
                         Icon(Icons.Default.ZoomOut, contentDescription = stringResource(Res.string.reflect_zoom_out))
-                    }
-                    Box(contentAlignment = Alignment.TopEnd) {
-                        IconButton(onClick = { menuExpanded = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = stringResource(Res.string.tab_reflect))
-                        }
-                        DropdownMenu(
-                            expanded = menuExpanded,
-                            onDismissRequest = { menuExpanded = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        text = stringResource(Res.string.tags_report_title),
-                                        fontWeight = FontWeight.Normal
-                                    )
-                                },
-                                onClick = {
-                                    menuExpanded = false
-                                    onShowTagsReport()
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        text = stringResource(Res.string.time_report_title),
-                                        fontWeight = FontWeight.Normal
-                                    )
-                                },
-                                onClick = {
-                                    menuExpanded = false
-                                    onShowTimeReport()
-                                }
-                            )
-                        }
                     }
                 }
             )
@@ -204,7 +158,7 @@ internal fun ReflectScreen(
                 ReportPeriod.Month,
                 ReportPeriod.Annual -> {
                     val digest = remember(state.selectedPeriod, state.selectedDate, state.dailyPlans) {
-                        state.reportState().digestReport
+                        state.digestReport
                     }
                     StatsStrip(stats = state.stats)
                     ChildrenStrip(

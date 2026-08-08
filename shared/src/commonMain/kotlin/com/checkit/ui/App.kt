@@ -42,8 +42,6 @@ import com.checkit.ui.myday.JournalListSheet
 import com.checkit.ui.myday.MyDayScreen
 import com.checkit.ui.reflect.PeriodReviewEditorSheet
 import com.checkit.ui.reflect.ReflectScreen
-import com.checkit.ui.reports.TagsReport
-import com.checkit.ui.reports.TimeReport
 import com.checkit.ui.settings.SettingsScreen
 import com.checkit.ui.tasks.TaskEditorActions
 import com.checkit.ui.tasks.TaskEditorSheet
@@ -298,30 +296,6 @@ fun CheckItApp(
                                         ReflectScreen(
                                             state = reflectState,
                                             viewModel = viewModels.reflect,
-                                            onShowTagsReport = { navState.push(AppRoute.ReflectTags) },
-                                            onShowTimeReport = { navState.push(AppRoute.ReflectTime) },
-                                        )
-                                    }
-                                    AppRoute.ReflectTags -> {
-                                        val reportState by viewModels.reflect.uiState.collectAsState()
-                                        TagsReport(
-                                            state = reportState.reportState(),
-                                            onPeriodSelected = viewModels.reflect::selectPeriod,
-                                            onPreviousPeriod = viewModels.reflect::previousPeriod,
-                                            onNextPeriod = viewModels.reflect::nextPeriod,
-                                            onCurrentPeriod = viewModels.reflect::resetToCurrentPeriod,
-                                            onNavigateBack = { navState.pop() },
-                                        )
-                                    }
-                                    AppRoute.ReflectTime -> {
-                                        val reportState by viewModels.reflect.uiState.collectAsState()
-                                        TimeReport(
-                                            state = reportState.reportState(),
-                                            onPeriodSelected = viewModels.reflect::selectPeriod,
-                                            onPreviousPeriod = viewModels.reflect::previousPeriod,
-                                            onNextPeriod = viewModels.reflect::nextPeriod,
-                                            onCurrentPeriod = viewModels.reflect::resetToCurrentPeriod,
-                                            onNavigateBack = { navState.pop() },
                                         )
                                     }
 

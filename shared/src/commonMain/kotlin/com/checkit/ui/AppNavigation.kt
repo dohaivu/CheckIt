@@ -36,8 +36,6 @@ sealed interface AppRoute : NavKey {
     @Serializable data object Calendar : AppRoute
     @Serializable data object MyDay : AppRoute
     @Serializable data object Reflect : AppRoute
-    @Serializable data object ReflectTime : AppRoute
-    @Serializable data object ReflectTags : AppRoute
     @Serializable data object Settings : AppRoute
 }
 
@@ -74,7 +72,7 @@ enum class CheckItTab {
             AppRoute.MyDay -> MyDay
             AppRoute.Task, AppRoute.Tags -> Task
             AppRoute.Calendar -> Calendar
-            AppRoute.Reflect, AppRoute.ReflectTime, AppRoute.ReflectTags -> Reflect
+            AppRoute.Reflect -> Reflect
             AppRoute.Settings -> Settings
             else -> null
         }

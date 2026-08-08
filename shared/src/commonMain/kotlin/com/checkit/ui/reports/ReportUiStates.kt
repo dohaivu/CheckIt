@@ -7,37 +7,12 @@ import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.ui.components.ReportPeriod
 import com.checkit.ui.myday.doneWorkMinutes
 import com.checkit.ui.firstDayOfMonth
-import com.checkit.ui.today
 import com.checkit.ui.myday.workMinutes
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.daysUntil
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
-
-data class ReportUiState(
-    val selectedPeriod: ReportPeriod = ReportPeriod.Daily,
-    val selectedDate: LocalDate = today(),
-    val dailyPlans: List<DailyPlan> = emptyList(),
-    val isLoading: Boolean = true
-) {
-    private val reportIndex: DailyPlanReportIndex by lazy {
-        DailyPlanReportIndex(dailyPlans)
-    }
-
-    val tagReports: List<TagReportItem> by lazy {
-        reportIndex.toTagReports(selectedPeriod.periodStart(selectedDate), selectedPeriod.periodEndExclusive(selectedDate))
-    }
-    val timeReports: List<TimeReportItem> by lazy {
-        reportIndex.toTimeReports(selectedPeriod, selectedDate)
-    }
-    val digestReport: DigestReportSummary by lazy {
-        reportIndex.toDigest(selectedPeriod, selectedDate)
-    }
-    val habitCheckins: List<HabitCheckin> by lazy {
-        buildHabitCheckins(dailyPlans, today())
-    }
-}
 
 data class HabitCheckin(
     val taskId: Long,
@@ -123,6 +98,13 @@ data class DigestHighlight(
     val totalMinutes: Int
 )
 
+internal fun buildDigestReport(
+    dailyPlans: List<DailyPlan>,
+    period: ReportPeriod,
+    selectedDate: LocalDate
+): DigestReportSummary =
+    DailyPlanReportIndex(dailyPlans).toDigest(period, selectedDate)
+
 
 private class DailyPlanReportIndex(
     private val plans: List<DailyPlan>
@@ -201,35 +183,6 @@ private class DailyPlanReportIndex(
                 )
             }
             .sortedWith(compareByDescending<TagReportItem> { it.totalMinutes }.thenBy { it.name.lowercase() })
-
-    fun toTimeReports(period: ReportPeriod, selectedDate: LocalDate): List<TimeReportItem> =
-        when (period) {
-            ReportPeriod.Daily -> listOf(
-                TimeReportItem(
-                    startDate = selectedDate,
-                    endDate = selectedDate,
-                    totalMinutes = doneWorkMinutesForDate(selectedDate)
-                )
-            )
-            ReportPeriod.Week -> {
-                val start = period.periodStart(selectedDate)
-                (0 until 7).map { offset ->
-                    val date = start.plus(offset, DateTimeUnit.DAY)
-                    TimeReportItem(
-                        startDate = date,
-                        endDate = date,
-                        totalMinutes = doneWorkMinutesForDate(date)
-                    )
-                }
-            }
-            ReportPeriod.Month,
-            ReportPeriod.Annual -> {
-                val periodStart = period.periodStart(selectedDate)
-                val periodEnd = period.periodEndExclusive(selectedDate)
-                weekBuckets(periodStart, periodEnd)
-            }
-            ReportPeriod.Habit -> emptyList()
-        }
 
     fun toDigest(period: ReportPeriod, selectedDate: LocalDate): DigestReportSummary {
         val start = period.periodStart(selectedDate)
