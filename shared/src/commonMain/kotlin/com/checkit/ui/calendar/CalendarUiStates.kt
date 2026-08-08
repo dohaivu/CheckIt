@@ -1,6 +1,5 @@
 package com.checkit.ui.calendar
 
-import androidx.compose.ui.graphics.Color
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.JournalEntry
@@ -9,15 +8,11 @@ import com.checkit.domain.PeriodReview
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.ui.components.ReportPeriod
-import com.checkit.ui.myday.doneWorkMinutes
 import com.checkit.ui.firstDayOfMonth
-import com.checkit.ui.theme.AppIconColorDefaults
-import com.checkit.ui.theme.toColor
+import com.checkit.ui.isSameMonth
+import com.checkit.ui.myday.doneWorkMinutes
 import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
-import kotlin.collections.get
-
-import com.checkit.ui.isSameMonth
 
 data class CalendarUiState(
     val selectedPeriod: ReportPeriod = ReportPeriod.Month,
@@ -40,17 +35,13 @@ data class CalendarUiState(
     }
 
     /** Win-of-the-day note for the currently selected date, if one was recorded. */
-    val selectedDateWinNote: String? by lazy {
+    val selectedDateReview: String? by lazy {
         dayReviews
             .firstOrNull { it.periodStartDate == selectedDate }
             ?.content
             ?.takeIf { it.isNotBlank() }
     }
 
-    /** Full day review record for the currently selected date, if one was recorded. */
-    val selectedDayReview: PeriodReview? by lazy {
-        dayReviews.firstOrNull { it.periodStartDate == selectedDate }
-    }
     private val filteredDailyPlans: List<DailyPlan> by lazy {
         if (selectedTagIds.isEmpty()) {
             dailyPlans
@@ -81,44 +72,11 @@ data class CalendarUiState(
         }
     }
 
-    private val objectiveColors: Map<Long, Color> = board.objectives.associateWith { objective ->
-        objective.color.toColor()
-    }.mapKeys { it.key.id }
-
     fun tasksForDate(date: LocalDate): List<TaskItem> =
         board.tasksByDate[date].orEmpty()
 
     fun notesForDate(date: LocalDate): List<NoteItem> =
         board.notesByDate[date].orEmpty()
-
-    fun markerColorsForDate(date: LocalDate): List<Color> {
-        if (date <= today()) {
-            val dailyItems = dailyPlanByDate[date]?.items.orEmpty()
-            return if (dailyItems.isNotEmpty()) {
-                buildList {
-                    for (item in dailyItems) {
-                        add(dailyItemColor(item))
-                        if (size >= MarkerCap) break
-                    }
-                }
-            } else listOf()
-        }
-        val tasks = tasksForDate(date)
-        val notes = notesForDate(date)
-        val totalSize = tasks.size + notes.size
-        return buildList {
-            var i = 0
-            while (i < totalSize && size < MarkerCap) {
-                val color = if (i < tasks.size) {
-                    objectiveColors[tasks[i].objective.id]
-                } else {
-                    objectiveColors[notes[i - tasks.size].objective.id]
-                }
-                add(color ?: DefaultMarkerColor)
-                i++
-            }
-        }
-    }
 
     fun markersForDate(date: LocalDate): CalendarDateMarkers =
         if (date <= today()) {
@@ -131,16 +89,6 @@ data class CalendarUiState(
         dailyPlanWorkMinutesByDate[date] ?: 0
 
     fun dailyPlanForDate(date: LocalDate): DailyPlan? = dailyPlanByDate[date]
-
-    private fun dailyItemColor(item: DailyPlanItem): Color =
-        item.taskId
-            ?.let { taskId -> objectiveColors[board.tasksById[taskId]?.objective?.id] }
-            ?: DefaultMarkerColor
-
-    private companion object {
-        const val MarkerCap: Int = 12
-        val DefaultMarkerColor: Color = AppIconColorDefaults.FallbackColor
-    }
 }
 
 private fun DailyPlanItem.hasAnyTag(tagIds: Set<Long>): Boolean =

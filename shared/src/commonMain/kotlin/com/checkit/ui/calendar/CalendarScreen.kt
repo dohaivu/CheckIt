@@ -28,6 +28,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.automirrored.filled.Notes
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronLeft
@@ -48,7 +49,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -61,14 +61,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import checkit.shared.generated.resources.Res
-import checkit.shared.generated.resources.calendar_review_empty
-import checkit.shared.generated.resources.calendar_review_title
-import checkit.shared.generated.resources.calendar_title
 import checkit.shared.generated.resources.calendar_open_review
-import checkit.shared.generated.resources.calendar_write_review
+import checkit.shared.generated.resources.calendar_title
 import checkit.shared.generated.resources.relative_today
 import checkit.shared.generated.resources.relative_yesterday
 import com.checkit.domain.DailyPlan
@@ -76,7 +72,6 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.NoteItem
-import com.checkit.domain.PeriodReview
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.usecase.BuildDailyPlanMarkdownSummaryUseCase
@@ -214,12 +209,7 @@ internal fun CalendarScreen(
                                 summaryAvailable = selectedContent.showDailyPlan,
                                 onSummaryToggle = calendarViewModel::toggleDailyPlanSummary,
                                 onJournalClick = { onJournalListClick(state.selectedDate) },
-                                winNote = state.selectedDateWinNote
-                            )
-                            DayReviewCard(
-                                review = state.selectedDayReview,
-                                date = state.selectedDate,
-                                today = today,
+                                winNote = state.selectedDateReview,
                                 onOpenReflect = onOpenReflect
                             )
                             if (selectedContent.showDailyPlan) {
@@ -413,67 +403,6 @@ private fun CalendarPeriodHeader(
 }
 
 @Composable
-private fun DayReviewCard(
-    review: PeriodReview?,
-    date: LocalDate,
-    today: LocalDate,
-    onOpenReflect: (LocalDate) -> Unit
-) {
-    val hasReview = review?.content?.isNotBlank() == true
-    if (!hasReview && date > today) return
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 2.dp),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.Notes,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(end = 8.dp)
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(Res.string.calendar_review_title),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold
-                )
-                if (hasReview) {
-                    Text(
-                        text = review.content,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                } else {
-                    Text(
-                        text = stringResource(Res.string.calendar_review_empty),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            TextButton(onClick = { onOpenReflect(date) }) {
-                Text(
-                    text = stringResource(
-                        if (hasReview) Res.string.calendar_open_review else Res.string.calendar_write_review
-                    )
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun SelectedDateHeader(
     date: LocalDate,
     today: LocalDate,
@@ -484,7 +413,8 @@ private fun SelectedDateHeader(
     summaryAvailable: Boolean,
     onSummaryToggle: () -> Unit,
     onJournalClick: () -> Unit,
-    winNote: String?
+    winNote: String?,
+    onOpenReflect: (LocalDate) -> Unit
 ) {
     val isToday = date == today
     val isYesterday = date == today.minus(1, DateTimeUnit.DAY)
@@ -654,6 +584,17 @@ private fun SelectedDateHeader(
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                             )
+                            IconButton(
+                                onClick = { onOpenReflect(date) },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                    contentDescription = stringResource(Res.string.calendar_open_review),
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 }

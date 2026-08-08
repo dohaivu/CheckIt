@@ -3,10 +3,7 @@
     <string name="clear_text">Clear text</string>
 
     <string name="calendar_title">Calendar</string>
-    <string name="calendar_review_title">Review</string>
-    <string name="calendar_write_review">Write a review</string>
     <string name="calendar_open_review">Open review</string>
-    <string name="calendar_review_empty">No review for this day yet.</string>
     <string name="daily">Daily</string>
     <string name="weekly">Weekly</string>
     <string name="monthly">Monthly</string>
