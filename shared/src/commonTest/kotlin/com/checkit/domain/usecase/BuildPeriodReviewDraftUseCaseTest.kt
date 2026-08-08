@@ -7,6 +7,7 @@ import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DailyPlanItemStatus.Done
 import com.checkit.domain.DailyPlanItemStatus.Planned
 import com.checkit.domain.PeriodFocus
+import com.checkit.domain.PeriodReview
 import com.checkit.domain.ReviewPeriod
 import com.checkit.domain.TagItem
 import com.checkit.domain.ReviewSource
@@ -15,8 +16,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -87,6 +90,93 @@ class BuildPeriodReviewDraftUseCaseTest {
         )
 
         assertNull(build(focus, plans))
+    }
+
+    @Test
+    fun seedsDraftFromHighestLevelReviewCoveringFocus() = runTest {
+        val focus = PeriodFocus(ReviewPeriod.Day, date)
+        val yearStart = LocalDate(date.year, 1, 1)
+        val yearEnd = yearStart.plus(1, kotlinx.datetime.DateTimeUnit.YEAR)
+        val weekStart = date.minus(date.dayOfWeek.ordinal, kotlinx.datetime.DateTimeUnit.DAY)
+        val weekEnd = weekStart.plus(7, kotlinx.datetime.DateTimeUnit.DAY)
+        val yearReview = review(
+            period = ReviewPeriod.Year,
+            startEpochDays = yearStart.toEpochDays().toInt(),
+            endEpochDays = yearEnd.toEpochDays().toInt(),
+            content = "Annual context"
+        )
+        val weekReview = review(
+            period = ReviewPeriod.Week,
+            startEpochDays = weekStart.toEpochDays().toInt(),
+            endEpochDays = weekEnd.toEpochDays().toInt(),
+            content = "Weekly context"
+        )
+        val plans = listOf(
+            DailyPlan(
+                date = date,
+                items = listOf(item(id = 1L, title = "Win", status = Done, start = 540, end = 600))
+            )
+        )
+
+        val draft = assertNotNull(build(focus, plans, listOf(weekReview, yearReview)))
+        assertTrue(draft.content.startsWith("Annual context"))
+        assertTrue(draft.content.contains("this day"))
+    }
+
+    @Test
+    fun seedPicksHighestPeriodWhenMultipleCover() = runTest {
+        val focus = PeriodFocus(ReviewPeriod.Week, date)
+        val yearStart = LocalDate(date.year, 1, 1)
+        val yearEnd = yearStart.plus(1, kotlinx.datetime.DateTimeUnit.YEAR)
+        val monthStart = LocalDate(date.year, date.month, 1)
+        val monthEnd = monthStart.plus(1, kotlinx.datetime.DateTimeUnit.MONTH)
+        val yearReview = review(
+            period = ReviewPeriod.Year,
+            startEpochDays = yearStart.toEpochDays().toInt(),
+            endEpochDays = yearEnd.toEpochDays().toInt(),
+            content = "Annual context"
+        )
+        val monthReview = review(
+            period = ReviewPeriod.Month,
+            startEpochDays = monthStart.toEpochDays().toInt(),
+            endEpochDays = monthEnd.toEpochDays().toInt(),
+            content = "Monthly context"
+        )
+        val plans = listOf(
+            DailyPlan(
+                date = date,
+                items = listOf(item(id = 1L, title = "Win", status = Done, start = 540, end = 600))
+            )
+        )
+
+        val draft = assertNotNull(build(focus, plans, listOf(monthReview, yearReview)))
+        assertTrue(draft.content.startsWith("Annual context"))
+    }
+
+    @Test
+    fun ignoresReviewsOutsideFocusAndPlannedItemsInAnalysis() = runTest {
+        val focus = PeriodFocus(ReviewPeriod.Week, date)
+        val outside = date.minus(10, kotlinx.datetime.DateTimeUnit.DAY)
+        val outsideReview = review(
+            period = ReviewPeriod.Day,
+            startEpochDays = outside.toEpochDays().toInt(),
+            endEpochDays = outside.plus(1, kotlinx.datetime.DateTimeUnit.DAY).toEpochDays().toInt(),
+            content = "Unrelated daily review"
+        )
+        val plans = listOf(
+            DailyPlan(
+                date = date,
+                items = listOf(
+                    item(id = 1L, title = "Done win", status = Done, start = 540, end = 600),
+                    item(id = 2L, title = "Not done", status = Planned, start = 660)
+                )
+            )
+        )
+
+        val draft = assertNotNull(build(focus, plans, listOf(outsideReview)))
+        assertFalse(draft.content.contains("Unrelated daily review"))
+        assertTrue(draft.content.contains("1 item"))
+        assertFalse(draft.content.contains("Not done"))
     }
 
     @Test
@@ -164,5 +254,17 @@ class BuildPeriodReviewDraftUseCaseTest {
         endTimeMinutes = end,
         addedAtMillis = 0L,
         completedAtMillis = if (status == Done) 1L else null
+    )
+
+    private fun review(
+        period: ReviewPeriod,
+        startEpochDays: Int,
+        endEpochDays: Int,
+        content: String
+    ) = PeriodReview(
+        period = period,
+        periodStartEpochDays = startEpochDays,
+        periodEndEpochDays = endEpochDays,
+        content = content
     )
 }

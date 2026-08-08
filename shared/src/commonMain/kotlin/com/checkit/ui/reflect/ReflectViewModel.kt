@@ -145,7 +145,7 @@ class ReflectViewModel(
         if (current.editor != null) return
         val focus = current.focus
         viewModelScope.launch {
-            val draft = buildDraft(focus, current.dailyPlans)
+            val draft = buildDraft(focus, current.dailyPlans, current.reviews)
             _uiState.update {
                 it.copy(
                     editor = ReflectReviewEditorState(

@@ -50,7 +50,17 @@ class SavePeriodReviewUseCase(
 
 /** Builds a narrative + structured draft for a period focus from daily-plan activity. */
 class BuildPeriodReviewDraftUseCase {
-    suspend operator fun invoke(focus: PeriodFocus, dailyPlans: List<DailyPlan>): PeriodReviewDraft? {
+    /**
+     * Builds a draft for [focus]. The narrative is seeded with the content of the
+     * highest-level saved review covering the focus (breadcrumb order: Year top,
+     * then Month, Week, Day), then appends an activity summary built only from
+     * completed items inside the focus period (planned items are ignored).
+     */
+    suspend operator fun invoke(
+        focus: PeriodFocus,
+        dailyPlans: List<DailyPlan>,
+        reviews: List<PeriodReview> = emptyList()
+    ): PeriodReviewDraft? {
         val plansInRange = dailyPlans.filter { plan ->
             plan.date >= focus.start && plan.date < focus.endExclusive
         }
@@ -99,18 +109,46 @@ class BuildPeriodReviewDraftUseCase {
             totalMinutes = doneMinutes,
             topTags = topTags
         )
+        val seed = highestLevelSeedReview(focus, reviews)
         return PeriodReviewDraft(
-            content = buildNarrative(focus.period, stats, highlights),
+            content = buildNarrative(seed, focus.period, stats, highlights),
             statsJson = draftJson.encodeToString(stats),
             highlightsJson = draftJson.encodeToString(highlights)
         )
     }
 
+    /**
+     * Finds the saved review at the highest period level that covers [focus],
+     * following the breadcrumb hierarchy (Annual top, then Month, Week, Day).
+     * The saved review must span the focus's date range; a narrower period
+     * (e.g. Day) is never chosen over a broader one (e.g. Annual).
+     */
+    private fun highestLevelSeedReview(
+        focus: PeriodFocus,
+        reviews: List<PeriodReview>
+    ): PeriodReview? {
+        val candidates = reviews.filter { review ->
+            review.covers(focus)
+        }
+        return candidates.maxByOrNull { it.period.ordinal }
+    }
+
+    private fun PeriodReview.covers(focus: PeriodFocus): Boolean {
+        val focusStart = focus.start.toEpochDays().toInt()
+        val focusEnd = focus.endExclusive.toEpochDays().toInt()
+        return periodStartEpochDays <= focusStart && periodEndEpochDays >= focusEnd
+    }
+
     private fun buildNarrative(
+        seed: PeriodReview?,
         period: ReviewPeriod,
         stats: PeriodReviewDraftStats,
         highlights: List<PeriodReviewDraftHighlight>
     ): String = buildString {
+        if (seed != null && seed.content.isNotBlank()) {
+            append(seed.content.trim())
+            append("\n\n")
+        }
         append("Completed ${stats.doneCount} item${if (stats.doneCount == 1) "" else "s"} in ")
         append(formatMinutes(stats.totalMinutes))
         append(" this ${period.periodWord()}.")

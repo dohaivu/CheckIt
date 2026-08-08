@@ -212,6 +212,43 @@ class ReflectViewModelTest {
     }
 
     @Test
+    fun generateDraftSeedsFromHighestLevelReviewCoveringFocus() = runTest(dispatcher) {
+        val yearStart = LocalDate(today().year, 1, 1)
+        repository.savePeriodReview(
+            review(
+                period = ReviewPeriod.Year,
+                start = yearStart,
+                content = "Annual context"
+            )
+        )
+        val weekStart = today().minus(today().dayOfWeek.ordinal, DateTimeUnit.DAY)
+        repository.setDailyPlans(
+            listOf(
+                DailyPlan(
+                    date = weekStart,
+                    items = listOf(
+                        item(
+                            id = 1L,
+                            title = "Deep work",
+                            status = DailyPlanItemStatus.Done,
+                            startTimeMinutes = 9 * 60,
+                            endTimeMinutes = 10 * 60
+                        )
+                    )
+                )
+            )
+        )
+        advanceUntilIdle()
+
+        viewModel.generateDraft()
+        advanceUntilIdle()
+
+        val editor = assertNotNull(viewModel.uiState.value.editor)
+        assertTrue(editor.isDraft)
+        assertTrue(editor.content.startsWith("Annual context"))
+    }
+
+    @Test
     fun savingGeneratedDraftPersistsHybridSourceAndStats() = runTest(dispatcher) {
         val weekStart = today().minus(today().dayOfWeek.ordinal, DateTimeUnit.DAY)
         repository.setDailyPlans(

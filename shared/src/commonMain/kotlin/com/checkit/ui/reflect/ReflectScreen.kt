@@ -89,6 +89,9 @@ import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.localizedMonthTitle
 import com.checkit.ui.localizedShortMonthName
 import com.checkit.ui.myday.doneWorkMinutes
+import com.checkit.ui.reports.HabitHeatmapSection
+import com.checkit.ui.reports.buildHabitCheckins
+import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.plus
 import org.jetbrains.compose.resources.stringResource
@@ -97,7 +100,8 @@ private val ReflectPeriods = listOf(
     ReportPeriod.Daily,
     ReportPeriod.Week,
     ReportPeriod.Month,
-    ReportPeriod.Annual
+    ReportPeriod.Annual,
+    ReportPeriod.Habit
 )
 
 @Composable
@@ -172,7 +176,7 @@ internal fun ReflectScreen(
                 .fillMaxSize()
                 .padding(top = padding.calculateTopPadding())
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 12.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             ReportPeriodHeader(
@@ -185,20 +189,44 @@ internal fun ReflectScreen(
                 onZoomOutTo = viewModel::zoomOutTo,
                 periods = ReflectPeriods
             )
-            StatsStrip(stats = state.stats)
-            ChildrenStrip(
-                state = state,
-                onZoomInTo = viewModel::zoomInTo
-            )
-            ReviewCard(
-                state = state,
-                onOpenEditor = viewModel::openEditor,
-                onGenerateDraft = viewModel::generateDraft
-            )
-            HistorySection(
-                history = state.history,
-                onOpenReview = viewModel::openReview
-            )
+
+            when (state.selectedPeriod) {
+                ReportPeriod.Habit -> {
+                    val checkins = remember(state.dailyPlans) { buildHabitCheckins(state.dailyPlans, today()) }
+                    if (checkins.isEmpty()) {
+                        EmptyHabitsCard()
+                    } else {
+                        HabitHeatmapSection(checkins = checkins, monthCount = 2)
+                    }
+                }
+                ReportPeriod.Daily,
+                ReportPeriod.Week,
+                ReportPeriod.Month,
+                ReportPeriod.Annual -> {
+                    val digest = remember(state.selectedPeriod, state.selectedDate, state.dailyPlans) {
+                        state.reportState().digestReport
+                    }
+                    StatsStrip(stats = state.stats)
+                    ChildrenStrip(
+                        state = state,
+                        onZoomInTo = viewModel::zoomInTo
+                    )
+                    ReviewCard(
+                        state = state,
+                        onOpenEditor = viewModel::openEditor,
+                        onGenerateDraft = viewModel::generateDraft
+                    )
+                    DigestCards(
+                        digest = digest,
+                        selectedDate = state.selectedDate,
+                        selectedPeriod = state.selectedPeriod
+                    )
+                    HistorySection(
+                        history = state.history,
+                        onOpenReview = viewModel::openReview
+                    )
+                }
+            }
         }
     }
 }

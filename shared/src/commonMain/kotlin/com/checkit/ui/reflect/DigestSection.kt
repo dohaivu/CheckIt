@@ -1,4 +1,4 @@
-package com.checkit.ui.reports
+package com.checkit.ui.reflect
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -15,10 +15,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.EventNote
 import androidx.compose.material.icons.filled.EventAvailable
@@ -33,7 +31,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,11 +45,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import checkit.shared.generated.resources.Res
@@ -61,8 +58,13 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.ui.components.ReportPeriod
-import com.checkit.ui.components.ReportPeriodHeader
 import com.checkit.ui.localizedCompactDateWithDayName
+import com.checkit.ui.localizedShortMonthName
+import com.checkit.ui.reports.DigestHighlight
+import com.checkit.ui.reports.DigestReportSummary
+import com.checkit.ui.reports.TagReportBarRow
+import com.checkit.ui.reports.TagReportItem
+import com.checkit.ui.reports.TimeReportItem
 import com.checkit.ui.shortName
 import com.checkit.ui.tasks.cardColor
 import com.checkit.ui.tasks.toDurationLabel
@@ -71,96 +73,44 @@ import org.jetbrains.compose.resources.stringResource
 import kotlin.math.abs
 
 @Composable
-internal fun DigestReport(
-    state: ReportUiState,
-    onPeriodSelected: (ReportPeriod) -> Unit,
-    onPreviousPeriod: () -> Unit,
-    onNextPeriod: () -> Unit,
-    onCurrentPeriod: () -> Unit,
-    modifier: Modifier = Modifier
+internal fun DigestCards(
+    digest: DigestReportSummary,
+    selectedDate: LocalDate,
+    selectedPeriod: ReportPeriod
 ) {
-    val selectedPeriod = when (state.selectedPeriod) {
-        ReportPeriod.Daily,
-        ReportPeriod.Week -> state.selectedPeriod
-        ReportPeriod.Month,
-        ReportPeriod.Annual -> ReportPeriod.Week
-        ReportPeriod.Habit -> ReportPeriod.Habit
-    }
-    val reportState = if (state.selectedPeriod == selectedPeriod) {
-        state
-    } else {
-        state.copy(selectedPeriod = selectedPeriod)
-    }
-    val digest = reportState.digestReport
-    LaunchedEffect(state.selectedPeriod) {
-        if (state.selectedPeriod != selectedPeriod) {
-            onPeriodSelected(selectedPeriod)
-        }
-    }
-
-    Column(
-        modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        ReportPeriodHeader(
-            selectedPeriod = selectedPeriod,
-            selectedDate = state.selectedDate,
-            onPeriodSelected = onPeriodSelected,
-            onPreviousPeriod = onPreviousPeriod,
-            onNextPeriod = onNextPeriod,
-            onCurrentPeriod = onCurrentPeriod,
-            periods = DigestReportPeriods
-        )
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(bottom = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            if (selectedPeriod == ReportPeriod.Habit) {
-                if (state.habitCheckins.isNotEmpty()) {
-                    HabitHeatmapSection(
-                        checkins = state.habitCheckins,
-                        monthCount = 2
-                    )
-                } else {
-                    EmptyHabitsCard()
-                }
-            } else if (digest.totalItemCount == 0) {
-                EmptyDigestCard()
-                if (selectedPeriod == ReportPeriod.Daily) {
-                    WeeklyActivityChart(
-                        items = digest.weekActivityItems,
-                        selectedDate = state.selectedDate,
-                        selectedPeriod = selectedPeriod
-                    )
-                }
-            } else {
-                HeroSummaryCard(
-                    totalMinutes = digest.totalMinutes,
-                    previousTotalMinutes = digest.previousTotalMinutes,
-                    selectedPeriod = selectedPeriod,
-                    trendItems = digest.trendItems,
-                    progressItems = digest.progressItems,
-                    doneCount = digest.doneItemCount,
-                    plannedCount = digest.plannedItemCount
-                )
-                WeeklyActivityChart(
-                    items = digest.weekActivityItems,
-                    selectedDate = state.selectedDate,
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        if (digest.totalItemCount == 0) {
+            EmptyDigestCard()
+            if (selectedPeriod == ReportPeriod.Daily) {
+                ActivityChart(
+                    items = digest.activityItems,
+                    selectedDate = selectedDate,
                     selectedPeriod = selectedPeriod
                 )
-                if (digest.topTags.isNotEmpty()) {
-                    TopTagsCard(items = digest.topTags)
-                }
-                if (digest.highlights.isNotEmpty()) {
-                    CompletedHighlightsCard(
-                        highlights = digest.highlights,
-                        selectedPeriod = selectedPeriod
-                    )
-                }
+            }
+        } else {
+            HeroSummaryCard(
+                totalMinutes = digest.totalMinutes,
+                previousTotalMinutes = digest.previousTotalMinutes,
+                selectedPeriod = selectedPeriod,
+                trendItems = digest.trendItems,
+                progressItems = digest.progressItems,
+                doneCount = digest.doneItemCount,
+                plannedCount = digest.plannedItemCount
+            )
+            ActivityChart(
+                items = digest.activityItems,
+                selectedDate = selectedDate,
+                selectedPeriod = selectedPeriod
+            )
+            if (digest.topTags.isNotEmpty()) {
+                TopTagsCard(items = digest.topTags)
+            }
+            if (digest.highlights.isNotEmpty()) {
+                CompletedHighlightsCard(
+                    highlights = digest.highlights,
+                    selectedPeriod = selectedPeriod
+                )
             }
         }
     }
@@ -265,7 +215,7 @@ private fun HeroSummaryCard(
 }
 
 @Composable
-private fun WeeklyActivityChart(
+private fun ActivityChart(
     items: List<TimeReportItem>,
     selectedDate: LocalDate,
     selectedPeriod: ReportPeriod,
@@ -317,6 +267,7 @@ private fun WeeklyActivityChart(
                             ReportPeriod.Daily -> selected
                             else -> item.totalMinutes == maxMinutes && maxMinutes > 0
                         },
+                        label = item.startDate.activityLabel(selectedPeriod),
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -327,20 +278,41 @@ private fun WeeklyActivityChart(
 
 private fun activityChartSubtitle(selectedPeriod: ReportPeriod): AnnotatedString =
     buildAnnotatedString {
-        if (selectedPeriod == ReportPeriod.Daily) {
-            append("A gentle view of the ")
-            highlight("week", ReportPurple)
-            append(" around this day.")
-        } else {
-            append("Days you ")
-            highlight("showed up", ReportPurple)
-            append(", even when it was ")
-            softEmphasis("just a little")
-            append(".")
+        when (selectedPeriod) {
+            ReportPeriod.Daily -> {
+                append("A gentle view of the ")
+                highlight("week", ReportPurple)
+                append(" around this day.")
+            }
+            ReportPeriod.Week -> {
+                append("Days you ")
+                highlight("showed up", ReportPurple)
+                append(", even when it was ")
+                softEmphasis("just a little")
+                append(".")
+            }
+            ReportPeriod.Month -> {
+                append("Weeks you ")
+                highlight("showed up", ReportPurple)
+                append(" this month.")
+            }
+            ReportPeriod.Annual -> {
+                append("Months you ")
+                highlight("showed up", ReportPurple)
+                append(" this year.")
+            }
+            ReportPeriod.Habit -> Unit
         }
     }
 
-private val DigestReportPeriods = listOf(ReportPeriod.Daily, ReportPeriod.Week, ReportPeriod.Habit)
+@Composable
+private fun LocalDate.activityLabel(selectedPeriod: ReportPeriod): String = when (selectedPeriod) {
+    ReportPeriod.Daily,
+    ReportPeriod.Week -> dayOfWeek.shortName()
+    ReportPeriod.Month -> day.toString()
+    ReportPeriod.Annual -> localizedShortMonthName()
+    ReportPeriod.Habit -> ""
+}
 
 @Composable
 private fun ActivityBar(
@@ -348,6 +320,7 @@ private fun ActivityBar(
     maxMinutes: Int,
     selected: Boolean,
     showValue: Boolean,
+    label: String,
     modifier: Modifier = Modifier
 ) {
     val fraction = if (maxMinutes == 0) 0f else item.totalMinutes.toFloat() / maxMinutes.toFloat()
@@ -388,7 +361,7 @@ private fun ActivityBar(
             )
         }
         Text(
-            text = item.startDate.dayOfWeek.shortName(),
+            text = label,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
             color = dayColor,
@@ -396,6 +369,7 @@ private fun ActivityBar(
         )
     }
 }
+
 @Composable
 private fun CompletedHighlightsCard(
     highlights: List<DigestHighlight>,
@@ -470,8 +444,16 @@ private fun highlightsSubtitle(selectedPeriod: ReportPeriod): AnnotatedString =
     buildAnnotatedString {
         append("A few ")
         highlight("finished moments", ReportBlue)
-        append(if (selectedPeriod == ReportPeriod.Week) " from this week." else " from today.")
+        append(" from ${periodRangeLabel(selectedPeriod)}.")
     }
+
+private fun periodRangeLabel(selectedPeriod: ReportPeriod): String = when (selectedPeriod) {
+    ReportPeriod.Daily -> "today"
+    ReportPeriod.Week -> "this week"
+    ReportPeriod.Month -> "this month"
+    ReportPeriod.Annual -> "this year"
+    ReportPeriod.Habit -> "today"
+}
 
 @Composable
 private fun CompletedHighlightRow(
@@ -515,7 +497,7 @@ private fun CompletedHighlightRow(
                 color = MaterialTheme.colorScheme.onSurface
             )
             val detail = listOfNotNull(
-                highlight.date.localizedCompactDateWithDayName().takeIf { selectedPeriod == ReportPeriod.Week },
+                highlight.date.localizedCompactDateWithDayName().takeIf { selectedPeriod != ReportPeriod.Daily && selectedPeriod != ReportPeriod.Habit },
                 highlight.note?.takeIf { it.isNotBlank() }?.takeIf { highlight.totalMinutes == 0 }
             ).joinToString(" - ")
             if (detail.isNotBlank()) {
@@ -697,7 +679,7 @@ private fun TopTagsCard(
 }
 
 @Composable
-private fun EmptyHabitsCard(modifier: Modifier = Modifier) {
+internal fun EmptyHabitsCard(modifier: Modifier = Modifier) {
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(22.dp),
@@ -742,7 +724,13 @@ private fun heroEncouragement(
     plannedCount: Int,
     selectedPeriod: ReportPeriod
 ): AnnotatedString {
-    val period = if (selectedPeriod == ReportPeriod.Week) "this week" else "today"
+    val period = when (selectedPeriod) {
+        ReportPeriod.Daily -> "today"
+        ReportPeriod.Week -> "this week"
+        ReportPeriod.Month -> "this month"
+        ReportPeriod.Annual -> "this year"
+        ReportPeriod.Habit -> "today"
+    }
     return buildAnnotatedString {
         when {
             doneCount > 0 -> {
@@ -841,7 +829,13 @@ private fun Int.trendSummary(
     previousTotalMinutes: Int,
     selectedPeriod: ReportPeriod
 ): TrendSummary {
-    val comparisonLabel = if (selectedPeriod == ReportPeriod.Week) "last week" else "yesterday"
+    val comparisonLabel = when (selectedPeriod) {
+        ReportPeriod.Daily -> "yesterday"
+        ReportPeriod.Week -> "last week"
+        ReportPeriod.Month -> "last month"
+        ReportPeriod.Annual -> "last year"
+        ReportPeriod.Habit -> "yesterday"
+    }
     return when {
         previousTotalMinutes == 0 && this == 0 -> TrendSummary(
             label = "No change vs $comparisonLabel",

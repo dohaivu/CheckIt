@@ -11,6 +11,7 @@ import com.checkit.ui.today
 import com.checkit.ui.myday.workMinutes
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.daysUntil
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 
@@ -108,7 +109,7 @@ data class DigestReportSummary(
     val doneItemCount: Int,
     val plannedItemCount: Int,
     val trendItems: List<TimeReportItem>,
-    val weekActivityItems: List<TimeReportItem>,
+    val activityItems: List<TimeReportItem>,
     val progressItems: List<DailyPlanItem>,
     val topTags: List<TagReportItem>,
     val highlights: List<DigestHighlight>
@@ -137,6 +138,45 @@ private class DailyPlanReportIndex(
         doneWorkMinutesByDate.asSequence()
             .filter { (date, _) -> date >= startDate && date < endDateExclusive }
             .sumOf { (_, minutes) -> minutes }
+
+    private fun dayItems(startDate: LocalDate, endDateExclusive: LocalDate): List<TimeReportItem> =
+        (0 until startDate.daysUntil(endDateExclusive)).map { offset ->
+            val date = startDate.plus(offset, DateTimeUnit.DAY)
+            TimeReportItem(
+                startDate = date,
+                endDate = date,
+                totalMinutes = doneWorkMinutesForDate(date)
+            )
+        }
+
+    private fun lastDays(selectedDate: LocalDate, count: Int): List<TimeReportItem> =
+        dayItems(selectedDate.minus(count - 1, DateTimeUnit.DAY), selectedDate.plus(1, DateTimeUnit.DAY))
+
+    private fun weekBuckets(startDate: LocalDate, endDateExclusive: LocalDate): List<TimeReportItem> =
+        generateSequence(startDate.firstDayOfWeek()) { it.plus(7, DateTimeUnit.DAY) }
+            .takeWhile { weekStart -> weekStart < endDateExclusive }
+            .map { weekStart ->
+                val weekEnd = weekStart.plus(6, DateTimeUnit.DAY)
+                val bucketStart = maxOf(weekStart, startDate)
+                val bucketEndExclusive = minOf(weekEnd.plus(1, DateTimeUnit.DAY), endDateExclusive)
+                TimeReportItem(
+                    startDate = bucketStart,
+                    endDate = bucketEndExclusive.minus(1, DateTimeUnit.DAY),
+                    totalMinutes = doneWorkMinutesInRange(bucketStart, bucketEndExclusive)
+                )
+            }
+            .toList()
+
+    private fun monthBuckets(year: Int): List<TimeReportItem> =
+        (0 until 12).map { monthIndex ->
+            val monthStart = LocalDate(year, monthIndex + 1, 1)
+            val monthEndExclusive = monthStart.plus(1, DateTimeUnit.MONTH)
+            TimeReportItem(
+                startDate = monthStart,
+                endDate = monthEndExclusive.minus(1, DateTimeUnit.DAY),
+                totalMinutes = doneWorkMinutesInRange(monthStart, monthEndExclusive)
+            )
+        }
 
     fun toTagReports(startDate: LocalDate, endDateExclusive: LocalDate): List<TagReportItem> =
         plans.asSequence()
@@ -186,62 +226,40 @@ private class DailyPlanReportIndex(
             ReportPeriod.Annual -> {
                 val periodStart = period.periodStart(selectedDate)
                 val periodEnd = period.periodEndExclusive(selectedDate)
-                generateSequence(periodStart.firstDayOfWeek()) { it.plus(7, DateTimeUnit.DAY) }
-                    .takeWhile { weekStart -> weekStart < periodEnd }
-                    .map { weekStart ->
-                        val weekEnd = weekStart.plus(6, DateTimeUnit.DAY)
-                        val total = doneWorkMinutesInRange(
-                            startDate = maxOf(weekStart, periodStart),
-                            endDateExclusive = minOf(weekEnd.plus(1, DateTimeUnit.DAY), periodEnd)
-                        )
-                        TimeReportItem(
-                            startDate = maxOf(weekStart, periodStart),
-                            endDate = minOf(weekEnd, periodEnd.minus(1, DateTimeUnit.DAY)),
-                            totalMinutes = total
-                        )
-                    }
-                    .toList()
+                weekBuckets(periodStart, periodEnd)
             }
             ReportPeriod.Habit -> emptyList()
         }
 
     fun toDigest(period: ReportPeriod, selectedDate: LocalDate): DigestReportSummary {
-        val digestPeriod = if (period == ReportPeriod.Daily) ReportPeriod.Daily else ReportPeriod.Week
-        val start = digestPeriod.periodStart(selectedDate)
-        val dayCount = when (digestPeriod) {
-            ReportPeriod.Daily -> 1
-            else -> 7
+        val start = period.periodStart(selectedDate)
+        val endExclusive = period.periodEndExclusive(selectedDate)
+
+        val trendItems = when (period) {
+            ReportPeriod.Daily -> lastDays(selectedDate, 7)
+            ReportPeriod.Week -> dayItems(start, endExclusive)
+            ReportPeriod.Month -> weekBuckets(start, endExclusive)
+            ReportPeriod.Annual -> monthBuckets(start.year)
+            ReportPeriod.Habit -> emptyList()
         }
-        val days = (0 until dayCount).map { offset ->
-            val date = start.plus(offset, DateTimeUnit.DAY)
-            TimeReportItem(
-                startDate = date,
-                endDate = date,
-                totalMinutes = doneWorkMinutesForDate(date)
-            )
-        }
-        val trendItems = when (digestPeriod) {
-            ReportPeriod.Daily -> (-6..0).map { offset ->
-                val date = selectedDate.plus(offset, DateTimeUnit.DAY)
-                TimeReportItem(
-                    startDate = date,
-                    endDate = date,
-                    totalMinutes = doneWorkMinutesForDate(date)
-                )
+        val activityItems = when (period) {
+            ReportPeriod.Daily -> {
+                val weekStart = ReportPeriod.Week.periodStart(selectedDate)
+                dayItems(weekStart, weekStart.plus(7, DateTimeUnit.DAY))
             }
-            else -> days
+            ReportPeriod.Week -> dayItems(start, endExclusive)
+            ReportPeriod.Month -> weekBuckets(start, endExclusive)
+            ReportPeriod.Annual -> monthBuckets(start.year)
+            ReportPeriod.Habit -> emptyList()
         }
-        val weekStart = ReportPeriod.Week.periodStart(selectedDate)
-        val weekActivityItems = (0 until 7).map { offset ->
-            val date = weekStart.plus(offset, DateTimeUnit.DAY)
-            TimeReportItem(
-                startDate = date,
-                endDate = date,
-                totalMinutes = doneWorkMinutesForDate(date)
-            )
+
+        val previousStart = when (period) {
+            ReportPeriod.Daily -> start.minus(1, DateTimeUnit.DAY)
+            ReportPeriod.Week -> start.minus(7, DateTimeUnit.DAY)
+            ReportPeriod.Month -> start.minus(1, DateTimeUnit.MONTH)
+            ReportPeriod.Annual -> start.minus(1, DateTimeUnit.YEAR)
+            ReportPeriod.Habit -> start
         }
-        val endExclusive = digestPeriod.periodEndExclusive(selectedDate)
-        val previousStart = start.minus(dayCount, DateTimeUnit.DAY)
         val previousTotalMinutes = doneWorkMinutesInRange(
             startDate = previousStart,
             endDateExclusive = start
@@ -277,12 +295,12 @@ private class DailyPlanReportIndex(
             startDate = start,
             endDate = endExclusive.minus(1, DateTimeUnit.DAY),
             totalItemCount = periodItems.size,
-            totalMinutes = days.sumOf { it.totalMinutes },
+            totalMinutes = doneWorkMinutesInRange(start, endExclusive),
             previousTotalMinutes = previousTotalMinutes,
             doneItemCount = doneItemCount,
             plannedItemCount = plannedItemCount,
             trendItems = trendItems,
-            weekActivityItems = weekActivityItems,
+            activityItems = activityItems,
             progressItems = actionItems,
             topTags = toTagReports(start, endExclusive).take(3),
             highlights = highlights

@@ -92,7 +92,7 @@ internal fun ReportPeriodSwitcher(
         } else {
             modifier.height(44.dp)
         },
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         periods.forEach { period ->
