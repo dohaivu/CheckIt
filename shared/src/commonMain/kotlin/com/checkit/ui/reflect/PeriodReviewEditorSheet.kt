@@ -58,8 +58,7 @@ internal fun PeriodReviewEditorSheet(
         onDismiss = onDismiss,
         sheetGesturesEnabled = !editor.isSaving,
         modifier = Modifier
-            .fillMaxHeight(0.6f)
-            .windowInsetsPadding(WindowInsets.ime)
+            .fillMaxHeight(0.8f)
     ) {
         Column(
             modifier = Modifier
@@ -104,6 +103,9 @@ internal fun PeriodReviewEditorSheet(
             AppOutlinedTextField(
                 value = editor.content,
                 onValueChange = onContentChange,
+                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                    color = MaterialTheme.colorScheme.onSurface
+                ),
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = stringResource(Res.string.reflect_review_content_placeholder),
                 minLines = 10,
@@ -130,6 +132,9 @@ internal fun PeriodReviewEditorSheet(
             AppOutlinedTextField(
                 value = editor.intentNext,
                 onValueChange = onIntentNextChange,
+                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                    color = MaterialTheme.colorScheme.onSurface
+                ),
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = stringResource(Res.string.reflect_review_intent_placeholder),
                 minLines = 5,

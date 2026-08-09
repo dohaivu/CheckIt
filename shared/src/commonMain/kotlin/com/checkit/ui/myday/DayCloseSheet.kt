@@ -33,6 +33,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.cancel
 import checkit.shared.generated.resources.day_close_action_carry
@@ -101,7 +102,8 @@ internal fun DayCloseSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f, fill = true),
-                contentPadding = PaddingValues(bottom = 8.dp)
+                contentPadding = PaddingValues(bottom = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 item {
                     ReflectionSection(
@@ -184,8 +186,8 @@ private fun ReflectionSection(
         Text(
             text = stringResource(Res.string.day_close_win_note_label),
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            fontWeight = FontWeight.Black,
+            color = MaterialTheme.colorScheme.primary
         )
         Text(
             text = "Tip: $prompt",
@@ -226,8 +228,8 @@ private fun TomorrowGoalSection(
         Text(
             text = "Tomorrow's Top Priority",
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            fontWeight = FontWeight.Black,
+            color = MaterialTheme.colorScheme.primary
         )
         AppOutlinedTextField(
             value = value,
@@ -238,7 +240,7 @@ private fun TomorrowGoalSection(
             ),
             modifier = Modifier.fillMaxWidth(),
             placeholder = "One thing you want to focus on...",
-            minLines = 1,
+            minLines = 2,
             enabled = enabled
         )
     }
