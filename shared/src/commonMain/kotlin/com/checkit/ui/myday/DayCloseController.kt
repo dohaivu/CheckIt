@@ -97,12 +97,12 @@ internal class DayCloseController(
                     delay(3000.milliseconds)
                     state.update { it.copy(showCelebration = false) }
                 }
-                state.sendEvent(UiEvent.OpenReflect)
+
                 val parts = buildList {
                     if (result.carriedCount > 0) add("${result.carriedCount} carried to tomorrow")
                     if (result.markedDoneCount > 0) add("${result.markedDoneCount} marked done")
                     if (result.droppedCount > 0) add("${result.droppedCount} left unfinished")
-                    if (result.winNoteSaved) add("win saved")
+                    if (result.winNoteSaved) add("day close saved")
                 }
                 state.sendEvent(
                     UiEvent.ShowSnackbar(
