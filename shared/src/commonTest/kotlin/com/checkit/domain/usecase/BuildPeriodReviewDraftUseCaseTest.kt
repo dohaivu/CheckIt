@@ -208,7 +208,7 @@ class BuildPeriodReviewDraftUseCaseTest {
     }
 
     @Test
-    fun hybridReviewRoundTripsStatsThroughSave() = runTest {
+    fun autoReviewRoundTripsStatsThroughSave() = runTest {
         val repository = FakeCheckItRepository()
         val focus = PeriodFocus(ReviewPeriod.Week, date)
         val plans = listOf(
@@ -223,13 +223,13 @@ class BuildPeriodReviewDraftUseCaseTest {
             focus = focus,
             content = draft.content,
             intentNext = "",
-            source = ReviewSource.Hybrid,
+            source = ReviewSource.Auto,
             statsJson = draft.statsJson,
             highlightsJson = draft.highlightsJson
         )
 
         val saved = repository.observePeriodReviews().first().single()
-        assertEquals(ReviewSource.Hybrid, saved.source)
+        assertEquals(ReviewSource.Auto, saved.source)
         assertEquals(draft.statsJson, saved.statsJson)
         assertEquals(draft.highlightsJson, saved.highlightsJson)
         assertNotNull(saved.generatedAtMillis)

@@ -15,8 +15,7 @@ enum class ReviewPeriod {
 
 enum class ReviewSource {
     Auto,
-    Manual,
-    Hybrid
+    Manual
 }
 
 enum class ReviewStatus {

@@ -193,8 +193,7 @@ class ReflectViewModelTest {
         advanceUntilIdle()
 
         val editor = assertNotNull(viewModel.editor.value)
-        assertTrue(editor.isDraft)
-        assertEquals(ReviewSource.Hybrid, editor.source)
+        assertEquals(ReviewSource.Auto, editor.source)
         assertTrue(editor.content.contains("2 items"))
         assertTrue(editor.content.contains("Work"))
         assertNotNull(editor.statsJson)
@@ -207,7 +206,6 @@ class ReflectViewModelTest {
         advanceUntilIdle()
 
         val editor = assertNotNull(viewModel.editor.value)
-        assertEquals(false, editor.isDraft)
         assertEquals(ReviewSource.Manual, editor.source)
         assertEquals("", editor.content)
     }
@@ -245,12 +243,12 @@ class ReflectViewModelTest {
         advanceUntilIdle()
 
         val editor = assertNotNull(viewModel.editor.value)
-        assertTrue(editor.isDraft)
+        assertEquals(ReviewSource.Auto, editor.source)
         assertTrue(editor.content.startsWith("Annual context"))
     }
 
     @Test
-    fun savingGeneratedDraftPersistsHybridSourceAndStats() = runTest(dispatcher) {
+    fun savingGeneratedDraftPersistsAutoSourceAndStats() = runTest(dispatcher) {
         val weekStart = today().minus(today().dayOfWeek.ordinal, DateTimeUnit.DAY)
         repository.setDailyPlans(
             listOf(
@@ -277,7 +275,7 @@ class ReflectViewModelTest {
         advanceUntilIdle()
 
         val saved = repository.observePeriodReviews().first().single()
-        assertEquals(ReviewSource.Hybrid, saved.source)
+        assertEquals(ReviewSource.Auto, saved.source)
         assertEquals("Keep shipping", saved.intentNext)
         assertNotNull(saved.statsJson)
         assertNotNull(saved.highlightsJson)

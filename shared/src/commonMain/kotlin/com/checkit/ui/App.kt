@@ -425,6 +425,7 @@ fun CheckItApp(
                             editor = editor,
                             onContentChange = viewModels.reflect::updateEditorContent,
                             onIntentNextChange = viewModels.reflect::updateEditorIntentNext,
+                            onGenerateDraft = viewModels.reflect::generateDraft,
                             onSave = viewModels.reflect::saveEditor,
                             onDismiss = viewModels.reflect::dismissEditor
                         )

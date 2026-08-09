@@ -28,7 +28,6 @@ data class ReflectReviewEditorState(
     val source: ReviewSource = ReviewSource.Manual,
     val statsJson: String? = null,
     val highlightsJson: String? = null,
-    val isDraft: Boolean = false,
     val isSaving: Boolean = false
 )
 

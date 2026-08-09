@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -28,7 +26,6 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -45,19 +42,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import checkit.shared.generated.resources.Res
-import checkit.shared.generated.resources.cancel
 import checkit.shared.generated.resources.reflect_period_day
 import checkit.shared.generated.resources.reflect_period_month
 import checkit.shared.generated.resources.reflect_period_week
 import checkit.shared.generated.resources.reflect_period_year
 import checkit.shared.generated.resources.reflect_review_card_title
-import checkit.shared.generated.resources.reflect_review_content_placeholder
-import checkit.shared.generated.resources.reflect_review_draft_note
 import checkit.shared.generated.resources.reflect_review_edit
 import checkit.shared.generated.resources.reflect_review_empty
-import checkit.shared.generated.resources.reflect_review_generate_draft
-import checkit.shared.generated.resources.reflect_review_intent_placeholder
-import checkit.shared.generated.resources.reflect_review_save
 import checkit.shared.generated.resources.reflect_review_status_complete
 import checkit.shared.generated.resources.reflect_review_status_draft
 import checkit.shared.generated.resources.reflect_review_write
@@ -68,8 +59,7 @@ import checkit.shared.generated.resources.reflect_reviews_written
 import checkit.shared.generated.resources.tab_reflect
 import com.checkit.domain.PeriodReview
 import com.checkit.domain.ReviewPeriod
-import com.checkit.ui.components.AppEditorBottomSheet
-import com.checkit.ui.components.AppOutlinedTextField
+import com.checkit.ui.components.MarkdownView
 import com.checkit.ui.components.ReportPeriod
 import com.checkit.ui.components.ReportPeriodHeader
 import com.checkit.ui.components.TinyTopAppBar
@@ -159,12 +149,19 @@ internal fun ReflectScreen(
                             plannedCount = digest.plannedItemCount,
                             journalCount = digest.journalCount
                         )
+
+                        ReviewCard(
+                            state = state,
+                            onOpenEditor = viewModel::openEditor
+                        )
+
                         ActivityChart(
                             items = digest.activityItems,
                             selectedDate = state.selectedDate,
                             selectedPeriod = state.selectedPeriod,
                             onZoomInTo = viewModel::zoomInTo
                         )
+
                         if (digest.topTags.isNotEmpty()) {
                             TopTagsCard(items = digest.topTags)
                         }
@@ -174,11 +171,7 @@ internal fun ReflectScreen(
                                 selectedPeriod = state.selectedPeriod
                             )
                         }
-                        ReviewCard(
-                            state = state,
-                            onOpenEditor = viewModel::openEditor,
-                            onGenerateDraft = viewModel::generateDraft
-                        )
+
                         ReviewsSection(
                             reviews = state.reviewsForSelectedPeriod,
                             selectedPeriod = state.selectedPeriod,
@@ -194,8 +187,7 @@ internal fun ReflectScreen(
 @Composable
 private fun ReviewCard(
     state: ReflectUiState,
-    onOpenEditor: () -> Unit,
-    onGenerateDraft: () -> Unit
+    onOpenEditor: () -> Unit
 ) {
     val review = state.focusReview
     val periodLabel = state.focus.period.label()
@@ -245,26 +237,17 @@ private fun ReviewCard(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                TextButton(onClick = onGenerateDraft) {
-                    Text(stringResource(Res.string.reflect_review_generate_draft))
-                }
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     if (review.content.isNotBlank()) {
-                        Text(
-                            text = review.content,
-                            style = MaterialTheme.typography.bodyMedium,
-                            maxLines = 4,
-                            overflow = TextOverflow.Ellipsis
+                        MarkdownView(
+                            markdown = review.content
                         )
                     }
                     review.intentNext?.takeIf { it.isNotBlank() }?.let { intent ->
-                        Text(
-                            text = intent,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
+                        MarkdownView(
+                            markdown = intent,
+                            style = MaterialTheme.typography.bodySmall
                         )
                     }
                 }
@@ -488,7 +471,7 @@ private fun ReviewStatusPill(review: PeriodReview) {
 }
 
 @Composable
-private fun ReviewPeriod.reviewIcon(): ImageVector = when (this) {
+internal fun ReviewPeriod.reviewIcon(): ImageVector = when (this) {
     ReviewPeriod.Day -> Icons.Default.Star
     ReviewPeriod.Week -> Icons.Default.DateRange
     ReviewPeriod.Month -> Icons.Default.CalendarMonth
@@ -496,82 +479,15 @@ private fun ReviewPeriod.reviewIcon(): ImageVector = when (this) {
 }
 
 @Composable
-private fun PeriodReview.rangeLabel(): String = when (period) {
+internal fun PeriodReview.rangeLabel(): String = when (period) {
     ReviewPeriod.Day -> periodStartDate.localizedCompactDateWithDayName()
     ReviewPeriod.Week -> "${periodStartDate.localizedShortMonthName()} ${periodStartDate.day}"
     ReviewPeriod.Month -> periodStartDate.localizedMonthTitle()
     ReviewPeriod.Year -> periodStartDate.year.toString()
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun PeriodReviewEditorSheet(
-    editor: ReflectReviewEditorState,
-    onContentChange: (String) -> Unit,
-    onIntentNextChange: (String) -> Unit,
-    onSave: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    val periodLabel = editor.focus.period.label()
-    AppEditorBottomSheet(
-        onDismiss = onDismiss,
-        sheetGesturesEnabled = !editor.isSaving
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 8.dp)
-                .heightIn(max = 560.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = stringResource(Res.string.reflect_review_card_title, periodLabel),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-            if (editor.isDraft) {
-                Text(
-                    text = stringResource(Res.string.reflect_review_draft_note, periodLabel),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-            AppOutlinedTextField(
-                value = editor.content,
-                onValueChange = onContentChange,
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = stringResource(Res.string.reflect_review_content_placeholder),
-                minLines = 4,
-                enabled = !editor.isSaving
-            )
-            AppOutlinedTextField(
-                value = editor.intentNext,
-                onValueChange = onIntentNextChange,
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = stringResource(Res.string.reflect_review_intent_placeholder),
-                minLines = 2,
-                enabled = !editor.isSaving
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton(onClick = onDismiss, enabled = !editor.isSaving) {
-                    Text(stringResource(Res.string.cancel))
-                }
-                Spacer(Modifier.width(8.dp))
-                TextButton(onClick = onSave, enabled = !editor.isSaving) {
-                    Text(stringResource(Res.string.reflect_review_save))
-                }
-            }
-            Spacer(Modifier.height(16.dp))
-        }
-    }
-}
-
-@Composable
-private fun ReviewPeriod.label(): String = when (this) {
+internal fun ReviewPeriod.label(): String = when (this) {
     ReviewPeriod.Day -> stringResource(Res.string.reflect_period_day)
     ReviewPeriod.Week -> stringResource(Res.string.reflect_period_week)
     ReviewPeriod.Month -> stringResource(Res.string.reflect_period_month)

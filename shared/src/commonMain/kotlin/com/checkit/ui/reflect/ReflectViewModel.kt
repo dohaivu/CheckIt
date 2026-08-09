@@ -133,27 +133,30 @@ class ReflectViewModel(
             intentNext = state.focusReview?.intentNext.orEmpty(),
             source = state.focusReview?.source ?: ReviewSource.Manual,
             statsJson = state.focusReview?.statsJson,
-            highlightsJson = state.focusReview?.highlightsJson,
-            isDraft = state.focusReview?.source == ReviewSource.Hybrid
+            highlightsJson = state.focusReview?.highlightsJson
         )
     }
 
     fun generateDraft() {
         val current = _uiState.value
-        if (_editor.value != null) return
         val focus = current.focus
+        
+        // If editor not open, open it first (legacy support for ReviewCard call if still exists)
+        if (_editor.value == null) {
+            openEditor()
+        }
+
         viewModelScope.launch {
             val draft = buildDraft(focus, current.dailyPlans, current.reviews)
-            _editor.value = ReflectReviewEditorState(
-                focus = focus,
-                review = current.focusReview,
-                content = draft?.content.orEmpty(),
-                source = if (draft != null) ReviewSource.Hybrid else ReviewSource.Manual,
-                statsJson = draft?.statsJson,
-                highlightsJson = draft?.highlightsJson,
-                isDraft = draft != null
-            )
-            if (draft == null) {
+            if (draft != null) {
+                _editor.update { editor ->
+                    editor?.copy(
+                        content = draft.content,
+                        statsJson = draft.statsJson,
+                        highlightsJson = draft.highlightsJson,
+                    )
+                }
+            } else {
                 sendEvent(UiEvent.ShowSnackbar("No activity in this period to draft from"))
             }
         }
