@@ -4,21 +4,32 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.cancel
 import checkit.shared.generated.resources.reflect_review_card_title
@@ -45,25 +56,40 @@ internal fun PeriodReviewEditorSheet(
     val periodLabel = editor.focus.period.label()
     AppEditorBottomSheet(
         onDismiss = onDismiss,
-        sheetGesturesEnabled = !editor.isSaving
+        sheetGesturesEnabled = !editor.isSaving,
+        modifier = Modifier
+            .fillMaxHeight(0.6f)
+            .windowInsetsPadding(WindowInsets.ime)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 8.dp)
-                .heightIn(max = 560.dp)
+                .weight(1f)
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = stringResource(Res.string.reflect_review_card_title, periodLabel),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = editor.focus.period.reviewIcon(),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(Res.string.reflect_review_card_title, periodLabel).uppercase(),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.2.sp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
                 TextButton(onClick = onGenerateDraft, enabled = !editor.isSaving) {
                     Text(stringResource(Res.string.reflect_review_generate_draft))
                 }
@@ -80,26 +106,45 @@ internal fun PeriodReviewEditorSheet(
                 onValueChange = onContentChange,
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = stringResource(Res.string.reflect_review_content_placeholder),
-                minLines = 4,
+                minLines = 10,
                 enabled = !editor.isSaving
             )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Schedule,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.secondary
+                )
+                Text(
+                    text = "NEXT FOCUS",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 1.sp,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
             AppOutlinedTextField(
                 value = editor.intentNext,
                 onValueChange = onIntentNextChange,
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = stringResource(Res.string.reflect_review_intent_placeholder),
-                minLines = 2,
+                minLines = 5,
                 enabled = !editor.isSaving
             )
+            Spacer(modifier = Modifier.weight(1f))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
             ) {
-                TextButton(onClick = onDismiss, enabled = !editor.isSaving) {
+                OutlinedButton(onClick = onDismiss, enabled = !editor.isSaving) {
                     Text(stringResource(Res.string.cancel))
                 }
                 Spacer(Modifier.width(8.dp))
-                TextButton(onClick = onSave, enabled = !editor.isSaving) {
+                Button(onClick = onSave, enabled = !editor.isSaving) {
                     Text(stringResource(Res.string.reflect_review_save))
                 }
             }

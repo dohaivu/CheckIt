@@ -343,7 +343,7 @@ private fun ReviewsSection(
             }
         }
         if (reviews.isEmpty()) {
-            ReviewsEmptyState(periodLabel = periodLabel)
+            ReviewsEmptyState(periodLabel = selectedPeriod.childReviewPeriod().label())
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
                 reviews.forEach { review ->
