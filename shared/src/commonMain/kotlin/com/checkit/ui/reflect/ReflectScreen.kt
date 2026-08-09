@@ -208,7 +208,7 @@ private fun ReviewCard(
             .fillMaxWidth()
             .background(gradient, RoundedCornerShape(24.dp))
             .clickable(onClick = onOpenEditor)
-            .padding(24.dp)
+            .padding(20.dp)
     ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(8.dp)

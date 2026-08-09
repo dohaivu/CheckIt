@@ -72,6 +72,7 @@ import com.checkit.domain.MoodTiredEmojis
 import com.checkit.domain.PeriodReview
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.EmojiPicker
+import com.checkit.ui.components.MarkdownView
 import com.checkit.ui.components.TagPill
 import com.checkit.ui.components.TagPlain
 import com.checkit.ui.components.getMoodColorFromEmoji
@@ -441,7 +442,7 @@ private fun JournalAgendaReviewCard(
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
             .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
         Text(
             text = stringResource(Res.string.journal_agenda_review_card_title, review.periodStartDate.day),
@@ -449,12 +450,10 @@ private fun JournalAgendaReviewCard(
             fontWeight = FontWeight.SemiBold
         )
         if (review.content.isNotBlank()) {
-            Text(
-                text = review.content,
+            MarkdownView(
+                markdown = review.content,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis
             )
         }
     }
