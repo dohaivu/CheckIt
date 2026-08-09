@@ -193,7 +193,7 @@ class ReflectViewModelTest {
         advanceUntilIdle()
 
         val editor = assertNotNull(viewModel.editor.value)
-        assertEquals(ReviewSource.Auto, editor.source)
+        assertEquals(ReviewSource.Manual, editor.source)
         assertTrue(editor.content.contains("2 items"))
         assertTrue(editor.content.contains("Work"))
         assertNotNull(editor.statsJson)
@@ -243,7 +243,7 @@ class ReflectViewModelTest {
         advanceUntilIdle()
 
         val editor = assertNotNull(viewModel.editor.value)
-        assertEquals(ReviewSource.Auto, editor.source)
+        assertEquals(ReviewSource.Manual, editor.source)
         assertTrue(editor.content.startsWith("Annual context"))
     }
 
@@ -275,11 +275,11 @@ class ReflectViewModelTest {
         advanceUntilIdle()
 
         val saved = repository.observePeriodReviews().first().single()
-        assertEquals(ReviewSource.Auto, saved.source)
+        assertEquals(ReviewSource.Manual, saved.source)
         assertEquals("Keep shipping", saved.intentNext)
         assertNotNull(saved.statsJson)
         assertNotNull(saved.highlightsJson)
-        assertNotNull(saved.generatedAtMillis)
+        assertNull(saved.generatedAtMillis)
     }
 
     @Test
