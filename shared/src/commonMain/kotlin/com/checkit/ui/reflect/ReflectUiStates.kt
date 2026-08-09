@@ -347,7 +347,7 @@ private class DailyPlanReportIndex(
                     .thenBy { (_, item) -> item.startTimeMinutes ?: Int.MAX_VALUE }
                     .thenBy { (_, item) -> item.sortOrder }
             )
-            .take(8)
+            .take(5)
             .map { (date, item) ->
                 DigestHighlight(
                     date = date,

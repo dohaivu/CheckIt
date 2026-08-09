@@ -22,7 +22,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.EventNote
 import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -178,36 +177,41 @@ internal fun ActivityChart(
     val maxMinutes = remember(items) { items.maxOfOrNull { it.totalMinutes } ?: 0 }
     val subtitle = remember(selectedPeriod) { activityChartSubtitle(selectedPeriod) }
 
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        border = CardDefaults.outlinedCardBorder()
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(
+                        ReportPurple.copy(alpha = 0.08f),
+                        ReportPurple.copy(alpha = 0.03f)
+                    )
+                ),
+                RoundedCornerShape(24.dp)
+            )
+            .padding(24.dp)
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 18.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    text = sectionTitle(prefix = "Your ", emphasis = "rhythm", accent = ReportPurple),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    text = sectionTitle(prefix = "YOUR ", emphasis = "RHYTHM", accent = ReportPurple),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.2.sp,
+                    color = ReportPurple
                 )
                 Text(
                     text = subtitle,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 )
             }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(138.dp),
+                    .height(120.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Bottom
             ) {
@@ -280,9 +284,9 @@ private fun ActivityBar(
     modifier: Modifier = Modifier
 ) {
     val fraction = if (maxMinutes == 0) 0f else item.totalMinutes.toFloat() / maxMinutes.toFloat()
-    val fillHeight = if (item.totalMinutes == 0) 0.dp else 88.dp * fraction.coerceIn(0.22f, 1f)
+    val fillHeight = if (item.totalMinutes == 0) 0.dp else 72.dp * fraction.coerceIn(0.22f, 1f)
     val barColor = if (selected) ReportBlue else ReportPurple
-    val dayColor = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+    val dayColor = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
 
     Column(
         modifier = modifier.clickable(onClick = onClick),
@@ -293,8 +297,8 @@ private fun ActivityBar(
             Text(
                 text = item.totalMinutes.toDurationLabel(compact = true),
                 modifier = Modifier
-                    .padding(bottom = 8.dp),
-                style = MaterialTheme.typography.labelMedium,
+                    .padding(bottom = 6.dp),
+                style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
                 color = dayColor,
                 maxLines = 1
@@ -302,10 +306,10 @@ private fun ActivityBar(
         }
         Box(
             modifier = Modifier
-                .width(20.dp)
-                .height(88.dp)
+                .width(16.dp)
+                .height(72.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.62f)),
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
             contentAlignment = Alignment.BottomCenter
         ) {
             Box(
@@ -318,8 +322,9 @@ private fun ActivityBar(
         }
         Text(
             text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+            modifier = Modifier.padding(top = 4.dp),
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
             color = dayColor,
             maxLines = 1
         )
@@ -332,65 +337,61 @@ internal fun CompletedHighlightsCard(
     selectedPeriod: ReportPeriod,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = CardDefaults.outlinedCardBorder()
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(
+                        ReportBlue.copy(alpha = 0.08f),
+                        ReportBlue.copy(alpha = 0.03f)
+                    )
+                ),
+                RoundedCornerShape(24.dp)
+            )
+            .padding(vertical = 24.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    .padding(horizontal = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(28.dp)
-                        .clip(CircleShape)
-                        .background(ReportBlue),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Star,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                        tint = Color.White
-                    )
-                }
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
                         text = sectionTitle(
-                            prefix = "",
-                            emphasis = "Wins",
-                            suffix = " you can feel good about",
+                            prefix = "YOUR ",
+                            emphasis = "WINS",
+                            suffix = "",
                             accent = ReportBlue
                         ),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.2.sp,
+                        color = ReportBlue
                     )
                     Text(
                         text = highlightsSubtitle(selectedPeriod),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
                 }
             }
-            highlights.forEachIndexed { index, highlight ->
-                if (index > 0) {
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+            Column(
+                modifier = Modifier.padding(top = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(0.dp)
+            ) {
+                highlights.forEach { highlight ->
+                    CompletedHighlightRow(
+                        highlight = highlight,
+                        selectedPeriod = selectedPeriod
+                    )
                 }
-                CompletedHighlightRow(
-                    highlight = highlight,
-                    selectedPeriod = selectedPeriod
-                )
             }
         }
     }
@@ -422,22 +423,22 @@ private fun CompletedHighlightRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 18.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+            .padding(horizontal = 24.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .size(46.dp)
-                .clip(CircleShape)
-                .background(accent),
+                .size(36.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(accent.copy(alpha = 0.15f)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = highlight.icon(),
                 contentDescription = null,
-                modifier = Modifier.size(24.dp),
-                tint = Color.White
+                modifier = Modifier.size(18.dp),
+                tint = accent
             )
         }
         Column(
@@ -446,7 +447,7 @@ private fun CompletedHighlightRow(
         ) {
             Text(
                 text = highlight.title.ifBlank { "Done item" },
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -459,8 +460,8 @@ private fun CompletedHighlightRow(
             if (detail.isNotBlank()) {
                 Text(
                     text = detail,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -469,11 +470,11 @@ private fun CompletedHighlightRow(
         if (highlight.totalMinutes > 0) {
             Text(
                 text = highlight.totalMinutes.toDurationLabel(),
-                modifier = Modifier.widthIn(min = 58.dp),
-                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.widthIn(min = 48.dp),
+                style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.End,
-                color = accent
+                color = accent.copy(alpha = 0.8f)
             )
         }
     }
