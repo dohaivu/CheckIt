@@ -77,8 +77,6 @@
 
     <string name="reflect_review_card_title">%1$s反思</string>
     <string name="reflect_review_empty">这个%1$s还没有反思。</string>
-    <string name="reflect_review_write">写反思</string>
-    <string name="reflect_review_edit">编辑反思</string>
     <string name="reflect_review_generate_draft">生成草稿</string>
     <string name="reflect_review_draft_note">根据你的%1$s自动生成草稿。请查看并保存。</string>
     <string name="reflect_review_saved">反思已保存</string>

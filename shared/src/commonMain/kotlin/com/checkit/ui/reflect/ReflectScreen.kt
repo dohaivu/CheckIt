@@ -1,5 +1,6 @@
 package com.checkit.ui.reflect
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,6 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Notes
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.EmojiEvents
@@ -32,26 +34,26 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import checkit.shared.generated.resources.Res
+import checkit.shared.generated.resources.calendar_open_review
 import checkit.shared.generated.resources.reflect_period_day
 import checkit.shared.generated.resources.reflect_period_month
 import checkit.shared.generated.resources.reflect_period_week
 import checkit.shared.generated.resources.reflect_period_year
 import checkit.shared.generated.resources.reflect_review_card_title
-import checkit.shared.generated.resources.reflect_review_edit
 import checkit.shared.generated.resources.reflect_review_empty
 import checkit.shared.generated.resources.reflect_review_status_complete
 import checkit.shared.generated.resources.reflect_review_status_draft
-import checkit.shared.generated.resources.reflect_review_write
 import checkit.shared.generated.resources.reflect_reviews_empty
 import checkit.shared.generated.resources.reflect_reviews_subtitle
 import checkit.shared.generated.resources.reflect_reviews_title
@@ -191,64 +193,111 @@ private fun ReviewCard(
 ) {
     val review = state.focusReview
     val periodLabel = state.focus.period.label()
-    Card(
+
+    val gradient = Brush.linearGradient(
+        colors = listOf(
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.2f)
+        )
+    )
+
+    Surface(
+        onClick = onOpenEditor,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)),
+        shadowElevation = 2.dp
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+        Box(modifier = Modifier.background(gradient)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Notes,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = stringResource(Res.string.reflect_review_card_title, periodLabel),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(Modifier.weight(1f))
-                TextButton(onClick = onOpenEditor) {
-                    Text(
-                        text = stringResource(
-                            if (review?.isComplete == true) {
-                                Res.string.reflect_review_edit
-                            } else {
-                                Res.string.reflect_review_write
-                            }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = state.focus.period.reviewIcon(),
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.primary
                         )
-                    )
-                }
-            }
-            if (review == null) {
-                Text(
-                    text = stringResource(Res.string.reflect_review_empty, periodLabel),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    if (review.content.isNotBlank()) {
-                        MarkdownView(
-                            markdown = review.content
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(Res.string.reflect_review_card_title, periodLabel).uppercase(),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp,
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
-                    review.intentNext?.takeIf { it.isNotBlank() }?.let { intent ->
-                        MarkdownView(
-                            markdown = intent,
-                            style = MaterialTheme.typography.bodySmall
+
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                        contentDescription = stringResource(Res.string.calendar_open_review),
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                }
+
+                if (review == null || review.content.isBlank()) {
+                    Text(
+                        text = stringResource(Res.string.reflect_review_empty, periodLabel),
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                    )
+                } else {
+                    MarkdownView(
+                        markdown = review.content,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+//                            lineHeight = 24.sp
                         )
+                    )
+
+                    review.intentNext?.takeIf { it.isNotBlank() }?.let { intent ->
+                        Column (
+                            verticalArrangement = Arrangement.spacedBy(0.dp),
+                            horizontalAlignment = Alignment.Start,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                .padding(12.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Schedule,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.secondary
+                                )
+                                Text(
+                                    text = "Next Focus",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 1.sp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            MarkdownView(
+                                markdown = intent,
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            )
+                        }
                     }
                 }
             }
@@ -402,33 +451,11 @@ private fun ReviewRow(
                 ReviewStatusPill(review = review)
             }
             if (review.content.isNotBlank()) {
-                Text(
-                    text = review.content,
+                MarkdownView(
+                    markdown = review.content,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-            }
-            review.intentNext?.takeIf { it.isNotBlank() }?.let { intent ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Schedule,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
-                    )
-                    Text(
-                        text = intent,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
             }
         }
         Icon(

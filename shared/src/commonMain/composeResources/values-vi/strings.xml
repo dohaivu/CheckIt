@@ -77,8 +77,6 @@
 
     <string name="reflect_review_card_title">Nhìn lại %1$s</string>
     <string name="reflect_review_empty">Chưa có bài nhìn lại cho %1$s này.</string>
-    <string name="reflect_review_write">Viết nhìn lại</string>
-    <string name="reflect_review_edit">Sửa bài nhìn lại</string>
     <string name="reflect_review_generate_draft">Tạo bản nháp</string>
     <string name="reflect_review_draft_note">Nháp tự động từ %1$s của bạn. Hãy xem lại và lưu.</string>
     <string name="reflect_review_saved">Đã lưu bài nhìn lại</string>
