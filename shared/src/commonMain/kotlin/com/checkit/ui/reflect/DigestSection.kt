@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.EventNote
+import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.TaskAlt
@@ -57,6 +58,7 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.ui.components.ReportPeriod
+import com.checkit.ui.components.getMoodColorFromEmoji
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.localizedShortMonthName
 import com.checkit.ui.shortName
@@ -418,7 +420,11 @@ private fun CompletedHighlightRow(
     selectedPeriod: ReportPeriod,
     modifier: Modifier = Modifier
 ) {
-    val accent = highlight.item.cardColor()
+    val accent = if (highlight.journalEntry != null) {
+        highlight.journalEntry.moods.firstOrNull()?.let { getMoodColorFromEmoji(it) } ?: MaterialTheme.colorScheme.primary
+    } else {
+        highlight.item?.cardColor() ?: MaterialTheme.colorScheme.primary
+    }
 
     Row(
         modifier = modifier
@@ -434,19 +440,24 @@ private fun CompletedHighlightRow(
                 .background(accent.copy(alpha = 0.15f)),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = highlight.icon(),
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-                tint = accent
-            )
+            val emoji = highlight.journalEntry?.moods?.firstOrNull()
+            if (emoji != null) {
+                Text(text = emoji, fontSize = 18.sp)
+            } else {
+                Icon(
+                    imageVector = highlight.icon(),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = accent
+                )
+            }
         }
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             Text(
-                text = highlight.title.ifBlank { "Done item" },
+                text = highlight.title.ifBlank { if (highlight.journalEntry != null) "Check-In" else "Done item" },
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
@@ -690,11 +701,12 @@ internal fun TagReportBarRow(
 }
 
 
-private fun DigestHighlight.icon(): ImageVector = when (item.source) {
+private fun DigestHighlight.icon(): ImageVector = when (item?.source) {
     DailyPlanItemSource.MyDayTask -> Icons.Default.EventAvailable
     DailyPlanItemSource.MyDayNote -> Icons.AutoMirrored.Filled.EventNote
     DailyPlanItemSource.MyDayReminder -> Icons.Default.Schedule
     DailyPlanItemSource.ExistingTask -> Icons.Default.TaskAlt
+    null -> Icons.AutoMirrored.Filled.Notes
 }
 
 private fun heroEncouragement(

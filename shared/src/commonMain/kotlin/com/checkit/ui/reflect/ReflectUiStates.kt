@@ -9,6 +9,7 @@ import com.checkit.domain.PeriodFocus
 import com.checkit.domain.PeriodReview
 import com.checkit.domain.ReviewPeriod
 import com.checkit.domain.ReviewSource
+import com.checkit.domain.isGoodMood
 import com.checkit.ui.components.ReportPeriod
 import com.checkit.ui.firstDayOfMonth
 import com.checkit.ui.myday.doneWorkMinutes
@@ -200,10 +201,11 @@ data class DigestReportSummary(
 
 data class DigestHighlight(
     val date: LocalDate,
-    val item: DailyPlanItem,
     val title: String,
     val note: String?,
-    val totalMinutes: Int
+    val totalMinutes: Int,
+    val item: DailyPlanItem? = null,
+    val journalEntry: JournalEntry? = null
 )
 
 internal fun buildDigestReport(
@@ -339,24 +341,38 @@ private class DailyPlanReportIndex(
         val journalCount = journalEntries.count { entry ->
             entry.dateEpochDays >= start.toEpochDays().toInt() && entry.dateEpochDays < endExclusive.toEpochDays().toInt()
         }
-        val highlights = periodItems.asSequence()
-            .filter { (_, item) -> item.status == DailyPlanItemStatus.Done }
+        val highlights = (
+            periodItems.asSequence()
+                .filter { (_, item) -> item.status == DailyPlanItemStatus.Done }
+                .map { (date, item) ->
+                    DigestHighlight(
+                        date = date,
+                        item = item,
+                        title = item.title,
+                        note = item.note,
+                        totalMinutes = item.workMinutes()
+                    )
+                } +
+                journalEntries.asSequence()
+                    .filter { entry ->
+                        entry.dateEpochDays >= start.toEpochDays().toInt() && entry.dateEpochDays < endExclusive.toEpochDays().toInt()
+                    }
+                    .map { entry ->
+                        DigestHighlight(
+                            date = LocalDate.fromEpochDays(entry.dateEpochDays),
+                            journalEntry = entry,
+                            title = entry.content.ifBlank { entry.context.orEmpty() },
+                            note = entry.context,
+                            totalMinutes = 0
+                        )
+                    }
+        )
             .sortedWith(
-                compareBy<Pair<LocalDate, DailyPlanItem>> { (_, item) -> item.workMinutes() == 0 }
-                    .thenByDescending { it.first }
-                    .thenBy { (_, item) -> item.startTimeMinutes ?: Int.MAX_VALUE }
-                    .thenBy { (_, item) -> item.sortOrder }
+                compareByDescending<DigestHighlight> { it.journalEntry?.isGoodMood() == true }
+                    .thenByDescending { it.totalMinutes }
+                    .thenByDescending { it.date }
             )
-            .take(5)
-            .map { (date, item) ->
-                DigestHighlight(
-                    date = date,
-                    item = item,
-                    title = item.title,
-                    note = item.note,
-                    totalMinutes = item.workMinutes()
-                )
-            }
+            .take(8)
             .toList()
 
         return DigestReportSummary(

@@ -61,11 +61,20 @@ import androidx.compose.ui.unit.sp
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.journal_agenda_review_card_title
 import com.checkit.domain.JournalEntry
+import com.checkit.domain.MoodCalmEmojis
+import com.checkit.domain.MoodEnergeticEmojis
+import com.checkit.domain.MoodFocusedEmojis
+import com.checkit.domain.MoodHappyEmojis
+import com.checkit.domain.MoodLovedEmojis
+import com.checkit.domain.MoodSadEmojis
+import com.checkit.domain.MoodWorriedEmojis
+import com.checkit.domain.MoodTiredEmojis
 import com.checkit.domain.PeriodReview
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.EmojiPicker
 import com.checkit.ui.components.TagPill
 import com.checkit.ui.components.TagPlain
+import com.checkit.ui.components.getMoodColorFromEmoji
 import com.checkit.ui.tasks.TimelineItem
 import com.checkit.ui.tasks.TimelineItemType
 import com.checkit.ui.tasks.toClockLabel
@@ -82,15 +91,6 @@ internal val JournalContextPresets = listOf(
     "cafe", "biking", "code", "reading", "learning language",
     "event", "at home")
 
-internal val MoodHappyEmojis = listOf("😀", "😃", "😄", "😊", "🥳", "✨", "💛", "🌈", "🎈", "☀️")
-internal val MoodEnergeticEmojis = listOf("🔥", "⚡", "🤩", "🚀", "🎉", "💪", "🧡", "🎸", "🏆", "🏃")
-internal val MoodCalmEmojis = listOf("😌", "🌿", "🌊", "🧘", "🕊️", "☁️", "💚", "🍃", "🛶", "🕯️")
-internal val MoodSadEmojis = listOf("😢", "😭", "😔", "🌧️", "💔", "☁️", "💙", "🥀", "🌑", "📻")
-internal val MoodFocusedEmojis = listOf("🎯", "💻", "📚", "🧠", "✍️", "🧐", "💜", "🛠️", "♟️", "🧪")
-internal val MoodTiredEmojis = listOf("😴", "🥱", "🔋", "💤", "🛌", "🚶", "🤎", "☕", "🔌", "🏠")
-internal val MoodStressedEmojis = listOf("😫", "😤", "🤯", "🆘", "📉", "⚠️", "❤️‍🔥", "⚡", "🌪️", "🧨")
-internal val MoodLovedEmojis = listOf("🥰", "😍", "😘", "💖", "🌹", "🧸", "❤️", "🥂", "💍", "💌")
-
 private val MoodCategories = listOf(
     "Happy" to MoodHappyEmojis,
     "Energetic" to MoodEnergeticEmojis,
@@ -98,35 +98,9 @@ private val MoodCategories = listOf(
     "Loved" to MoodLovedEmojis,
     "Focused" to MoodFocusedEmojis,
     "Tired" to MoodTiredEmojis,
-    "Stressed" to MoodStressedEmojis,
+    "Worried" to MoodWorriedEmojis,
     "Sad" to MoodSadEmojis,
 )
-
-// Define your app's mood palette
-val MoodHappy = Color(0xFFFFD54F)      // Warm Yellow
-val MoodEnergetic = Color(0xFFFF8A65)  // Vibrant Orange
-val MoodCalm = Color(0xFF81C784)       // Soft Green
-val MoodSad = Color(0xFF64B5F6)        // Soft Blue
-val MoodFocused = Color(0xFF9575CD)    // Deep Purple
-val MoodTired = Color(0xFFA1887F)      // Muted Brown
-val MoodStressed = Color(0xFFEF5350)   // Urgent Red
-val MoodLoved = Color(0xFFF06292)      // Soft Pink
-val MoodDefault = Color(0xFF9E9E9E)    // Neutral Gray
-
-// Helper function to extract color from emoji
-fun getMoodColorFromEmoji(emoji: String): Color {
-    return when (emoji) {
-        in MoodHappyEmojis -> MoodHappy
-        in MoodEnergeticEmojis -> MoodEnergetic
-        in MoodCalmEmojis -> MoodCalm
-        in MoodSadEmojis -> MoodSad
-        in MoodFocusedEmojis -> MoodFocused
-        in MoodTiredEmojis -> MoodTired
-        in MoodStressedEmojis -> MoodStressed
-        in MoodLovedEmojis -> MoodLoved
-        else -> MoodDefault
-    }
-}
 
 internal enum class JournalPeriod(val label: String) {
     Morning("Morning"),
