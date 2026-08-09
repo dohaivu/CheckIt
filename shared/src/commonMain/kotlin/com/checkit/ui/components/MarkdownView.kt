@@ -1,15 +1,15 @@
 package com.checkit.ui.components
 
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.dp
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownColor
 import com.mikepenz.markdown.m3.markdownTypography
+import com.mikepenz.markdown.model.markdownPadding
 import com.mohamedrejeb.richeditor.annotation.ExperimentalRichTextApi
 
 @OptIn(ExperimentalRichTextApi::class)
@@ -36,6 +36,7 @@ fun MarkdownView(
             bullet = style,
             list = style
         ),
+        padding = markdownPadding(listItemTop = 0.dp, listItemBottom = 0.dp),
         colors = markdownColor(text = color),
     )
 }

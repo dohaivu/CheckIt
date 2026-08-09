@@ -28,6 +28,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.automirrored.filled.Notes
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronLeft
@@ -62,6 +63,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import checkit.shared.generated.resources.Res
+import checkit.shared.generated.resources.calendar_open_review
 import checkit.shared.generated.resources.calendar_title
 import checkit.shared.generated.resources.relative_today
 import checkit.shared.generated.resources.relative_yesterday
@@ -110,6 +112,7 @@ internal fun CalendarScreen(
     onTaskClick: (TaskItem, DailyPlanItem?) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
     onNewTagClick: () -> Unit = {},
+    onOpenReflect: (LocalDate) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val today = today()
@@ -206,7 +209,8 @@ internal fun CalendarScreen(
                                 summaryAvailable = selectedContent.showDailyPlan,
                                 onSummaryToggle = calendarViewModel::toggleDailyPlanSummary,
                                 onJournalClick = { onJournalListClick(state.selectedDate) },
-                                winNote = state.selectedDateWinNote
+                                winNote = state.selectedDateReview,
+                                onOpenReflect = onOpenReflect
                             )
                             if (selectedContent.showDailyPlan) {
                                 DayLinearTimeline(
@@ -247,9 +251,14 @@ internal fun CalendarScreen(
         if (showJournalHistory) {
             JournalHistorySheet(
                 entries = state.journalEntries,
+                dayReviews = state.dayReviews,
                 onEntryClick = { entry ->
                     showJournalHistory = false
                     onJournalEntryClick(entry)
+                },
+                onReviewClick = { review ->
+                    showJournalHistory = false
+                    onOpenReflect(review.periodStartDate)
                 },
                 onDismiss = { showJournalHistory = false }
             )
@@ -404,7 +413,8 @@ private fun SelectedDateHeader(
     summaryAvailable: Boolean,
     onSummaryToggle: () -> Unit,
     onJournalClick: () -> Unit,
-    winNote: String?
+    winNote: String?,
+    onOpenReflect: (LocalDate) -> Unit
 ) {
     val isToday = date == today
     val isYesterday = date == today.minus(1, DateTimeUnit.DAY)
@@ -574,6 +584,17 @@ private fun SelectedDateHeader(
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                             )
+                            IconButton(
+                                onClick = { onOpenReflect(date) },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                    contentDescription = stringResource(Res.string.calendar_open_review),
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 }

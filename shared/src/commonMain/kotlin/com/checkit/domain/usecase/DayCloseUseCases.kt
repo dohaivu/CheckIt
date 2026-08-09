@@ -7,12 +7,12 @@ import com.checkit.domain.CarryOverTimePolicy
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
-import com.checkit.domain.DayReviewConfirmInput
-import com.checkit.domain.DayReviewConfirmResult
-import com.checkit.domain.DayReviewRecord
-import com.checkit.domain.DayReviewSummary
-import com.checkit.domain.DayReviewTagMinutes
+import com.checkit.domain.DayCloseConfirmInput
+import com.checkit.domain.DayCloseConfirmResult
+import com.checkit.domain.DayCloseSummary
+import com.checkit.domain.DayCloseTagMinutes
 import com.checkit.domain.LeftoverAction
+import com.checkit.domain.PeriodReview
 import com.checkit.ui.myday.workMinutes
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -24,10 +24,10 @@ import kotlinx.datetime.plus
 import kotlin.time.Clock
 
 /** Pure builder for evening review summary. */
-class BuildDayReviewSummaryUseCase(
+class BuildDayCloseSummaryUseCase(
     private val dispatcher: CoroutineDispatcher = Dispatchers.Default
 ) {
-    suspend operator fun invoke(date: LocalDate, plan: DailyPlan?): DayReviewSummary = withContext(dispatcher) {
+    suspend operator fun invoke(date: LocalDate, plan: DailyPlan?): DayCloseSummary = withContext(dispatcher) {
         val items = plan?.items.orEmpty()
         val doneItems = items
             .filter { it.status == DailyPlanItemStatus.Done }
@@ -48,7 +48,7 @@ class BuildDayReviewSummaryUseCase(
             }
             .groupBy({ (tag, _) -> tag }, { (_, minutes) -> minutes })
             .map { (tag, minutes) ->
-                DayReviewTagMinutes(
+                DayCloseTagMinutes(
                     tagId = tag.id,
                     name = tag.name,
                     color = tag.color,
@@ -56,12 +56,12 @@ class BuildDayReviewSummaryUseCase(
                 )
             }
             .sortedWith(
-                compareByDescending<DayReviewTagMinutes> { it.totalMinutes }
+                compareByDescending<DayCloseTagMinutes> { it.totalMinutes }
                     .thenBy { it.name.lowercase() }
             )
             .take(TopTagLimit)
 
-        DayReviewSummary(
+        DayCloseSummary(
             date = date,
             doneCount = doneItems.size,
             plannedCount = plannedItems.size,
@@ -128,11 +128,11 @@ class CarryOverDailyPlanItemsUseCase(
     )
 }
 
-/** Observes the persisted day review history. */
-class ObserveDayReviewsUseCase(
+/** Observes all persisted period reviews (day, week, month, year). */
+class ObservePeriodReviewsUseCase(
     private val repository: CheckItRepository
 ) {
-    operator fun invoke(): Flow<List<DayReviewRecord>> = repository.observeDayReviews()
+    operator fun invoke(): Flow<List<PeriodReview>> = repository.observePeriodReviews()
 }
 
 /**
@@ -141,22 +141,22 @@ class ObserveDayReviewsUseCase(
  * handled happen in a single database transaction, so repeated invocations for
  * the same day are idempotent.
  */
-class CompleteDayReviewUseCase(
+class CompleteDayCloseUseCase(
     private val repository: CheckItRepository,
     private val settingsRepository: SettingsRepository,
-    private val buildSummary: BuildDayReviewSummaryUseCase,
+    private val buildSummary: BuildDayCloseSummaryUseCase,
     private val dispatcher: CoroutineDispatcher = Dispatchers.Default
 ) {
     suspend operator fun invoke(
         plan: DailyPlan?,
-        input: DayReviewConfirmInput
-    ): Result<DayReviewConfirmResult> = runCatching {
+        input: DayCloseConfirmInput
+    ): Result<DayCloseConfirmResult> = runCatching {
         withContext(dispatcher) {
             val summary = buildSummary(input.date, plan)
             val redecidableItems = summary.plannedItems + summary.alreadyCarriedItems
             val resolution = resolveLeftovers(redecidableItems, input.leftoverActions)
             val tomorrow = input.date.plus(1, DateTimeUnit.DAY)
-            val commit = repository.completeDayReview(
+            val commit = repository.completeDayClose(
                 date = input.date,
                 markDoneItemIds = resolution.markDoneIds,
                 carryItemIds = resolution.carryIds,
@@ -169,9 +169,9 @@ class CompleteDayReviewUseCase(
                 targetDate = tomorrow,
                 nowMillis = Clock.System.now().toEpochMilliseconds()
             )
-            settingsRepository.setLastDayReviewEpochDay(input.date.toEpochDays().toInt())
+            settingsRepository.setLastDayCloseEpochDay(input.date.toEpochDays().toInt())
 
-            DayReviewConfirmResult(
+            DayCloseConfirmResult(
                 markedDoneCount = resolution.markDoneIds.size,
                 carriedCount = commit.carriedCount,
                 droppedCount = resolution.droppedCount,

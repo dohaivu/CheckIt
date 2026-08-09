@@ -58,11 +58,24 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import checkit.shared.generated.resources.Res
+import checkit.shared.generated.resources.journal_agenda_review_card_title
 import com.checkit.domain.JournalEntry
+import com.checkit.domain.MoodCalmEmojis
+import com.checkit.domain.MoodEnergeticEmojis
+import com.checkit.domain.MoodFocusedEmojis
+import com.checkit.domain.MoodHappyEmojis
+import com.checkit.domain.MoodLovedEmojis
+import com.checkit.domain.MoodSadEmojis
+import com.checkit.domain.MoodWorriedEmojis
+import com.checkit.domain.MoodTiredEmojis
+import com.checkit.domain.PeriodReview
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.EmojiPicker
+import com.checkit.ui.components.MarkdownView
 import com.checkit.ui.components.TagPill
 import com.checkit.ui.components.TagPlain
+import com.checkit.ui.components.getMoodColorFromEmoji
 import com.checkit.ui.tasks.TimelineItem
 import com.checkit.ui.tasks.TimelineItemType
 import com.checkit.ui.tasks.toClockLabel
@@ -70,6 +83,7 @@ import com.checkit.ui.tasks.views.AgendaView
 import com.checkit.ui.toTimeMinutes
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
+import org.jetbrains.compose.resources.stringResource
 import org.kodein.emoji.Emoji
 
 /** Quick context presets shown as tappable chips in the entry editor. */
@@ -78,15 +92,6 @@ internal val JournalContextPresets = listOf(
     "cafe", "biking", "code", "reading", "learning language",
     "event", "at home")
 
-internal val MoodHappyEmojis = listOf("😀", "😃", "😄", "😊", "🥳", "✨", "💛", "🌈", "🎈", "☀️")
-internal val MoodEnergeticEmojis = listOf("🔥", "⚡", "🤩", "🚀", "🎉", "💪", "🧡", "🎸", "🏆", "🏃")
-internal val MoodCalmEmojis = listOf("😌", "🌿", "🌊", "🧘", "🕊️", "☁️", "💚", "🍃", "🛶", "🕯️")
-internal val MoodSadEmojis = listOf("😢", "😭", "😔", "🌧️", "💔", "☁️", "💙", "🥀", "🌑", "📻")
-internal val MoodFocusedEmojis = listOf("🎯", "💻", "📚", "🧠", "✍️", "🧐", "💜", "🛠️", "♟️", "🧪")
-internal val MoodTiredEmojis = listOf("😴", "🥱", "🔋", "💤", "🛌", "🚶", "🤎", "☕", "🔌", "🏠")
-internal val MoodStressedEmojis = listOf("😫", "😤", "🤯", "🆘", "📉", "⚠️", "❤️‍🔥", "⚡", "🌪️", "🧨")
-internal val MoodLovedEmojis = listOf("🥰", "😍", "😘", "💖", "🌹", "🧸", "❤️", "🥂", "💍", "💌")
-
 private val MoodCategories = listOf(
     "Happy" to MoodHappyEmojis,
     "Energetic" to MoodEnergeticEmojis,
@@ -94,35 +99,9 @@ private val MoodCategories = listOf(
     "Loved" to MoodLovedEmojis,
     "Focused" to MoodFocusedEmojis,
     "Tired" to MoodTiredEmojis,
-    "Stressed" to MoodStressedEmojis,
+    "Worried" to MoodWorriedEmojis,
     "Sad" to MoodSadEmojis,
 )
-
-// Define your app's mood palette
-val MoodHappy = Color(0xFFFFD54F)      // Warm Yellow
-val MoodEnergetic = Color(0xFFFF8A65)  // Vibrant Orange
-val MoodCalm = Color(0xFF81C784)       // Soft Green
-val MoodSad = Color(0xFF64B5F6)        // Soft Blue
-val MoodFocused = Color(0xFF9575CD)    // Deep Purple
-val MoodTired = Color(0xFFA1887F)      // Muted Brown
-val MoodStressed = Color(0xFFEF5350)   // Urgent Red
-val MoodLoved = Color(0xFFF06292)      // Soft Pink
-val MoodDefault = Color(0xFF9E9E9E)    // Neutral Gray
-
-// Helper function to extract color from emoji
-fun getMoodColorFromEmoji(emoji: String): Color {
-    return when (emoji) {
-        in MoodHappyEmojis -> MoodHappy
-        in MoodEnergeticEmojis -> MoodEnergetic
-        in MoodCalmEmojis -> MoodCalm
-        in MoodSadEmojis -> MoodSad
-        in MoodFocusedEmojis -> MoodFocused
-        in MoodTiredEmojis -> MoodTired
-        in MoodStressedEmojis -> MoodStressed
-        in MoodLovedEmojis -> MoodLoved
-        else -> MoodDefault
-    }
-}
 
 internal enum class JournalPeriod(val label: String) {
     Morning("Morning"),
@@ -367,7 +346,9 @@ internal fun JournalEntryList(
 @Composable
 internal fun JournalHistorySheet(
     entries: List<JournalEntry>,
+    dayReviews: List<PeriodReview> = emptyList(),
     onEntryClick: (JournalEntry) -> Unit,
+    onReviewClick: (PeriodReview) -> Unit = {},
     onDismiss: () -> Unit
 ) {
     AppEditorBottomSheet(
@@ -376,7 +357,9 @@ internal fun JournalHistorySheet(
     ) {
         JournalAgendaView(
             journalEntries = entries,
+            dayReviews = dayReviews,
             onEntryClick = onEntryClick,
+            onReviewClick = onReviewClick,
             modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp)
         )
     }
@@ -385,40 +368,95 @@ internal fun JournalHistorySheet(
 @Composable
 internal fun JournalAgendaView(
     journalEntries: List<JournalEntry>,
+    dayReviews: List<PeriodReview> = emptyList(),
     onEntryClick: (JournalEntry) -> Unit,
+    onReviewClick: (PeriodReview) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val timelineItems = remember(journalEntries) {
-        journalEntries.map { entry ->
-            TimelineItem(
-                id = "journal-${entry.id}",
-                type = TimelineItemType.Journal,
-                date = LocalDate.fromEpochDays(entry.dateEpochDays),
-                startTimeMinutes = entry.createdTimeMinutes,
-                endTimeMinutes = null,
-                sortOrder = 0,
-                isResizable = false,
-                tag = entry
-            )
+    val timelineItems = remember(journalEntries, dayReviews) {
+        buildList {
+            journalEntries.forEach { entry ->
+                add(
+                    TimelineItem(
+                        id = "journal-${entry.id}",
+                        type = TimelineItemType.Journal,
+                        date = LocalDate.fromEpochDays(entry.dateEpochDays),
+                        startTimeMinutes = entry.createdTimeMinutes,
+                        endTimeMinutes = null,
+                        sortOrder = 0,
+                        isResizable = false,
+                        tag = entry
+                    )
+                )
+            }
+            dayReviews.forEach { review ->
+                add(
+                    TimelineItem(
+                        id = "review-${review.id}",
+                        type = TimelineItemType.Journal,
+                        date = review.periodStartDate,
+                        startTimeMinutes = null,
+                        endTimeMinutes = null,
+                        sortOrder = 0,
+                        isResizable = false,
+                        tag = review
+                    )
+                )
+            }
         }.sortedByDescending { it.date }
     }
 
     AgendaView(
         items = timelineItems,
         onItemClick = { item ->
-            (item.tag as? JournalEntry)?.let(onEntryClick)
+            when (val tag = item.tag) {
+                is JournalEntry -> onEntryClick(tag)
+                is PeriodReview -> onReviewClick(tag)
+            }
         },
         itemContent = { item ->
-            (item.tag as? JournalEntry)?.let { entry ->
-                JournalHistoryEntryCard(
-                    entry = entry,
-                    onClick = { onEntryClick(entry) },
+            when (val tag = item.tag) {
+                is JournalEntry -> JournalHistoryEntryCard(
+                    entry = tag,
+                    onClick = { onEntryClick(tag) },
+                    modifier = Modifier.padding(start = 8.dp)
+                )
+                is PeriodReview -> JournalAgendaReviewCard(
+                    review = tag,
                     modifier = Modifier.padding(start = 8.dp)
                 )
             }
         },
         modifier = modifier
     )
+}
+
+@Composable
+private fun JournalAgendaReviewCard(
+    review: PeriodReview,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(0.dp)
+    ) {
+        Text(
+            text = stringResource(Res.string.journal_agenda_review_card_title, review.periodStartDate.day),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold
+        )
+        if (review.content.isNotBlank()) {
+            MarkdownView(
+                markdown = review.content,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
 }
 
 

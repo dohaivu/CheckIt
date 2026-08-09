@@ -11,13 +11,13 @@ import com.checkit.domain.SprintManager
 import com.checkit.domain.TaskItem
 import com.checkit.domain.usecase.AddJournalEntryUseCase
 import com.checkit.domain.usecase.AddSuggestedTaskToMyDayUseCase
-import com.checkit.domain.usecase.BuildDayReviewSummaryUseCase
+import com.checkit.domain.usecase.BuildDayCloseSummaryUseCase
 import com.checkit.domain.usecase.CarryOverDailyPlanItemsUseCase
-import com.checkit.domain.usecase.CompleteDayReviewUseCase
+import com.checkit.domain.usecase.CompleteDayCloseUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.DeleteJournalEntryUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
-import com.checkit.domain.usecase.ObserveDayReviewsUseCase
+import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
 import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.SmartScheduleDailyPlanUseCase
@@ -35,7 +35,7 @@ import kotlinx.datetime.LocalDate
 
 /**
  * Orchestrates the My Day feature. Heavy lifting is split into small controllers:
- * [MyDayDataLoader], [DayReviewController], [LeftoversController], [PlanAssistController],
+ * [MyDayDataLoader], [DayCloseController], [LeftoversController], [PlanAssistController],
  * [DailyPlanEditorController], [SprintController], and [JournalController].
  */
 class MyDayViewModel(
@@ -47,10 +47,10 @@ class MyDayViewModel(
     deleteJournalEntry: DeleteJournalEntryUseCase,
     deleteDailyPlanItemUseCase: DeleteDailyPlanItemUseCase,
     settingsRepository: SettingsRepository,
-    buildDayReviewSummary: BuildDayReviewSummaryUseCase,
-    completeDayReview: CompleteDayReviewUseCase,
+    buildDayCloseSummary: BuildDayCloseSummaryUseCase,
+    completeDayClose: CompleteDayCloseUseCase,
     carryOverDailyPlanItems: CarryOverDailyPlanItemsUseCase,
-    observeDayReviews: ObserveDayReviewsUseCase,
+    observePeriodReviews: ObservePeriodReviewsUseCase,
     upsertDailyPlanItem: UpsertDailyPlanItemUseCase,
     addSuggestedTaskToMyDay: AddSuggestedTaskToMyDayUseCase,
     syncKeyResultFromDailyPlan: SyncKeyResultFromDailyPlanUseCase,
@@ -68,10 +68,10 @@ class MyDayViewModel(
         deleteJournalEntry = deleteJournalEntry,
         deleteDailyPlanItem = deleteDailyPlanItemUseCase,
         settingsRepository = settingsRepository,
-        buildDayReviewSummary = buildDayReviewSummary,
-        completeDayReview = completeDayReview,
+        buildDayCloseSummary = buildDayCloseSummary,
+        completeDayClose = completeDayClose,
         carryOverDailyPlanItems = carryOverDailyPlanItems,
-        observeDayReviews = observeDayReviews,
+        observePeriodReviews = observePeriodReviews,
         upsertDailyPlanItem = upsertDailyPlanItem,
         addSuggestedTaskToMyDay = addSuggestedTaskToMyDay,
         syncKeyResultFromDailyPlan = syncKeyResultFromDailyPlan,
@@ -86,7 +86,7 @@ class MyDayViewModel(
     val events: Flow<UiEvent> = state.events
 
     private val loader = MyDayDataLoader(deps, state, viewModelScope)
-    private val dayReview = DayReviewController(deps, state, viewModelScope)
+    private val dayClose = DayCloseController(deps, state, viewModelScope)
     private val leftovers = LeftoversController(deps, state, viewModelScope)
     private val planAssist = PlanAssistController(deps, state, viewModelScope)
     private val dailyPlanEditor = DailyPlanEditorController(deps, state, viewModelScope)
@@ -103,12 +103,12 @@ class MyDayViewModel(
     }
 
     // Day review
-    fun openDayReview() = dayReview.open()
-    fun dismissDayReview() = dayReview.dismiss()
-    fun setLeftoverAction(itemId: Long, action: LeftoverAction) = dayReview.setLeftoverAction(itemId, action)
-    fun updateWinNote(note: String) = dayReview.updateWinNote(note)
-    fun updateTomorrowGoal(goal: String) = dayReview.updateTomorrowGoal(goal)
-    fun confirmDayReview() = dayReview.confirm()
+    fun openDayClose() = dayClose.open()
+    fun dismissDayClose() = dayClose.dismiss()
+    fun setLeftoverAction(itemId: Long, action: LeftoverAction) = dayClose.setLeftoverAction(itemId, action)
+    fun updateWinNote(note: String) = dayClose.updateWinNote(note)
+    fun updateTomorrowGoal(goal: String) = dayClose.updateTomorrowGoal(goal)
+    fun confirmDayClose() = dayClose.confirm()
 
     // Leftovers
     fun openLeftoversSheet() = leftovers.openSheet()

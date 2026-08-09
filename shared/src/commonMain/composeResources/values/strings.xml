@@ -3,6 +3,7 @@
     <string name="clear_text">Clear text</string>
 
     <string name="calendar_title">Calendar</string>
+    <string name="calendar_open_review">Open review</string>
     <string name="daily">Daily</string>
     <string name="weekly">Weekly</string>
     <string name="monthly">Monthly</string>
@@ -17,12 +18,7 @@
     <string name="previous_year">Previous year</string>
     <string name="next_year">Next year</string>
     <string name="year_range">Jan 01 - Dec 31</string>
-    <string name="tags_report_title">Tags</string>
-    <string name="tags_report_empty">No done work time with tags in this period.</string>
-    <string name="time_report_title">Time</string>
-    <string name="time_report_empty">No done work time in this period.</string>
     <string name="weekly_digest_title">Digest</string>
-    <string name="weekly_digest_empty">No completed work to summarize in this period.</string>
     <string name="weekly_digest_total_items">Total items</string>
     <string name="weekly_digest_total_time">Done work time</string>
     <string name="weekly_digest_done_items">Done items</string>
@@ -74,8 +70,32 @@
     <string name="tab_tasks">Tasks</string>
     <string name="tab_my_day">My Day</string>
     <string name="tab_calendar">Calendar</string>
-    <string name="tab_report">Report</string>
+    <string name="tab_reflect">Reflect</string>
     <string name="tab_settings">Settings</string>
+
+    <string name="reflect_review_card_title">%1$s review</string>
+    <string name="reflect_review_empty">No review yet for this %1$s.</string>
+    <string name="reflect_review_generate_draft">Generate draft</string>
+    <string name="reflect_review_draft_note">Auto-drafted from your %1$s. Review and save.</string>
+    <string name="reflect_review_saved">Review saved</string>
+    <string name="reflect_review_error">Unable to save review</string>
+    <string name="reflect_review_content_placeholder">What went well? What drained you?</string>
+    <string name="reflect_review_intent_placeholder">What will you focus on next?</string>
+    <string name="reflect_review_save">Save</string>
+    <string name="reflect_period_day">day</string>
+    <string name="reflect_period_week">week</string>
+    <string name="reflect_period_month">month</string>
+    <string name="reflect_period_year">year</string>
+    <string name="reflect_reviews_title">Reviews</string>
+    <string name="reflect_reviews_subtitle">For this %1$s</string>
+    <string name="reflect_reviews_written">%1$d written</string>
+    <string name="reflect_reviews_empty">No %1$s review yet. Write or draft one above.</string>
+    <string name="reflect_review_status_draft">Draft</string>
+    <string name="reflect_review_status_complete">Complete</string>
+    <string name="reflect_stats_done">%1$d done</string>
+    <string name="reflect_stats_minutes">%1$d min</string>
+    <string name="reflect_stats_entries">%1$d check-ins</string>
+    <string name="journal_agenda_review_card_title">Review · day %1$d</string>
 
     <string name="settings_title">Settings</string>
     <string name="version">Version %1$s</string>
@@ -89,23 +109,22 @@
     <string name="color_scheme_sky_blue">Sky Blue</string>
     <string name="color_scheme_system_default">System default</string>
 
-    <string name="day_review_open">Review day</string>
-    <string name="day_review_title">Review your day</string>
-    <string name="day_review_banner_title">Time to review</string>
-    <string name="day_review_banner_subtitle">Close out today and plan leftovers for tomorrow.</string>
-    <string name="day_review_banner_action">Review</string>
-    <string name="day_review_done_count">%1$d done</string>
-    <string name="day_review_planned_count">%1$d left</string>
-    <string name="day_review_done_minutes">%1$d min done</string>
-    <string name="day_review_leftovers_title">Unfinished items</string>
-    <string name="day_review_leftovers_empty">Nothing left planned — nice work.</string>
-    <string name="day_review_action_done">Done</string>
-    <string name="day_review_action_carry">Tomorrow</string>
-    <string name="day_review_action_drop">Leave</string>
-    <string name="day_review_win_note_label">Win of the day</string>
-    <string name="day_review_win_note_placeholder">What went well today?</string>
-    <string name="day_review_finish">Finish review</string>
-    <string name="day_review_finish_and_report">Finish &amp; report</string>
+    <string name="day_close_open">Review day</string>
+    <string name="day_close_title">Close your day</string>
+    <string name="day_close_banner_title">Close your day</string>
+    <string name="day_close_banner_subtitle">Write today\'s review and plan leftovers for tomorrow.</string>
+    <string name="day_close_banner_action">Review</string>
+    <string name="day_close_done_count">%1$d done</string>
+    <string name="day_close_planned_count">%1$d left</string>
+    <string name="day_close_done_minutes">%1$d min done</string>
+    <string name="day_close_leftovers_title">Unfinished items</string>
+    <string name="day_close_leftovers_empty">Nothing left planned — nice work.</string>
+    <string name="day_close_action_done">Done</string>
+    <string name="day_close_action_carry">Tomorrow</string>
+    <string name="day_close_action_drop">Leave</string>
+    <string name="day_close_win_note_label">How did today go?</string>
+    <string name="day_close_win_note_placeholder">What went well? What drained you?</string>
+    <string name="day_close_finish">Finish</string>
 
     <string name="leftovers_banner_title">%1$d unfinished from yesterday</string>
     <string name="leftovers_banner_subtitle">Carry them into today, or review one by one.</string>

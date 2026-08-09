@@ -6,7 +6,10 @@ import androidx.room3.OnConflictStrategy
 import androidx.room3.Query
 import androidx.room3.Transaction
 import com.checkit.domain.DailyPlanItemStatus
-import com.checkit.domain.DayReviewCommitResult
+import com.checkit.domain.DayCloseCommitResult
+import com.checkit.domain.ReviewPeriod
+import com.checkit.domain.ReviewSource
+import com.checkit.domain.ReviewStatus
 import com.checkit.domain.TaskReminderWriteInput
 import kotlinx.coroutines.flow.Flow
 
@@ -492,14 +495,25 @@ interface CheckItDao {
     @Query("UPDATE daily_plan_items SET handledAtMillis = :handledAtMillis WHERE id IN (:itemIds)")
     suspend fun markDailyPlanItemsHandled(itemIds: List<Long>, handledAtMillis: Long)
 
-    @Query("SELECT * FROM day_reviews ORDER BY dateEpochDays ASC")
-    fun observeDayReviews(): Flow<List<DayReviewEntity>>
+    @Query("SELECT * FROM period_reviews ORDER BY periodStartEpochDays ASC")
+    fun observePeriodReviews(): Flow<List<PeriodReviewEntity>>
 
-    @Query("SELECT * FROM day_reviews WHERE dateEpochDays = :dateEpochDays LIMIT 1")
-    suspend fun dayReviewForDate(dateEpochDays: Int): DayReviewEntity?
+    @Query(
+        "SELECT * FROM period_reviews WHERE periodType = :periodType AND periodStartEpochDays = :periodStartEpochDays LIMIT 1"
+    )
+    suspend fun periodReviewFor(periodType: String, periodStartEpochDays: Int): PeriodReviewEntity?
+
+    @Query(
+        "SELECT * FROM period_reviews WHERE periodType = :periodType AND periodStartEpochDays >= :startEpochDays AND periodStartEpochDays < :endEpochDays ORDER BY periodStartEpochDays ASC"
+    )
+    fun observePeriodReviewsInRange(
+        periodType: String,
+        startEpochDays: Int,
+        endEpochDays: Int
+    ): Flow<List<PeriodReviewEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsertDayReview(review: DayReviewEntity)
+    suspend fun upsertPeriodReview(review: PeriodReviewEntity)
 
     /**
      * Applies a complete evening review atomically: marks done items, carries
@@ -508,7 +522,7 @@ interface CheckItDao {
      * item is stamped as handled.
      */
     @Transaction
-    suspend fun completeDayReview(
+    suspend fun completeDayClose(
         dateEpochDays: Int,
         markDoneItemIds: List<Long>,
         carryItemIds: List<Long>,
@@ -520,7 +534,7 @@ interface CheckItDao {
         doneMinutes: Int,
         targetDateEpochDays: Int,
         nowMillis: Long
-    ): DayReviewCommitResult {
+    ): DayCloseCommitResult {
         updateDailyPlanItemsStatus(markDoneItemIds, DailyPlanItemStatus.Done.name, nowMillis)
         markDailyPlanItemsHandled(markDoneItemIds, nowMillis)
         markDailyPlanItemsHandled(dropItemIds, nowMillis)
@@ -558,19 +572,21 @@ interface CheckItDao {
             markDailyPlanItemsHandled(listOf(source.id), nowMillis)
         }
 
-        upsertDayReview(
-            DayReviewEntity(
-                dateEpochDays = dateEpochDays,
-                doneCount = doneCount,
-                plannedCount = plannedCount,
-                doneMinutes = doneMinutes,
-                winNote = winNote?.trim()?.takeIf { it.isNotEmpty() },
-                tomorrowGoal = tomorrowGoal?.trim()?.takeIf { it.isNotEmpty() },
-                completedAtMillis = nowMillis
+        upsertPeriodReview(
+            PeriodReviewEntity(
+                periodType = ReviewPeriod.Day.name,
+                periodStartEpochDays = dateEpochDays,
+                periodEndEpochDays = dateEpochDays + 1,
+                content = winNote?.trim().orEmpty(),
+                intentNext = tomorrowGoal?.trim()?.takeIf { it.isNotEmpty() },
+                source = ReviewSource.Manual.name,
+                status = ReviewStatus.Complete.name,
+                completedAtMillis = nowMillis,
+                editedAtMillis = nowMillis
             )
         )
 
-        return DayReviewCommitResult(
+        return DayCloseCommitResult(
             carriedCount = carriedCount,
             skippedCount = skippedCount
         )

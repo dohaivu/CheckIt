@@ -4,13 +4,13 @@ import com.checkit.data.SettingsRepository
 import com.checkit.domain.SprintManager
 import com.checkit.domain.usecase.AddJournalEntryUseCase
 import com.checkit.domain.usecase.AddSuggestedTaskToMyDayUseCase
-import com.checkit.domain.usecase.BuildDayReviewSummaryUseCase
+import com.checkit.domain.usecase.BuildDayCloseSummaryUseCase
 import com.checkit.domain.usecase.CarryOverDailyPlanItemsUseCase
-import com.checkit.domain.usecase.CompleteDayReviewUseCase
+import com.checkit.domain.usecase.CompleteDayCloseUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.DeleteJournalEntryUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
-import com.checkit.domain.usecase.ObserveDayReviewsUseCase
+import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
 import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.SprintTransitionUseCase
@@ -30,10 +30,10 @@ internal class MyDayDependencies(
     val deleteJournalEntry: DeleteJournalEntryUseCase,
     val deleteDailyPlanItem: DeleteDailyPlanItemUseCase,
     val settingsRepository: SettingsRepository,
-    val buildDayReviewSummary: BuildDayReviewSummaryUseCase,
-    val completeDayReview: CompleteDayReviewUseCase,
+    val buildDayCloseSummary: BuildDayCloseSummaryUseCase,
+    val completeDayClose: CompleteDayCloseUseCase,
     val carryOverDailyPlanItems: CarryOverDailyPlanItemsUseCase,
-    val observeDayReviews: ObserveDayReviewsUseCase,
+    val observePeriodReviews: ObservePeriodReviewsUseCase,
     val upsertDailyPlanItem: UpsertDailyPlanItemUseCase,
     val addSuggestedTaskToMyDay: AddSuggestedTaskToMyDayUseCase,
     val syncKeyResultFromDailyPlan: SyncKeyResultFromDailyPlanUseCase,

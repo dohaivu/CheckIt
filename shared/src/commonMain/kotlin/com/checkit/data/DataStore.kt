@@ -36,7 +36,7 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
                 scheduleReminderEnabled = prefs[KEY_SCHEDULE_REMINDER_ENABLED] ?: UserSettings().scheduleReminderEnabled,
                 checkInReminderLastShownAtMillis = prefs[KEY_CHECK_IN_REMINDER_LAST_SHOWN],
                 autoMyDayLastRunEpochDay = prefs[KEY_AUTO_MY_DAY_LAST_RUN_EPOCH_DAY],
-                lastDayReviewEpochDay = prefs[KEY_LAST_DAY_REVIEW_EPOCH_DAY],
+                lastDayCloseEpochDay = prefs[KEY_LAST_DAY_CLOSE_EPOCH_DAY],
                 autoCarryOverLeftovers = prefs[KEY_AUTO_CARRY_OVER_LEFTOVERS]
                     ?: UserSettings().autoCarryOverLeftovers,
                 autoCarryOverLastRunEpochDay = prefs[KEY_AUTO_CARRY_OVER_LAST_RUN_EPOCH_DAY],
@@ -107,8 +107,8 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { it[KEY_AUTO_MY_DAY_LAST_RUN_EPOCH_DAY] = epochDay }
     }
 
-    suspend fun setLastDayReviewEpochDay(epochDay: Int) {
-        dataStore.edit { it[KEY_LAST_DAY_REVIEW_EPOCH_DAY] = epochDay }
+    suspend fun setLastDayCloseEpochDay(epochDay: Int) {
+        dataStore.edit { it[KEY_LAST_DAY_CLOSE_EPOCH_DAY] = epochDay }
     }
 
     suspend fun setAutoCarryOverLeftovers(enabled: Boolean) {
@@ -154,7 +154,7 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
         val KEY_SCHEDULE_REMINDER_ENABLED = booleanPreferencesKey("schedule_reminder_enabled")
         val KEY_CHECK_IN_REMINDER_LAST_SHOWN = longPreferencesKey("check_in_reminder_last_shown_at_millis")
         val KEY_AUTO_MY_DAY_LAST_RUN_EPOCH_DAY = intPreferencesKey("auto_my_day_last_run_epoch_day")
-        val KEY_LAST_DAY_REVIEW_EPOCH_DAY = intPreferencesKey("last_day_review_epoch_day")
+        val KEY_LAST_DAY_CLOSE_EPOCH_DAY = intPreferencesKey("last_day_close_epoch_day")
         val KEY_AUTO_CARRY_OVER_LEFTOVERS = booleanPreferencesKey("auto_carry_over_leftovers")
         val KEY_AUTO_CARRY_OVER_LAST_RUN_EPOCH_DAY = intPreferencesKey("auto_carry_over_last_run_epoch_day")
         val KEY_LEFTOVERS_BANNER_DISMISSED_EPOCH_DAY = intPreferencesKey("leftovers_banner_dismissed_epoch_day")

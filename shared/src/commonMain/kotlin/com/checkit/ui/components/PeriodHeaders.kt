@@ -2,6 +2,9 @@ package com.checkit.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,10 +17,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronLeft
@@ -29,6 +32,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,16 +42,31 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.checkit.ui.localizedMonthTitle
+import androidx.compose.ui.unit.sp
+import checkit.shared.generated.resources.Res
+import checkit.shared.generated.resources.annual
+import checkit.shared.generated.resources.daily
+import checkit.shared.generated.resources.habits
+import checkit.shared.generated.resources.monthly
+import checkit.shared.generated.resources.next_day
+import checkit.shared.generated.resources.next_month
+import checkit.shared.generated.resources.next_week
+import checkit.shared.generated.resources.next_year
+import checkit.shared.generated.resources.previous_day
+import checkit.shared.generated.resources.previous_month
+import checkit.shared.generated.resources.previous_week
+import checkit.shared.generated.resources.previous_year
+import checkit.shared.generated.resources.weekly
+import checkit.shared.generated.resources.year_range
 import com.checkit.ui.localizedCompactDateWithDayName
+import com.checkit.ui.localizedMonthTitle
+import com.checkit.ui.localizedName
 import com.checkit.ui.localizedShortMonthName
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 import org.jetbrains.compose.resources.stringResource
-import checkit.shared.generated.resources.Res
-import checkit.shared.generated.resources.*
 
 enum class ReportPeriod {
     Daily,
@@ -73,7 +92,7 @@ internal fun ReportPeriodSwitcher(
         } else {
             modifier.height(44.dp)
         },
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         periods.forEach { period ->
@@ -108,7 +127,7 @@ internal fun ReportPeriodSwitcher(
                         shape = CircleShape
                     )
                     .clickable { onPeriodSelected(period) }
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 8.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -121,7 +140,7 @@ internal fun ReportPeriodSwitcher(
                         MaterialTheme.colorScheme.onSurfaceVariant
                     },
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    autoSize = TextAutoSize.StepBased(maxFontSize = 14.sp)
                 )
             }
         }
@@ -145,6 +164,7 @@ internal fun ReportPeriodHeader(
     onPreviousPeriod: () -> Unit,
     onNextPeriod: () -> Unit,
     onCurrentPeriod: () -> Unit,
+    onZoomOutTo: (ReportPeriod) -> Unit = {},
     periods: List<ReportPeriod> = ReportPeriod.entries,
     modifier: Modifier = Modifier
 ) {
@@ -184,8 +204,83 @@ internal fun ReportPeriodHeader(
                 onCurrentYear = onCurrentPeriod
             )
         }
+        if (selectedPeriod != ReportPeriod.Habit) {
+            BreadcrumbRow(
+                selectedDate = selectedDate,
+                selectedPeriod = selectedPeriod,
+                onZoomOutTo = onZoomOutTo
+            )
+        }
     }
 }
+
+@Composable
+private fun BreadcrumbRow(
+    selectedDate: LocalDate,
+    selectedPeriod: ReportPeriod,
+    onZoomOutTo: (ReportPeriod) -> Unit
+) {
+    val weekStart = selectedDate.firstDayOfWeek()
+    val weekEnd = weekStart.plus(6, DateTimeUnit.DAY)
+    val yearLabel = selectedDate.year.toString()
+    val monthLabel = selectedDate.month.localizedName()
+    val weekLabel = "${weekStart.day} - ${weekEnd.day}"
+    val dayLabel = selectedDate.localizedCompactDateWithDayName()
+    val crumbs = remember(selectedDate, selectedPeriod) {
+        buildList {
+            if (selectedPeriod.ordinal <= ReportPeriod.Annual.ordinal) {
+                add(PeriodCrumb(ReportPeriod.Annual, yearLabel))
+            }
+            if (selectedPeriod.ordinal <= ReportPeriod.Month.ordinal) {
+                add(PeriodCrumb(ReportPeriod.Month, monthLabel))
+            }
+            if (selectedPeriod.ordinal <= ReportPeriod.Week.ordinal) {
+                add(PeriodCrumb(ReportPeriod.Week, weekLabel))
+            }
+            if (selectedPeriod.ordinal <= ReportPeriod.Daily.ordinal) {
+                add(PeriodCrumb(ReportPeriod.Daily, dayLabel))
+            }
+        }
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        crumbs.forEachIndexed { index, crumb ->
+            if (index > 0) {
+                Text(
+                    text = "›",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (crumb.period == selectedPeriod) {
+                Text(
+                    text = crumb.label,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            } else {
+                Text(
+                    text = crumb.label,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.clickable { onZoomOutTo(crumb.period) }
+                )
+            }
+        }
+    }
+}
+
+private data class PeriodCrumb(
+    val period: ReportPeriod,
+    val label: String
+)
 
 @Composable
 internal fun DayHeader(

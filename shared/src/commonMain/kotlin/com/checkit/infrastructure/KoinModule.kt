@@ -24,12 +24,14 @@ import com.checkit.domain.usecase.AddObjectiveUseCase
 import com.checkit.domain.usecase.AddTagUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
 import com.checkit.domain.usecase.AutoAddTodayTasksToMyDayUseCase
-import com.checkit.domain.usecase.BuildDayReviewSummaryUseCase
+import com.checkit.domain.usecase.BuildDayCloseSummaryUseCase
+import com.checkit.domain.usecase.BuildPeriodReviewDraftUseCase
 import com.checkit.domain.usecase.CarryOverDailyPlanItemsUseCase
-import com.checkit.domain.usecase.ObserveDayReviewsUseCase
+import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
+import com.checkit.domain.usecase.SavePeriodReviewUseCase
 import com.checkit.domain.usecase.UpsertDailyPlanItemUseCase
 import com.checkit.domain.usecase.AddSuggestedTaskToMyDayUseCase
-import com.checkit.domain.usecase.CompleteDayReviewUseCase
+import com.checkit.domain.usecase.CompleteDayCloseUseCase
 import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
 import com.checkit.domain.usecase.CompleteNoteUseCase
@@ -69,9 +71,9 @@ import com.checkit.ui.myday.MyDayViewModel
 import com.checkit.ui.okr.GoalViewModel
 import com.checkit.ui.okr.KeyResultViewModel
 import com.checkit.ui.okr.ObjectiveViewModel
+import com.checkit.ui.reflect.ReflectViewModel
 import com.checkit.ui.tasks.tag.TagViewModel
 import com.checkit.ui.tasks.TaskViewModel
-import com.checkit.ui.reports.ReportViewModel
 import com.checkit.ui.settings.SettingsViewModel
 import io.ktor.client.HttpClient
 import org.koin.core.context.startKoin
@@ -146,10 +148,12 @@ val provideInteractorModule = module {
     single { UpdateDailyPlanItemUseCase(get()) }
     single { UpdateDailyPlanItemTagUseCase(get()) }
     single { DeleteDailyPlanItemUseCase(get()) }
-    single { BuildDayReviewSummaryUseCase(get()) }
+    single { BuildDayCloseSummaryUseCase(get()) }
     single { CarryOverDailyPlanItemsUseCase(get(), get()) }
-    single { ObserveDayReviewsUseCase(get()) }
-    single { CompleteDayReviewUseCase(get(), get(), get(), get()) }
+    single { ObservePeriodReviewsUseCase(get()) }
+    single { SavePeriodReviewUseCase(get()) }
+    single { BuildPeriodReviewDraftUseCase() }
+    single { CompleteDayCloseUseCase(get(), get(), get(), get()) }
     single { AddNoteUseCase(get()) }
     single { UpdateNoteUseCase(get()) }
     single { DeleteNoteUseCase(get()) }
@@ -210,10 +214,10 @@ val provideViewModelModule = module {
             deleteJournalEntry = get(),
             deleteDailyPlanItemUseCase = get(),
             settingsRepository = get(),
-            buildDayReviewSummary = get(),
-            completeDayReview = get(),
+            buildDayCloseSummary = get(),
+            completeDayClose = get(),
             carryOverDailyPlanItems = get(),
-            observeDayReviews = get(),
+            observePeriodReviews = get(),
             upsertDailyPlanItem = get(),
             addSuggestedTaskToMyDay = get(),
             syncKeyResultFromDailyPlan = get(),
@@ -223,6 +227,13 @@ val provideViewModelModule = module {
             sprintTransition = get()
         )
     }
-    viewModel { ReportViewModel(get()) }
+    viewModel {
+        ReflectViewModel(
+            repository = get(),
+            observePeriodReviews = get(),
+            savePeriodReview = get(),
+            buildDraft = get()
+        )
+    }
     viewModel { SettingsViewModel(get(), get(), get(), get<AppReminderScheduler>()) }
 }

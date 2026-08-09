@@ -2,7 +2,7 @@ package com.checkit.ui
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ListAlt
-import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Today
@@ -17,7 +17,7 @@ import androidx.navigation3.runtime.NavKey
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.tab_calendar
 import checkit.shared.generated.resources.tab_my_day
-import checkit.shared.generated.resources.tab_report
+import checkit.shared.generated.resources.tab_reflect
 import checkit.shared.generated.resources.tab_settings
 import checkit.shared.generated.resources.tab_tasks
 import com.checkit.domain.DailyPlanItem
@@ -35,20 +35,18 @@ sealed interface AppRoute : NavKey {
     @Serializable data object Tags : AppRoute
     @Serializable data object Calendar : AppRoute
     @Serializable data object MyDay : AppRoute
-    @Serializable data object Report : AppRoute
-    @Serializable data object TimeReport : AppRoute
-    @Serializable data object TagsReport : AppRoute
+    @Serializable data object Reflect : AppRoute
     @Serializable data object Settings : AppRoute
 }
 
 enum class CheckItTab {
-    Task, MyDay, Calendar, Report, Settings;
+    Task, MyDay, Calendar, Reflect, Settings;
 
     fun route(): AppRoute = when (this) {
         MyDay -> AppRoute.MyDay
         Task -> AppRoute.Task
         Calendar -> AppRoute.Calendar
-        Report -> AppRoute.Report
+        Reflect -> AppRoute.Reflect
         Settings -> AppRoute.Settings
     }
 
@@ -56,7 +54,7 @@ enum class CheckItTab {
         MyDay -> Icons.Default.Today
         Task -> Icons.AutoMirrored.Filled.ListAlt
         Calendar -> Icons.Default.CalendarMonth
-        Report -> Icons.Default.BarChart
+        Reflect -> Icons.AutoMirrored.Filled.Notes
         Settings -> Icons.Default.MoreHoriz
     }
 
@@ -65,7 +63,7 @@ enum class CheckItTab {
         MyDay -> stringResource(Res.string.tab_my_day)
         Task -> stringResource(Res.string.tab_tasks)
         Calendar -> stringResource(Res.string.tab_calendar)
-        Report -> stringResource(Res.string.tab_report)
+        Reflect -> stringResource(Res.string.tab_reflect)
         Settings -> stringResource(Res.string.tab_settings)
     }
 
@@ -74,7 +72,7 @@ enum class CheckItTab {
             AppRoute.MyDay -> MyDay
             AppRoute.Task, AppRoute.Tags -> Task
             AppRoute.Calendar -> Calendar
-            AppRoute.Report, AppRoute.TimeReport, AppRoute.TagsReport -> Report
+            AppRoute.Reflect -> Reflect
             AppRoute.Settings -> Settings
             else -> null
         }

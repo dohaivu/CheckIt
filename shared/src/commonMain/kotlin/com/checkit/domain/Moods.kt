@@ -1,0 +1,15 @@
+package com.checkit.domain
+
+val MoodHappyEmojis = listOf("😀", "😃", "😄", "😊", "🥳", "✨", "💛", "🌈", "🎈", "☀️")
+val MoodEnergeticEmojis = listOf("🔥", "⚡", "🤩", "🚀", "🎉", "💪", "🧡", "🎸", "🏆", "🏃")
+val MoodCalmEmojis = listOf("😌", "🌿", "🌊", "🧘", "🕊️", "☁️", "💚", "🍃", "🛶", "🕯️")
+val MoodSadEmojis = listOf("😢", "😭", "😔", "🌧️", "💔", "☁️", "💙", "🥀", "🌑", "📻")
+val MoodFocusedEmojis = listOf("🎯", "💻", "📚", "🧠", "✍️", "🧐", "💜", "🛠️", "♟️", "🧪")
+val MoodTiredEmojis = listOf("😴", "🥱", "🔋", "💤", "🛌", "🚶", "🤎", "☕", "🔌", "🏠")
+val MoodWorriedEmojis = listOf("😟", "😰", "😨", "😦", "😧", "😖", "😬", "🫨", "🆘", "⚠️")
+val MoodLovedEmojis = listOf("🥰", "😍", "😘", "💖", "🌹", "🧸", "❤️", "🥂", "💍", "💌")
+
+fun JournalEntry.isGoodMood(): Boolean {
+    val goodMoods = MoodHappyEmojis + MoodEnergeticEmojis + MoodCalmEmojis + MoodLovedEmojis
+    return moods.any { it in goodMoods }
+}

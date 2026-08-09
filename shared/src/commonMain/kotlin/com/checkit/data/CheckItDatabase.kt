@@ -213,16 +213,26 @@ data class DailyPlanItemEntity(
     val handledAtMillis: Long? = null
 )
 
-@Entity(tableName = "day_reviews")
-data class DayReviewEntity(
-    @PrimaryKey
-    val dateEpochDays: Int,
-    val doneCount: Int,
-    val plannedCount: Int,
-    val doneMinutes: Int,
-    val winNote: String? = null,
-    val tomorrowGoal: String? = null,
-    val completedAtMillis: Long
+@Entity(
+    tableName = "period_reviews",
+    indices = [Index(value = ["periodType", "periodStartEpochDays"], unique = true)]
+)
+data class PeriodReviewEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0L,
+    val periodType: String,
+    val periodStartEpochDays: Int,
+    val periodEndEpochDays: Int,
+    val title: String? = null,
+    val content: String = "",
+    val highlightsJson: String? = null,
+    val intentNext: String? = null,
+    val source: String = com.checkit.domain.ReviewSource.Manual.name,
+    val status: String = com.checkit.domain.ReviewStatus.Draft.name,
+    val completedAtMillis: Long? = null,
+    val generatedAtMillis: Long? = null,
+    val editedAtMillis: Long? = null,
+    val statsJson: String? = null
 )
 
 @Entity(
@@ -390,7 +400,7 @@ data class TaskFilterEntity(
         SubTaskEntity::class,
         NoteEntity::class,
         DailyPlanItemEntity::class,
-        DayReviewEntity::class,
+        PeriodReviewEntity::class,
         TagEntity::class,
         TaskTagEntity::class,
         NoteTagEntity::class,

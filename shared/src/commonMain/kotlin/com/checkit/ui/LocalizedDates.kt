@@ -10,40 +10,23 @@ import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.*
 
 @Composable
-internal fun LocalDate.localizedCompactDateWithDayName(): String =
+fun LocalDate.localizedCompactDateWithDayName(): String =
     "${month.number}.$day (${dayOfWeek.localizedShortName()})"
 
 @Composable
-internal fun LocalDate.localizedShortMonthName(): String =
+fun LocalDate.localizedShortMonthName(): String =
     month.localizedShortName()
 
 @Composable
-internal fun LocalDate.localizedWeekdayName(): String =
+fun LocalDate.localizedWeekdayName(): String =
     dayOfWeek.localizedName()
 
 @Composable
-internal fun LocalDate.localizedMonthTitle(): String =
+fun LocalDate.localizedMonthTitle(): String =
     "${month.localizedName()} $year"
 
 @Composable
-internal fun localizedMonthName(monthNumber: Int): String = when (monthNumber) {
-    1 -> stringResource(Res.string.month_january)
-    2 -> stringResource(Res.string.month_february)
-    3 -> stringResource(Res.string.month_march)
-    4 -> stringResource(Res.string.month_april)
-    5 -> stringResource(Res.string.month_may)
-    6 -> stringResource(Res.string.month_june)
-    7 -> stringResource(Res.string.month_july)
-    8 -> stringResource(Res.string.month_august)
-    9 -> stringResource(Res.string.month_september)
-    10 -> stringResource(Res.string.month_october)
-    11 -> stringResource(Res.string.month_november)
-    12 -> stringResource(Res.string.month_december)
-    else -> monthNumber.toString()
-}
-
-@Composable
-private fun Month.localizedName(): String = when (this) {
+fun Month.localizedName(): String = when (this) {
     Month.JANUARY -> stringResource(Res.string.month_january)
     Month.FEBRUARY -> stringResource(Res.string.month_february)
     Month.MARCH -> stringResource(Res.string.month_march)
@@ -59,7 +42,7 @@ private fun Month.localizedName(): String = when (this) {
 }
 
 @Composable
-private fun Month.localizedShortName(): String = when (this) {
+fun Month.localizedShortName(): String = when (this) {
     Month.JANUARY -> stringResource(Res.string.month_short_january)
     Month.FEBRUARY -> stringResource(Res.string.month_short_february)
     Month.MARCH -> stringResource(Res.string.month_short_march)
@@ -75,7 +58,7 @@ private fun Month.localizedShortName(): String = when (this) {
 }
 
 @Composable
-private fun DayOfWeek.localizedShortName(): String = when (this) {
+fun DayOfWeek.localizedShortName(): String = when (this) {
     DayOfWeek.MONDAY -> stringResource(Res.string.day_short_monday)
     DayOfWeek.TUESDAY -> stringResource(Res.string.day_short_tuesday)
     DayOfWeek.WEDNESDAY -> stringResource(Res.string.day_short_wednesday)
@@ -86,7 +69,7 @@ private fun DayOfWeek.localizedShortName(): String = when (this) {
 }
 
 @Composable
-private fun DayOfWeek.localizedName(): String = when (this) {
+fun DayOfWeek.localizedName(): String = when (this) {
     DayOfWeek.MONDAY -> stringResource(Res.string.day_monday)
     DayOfWeek.TUESDAY -> stringResource(Res.string.day_tuesday)
     DayOfWeek.WEDNESDAY -> stringResource(Res.string.day_wednesday)

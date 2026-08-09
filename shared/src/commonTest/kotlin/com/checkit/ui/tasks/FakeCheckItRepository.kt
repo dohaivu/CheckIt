@@ -15,11 +15,14 @@ import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
-import com.checkit.domain.DayReviewCommitResult
-import com.checkit.domain.DayReviewRecord
+import com.checkit.domain.DayCloseCommitResult
 import com.checkit.domain.Goal
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.KeyResult
+import com.checkit.domain.PeriodReview
+import com.checkit.domain.ReviewPeriod
+import com.checkit.domain.ReviewSource
+import com.checkit.domain.ReviewStatus
 import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
@@ -75,7 +78,7 @@ internal class FakeCheckItRepository(
     val copiedDailyPlanItems = mutableListOf<DailyPlanItem>()
     val statusUpdates = mutableListOf<Pair<Long, DailyPlanItemStatus>>()
     val markedHandledItemIds = mutableListOf<Long>()
-    private val dayReviewsFlow = MutableStateFlow<List<DayReviewRecord>>(emptyList())
+    private val periodReviewsFlow = MutableStateFlow<List<PeriodReview>>(emptyList())
 
     private val journalEntriesFlow = MutableStateFlow<List<JournalEntry>>(emptyList())
     val addedJournalEntries = mutableListOf<JournalEntryWriteInput>()
@@ -139,8 +142,8 @@ internal class FakeCheckItRepository(
         dailyPlansFlow.value = plans
     }
 
-    fun setDayReviews(records: List<DayReviewRecord>) {
-        dayReviewsFlow.value = records
+    fun setDayReviews(records: List<PeriodReview>) {
+        periodReviewsFlow.value = records
     }
 
     override suspend fun addGoal(input: GoalWriteInput): Long {
@@ -615,12 +618,20 @@ internal class FakeCheckItRepository(
         return newId
     }
 
-    override fun observeDayReviews(): Flow<List<DayReviewRecord>> = dayReviewsFlow
+    override fun observePeriodReviews(): Flow<List<PeriodReview>> = periodReviewsFlow
 
-    override suspend fun dayReviewForDate(date: LocalDate): DayReviewRecord? =
-        dayReviewsFlow.value.firstOrNull { it.date == date }
+    override suspend fun periodReviewFor(period: ReviewPeriod, date: LocalDate): PeriodReview? =
+        periodReviewsFlow.value.firstOrNull { it.period == period && it.periodStartDate == date }
 
-    override suspend fun completeDayReview(
+    override suspend fun savePeriodReview(review: PeriodReview) {
+        periodReviewsFlow.update { reviews ->
+            reviews.filterNot {
+                it.period == review.period && it.periodStartEpochDays == review.periodStartEpochDays
+            } + review
+        }
+    }
+
+    override suspend fun completeDayClose(
         date: LocalDate,
         markDoneItemIds: List<Long>,
         carryItemIds: List<Long>,
@@ -632,7 +643,7 @@ internal class FakeCheckItRepository(
         doneMinutes: Int,
         targetDate: LocalDate,
         nowMillis: Long
-    ): DayReviewCommitResult {
+    ): DayCloseCommitResult {
         updateDailyPlanItemsStatus(markDoneItemIds, DailyPlanItemStatus.Done)
         markHandled(markDoneItemIds)
         markHandled(dropItemIds)
@@ -677,18 +688,23 @@ internal class FakeCheckItRepository(
             }
             markHandled(listOf(source.id))
         }
-        dayReviewsFlow.update { reviews ->
-            reviews.filterNot { it.date == date } + DayReviewRecord(
-                date = date,
-                doneCount = doneCount,
-                plannedCount = plannedCount,
-                doneMinutes = doneMinutes,
-                winNote = winNote?.trim().orEmpty(),
-                tomorrowGoal = tomorrowGoal?.trim().orEmpty(),
-                completedAtMillis = nowMillis
+        periodReviewsFlow.update { reviews ->
+            reviews.filterNot {
+                it.period == ReviewPeriod.Day && it.periodStartDate == date
+            } + PeriodReview(
+                id = 0L,
+                period = ReviewPeriod.Day,
+                periodStartEpochDays = date.toEpochDays().toInt(),
+                periodEndEpochDays = date.toEpochDays().toInt() + 1,
+                content = winNote?.trim().orEmpty(),
+                intentNext = tomorrowGoal?.trim()?.takeIf { it.isNotEmpty() },
+                source = ReviewSource.Manual,
+                status = ReviewStatus.Complete,
+                completedAtMillis = nowMillis,
+                editedAtMillis = nowMillis
             )
         }
-        return DayReviewCommitResult(
+        return DayCloseCommitResult(
             carriedCount = carried,
             skippedCount = skipped
         )
@@ -794,8 +810,8 @@ internal class FakeSettingsRepository(
         settingsFlow.update { it.copy(autoMyDayLastRunEpochDay = epochDay) }
     }
 
-    override suspend fun setLastDayReviewEpochDay(epochDay: Int) {
-        settingsFlow.update { it.copy(lastDayReviewEpochDay = epochDay) }
+    override suspend fun setLastDayCloseEpochDay(epochDay: Int) {
+        settingsFlow.update { it.copy(lastDayCloseEpochDay = epochDay) }
     }
 
     override suspend fun setAutoCarryOverLeftovers(enabled: Boolean) {

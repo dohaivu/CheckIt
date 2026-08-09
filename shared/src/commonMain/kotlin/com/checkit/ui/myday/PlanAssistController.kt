@@ -27,7 +27,7 @@ internal class PlanAssistController(
                 suggestionStartTimeMinutes = null,
                 suggestionEndTimeMinutes = null,
                 itemEditor = null,
-                dayReview = null
+                dayClose = null
             )
         }
     }

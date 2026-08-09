@@ -1,4 +1,4 @@
-package com.checkit.ui.reports
+package com.checkit.ui.reflect
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -25,7 +25,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.checkit.ui.localizedMonthTitle
-import com.checkit.ui.localizedShortMonthName
 import com.checkit.ui.today
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
@@ -44,6 +43,23 @@ data class HeatmapMonth(
     val monthStart: LocalDate,
     val weeks: List<List<LocalDate?>>
 )
+
+@Composable
+internal fun EmptyHabitsCard(modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = CardDefaults.outlinedCardBorder()
+    ) {
+        Text(
+            text = "No habit check-ins yet. Complete a habit on My Day to start your heatmap.",
+            modifier = Modifier.padding(22.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
 
 @Composable
 internal fun HabitHeatmapSection(
