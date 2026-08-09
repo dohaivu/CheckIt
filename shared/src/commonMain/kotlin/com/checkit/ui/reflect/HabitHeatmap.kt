@@ -45,6 +45,23 @@ data class HeatmapMonth(
 )
 
 @Composable
+internal fun EmptyHabitsCard(modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = CardDefaults.outlinedCardBorder()
+    ) {
+        Text(
+            text = "No habit check-ins yet. Complete a habit on My Day to start your heatmap.",
+            modifier = Modifier.padding(22.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
 internal fun HabitHeatmapSection(
     checkins: List<HabitCheckin>,
     modifier: Modifier = Modifier,

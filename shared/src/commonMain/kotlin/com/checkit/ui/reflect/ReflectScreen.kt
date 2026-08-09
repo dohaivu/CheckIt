@@ -158,6 +158,10 @@ internal fun ReflectScreen(
                             onOpenEditor = viewModel::openEditor
                         )
 
+                        if (digest.topTags.isNotEmpty()) {
+                            TopTagsCard(items = digest.topTags)
+                        }
+
                         ActivityChart(
                             items = digest.activityItems,
                             selectedDate = state.selectedDate,
@@ -165,9 +169,6 @@ internal fun ReflectScreen(
                             onZoomInTo = viewModel::zoomInTo
                         )
 
-                        if (digest.topTags.isNotEmpty()) {
-                            TopTagsCard(items = digest.topTags)
-                        }
                         if (digest.highlights.isNotEmpty()) {
                             CompletedHighlightsCard(
                                 highlights = digest.highlights,

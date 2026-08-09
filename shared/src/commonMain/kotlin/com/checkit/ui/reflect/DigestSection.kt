@@ -53,6 +53,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
@@ -593,60 +594,53 @@ internal fun TopTagsCard(
     items: List<TagReportItem>,
     modifier: Modifier = Modifier
 ) {
+    if (items.isEmpty()) return
     val maxMinutes = items.maxOfOrNull { it.totalMinutes } ?: 0
 
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        border = CardDefaults.outlinedCardBorder()
+    val gradientColors = remember(items) {
+        val colors = items.map { it.color.toColor().copy(alpha = 0.12f) }
+        if (colors.isEmpty()) listOf(Color.Transparent, Color.Transparent)
+        else if (colors.size == 1) listOf(colors[0], colors[0].copy(alpha = 0.05f))
+        else colors
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(Brush.linearGradient(gradientColors), RoundedCornerShape(24.dp))
+            .padding(24.dp)
     ) {
         Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     text = sectionTitle(
-                        prefix = "Where your ",
-                        emphasis = "energy",
-                        suffix = " went",
+                        prefix = "WHERE YOUR ",
+                        emphasis = "ENERGY",
+                        suffix = " WENT",
                         accent = ReportGreenDark
                     ),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.2.sp,
+                    color = ReportGreenDark
                 )
                 Text(
                     text = energySubtitle(),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 )
             }
-            items.forEach { tag ->
-                TagReportBarRow(
-                    item = tag,
-                    fraction = if (maxMinutes == 0) 0f else tag.totalMinutes.toFloat() / maxMinutes.toFloat()
-                )
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                items.forEach { tag ->
+                    TagReportBarRow(
+                        item = tag,
+                        fraction = if (maxMinutes == 0) 0f else tag.totalMinutes.toFloat() / maxMinutes.toFloat()
+                    )
+                }
             }
         }
-    }
-}
-
-@Composable
-internal fun EmptyHabitsCard(modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = CardDefaults.outlinedCardBorder()
-    ) {
-        Text(
-            text = "No habit check-ins yet. Complete a habit on My Day to start your heatmap.",
-            modifier = Modifier.padding(22.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 
@@ -660,33 +654,35 @@ internal fun TagReportBarRow(
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
             text = item.name,
-            modifier = Modifier.widthIn(min = 72.dp, max = 118.dp),
+            modifier = Modifier.widthIn(min = 64.dp, max = 110.dp),
             style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
         Box(
             modifier = Modifier
                 .weight(1f)
-                .height(18.dp)
-                .background(tagColor.copy(alpha = 0.16f), RoundedCornerShape(6.dp))
+                .height(12.dp)
+                .background(tagColor.copy(alpha = 0.12f), CircleShape)
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth(fraction.coerceIn(0.04f, 1f))
-                    .height(18.dp)
-                    .background(tagColor, RoundedCornerShape(6.dp))
+                    .height(12.dp)
+                    .background(tagColor, CircleShape)
             )
         }
         Text(
             text = item.totalMinutes.toDurationLabel(),
-            modifier = Modifier.widthIn(min = 54.dp),
+            modifier = Modifier.widthIn(min = 50.dp),
             style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.End,
             maxLines = 1
         )
     }
