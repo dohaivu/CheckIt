@@ -248,6 +248,7 @@ fun CheckItApp(
                                             goalViewModel = viewModels.goal,
                                             keyResultViewModel = viewModels.keyResult,
                                             objectiveViewModel = viewModels.objective,
+                                            listViewModel = viewModels.list,
                                             onOpenTags = { navState.push(AppRoute.Tags) }
                                         )
                                     }
@@ -309,7 +310,7 @@ fun CheckItApp(
                     taskUiState.editor?.let { editor ->
                         TaskEditorSheet(
                             editor = editor,
-                            availableLists = taskUiState.board.objectives,
+                            availableLists = taskUiState.board.lists,
                             availableTags = taskUiState.board.tags,
                             actions = TaskEditorActions(
                                 onDismiss = viewModels.task::dismissEditor,

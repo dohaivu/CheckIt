@@ -4,6 +4,7 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.KeyResult
+import com.checkit.domain.ListItem
 import com.checkit.domain.Objective
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
@@ -16,7 +17,7 @@ import kotlin.test.assertTrue
 class SyncKeyResultFromDailyPlanUseCaseTest {
 
     private fun objective(id: Long) = Objective(
-        id = id, name = "Objective $id", color = "#2563EB", icon = "Inbox", sortOrder = 0
+        id = id, goalId = 0L, name = "Objective $id", color = "#2563EB", icon = "Inbox", sortOrder = 0
     )
 
     private fun keyResult(
@@ -36,7 +37,7 @@ class SyncKeyResultFromDailyPlanUseCaseTest {
         objective: Objective,
         keyResult: KeyResult? = null,
     ) = TaskItem(
-        id = id, objective = objective, keyResult = keyResult, name = "Task $id",
+        id = id, list = ListItem.None, keyResult = keyResult, name = "Task $id",
         sortOrder = 0, createdAtMillis = 0L, updatedAtMillis = 0L
     )
 

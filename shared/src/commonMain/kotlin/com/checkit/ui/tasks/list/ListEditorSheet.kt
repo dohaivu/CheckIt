@@ -38,22 +38,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.checkit.ui.tasks.EditorMode
-import com.checkit.ui.tasks.ObjectiveEditorState
 import com.checkit.ui.components.ColorPicker
 import com.checkit.ui.components.IconPicker
 import com.checkit.ui.components.SectionLabel
-import com.checkit.ui.okr.InboxListName
 import com.checkit.ui.theme.AppIconColorDefaults
 import com.checkit.ui.theme.toColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ListEditorSheet(
-    editor: ObjectiveEditorState,
+    editor: ListEditorState,
     onDismiss: () -> Unit,
     onSave: () -> Unit,
     onDelete: () -> Unit,
-    onNameChange: (String) -> Unit,
+    onTitleChange: (String) -> Unit,
     onColorChange: (String) -> Unit,
     onIconChange: (String) -> Unit
 ) {
@@ -82,7 +80,7 @@ internal fun ListEditorSheet(
                     Button(onClick = onSave) {
                         Text("Save")
                     }
-                    if (editor.mode == EditorMode.Edit && editor.name != InboxListName) {
+                    if (editor.mode == EditorMode.Edit && editor.title != "Inbox") {
                         Box(
                             modifier = Modifier
                                 .wrapContentSize(Alignment.TopEnd)
@@ -109,8 +107,8 @@ internal fun ListEditorSheet(
             }
             item {
                 OutlinedTextField(
-                    value = editor.name,
-                    onValueChange = onNameChange,
+                    value = editor.title,
+                    onValueChange = onTitleChange,
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Name") },
                     singleLine = true
@@ -141,7 +139,7 @@ internal fun ListEditorSheet(
         AlertDialog(
             onDismissRequest = { showDeleteConfirmation = false },
             title = { Text("Delete list?") },
-            text = { Text("Tasks and notes in ${editor.name} will move to Inbox.") },
+            text = { Text("Tasks and notes in ${editor.title} will move to Inbox.") },
             confirmButton = {
                 TextButton(
                     onClick = {

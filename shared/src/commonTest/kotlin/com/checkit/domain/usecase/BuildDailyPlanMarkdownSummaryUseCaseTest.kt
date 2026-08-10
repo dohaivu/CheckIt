@@ -1,5 +1,6 @@
 package com.checkit.domain.usecase
 
+import com.checkit.domain.ListItem
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
@@ -7,7 +8,6 @@ import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
-import com.checkit.domain.Objective
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TagItem
 import kotlinx.datetime.LocalDate
@@ -225,7 +225,7 @@ class BuildDailyPlanMarkdownSummaryUseCaseTest {
         subtasks: List<SubTaskItem> = emptyList()
     ) = TaskItem(
         id = id,
-        objective = Objective.None,
+        list = ListItem.None,
         name = name,
         description = description,
         subtasks = subtasks,

@@ -16,6 +16,9 @@ import com.checkit.notifications.AppReminderScheduler
 import com.checkit.domain.SprintManager
 import com.checkit.domain.usecase.SaveSprintAsWinUseCase
 import com.checkit.domain.usecase.SprintTransitionUseCase
+import com.checkit.domain.usecase.AddListUseCase
+import com.checkit.domain.usecase.UpdateListUseCase
+import com.checkit.domain.usecase.DeleteListUseCase
 import com.checkit.domain.usecase.AddNoteUseCase
 import com.checkit.domain.usecase.AddDailyPlanItemUseCase
 import com.checkit.domain.usecase.AddGoalUseCase
@@ -72,6 +75,7 @@ import com.checkit.ui.okr.GoalViewModel
 import com.checkit.ui.okr.KeyResultViewModel
 import com.checkit.ui.okr.ObjectiveViewModel
 import com.checkit.ui.reflect.ReflectViewModel
+import com.checkit.ui.tasks.list.ListViewModel
 import com.checkit.ui.tasks.tag.TagViewModel
 import com.checkit.ui.tasks.TaskViewModel
 import com.checkit.ui.settings.SettingsViewModel
@@ -126,6 +130,9 @@ val provideInteractorModule = module {
     single { AddObjectiveUseCase(get()) }
     single { UpdateObjectiveUseCase(get()) }
     single { DeleteObjectiveUseCase(get()) }
+    single { AddListUseCase(get()) }
+    single { UpdateListUseCase(get()) }
+    single { DeleteListUseCase(get()) }
     single { AddTagUseCase(get()) }
     single { UpdateTagUseCase(get()) }
     single { UpdateTagSortOrderUseCase(get()) }
@@ -202,6 +209,7 @@ val provideViewModelModule = module {
     viewModel { GoalViewModel(get(), get(), get()) }
     viewModel { KeyResultViewModel(get()) }
     viewModel { ObjectiveViewModel(get(), get(), get()) }
+    viewModel { ListViewModel(get(), get(), get()) }
     viewModel { TagViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { CalendarViewModel(get(), get(), get(), get()) }
     viewModel {

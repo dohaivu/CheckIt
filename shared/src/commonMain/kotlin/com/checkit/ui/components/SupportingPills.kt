@@ -10,16 +10,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.checkit.domain.Objective
+import com.checkit.domain.ListItem
 import com.checkit.domain.TagItem
-import com.checkit.ui.components.icons.AppIcons
 import com.checkit.ui.components.icons.Target
 import com.checkit.ui.theme.materialIcon
 import com.checkit.ui.theme.toColor
 
 @Composable
 internal fun SupportingPills(
-    list: Objective?,
+    list: ListItem?,
     tags: List<TagItem>,
     overflowCount: Int = 0
 ) {
@@ -30,10 +29,9 @@ internal fun SupportingPills(
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         list?.let {
-            val isObjective = remember {  (list.goalId != null)}
             DetailChip(
-                icon = if (isObjective) AppIcons.Target else materialIcon(it.icon),
-                label = it.name,
+                icon = materialIcon(it.icon),
+                label = it.title,
                 iconTint = it.color.toColor()
             )
         }

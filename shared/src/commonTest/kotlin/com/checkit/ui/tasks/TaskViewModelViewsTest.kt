@@ -5,7 +5,7 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DueDatePreset
-import com.checkit.domain.Objective
+import com.checkit.domain.ListItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskFilter
 import com.checkit.domain.TaskItem
@@ -57,8 +57,8 @@ class TaskViewModelViewsTest {
     fun setUp() {
         Dispatchers.setMain(dispatcher)
         val board = TaskBoard(
-            objectives = listOf(
-                Objective(id = 1L, name = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
+            lists = listOf(
+                ListItem(id = 1L, title = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
             ),
             filters = listOf(
                 todayFilter(1L),
@@ -175,17 +175,17 @@ class TaskViewModelViewsTest {
 
     @Test
     fun titleSortBuildsUnifiedTaskAndNoteListOrder() = runTest(dispatcher) {
-        val inbox = Objective(id = 1L, name = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
+        val inbox = ListItem(id = 1L, title = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
         viewModel = createViewModel(
             TaskBoard(
-                objectives = listOf(inbox),
+                lists = listOf(inbox),
                 tasks = listOf(
-                    task(id = 1L, objective = inbox, name = "Bravo"),
-                    task(id = 2L, objective = inbox, name = "Delta")
+                    task(id = 1L, list = inbox, name = "Bravo"),
+                    task(id = 2L, list = inbox, name = "Delta")
                 ),
                 notes = listOf(
-                    note(id = 3L, objective = inbox, title = "Alpha"),
-                    note(id = 4L, objective = inbox, title = "Charlie")
+                    note(id = 3L, list = inbox, title = "Alpha"),
+                    note(id = 4L, list = inbox, title = "Charlie")
                 )
             )
         )
@@ -204,17 +204,17 @@ class TaskViewModelViewsTest {
 
     @Test
     fun searchFiltersTasksAndNotesByTitleAndBody() = runTest(dispatcher) {
-        val inbox = Objective(id = 1L, name = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
+        val inbox = ListItem(id = 1L, title = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
         viewModel = createViewModel(
             TaskBoard(
-                objectives = listOf(inbox),
+                lists = listOf(inbox),
                 tasks = listOf(
-                    task(id = 1L, objective = inbox, name = "Budget", description = "Quarterly planning"),
-                    task(id = 2L, objective = inbox, name = "Groceries", description = "Milk")
+                    task(id = 1L, list = inbox, name = "Budget", description = "Quarterly planning"),
+                    task(id = 2L, list = inbox, name = "Groceries", description = "Milk")
                 ),
                 notes = listOf(
-                    note(id = 3L, objective = inbox, title = "Ideas", content = "Quarterly roadmap"),
-                    note(id = 4L, objective = inbox, title = "Receipt", content = "Coffee")
+                    note(id = 3L, list = inbox, title = "Ideas", content = "Quarterly roadmap"),
+                    note(id = 4L, list = inbox, title = "Receipt", content = "Coffee")
                 )
             )
         )
@@ -233,14 +233,14 @@ class TaskViewModelViewsTest {
 
     @Test
     fun habitsViewShowsOnlyHabitTasks() = runTest(dispatcher) {
-        val inbox = Objective(id = 1L, name = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
+        val inbox = ListItem(id = 1L, title = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
         viewModel = createViewModel(
             TaskBoard(
-                objectives = listOf(inbox),
+                lists = listOf(inbox),
                 tasks = listOf(
-                    task(id = 1L, objective = inbox, name = "Read"),
-                    task(id = 2L, objective = inbox, name = "Meditate", type = TaskType.Habit),
-                    task(id = 3L, objective = inbox, name = "Write")
+                    task(id = 1L, list = inbox, name = "Read"),
+                    task(id = 2L, list = inbox, name = "Meditate", type = TaskType.Habit),
+                    task(id = 3L, list = inbox, name = "Write")
                 )
             )
         )
@@ -255,13 +255,13 @@ class TaskViewModelViewsTest {
 
     @Test
     fun togglingTaskTagAlsoUpdatesDailyPlanItemTags() = runTest(dispatcher) {
-        val inbox = Objective(id = 1L, name = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
+        val inbox = ListItem(id = 1L, title = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
         val workTag = TagItem(id = 1L, name = "Work", color = "#DC2626", sortOrder = 0)
         val homeTag = TagItem(id = 2L, name = "Home", color = "#0891B2", sortOrder = 1)
-        val item = task(id = 5L, objective = inbox, name = "Gym", tags = listOf(workTag))
+        val item = task(id = 5L, list = inbox, name = "Gym", tags = listOf(workTag))
         viewModel = createViewModel(
             TaskBoard(
-                objectives = listOf(inbox),
+                lists = listOf(inbox),
                 tags = listOf(workTag, homeTag),
                 tasks = listOf(item)
             )
@@ -326,14 +326,14 @@ class TaskViewModelViewsTest {
 
     private fun task(
         id: Long,
-        objective: Objective,
+        list: ListItem,
         name: String,
         description: String = "",
         type: TaskType = TaskType.Task,
         tags: List<TagItem> = emptyList()
     ) = TaskItem(
         id = id,
-        objective = objective,
+        list = list,
         name = name,
         description = description,
         type = type,
@@ -345,12 +345,12 @@ class TaskViewModelViewsTest {
 
     private fun note(
         id: Long,
-        objective: Objective,
+        list: ListItem,
         title: String,
         content: String = ""
     ) = NoteItem(
         id = id,
-        objective = objective,
+        list = list,
         title = title,
         content = content,
         date = LocalDate(2026, 6, 14),

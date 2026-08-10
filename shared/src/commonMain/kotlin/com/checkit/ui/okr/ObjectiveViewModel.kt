@@ -34,26 +34,22 @@ class ObjectiveViewModel(
     private val _events = Channel<UiEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
-    fun openNewList() {
-        _uiState.update { it.copy(editor = ObjectiveEditorState(mode = EditorMode.Add, goalId = null)) }
-    }
-
     fun openNewObjective(goalId: Long) {
         _uiState.update { it.copy(editor = ObjectiveEditorState(mode = EditorMode.Add, goalId = goalId)) }
     }
 
-    fun openEditObjective(list: Objective) {
+    fun openEditObjective(objective: Objective) {
         _uiState.update {
             it.copy(
                 editor = ObjectiveEditorState(
                     mode = EditorMode.Edit,
-                    objectiveId = list.id,
-                    goalId = list.goalId,
-                    name = list.name,
-                    color = list.color,
-                    icon = list.icon,
-                    startDate = list.startDate,
-                    endDate = list.endDate
+                    objectiveId = objective.id,
+                    goalId = objective.goalId,
+                    name = objective.name,
+                    color = objective.color,
+                    icon = objective.icon,
+                    startDate = objective.startDate,
+                    endDate = objective.endDate
                 )
             )
         }
@@ -70,48 +66,43 @@ class ObjectiveViewModel(
 
     fun saveEditor(onSaved: (Long) -> Unit = {}) {
         val form = _uiState.value.editor ?: return
+        val goalId = form.goalId ?: return
         if (form.name.isBlank()) {
             sendEvent(UiEvent.ShowSnackbar("Add a name"))
             return
         }
-        if (form.goalId != null) {
-            if (form.startDate == null || form.endDate == null) {
-                sendEvent(UiEvent.ShowSnackbar("Set start and end dates"))
-                return
-            }
+        if (form.startDate == null || form.endDate == null) {
+            sendEvent(UiEvent.ShowSnackbar("Set start and end dates"))
+            return
         }
+
         val input = ObjectiveWriteInput(
             name = form.name.trim(),
             color = form.color,
             icon = form.icon,
-            goalId = form.goalId,
+            goalId = goalId,
             startDate = form.startDate,
             endDate = form.endDate
         )
         viewModelScope.launch {
-            val savedId = if (form.mode == EditorMode.Add) {
+            if (form.mode == EditorMode.Add) {
                 addObjective(input)
             } else {
                 val objectiveId = form.objectiveId ?: return@launch
                 updateObjective(objectiveId, input)
-                objectiveId
             }
             _uiState.update { it.copy(editor = null) }
-            onSaved(if (form.goalId != null) form.goalId else savedId)
+            onSaved(goalId)
         }
     }
 
-    fun deleteEditorList(onDeleted: () -> Unit = {}) {
+    fun deleteEditorObjective(onDeleted: () -> Unit = {}) {
         val form = _uiState.value.editor ?: return
         val objectiveId = form.objectiveId ?: return
-        if (form.name == InboxListName) {
-            sendEvent(UiEvent.ShowSnackbar("Inbox can't be deleted"))
-            return
-        }
         viewModelScope.launch {
             deleteObjective(objectiveId)
             _uiState.update { it.copy(editor = null) }
-            sendEvent(UiEvent.ShowSnackbar("List deleted; items moved to Inbox"))
+            sendEvent(UiEvent.ShowSnackbar("Objective deleted"))
             onDeleted()
         }
     }

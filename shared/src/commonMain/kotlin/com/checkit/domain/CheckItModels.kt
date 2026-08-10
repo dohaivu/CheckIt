@@ -7,6 +7,7 @@ data class AppConfig(val versionName: String)
 data class TaskBoard(
     val goals: List<Goal> = emptyList(),
     val objectives: List<Objective> = emptyList(),
+    val lists: List<ListItem> = emptyList(),
     val keyResults: List<KeyResult> = emptyList(),
     val filters: List<TaskFilter> = emptyList(),
     val tasks: List<TaskItem> = emptyList(),
@@ -46,7 +47,7 @@ data class Goal(
 
 data class Objective(
     val id: Long,
-    val goalId: Long? = null,
+    val goalId: Long,
     val name: String,
     val startDate: LocalDate? = null,
     val endDate: LocalDate? = null,
@@ -58,8 +59,21 @@ data class Objective(
     val title: String get() = name
 
     companion object {
-        val None = Objective(id = -1L, name = "", color = "", icon = "", sortOrder = -1)
-        val MyDay = Objective(id = -2L, name = "MyDay", color = "0xFF64748B", icon = "Today", sortOrder = -2)
+        val None = Objective(id = -1L, goalId = -1L, name = "", color = "", icon = "", sortOrder = -1)
+    }
+}
+
+data class ListItem(
+    val id: Long,
+    val title: String,
+    val icon: String,
+    val color: String,
+    val sortOrder: Int,
+    val isArchived: Boolean = false
+) {
+    companion object {
+        val None = ListItem(id = -1L, title = "", color = "", icon = "", sortOrder = -1)
+        val MyDay = ListItem(id = -2L, title = "MyDay", color = "0xFF64748B", icon = "Today", sortOrder = -2)
     }
 }
 
@@ -93,7 +107,7 @@ enum class KeyResultUnit(val label: String) {
 
 data class TaskItem(
     val id: Long,
-    val objective: Objective,
+    val list: ListItem,
     val keyResult: KeyResult? = null,
     val name: String,
     val description: String = "",
@@ -167,7 +181,7 @@ data class SubTaskItem(
 
 data class NoteItem(
     val id: Long,
-    val objective: Objective,
+    val list: ListItem,
     val title: String = "",
     val content: String,
     val tags: List<TagItem> = emptyList(),

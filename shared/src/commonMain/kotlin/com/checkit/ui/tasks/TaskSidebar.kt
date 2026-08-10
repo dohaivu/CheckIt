@@ -32,14 +32,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.Goal
-import com.checkit.domain.Objective
+import com.checkit.domain.ListItem
 import com.checkit.ui.theme.materialIcon
 import com.checkit.ui.theme.toColor
 
 @Composable
 internal fun TaskSidebar(
     goals: List<Goal>,
-    lists: List<Objective>,
+    lists: List<ListItem>,
     isBoardSelected: Boolean,
     selectedListId: Long?,
     selectedGoalId: Long?,
@@ -51,7 +51,7 @@ internal fun TaskSidebar(
     onAddGoalClick: () -> Unit,
     onEditGoalClick: (Goal) -> Unit,
     onAddListClick: () -> Unit,
-    onEditListClick: (Objective) -> Unit
+    onEditListClick: (ListItem) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.width(260.dp).fillMaxHeight().padding(horizontal = 10.dp),
@@ -113,7 +113,7 @@ internal fun TaskSidebar(
         }
         items(lists, key = { "list-${it.id}" }) { list ->
             SidebarItem(
-                title = list.name,
+                title = list.title,
                 icon = materialIcon(list.icon),
                 color = list.color.toColor(),
                 selected = selectedListId == list.id,

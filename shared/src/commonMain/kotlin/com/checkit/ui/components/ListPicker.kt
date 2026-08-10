@@ -20,8 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.checkit.domain.Objective
-import com.checkit.ui.components.icons.AppIcons
+import com.checkit.domain.ListItem
 import com.checkit.ui.components.icons.Target
 import com.checkit.ui.theme.materialIcon
 import com.checkit.ui.theme.toColor
@@ -29,19 +28,18 @@ import com.checkit.ui.theme.toColor
 @Composable
 internal fun ListPicker(
     selectedListId: Long,
-    lists: List<Objective>,
+    lists: List<ListItem>,
     onListChange: (Long) -> Unit,
     enabled: Boolean = true
 ) {
     if (lists.isEmpty()) return
     var expanded by remember { mutableStateOf(false) }
     val selectedList by remember(selectedListId) { mutableStateOf( lists.firstOrNull { it.id == selectedListId } ?: lists.first())}
-    val isObjective = remember {  (selectedList.goalId != null)}
     AppleStylePopup(
         isExpanded = expanded,
         onDismissRequest = { expanded = false },
         anchor = {
-            DetailChip(icon = if (isObjective) AppIcons.Target else materialIcon(selectedList.icon), label = selectedList.name, onClick = { if (enabled && !isObjective) expanded = true }, iconTint = selectedList.color.toColor(),)
+            DetailChip(icon = materialIcon(selectedList.icon), label = selectedList.title, onClick = { if (enabled) expanded = true }, iconTint = selectedList.color.toColor(),)
         }
     ) {
         Column(
@@ -49,7 +47,7 @@ internal fun ListPicker(
                 .width(250.dp)
                 .padding(vertical = 0.dp)
         ) {
-            lists.filter { it.goalId == null }.forEachIndexed { index, list ->
+            lists.forEachIndexed { index, list ->
                 Row(
                     modifier = Modifier
                         .clickable(onClick = {
@@ -67,7 +65,7 @@ internal fun ListPicker(
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
-                        text = list.name,
+                        text = list.title,
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }

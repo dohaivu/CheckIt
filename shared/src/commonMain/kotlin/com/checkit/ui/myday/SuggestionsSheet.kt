@@ -40,7 +40,7 @@ import checkit.shared.generated.resources.leftovers_banner_carry_all
 import checkit.shared.generated.resources.leftovers_item_carry
 import checkit.shared.generated.resources.leftovers_section_title
 import com.checkit.domain.DailyPlanItem
-import com.checkit.domain.Objective
+import com.checkit.domain.ListItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TagItem
 import com.checkit.ui.components.AppOutlinedTextField
@@ -204,7 +204,7 @@ internal fun SuggestionsSheet(
                     items(tasks, key = { it.id }) { task ->
                         SuggestionCard(
                             task = task,
-                            list = task.objective,
+                            list = task.list,
                             onClick = { onTaskClick(task) },
                             onAdd = { onAddTask(task) }
                         )
@@ -218,13 +218,13 @@ internal fun SuggestionsSheet(
 @Composable
 private fun SuggestionCard(
     task: TaskItem,
-    list: Objective?,
+    list: ListItem?,
     onClick: () -> Unit,
     onAdd: () -> Unit
 ) {
     TaskTimelineCard(
         task = task,
-        timeLabel = task.timeRangeLabel().takeIf { it.isNotBlank() } ?: task.doDate?.localizedCompactDateWithDayName() ?: list?.name,
+        timeLabel = task.timeRangeLabel().takeIf { it.isNotBlank() } ?: task.doDate?.localizedCompactDateWithDayName() ?: list?.title,
         onClick = onClick,
         trailingContent = {
             IconButton(

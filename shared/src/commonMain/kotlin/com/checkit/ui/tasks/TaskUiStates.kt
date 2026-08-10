@@ -3,8 +3,8 @@ package com.checkit.ui.tasks
 import com.checkit.domain.ActiveTagToken
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DueDatePreset
+import com.checkit.domain.ListItem
 import com.checkit.domain.NoteItem
-import com.checkit.domain.Objective
 import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskFilter
@@ -37,7 +37,7 @@ data class TaskUiState(
     val visibleTasks: List<TaskItem> get() = visibleItems.tasks
     val visibleNotes: List<NoteItem> get() = visibleItems.notes
     val visibleListItems: List<TaskListEntry> get() = visibleItems.listItems
-    val selectedList: Objective? = board.objectives.firstOrNull { it.id == selectedListId }
+    val selectedList: ListItem? = board.lists.firstOrNull { it.id == selectedListId }
     val selectedGoal = board.goals.firstOrNull { it.id == selectedGoalId }
     val selectedFilter: TaskFilter? = board.filters.firstOrNull { it.id == selectedFilterId }
     val selectedTag = board.tags.firstOrNull { it.id == selectedTagId }
@@ -127,7 +127,7 @@ sealed interface TaskEditorState {
     data class TaskForm(
         val mode: EditorMode,
         val taskId: Long? = null,
-        val objectiveId: Long,
+        val listId: Long,
         val keyResultId: Long? = null,
         val name: String = "",
         val description: String = "",
@@ -149,7 +149,7 @@ sealed interface TaskEditorState {
     data class NoteForm(
         val mode: EditorMode,
         val noteId: Long? = null,
-        val objectiveId: Long,
+        val listId: Long,
         val title: String = "",
         val content: String = "",
         val status: TaskStatus = TaskStatus.Open,
