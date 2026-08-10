@@ -32,7 +32,9 @@ import com.checkit.ui.tasks.views.ContentContainerAlpha
 fun AppOutlinedTextField(
     value: String,
     onValueChange: (String) -> Unit,
-    textStyle: TextStyle = TextStyle.Default,
+    textStyle: TextStyle = MaterialTheme.typography.bodyMedium.copy(
+        color = MaterialTheme.colorScheme.onSurface
+    ),
     placeholder: String? = null,
     minLines: Int = 1,
     maxLines: Int = Int.MAX_VALUE,

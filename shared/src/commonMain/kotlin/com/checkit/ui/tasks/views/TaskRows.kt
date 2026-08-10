@@ -33,7 +33,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.NoteItem
-import com.checkit.domain.Objective
+import com.checkit.domain.ListItem
 import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
@@ -58,7 +58,7 @@ import com.checkit.ui.tasks.toDurationLabel
 internal fun TaskRow(
     task: TaskItem,
     onClick: () -> Unit,
-    list: Objective? = null,
+    list: ListItem? = null,
     displayType: TaskListDisplayType = TaskListDisplayType.Standard
 ) {
     BaseTaskRow(
@@ -81,7 +81,7 @@ internal fun TaskRow(
 internal fun NoteRow(
     note: NoteItem,
     onClick: () -> Unit,
-    list: Objective? = null,
+    list: ListItem? = null,
     displayType: TaskListDisplayType = TaskListDisplayType.Standard
 ) {
     BaseTaskRow(
@@ -273,7 +273,7 @@ internal fun BriefTaskRowContent(task: TaskItem) {
 }
 
 @Composable
-internal fun StandardTaskRowContent(task: TaskItem, list: Objective?) {
+internal fun StandardTaskRowContent(task: TaskItem, list: ListItem?) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -288,7 +288,7 @@ internal fun StandardTaskRowContent(task: TaskItem, list: Objective?) {
 }
 
 @Composable
-internal fun DetailTaskRowContent(task: TaskItem, list: Objective?) {
+internal fun DetailTaskRowContent(task: TaskItem, list: ListItem?) {
     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         TaskTitleRow(task, descriptionMaxLines = 3)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -323,7 +323,7 @@ internal fun BriefNoteRowContent(note: NoteItem) {
 }
 
 @Composable
-internal fun StandardNoteRowContent(note: NoteItem, list: Objective?) {
+internal fun StandardNoteRowContent(note: NoteItem, list: ListItem?) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -348,7 +348,7 @@ internal fun StandardNoteRowContent(note: NoteItem, list: Objective?) {
 }
 
 @Composable
-internal fun DetailNoteRowContent(note: NoteItem, list: Objective?) {
+internal fun DetailNoteRowContent(note: NoteItem, list: ListItem?) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)

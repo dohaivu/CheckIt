@@ -8,6 +8,7 @@ import com.checkit.ui.okr.ObjectiveViewModel
 import com.checkit.ui.reflect.ReflectViewModel
 import com.checkit.ui.settings.SettingsViewModel
 import com.checkit.ui.tasks.TaskViewModel
+import com.checkit.ui.tasks.list.ListViewModel
 import com.checkit.ui.tasks.tag.TagViewModel
 import androidx.compose.runtime.Composable
 import org.koin.compose.viewmodel.koinViewModel
@@ -17,6 +18,7 @@ data class CheckItViewModels(
     val goal: GoalViewModel,
     val keyResult: KeyResultViewModel,
     val objective: ObjectiveViewModel,
+    val list: ListViewModel,
     val tag: TagViewModel,
     val myDay: MyDayViewModel,
     val calendar: CalendarViewModel,
@@ -30,6 +32,7 @@ fun koinCheckItViewModels(): CheckItViewModels = CheckItViewModels(
     goal = koinViewModel(),
     keyResult = koinViewModel(),
     objective = koinViewModel(),
+    list = koinViewModel(),
     tag = koinViewModel(),
     myDay = koinViewModel(),
     calendar = koinViewModel(),

@@ -70,7 +70,7 @@ internal fun TaskListView(
                     TaskRow(
                         task = task,
                         onClick = { onTaskClick(task) },
-                        list = if (showListName) task.objective else null,
+                        list = if (showListName) task.list else null,
                         displayType = displayType
                     )
                 }
@@ -79,7 +79,7 @@ internal fun TaskListView(
                     NoteRow(
                         note = note,
                         onClick = { onNoteClick(note) },
-                        list = if (showListName) note.objective else null,
+                        list = if (showListName) note.list else null,
                         displayType = displayType
                     )
                 }

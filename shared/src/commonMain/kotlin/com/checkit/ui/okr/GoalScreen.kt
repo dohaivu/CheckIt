@@ -59,7 +59,6 @@ import com.checkit.ui.components.DonutProgressIndicator
 import com.checkit.ui.components.TimeframePill
 import com.checkit.ui.components.icons.AppIcons
 import com.checkit.ui.components.icons.Target
-import com.checkit.ui.tasks.views.OKRNoteContent
 import com.checkit.ui.tasks.views.OKRTaskContent
 import com.checkit.ui.theme.toColor
 
@@ -93,9 +92,6 @@ internal fun GoalScreen(
             .filter { it.keyResult != null }
             .groupBy { it.keyResult?.id }
     }
-    val notesByObjective = remember(visibleNotes) {
-        visibleNotes.groupBy { it.objective.id }
-    }
 
     LazyColumn(
         modifier = modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 10.dp),
@@ -106,13 +102,11 @@ internal fun GoalScreen(
                 objective = objective,
                 keyResults = keyResultsByObjective[objective.id].orEmpty(),
                 tasksByKeyResult = tasksByKeyResult,
-                notes = notesByObjective[objective.id].orEmpty(),
                 collapsedNodeKeys = goalState.collapsedNodeKeys,
                 selectedNodeKey = goalState.selectedNodeKey,
                 onToggleExpanded = goalViewModel::toggleExpanded,
                 onSelectNode = goalViewModel::selectNode,
                 onTaskClick = onTaskClick,
-                onNoteClick = onNoteClick,
                 onEditKeyResult = keyResultViewModel::openEditKeyResult,
                 onEditObjective = onEditObjective
             )
@@ -138,13 +132,11 @@ private fun ObjectiveBranch(
     objective: Objective,
     keyResults: List<KeyResult>,
     tasksByKeyResult: Map<Long?, List<TaskItem>>,
-    notes: List<NoteItem>,
     collapsedNodeKeys: Set<String>,
     selectedNodeKey: String?,
     onToggleExpanded: (String) -> Unit,
     onSelectNode: (String) -> Unit,
     onTaskClick: (TaskItem) -> Unit,
-    onNoteClick: (NoteItem) -> Unit,
     onEditKeyResult: (KeyResult) -> Unit,
     onEditObjective: (Objective) -> Unit
 ) {
@@ -152,7 +144,7 @@ private fun ObjectiveBranch(
     val isExpanded = nodeKey !in collapsedNodeKeys
     val isSelected = selectedNodeKey == nodeKey
     val color = objective.color.toColor()
-    val hasChildren = keyResults.isNotEmpty() || notes.isNotEmpty()
+    val hasChildren = keyResults.isNotEmpty()
     TreeNodeRow(
         nodeKey = nodeKey,
         depth = 0,
@@ -192,30 +184,8 @@ private fun ObjectiveBranch(
         }
     )
     AnimatedChildren(visible = isExpanded && hasChildren) {
-        val totalChildren = keyResults.size + notes.size
-        var childIndex = 0
-        notes.forEach { note ->
-            val isLastChild = childIndex == totalChildren - 1
-            TreeNodeRow(
-                nodeKey = note.nodeKey(),
-                depth = 1,
-                isLast = isLastChild,
-                hasChildren = false,
-                isExpanded = false,
-                isSelected = selectedNodeKey == note.nodeKey(),
-                color = color,
-                onToggleExpanded = onToggleExpanded,
-                onSelectNode = onSelectNode,
-                onLongClick = { onNoteClick(note) },
-                content = {
-                    OKRNoteContent(note, color = color)
-                }
-            )
-            childIndex++
-        }
-
-        keyResults.forEach { keyResult ->
-            val isLastChild = childIndex == totalChildren - 1
+        keyResults.forEachIndexed { index, keyResult ->
+            val isLastChild = index == keyResults.size - 1
             KeyResultBranch(
                 keyResult = keyResult,
                 tasks = tasksByKeyResult[keyResult.id].orEmpty(),
@@ -228,7 +198,6 @@ private fun ObjectiveBranch(
                 onTaskClick = onTaskClick,
                 onEditKeyResult = onEditKeyResult
             )
-            childIndex++
         }
     }
 }

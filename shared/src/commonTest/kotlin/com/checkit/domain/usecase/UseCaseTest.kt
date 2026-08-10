@@ -1,11 +1,11 @@
 package com.checkit.domain.usecase
 
 import com.checkit.domain.DueDatePreset
+import com.checkit.domain.ListItem
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskFilter
 import com.checkit.domain.TaskItem
-import com.checkit.domain.Objective
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TagItem
@@ -260,7 +260,7 @@ class UseCaseTest {
         trashedAtMillis: Long? = null
     ) = TaskItem(
         id = id,
-        objective = Objective.None,
+        list = ListItem.None,
         name = "Task $id",
         tags = tags,
         priority = priority,
@@ -279,7 +279,7 @@ class UseCaseTest {
         trashedAtMillis: Long? = null
     ) = NoteItem(
         id = id,
-        objective = Objective.None,
+        list = ListItem.None,
         content = "Note $id",
         tags = tags,
         date = date,

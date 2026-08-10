@@ -132,9 +132,9 @@ class TaskViewModel(
         }
     }
 
-    fun selectList(objectiveId: Long) {
+    fun selectList(listId: Long) {
         _uiState.update {
-            it.copy(selection = TaskSelectionState(selectedListId = objectiveId))
+            it.copy(selection = TaskSelectionState(selectedListId = listId))
                 .refreshVisibleItems()
                 .coerceViewToAvailable()
         }
@@ -257,13 +257,13 @@ class TaskViewModel(
     }
 
     fun openNewHabit() {
-        val objectiveId = editableListId() ?: return sendEvent(UiEvent.ShowSnackbar("Create a list before adding habits"))
+        val listId = editableListId() ?: return sendEvent(UiEvent.ShowSnackbar("Create a list before adding habits"))
         cancelPendingTaskTextSave()
         _uiState.update {
             it.copy(
                 editor = TaskEditorState.TaskForm(
                     mode = EditorMode.Add,
-                    objectiveId = objectiveId,
+                    listId = listId,
                     type = TaskType.Habit,
                 )
             )
@@ -271,12 +271,13 @@ class TaskViewModel(
     }
 
     fun openNewTaskOnKeyResult(keyResult: KeyResult) {
+        val listId = editableListId() ?: return sendEvent(UiEvent.ShowSnackbar("Create a list before adding tasks"))
         cancelPendingTaskTextSave()
         _uiState.update {
             it.copy(
                 editor = TaskEditorState.TaskForm(
                     mode = EditorMode.Add,
-                    objectiveId = keyResult.objectiveId,
+                    listId = listId,
                     keyResultId = keyResult.id,
                     doDate = null,
                 )
@@ -285,13 +286,13 @@ class TaskViewModel(
     }
 
     fun openNewTaskOnDate(date: LocalDate, addToMyDayOnSave: Boolean = false) {
-        val objectiveId = editableListId() ?: return sendEvent(UiEvent.ShowSnackbar("Create a list before adding tasks"))
+        val listId = editableListId() ?: return sendEvent(UiEvent.ShowSnackbar("Create a list before adding tasks"))
         cancelPendingTaskTextSave()
         _uiState.update {
             it.copy(
                 editor = TaskEditorState.TaskForm(
                     mode = EditorMode.Add,
-                    objectiveId = objectiveId,
+                    listId = listId,
                     doDate = date,
                     addToMyDayOnSave = addToMyDayOnSave
                 )
@@ -300,13 +301,13 @@ class TaskViewModel(
     }
 
     fun openNewTaskAt(startTimeMinutes: Int, endTimeMinutes: Int) {
-        val objectiveId = editableListId() ?: return sendEvent(UiEvent.ShowSnackbar("Create a list before adding tasks"))
+        val listId = editableListId() ?: return sendEvent(UiEvent.ShowSnackbar("Create a list before adding tasks"))
         cancelPendingTaskTextSave()
         _uiState.update {
             it.copy(
                 editor = TaskEditorState.TaskForm(
                     mode = EditorMode.Add,
-                    objectiveId = objectiveId,
+                    listId = listId,
                     doDate = today(),
                     startTimeMinutes = startTimeMinutes.coerceIn(0, LastTimelineStartMinute),
                     endTimeMinutes = endTimeMinutes.coerceIn(MinimumTimelineDurationMinutes, MinutesPerDay)
@@ -315,18 +316,11 @@ class TaskViewModel(
         }
     }
 
-    fun openNewNote(objectiveId: Long) {
-        cancelPendingTaskTextSave()
-        _uiState.update {
-            it.copy(editor = TaskEditorState.NoteForm(mode = EditorMode.Add, objectiveId = objectiveId, date = today()))
-        }
-    }
-
     fun openNewNote() {
-        val objectiveId = editableListId() ?: return sendEvent(UiEvent.ShowSnackbar("Create a list before adding notes"))
+        val listId = editableListId() ?: return sendEvent(UiEvent.ShowSnackbar("Create a list before adding notes"))
         cancelPendingTaskTextSave()
         _uiState.update {
-            it.copy(editor = TaskEditorState.NoteForm(mode = EditorMode.Add, objectiveId = objectiveId, date = today()))
+            it.copy(editor = TaskEditorState.NoteForm(mode = EditorMode.Add, listId = listId, date = today()))
         }
     }
 
@@ -342,7 +336,7 @@ class TaskViewModel(
                     state.copy(
                         editor = TaskEditorState.TaskForm(
                             mode = EditorMode.Add,
-                            objectiveId = current.objectiveId,
+                            listId = current.listId,
                             name = current.title,
                             description = current.content,
                             doDate = current.date,
@@ -376,7 +370,7 @@ class TaskViewModel(
                     state.copy(
                         editor = TaskEditorState.TaskForm(
                             mode = EditorMode.Add,
-                            objectiveId = current.objectiveId,
+                            listId = current.listId,
                             name = current.title,
                             description = current.content,
                             type = TaskType.Habit,
@@ -396,7 +390,7 @@ class TaskViewModel(
             state.copy(
                 editor = TaskEditorState.NoteForm(
                     mode = EditorMode.Add,
-                    objectiveId = task.objectiveId,
+                    listId = task.listId,
                     title = task.name,
                     content = task.description,
                     date = task.doDate ?: today(),
@@ -414,7 +408,7 @@ class TaskViewModel(
                 editor = TaskEditorState.TaskForm(
                     mode = EditorMode.Edit,
                     taskId = task.id,
-                    objectiveId = task.objective.id,
+                    listId = task.list.id,
                     keyResultId = task.keyResult?.id,
                     name = task.name,
                     description = task.description,
@@ -442,7 +436,7 @@ class TaskViewModel(
                 editor = TaskEditorState.NoteForm(
                     mode = EditorMode.Edit,
                     noteId = note.id,
-                    objectiveId = note.objective.id,
+                    listId = note.list.id,
                     title = note.title,
                     content = note.content,
                     status = note.status,
@@ -472,7 +466,7 @@ class TaskViewModel(
     }
 
     fun updateTaskName(name: String) = updateTaskForm(saveImmediately = false) { it.copy(name = name) }
-    fun updateTaskListId(listId: Long) = updateTaskForm { it.copy(objectiveId = listId) }
+    fun updateTaskListId(listId: Long) = updateTaskForm { it.copy(listId = listId) }
     fun updateTaskDescription(description: String) = updateTaskForm(saveImmediately = false) { it.copy(description = description) }
     fun updateTaskDoDate(doDate: LocalDate?) = updateTaskForm {
         it.copy(
@@ -539,7 +533,7 @@ class TaskViewModel(
     }
     fun updateNoteTitle(title: String) = updateNoteForm { it.copy(title = title) }
     fun updateNoteContent(content: String) = updateNoteForm { it.copy(content = content) }
-    fun updateNoteListId(listId: Long) = updateNoteForm { it.copy(objectiveId = listId) }
+    fun updateNoteListId(listId: Long) = updateNoteForm { it.copy(listId = listId) }
     fun updateNoteDate(date: LocalDate?) = updateNoteForm { it.copy(date = date) }
     fun updateNoteStartTime(timeMinutes: Int?) = updateNoteForm { it.copy(startTimeMinutes = timeMinutes) }
     fun toggleNoteTag(tagId: Long) = updateNoteForm { form ->
@@ -693,7 +687,7 @@ class TaskViewModel(
             updateNote(
                 note.id,
                 NoteWriteInput(
-                    objectiveId = note.objective.id,
+                    listId = note.list.id,
                     title = note.title,
                     content = note.content,
                     status = note.status,
@@ -730,7 +724,7 @@ class TaskViewModel(
         }
         viewModelScope.launch {
             val input = NoteWriteInput(
-                objectiveId = form.objectiveId,
+                listId = form.listId,
                 title = form.title.trim(),
                 content = form.content.trim(),
                 status = form.status,
@@ -752,7 +746,7 @@ class TaskViewModel(
             return null
         }
         return TaskWriteInput(
-            objectiveId = objectiveId,
+            listId = listId,
             keyResultId = keyResultId,
             name = name.trim(),
             description = description.trim(),
@@ -782,7 +776,7 @@ class TaskViewModel(
         reminderOffsets: Set<Int>
     ): TaskWriteInput {
         return TaskWriteInput(
-            objectiveId = objective.id,
+            listId = list.id,
             keyResultId = keyResult?.id,
             name = name,
             description = description,
@@ -867,14 +861,14 @@ class TaskViewModel(
     }
 
     private fun editableListId(): Long? =
-        _uiState.value.selectedListId ?: _uiState.value.board.objectives.firstOrNull()?.id
+        _uiState.value.selectedListId ?: _uiState.value.board.lists.firstOrNull()?.id
 
     private fun sendEvent(event: UiEvent) {
         viewModelScope.launch { _events.send(event) }
     }
 
     private fun TaskUiState.withBoard(board: TaskBoard): TaskUiState {
-        val nextListId = selectedListId?.takeIf { selectedId -> board.objectives.any { it.id == selectedId } }
+        val nextListId = selectedListId?.takeIf { selectedId -> board.lists.any { it.id == selectedId } }
         val nextFilterId = options.selectedFilterId?.takeIf { selectedId -> board.filters.any { it.id == selectedId } }
         val nextTagId = selectedTagId?.takeIf { selectedId -> board.tags.any { it.id == selectedId } }
         val nextGoalId = selectedGoalId?.takeIf { selectedId -> board.goals.any { it.id == selectedId } }

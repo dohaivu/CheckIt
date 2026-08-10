@@ -50,7 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
-import com.checkit.domain.Objective
+import com.checkit.domain.ListItem
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TagItem
@@ -72,7 +72,7 @@ import kotlinx.datetime.LocalDate
 @Composable
 internal fun TaskEditorSheet(
     editor: TaskEditorState,
-    availableLists: List<Objective>,
+    availableLists: List<ListItem>,
     availableTags: List<TagItem>,
     actions: TaskEditorActions
 ) {
@@ -396,7 +396,7 @@ private fun SheetFooter(
 @Composable
 private fun TaskFormContent(
     form: TaskEditorState.TaskForm,
-    availableLists: List<Objective>,
+    availableLists: List<ListItem>,
     availableTags: List<TagItem>,
     onNameChange: (String) -> Unit,
     onListChange: (Long) -> Unit,
@@ -510,7 +510,7 @@ private fun TaskFormContent(
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             ListPicker(
-                selectedListId = form.objectiveId,
+                selectedListId = form.listId,
                 lists = availableLists,
                 onListChange = onListChange,
                 enabled = enabled
@@ -655,7 +655,7 @@ private fun DailyPlanSection(
 @Composable
 private fun NoteFormContent(
     form: TaskEditorState.NoteForm,
-    availableLists: List<Objective>,
+    availableLists: List<ListItem>,
     availableTags: List<TagItem>,
     onTitleChange: (String) -> Unit,
     onContentChange: (String) -> Unit,
@@ -708,7 +708,7 @@ private fun NoteFormContent(
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             ListPicker(
-                selectedListId = form.objectiveId,
+                selectedListId = form.listId,
                 lists = availableLists,
                 onListChange = onListChange,
                 enabled = enabled

@@ -2,7 +2,7 @@ package com.checkit.ui.tasks
 
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
-import com.checkit.domain.Objective
+import com.checkit.domain.ListItem
 import com.checkit.domain.usecase.AddNoteUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
@@ -44,8 +44,8 @@ class TaskTimelineViewModelTest {
     @BeforeTest
     fun setUp() {
         Dispatchers.setMain(dispatcher)
-        val inbox = Objective(id = 1L, name = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
-        repository = FakeCheckItRepository(initialBoard = TaskBoard(objectives = listOf(inbox)))
+        val inbox = ListItem(id = 1L, title = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
+        repository = FakeCheckItRepository(initialBoard = TaskBoard(lists = listOf(inbox)))
         viewModel = TaskViewModel(
             observeTaskBoard = ObserveTaskBoardUseCase(repository),
             selectTaskBoardItems = SelectTaskBoardItemsUseCase(),
@@ -99,9 +99,9 @@ class TaskTimelineViewModelTest {
         assertEquals(13 * 60 + 15, input.endTimeMinutes)
     }
 
-    private fun inboxList() = Objective(
+    private fun inboxList() = ListItem(
         id = 1L,
-        name = "Inbox",
+        title = "Inbox",
         color = "#2563EB",
         icon = "Inbox",
         sortOrder = 0
@@ -109,7 +109,7 @@ class TaskTimelineViewModelTest {
 
     private fun timedTask() = TaskItem(
         id = 7L,
-        objective = Objective.None,
+        list = ListItem.None,
         name = "Focus",
         startTimeMinutes = 9 * 60,
         endTimeMinutes = 10 * 60,

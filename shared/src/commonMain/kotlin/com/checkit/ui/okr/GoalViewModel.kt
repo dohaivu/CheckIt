@@ -22,7 +22,6 @@ sealed interface GoalItemType {
     data class Objective(val objectiveId: Long) : GoalItemType
     data class KeyResult(val keyResultId: Long) : GoalItemType
     data class Task(val taskId: Long) : GoalItemType
-    data class Note(val noteId: Long) : GoalItemType
 }
 
 data class GoalUiState(
@@ -138,7 +137,6 @@ class GoalViewModel(
             nodeKey.startsWith("objective-") -> GoalItemType.Objective(id)
             nodeKey.startsWith("key-result-") -> GoalItemType.KeyResult(id)
             nodeKey.startsWith("task-") -> GoalItemType.Task(id)
-            nodeKey.startsWith("note-") -> GoalItemType.Note(id)
             else -> null
         }
     }

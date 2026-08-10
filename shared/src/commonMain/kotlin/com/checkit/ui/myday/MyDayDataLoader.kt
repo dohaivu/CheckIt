@@ -80,20 +80,22 @@ internal class MyDayDataLoader(
                         nowMinutes = nowMinutes
                     )
                     maybeAutoCarryOver(settings, pendingLeftovers, date)
-                    val review = state.uiState.value.dayClose?.let { existing ->
-                        val summary = deps.buildDayCloseSummary(date, plan)
-                        val validItems = summary.plannedItems + summary.alreadyCarriedItems
-                        val validIds = validItems.map { it.id }.toSet()
-                        existing.copy(
-                            summary = summary,
-                            leftoverActions = existing.leftoverActions.filterKeys { it in validIds } +
-                                validItems
-                                    .filter { it.id !in existing.leftoverActions }
-                                    .associate { it.id to it.defaultReviewAction(dailyPlans) },
-                            streak = reviewStreak
-                        )
-                    }
+
+                    val summary = deps.buildDayCloseSummary(date, plan)
                     state.update { current ->
+                        val updatedReview = current.dayClose?.let { existing ->
+                            val validItems = summary.plannedItems + summary.alreadyCarriedItems
+                            val validIds = validItems.map { it.id }.toSet()
+                            existing.copy(
+                                summary = summary,
+                                leftoverActions = existing.leftoverActions.filterKeys { it in validIds } +
+                                    validItems
+                                        .filter { it.id !in existing.leftoverActions }
+                                        .associate { it.id to it.defaultReviewAction(dailyPlans) },
+                                streak = reviewStreak
+                            )
+                        }
+
                         val lastFabAction = when (settings.lastFabActionType) {
                             "TagSprint" -> board.tags.find { it.id == settings.lastFabActionId }?.let { FabAction.TagSprint(it) } ?: FabAction.QuickSprint
                             else -> FabAction.QuickSprint
@@ -101,9 +103,9 @@ internal class MyDayDataLoader(
                         current.copy(
                             board = board,
                             dailyPlans = dailyPlans,
-                            dayClose = review,
+                            dayClose = updatedReview,
                             journalEntries = journalEntries,
-                            showDayCloseBanner = showReviewBanner && review == null,
+                            showDayCloseBanner = showReviewBanner && updatedReview == null,
                             reviewReminderEnabled = settings.reviewReminderEnabled,
                             reviewReminderTimeMinutes = settings.reviewReminderTimeMinutes,
                             planReminderEnabled = settings.planReminderEnabled,
@@ -119,10 +121,10 @@ internal class MyDayDataLoader(
                             dayReviews = dayReviews,
                             reviewStreak = reviewStreak,
                             showLeftoversBanner = showLeftoversBanner &&
-                                review == null &&
+                                updatedReview == null &&
                                 !current.showLeftoversSheet,
                             showPlanAssistBanner = showPlanAssist &&
-                                review == null &&
+                                updatedReview == null &&
                                 !current.showSuggestions,
                             isLoading = false
                         )

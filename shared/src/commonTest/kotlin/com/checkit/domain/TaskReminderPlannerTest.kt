@@ -1,5 +1,6 @@
 package com.checkit.domain
 
+import com.checkit.domain.ListItem
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlin.test.Test
@@ -40,7 +41,7 @@ class TaskReminderPlannerTest {
     fun selectedOffsetsForTaskInfersPersistedReminderOffsets() {
         val task = TaskItem(
             id = 1L,
-            objective = Objective.None,
+            list = ListItem.None,
             name = "Review",
             doDate = LocalDate(2026, 6, 5),
             startTimeMinutes = 8 * 60 + 30,

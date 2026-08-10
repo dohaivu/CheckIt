@@ -33,6 +33,7 @@ import com.checkit.ui.okr.KeyResultViewModel
 import com.checkit.ui.okr.ObjectiveEditorSheet
 import com.checkit.ui.okr.GoalScreen
 import com.checkit.ui.tasks.list.ListEditorSheet
+import com.checkit.ui.tasks.list.ListViewModel
 import com.checkit.ui.okr.ObjectiveViewModel
 import com.checkit.ui.tasks.views.ViewOptionsMenu
 import com.checkit.ui.theme.materialIcon
@@ -46,13 +47,15 @@ internal fun TaskScreen(
     goalViewModel: GoalViewModel,
     keyResultViewModel: KeyResultViewModel,
     objectiveViewModel: ObjectiveViewModel,
+    listViewModel: ListViewModel,
     onOpenTags: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val goalState by goalViewModel.uiState.collectAsState()
-    val listState by objectiveViewModel.uiState.collectAsState()
+    val objectiveState by objectiveViewModel.uiState.collectAsState()
+    val listState by listViewModel.uiState.collectAsState()
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -62,7 +65,7 @@ internal fun TaskScreen(
             ) {
                 TaskSidebar(
                     goals = state.board.goals,
-                    lists = state.board.objectives.filter { it.goalId == null },
+                    lists = state.board.lists,
                     isBoardSelected = state.selectedGoalId == null &&
                         state.selectedListId == null &&
                         state.selectedFilterId == null &&
@@ -88,8 +91,8 @@ internal fun TaskScreen(
                     },
                     onAddGoalClick = { goalViewModel.openNewGoal() },
                     onEditGoalClick = { goal -> goalViewModel.openEditGoal(goal) },
-                    onAddListClick = { objectiveViewModel.openNewList() },
-                    onEditListClick = { list -> objectiveViewModel.openEditObjective(list) }
+                    onAddListClick = { listViewModel.openNewList() },
+                    onEditListClick = { list -> listViewModel.openEditList(list) }
                 )
             }
         }
@@ -102,10 +105,7 @@ internal fun TaskScreen(
                 if (goalSelection != null) {
                     when (goalSelection) {
                         is GoalItemType.Objective -> TaskActionFab(
-                            onKeyResultClick = { keyResultViewModel.openNewKeyResult(goalSelection.objectiveId) },
-                            onNoteClick = {
-                                viewModel.openNewNote(goalSelection.objectiveId)
-                            },
+                            onKeyResultClick = { keyResultViewModel.openNewKeyResult(goalSelection.objectiveId) }
                         )
                         is GoalItemType.KeyResult -> {
                             val keyResult = state.board.keyResults.find { it.id == goalSelection.keyResultId }
@@ -115,7 +115,7 @@ internal fun TaskScreen(
                                 )
                             }
                         }
-                        is GoalItemType.Task, is GoalItemType.Note -> Unit
+                        is GoalItemType.Task -> Unit
                     }
                 } else if (state.selectedGoalId != null) {
                     TaskActionFab(
@@ -149,7 +149,7 @@ internal fun TaskScreen(
                             state.selectedList != null -> {
                                 titleIcon = materialIcon(state.selectedList.icon)
                                 titleColor = state.selectedList.color.toColor()
-                                titleText = state.selectedList.name
+                                titleText = state.selectedList.title
                             }
                             state.selectedTag != null -> {
                                 titleIcon = null
@@ -240,28 +240,28 @@ internal fun TaskScreen(
         )
     }
 
+    objectiveState.editor?.let { objectiveEditor ->
+        ObjectiveEditorSheet(
+            editor = objectiveEditor,
+            onDismiss = objectiveViewModel::dismissEditor,
+            onSave = { objectiveViewModel.saveEditor(onSaved = viewModel::selectGoal) },
+            onDelete = { objectiveViewModel.deleteEditorObjective() },
+            onTitleChange = objectiveViewModel::updateName,
+            onDateRangeChange = objectiveViewModel::updateDateRange,
+            onColorChange = objectiveViewModel::updateColor,
+            onIconChange = objectiveViewModel::updateIcon
+        )
+    }
+
     listState.editor?.let { listEditor ->
-        if (listEditor.goalId != null) {
-            ObjectiveEditorSheet(
-                editor = listEditor,
-                onDismiss = objectiveViewModel::dismissEditor,
-                onSave = { objectiveViewModel.saveEditor(onSaved = viewModel::selectGoal) },
-                onDelete = { objectiveViewModel.deleteEditorList() },
-                onTitleChange = objectiveViewModel::updateName,
-                onDateRangeChange = objectiveViewModel::updateDateRange,
-                onColorChange = objectiveViewModel::updateColor,
-                onIconChange = objectiveViewModel::updateIcon
-            )
-        } else {
-            ListEditorSheet(
-                editor = listEditor,
-                onDismiss = objectiveViewModel::dismissEditor,
-                onSave = { objectiveViewModel.saveEditor(onSaved = viewModel::selectList) },
-                onDelete = { objectiveViewModel.deleteEditorList() },
-                onNameChange = objectiveViewModel::updateName,
-                onColorChange = objectiveViewModel::updateColor,
-                onIconChange = objectiveViewModel::updateIcon
-            )
-        }
+        ListEditorSheet(
+            editor = listEditor,
+            onDismiss = listViewModel::dismissEditor,
+            onSave = { listViewModel.saveEditor(onSaved = viewModel::selectList) },
+            onDelete = { listViewModel.deleteEditorList() },
+            onTitleChange = listViewModel::updateTitle,
+            onColorChange = listViewModel::updateColor,
+            onIconChange = listViewModel::updateIcon
+        )
     }
 }

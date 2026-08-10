@@ -3,7 +3,7 @@ package com.checkit.ui.tasks
 import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
-import com.checkit.domain.Objective
+import com.checkit.domain.ListItem
 import com.checkit.domain.usecase.AddNoteUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
@@ -96,7 +96,7 @@ class TaskSubtaskViewModelTest {
 
     private fun taskWithSubtasks() = TaskItem(
         id = 42L,
-        objective = Objective.None,
+        list = ListItem.None,
         name = "Ship",
         subtasks = listOf(
             SubTaskItem(id = 10L, taskId = 42L, name = "Draft", isCompleted = false, sortOrder = 0),
