@@ -73,6 +73,33 @@ interface CheckItDao {
     suspend fun insertDailyPlanItemTagIfParentsExist(itemId: Long, tagId: Long)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTaskObjective(taskObjective: TaskObjectiveEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTaskKeyResult(taskKeyResult: TaskKeyResultEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNoteObjective(noteObjective: NoteObjectiveEntity)
+
+    @Query("DELETE FROM task_objective WHERE taskId = :taskId")
+    suspend fun deleteTaskObjective(taskId: Long)
+
+    @Query("DELETE FROM task_key_result WHERE taskId = :taskId")
+    suspend fun deleteTaskKeyResult(taskId: Long)
+
+    @Query("DELETE FROM note_objective WHERE noteId = :noteId")
+    suspend fun deleteNoteObjective(noteId: Long)
+
+    @Query("SELECT * FROM task_objective")
+    fun observeTaskObjectives(): Flow<List<TaskObjectiveEntity>>
+
+    @Query("SELECT * FROM task_key_result")
+    fun observeTaskKeyResults(): Flow<List<TaskKeyResultEntity>>
+
+    @Query("SELECT * FROM note_objective")
+    fun observeNoteObjectives(): Flow<List<NoteObjectiveEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertJournalEntry(entry: JournalEntryEntity): Long
 
     @Query(
@@ -105,11 +132,12 @@ interface CheckItDao {
         UPDATE journal_entries
         SET context = :context,
             content = :content,
-            moods = :moods
+            moods = :moods,
+            attachments = :attachments
         WHERE id = :entryId
         """
     )
-    suspend fun updateJournalEntry(entryId: Long, context: String?, content: String, moods: String)
+    suspend fun updateJournalEntry(entryId: Long, context: String?, content: String, moods: String, attachments: String)
 
     @Query("DELETE FROM journal_entries WHERE id = :entryId")
     suspend fun deleteJournalEntry(entryId: Long)
@@ -183,10 +211,10 @@ interface CheckItDao {
     @Query("SELECT * FROM daily_plan_item_tags")
     fun observeDailyPlanItemTags(): Flow<List<DailyPlanItemTagEntity>>
 
-    @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM tasks WHERE objectiveId = :objectiveId")
+    @Query("SELECT COALESCE(MAX(t.sortOrder), -1) + 1 FROM tasks t JOIN task_objective tobj ON t.id = tobj.taskId WHERE tobj.objectiveId = :objectiveId")
     suspend fun nextTaskSortOrder(objectiveId: Long): Int
 
-    @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM notes WHERE objectiveId = :objectiveId")
+    @Query("SELECT COALESCE(MAX(n.sortOrder), -1) + 1 FROM notes n JOIN note_objective nobj ON n.id = nobj.noteId WHERE nobj.objectiveId = :objectiveId")
     suspend fun nextNoteSortOrder(objectiveId: Long): Int
 
     @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM daily_plan_items WHERE dateEpochDays = :dateEpochDays")
@@ -234,7 +262,7 @@ interface CheckItDao {
     @Query("SELECT * FROM objectives WHERE id = :id LIMIT 1")
     suspend fun objectiveById(id: Long): ObjectiveEntity?
 
-    @Query("SELECT kr.* FROM key_results kr JOIN tasks t ON kr.id = t.keyResultId WHERE t.id = :taskId LIMIT 1")
+    @Query("SELECT kr.* FROM key_results kr JOIN task_key_result tkr ON kr.id = tkr.keyResultId WHERE tkr.taskId = :taskId LIMIT 1")
     suspend fun keyResultByTaskId(taskId: Long): KeyResultEntity?
 
     @Query("SELECT id FROM objectives WHERE title = 'Inbox' ORDER BY sortOrder ASC, id ASC LIMIT 1")
@@ -291,19 +319,19 @@ interface CheckItDao {
     @Query("DELETE FROM key_results WHERE id = :keyResultId")
     suspend fun deleteKeyResult(keyResultId: Long)
 
-    @Query("UPDATE tasks SET objectiveId = :toObjectiveId, keyResultId = NULL, updatedAtMillis = :updatedAtMillis WHERE objectiveId = :fromObjectiveId")
-    suspend fun moveTasksToObjective(fromObjectiveId: Long, toObjectiveId: Long, updatedAtMillis: Long)
+    @Query("UPDATE task_objective SET objectiveId = :toObjectiveId WHERE objectiveId = :fromObjectiveId")
+    suspend fun moveTasksToObjective(fromObjectiveId: Long, toObjectiveId: Long)
 
-    @Query("UPDATE notes SET objectiveId = :toObjectiveId, editedAtMillis = :editedAtMillis WHERE objectiveId = :fromObjectiveId")
-    suspend fun moveNotesToObjective(fromObjectiveId: Long, toObjectiveId: Long, editedAtMillis: Long)
+    @Query("UPDATE note_objective SET objectiveId = :toObjectiveId WHERE objectiveId = :fromObjectiveId")
+    suspend fun moveNotesToObjective(fromObjectiveId: Long, toObjectiveId: Long)
 
     @Query("DELETE FROM objectives WHERE id = :objectiveId")
     suspend fun deleteObjective(objectiveId: Long)
 
     @Transaction
-    suspend fun deleteObjectiveMovingContents(objectiveId: Long, targetObjectiveId: Long, timestampMillis: Long) {
-        moveTasksToObjective(fromObjectiveId = objectiveId, toObjectiveId = targetObjectiveId, updatedAtMillis = timestampMillis)
-        moveNotesToObjective(fromObjectiveId = objectiveId, toObjectiveId = targetObjectiveId, editedAtMillis = timestampMillis)
+    suspend fun deleteObjectiveMovingContents(objectiveId: Long, targetObjectiveId: Long) {
+        moveTasksToObjective(fromObjectiveId = objectiveId, toObjectiveId = targetObjectiveId)
+        moveNotesToObjective(fromObjectiveId = objectiveId, toObjectiveId = targetObjectiveId)
         deleteObjective(objectiveId)
     }
 
@@ -319,9 +347,7 @@ interface CheckItDao {
     @Query(
         """
         UPDATE tasks
-        SET objectiveId = :objectiveId,
-            keyResultId = :keyResultId,
-            name = :name,
+        SET name = :name,
             description = :description,
             status = :status,
             priority = :priority,
@@ -336,8 +362,6 @@ interface CheckItDao {
     )
     suspend fun updateTask(
         taskId: Long,
-        objectiveId: Long,
-        keyResultId: Long?,
         name: String,
         description: String,
         status: String,
@@ -630,10 +654,9 @@ interface CheckItDao {
     )
     suspend fun clearTaskTime(taskId: Long, updatedAtMillis: Long)
 
-    @Query("UPDATE notes SET objectiveId = :objectiveId, title = :title, content = :content, status = :status, dateEpochDays = :dateEpochDays, startTimeMinutes = :startTimeMinutes, editedAtMillis = :editedAtMillis WHERE id = :noteId")
+    @Query("UPDATE notes SET title = :title, content = :content, status = :status, dateEpochDays = :dateEpochDays, startTimeMinutes = :startTimeMinutes, editedAtMillis = :editedAtMillis WHERE id = :noteId")
     suspend fun updateNote(
         noteId: Long,
-        objectiveId: Long,
         title: String,
         content: String,
         status: String,

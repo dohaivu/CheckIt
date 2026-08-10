@@ -212,7 +212,8 @@ data class JournalEntryWriteInput(
     val context: String?,
     val content: String,
     val moods: List<String> = emptyList(),
-    val tagIds: List<Long> = emptyList()
+    val tagIds: List<Long> = emptyList(),
+    val attachments: List<String> = emptyList()
 )
 
 class RoomCheckItRepository(
@@ -237,11 +238,27 @@ class RoomCheckItRepository(
                 dao.observeReminders(),
                 dao.observeTaskTags(),
                 dao.observeNoteTags(),
-                combine(dao.observeKeyResults(), dao.observeTags()) { keyResults, tags ->
-                    TaskBoardMetadata(keyResults, tags)
+                combine(
+                    dao.observeKeyResults(),
+                    dao.observeTags(),
+                    dao.observeTaskObjectives(),
+                    dao.observeTaskKeyResults(),
+                    dao.observeNoteObjectives()
+                ) { keyResults, tags, taskObjectives, taskKeyResults, noteObjectives ->
+                    TaskBoardMetadata(keyResults, tags, taskObjectives, taskKeyResults, noteObjectives)
                 }
             ) { subTasks, reminders, taskTags, noteTags, metadata ->
-                TaskBoardJoins(subTasks, reminders, taskTags, noteTags, metadata.keyResults, metadata.tags)
+                TaskBoardJoins(
+                    subTasks,
+                    reminders,
+                    taskTags,
+                    noteTags,
+                    metadata.keyResults,
+                    metadata.tags,
+                    metadata.taskObjectives,
+                    metadata.taskKeyResults,
+                    metadata.noteObjectives
+                )
             }
         ) { rows, joins ->
             val domainGoals = rows.goals.map { it.toDomain() }
@@ -255,23 +272,30 @@ class RoomCheckItRepository(
             val remindersByTask = joins.reminders.groupBy { it.taskId }
             val objectivesById = rows.objectives.associateBy { it.id }.mapValues { (_, entity) -> entity.toDomain() }
 
+            val taskObjectiveMap = joins.taskObjectives.associate { it.taskId to it.objectiveId }
+            val taskKeyResultMap = joins.taskKeyResults.associate { it.taskId to it.keyResultId }
+            val noteObjectiveMap = joins.noteObjectives.associate { it.noteId to it.objectiveId }
+
             TaskBoard(
                 goals = domainGoals,
                 objectives = objectivesById.values.toList(),
                 keyResults = domainKeyResults,
                 filters = rows.filters.map { it.toDomain() },
                 tasks = rows.tasks.map { task ->
+                    val objectiveId = taskObjectiveMap[task.id]
+                    val keyResultId = taskKeyResultMap[task.id]
                     task.toDomain(
-                        objective = objectivesById[task.objectiveId] ?: Objective.None,
-                        keyResult = task.keyResultId?.let { keyResultsById[it] },
+                        objective = objectivesById[objectiveId] ?: Objective.None,
+                        keyResult = keyResultId?.let { keyResultsById[it] },
                         subtasks = subTasksByTask[task.id].orEmpty().map { it.toDomain() },
                         reminders = remindersByTask[task.id].orEmpty().map { it.toDomain() },
                         tags = taskTagIds[task.id].orEmpty().mapNotNull { tagsById[it] }
                     )
                 },
                 notes = rows.notes.map { note ->
+                    val objectiveId = noteObjectiveMap[note.id]
                     note.toDomain(
-                        objective = objectivesById[note.objectiveId] ?: Objective.None,
+                        objective = objectivesById[objectiveId] ?: Objective.None,
                         tags = noteTagIds[note.id].orEmpty().mapNotNull { tagsById[it] }
                     )
                 },
@@ -368,8 +392,7 @@ class RoomCheckItRepository(
         if (objectiveId == inboxId) return
         dao.deleteObjectiveMovingContents(
             objectiveId = objectiveId,
-            targetObjectiveId = inboxId,
-            timestampMillis = Clock.System.now().toEpochMilliseconds()
+            targetObjectiveId = inboxId
         )
     }
 
@@ -430,8 +453,6 @@ class RoomCheckItRepository(
         val isHabit = input.type == TaskType.Habit
         val taskId = dao.insertTask(
             TaskEntity(
-                objectiveId = input.objectiveId,
-                keyResultId = keyResultId,
                 name = input.name,
                 description = input.description,
                 status = input.status.name,
@@ -446,6 +467,8 @@ class RoomCheckItRepository(
                 updatedAtMillis = now
             )
         )
+        dao.insertTaskObjective(TaskObjectiveEntity(taskId, input.objectiveId))
+        keyResultId?.let { dao.insertTaskKeyResult(TaskKeyResultEntity(taskId, it)) }
         input.tagIds.forEach { tagId -> addTaskTag(taskId, tagId) }
         dao.replaceTaskSubTasks(taskId, input.subtasks)
         dao.replaceTaskReminders(taskId, input.reminders)
@@ -460,8 +483,6 @@ class RoomCheckItRepository(
         val isHabit = input.type == TaskType.Habit
         dao.updateTask(
             taskId = taskId,
-            objectiveId = input.objectiveId,
-            keyResultId = keyResultId,
             name = input.name,
             description = input.description,
             status = input.status.name,
@@ -473,6 +494,10 @@ class RoomCheckItRepository(
             repeatRRule = if (isHabit) null else input.repeatRRule,
             updatedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
+        dao.deleteTaskObjective(taskId)
+        dao.deleteTaskKeyResult(taskId)
+        dao.insertTaskObjective(TaskObjectiveEntity(taskId, input.objectiveId))
+        keyResultId?.let { dao.insertTaskKeyResult(TaskKeyResultEntity(taskId, it)) }
         dao.deleteTaskTags(taskId)
         input.tagIds.forEach { tagId -> addTaskTag(taskId, tagId) }
         dao.replaceTaskSubTasks(taskId, input.subtasks)
@@ -669,7 +694,8 @@ class RoomCheckItRepository(
                 context = input.context?.trim()?.takeIf { it.isNotBlank() },
                 content = input.content.trim(),
                 moods = input.moods.joinToString(","),
-                createdTimeMinutes = currentTimeMinutes()
+                createdTimeMinutes = currentTimeMinutes(),
+                attachments = input.attachments.joinToString(",")
             )
         )
         input.tagIds.forEach { tagId -> addJournalEntryTag(entryId, tagId) }
@@ -681,7 +707,8 @@ class RoomCheckItRepository(
             entryId = entryId,
             context = input.context?.trim()?.takeIf { it.isNotBlank() },
             content = input.content.trim(),
-            moods = input.moods.joinToString(",")
+            moods = input.moods.joinToString(","),
+            attachments = input.attachments.joinToString(",")
         )
         dao.deleteJournalEntryTags(entryId)
         input.tagIds.forEach { tagId -> addJournalEntryTag(entryId, tagId) }
@@ -766,7 +793,6 @@ class RoomCheckItRepository(
                 periodType = review.period.name,
                 periodStartEpochDays = review.periodStartEpochDays,
                 periodEndEpochDays = review.periodEndEpochDays,
-                title = review.title,
                 content = review.content,
                 highlightsJson = review.highlightsJson,
                 intentNext = review.intentNext,
@@ -825,7 +851,6 @@ class RoomCheckItRepository(
         val now = Clock.System.now().toEpochMilliseconds()
         val noteId = dao.insertNote(
             NoteEntity(
-                objectiveId = input.objectiveId,
                 title = input.title,
                 content = input.content,
                 status = input.status.name,
@@ -836,6 +861,7 @@ class RoomCheckItRepository(
                 sortOrder = dao.nextNoteSortOrder(input.objectiveId)
             )
         )
+        dao.insertNoteObjective(NoteObjectiveEntity(noteId, input.objectiveId))
         input.tagIds.forEach { tagId -> addNoteTag(noteId, tagId) }
         return noteId
     }
@@ -843,7 +869,6 @@ class RoomCheckItRepository(
     override suspend fun updateNote(noteId: Long, input: NoteWriteInput) {
         dao.updateNote(
             noteId = noteId,
-            objectiveId = input.objectiveId,
             title = input.title,
             content = input.content,
             status = input.status.name,
@@ -851,6 +876,8 @@ class RoomCheckItRepository(
             startTimeMinutes = input.startTimeMinutes,
             editedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
+        dao.deleteNoteObjective(noteId)
+        dao.insertNoteObjective(NoteObjectiveEntity(noteId, input.objectiveId))
         dao.deleteNoteTags(noteId)
         input.tagIds.forEach { tagId -> addNoteTag(noteId, tagId) }
     }
@@ -938,12 +965,18 @@ private data class TaskBoardJoins(
     val taskTags: List<TaskTagEntity>,
     val noteTags: List<NoteTagEntity>,
     val keyResults: List<KeyResultEntity>,
-    val tags: List<TagEntity>
+    val tags: List<TagEntity>,
+    val taskObjectives: List<TaskObjectiveEntity>,
+    val taskKeyResults: List<TaskKeyResultEntity>,
+    val noteObjectives: List<NoteObjectiveEntity>
 )
 
 private data class TaskBoardMetadata(
     val keyResults: List<KeyResultEntity>,
-    val tags: List<TagEntity>
+    val tags: List<TagEntity>,
+    val taskObjectives: List<TaskObjectiveEntity>,
+    val taskKeyResults: List<TaskKeyResultEntity>,
+    val noteObjectives: List<NoteObjectiveEntity>
 )
 
 private fun GoalEntity.toDomain() = Goal(
@@ -1057,7 +1090,6 @@ private fun PeriodReviewEntity.toDomain() = PeriodReview(
     period = ReviewPeriod.valueOf(periodType),
     periodStartEpochDays = periodStartEpochDays,
     periodEndEpochDays = periodEndEpochDays,
-    title = title,
     content = content,
     highlightsJson = highlightsJson,
     intentNext = intentNext,
@@ -1076,7 +1108,8 @@ private fun JournalEntryEntity.toDomain(tags: List<TagItem> = emptyList()) = Jou
     content = content,
     moods = moods.split(",").map { it.trim() }.filter { it.isNotEmpty() },
     tags = tags,
-    createdTimeMinutes = createdTimeMinutes
+    createdTimeMinutes = createdTimeMinutes,
+    attachments = attachments.split(",").map { it.trim() }.filter { it.isNotEmpty() }
 )
 
 private fun SubTaskEntity.toDomain() = SubTaskItem(

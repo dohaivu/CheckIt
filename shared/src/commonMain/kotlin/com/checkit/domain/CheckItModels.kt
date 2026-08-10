@@ -191,7 +191,8 @@ data class JournalEntry(
     val content: String,
     val moods: List<String> = emptyList(),
     val tags: List<TagItem> = emptyList(),
-    val createdTimeMinutes: Int
+    val createdTimeMinutes: Int,
+    val attachments: List<String> = emptyList()
 ) {
     val hasContent: Boolean get() = content.isNotBlank()
 }

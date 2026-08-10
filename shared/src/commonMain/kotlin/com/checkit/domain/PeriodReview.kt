@@ -77,7 +77,6 @@ data class PeriodReview(
     val period: ReviewPeriod = ReviewPeriod.Day,
     val periodStartEpochDays: Int,
     val periodEndEpochDays: Int,
-    val title: String? = null,
     val content: String = "",
     val highlightsJson: String? = null,
     val intentNext: String? = null,

@@ -105,7 +105,8 @@ internal class FakeCheckItRepository(
             content = input.content,
             moods = input.moods,
             tags = boardFlow.value.tags.filter { it.id in input.tagIds },
-            createdTimeMinutes = 1
+            createdTimeMinutes = 1,
+            attachments = input.attachments
         )
         journalEntriesFlow.update { it + entry }
         return id
@@ -124,7 +125,8 @@ internal class FakeCheckItRepository(
                         context = input.context,
                         content = input.content,
                         moods = input.moods,
-                        tags = boardFlow.value.tags.filter { tag -> tag.id in input.tagIds }
+                        tags = boardFlow.value.tags.filter { tag -> tag.id in input.tagIds },
+                        attachments = input.attachments
                     )
                 } else {
                     entry
