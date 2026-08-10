@@ -63,20 +63,6 @@ data class Objective(
     }
 }
 
-data class ListItem(
-    val id: Long,
-    val title: String,
-    val icon: String,
-    val color: String,
-    val sortOrder: Int,
-    val isArchived: Boolean = false
-) {
-    companion object {
-        val None = ListItem(id = -1L, title = "", color = "", icon = "", sortOrder = -1)
-        val MyDay = ListItem(id = -2L, title = "MyDay", color = "0xFF64748B", icon = "Today", sortOrder = -2)
-    }
-}
-
 data class KeyResult(
     val id: Long,
     val objectiveId: Long,
@@ -105,6 +91,20 @@ enum class KeyResultUnit(val label: String) {
     }
 }
 
+data class ListItem(
+    val id: Long,
+    val title: String,
+    val icon: String,
+    val color: String,
+    val sortOrder: Int,
+    val isArchived: Boolean = false
+) {
+    companion object {
+        val None = ListItem(id = -1L, title = "", color = "", icon = "", sortOrder = -1)
+        val MyDay = ListItem(id = -2L, title = "MyDay", color = "0xFF64748B", icon = "Today", sortOrder = -2)
+    }
+}
+
 data class TaskItem(
     val id: Long,
     val list: ListItem,
@@ -125,6 +125,31 @@ data class TaskItem(
     val sortOrder: Int,
     val createdAtMillis: Long,
     val updatedAtMillis: Long,
+    val trashedAtMillis: Long? = null
+) {
+    val isTrashed: Boolean get() = trashedAtMillis != null
+}
+
+data class SubTaskItem(
+    val id: Long,
+    val taskId: Long,
+    val name: String,
+    val isCompleted: Boolean,
+    val sortOrder: Int
+)
+
+data class NoteItem(
+    val id: Long,
+    val list: ListItem,
+    val title: String = "",
+    val content: String,
+    val tags: List<TagItem> = emptyList(),
+    val status: TaskStatus = TaskStatus.Open,
+    val date: LocalDate? = null,
+    val startTimeMinutes: Int? = null,
+    val createdAtMillis: Long,
+    val editedAtMillis: Long,
+    val sortOrder: Int,
     val trashedAtMillis: Long? = null
 ) {
     val isTrashed: Boolean get() = trashedAtMillis != null
@@ -169,31 +194,6 @@ fun DailyPlanItemSource.hasEndTime(): Boolean =
 enum class DailyPlanItemStatus {
     Planned,
     Done
-}
-
-data class SubTaskItem(
-    val id: Long,
-    val taskId: Long,
-    val name: String,
-    val isCompleted: Boolean,
-    val sortOrder: Int
-)
-
-data class NoteItem(
-    val id: Long,
-    val list: ListItem,
-    val title: String = "",
-    val content: String,
-    val tags: List<TagItem> = emptyList(),
-    val status: TaskStatus = TaskStatus.Open,
-    val date: LocalDate? = null,
-    val startTimeMinutes: Int? = null,
-    val createdAtMillis: Long,
-    val editedAtMillis: Long,
-    val sortOrder: Int,
-    val trashedAtMillis: Long? = null
-) {
-    val isTrashed: Boolean get() = trashedAtMillis != null
 }
 
 data class JournalEntry(

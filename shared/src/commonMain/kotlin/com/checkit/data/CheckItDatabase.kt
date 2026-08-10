@@ -52,6 +52,29 @@ data class ObjectiveEntity(
     val isArchived: Boolean = false
 )
 
+@Entity(
+    tableName = "key_results",
+    foreignKeys = [
+        ForeignKey(
+            entity = ObjectiveEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["objectiveId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("objectiveId")]
+)
+data class KeyResultEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0L,
+    val objectiveId: Long,
+    val title: String,
+    val targetValue: Double,
+    val currentValue: Double = 0.0,
+    val unit: String,
+    val sortOrder: Int
+)
+
 @Entity(tableName = "lists")
 data class ListEntity(
     @PrimaryKey(autoGenerate = true)
@@ -101,29 +124,6 @@ data class TaskEntity(
     val createdAtMillis: Long,
     val updatedAtMillis: Long,
     val trashedAtMillis: Long? = null
-)
-
-@Entity(
-    tableName = "key_results",
-    foreignKeys = [
-        ForeignKey(
-            entity = ObjectiveEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["objectiveId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [Index("objectiveId")]
-)
-data class KeyResultEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0L,
-    val objectiveId: Long,
-    val title: String,
-    val targetValue: Double,
-    val currentValue: Double = 0.0,
-    val unit: String,
-    val sortOrder: Int
 )
 
 @Entity(
