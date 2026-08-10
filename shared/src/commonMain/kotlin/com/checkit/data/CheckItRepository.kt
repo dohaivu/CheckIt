@@ -632,6 +632,7 @@ class RoomCheckItRepository(
             )
         )
         tagIds.forEach { tagId -> addDailyPlanItemTag(itemId, tagId) }
+        dailyPlanScheduleReminderScheduler.rescheduleNext()
         return itemId
     }
 
