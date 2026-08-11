@@ -153,12 +153,28 @@ class PeriodPlanUseCasesTest {
         val repository = FakeCheckItRepository()
         val add = AddPlanPriorityUseCase(repository)
         val delete = DeletePlanPriorityUseCase(repository)
-        val addTask = AddTaskToPlanPriorityUseCase(repository)
+        val link = LinkTaskToPlanPriorityUseCase(repository)
         val focus = PlanFocus(PlanPeriod.Week, date)
 
         val parent = add(focus, title = "Parent")
         val child = add(focus, title = "Child", parentId = parent)
-        val taskId = addTask(parent, name = "Work item")
+        val taskId = repository.addTask(
+            com.checkit.data.TaskWriteInput(
+                listId = 1L,
+                name = "Work item",
+                description = "",
+                subtasks = emptyList(),
+                status = com.checkit.domain.TaskStatus.Open,
+                priority = com.checkit.domain.TaskPriority.None,
+                doDate = date,
+                startTimeMinutes = null,
+                endTimeMinutes = null,
+                repeatRRule = null,
+                reminders = emptyList(),
+                tagIds = emptyList()
+            )
+        )
+        link(parent, taskId)
 
         delete(parent)
 
@@ -220,22 +236,98 @@ class PeriodPlanUseCasesTest {
     }
 
     @Test
-    fun addTaskCreatesTaskLinksAndDefaultsDoDateToPeriodStart() = runTest {
+    fun addTaskWithPlanPriorityIdLinksTaskAndAttachesPriority() = runTest {
         val repository = FakeCheckItRepository()
         val add = AddPlanPriorityUseCase(repository)
-        val addTask = AddTaskToPlanPriorityUseCase(repository)
         val focus = PlanFocus(PlanPeriod.Day, date)
 
         val id = add(focus, title = "Day focus")
-        val taskId = addTask(id, name = "  Call bank  ")
+        val taskId = repository.addTask(
+            com.checkit.data.TaskWriteInput(
+                listId = 1L,
+                planPriorityId = id,
+                name = "  Call bank  ",
+                description = "",
+                subtasks = emptyList(),
+                status = com.checkit.domain.TaskStatus.Open,
+                priority = com.checkit.domain.TaskPriority.None,
+                doDate = date,
+                startTimeMinutes = null,
+                endTimeMinutes = null,
+                repeatRRule = null,
+                reminders = emptyList(),
+                tagIds = emptyList()
+            )
+        )
 
         val task = repository.observeTaskBoard().first().tasks.single()
         assertEquals(taskId, task.id)
-        assertEquals("Call bank", task.name)
-        assertEquals(focus.start, task.doDate)
+        assertEquals(id, task.planPriority?.id)
 
         val links = repository.observePlanPriorityTaskIds().first()
         assertEquals(listOf(taskId), links.map { it.taskId })
+    }
+
+    @Test
+    fun trashTaskUnlinksPlanPriorityAndKeyResult() = runTest {
+        val repository = FakeCheckItRepository()
+        val add = AddPlanPriorityUseCase(repository)
+        val focus = PlanFocus(PlanPeriod.Week, date)
+
+        val priorityId = add(focus, title = "Priority")
+        val keyResultId = repository.addKeyResult(
+            com.checkit.data.KeyResultWriteInput(
+                objectiveId = 1L,
+                title = "KR",
+                targetValue = 10.0,
+                currentValue = 0.0,
+                unit = "x"
+            )
+        )
+        val taskId = repository.addTask(
+            com.checkit.data.TaskWriteInput(
+                listId = 1L,
+                keyResultId = keyResultId,
+                planPriorityId = priorityId,
+                name = "Linked task",
+                description = "",
+                subtasks = emptyList(),
+                status = com.checkit.domain.TaskStatus.Open,
+                priority = com.checkit.domain.TaskPriority.None,
+                doDate = date,
+                startTimeMinutes = null,
+                endTimeMinutes = null,
+                repeatRRule = null,
+                reminders = emptyList(),
+                tagIds = emptyList()
+            )
+        )
+
+        assertEquals(listOf(taskId), repository.observePlanPriorityTaskIds().first().map { it.taskId })
+        assertEquals(keyResultId, repository.observeTaskBoard().first().tasks.single().keyResult?.id)
+
+        repository.trashTask(taskId)
+
+        assertTrue(repository.observePlanPriorityTaskIds().first().isEmpty())
+        assertNull(repository.observeTaskBoard().first().tasks.single().keyResult)
+    }
+
+    @Test
+    fun deleteDailyPlanItemUnlinksPlanPriority() = runTest {
+        val repository = FakeCheckItRepository()
+        val add = AddPlanPriorityUseCase(repository)
+        val focus = PlanFocus(PlanPeriod.Day, date)
+
+        val priorityId = add(focus, title = "Day priority")
+        repository.linkDailyPlanItemToPriority(priorityId, 100L)
+        assertEquals(
+            listOf(100L),
+            repository.observePlanPriorityDailyPlanItemIds().first().map { it.dailyPlanItemId }
+        )
+
+        repository.deleteDailyPlanItem(100L)
+
+        assertTrue(repository.observePlanPriorityDailyPlanItemIds().first().isEmpty())
     }
 
     @Test

@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
@@ -38,7 +37,6 @@ import com.checkit.domain.TaskStatus
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.plan_add_task
 import checkit.shared.generated.resources.plan_edit_priority
-import checkit.shared.generated.resources.plan_unlink_task
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -48,7 +46,6 @@ internal fun PlanPriorityList(
     onToggleDone: (Long, Boolean) -> Unit,
     onEditPriority: (PlanPriority) -> Unit,
     onAddTaskClick: (PlanPriority) -> Unit,
-    onUnlinkTask: (Long, Long) -> Unit,
     onOpenTask: (TaskItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -64,7 +61,6 @@ internal fun PlanPriorityList(
                 onToggleDone = onToggleDone,
                 onEditPriority = onEditPriority,
                 onAddTaskClick = onAddTaskClick,
-                onUnlinkTask = onUnlinkTask,
                 onOpenTask = onOpenTask
             )
             node.children.forEach { child ->
@@ -75,7 +71,6 @@ internal fun PlanPriorityList(
                     onToggleDone = onToggleDone,
                     onEditPriority = onEditPriority,
                     onAddTaskClick = onAddTaskClick,
-                    onUnlinkTask = onUnlinkTask,
                     onOpenTask = onOpenTask
                 )
             }
@@ -91,7 +86,6 @@ private fun PriorityItem(
     onToggleDone: (Long, Boolean) -> Unit,
     onEditPriority: (PlanPriority) -> Unit,
     onAddTaskClick: (PlanPriority) -> Unit,
-    onUnlinkTask: (Long, Long) -> Unit,
     onOpenTask: (TaskItem) -> Unit
 ) {
     val priority = node.priority
@@ -111,7 +105,6 @@ private fun PriorityItem(
         node.tasks.forEach { task ->
             LinkedTaskRow(
                 task = task,
-                onUnlink = { onUnlinkTask(priority.id, task.id) },
                 onClick = { onOpenTask(task) }
             )
         }
@@ -201,7 +194,6 @@ private fun PriorityHeader(
 @Composable
 private fun LinkedTaskRow(
     task: TaskItem,
-    onUnlink: () -> Unit,
     onClick: () -> Unit
 ) {
     Row(
@@ -212,7 +204,7 @@ private fun LinkedTaskRow(
                 RoundedCornerShape(10.dp)
             )
             .clickable(onClick = onClick)
-            .padding(start = 12.dp, top = 2.dp, bottom = 2.dp, end = 2.dp),
+            .padding(start = 12.dp, top = 2.dp, bottom = 2.dp, end = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
@@ -232,17 +224,6 @@ private fun LinkedTaskRow(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f)
         )
-        IconButton(
-            onClick = onUnlink,
-            modifier = Modifier.size(30.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = stringResource(Res.string.plan_unlink_task),
-                modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
     }
 }
 

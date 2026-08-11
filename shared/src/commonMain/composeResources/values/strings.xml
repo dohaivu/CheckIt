@@ -174,7 +174,6 @@
     <string name="plan_next_period">Next period</string>
     <string name="plan_edit_priority">Edit priority</string>
     <string name="plan_delete_priority">Delete priority</string>
-    <string name="plan_unlink_task">Unlink task</string>
     <string name="plan_add_task">Add task</string>
     <string name="plan_new_priority">New priority</string>
     <string name="plan_edit_priority_title">Edit priority</string>

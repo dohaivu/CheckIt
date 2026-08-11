@@ -42,7 +42,6 @@ internal fun PeriodPlanScreen(
     onToggleDone: (Long, Boolean) -> Unit,
     onEditPriority: (PlanPriority) -> Unit,
     onAddTaskClick: (PlanPriority) -> Unit,
-    onUnlinkTask: (Long, Long) -> Unit,
     onOpenTask: (TaskItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -87,7 +86,6 @@ internal fun PeriodPlanScreen(
                         onToggleDone = onToggleDone,
                         onEditPriority = onEditPriority,
                         onAddTaskClick = onAddTaskClick,
-                        onUnlinkTask = onUnlinkTask,
                         onOpenTask = onOpenTask,
                         modifier = Modifier.fillMaxWidth()
                     )

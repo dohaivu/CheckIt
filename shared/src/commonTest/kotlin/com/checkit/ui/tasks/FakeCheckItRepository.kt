@@ -66,6 +66,7 @@ internal class FakeCheckItRepository(
     val addedTasks = mutableListOf<TaskWriteInput>()
     val updatedTasks = mutableListOf<Pair<Long, TaskWriteInput>>()
     val deletedTasks = mutableListOf<Long>()
+    val trashedTasks = mutableListOf<Long>()
     val addedDailyPlanTasks = mutableListOf<Pair<LocalDate, TaskItem>>()
     val addedManualDailyPlanItems = mutableListOf<DailyPlanItemWriteInput>()
     val updatedDailyPlanItems = mutableListOf<Pair<Long, DailyPlanItemWriteInput>>()
@@ -108,9 +109,7 @@ internal class FakeCheckItRepository(
     val updatedPlanPriorities = mutableListOf<Pair<Long, PlanPriorityWriteInput>>()
     val deletedPlanPriorityIds = mutableListOf<Long>()
     val linkedTasks = mutableListOf<Pair<Long, Long>>()
-    val unlinkedTasks = mutableListOf<Pair<Long, Long>>()
     val linkedDailyPlanItems = mutableListOf<Pair<Long, Long>>()
-    val unlinkedDailyPlanItems = mutableListOf<Pair<Long, Long>>()
 
     override fun observeTaskBoard(): Flow<TaskBoard> = boardFlow
     override fun observeDailyPlans(): Flow<List<DailyPlan>> = dailyPlansFlow
@@ -426,12 +425,16 @@ internal class FakeCheckItRepository(
         val priority = input.planPriorityId?.let { priorityId ->
             planPrioritiesFlow.value.firstOrNull { it.id == priorityId }
         }
+        val keyResult = input.keyResultId?.let { keyResultId ->
+            boardFlow.value.keyResults.firstOrNull { it.id == keyResultId }
+        }
         boardFlow.update { board ->
             board.copy(
                 tasks = board.tasks + input.toTaskItem(
                     taskId = id,
                     sortOrder = board.tasks.size,
-                    planPriority = priority
+                    planPriority = priority,
+                    keyResult = keyResult
                 )
             )
         }
@@ -449,6 +452,9 @@ internal class FakeCheckItRepository(
         val priority = input.planPriorityId?.let { priorityId ->
             planPrioritiesFlow.value.firstOrNull { it.id == priorityId }
         }
+        val keyResult = input.keyResultId?.let { keyResultId ->
+            boardFlow.value.keyResults.firstOrNull { it.id == keyResultId }
+        }
         boardFlow.update { board ->
             board.copy(
                 tasks = board.tasks.map { task ->
@@ -457,6 +463,7 @@ internal class FakeCheckItRepository(
                             taskId = taskId,
                             sortOrder = task.sortOrder,
                             planPriority = priority,
+                            keyResult = keyResult,
                             createdAtMillis = task.createdAtMillis,
                             updatedAtMillis = task.updatedAtMillis + 1
                         )
@@ -477,7 +484,17 @@ internal class FakeCheckItRepository(
             }
         }
     }
-    override suspend fun trashTask(taskId: Long) = Unit
+    override suspend fun trashTask(taskId: Long) {
+        trashedTasks.add(taskId)
+        planTaskLinksFlow.update { links -> links.filterNot { it.taskId == taskId } }
+        boardFlow.update { board ->
+            board.copy(
+                tasks = board.tasks.map { task ->
+                    if (task.id == taskId) task.copy(keyResult = null) else task
+                }
+            )
+        }
+    }
     override suspend fun restoreTask(taskId: Long) = Unit
     override suspend fun completeTask(taskId: Long) = Unit
     override suspend fun openTask(taskId: Long) = Unit
@@ -652,6 +669,9 @@ internal class FakeCheckItRepository(
     val deletedDailyPlanItemIds = mutableListOf<Long>()
     override suspend fun deleteDailyPlanItem(itemId: Long) {
         deletedDailyPlanItemIds.add(itemId)
+        planDailyLinksFlow.update { links ->
+            links.filterNot { it.dailyPlanItemId == itemId }
+        }
         dailyPlansFlow.update { plans ->
             plans.map { plan ->
                 plan.copy(items = plan.items.filterNot { it.id == itemId })
@@ -969,25 +989,11 @@ internal class FakeCheckItRepository(
         }
     }
 
-    override suspend fun unlinkTaskFromPriority(priorityId: Long, taskId: Long) {
-        unlinkedTasks.add(priorityId to taskId)
-        planTaskLinksFlow.update { links ->
-            links.filterNot { it.priorityId == priorityId && it.taskId == taskId }
-        }
-    }
-
     override suspend fun linkDailyPlanItemToPriority(priorityId: Long, dailyPlanItemId: Long) {
         linkedDailyPlanItems.add(priorityId to dailyPlanItemId)
         planDailyLinksFlow.update { links ->
             links.filterNot { it.priorityId == priorityId && it.dailyPlanItemId == dailyPlanItemId } +
                 PlanPriorityDailyPlanItemLink(priorityId, dailyPlanItemId, 0)
-        }
-    }
-
-    override suspend fun unlinkDailyPlanItemFromPriority(priorityId: Long, dailyPlanItemId: Long) {
-        unlinkedDailyPlanItems.add(priorityId to dailyPlanItemId)
-        planDailyLinksFlow.update { links ->
-            links.filterNot { it.priorityId == priorityId && it.dailyPlanItemId == dailyPlanItemId }
         }
     }
 }
@@ -1089,12 +1095,14 @@ private fun TaskWriteInput.toTaskItem(
     taskId: Long,
     sortOrder: Int,
     planPriority: PlanPriority? = null,
+    keyResult: KeyResult? = null,
     createdAtMillis: Long = 0L,
     updatedAtMillis: Long = 0L
 ) = TaskItem(
     id = taskId,
     list = ListItem.None, // Needs proper resolution if testing specific list assignment
     planPriority = planPriority,
+    keyResult = keyResult,
     name = name,
     description = description,
     subtasks = subtasks.mapIndexed { index, subtask ->

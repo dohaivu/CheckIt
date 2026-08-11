@@ -4,10 +4,8 @@ import com.checkit.data.CheckItRepository
 import com.checkit.data.PlanPriorityDailyPlanItemLink
 import com.checkit.data.PlanPriorityTaskLink
 import com.checkit.data.PlanPriorityWriteInput
-import com.checkit.data.TaskWriteInput
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
-import com.checkit.domain.ListItem
 import com.checkit.domain.PeriodPlan
 import com.checkit.domain.PlanFocus
 import com.checkit.domain.PlanPeriod
@@ -16,13 +14,10 @@ import com.checkit.domain.PlanPriorityNode
 import com.checkit.domain.PlanWorkspace
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
-import com.checkit.domain.TaskPriority
-import com.checkit.domain.TaskStatus
 import com.checkit.domain.wouldCreateCycle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import kotlinx.datetime.LocalDate
 
 /**
  * Observes everything needed to render the plan workspace for [focus]:
@@ -223,13 +218,6 @@ class LinkTaskToPlanPriorityUseCase(
     }
 }
 
-class UnlinkTaskFromPlanPriorityUseCase(
-    private val repository: CheckItRepository
-) {
-    suspend operator fun invoke(priorityId: Long, taskId: Long) =
-        repository.unlinkTaskFromPriority(priorityId, taskId)
-}
-
 /** Links a daily plan item to a Day priority only. */
 class LinkDailyPlanItemToPlanPriorityUseCase(
     private val repository: CheckItRepository
@@ -241,49 +229,6 @@ class LinkDailyPlanItemToPlanPriorityUseCase(
             "Daily plan items can only be linked to Day priorities"
         }
         repository.linkDailyPlanItemToPriority(priorityId, dailyPlanItemId)
-    }
-}
-
-class UnlinkDailyPlanItemFromPlanPriorityUseCase(
-    private val repository: CheckItRepository
-) {
-    suspend operator fun invoke(priorityId: Long, dailyPlanItemId: Long) =
-        repository.unlinkDailyPlanItemFromPriority(priorityId, dailyPlanItemId)
-}
-
-/** Creates a task and links it to a Week/Day priority. */
-class AddTaskToPlanPriorityUseCase(
-    private val repository: CheckItRepository
-) {
-    suspend operator fun invoke(
-        priorityId: Long,
-        name: String,
-        doDate: LocalDate? = null
-    ): Long {
-        val plan = repository.periodPlanForPriority(priorityId)
-            ?: error("Plan priority $priorityId not found")
-        require(plan.period == PlanPeriod.Week || plan.period == PlanPeriod.Day) {
-            "Tasks can only be linked to Week or Day priorities"
-        }
-        val trimmed = name.trim()
-        require(trimmed.isNotBlank()) { "Task name must not be blank" }
-        return repository.addTask(
-            TaskWriteInput(
-                listId = ListItem.None.id,
-                planPriorityId = priorityId,
-                name = trimmed,
-                description = "",
-                subtasks = emptyList(),
-                status = TaskStatus.Open,
-                priority = TaskPriority.None,
-                doDate = doDate ?: LocalDate.fromEpochDays(plan.startEpochDays),
-                startTimeMinutes = null,
-                endTimeMinutes = null,
-                repeatRRule = null,
-                reminders = emptyList(),
-                tagIds = emptyList()
-            )
-        )
     }
 }
 

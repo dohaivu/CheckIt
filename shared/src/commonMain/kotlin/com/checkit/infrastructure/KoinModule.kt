@@ -23,7 +23,6 @@ import com.checkit.domain.usecase.AddPlanPriorityUseCase
 import com.checkit.domain.usecase.AddSuggestedTaskToMyDayUseCase
 import com.checkit.domain.usecase.AddTagUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
-import com.checkit.domain.usecase.AddTaskToPlanPriorityUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
 import com.checkit.domain.usecase.AutoAddTodayTasksToMyDayUseCase
 import com.checkit.domain.usecase.BuildDayCloseSummaryUseCase
@@ -61,8 +60,6 @@ import com.checkit.domain.usecase.SmartScheduleDailyPlanUseCase
 import com.checkit.domain.usecase.SprintTransitionUseCase
 import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.usecase.TogglePlanPriorityDoneUseCase
-import com.checkit.domain.usecase.UnlinkDailyPlanItemFromPlanPriorityUseCase
-import com.checkit.domain.usecase.UnlinkTaskFromPlanPriorityUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTagUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
@@ -185,10 +182,7 @@ val provideInteractorModule = module {
     single { TogglePlanPriorityDoneUseCase(get()) }
     single { ReorderPlanPrioritiesUseCase(get()) }
     single { LinkTaskToPlanPriorityUseCase(get()) }
-    single { UnlinkTaskFromPlanPriorityUseCase(get()) }
     single { LinkDailyPlanItemToPlanPriorityUseCase(get()) }
-    single { UnlinkDailyPlanItemFromPlanPriorityUseCase(get()) }
-    single { AddTaskToPlanPriorityUseCase(get()) }
 }
 
 val provideDatabaseModule = module {
@@ -271,8 +265,7 @@ val provideViewModelModule = module {
             updatePlanPriority = get(),
             deletePlanPriority = get(),
             togglePlanPriorityDone = get(),
-            linkTaskToPlanPriority = get(),
-            unlinkTaskFromPlanPriority = get()
+            linkTaskToPlanPriority = get()
         )
     }
     viewModel { SettingsViewModel(get(), get(), get(), get<AppReminderScheduler>()) }

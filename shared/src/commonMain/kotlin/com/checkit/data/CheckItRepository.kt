@@ -158,9 +158,7 @@ interface CheckItRepository {
     suspend fun reorderPlanPriorities(periodPlanId: Long, orderedIds: List<Long>)
 
     suspend fun linkTaskToPriority(priorityId: Long, taskId: Long)
-    suspend fun unlinkTaskFromPriority(priorityId: Long, taskId: Long)
     suspend fun linkDailyPlanItemToPriority(priorityId: Long, dailyPlanItemId: Long)
-    suspend fun unlinkDailyPlanItemFromPriority(priorityId: Long, dailyPlanItemId: Long)
 }
 
 data class DailyPlanItemTimeUpdate(
@@ -603,6 +601,8 @@ class RoomCheckItRepository(
     override suspend fun trashTask(taskId: Long) {
         dao.trashTask(taskId, Clock.System.now().toEpochMilliseconds())
         dao.deletePlannedDailyPlanItemsForTask(taskId)
+        dao.deletePlanPriorityTasksForTask(taskId)
+        dao.deleteTaskKeyResult(taskId)
         reminderNotificationScheduler.cancelTaskReminders(taskId)
         dailyPlanScheduleReminderScheduler.rescheduleNext()
     }
@@ -775,6 +775,7 @@ class RoomCheckItRepository(
     }
 
     override suspend fun deleteDailyPlanItem(itemId: Long) {
+        dao.deletePlanPriorityDailyPlanItemsForDailyPlanItem(itemId)
         dao.deleteDailyPlanItem(itemId)
         dailyPlanScheduleReminderScheduler.rescheduleNext()
     }
@@ -1084,10 +1085,6 @@ class RoomCheckItRepository(
         )
     }
 
-    override suspend fun unlinkTaskFromPriority(priorityId: Long, taskId: Long) {
-        dao.deletePlanPriorityTask(priorityId, taskId)
-    }
-
     override suspend fun linkDailyPlanItemToPriority(priorityId: Long, dailyPlanItemId: Long) {
         dao.insertPlanPriorityDailyPlanItem(
             PlanPriorityDailyPlanItemEntity(
@@ -1096,10 +1093,6 @@ class RoomCheckItRepository(
                 sortOrder = 0
             )
         )
-    }
-
-    override suspend fun unlinkDailyPlanItemFromPriority(priorityId: Long, dailyPlanItemId: Long) {
-        dao.deletePlanPriorityDailyPlanItem(priorityId, dailyPlanItemId)
     }
 
     private suspend fun addTaskTag(taskId: Long, tagId: Long) {

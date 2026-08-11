@@ -150,7 +150,6 @@
     <string name="plan_next_period">下一周期</string>
     <string name="plan_edit_priority">编辑优先级</string>
     <string name="plan_delete_priority">删除优先级</string>
-    <string name="plan_unlink_task">解除任务</string>
     <string name="plan_add_task">添加任务</string>
     <string name="plan_new_priority">新建优先级</string>
     <string name="plan_edit_priority_title">编辑优先级</string>

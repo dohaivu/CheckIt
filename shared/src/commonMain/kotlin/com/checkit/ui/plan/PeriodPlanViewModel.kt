@@ -9,7 +9,6 @@ import com.checkit.domain.usecase.DeletePlanPriorityUseCase
 import com.checkit.domain.usecase.LinkTaskToPlanPriorityUseCase
 import com.checkit.domain.usecase.ObservePlanWorkspaceUseCase
 import com.checkit.domain.usecase.TogglePlanPriorityDoneUseCase
-import com.checkit.domain.usecase.UnlinkTaskFromPlanPriorityUseCase
 import com.checkit.domain.usecase.UpdatePlanPriorityUseCase
 import com.checkit.ui.UiEvent
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -30,8 +29,7 @@ class PeriodPlanViewModel(
     private val updatePlanPriority: UpdatePlanPriorityUseCase,
     private val deletePlanPriority: DeletePlanPriorityUseCase,
     private val togglePlanPriorityDone: TogglePlanPriorityDoneUseCase,
-    private val linkTaskToPlanPriority: LinkTaskToPlanPriorityUseCase,
-    private val unlinkTaskFromPlanPriority: UnlinkTaskFromPlanPriorityUseCase
+    private val linkTaskToPlanPriority: LinkTaskToPlanPriorityUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PlanPeriodUiState())
@@ -165,12 +163,6 @@ class PeriodPlanViewModel(
                 .onFailure { error ->
                     _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to link task"))
                 }
-        }
-    }
-
-    fun unlinkTask(priorityId: Long, taskId: Long) {
-        viewModelScope.launch {
-            unlinkTaskFromPlanPriority(priorityId, taskId)
         }
     }
 }

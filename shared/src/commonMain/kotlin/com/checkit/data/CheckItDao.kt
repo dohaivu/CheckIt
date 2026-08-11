@@ -786,9 +786,6 @@ interface CheckItDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPlanPriorityTask(link: PlanPriorityTaskEntity)
 
-    @Query("DELETE FROM plan_priority_tasks WHERE priorityId = :priorityId AND taskId = :taskId")
-    suspend fun deletePlanPriorityTask(priorityId: Long, taskId: Long)
-
     @Query("DELETE FROM plan_priority_tasks WHERE priorityId = :priorityId")
     suspend fun deletePlanPriorityTasksForPriority(priorityId: Long)
 
@@ -801,13 +798,11 @@ interface CheckItDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPlanPriorityDailyPlanItem(link: PlanPriorityDailyPlanItemEntity)
 
-    @Query(
-        "DELETE FROM plan_priority_daily_plan_items WHERE priorityId = :priorityId AND dailyPlanItemId = :dailyPlanItemId"
-    )
-    suspend fun deletePlanPriorityDailyPlanItem(priorityId: Long, dailyPlanItemId: Long)
-
     @Query("DELETE FROM plan_priority_daily_plan_items WHERE priorityId = :priorityId")
     suspend fun deletePlanPriorityDailyPlanItemsForPriority(priorityId: Long)
+
+    @Query("DELETE FROM plan_priority_daily_plan_items WHERE dailyPlanItemId = :dailyPlanItemId")
+    suspend fun deletePlanPriorityDailyPlanItemsForDailyPlanItem(dailyPlanItemId: Long)
 
     @Query("SELECT * FROM plan_priority_daily_plan_items")
     fun observePlanPriorityDailyPlanItems(): Flow<List<PlanPriorityDailyPlanItemEntity>>

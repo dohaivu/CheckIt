@@ -243,7 +243,6 @@ internal fun TaskScreen(
                     onToggleDone = planViewModel::toggleDone,
                     onEditPriority = planViewModel::startEditPriority,
                     onAddTaskClick = viewModel::openNewTaskOnPlanPriority,
-                    onUnlinkTask = planViewModel::unlinkTask,
                     onOpenTask = viewModel::openTask,
                     modifier = contentModifier
                 )
