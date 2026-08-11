@@ -254,6 +254,7 @@ internal fun TaskScreen(
                         viewModel.openNewTaskOnPlanPriority(priority, date)
                     },
                     onOpenTask = viewModel::openTask,
+                    onZoomIntoPriority = planViewModel::zoomIntoPriority,
                     modifier = contentModifier
                 )
             } else if (state.selectedView == TaskWorkspaceView.Goal && state.selectedGoal != null) {

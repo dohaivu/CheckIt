@@ -56,10 +56,11 @@ class ObservePlanWorkspaceUseCase(
     /**
      * Assembles the tree for [focus].
      *
-     * - All priorities whose `periodPlanId` matches the focus plan are "home".
+     * - All priorities whose `periodPlan` matches the focus plan are "home".
      * - Roots are home priorities whose parent is null or lives elsewhere.
-     * - Children include priorities from any plan that point at the node via
-     *   `parentId`, so finer periods show up nested under their parent.
+     * - Each root exposes only its 1-level direct children ([PlanPriorityNode.children]),
+     *   so the list renders a flat root + direct-child view. Deeper nesting is dropped;
+     *   tapping a child zooms into that child's period instead.
      * - Task/daily-plan-item work is attached from the join tables.
      */
     fun build(
@@ -84,7 +85,7 @@ class ObservePlanWorkspaceUseCase(
         val homePriorities = if (plan == null) {
             emptyList()
         } else {
-            priorities.filter { it.periodPlanId == plan.id }
+            priorities.filter { it.periodPlan.id == plan.id }
         }
         val homeIds = homePriorities.map { it.id }.toSet()
 
@@ -93,22 +94,35 @@ class ObservePlanWorkspaceUseCase(
         val taskIdsByPriority = taskLinks.groupBy({ it.priorityId }, { it.taskId })
         val dailyIdsByPriority = dailyLinks.groupBy({ it.priorityId }, { it.dailyPlanItemId })
 
-        fun nodeFor(priority: PlanPriority): PlanPriorityNode {
-            val children = priorities
-                .filter { it.parentId == priority.id }
-                .sortedBy { it.sortOrder }
-                .map { nodeFor(it) }
+        fun nodeFor(priority: PlanPriority, withChildren: Boolean): PlanPriorityNode {
+            val children = if (withChildren) {
+                priorities
+                    .filter { it.parentId == priority.id }
+                    .sortedBy { it.sortOrder }
+                    .map { nodeFor(it, withChildren = false) }
+            } else {
+                emptyList()
+            }
+            val showLinkedWork = focus.period == PlanPeriod.Week || focus.period == PlanPeriod.Day
             val linkedTaskIds = taskIdsByPriority[priority.id].orEmpty().toSet()
-            val linkedTasks = taskIdsByPriority[priority.id].orEmpty()
-                .mapNotNull { tasksById[it] }
-                .filterNot { it.isTrashed }
-                .filter { task -> if (isDayView) task.doDate == focus.start else true }
-                .sortedBy { it.sortOrder }
-            val linkedDaily = dailyIdsByPriority[priority.id].orEmpty()
-                .mapNotNull { dailyItemsById[it] }
-                .filter { item -> if (isDayView) item.dateEpochDays == focus.startEpochDays else true }
-                .filter { it.taskId == null || it.taskId !in linkedTaskIds }
-                .sortedBy { it.sortOrder }
+            val linkedTasks = if (showLinkedWork) {
+                taskIdsByPriority[priority.id].orEmpty()
+                    .mapNotNull { tasksById[it] }
+                    .filterNot { it.isTrashed }
+                    .filter { task -> if (isDayView) task.doDate == focus.start else true }
+                    .sortedBy { it.sortOrder }
+            } else {
+                emptyList()
+            }
+            val linkedDaily = if (showLinkedWork) {
+                dailyIdsByPriority[priority.id].orEmpty()
+                    .mapNotNull { dailyItemsById[it] }
+                    .filter { item -> if (isDayView) item.dateEpochDays == focus.startEpochDays else true }
+                    .filter { it.taskId == null || it.taskId !in linkedTaskIds }
+                    .sortedBy { it.sortOrder }
+            } else {
+                emptyList()
+            }
             return PlanPriorityNode(
                 priority = priority,
                 children = children,
@@ -120,7 +134,7 @@ class ObservePlanWorkspaceUseCase(
         val roots = homePriorities
             .filter { it.parentId == null || it.parentId !in homeIds }
             .sortedBy { it.sortOrder }
-            .map { nodeFor(it) }
+            .map { nodeFor(it, withChildren = true) }
 
         val displayFocus = if (isDayView) PlanFocus(PlanPeriod.Week, focus.anchorDate) else focus
 
@@ -181,7 +195,7 @@ class UpdatePlanPriorityUseCase(
         repository.updatePlanPriority(
             priorityId,
             PlanPriorityWriteInput(
-                periodPlanId = existing.periodPlanId,
+                periodPlanId = existing.periodPlan.id,
                 parentId = parentId,
                 title = trimmed,
                 note = note,
@@ -266,8 +280,8 @@ internal fun parentCandidates(
     }
     return priorities
         .filter { priority ->
-            (plan != null && priority.periodPlanId == plan.id) ||
-                (parentPlan != null && priority.periodPlanId == parentPlan.id)
+            (plan != null && priority.periodPlan.id == plan.id) ||
+                (parentPlan != null && priority.periodPlan.id == parentPlan.id)
         }
         .sortedBy { it.sortOrder }
 }
@@ -282,8 +296,5 @@ private suspend fun CheckItRepository.validateParent(focus: PlanFocus, parentId:
     require(parentId in candidates.map { it.id }) { "Parent priority does not belong to this focus" }
 }
 
-private suspend fun CheckItRepository.periodPlanForPriority(priorityId: Long): PeriodPlan? {
-    val priority = observePlanPriorities().first().firstOrNull { it.id == priorityId }
-        ?: return null
-    return observePeriodPlans().first().firstOrNull { it.id == priority.periodPlanId }
-}
+private suspend fun CheckItRepository.periodPlanForPriority(priorityId: Long): PeriodPlan? =
+    observePlanPriorities().first().firstOrNull { it.id == priorityId }?.periodPlan

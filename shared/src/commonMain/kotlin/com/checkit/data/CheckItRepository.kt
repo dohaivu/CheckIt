@@ -308,7 +308,8 @@ class RoomCheckItRepository(
             dao.observeTaskKeyResults(),
             dao.observeNoteLists(),
             dao.observePlanPriorities(),
-            dao.observePlanPriorityTasks()
+            dao.observePlanPriorityTasks(),
+            dao.observePeriodPlans()
         ) { array ->
             @Suppress("UNCHECKED_CAST")
             TaskBoardMetadata(
@@ -319,7 +320,8 @@ class RoomCheckItRepository(
                 taskKeyResults = array[4] as List<TaskKeyResultEntity>,
                 noteLists = array[5] as List<NoteListEntity>,
                 planPriorities = array[6] as List<PlanPriorityEntity>,
-                planPriorityTasks = array[7] as List<PlanPriorityTaskEntity>
+                planPriorityTasks = array[7] as List<PlanPriorityTaskEntity>,
+                periodPlans = array[8] as List<PeriodPlanEntity>
             )
         }
 
@@ -340,7 +342,10 @@ class RoomCheckItRepository(
             val taskListMap = metadata.taskLists.associate { it.taskId to it.listId }
             val taskKeyResultMap = metadata.taskKeyResults.associate { it.taskId to it.keyResultId }
             val noteListMap = metadata.noteLists.associate { it.noteId to it.listId }
-            val priorityById = metadata.planPriorities.associateBy { it.id }.mapValues { (_, entity) -> entity.toDomain() }
+            val plansById = metadata.periodPlans.map { it.toDomain() }.associateBy { it.id }
+            val priorityById = metadata.planPriorities
+                .mapNotNull { entity -> plansById[entity.periodPlanId]?.let { plan -> entity.toDomain(plan) } }
+                .associateBy { it.id }
             val priorityIdByTaskId = metadata.planPriorityTasks.associate { it.taskId to it.priorityId }
 
             TaskBoard(
@@ -988,7 +993,15 @@ class RoomCheckItRepository(
         dao.observePeriodPlans().map { entities -> entities.map { it.toDomain() } }
 
     override fun observePlanPriorities(): Flow<List<PlanPriority>> =
-        dao.observePlanPriorities().map { entities -> entities.map { it.toDomain() } }
+        combine(
+            dao.observePeriodPlans(),
+            dao.observePlanPriorities()
+        ) { plans, priorities ->
+            val plansById = plans.map { it.toDomain() }.associateBy { it.id }
+            priorities.mapNotNull { entity ->
+                plansById[entity.periodPlanId]?.let { plan -> entity.toDomain(plan) }
+            }
+        }
 
     override fun observePlanPriorityTaskIds(): Flow<List<PlanPriorityTaskLink>> =
         dao.observePlanPriorityTasks().map { links ->
@@ -1174,7 +1187,8 @@ private data class TaskBoardMetadata(
     val taskKeyResults: List<TaskKeyResultEntity>,
     val noteLists: List<NoteListEntity>,
     val planPriorities: List<PlanPriorityEntity>,
-    val planPriorityTasks: List<PlanPriorityTaskEntity>
+    val planPriorityTasks: List<PlanPriorityTaskEntity>,
+    val periodPlans: List<PeriodPlanEntity>
 )
 
 private fun GoalEntity.toDomain() = Goal(
@@ -1358,9 +1372,9 @@ private fun PeriodPlanEntity.toDomain() = PeriodPlan(
     endEpochDays = endEpochDays
 )
 
-private fun PlanPriorityEntity.toDomain() = PlanPriority(
+private fun PlanPriorityEntity.toDomain(periodPlan: PeriodPlan) = PlanPriority(
     id = id,
-    periodPlanId = periodPlanId,
+    periodPlan = periodPlan,
     parentId = parentId,
     title = title,
     note = note,

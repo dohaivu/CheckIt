@@ -121,7 +121,52 @@ private fun BaseTaskRow(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-//                .background(color.copy(alpha = DefaultTaskCardAlpha))
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top
+            ) {
+                Box(Modifier.width(4.dp))
+                content()
+            }
+
+            Box(Modifier.matchParentSize()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(4.dp)
+                        .background(color)
+                )
+            }
+
+            if (isCompleted) {
+                CompletedOverlay()
+            }
+        }
+    }
+}
+
+@Composable
+private fun FlatBaseTaskRow(
+    color: Color,
+    isCompleted: Boolean,
+    onClick: () -> Unit,
+    elevation: androidx.compose.ui.unit.Dp,
+    content: @Composable RowScope.() -> Unit
+) {
+    Card(
+        onClick = onClick,
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = elevation,
+            pressedElevation = 8.dp,
+            focusedElevation = 4.dp
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),

@@ -1,5 +1,7 @@
 package com.checkit.domain.usecase
 
+import com.checkit.domain.PeriodPlan
+import com.checkit.domain.PlanPeriod
 import com.checkit.domain.PlanPriority
 import com.checkit.domain.wouldCreateCycle
 import kotlin.test.Test
@@ -7,9 +9,16 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class PlanPriorityCycleTest {
+    private val testPlan = PeriodPlan(
+        id = 1L,
+        period = PlanPeriod.Year,
+        startEpochDays = 0,
+        endEpochDays = 0
+    )
+
     private fun priority(id: Long, parentId: Long? = null) = PlanPriority(
         id = id,
-        periodPlanId = 1L,
+        periodPlan = testPlan,
         parentId = parentId,
         title = "P$id",
         sortOrder = id.toInt(),

@@ -43,6 +43,7 @@ internal fun PeriodPlanScreen(
     onEditPriority: (PlanPriority) -> Unit,
     onAddTaskClick: (PlanPriority) -> Unit,
     onOpenTask: (TaskItem) -> Unit,
+    onZoomIntoPriority: (PlanPriority) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -87,6 +88,7 @@ internal fun PeriodPlanScreen(
                         onEditPriority = onEditPriority,
                         onAddTaskClick = onAddTaskClick,
                         onOpenTask = onOpenTask,
+                        onZoomIntoPriority = onZoomIntoPriority,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }

@@ -179,7 +179,7 @@ class PlanPeriodDateTest {
 
     private fun priority(id: Long, parentId: Long?) = PlanPriority(
         id = id,
-        periodPlanId = 1,
+        periodPlan = PeriodPlan(id = 1L, period = PlanPeriod.Year, startEpochDays = 0, endEpochDays = 0),
         parentId = parentId,
         title = "P$id",
         sortOrder = id.toInt(),

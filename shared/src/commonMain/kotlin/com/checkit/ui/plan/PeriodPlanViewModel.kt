@@ -69,6 +69,16 @@ class PeriodPlanViewModel(
         selectFocus(_uiState.value.focus.zoomOut())
     }
 
+    /** Zooms the workspace into the focus period of a nested (child) priority. */
+    fun zoomIntoPriority(priority: PlanPriority) {
+        val state = _uiState.value
+        val plan = priority.periodPlan
+        val target = PlanFocus(plan.period, plan.startDate)
+        if (target.period.ordinal >= state.focus.period.ordinal) {
+            selectFocus(target)
+        }
+    }
+
     fun startAddPriority() {
         _uiState.update {
             it.copy(

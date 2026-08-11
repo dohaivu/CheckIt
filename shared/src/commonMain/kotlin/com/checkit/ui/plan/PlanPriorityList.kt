@@ -2,6 +2,7 @@ package com.checkit.ui.plan
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -48,6 +50,7 @@ internal fun PlanPriorityList(
     onEditPriority: (PlanPriority) -> Unit,
     onAddTaskClick: (PlanPriority) -> Unit,
     onOpenTask: (TaskItem) -> Unit,
+    onZoomIntoPriority: (PlanPriority) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -62,7 +65,8 @@ internal fun PlanPriorityList(
                 onToggleDone = onToggleDone,
                 onEditPriority = onEditPriority,
                 onAddTaskClick = onAddTaskClick,
-                onOpenTask = onOpenTask
+                onOpenTask = onOpenTask,
+                onZoomIntoPriority = null
             )
             node.children.forEach { child ->
                 PriorityItem(
@@ -72,7 +76,8 @@ internal fun PlanPriorityList(
                     onToggleDone = onToggleDone,
                     onEditPriority = onEditPriority,
                     onAddTaskClick = onAddTaskClick,
-                    onOpenTask = onOpenTask
+                    onOpenTask = onOpenTask,
+                    onZoomIntoPriority = { onZoomIntoPriority(child.priority) }
                 )
             }
         }
@@ -87,7 +92,8 @@ private fun PriorityItem(
     onToggleDone: (Long, Boolean) -> Unit,
     onEditPriority: (PlanPriority) -> Unit,
     onAddTaskClick: (PlanPriority) -> Unit,
-    onOpenTask: (TaskItem) -> Unit
+    onOpenTask: (TaskItem) -> Unit,
+    onZoomIntoPriority: (() -> Unit)?
 ) {
     val priority = node.priority
     Column(
@@ -99,6 +105,7 @@ private fun PriorityItem(
         PriorityHeader(
             priority = priority,
             showAddTask = focus == PlanPeriod.Week || focus == PlanPeriod.Day,
+            onClick = onZoomIntoPriority,
             onToggleDone = onToggleDone,
             onEditPriority = onEditPriority,
             onAddTaskClick = onAddTaskClick
@@ -130,12 +137,19 @@ private fun PriorityItem(
 private fun PriorityHeader(
     priority: PlanPriority,
     showAddTask: Boolean,
+    onClick: (() -> Unit)?,
     onToggleDone: (Long, Boolean) -> Unit,
     onEditPriority: (PlanPriority) -> Unit,
     onAddTaskClick: (PlanPriority) -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .pointerInput(priority.id) {
+                detectTapGestures(
+                    onTap = { onClick?.invoke() },
+                    onLongPress = { onEditPriority(priority) }
+                )
+            },
         verticalAlignment = Alignment.CenterVertically
     ) {
         Checkbox(
@@ -181,17 +195,6 @@ private fun PriorityHeader(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-        }
-        IconButton(
-            onClick = { onEditPriority(priority) },
-            modifier = Modifier.size(30.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Edit,
-                contentDescription = stringResource(Res.string.plan_edit_priority),
-                modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }

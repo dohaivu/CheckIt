@@ -118,7 +118,7 @@ data class PeriodPlan(
  */
 data class PlanPriority(
     val id: Long = 0L,
-    val periodPlanId: Long,
+    val periodPlan: PeriodPlan,
     val parentId: Long? = null,
     val title: String,
     val note: String = "",

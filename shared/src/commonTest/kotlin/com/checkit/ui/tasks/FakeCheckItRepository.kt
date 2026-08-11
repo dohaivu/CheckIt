@@ -904,9 +904,11 @@ internal class FakeCheckItRepository(
     override suspend fun addPlanPriority(input: PlanPriorityWriteInput): Long {
         addedPlanPriorities.add(input)
         val id = nextPlanPriorityId++
+        val plan = periodPlansFlow.value.firstOrNull { it.id == input.periodPlanId }
+            ?: error("Missing period plan ${input.periodPlanId}")
         val priority = PlanPriority(
             id = id,
-            periodPlanId = input.periodPlanId,
+            periodPlan = plan,
             parentId = input.parentId,
             title = input.title.trim(),
             note = input.note,

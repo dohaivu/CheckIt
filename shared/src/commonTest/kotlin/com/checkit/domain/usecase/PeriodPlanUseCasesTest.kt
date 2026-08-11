@@ -347,7 +347,7 @@ class PeriodPlanUseCasesTest {
         )
         val repository = FakeCheckItRepository(initialBoard = TaskBoard(tasks = listOf(task)))
         val add = AddPlanPriorityUseCase(repository)
-        val focus = PlanFocus(PlanPeriod.Month, date)
+        val focus = PlanFocus(PlanPeriod.Week, date)
 
         val parentId = add(focus, title = "Parent")
         val childId = add(focus, title = "Child", parentId = parentId)
@@ -395,6 +395,99 @@ class PeriodPlanUseCasesTest {
     }
 
     @Test
+    fun workspaceExposesOnlyOneLevelOfDirectChildren() {
+        val focus = PlanFocus(PlanPeriod.Month, date)
+        val plan = PeriodPlan(
+            id = 1L,
+            period = PlanPeriod.Month,
+            startEpochDays = focus.startEpochDays,
+            endEpochDays = focus.endInclusiveEpochDays
+        )
+        fun priority(id: Long, parentId: Long? = null) = PlanPriority(
+            id = id,
+            periodPlan = plan,
+            parentId = parentId,
+            title = "P$id",
+            sortOrder = id.toInt(),
+            createdAtMillis = 0L,
+            updatedAtMillis = 0L
+        )
+        val root = priority(1L)
+        val directChild = priority(2L, parentId = 1L)
+        val grandchild = priority(3L, parentId = 2L)
+
+        val workspace = ObservePlanWorkspaceUseCase(FakeCheckItRepository()).build(
+            focus = focus,
+            plans = listOf(plan),
+            priorities = listOf(root, directChild, grandchild),
+            taskLinks = emptyList(),
+            dailyLinks = emptyList(),
+            tasks = emptyList(),
+            dailyPlans = emptyList()
+        )
+
+        val rootNode = workspace.rootNodes.single()
+        assertEquals(root.id, rootNode.priority.id)
+        assertEquals(listOf(directChild.id), rootNode.children.map { it.priority.id })
+        assertTrue(rootNode.children.single().children.isEmpty())
+        assertEquals(
+            listOf(root.id, directChild.id),
+            workspace.rootNodes.flatMap { listOf(it.priority.id) + it.children.map { c -> c.priority.id } }
+        )
+    }
+
+    @Test
+    fun workspaceLinksWorkOnlyForWeekAndDayFocus() {
+        val focus = PlanFocus(PlanPeriod.Month, date)
+        val plan = PeriodPlan(
+            id = 1L,
+            period = PlanPeriod.Month,
+            startEpochDays = focus.startEpochDays,
+            endEpochDays = focus.endInclusiveEpochDays
+        )
+        val priority = PlanPriority(
+            id = 10L,
+            periodPlan = plan,
+            title = "Month priority",
+            sortOrder = 0,
+            createdAtMillis = 0L,
+            updatedAtMillis = 0L
+        )
+        val task = TaskItem(
+            id = 1L,
+            list = null,
+            name = "T1",
+            doDate = date,
+            sortOrder = 0,
+            createdAtMillis = 0L,
+            updatedAtMillis = 0L
+        )
+        val daily = DailyPlanItem(
+            id = 2L,
+            dateEpochDays = focus.startEpochDays,
+            title = "D1",
+            source = DailyPlanItemSource.MyDayTask,
+            status = DailyPlanItemStatus.Planned,
+            sortOrder = 0,
+            addedAtMillis = 0L
+        )
+
+        val workspace = ObservePlanWorkspaceUseCase(FakeCheckItRepository()).build(
+            focus = focus,
+            plans = listOf(plan),
+            priorities = listOf(priority),
+            taskLinks = listOf(PlanPriorityTaskLink(priority.id, task.id, 0)),
+            dailyLinks = listOf(PlanPriorityDailyPlanItemLink(priority.id, daily.id, 0)),
+            tasks = listOf(task),
+            dailyPlans = listOf(DailyPlan(focus.start, items = listOf(daily)))
+        )
+
+        val root = workspace.rootNodes.single()
+        assertTrue(root.tasks.isEmpty())
+        assertTrue(root.dailyPlanItems.isEmpty())
+    }
+
+    @Test
     fun workspaceForDayShowsWeekPrioritiesFilteredToDate() {
         val weekStart = date.minus(date.dayOfWeek.ordinal, DateTimeUnit.DAY)
         val plan = PeriodPlan(
@@ -405,7 +498,7 @@ class PeriodPlanUseCasesTest {
         )
         val priority = PlanPriority(
             id = 10L,
-            periodPlanId = plan.id,
+            periodPlan = plan,
             title = "Week priority",
             sortOrder = 0,
             createdAtMillis = 0L,
