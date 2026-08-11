@@ -93,20 +93,21 @@ class ObservePlanWorkspaceUseCase(
         val dailyItemsById = dailyPlans.flatMap { it.items }.associateBy { it.id }
         val taskIdsByPriority = taskLinks.groupBy({ it.priorityId }, { it.taskId })
         val dailyIdsByPriority = dailyLinks.groupBy({ it.priorityId }, { it.dailyPlanItemId })
+        val childrenByParent = priorities.groupBy { it.parentId }
 
         fun nodeFor(priority: PlanPriority, withChildren: Boolean): PlanPriorityNode {
             val children = if (withChildren) {
-                priorities
-                    .filter { it.parentId == priority.id }
+                childrenByParent[priority.id].orEmpty()
                     .sortedBy { it.sortOrder }
                     .map { nodeFor(it, withChildren = false) }
             } else {
                 emptyList()
             }
             val showLinkedWork = focus.period == PlanPeriod.Week || focus.period == PlanPeriod.Day
-            val linkedTaskIds = taskIdsByPriority[priority.id].orEmpty().toSet()
+            val priorityTaskIds = taskIdsByPriority[priority.id].orEmpty()
+            val linkedTaskIds = if (showLinkedWork) priorityTaskIds.toSet() else emptySet()
             val linkedTasks = if (showLinkedWork) {
-                taskIdsByPriority[priority.id].orEmpty()
+                priorityTaskIds
                     .mapNotNull { tasksById[it] }
                     .filterNot { it.isTrashed }
                     .filter { task -> if (isDayView) task.doDate == focus.start else true }

@@ -101,7 +101,7 @@ internal fun NoteRow(
 }
 
 @Composable
-private fun BaseTaskRow(
+internal fun BaseTaskRow(
     color: Color,
     isCompleted: Boolean,
     onClick: () -> Unit,
@@ -147,7 +147,7 @@ private fun BaseTaskRow(
 }
 
 @Composable
-private fun FlatBaseTaskRow(
+internal fun FlatBaseTaskRow(
     color: Color,
     isCompleted: Boolean,
     onClick: () -> Unit,

@@ -1,11 +1,11 @@
 package com.checkit.ui.plan
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,9 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -30,16 +28,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import checkit.shared.generated.resources.Res
+import checkit.shared.generated.resources.plan_add_task
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.PlanPeriod
 import com.checkit.domain.PlanPriority
 import com.checkit.domain.PlanPriorityNode
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
-import checkit.shared.generated.resources.Res
-import checkit.shared.generated.resources.plan_add_task
-import checkit.shared.generated.resources.plan_edit_priority
-import com.checkit.ui.tasks.views.TaskRow
+import com.checkit.ui.components.DateTimeRangeDetailChip
+import com.checkit.ui.components.TagPill
+import com.checkit.ui.tasks.cardColor
+import com.checkit.ui.tasks.isOverdue
+import com.checkit.ui.tasks.views.FlatBaseTaskRow
+import com.checkit.ui.tasks.views.TaskTitleRow
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -111,10 +113,11 @@ private fun PriorityItem(
             onAddTaskClick = onAddTaskClick
         )
         Column(
-            modifier = Modifier.padding(start = 24.dp)
+            modifier = Modifier.padding(start = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             node.tasks.forEach { task ->
-                LinkedTaskRow(
+                PriorityTaskRow(
                     task = task,
                     onClick = { onOpenTask(task) }
                 )
@@ -122,14 +125,9 @@ private fun PriorityItem(
         }
         if (focus == PlanPeriod.Day) {
             node.dailyPlanItems.forEach { item ->
-                DailyPlanItemRow(item = item)
+                PriorityDailyPlanRow(item = item)
             }
         }
-        HorizontalDivider(
-            modifier = Modifier.padding(top = 6.dp),
-            thickness = 0.5.dp,
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-        )
     }
 }
 
@@ -200,43 +198,38 @@ private fun PriorityHeader(
 }
 
 @Composable
-private fun LinkedTaskRow(
+private fun PriorityTaskRow(
     task: TaskItem,
     onClick: () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                RoundedCornerShape(10.dp)
-            )
-            .clickable(onClick = onClick)
-            .padding(start = 12.dp, top = 2.dp, bottom = 2.dp, end = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
+    FlatBaseTaskRow(
+        color = task.cardColor(),
+        isCompleted = task.status == TaskStatus.Completed,
+        onClick = onClick,
+        elevation = if (task.status == TaskStatus.Completed) 0.dp else 2.dp
     ) {
-        Text(
-            text = task.name,
-            style = MaterialTheme.typography.bodyMedium,
-            textDecoration = if (task.status == TaskStatus.Completed) {
-                TextDecoration.LineThrough
-            } else {
-                TextDecoration.None
-            },
-            color = if (task.status == TaskStatus.Completed) {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            } else {
-                MaterialTheme.colorScheme.onSurface
-            },
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
-        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            TaskTitleRow(task, descriptionMaxLines = 0)
+            DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes, isOverdue = task.isOverdue())
+
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                task.tags.forEach { tag -> TagPill(tag = tag) }
+            }
+        }
     }
 }
 
 @Composable
-private fun DailyPlanItemRow(item: DailyPlanItem) {
+private fun PriorityDailyPlanRow(item: DailyPlanItem) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
