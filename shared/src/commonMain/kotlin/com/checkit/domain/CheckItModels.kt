@@ -109,6 +109,7 @@ data class TaskItem(
     val id: Long,
     val list: ListItem,
     val keyResult: KeyResult? = null,
+    val planPriority: PlanPriority? = null,
     val name: String,
     val description: String = "",
     val subtasks: List<SubTaskItem> = emptyList(),

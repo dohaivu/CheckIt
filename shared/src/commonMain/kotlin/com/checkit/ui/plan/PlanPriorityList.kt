@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -23,16 +22,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -55,7 +47,7 @@ internal fun PlanPriorityList(
     focus: PlanPeriod,
     onToggleDone: (Long, Boolean) -> Unit,
     onEditPriority: (PlanPriority) -> Unit,
-    onAddTask: (Long, String) -> Unit,
+    onAddTaskClick: (PlanPriority) -> Unit,
     onUnlinkTask: (Long, Long) -> Unit,
     onOpenTask: (TaskItem) -> Unit,
     modifier: Modifier = Modifier
@@ -71,7 +63,7 @@ internal fun PlanPriorityList(
                 focus = focus,
                 onToggleDone = onToggleDone,
                 onEditPriority = onEditPriority,
-                onAddTask = onAddTask,
+                onAddTaskClick = onAddTaskClick,
                 onUnlinkTask = onUnlinkTask,
                 onOpenTask = onOpenTask
             )
@@ -82,7 +74,7 @@ internal fun PlanPriorityList(
                     focus = focus,
                     onToggleDone = onToggleDone,
                     onEditPriority = onEditPriority,
-                    onAddTask = onAddTask,
+                    onAddTaskClick = onAddTaskClick,
                     onUnlinkTask = onUnlinkTask,
                     onOpenTask = onOpenTask
                 )
@@ -98,7 +90,7 @@ private fun PriorityItem(
     focus: PlanPeriod,
     onToggleDone: (Long, Boolean) -> Unit,
     onEditPriority: (PlanPriority) -> Unit,
-    onAddTask: (Long, String) -> Unit,
+    onAddTaskClick: (PlanPriority) -> Unit,
     onUnlinkTask: (Long, Long) -> Unit,
     onOpenTask: (TaskItem) -> Unit
 ) {
@@ -111,20 +103,16 @@ private fun PriorityItem(
     ) {
         PriorityHeader(
             priority = priority,
+            showAddTask = focus == PlanPeriod.Week || focus == PlanPeriod.Day,
             onToggleDone = onToggleDone,
-            onEditPriority = onEditPriority
+            onEditPriority = onEditPriority,
+            onAddTaskClick = onAddTaskClick
         )
         node.tasks.forEach { task ->
             LinkedTaskRow(
                 task = task,
                 onUnlink = { onUnlinkTask(priority.id, task.id) },
                 onClick = { onOpenTask(task) }
-            )
-        }
-        if (focus == PlanPeriod.Week || focus == PlanPeriod.Day) {
-            PlanTaskAdder(
-                priorityId = priority.id,
-                onAddTask = onAddTask
             )
         }
         if (focus == PlanPeriod.Day) {
@@ -143,8 +131,10 @@ private fun PriorityItem(
 @Composable
 private fun PriorityHeader(
     priority: PlanPriority,
+    showAddTask: Boolean,
     onToggleDone: (Long, Boolean) -> Unit,
-    onEditPriority: (PlanPriority) -> Unit
+    onEditPriority: (PlanPriority) -> Unit,
+    onAddTaskClick: (PlanPriority) -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -178,6 +168,19 @@ private fun PriorityHeader(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        if (showAddTask) {
+            IconButton(
+                onClick = { onAddTaskClick(priority) },
+                modifier = Modifier.size(30.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = stringResource(Res.string.plan_add_task),
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -274,59 +277,6 @@ private fun DailyPlanItemRow(item: DailyPlanItem) {
                 text = item.startTimeMinutes.toTimeLabel(),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-private fun PlanTaskAdder(
-    priorityId: Long,
-    onAddTask: (Long, String) -> Unit
-) {
-    var title by remember(priorityId) { mutableStateOf("") }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 8.dp, end = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        TextField(
-            value = title,
-            onValueChange = { title = it },
-            placeholder = {
-                Text(
-                    text = stringResource(Res.string.plan_add_task),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
-            textStyle = MaterialTheme.typography.bodyMedium,
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent,
-                disabledContainerColor = Color.Transparent,
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent,
-                disabledIndicatorColor = Color.Transparent
-            ),
-            modifier = Modifier
-                .weight(1f)
-                .heightIn(min = 40.dp)
-        )
-        IconButton(
-            onClick = {
-                if (title.isNotBlank()) {
-                    onAddTask(priorityId, title)
-                    title = ""
-                }
-            },
-            enabled = title.isNotBlank()
-        ) {
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = stringResource(Res.string.plan_add_task),
-                modifier = Modifier.size(18.dp)
             )
         }
     }

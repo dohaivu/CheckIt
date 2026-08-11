@@ -131,6 +131,7 @@ sealed interface TaskEditorState {
         val taskId: Long? = null,
         val listId: Long,
         val keyResultId: Long? = null,
+        val planPriorityId: Long? = null,
         val name: String = "",
         val description: String = "",
         val doDate: LocalDate? = null,

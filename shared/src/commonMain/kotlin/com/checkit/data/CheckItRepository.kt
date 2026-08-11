@@ -206,6 +206,7 @@ data class TagWriteInput(
 data class TaskWriteInput(
     val listId: Long,
     val keyResultId: Long? = null,
+    val planPriorityId: Long? = null,
     val name: String,
     val description: String,
     val subtasks: List<SubTaskWriteInput>,
@@ -307,7 +308,9 @@ class RoomCheckItRepository(
             dao.observeLists(),
             dao.observeTaskLists(),
             dao.observeTaskKeyResults(),
-            dao.observeNoteLists()
+            dao.observeNoteLists(),
+            dao.observePlanPriorities(),
+            dao.observePlanPriorityTasks()
         ) { array ->
             @Suppress("UNCHECKED_CAST")
             TaskBoardMetadata(
@@ -316,7 +319,9 @@ class RoomCheckItRepository(
                 lists = array[2] as List<ListEntity>,
                 taskLists = array[3] as List<TaskListEntity>,
                 taskKeyResults = array[4] as List<TaskKeyResultEntity>,
-                noteLists = array[5] as List<NoteListEntity>
+                noteLists = array[5] as List<NoteListEntity>,
+                planPriorities = array[6] as List<PlanPriorityEntity>,
+                planPriorityTasks = array[7] as List<PlanPriorityTaskEntity>
             )
         }
 
@@ -337,6 +342,8 @@ class RoomCheckItRepository(
             val taskListMap = metadata.taskLists.associate { it.taskId to it.listId }
             val taskKeyResultMap = metadata.taskKeyResults.associate { it.taskId to it.keyResultId }
             val noteListMap = metadata.noteLists.associate { it.noteId to it.listId }
+            val priorityById = metadata.planPriorities.associateBy { it.id }.mapValues { (_, entity) -> entity.toDomain() }
+            val priorityIdByTaskId = metadata.planPriorityTasks.associate { it.taskId to it.priorityId }
 
             TaskBoard(
                 goals = domainGoals,
@@ -350,6 +357,7 @@ class RoomCheckItRepository(
                     task.toDomain(
                         list = listId?.let { listsById[it] } ?: ListItem.None,
                         keyResult = keyResultId?.let { keyResultsById[it] },
+                        planPriority = priorityIdByTaskId[task.id]?.let { priorityById[it] },
                         subtasks = subTasksByTask[task.id].orEmpty().map { it.toDomain() },
                         reminders = remindersByTask[task.id].orEmpty().map { it.toDomain() },
                         tags = taskTagIds[task.id].orEmpty().mapNotNull { tagsById[it] }
@@ -550,6 +558,7 @@ class RoomCheckItRepository(
         )
         dao.insertTaskList(TaskListEntity(taskId, input.listId))
         input.keyResultId?.let { dao.insertTaskKeyResult(TaskKeyResultEntity(taskId, it)) }
+        input.planPriorityId?.let { dao.insertPlanPriorityTask(PlanPriorityTaskEntity(it, taskId, 0)) }
         input.tagIds.forEach { tagId -> addTaskTag(taskId, tagId) }
         dao.replaceTaskSubTasks(taskId, input.subtasks)
         dao.replaceTaskReminders(taskId, input.reminders)
@@ -578,6 +587,8 @@ class RoomCheckItRepository(
         dao.deleteTaskKeyResult(taskId)
         dao.insertTaskList(TaskListEntity(taskId, input.listId))
         input.keyResultId?.let { dao.insertTaskKeyResult(TaskKeyResultEntity(taskId, it)) }
+        dao.deletePlanPriorityTasksForTask(taskId)
+        input.planPriorityId?.let { dao.insertPlanPriorityTask(PlanPriorityTaskEntity(it, taskId, 0)) }
         dao.deleteTaskTags(taskId)
         input.tagIds.forEach { tagId -> addTaskTag(taskId, tagId) }
         dao.replaceTaskSubTasks(taskId, input.subtasks)
@@ -1167,7 +1178,9 @@ private data class TaskBoardMetadata(
     val lists: List<ListEntity>,
     val taskLists: List<TaskListEntity>,
     val taskKeyResults: List<TaskKeyResultEntity>,
-    val noteLists: List<NoteListEntity>
+    val noteLists: List<NoteListEntity>,
+    val planPriorities: List<PlanPriorityEntity>,
+    val planPriorityTasks: List<PlanPriorityTaskEntity>
 )
 
 private fun GoalEntity.toDomain() = Goal(
@@ -1240,6 +1253,7 @@ private fun TaskEntity.hasDifferentScheduleThan(input: TaskWriteInput): Boolean 
 private fun TaskEntity.toDomain(
     list: ListItem,
     keyResult: KeyResult?,
+    planPriority: PlanPriority?,
     subtasks: List<SubTaskItem>,
     reminders: List<TaskReminder>,
     tags: List<TagItem>
@@ -1247,6 +1261,7 @@ private fun TaskEntity.toDomain(
     id = id,
     list = list,
     keyResult = keyResult,
+    planPriority = planPriority,
     name = name,
     description = description,
     subtasks = subtasks,

@@ -423,19 +423,32 @@ internal class FakeCheckItRepository(
     override suspend fun addTask(input: TaskWriteInput): Long {
         addedTasks.add(input)
         val id = nextTaskId++
+        val priority = input.planPriorityId?.let { priorityId ->
+            planPrioritiesFlow.value.firstOrNull { it.id == priorityId }
+        }
         boardFlow.update { board ->
             board.copy(
                 tasks = board.tasks + input.toTaskItem(
                     taskId = id,
-                    sortOrder = board.tasks.size
+                    sortOrder = board.tasks.size,
+                    planPriority = priority
                 )
             )
+        }
+        if (priority != null) {
+            planTaskLinksFlow.update { links ->
+                links.filterNot { it.taskId == id } +
+                    PlanPriorityTaskLink(priority.id, id, 0)
+            }
         }
         return id
     }
 
     override suspend fun updateTask(taskId: Long, input: TaskWriteInput) {
         updatedTasks.add(taskId to input)
+        val priority = input.planPriorityId?.let { priorityId ->
+            planPrioritiesFlow.value.firstOrNull { it.id == priorityId }
+        }
         boardFlow.update { board ->
             board.copy(
                 tasks = board.tasks.map { task ->
@@ -443,6 +456,7 @@ internal class FakeCheckItRepository(
                         input.toTaskItem(
                             taskId = taskId,
                             sortOrder = task.sortOrder,
+                            planPriority = priority,
                             createdAtMillis = task.createdAtMillis,
                             updatedAtMillis = task.updatedAtMillis + 1
                         )
@@ -451,6 +465,16 @@ internal class FakeCheckItRepository(
                     }
                 }
             )
+        }
+        if (priority != null) {
+            planTaskLinksFlow.update { links ->
+                links.filterNot { it.taskId == taskId } +
+                    PlanPriorityTaskLink(priority.id, taskId, 0)
+            }
+        } else {
+            planTaskLinksFlow.update { links ->
+                links.filterNot { it.taskId == taskId }
+            }
         }
     }
     override suspend fun trashTask(taskId: Long) = Unit
@@ -1064,11 +1088,13 @@ internal class FakeSettingsRepository(
 private fun TaskWriteInput.toTaskItem(
     taskId: Long,
     sortOrder: Int,
+    planPriority: PlanPriority? = null,
     createdAtMillis: Long = 0L,
     updatedAtMillis: Long = 0L
 ) = TaskItem(
     id = taskId,
     list = ListItem.None, // Needs proper resolution if testing specific list assignment
+    planPriority = planPriority,
     name = name,
     description = description,
     subtasks = subtasks.mapIndexed { index, subtask ->

@@ -792,6 +792,9 @@ interface CheckItDao {
     @Query("DELETE FROM plan_priority_tasks WHERE priorityId = :priorityId")
     suspend fun deletePlanPriorityTasksForPriority(priorityId: Long)
 
+    @Query("DELETE FROM plan_priority_tasks WHERE taskId = :taskId")
+    suspend fun deletePlanPriorityTasksForTask(taskId: Long)
+
     @Query("SELECT * FROM plan_priority_tasks")
     fun observePlanPriorityTasks(): Flow<List<PlanPriorityTaskEntity>>
 

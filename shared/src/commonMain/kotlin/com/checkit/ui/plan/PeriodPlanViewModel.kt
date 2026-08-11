@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.checkit.domain.PlanFocus
 import com.checkit.domain.PlanPriority
 import com.checkit.domain.usecase.AddPlanPriorityUseCase
-import com.checkit.domain.usecase.AddTaskToPlanPriorityUseCase
 import com.checkit.domain.usecase.DeletePlanPriorityUseCase
 import com.checkit.domain.usecase.LinkTaskToPlanPriorityUseCase
 import com.checkit.domain.usecase.ObservePlanWorkspaceUseCase
@@ -32,8 +31,7 @@ class PeriodPlanViewModel(
     private val deletePlanPriority: DeletePlanPriorityUseCase,
     private val togglePlanPriorityDone: TogglePlanPriorityDoneUseCase,
     private val linkTaskToPlanPriority: LinkTaskToPlanPriorityUseCase,
-    private val unlinkTaskFromPlanPriority: UnlinkTaskFromPlanPriorityUseCase,
-    private val addTaskToPlanPriority: AddTaskToPlanPriorityUseCase
+    private val unlinkTaskFromPlanPriority: UnlinkTaskFromPlanPriorityUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PlanPeriodUiState())
@@ -158,17 +156,6 @@ class PeriodPlanViewModel(
     fun toggleDone(priorityId: Long, isDone: Boolean) {
         viewModelScope.launch {
             togglePlanPriorityDone(priorityId, isDone)
-        }
-    }
-
-    fun addTask(priorityId: Long, name: String) {
-        if (name.isBlank()) return
-        viewModelScope.launch {
-            runCatching { addTaskToPlanPriority(priorityId, name) }
-                .onSuccess { _events.tryEmit(UiEvent.ShowSnackbar("Task added")) }
-                .onFailure { error ->
-                    _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to add task"))
-                }
         }
     }
 

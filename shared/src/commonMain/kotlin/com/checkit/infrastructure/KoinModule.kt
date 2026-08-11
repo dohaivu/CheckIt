@@ -272,8 +272,7 @@ val provideViewModelModule = module {
             deletePlanPriority = get(),
             togglePlanPriorityDone = get(),
             linkTaskToPlanPriority = get(),
-            unlinkTaskFromPlanPriority = get(),
-            addTaskToPlanPriority = get()
+            unlinkTaskFromPlanPriority = get()
         )
     }
     viewModel { SettingsViewModel(get(), get(), get(), get<AppReminderScheduler>()) }

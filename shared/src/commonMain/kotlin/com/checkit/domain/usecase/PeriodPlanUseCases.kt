@@ -267,9 +267,10 @@ class AddTaskToPlanPriorityUseCase(
         }
         val trimmed = name.trim()
         require(trimmed.isNotBlank()) { "Task name must not be blank" }
-        val taskId = repository.addTask(
+        return repository.addTask(
             TaskWriteInput(
                 listId = ListItem.None.id,
+                planPriorityId = priorityId,
                 name = trimmed,
                 description = "",
                 subtasks = emptyList(),
@@ -283,8 +284,6 @@ class AddTaskToPlanPriorityUseCase(
                 tagIds = emptyList()
             )
         )
-        repository.linkTaskToPriority(priorityId, taskId)
-        return taskId
     }
 }
 

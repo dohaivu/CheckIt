@@ -9,7 +9,9 @@ import com.checkit.data.TaskWriteInput
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.KeyResult
+import com.checkit.domain.ListItem
 import com.checkit.domain.NoteItem
+import com.checkit.domain.PlanPriority
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskPriority
@@ -277,13 +279,12 @@ class TaskViewModel(
     }
 
     fun openNewTaskOnKeyResult(keyResult: KeyResult) {
-        val listId = editableListId() ?: return sendEvent(UiEvent.ShowSnackbar("Create a list before adding tasks"))
         cancelPendingTaskTextSave()
         _uiState.update {
             it.copy(
                 editor = TaskEditorState.TaskForm(
                     mode = EditorMode.Add,
-                    listId = listId,
+                    listId = ListItem.None.id,
                     keyResultId = keyResult.id,
                     doDate = null,
                 )
@@ -301,6 +302,20 @@ class TaskViewModel(
                     listId = listId,
                     doDate = date,
                     addToMyDayOnSave = addToMyDayOnSave
+                )
+            )
+        }
+    }
+
+    fun openNewTaskOnPlanPriority(priority: PlanPriority) {
+        cancelPendingTaskTextSave()
+        _uiState.update {
+            it.copy(
+                editor = TaskEditorState.TaskForm(
+                    mode = EditorMode.Add,
+                    listId = ListItem.None.id,
+                    planPriorityId = priority.id,
+                    doDate = today()
                 )
             )
         }
@@ -416,6 +431,7 @@ class TaskViewModel(
                     taskId = task.id,
                     listId = task.list.id,
                     keyResultId = task.keyResult?.id,
+                    planPriorityId = task.planPriority?.id,
                     name = task.name,
                     description = task.description,
                     doDate = task.doDate,
@@ -754,6 +770,7 @@ class TaskViewModel(
         return TaskWriteInput(
             listId = listId,
             keyResultId = keyResultId,
+            planPriorityId = planPriorityId,
             name = name.trim(),
             description = description.trim(),
             status = status,
