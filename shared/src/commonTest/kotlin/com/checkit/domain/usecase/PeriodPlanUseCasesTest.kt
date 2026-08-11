@@ -62,16 +62,16 @@ class PeriodPlanUseCasesTest {
     }
 
     @Test
-    fun addPriorityUnderParentInSamePlan() = runTest {
+    fun addPriorityRejectsParentInSamePeriod() = runTest {
         val repository = FakeCheckItRepository()
         val add = AddPlanPriorityUseCase(repository)
         val focus = PlanFocus(PlanPeriod.Month, date)
 
         val parentId = add(focus, title = "Parent")
-        val childId = add(focus, title = "Child", parentId = parentId)
 
-        val child = repository.observePlanPriorities().first().first { it.id == childId }
-        assertEquals(parentId, child.parentId)
+        assertFailsWith<IllegalArgumentException> {
+            add(focus, title = "Child", parentId = parentId)
+        }
     }
 
     @Test
@@ -106,8 +106,9 @@ class PeriodPlanUseCasesTest {
         val add = AddPlanPriorityUseCase(repository)
         val update = UpdatePlanPriorityUseCase(repository)
         val focus = PlanFocus(PlanPeriod.Quarter, date)
+        val yearFocus = PlanFocus(PlanPeriod.Year, date)
 
-        val a = add(focus, title = "A")
+        val a = add(yearFocus, title = "A")
         val b = add(focus, title = "B")
 
         update(b, focus, title = "  B v2  ", parentId = a)
@@ -122,13 +123,14 @@ class PeriodPlanUseCasesTest {
         val repository = FakeCheckItRepository()
         val add = AddPlanPriorityUseCase(repository)
         val update = UpdatePlanPriorityUseCase(repository)
-        val focus = PlanFocus(PlanPeriod.Month, date)
+        val quarterFocus = PlanFocus(PlanPeriod.Quarter, date)
+        val monthFocus = PlanFocus(PlanPeriod.Month, date)
 
-        val a = add(focus, title = "A")
-        val b = add(focus, title = "B", parentId = a)
+        val a = add(quarterFocus, title = "A")
+        val b = add(monthFocus, title = "B", parentId = a)
 
         assertFailsWith<IllegalArgumentException> {
-            update(a, focus, title = "A", parentId = b)
+            update(a, quarterFocus, title = "A", parentId = b)
         }
     }
 
@@ -159,9 +161,10 @@ class PeriodPlanUseCasesTest {
         val delete = DeletePlanPriorityUseCase(repository)
         val link = LinkTaskToPlanPriorityUseCase(repository)
         val focus = PlanFocus(PlanPeriod.Week, date)
+        val dayFocus = PlanFocus(PlanPeriod.Day, date)
 
         val parent = add(focus, title = "Parent")
-        val child = add(focus, title = "Child", parentId = parent)
+        val child = add(dayFocus, title = "Child", parentId = parent)
         val taskId = repository.addTask(
             com.checkit.data.TaskWriteInput(
                 listId = 1L,
@@ -348,9 +351,10 @@ class PeriodPlanUseCasesTest {
         val repository = FakeCheckItRepository(initialBoard = TaskBoard(tasks = listOf(task)))
         val add = AddPlanPriorityUseCase(repository)
         val focus = PlanFocus(PlanPeriod.Week, date)
+        val dayFocus = PlanFocus(PlanPeriod.Day, date)
 
         val parentId = add(focus, title = "Parent")
-        val childId = add(focus, title = "Child", parentId = parentId)
+        val childId = add(dayFocus, title = "Child", parentId = parentId)
 
         val duplicateDaily = DailyPlanItem(
             id = 2L,
@@ -375,6 +379,47 @@ class PeriodPlanUseCasesTest {
         assertEquals(childId, childNode.priority.id)
         assertEquals(listOf(task.id), childNode.tasks.map { it.id })
         assertTrue(childNode.dailyPlanItems.isEmpty())
+    }
+
+    @Test
+    fun workspaceParentCandidatesComeFromParentPeriodOnly() {
+        val focus = PlanFocus(PlanPeriod.Week, date)
+        val monthPlan = PeriodPlan(
+            id = 1L,
+            period = PlanPeriod.Month,
+            startEpochDays = PlanFocus(PlanPeriod.Month, date).startEpochDays,
+            endEpochDays = PlanFocus(PlanPeriod.Month, date).endInclusiveEpochDays
+        )
+        val weekPlan = PeriodPlan(
+            id = 2L,
+            period = PlanPeriod.Week,
+            startEpochDays = focus.startEpochDays,
+            endEpochDays = focus.endInclusiveEpochDays
+        )
+        fun priority(id: Long, plan: PeriodPlan, parentId: Long? = null) = PlanPriority(
+            id = id,
+            periodPlan = plan,
+            parentId = parentId,
+            title = "P$id",
+            sortOrder = id.toInt(),
+            createdAtMillis = 0L,
+            updatedAtMillis = 0L
+        )
+        val month = priority(1L, monthPlan)
+        val weekA = priority(2L, weekPlan)
+        val weekB = priority(3L, weekPlan, parentId = month.id)
+
+        val workspace = ObservePlanWorkspaceUseCase(FakeCheckItRepository()).build(
+            focus = focus,
+            plans = listOf(monthPlan, weekPlan),
+            priorities = listOf(month, weekA, weekB),
+            taskLinks = emptyList(),
+            dailyLinks = emptyList(),
+            tasks = emptyList(),
+            dailyPlans = emptyList()
+        )
+
+        assertEquals(listOf(month.id), workspace.parentCandidates.map { it.id })
     }
 
     @Test
@@ -566,6 +611,6 @@ class PeriodPlanUseCasesTest {
         assertEquals(priority.id, root.priority.id)
         assertEquals(listOf(taskOnDate.id), root.tasks.map { it.id })
         assertEquals(listOf(dailyOnDate.id), root.dailyPlanItems.map { it.id })
-        assertEquals(listOf(priority.id), workspace.parentCandidates.map { it.id })
+        assertTrue(workspace.parentCandidates.isEmpty())
     }
 }

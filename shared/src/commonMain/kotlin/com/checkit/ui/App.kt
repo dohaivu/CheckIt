@@ -444,6 +444,7 @@ fun CheckItApp(
                             onDismiss = viewModels.plan::dismissEditor,
                             onSave = viewModels.plan::savePriority,
                             onDelete = { planEditor.priorityId?.let(viewModels.plan::deletePriority) },
+                            onToggleDone = viewModels.plan::toggleDone,
                             onTitleChange = viewModels.plan::updateEditorTitle,
                             onNoteChange = viewModels.plan::updateEditorNote,
                             onParentChange = viewModels.plan::updateEditorParent

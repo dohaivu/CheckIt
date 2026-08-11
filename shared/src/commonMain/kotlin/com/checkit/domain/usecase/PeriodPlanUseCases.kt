@@ -260,30 +260,24 @@ class LinkDailyPlanItemToPlanPriorityUseCase(
 
 /**
  * Priorities that may be picked as a parent for a priority created/edited on
- * [focus]: priorities on the same plan, plus priorities on the parent period
- * plan that covers the focus (e.g. a Week priority can nest under a Month one).
+ * [focus]. Only priorities on the parent period plan that covers the focus are
+ * candidates (e.g. a Week priority can nest under a Month one, a Quarter one
+ * under a Year one). Same-period priorities are never valid parents, so nesting
+ * always goes exactly one level coarser. Returns empty for Year (no parent).
  */
 internal fun parentCandidates(
     focus: PlanFocus,
     plans: List<PeriodPlan>,
     priorities: List<PlanPriority>
 ): List<PlanPriority> {
-    val plan = plans.firstOrNull {
-        it.period == focus.period && it.startEpochDays == focus.startEpochDays
-    }
-    val parentPeriod = focus.parentPeriod()
-    val parentPlan = parentPeriod?.let { period ->
-        plans.firstOrNull { candidate ->
-            candidate.period == period &&
-                candidate.startEpochDays <= focus.startEpochDays &&
-                candidate.endEpochDays >= focus.endInclusiveEpochDays
-        }
-    }
+    val parentPeriod = focus.parentPeriod() ?: return emptyList()
+    val parentPlan = plans.firstOrNull { candidate ->
+        candidate.period == parentPeriod &&
+            candidate.startEpochDays <= focus.startEpochDays &&
+            candidate.endEpochDays >= focus.endInclusiveEpochDays
+    } ?: return emptyList()
     return priorities
-        .filter { priority ->
-            (plan != null && priority.periodPlan.id == plan.id) ||
-                (parentPlan != null && priority.periodPlan.id == parentPlan.id)
-        }
+        .filter { it.periodPlan.id == parentPlan.id }
         .sortedBy { it.sortOrder }
 }
 

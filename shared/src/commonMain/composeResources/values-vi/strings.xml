@@ -157,6 +157,8 @@
     <string name="plan_note_label">Ghi chú</string>
     <string name="plan_parent_label">Cấp cha</string>
     <string name="plan_parent_none">Không có</string>
+    <string name="plan_complete">Hoàn thành</string>
+    <string name="plan_reopen">Mở lại</string>
     <string name="plan_add">Thêm</string>
     <string name="plan_save">Lưu</string>
     <string name="plan_close">Đóng</string>

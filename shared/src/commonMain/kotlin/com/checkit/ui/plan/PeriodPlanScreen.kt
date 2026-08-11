@@ -39,7 +39,6 @@ internal fun PeriodPlanScreen(
     onNextPeriod: () -> Unit,
     onCurrentPeriod: () -> Unit,
     onAddPriority: () -> Unit,
-    onToggleDone: (Long, Boolean) -> Unit,
     onEditPriority: (PlanPriority) -> Unit,
     onAddTaskClick: (PlanPriority) -> Unit,
     onOpenTask: (TaskItem) -> Unit,
@@ -84,7 +83,6 @@ internal fun PeriodPlanScreen(
                     PlanPriorityList(
                         nodes = state.rootNodes,
                         focus = state.focus.period,
-                        onToggleDone = onToggleDone,
                         onEditPriority = onEditPriority,
                         onAddTaskClick = onAddTaskClick,
                         onOpenTask = onOpenTask,

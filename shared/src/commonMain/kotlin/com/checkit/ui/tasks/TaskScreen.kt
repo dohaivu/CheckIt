@@ -243,7 +243,6 @@ internal fun TaskScreen(
                         planViewModel.selectFocus(PlanFocus(planState.focus.period, today()))
                     },
                     onAddPriority = planViewModel::startAddPriority,
-                    onToggleDone = planViewModel::toggleDone,
                     onEditPriority = planViewModel::startEditPriority,
                     onAddTaskClick = { priority ->
                         val date = if (planState.focus.period == PlanPeriod.Day) {

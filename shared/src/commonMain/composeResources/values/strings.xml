@@ -181,6 +181,8 @@
     <string name="plan_note_label">Note</string>
     <string name="plan_parent_label">Parent</string>
     <string name="plan_parent_none">None</string>
+    <string name="plan_complete">Complete</string>
+    <string name="plan_reopen">Reopen</string>
     <string name="plan_add">Add</string>
     <string name="plan_save">Save</string>
     <string name="plan_close">Close</string>

@@ -29,5 +29,6 @@ data class PlanPriorityEditorState(
     val priorityId: Long? = null,
     val parentId: Long? = null,
     val title: String = "",
-    val note: String = ""
+    val note: String = "",
+    val isDone: Boolean = false
 )

@@ -11,11 +11,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -23,6 +26,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -47,6 +51,7 @@ import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.cancel
 import checkit.shared.generated.resources.plan_add
 import checkit.shared.generated.resources.plan_close
+import checkit.shared.generated.resources.plan_complete
 import checkit.shared.generated.resources.plan_delete_priority
 import checkit.shared.generated.resources.plan_edit_priority_title
 import checkit.shared.generated.resources.plan_new_priority
@@ -54,6 +59,7 @@ import checkit.shared.generated.resources.plan_note_label
 import checkit.shared.generated.resources.plan_parent_label
 import checkit.shared.generated.resources.plan_parent_none
 import checkit.shared.generated.resources.plan_priority_title_label
+import checkit.shared.generated.resources.plan_reopen
 import checkit.shared.generated.resources.plan_save
 import org.jetbrains.compose.resources.stringResource
 
@@ -64,6 +70,7 @@ internal fun PlanPriorityEditorSheet(
     onDismiss: () -> Unit,
     onSave: () -> Unit,
     onDelete: () -> Unit,
+    onToggleDone: (Long, Boolean) -> Unit,
     onTitleChange: (String) -> Unit,
     onNoteChange: (String) -> Unit,
     onParentChange: (Long?) -> Unit
@@ -132,11 +139,15 @@ internal fun PlanPriorityEditorSheet(
                 maxLines = 4
             )
 
-            ParentPicker(
-                selectedParentId = editor.parentId,
-                candidates = parentCandidates.filter { it.id != editor.priorityId },
-                onParentChange = onParentChange
-            )
+            val availableParents = parentCandidates.filter { it.id != editor.priorityId }
+            if (availableParents.isNotEmpty()) {
+                ParentPicker(
+                    selectedParentId = editor.parentId,
+                    candidates = availableParents,
+                    onParentChange = onParentChange
+                )
+            }
+
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -145,6 +156,19 @@ internal fun PlanPriorityEditorSheet(
                 TextButton(onClick = onDismiss) {
                     Text(stringResource(Res.string.cancel))
                 }
+
+                if (editor.mode == PlanEditorMode.Edit && editor.priorityId != null) {
+                    Button(
+                        onClick = { onToggleDone(editor.priorityId, !editor.isDone) },
+                    ) {
+                        Text(
+                            stringResource(
+                                if (editor.isDone) Res.string.plan_reopen else Res.string.plan_complete
+                            )
+                        )
+                    }
+                }
+
                 Button(
                     onClick = onSave,
                     enabled = editor.title.isNotBlank()

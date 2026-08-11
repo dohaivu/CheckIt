@@ -15,7 +15,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.Checkbox
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CalendarViewWeek
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -23,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -30,6 +35,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.plan_add_task
+import checkit.shared.generated.resources.plan_period_day
+import checkit.shared.generated.resources.plan_period_month
+import checkit.shared.generated.resources.plan_period_quarter
+import checkit.shared.generated.resources.plan_period_week
+import checkit.shared.generated.resources.plan_period_year
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.PlanPeriod
 import com.checkit.domain.PlanPriority
@@ -42,13 +52,13 @@ import com.checkit.ui.tasks.cardColor
 import com.checkit.ui.tasks.isOverdue
 import com.checkit.ui.tasks.views.FlatBaseTaskRow
 import com.checkit.ui.tasks.views.TaskTitleRow
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun PlanPriorityList(
     nodes: List<PlanPriorityNode>,
     focus: PlanPeriod,
-    onToggleDone: (Long, Boolean) -> Unit,
     onEditPriority: (PlanPriority) -> Unit,
     onAddTaskClick: (PlanPriority) -> Unit,
     onOpenTask: (TaskItem) -> Unit,
@@ -64,7 +74,6 @@ internal fun PlanPriorityList(
                 node = node,
                 depth = 0,
                 focus = focus,
-                onToggleDone = onToggleDone,
                 onEditPriority = onEditPriority,
                 onAddTaskClick = onAddTaskClick,
                 onOpenTask = onOpenTask,
@@ -75,7 +84,6 @@ internal fun PlanPriorityList(
                     node = child,
                     depth = 1,
                     focus = focus,
-                    onToggleDone = onToggleDone,
                     onEditPriority = onEditPriority,
                     onAddTaskClick = onAddTaskClick,
                     onOpenTask = onOpenTask,
@@ -91,7 +99,6 @@ private fun PriorityItem(
     node: PlanPriorityNode,
     depth: Int,
     focus: PlanPeriod,
-    onToggleDone: (Long, Boolean) -> Unit,
     onEditPriority: (PlanPriority) -> Unit,
     onAddTaskClick: (PlanPriority) -> Unit,
     onOpenTask: (TaskItem) -> Unit,
@@ -108,7 +115,6 @@ private fun PriorityItem(
             priority = priority,
             showAddTask = focus == PlanPeriod.Week || focus == PlanPeriod.Day,
             onClick = onZoomIntoPriority,
-            onToggleDone = onToggleDone,
             onEditPriority = onEditPriority,
             onAddTaskClick = onAddTaskClick
         )
@@ -136,7 +142,6 @@ private fun PriorityHeader(
     priority: PlanPriority,
     showAddTask: Boolean,
     onClick: (() -> Unit)?,
-    onToggleDone: (Long, Boolean) -> Unit,
     onEditPriority: (PlanPriority) -> Unit,
     onAddTaskClick: (PlanPriority) -> Unit
 ) {
@@ -150,9 +155,17 @@ private fun PriorityHeader(
             },
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Checkbox(
-            checked = priority.isDone,
-            onCheckedChange = { checked -> onToggleDone(priority.id, checked) }
+        Icon(
+            imageVector = priority.periodPlan.period.periodIcon(),
+            contentDescription = stringResource(priority.periodPlan.period.periodLabelRes()),
+            modifier = Modifier
+                .padding(start = 16.dp, end = 12.dp)
+                .size(22.dp),
+            tint = if (priority.isDone) {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            } else {
+                MaterialTheme.colorScheme.primary
+            }
         )
         Column(
             modifier = Modifier.weight(1f),
@@ -268,4 +281,20 @@ private fun Int.toTimeLabel(): String {
     val hour = this / 60
     val minute = this % 60
     return "${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}"
+}
+
+private fun PlanPeriod.periodIcon(): ImageVector = when (this) {
+    PlanPeriod.Year -> Icons.Default.DateRange
+    PlanPeriod.Quarter -> Icons.Default.GridView
+    PlanPeriod.Month -> Icons.Default.CalendarMonth
+    PlanPeriod.Week -> Icons.Default.CalendarViewWeek
+    PlanPeriod.Day -> Icons.Default.Today
+}
+
+private fun PlanPeriod.periodLabelRes(): StringResource = when (this) {
+    PlanPeriod.Year -> Res.string.plan_period_year
+    PlanPeriod.Quarter -> Res.string.plan_period_quarter
+    PlanPeriod.Month -> Res.string.plan_period_month
+    PlanPeriod.Week -> Res.string.plan_period_week
+    PlanPeriod.Day -> Res.string.plan_period_day
 }

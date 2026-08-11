@@ -98,7 +98,8 @@ class PeriodPlanViewModel(
                     priorityId = priority.id,
                     parentId = priority.parentId,
                     title = priority.title,
-                    note = priority.note
+                    note = priority.note,
+                    isDone = priority.isDone
                 )
             )
         }
@@ -167,6 +168,11 @@ class PeriodPlanViewModel(
     fun toggleDone(priorityId: Long, isDone: Boolean) {
         viewModelScope.launch {
             togglePlanPriorityDone(priorityId, isDone)
+            _uiState.update { state ->
+                state.copy(
+                    editor = state.editor?.takeIf { it.priorityId == priorityId }?.copy(isDone = isDone)
+                )
+            }
         }
     }
 
