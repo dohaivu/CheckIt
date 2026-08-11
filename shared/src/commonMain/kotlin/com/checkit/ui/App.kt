@@ -316,6 +316,8 @@ fun CheckItApp(
                             editor = editor,
                             availableLists = taskUiState.board.lists,
                             availableTags = taskUiState.board.tags,
+                            availableKeyResults = taskUiState.board.keyResults,
+                            availablePlanPriorities = taskUiState.board.planPriorities,
                             actions = TaskEditorActions(
                                 onDismiss = viewModels.task::dismissEditor,
                                 onSave = viewModels.task::saveEditor,

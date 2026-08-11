@@ -4,27 +4,32 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.checkit.domain.KeyResult
 import com.checkit.domain.ListItem
+import com.checkit.domain.PlanPriority
 import com.checkit.domain.TagItem
-import com.checkit.ui.components.icons.Target
 import com.checkit.ui.theme.materialIcon
 import com.checkit.ui.theme.toColor
 
 @Composable
 internal fun SupportingPills(
-    list: ListItem?,
-    tags: List<TagItem>,
-    overflowCount: Int = 0
+    list: ListItem? = null,
+    planPriority: PlanPriority? = null,
+    keyResult: KeyResult? = null,
+    tags: List<TagItem> = emptyList(),
+    overflowCount: Int = 0,
+    modifier: Modifier = Modifier
 ) {
-    if (list == null && tags.isEmpty() && overflowCount == 0) return
+    if (list == null && planPriority == null && keyResult == null && tags.isEmpty() && overflowCount == 0) return
     FlowRow(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
@@ -35,6 +40,9 @@ internal fun SupportingPills(
                 iconTint = it.color.toColor()
             )
         }
+        planPriority?.let { PlanPriorityPill(it) }
+        keyResult?.let { KeyResultPill(it) }
+
         tags.forEach { tag -> TagPill(tag = tag) }
         if (overflowCount > 0) {
             Text(
@@ -45,4 +53,22 @@ internal fun SupportingPills(
             )
         }
     }
+}
+
+@Composable
+internal fun PlanPriorityPill(priority: PlanPriority) {
+    DetailChip(
+        icon = Icons.Default.Bolt,
+        label = priority.title,
+        iconTint = MaterialTheme.colorScheme.tertiary
+    )
+}
+
+@Composable
+internal fun KeyResultPill(keyResult: KeyResult) {
+    DetailChip(
+        icon = Icons.Default.Bolt,
+        label = keyResult.title,
+        iconTint = MaterialTheme.colorScheme.primary
+    )
 }

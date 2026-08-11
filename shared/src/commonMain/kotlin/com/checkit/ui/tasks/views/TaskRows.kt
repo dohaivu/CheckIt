@@ -58,7 +58,7 @@ import com.checkit.ui.tasks.toDurationLabel
 internal fun TaskRow(
     task: TaskItem,
     onClick: () -> Unit,
-    list: ListItem? = null,
+    showList: Boolean = true,
     displayType: TaskListDisplayType = TaskListDisplayType.Standard
 ) {
     BaseTaskRow(
@@ -70,8 +70,8 @@ internal fun TaskRow(
         Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
             when (displayType) {
                 TaskListDisplayType.Brief -> BriefTaskRowContent(task)
-                TaskListDisplayType.Standard -> StandardTaskRowContent(task, list)
-                TaskListDisplayType.Detail -> DetailTaskRowContent(task, list)
+                TaskListDisplayType.Standard -> StandardTaskRowContent(task, showList)
+                TaskListDisplayType.Detail -> DetailTaskRowContent(task, showList)
             }
         }
     }
@@ -81,7 +81,7 @@ internal fun TaskRow(
 internal fun NoteRow(
     note: NoteItem,
     onClick: () -> Unit,
-    list: ListItem? = null,
+    showList: Boolean = true,
     displayType: TaskListDisplayType = TaskListDisplayType.Standard
 ) {
     BaseTaskRow(
@@ -93,8 +93,8 @@ internal fun NoteRow(
         Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
             when (displayType) {
                 TaskListDisplayType.Brief -> BriefNoteRowContent(note)
-                TaskListDisplayType.Standard -> StandardNoteRowContent(note, list)
-                TaskListDisplayType.Detail -> DetailNoteRowContent(note, list)
+                TaskListDisplayType.Standard -> StandardNoteRowContent(note, showList)
+                TaskListDisplayType.Detail -> DetailNoteRowContent(note, showList)
             }
         }
     }
@@ -273,7 +273,7 @@ internal fun BriefTaskRowContent(task: TaskItem) {
 }
 
 @Composable
-internal fun StandardTaskRowContent(task: TaskItem, list: ListItem?) {
+internal fun StandardTaskRowContent(task: TaskItem, showList: Boolean) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -283,12 +283,18 @@ internal fun StandardTaskRowContent(task: TaskItem, list: ListItem?) {
         TaskTitleRow(task, descriptionMaxLines = 0)
         DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes, isOverdue = task.isOverdue())
         task.subtasks.takeIf { it.isNotEmpty() }?.let { SubtaskProgressText(task) }
-//        SupportingPills(list = list, tags = task.tags.take(2), overflowCount = (task.tags.size - 2).coerceAtLeast(0))
+        SupportingPills(
+            list = if (showList) task.list else null,
+            planPriority = task.planPriority,
+            keyResult = task.keyResult,
+            tags = task.tags.take(2),
+            overflowCount = (task.tags.size - 2).coerceAtLeast(0)
+        )
     }
 }
 
 @Composable
-internal fun DetailTaskRowContent(task: TaskItem, list: ListItem?) {
+internal fun DetailTaskRowContent(task: TaskItem, showList: Boolean) {
     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         TaskTitleRow(task, descriptionMaxLines = 3)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -298,7 +304,12 @@ internal fun DetailTaskRowContent(task: TaskItem, list: ListItem?) {
 //            if (task.reminders.isNotEmpty()) DetailChip(Icons.Default.Notifications, "${task.reminders.size} reminders")
         }
         SubtaskBriefList(task.subtasks)
-        SupportingPills(list = list, tags = task.tags)
+        SupportingPills(
+            list = if (showList) task.list else null,
+            planPriority = task.planPriority,
+            keyResult = task.keyResult,
+            tags = task.tags
+        )
     }
 }
 
@@ -323,7 +334,7 @@ internal fun BriefNoteRowContent(note: NoteItem) {
 }
 
 @Composable
-internal fun StandardNoteRowContent(note: NoteItem, list: ListItem?) {
+internal fun StandardNoteRowContent(note: NoteItem, showList: Boolean) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -343,12 +354,23 @@ internal fun StandardNoteRowContent(note: NoteItem, list: ListItem?) {
                 }
             }
         }
-        note.date?.let { DetailChip(Icons.Default.Event, it.compact(), isHighlighted = note.isOverdue()) }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            note.date?.let { DetailChip(Icons.Default.Event, it.compact(), isHighlighted = note.isOverdue()) }
+            SupportingPills(
+                list = if (showList) note.list else null,
+                tags = note.tags,
+                overflowCount = 0
+            )
+        }
     }
 }
 
 @Composable
-internal fun DetailNoteRowContent(note: NoteItem, list: ListItem?) {
+internal fun DetailNoteRowContent(note: NoteItem, showList: Boolean) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -371,7 +393,7 @@ internal fun DetailNoteRowContent(note: NoteItem, list: ListItem?) {
         note.date?.let { DetailChip(Icons.Default.Event, it.compact(), isHighlighted = note.isOverdue()) }
 
         SupportingPills(
-            list = list,
+            list = if (showList) note.list else null,
             tags = note.tags,
             overflowCount = 0
         )

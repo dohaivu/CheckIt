@@ -50,7 +50,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
+import com.checkit.domain.KeyResult
 import com.checkit.domain.ListItem
+import com.checkit.domain.PlanPriority
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TagItem
@@ -59,8 +61,11 @@ import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DatePicker
+import com.checkit.ui.components.DetailChip
 import com.checkit.ui.components.EditorOverflowMenu
+import com.checkit.ui.components.KeyResultPill
 import com.checkit.ui.components.ListPicker
+import com.checkit.ui.components.PlanPriorityPill
 import com.checkit.ui.components.PriorityPicker
 import com.checkit.ui.components.RichTextComposer
 import com.checkit.ui.components.TagPicker
@@ -74,6 +79,8 @@ internal fun TaskEditorSheet(
     editor: TaskEditorState,
     availableLists: List<ListItem>,
     availableTags: List<TagItem>,
+    availableKeyResults: List<KeyResult>,
+    availablePlanPriorities: List<PlanPriority>,
     actions: TaskEditorActions
 ) {
     val onDismiss = actions.onDismiss
@@ -164,6 +171,8 @@ internal fun TaskEditorSheet(
                             form = editor,
                             availableLists = availableLists,
                             availableTags = availableTags,
+                            availableKeyResults = availableKeyResults,
+                            availablePlanPriorities = availablePlanPriorities,
                             onNameChange = onTaskNameChange,
                             onListChange = onTaskListChange,
                             onDescriptionChange = onTaskDescriptionChange,
@@ -398,6 +407,8 @@ private fun TaskFormContent(
     form: TaskEditorState.TaskForm,
     availableLists: List<ListItem>,
     availableTags: List<TagItem>,
+    availableKeyResults: List<KeyResult>,
+    availablePlanPriorities: List<PlanPriority>,
     onNameChange: (String) -> Unit,
     onListChange: (Long) -> Unit,
     onDescriptionChange: (String) -> Unit,
@@ -516,6 +527,16 @@ private fun TaskFormContent(
                     onListChange = onListChange,
                     enabled = enabled
                 )
+            }
+            form.planPriorityId?.let { priorityId ->
+                availablePlanPriorities.find { it.id == priorityId }?.let { priority ->
+                    PlanPriorityPill(priority)
+                }
+            }
+            form.keyResultId?.let { krId ->
+                availableKeyResults.find { it.id == krId }?.let { kr ->
+                    KeyResultPill(kr)
+                }
             }
             TagPicker(
                 availableTags = availableTags,

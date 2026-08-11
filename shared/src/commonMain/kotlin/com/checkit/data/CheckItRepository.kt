@@ -348,6 +348,7 @@ class RoomCheckItRepository(
                 objectives = objectivesById.values.toList(),
                 lists = domainLists,
                 keyResults = domainKeyResults,
+                planPriorities = priorityById.values.toList(),
                 filters = rows.filters.map { it.toDomain() },
                 tasks = rows.tasks.map { task ->
                     val listId = taskListMap[task.id]

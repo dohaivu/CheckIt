@@ -9,6 +9,7 @@ data class TaskBoard(
     val objectives: List<Objective> = emptyList(),
     val lists: List<ListItem> = emptyList(),
     val keyResults: List<KeyResult> = emptyList(),
+    val planPriorities: List<PlanPriority> = emptyList(),
     val filters: List<TaskFilter> = emptyList(),
     val tasks: List<TaskItem> = emptyList(),
     val notes: List<NoteItem> = emptyList(),
