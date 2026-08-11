@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.checkit.domain.PlanFocus
 import com.checkit.domain.PlanPeriod
 import com.checkit.domain.PlanPriority
+import com.checkit.domain.startOf
 import com.checkit.domain.usecase.AddPlanPriorityUseCase
 import com.checkit.domain.usecase.DeletePlanPriorityUseCase
 import com.checkit.domain.usecase.LinkTaskToPlanPriorityUseCase
@@ -58,7 +59,14 @@ class PeriodPlanViewModel(
     }
 
     fun selectFocus(focus: PlanFocus) {
-        _uiState.update { it.copy(focus = focus, isLoading = true, editor = null) }
+        val normalized = focus.copy(anchorDate = focus.period.startOf(focus.anchorDate))
+        _uiState.update { state ->
+            if (state.focus == normalized && state.workspace != null) {
+                state
+            } else {
+                state.copy(focus = normalized, isLoading = true, editor = null)
+            }
+        }
     }
 
     fun shiftPeriod(delta: Int) {

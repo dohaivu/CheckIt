@@ -8,14 +8,13 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -25,6 +24,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import checkit.shared.generated.resources.Res
+import checkit.shared.generated.resources.plan_screen_title
 import com.checkit.domain.PlanFocus
 import com.checkit.domain.PlanPeriod
 import com.checkit.ui.components.HelpContent
@@ -33,22 +34,19 @@ import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.okr.GoalEditorSheet
 import com.checkit.ui.okr.GoalItemType
+import com.checkit.ui.okr.GoalScreen
 import com.checkit.ui.okr.GoalViewModel
 import com.checkit.ui.okr.KeyResultViewModel
 import com.checkit.ui.okr.ObjectiveEditorSheet
-import com.checkit.ui.okr.GoalScreen
+import com.checkit.ui.okr.ObjectiveViewModel
 import com.checkit.ui.plan.PeriodPlanScreen
 import com.checkit.ui.plan.PeriodPlanViewModel
 import com.checkit.ui.tasks.list.ListEditorSheet
 import com.checkit.ui.tasks.list.ListViewModel
-import com.checkit.ui.okr.ObjectiveViewModel
 import com.checkit.ui.tasks.views.ViewOptionsMenu
 import com.checkit.ui.theme.materialIcon
 import com.checkit.ui.theme.toColor
 import com.checkit.ui.today
-import checkit.shared.generated.resources.Res
-import checkit.shared.generated.resources.plan_add_priority
-import checkit.shared.generated.resources.plan_screen_title
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 
@@ -123,11 +121,11 @@ internal fun TaskScreen(
                 val goalSelection = goalState.selectedItemType
                 if (state.isPlanSelected) {
                     if (planState.focus.period != PlanPeriod.Day) {
-                        ExtendedFloatingActionButton(
-                            onClick = planViewModel::startAddPriority,
-                            icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                            text = { Text(stringResource(Res.string.plan_add_priority)) }
-                        )
+                        FloatingActionButton(
+                            onClick = planViewModel::startAddPriority
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = "Add")
+                        }
                     }
                 } else if (goalSelection != null) {
                     when (goalSelection) {
