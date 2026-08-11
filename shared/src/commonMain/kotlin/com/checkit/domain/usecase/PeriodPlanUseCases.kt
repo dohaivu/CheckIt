@@ -98,7 +98,7 @@ class ObservePlanWorkspaceUseCase(
         fun nodeFor(priority: PlanPriority, withChildren: Boolean): PlanPriorityNode {
             val children = if (withChildren) {
                 childrenByParent[priority.id].orEmpty()
-                    .sortedBy { it.sortOrder }
+                    .sortedBy { it.periodPlan.startEpochDays}
                     .map { nodeFor(it, withChildren = false) }
             } else {
                 emptyList()

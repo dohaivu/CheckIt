@@ -52,6 +52,7 @@ import com.checkit.ui.localizedMonthTitle
 import com.checkit.ui.localizedShortMonthName
 import com.checkit.ui.localizedShortName
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.number
 import kotlinx.datetime.toLocalIsoWeekDate
 import org.jetbrains.compose.resources.stringResource
 
@@ -258,10 +259,10 @@ internal fun PlanFocus.title(): String = when (period) {
 
 /** Compact per-level label for the breadcrumb; drops year/month info already shown by ancestor crumbs. */
 @Composable
-private fun PlanFocus.crumbLabel(): String = when (period) {
+internal fun PlanFocus.crumbLabel(): String = when (period) {
     PlanPeriod.Year -> "${start.year}"
     PlanPeriod.Quarter -> {
-        val quarter = ((start.monthNumber - 1) / 3) + 1
+        val quarter = ((start.month.number - 1) / 3) + 1
         "Q$quarter"
     }
     PlanPeriod.Month -> start.month.localizedName()

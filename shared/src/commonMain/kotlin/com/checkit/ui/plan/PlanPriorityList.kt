@@ -41,12 +41,15 @@ import checkit.shared.generated.resources.plan_period_quarter
 import checkit.shared.generated.resources.plan_period_week
 import checkit.shared.generated.resources.plan_period_year
 import com.checkit.domain.DailyPlanItem
+import com.checkit.domain.PeriodPlan
+import com.checkit.domain.PlanFocus
 import com.checkit.domain.PlanPeriod
 import com.checkit.domain.PlanPriority
 import com.checkit.domain.PlanPriorityNode
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
 import com.checkit.ui.components.DateTimeRangeDetailChip
+import com.checkit.ui.components.DetailChip
 import com.checkit.ui.components.TagPill
 import com.checkit.ui.tasks.cardColor
 import com.checkit.ui.tasks.isOverdue
@@ -118,6 +121,12 @@ private fun PriorityItem(
             onEditPriority = onEditPriority,
             onAddTaskClick = onAddTaskClick
         )
+        if (depth == 1) {
+            PeriodPlanChip(
+                periodPlan = priority.periodPlan,
+                modifier = Modifier
+            )
+        }
         Column(
             modifier = Modifier.padding(start = 24.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -155,18 +164,6 @@ private fun PriorityHeader(
             },
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = priority.periodPlan.period.periodIcon(),
-            contentDescription = stringResource(priority.periodPlan.period.periodLabelRes()),
-            modifier = Modifier
-                .padding(start = 16.dp, end = 12.dp)
-                .size(22.dp),
-            tint = if (priority.isDone) {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            } else {
-                MaterialTheme.colorScheme.primary
-            }
-        )
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(2.dp)
@@ -208,6 +205,16 @@ private fun PriorityHeader(
             }
         }
     }
+}
+
+@Composable
+private fun PeriodPlanChip(periodPlan: PeriodPlan, modifier: Modifier = Modifier) {
+    DetailChip(
+        icon = periodPlan.period.periodIcon(),
+        label = PlanFocus(periodPlan.period, periodPlan.startDate).crumbLabel(),
+        iconTint = MaterialTheme.colorScheme.primary,
+        modifier = modifier
+    )
 }
 
 @Composable
