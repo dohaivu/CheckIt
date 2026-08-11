@@ -15,6 +15,7 @@ import com.checkit.domain.KeyResult
 import com.checkit.domain.ListItem
 import com.checkit.domain.PlanPriority
 import com.checkit.domain.TagItem
+import com.checkit.ui.plan.PlanPriorityPill
 import com.checkit.ui.theme.materialIcon
 import com.checkit.ui.theme.toColor
 
@@ -53,15 +54,6 @@ internal fun SupportingPills(
             )
         }
     }
-}
-
-@Composable
-internal fun PlanPriorityPill(priority: PlanPriority) {
-    DetailChip(
-        icon = Icons.Default.Bolt,
-        label = priority.title,
-        iconTint = MaterialTheme.colorScheme.tertiary
-    )
 }
 
 @Composable

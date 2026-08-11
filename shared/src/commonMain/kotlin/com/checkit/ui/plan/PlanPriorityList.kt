@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CalendarViewWeek
 import androidx.compose.material.icons.filled.DateRange
@@ -216,6 +217,16 @@ private fun PeriodPlanChip(periodPlan: PeriodPlan, modifier: Modifier = Modifier
         modifier = modifier
     )
 }
+
+@Composable
+internal fun PlanPriorityPill(priority: PlanPriority) {
+    DetailChip(
+        icon = Icons.Default.Bolt,
+        label = "${PlanFocus(priority.periodPlan.period, priority.periodPlan.startDate).crumbLabel()}: ${priority.title}",
+        iconTint = MaterialTheme.colorScheme.tertiary
+    )
+}
+
 
 @Composable
 private fun PriorityTaskRow(

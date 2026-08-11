@@ -53,23 +53,22 @@ import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.KeyResult
 import com.checkit.domain.ListItem
 import com.checkit.domain.PlanPriority
+import com.checkit.domain.TagItem
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
-import com.checkit.domain.TagItem
 import com.checkit.domain.TaskType
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DatePicker
-import com.checkit.ui.components.DetailChip
 import com.checkit.ui.components.EditorOverflowMenu
 import com.checkit.ui.components.KeyResultPill
 import com.checkit.ui.components.ListPicker
-import com.checkit.ui.components.PlanPriorityPill
 import com.checkit.ui.components.PriorityPicker
 import com.checkit.ui.components.RichTextComposer
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.components.TimeRangePicker
+import com.checkit.ui.plan.PlanPriorityPill
 import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
 
