@@ -4,15 +4,18 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -22,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.checkit.domain.PlanFocus
 import com.checkit.ui.components.HelpContent
 import com.checkit.ui.components.HelpTooltip
 import com.checkit.ui.components.TagOptionMenu
@@ -32,13 +36,20 @@ import com.checkit.ui.okr.GoalViewModel
 import com.checkit.ui.okr.KeyResultViewModel
 import com.checkit.ui.okr.ObjectiveEditorSheet
 import com.checkit.ui.okr.GoalScreen
+import com.checkit.ui.plan.PeriodPlanScreen
+import com.checkit.ui.plan.PeriodPlanViewModel
 import com.checkit.ui.tasks.list.ListEditorSheet
 import com.checkit.ui.tasks.list.ListViewModel
 import com.checkit.ui.okr.ObjectiveViewModel
 import com.checkit.ui.tasks.views.ViewOptionsMenu
 import com.checkit.ui.theme.materialIcon
 import com.checkit.ui.theme.toColor
+import com.checkit.ui.today
+import checkit.shared.generated.resources.Res
+import checkit.shared.generated.resources.plan_add_priority
+import checkit.shared.generated.resources.plan_screen_title
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun TaskScreen(
@@ -48,6 +59,7 @@ internal fun TaskScreen(
     keyResultViewModel: KeyResultViewModel,
     objectiveViewModel: ObjectiveViewModel,
     listViewModel: ListViewModel,
+    planViewModel: PeriodPlanViewModel,
     onOpenTags: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -56,6 +68,7 @@ internal fun TaskScreen(
     val goalState by goalViewModel.uiState.collectAsState()
     val objectiveState by objectiveViewModel.uiState.collectAsState()
     val listState by listViewModel.uiState.collectAsState()
+    val planState by planViewModel.uiState.collectAsState()
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -73,8 +86,13 @@ internal fun TaskScreen(
                     selectedListId = state.selectedListId,
                     selectedGoalId = state.selectedGoalId,
                     isTagsSelected = false,
+                    isPlanSelected = state.isPlanSelected,
                     onBoardClick = {
                         viewModel.selectBoard()
+                        scope.launch { drawerState.close() }
+                    },
+                    onPlanClick = {
+                        viewModel.selectPlan()
                         scope.launch { drawerState.close() }
                     },
                     onListClick = { listId ->
@@ -102,7 +120,13 @@ internal fun TaskScreen(
             containerColor = MaterialTheme.colorScheme.background,
             floatingActionButton = {
                 val goalSelection = goalState.selectedItemType
-                if (goalSelection != null) {
+                if (state.isPlanSelected) {
+                    ExtendedFloatingActionButton(
+                        onClick = planViewModel::startAddPriority,
+                        icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                        text = { Text(stringResource(Res.string.plan_add_priority)) }
+                    )
+                } else if (goalSelection != null) {
                     when (goalSelection) {
                         is GoalItemType.Objective -> TaskActionFab(
                             onKeyResultClick = { keyResultViewModel.openNewKeyResult(goalSelection.objectiveId) }
@@ -141,6 +165,11 @@ internal fun TaskScreen(
                         val titleColor: Color
                         val titleText: String
                         when {
+                            state.isPlanSelected -> {
+                                titleIcon = materialIcon("Flag")
+                                titleColor = MaterialTheme.colorScheme.primary
+                                titleText = stringResource(Res.string.plan_screen_title)
+                            }
                             state.selectedGoal != null -> {
                                 titleIcon = materialIcon(state.selectedGoal.icon)
                                 titleColor = state.selectedGoal.color.toColor()
@@ -169,6 +198,7 @@ internal fun TaskScreen(
                         )
                     },
                     actions = {
+                        if (state.isPlanSelected) return@TinyTopAppBar
                         if (state.selectedGoal != null) {
                             HelpTooltip(markdownContent = HelpContent.okrTips)
                         }
@@ -200,6 +230,23 @@ internal fun TaskScreen(
                 Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
+            } else if (state.isPlanSelected) {
+                PeriodPlanScreen(
+                    state = planState,
+                    onFocusSelected = planViewModel::selectFocus,
+                    onPreviousPeriod = { planViewModel.shiftPeriod(-1) },
+                    onNextPeriod = { planViewModel.shiftPeriod(1) },
+                    onCurrentPeriod = {
+                        planViewModel.selectFocus(PlanFocus(planState.focus.period, today()))
+                    },
+                    onAddPriority = planViewModel::startAddPriority,
+                    onToggleDone = planViewModel::toggleDone,
+                    onEditPriority = planViewModel::startEditPriority,
+                    onAddTask = planViewModel::addTask,
+                    onUnlinkTask = planViewModel::unlinkTask,
+                    onOpenTask = viewModel::openTask,
+                    modifier = contentModifier
+                )
             } else if (state.selectedView == TaskWorkspaceView.Goal && state.selectedGoal != null) {
                 GoalScreen(
                     goal = state.selectedGoal,

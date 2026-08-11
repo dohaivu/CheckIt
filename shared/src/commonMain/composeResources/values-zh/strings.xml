@@ -139,4 +139,36 @@
     <string name="plan_assist_banner_dismiss">稍后</string>
     <string name="settings_auto_carry_title">自动转移未完成项</string>
     <string name="settings_auto_carry_subtitle">自动把昨天未完成的项带到今天</string>
+
+    <string name="plan_screen_title">计划</string>
+    <string name="plan_period_year">年</string>
+    <string name="plan_period_quarter">季度</string>
+    <string name="plan_period_month">月</string>
+    <string name="plan_period_week">周</string>
+    <string name="plan_period_day">日</string>
+    <string name="plan_previous_period">上一周期</string>
+    <string name="plan_next_period">下一周期</string>
+    <string name="plan_edit_priority">编辑优先级</string>
+    <string name="plan_delete_priority">删除优先级</string>
+    <string name="plan_unlink_task">解除任务</string>
+    <string name="plan_add_task">添加任务</string>
+    <string name="plan_new_priority">新建优先级</string>
+    <string name="plan_edit_priority_title">编辑优先级</string>
+    <string name="plan_priority_title_label">优先级标题</string>
+    <string name="plan_note_label">备注</string>
+    <string name="plan_parent_label">父级</string>
+    <string name="plan_parent_none">无</string>
+    <string name="plan_add">添加</string>
+    <string name="plan_save">保存</string>
+    <string name="plan_close">关闭</string>
+    <string name="plan_priority_added">已添加优先级</string>
+    <string name="plan_priority_saved">已保存优先级</string>
+    <string name="plan_priority_deleted">已删除优先级</string>
+    <string name="plan_save_error">无法保存优先级</string>
+    <string name="plan_task_added">已添加任务</string>
+    <string name="plan_task_add_error">无法添加任务</string>
+    <string name="plan_link_error">无法关联任务</string>
+    <string name="plan_empty_title">还没有优先级</string>
+    <string name="plan_empty_subtitle">先添加重要事项，随着周期收窄再逐步拆解。</string>
+    <string name="plan_add_priority">添加优先级</string>
 </resources>

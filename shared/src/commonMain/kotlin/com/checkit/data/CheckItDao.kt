@@ -685,4 +685,127 @@ interface CheckItDao {
 
     @Query("UPDATE notes SET trashedAtMillis = NULL, editedAtMillis = :editedAtMillis WHERE id = :noteId")
     suspend fun restoreNote(noteId: Long, editedAtMillis: Long)
+
+    // ---------------- Period Plan ----------------
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPeriodPlan(plan: PeriodPlanEntity): Long
+
+    @Query("SELECT * FROM period_plans ORDER BY startEpochDays ASC, id ASC")
+    fun observePeriodPlans(): Flow<List<PeriodPlanEntity>>
+
+    @Query(
+        "SELECT * FROM period_plans WHERE periodType = :periodType AND startEpochDays = :startEpochDays LIMIT 1"
+    )
+    suspend fun periodPlanFor(periodType: String, startEpochDays: Int): PeriodPlanEntity?
+
+    @Transaction
+    suspend fun getOrCreatePeriodPlan(
+        periodType: String,
+        startEpochDays: Int,
+        endEpochDays: Int
+    ): Long {
+        val existing = periodPlanFor(periodType, startEpochDays)
+        if (existing != null) return existing.id
+        return insertPeriodPlan(
+            PeriodPlanEntity(
+                periodType = periodType,
+                startEpochDays = startEpochDays,
+                endEpochDays = endEpochDays
+            )
+        )
+    }
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPlanPriority(priority: PlanPriorityEntity): Long
+
+    @Query(
+        """
+        UPDATE plan_priorities
+        SET title = :title,
+            note = :note,
+            parentId = :parentId,
+            sortOrder = :sortOrder,
+            isDone = :isDone,
+            completedAtMillis = :completedAtMillis,
+            updatedAtMillis = :updatedAtMillis
+        WHERE id = :priorityId
+        """
+    )
+    suspend fun updatePlanPriority(
+        priorityId: Long,
+        title: String,
+        note: String,
+        parentId: Long?,
+        sortOrder: Int,
+        isDone: Boolean,
+        completedAtMillis: Long?,
+        updatedAtMillis: Long
+    )
+
+    @Query("DELETE FROM plan_priorities WHERE id = :priorityId")
+    suspend fun deletePlanPriority(priorityId: Long)
+
+    @Transaction
+    suspend fun deletePlanPriorityWithJoins(priorityId: Long) {
+        deletePlanPriorityTasksForPriority(priorityId)
+        deletePlanPriorityDailyPlanItemsForPriority(priorityId)
+        deletePlanPriority(priorityId)
+    }
+
+    @Query("SELECT * FROM plan_priorities ORDER BY sortOrder ASC, id ASC")
+    fun observePlanPriorities(): Flow<List<PlanPriorityEntity>>
+
+    @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM plan_priorities WHERE periodPlanId = :periodPlanId")
+    suspend fun nextPlanPrioritySortOrder(periodPlanId: Long): Int
+
+    @Query("UPDATE plan_priorities SET sortOrder = :sortOrder, updatedAtMillis = :updatedAtMillis WHERE id = :priorityId")
+    suspend fun updatePlanPrioritySortOrder(priorityId: Long, sortOrder: Int, updatedAtMillis: Long)
+
+    @Query(
+        """
+        UPDATE plan_priorities
+        SET isDone = :isDone,
+            completedAtMillis = :completedAtMillis,
+            updatedAtMillis = :updatedAtMillis
+        WHERE id = :priorityId
+        """
+    )
+    suspend fun setPlanPriorityDone(
+        priorityId: Long,
+        isDone: Boolean,
+        completedAtMillis: Long?,
+        updatedAtMillis: Long
+    )
+
+    @Query(
+        "UPDATE plan_priorities SET parentId = :parentId, updatedAtMillis = :updatedAtMillis WHERE id = :priorityId"
+    )
+    suspend fun setPlanPriorityParent(priorityId: Long, parentId: Long?, updatedAtMillis: Long)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPlanPriorityTask(link: PlanPriorityTaskEntity)
+
+    @Query("DELETE FROM plan_priority_tasks WHERE priorityId = :priorityId AND taskId = :taskId")
+    suspend fun deletePlanPriorityTask(priorityId: Long, taskId: Long)
+
+    @Query("DELETE FROM plan_priority_tasks WHERE priorityId = :priorityId")
+    suspend fun deletePlanPriorityTasksForPriority(priorityId: Long)
+
+    @Query("SELECT * FROM plan_priority_tasks")
+    fun observePlanPriorityTasks(): Flow<List<PlanPriorityTaskEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPlanPriorityDailyPlanItem(link: PlanPriorityDailyPlanItemEntity)
+
+    @Query(
+        "DELETE FROM plan_priority_daily_plan_items WHERE priorityId = :priorityId AND dailyPlanItemId = :dailyPlanItemId"
+    )
+    suspend fun deletePlanPriorityDailyPlanItem(priorityId: Long, dailyPlanItemId: Long)
+
+    @Query("DELETE FROM plan_priority_daily_plan_items WHERE priorityId = :priorityId")
+    suspend fun deletePlanPriorityDailyPlanItemsForPriority(priorityId: Long)
+
+    @Query("SELECT * FROM plan_priority_daily_plan_items")
+    fun observePlanPriorityDailyPlanItems(): Flow<List<PlanPriorityDailyPlanItemEntity>>
 }

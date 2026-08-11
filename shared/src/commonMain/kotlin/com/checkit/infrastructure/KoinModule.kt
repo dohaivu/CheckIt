@@ -19,9 +19,11 @@ import com.checkit.domain.usecase.AddJournalEntryUseCase
 import com.checkit.domain.usecase.AddListUseCase
 import com.checkit.domain.usecase.AddNoteUseCase
 import com.checkit.domain.usecase.AddObjectiveUseCase
+import com.checkit.domain.usecase.AddPlanPriorityUseCase
 import com.checkit.domain.usecase.AddSuggestedTaskToMyDayUseCase
 import com.checkit.domain.usecase.AddTagUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
+import com.checkit.domain.usecase.AddTaskToPlanPriorityUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
 import com.checkit.domain.usecase.AutoAddTodayTasksToMyDayUseCase
 import com.checkit.domain.usecase.BuildDayCloseSummaryUseCase
@@ -36,15 +38,20 @@ import com.checkit.domain.usecase.DeleteJournalEntryUseCase
 import com.checkit.domain.usecase.DeleteListUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteObjectiveUseCase
+import com.checkit.domain.usecase.DeletePlanPriorityUseCase
 import com.checkit.domain.usecase.DeleteTagUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
 import com.checkit.domain.usecase.IsTagNameTakenUseCase
+import com.checkit.domain.usecase.LinkDailyPlanItemToPlanPriorityUseCase
+import com.checkit.domain.usecase.LinkTaskToPlanPriorityUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
 import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
+import com.checkit.domain.usecase.ObservePlanWorkspaceUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.OpenNoteUseCase
 import com.checkit.domain.usecase.OpenTaskUseCase
+import com.checkit.domain.usecase.ReorderPlanPrioritiesUseCase
 import com.checkit.domain.usecase.RestoreNoteUseCase
 import com.checkit.domain.usecase.RestoreTaskUseCase
 import com.checkit.domain.usecase.SavePeriodReviewUseCase
@@ -53,6 +60,9 @@ import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.SmartScheduleDailyPlanUseCase
 import com.checkit.domain.usecase.SprintTransitionUseCase
 import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
+import com.checkit.domain.usecase.TogglePlanPriorityDoneUseCase
+import com.checkit.domain.usecase.UnlinkDailyPlanItemFromPlanPriorityUseCase
+import com.checkit.domain.usecase.UnlinkTaskFromPlanPriorityUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTagUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
@@ -61,6 +71,7 @@ import com.checkit.domain.usecase.UpdateJournalEntryUseCase
 import com.checkit.domain.usecase.UpdateListUseCase
 import com.checkit.domain.usecase.UpdateNoteUseCase
 import com.checkit.domain.usecase.UpdateObjectiveUseCase
+import com.checkit.domain.usecase.UpdatePlanPriorityUseCase
 import com.checkit.domain.usecase.UpdateTagSortOrderUseCase
 import com.checkit.domain.usecase.UpdateTagUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
@@ -71,6 +82,7 @@ import com.checkit.ui.myday.MyDayViewModel
 import com.checkit.ui.okr.GoalViewModel
 import com.checkit.ui.okr.KeyResultViewModel
 import com.checkit.ui.okr.ObjectiveViewModel
+import com.checkit.ui.plan.PeriodPlanViewModel
 import com.checkit.ui.reflect.ReflectViewModel
 import com.checkit.ui.settings.SettingsViewModel
 import com.checkit.ui.tasks.TaskViewModel
@@ -166,6 +178,17 @@ val provideInteractorModule = module {
     single { SelectTaskBoardItemsUseCase() }
     single { CheckInReminderPolicy(get(), get()) }
     single { DailyPlanScheduleReminderPolicy(get(), get()) }
+    single { ObservePlanWorkspaceUseCase(get()) }
+    single { AddPlanPriorityUseCase(get()) }
+    single { UpdatePlanPriorityUseCase(get()) }
+    single { DeletePlanPriorityUseCase(get()) }
+    single { TogglePlanPriorityDoneUseCase(get()) }
+    single { ReorderPlanPrioritiesUseCase(get()) }
+    single { LinkTaskToPlanPriorityUseCase(get()) }
+    single { UnlinkTaskFromPlanPriorityUseCase(get()) }
+    single { LinkDailyPlanItemToPlanPriorityUseCase(get()) }
+    single { UnlinkDailyPlanItemFromPlanPriorityUseCase(get()) }
+    single { AddTaskToPlanPriorityUseCase(get()) }
 }
 
 val provideDatabaseModule = module {
@@ -239,6 +262,18 @@ val provideViewModelModule = module {
             observePeriodReviews = get(),
             savePeriodReview = get(),
             buildDraft = get()
+        )
+    }
+    viewModel {
+        PeriodPlanViewModel(
+            observePlanWorkspace = get(),
+            addPlanPriority = get(),
+            updatePlanPriority = get(),
+            deletePlanPriority = get(),
+            togglePlanPriorityDone = get(),
+            linkTaskToPlanPriority = get(),
+            unlinkTaskFromPlanPriority = get(),
+            addTaskToPlanPriority = get()
         )
     }
     viewModel { SettingsViewModel(get(), get(), get(), get<AppReminderScheduler>()) }

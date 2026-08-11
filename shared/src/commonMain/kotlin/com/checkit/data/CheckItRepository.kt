@@ -5,6 +5,9 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DayCloseCommitResult
+import com.checkit.domain.PeriodPlan
+import com.checkit.domain.PlanPeriod
+import com.checkit.domain.PlanPriority
 import com.checkit.domain.PeriodReview
 import com.checkit.domain.ReviewPeriod
 import com.checkit.domain.ReviewSource
@@ -133,6 +136,31 @@ interface CheckItRepository {
     suspend fun openNote(noteId: Long)
     suspend fun trashNote(noteId: Long)
     suspend fun restoreNote(noteId: Long)
+
+    // ---------------- Period Plan ----------------
+
+    fun observePeriodPlans(): Flow<List<PeriodPlan>>
+    fun observePlanPriorities(): Flow<List<PlanPriority>>
+    fun observePlanPriorityTaskIds(): Flow<List<PlanPriorityTaskLink>>
+    fun observePlanPriorityDailyPlanItemIds(): Flow<List<PlanPriorityDailyPlanItemLink>>
+
+    suspend fun getOrCreatePeriodPlan(
+        period: PlanPeriod,
+        start: LocalDate,
+        endInclusive: LocalDate
+    ): PeriodPlan
+
+    suspend fun addPlanPriority(input: PlanPriorityWriteInput): Long
+    suspend fun updatePlanPriority(id: Long, input: PlanPriorityWriteInput)
+    suspend fun deletePlanPriority(id: Long)
+    suspend fun setPlanPriorityDone(id: Long, isDone: Boolean)
+    suspend fun setPlanPriorityParent(id: Long, parentId: Long?)
+    suspend fun reorderPlanPriorities(periodPlanId: Long, orderedIds: List<Long>)
+
+    suspend fun linkTaskToPriority(priorityId: Long, taskId: Long)
+    suspend fun unlinkTaskFromPriority(priorityId: Long, taskId: Long)
+    suspend fun linkDailyPlanItemToPriority(priorityId: Long, dailyPlanItemId: Long)
+    suspend fun unlinkDailyPlanItemFromPriority(priorityId: Long, dailyPlanItemId: Long)
 }
 
 data class DailyPlanItemTimeUpdate(
@@ -224,6 +252,27 @@ data class JournalEntryWriteInput(
     val moods: List<String> = emptyList(),
     val tagIds: List<Long> = emptyList(),
     val attachments: List<String> = emptyList()
+)
+
+data class PlanPriorityWriteInput(
+    val periodPlanId: Long,
+    val parentId: Long?,
+    val title: String,
+    val note: String = "",
+    val sortOrder: Int? = null,
+    val isDone: Boolean = false
+)
+
+data class PlanPriorityTaskLink(
+    val priorityId: Long,
+    val taskId: Long,
+    val sortOrder: Int
+)
+
+data class PlanPriorityDailyPlanItemLink(
+    val priorityId: Long,
+    val dailyPlanItemId: Long,
+    val sortOrder: Int
 )
 
 class RoomCheckItRepository(
@@ -922,6 +971,126 @@ class RoomCheckItRepository(
         dao.restoreNote(noteId, Clock.System.now().toEpochMilliseconds())
     }
 
+    override fun observePeriodPlans(): Flow<List<PeriodPlan>> =
+        dao.observePeriodPlans().map { entities -> entities.map { it.toDomain() } }
+
+    override fun observePlanPriorities(): Flow<List<PlanPriority>> =
+        dao.observePlanPriorities().map { entities -> entities.map { it.toDomain() } }
+
+    override fun observePlanPriorityTaskIds(): Flow<List<PlanPriorityTaskLink>> =
+        dao.observePlanPriorityTasks().map { links ->
+            links.map { PlanPriorityTaskLink(priorityId = it.priorityId, taskId = it.taskId, sortOrder = it.sortOrder) }
+        }
+
+    override fun observePlanPriorityDailyPlanItemIds(): Flow<List<PlanPriorityDailyPlanItemLink>> =
+        dao.observePlanPriorityDailyPlanItems().map { links ->
+            links.map {
+                PlanPriorityDailyPlanItemLink(
+                    priorityId = it.priorityId,
+                    dailyPlanItemId = it.dailyPlanItemId,
+                    sortOrder = it.sortOrder
+                )
+            }
+        }
+
+    override suspend fun getOrCreatePeriodPlan(
+        period: PlanPeriod,
+        start: LocalDate,
+        endInclusive: LocalDate
+    ): PeriodPlan {
+        val startEpochDays = start.toEpochDays().toInt()
+        val endEpochDays = endInclusive.toEpochDays().toInt()
+        val id = dao.getOrCreatePeriodPlan(period.name, startEpochDays, endEpochDays)
+        return PeriodPlan(
+            id = id,
+            period = period,
+            startEpochDays = startEpochDays,
+            endEpochDays = endEpochDays
+        )
+    }
+
+    override suspend fun addPlanPriority(input: PlanPriorityWriteInput): Long {
+        val now = Clock.System.now().toEpochMilliseconds()
+        return dao.insertPlanPriority(
+            PlanPriorityEntity(
+                periodPlanId = input.periodPlanId,
+                parentId = input.parentId,
+                title = input.title.trim(),
+                note = input.note,
+                sortOrder = input.sortOrder ?: dao.nextPlanPrioritySortOrder(input.periodPlanId),
+                isDone = input.isDone,
+                createdAtMillis = now,
+                updatedAtMillis = now,
+                completedAtMillis = if (input.isDone) now else null
+            )
+        )
+    }
+
+    override suspend fun updatePlanPriority(id: Long, input: PlanPriorityWriteInput) {
+        dao.updatePlanPriority(
+            priorityId = id,
+            title = input.title.trim(),
+            note = input.note,
+            parentId = input.parentId,
+            sortOrder = input.sortOrder ?: dao.nextPlanPrioritySortOrder(input.periodPlanId),
+            isDone = input.isDone,
+            completedAtMillis = if (input.isDone) Clock.System.now().toEpochMilliseconds() else null,
+            updatedAtMillis = Clock.System.now().toEpochMilliseconds()
+        )
+    }
+
+    override suspend fun deletePlanPriority(id: Long) {
+        dao.deletePlanPriorityWithJoins(id)
+    }
+
+    override suspend fun setPlanPriorityDone(id: Long, isDone: Boolean) {
+        dao.setPlanPriorityDone(
+            priorityId = id,
+            isDone = isDone,
+            completedAtMillis = if (isDone) Clock.System.now().toEpochMilliseconds() else null,
+            updatedAtMillis = Clock.System.now().toEpochMilliseconds()
+        )
+    }
+
+    override suspend fun setPlanPriorityParent(id: Long, parentId: Long?) {
+        dao.setPlanPriorityParent(id, parentId, Clock.System.now().toEpochMilliseconds())
+    }
+
+    override suspend fun reorderPlanPriorities(periodPlanId: Long, orderedIds: List<Long>) {
+        val now = Clock.System.now().toEpochMilliseconds()
+        orderedIds.forEachIndexed { index, priorityId ->
+            dao.updatePlanPrioritySortOrder(priorityId, index, now)
+        }
+    }
+
+    override suspend fun linkTaskToPriority(priorityId: Long, taskId: Long) {
+        dao.insertPlanPriorityTask(
+            PlanPriorityTaskEntity(
+                priorityId = priorityId,
+                taskId = taskId,
+                sortOrder = 0
+            )
+        )
+    }
+
+    override suspend fun unlinkTaskFromPriority(priorityId: Long, taskId: Long) {
+        dao.deletePlanPriorityTask(priorityId, taskId)
+    }
+
+    override suspend fun linkDailyPlanItemToPriority(priorityId: Long, dailyPlanItemId: Long) {
+        dao.insertPlanPriorityDailyPlanItem(
+            PlanPriorityDailyPlanItemEntity(
+                priorityId = priorityId,
+                dailyPlanItemId = dailyPlanItemId,
+                sortOrder = 0
+            )
+        )
+    }
+
+    override suspend fun unlinkDailyPlanItemFromPriority(priorityId: Long, dailyPlanItemId: Long) {
+        dao.deletePlanPriorityDailyPlanItem(priorityId, dailyPlanItemId)
+    }
+
     private suspend fun addTaskTag(taskId: Long, tagId: Long) {
         dao.insertTaskTagIfParentsExist(taskId, tagId)
         dao.updateTagLastUsedAtMillis(tagId, Clock.System.now().toEpochMilliseconds())
@@ -1171,4 +1340,24 @@ private fun NoteEntity.toDomain(list: ListItem, tags: List<TagItem>) = NoteItem(
     editedAtMillis = editedAtMillis,
     sortOrder = sortOrder,
     trashedAtMillis = trashedAtMillis
+)
+
+private fun PeriodPlanEntity.toDomain() = PeriodPlan(
+    id = id,
+    period = PlanPeriod.valueOf(periodType),
+    startEpochDays = startEpochDays,
+    endEpochDays = endEpochDays
+)
+
+private fun PlanPriorityEntity.toDomain() = PlanPriority(
+    id = id,
+    periodPlanId = periodPlanId,
+    parentId = parentId,
+    title = title,
+    note = note,
+    sortOrder = sortOrder,
+    isDone = isDone,
+    createdAtMillis = createdAtMillis,
+    updatedAtMillis = updatedAtMillis,
+    completedAtMillis = completedAtMillis
 )

@@ -41,6 +41,7 @@ data class TaskUiState(
     val selectedGoal = board.goals.firstOrNull { it.id == selectedGoalId }
     val selectedFilter: TaskFilter? = board.filters.firstOrNull { it.id == selectedFilterId }
     val selectedTag = board.tags.firstOrNull { it.id == selectedTagId }
+    val isPlanSelected: Boolean get() = selection.isPlanSelected
     val dayLimit: Int? = if (selectedFilter?.dueDatePreset == DueDatePreset.Today) 1 else null
     val availableViews: List<TaskWorkspaceView> = TaskWorkspaceView.entries
         .filter { it != TaskWorkspaceView.Timeline || dayLimit == 1 }
@@ -50,7 +51,8 @@ data class TaskUiState(
 data class TaskSelectionState(
     val selectedGoalId: Long? = null,
     val selectedListId: Long? = null,
-    val selectedTagId: Long? = null
+    val selectedTagId: Long? = null,
+    val isPlanSelected: Boolean = false
 )
 
 data class TaskViewOptionsState(

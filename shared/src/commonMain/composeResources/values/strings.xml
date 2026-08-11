@@ -163,4 +163,36 @@
     <string name="sprint_finished_title">Sprint Finished!</string>
     <string name="sprint_pomodoro_finished_title">Deep Focus Finished!</string>
     <string name="sprint_finished_body">You did it: %1$s. Great job starting.</string>
+
+    <string name="plan_screen_title">Plan</string>
+    <string name="plan_period_year">Year</string>
+    <string name="plan_period_quarter">Quarter</string>
+    <string name="plan_period_month">Month</string>
+    <string name="plan_period_week">Week</string>
+    <string name="plan_period_day">Day</string>
+    <string name="plan_previous_period">Previous period</string>
+    <string name="plan_next_period">Next period</string>
+    <string name="plan_edit_priority">Edit priority</string>
+    <string name="plan_delete_priority">Delete priority</string>
+    <string name="plan_unlink_task">Unlink task</string>
+    <string name="plan_add_task">Add task</string>
+    <string name="plan_new_priority">New priority</string>
+    <string name="plan_edit_priority_title">Edit priority</string>
+    <string name="plan_priority_title_label">Priority title</string>
+    <string name="plan_note_label">Note</string>
+    <string name="plan_parent_label">Parent</string>
+    <string name="plan_parent_none">None</string>
+    <string name="plan_add">Add</string>
+    <string name="plan_save">Save</string>
+    <string name="plan_close">Close</string>
+    <string name="plan_priority_added">Priority added</string>
+    <string name="plan_priority_saved">Priority saved</string>
+    <string name="plan_priority_deleted">Priority deleted</string>
+    <string name="plan_save_error">Unable to save priority</string>
+    <string name="plan_task_added">Task added</string>
+    <string name="plan_task_add_error">Unable to add task</string>
+    <string name="plan_link_error">Unable to link task</string>
+    <string name="plan_empty_title">No priorities yet</string>
+    <string name="plan_empty_subtitle">Add what matters, then break it down as the period narrows.</string>
+    <string name="plan_add_priority">Add priority</string>
 </resources>

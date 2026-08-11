@@ -35,6 +35,9 @@ import com.checkit.domain.Goal
 import com.checkit.domain.ListItem
 import com.checkit.ui.theme.materialIcon
 import com.checkit.ui.theme.toColor
+import checkit.shared.generated.resources.Res
+import checkit.shared.generated.resources.plan_screen_title
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun TaskSidebar(
@@ -44,10 +47,12 @@ internal fun TaskSidebar(
     selectedListId: Long?,
     selectedGoalId: Long?,
     isTagsSelected: Boolean,
+    isPlanSelected: Boolean,
     onBoardClick: () -> Unit,
     onGoalClick: (Long) -> Unit,
     onListClick: (Long) -> Unit,
     onTagsClick: () -> Unit,
+    onPlanClick: () -> Unit,
     onAddGoalClick: () -> Unit,
     onEditGoalClick: (Goal) -> Unit,
     onAddListClick: () -> Unit,
@@ -131,6 +136,16 @@ internal fun TaskSidebar(
                 color = MaterialTheme.colorScheme.primary,
                 selected = isTagsSelected,
                 onClick = onTagsClick
+            )
+        }
+        item {
+            SidebarSectionDivider()
+            SidebarItem(
+                title = stringResource(Res.string.plan_screen_title),
+                icon = materialIcon("Flag"),
+                color = MaterialTheme.colorScheme.primary,
+                selected = isPlanSelected,
+                onClick = onPlanClick
             )
         }
     }

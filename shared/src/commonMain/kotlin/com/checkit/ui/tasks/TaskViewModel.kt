@@ -132,6 +132,12 @@ class TaskViewModel(
         }
     }
 
+    fun selectPlan() {
+        _uiState.update {
+            it.copy(selection = TaskSelectionState(isPlanSelected = true))
+        }
+    }
+
     fun selectList(listId: Long) {
         _uiState.update {
             it.copy(selection = TaskSelectionState(selectedListId = listId))

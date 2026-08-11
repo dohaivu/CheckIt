@@ -448,6 +448,100 @@ data class TaskKeyResultEntity(
     val keyResultId: Long
 )
 
+@Entity(
+    tableName = "period_plans",
+    indices = [Index(value = ["periodType", "startEpochDays"], unique = true)]
+)
+data class PeriodPlanEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0L,
+    val periodType: String,
+    val startEpochDays: Int,
+    val endEpochDays: Int
+)
+
+@Entity(
+    tableName = "plan_priorities",
+    foreignKeys = [
+        ForeignKey(
+            entity = PeriodPlanEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["periodPlanId"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = PlanPriorityEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["parentId"],
+            onDelete = ForeignKey.SET_NULL
+        )
+    ],
+    indices = [Index("periodPlanId"), Index("parentId")]
+)
+data class PlanPriorityEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0L,
+    val periodPlanId: Long,
+    val parentId: Long? = null,
+    val title: String,
+    val note: String = "",
+    val sortOrder: Int,
+    val isDone: Boolean = false,
+    val createdAtMillis: Long,
+    val updatedAtMillis: Long,
+    val completedAtMillis: Long? = null
+)
+
+@Entity(
+    tableName = "plan_priority_tasks",
+    primaryKeys = ["priorityId", "taskId"],
+    foreignKeys = [
+        ForeignKey(
+            entity = PlanPriorityEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["priorityId"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = TaskEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["taskId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("taskId")]
+)
+data class PlanPriorityTaskEntity(
+    val priorityId: Long,
+    val taskId: Long,
+    val sortOrder: Int
+)
+
+@Entity(
+    tableName = "plan_priority_daily_plan_items",
+    primaryKeys = ["priorityId", "dailyPlanItemId"],
+    foreignKeys = [
+        ForeignKey(
+            entity = PlanPriorityEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["priorityId"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = DailyPlanItemEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["dailyPlanItemId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("dailyPlanItemId")]
+)
+data class PlanPriorityDailyPlanItemEntity(
+    val priorityId: Long,
+    val dailyPlanItemId: Long,
+    val sortOrder: Int
+)
+
 @Database(
     entities = [
         GoalEntity::class,
@@ -469,7 +563,11 @@ data class TaskKeyResultEntity(
         TaskKeyResultEntity::class,
         ListEntity::class,
         TaskListEntity::class,
-        NoteListEntity::class
+        NoteListEntity::class,
+        PeriodPlanEntity::class,
+        PlanPriorityEntity::class,
+        PlanPriorityTaskEntity::class,
+        PlanPriorityDailyPlanItemEntity::class
     ],
     version = 1,
     exportSchema = false
