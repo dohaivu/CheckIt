@@ -129,7 +129,7 @@ sealed interface TaskEditorState {
     data class TaskForm(
         val mode: EditorMode,
         val taskId: Long? = null,
-        val listId: Long,
+        val listId: Long? = null,
         val keyResultId: Long? = null,
         val planPriorityId: Long? = null,
         val name: String = "",
@@ -152,7 +152,7 @@ sealed interface TaskEditorState {
     data class NoteForm(
         val mode: EditorMode,
         val noteId: Long? = null,
-        val listId: Long,
+        val listId: Long? = null,
         val title: String = "",
         val content: String = "",
         val status: TaskStatus = TaskStatus.Open,

@@ -98,16 +98,11 @@ data class ListItem(
     val color: String,
     val sortOrder: Int,
     val isArchived: Boolean = false
-) {
-    companion object {
-        val None = ListItem(id = -1L, title = "", color = "", icon = "", sortOrder = -1)
-        val MyDay = ListItem(id = -2L, title = "MyDay", color = "0xFF64748B", icon = "Today", sortOrder = -2)
-    }
-}
+)
 
 data class TaskItem(
     val id: Long,
-    val list: ListItem,
+    val list: ListItem? = null,
     val keyResult: KeyResult? = null,
     val planPriority: PlanPriority? = null,
     val name: String,
@@ -141,7 +136,7 @@ data class SubTaskItem(
 
 data class NoteItem(
     val id: Long,
-    val list: ListItem,
+    val list: ListItem? = null,
     val title: String = "",
     val content: String,
     val tags: List<TagItem> = emptyList(),
@@ -208,9 +203,7 @@ data class JournalEntry(
     val tags: List<TagItem> = emptyList(),
     val createdTimeMinutes: Int,
     val attachments: List<String> = emptyList()
-) {
-    val hasContent: Boolean get() = content.isNotBlank()
-}
+)
 
 data class TagItem(
     val id: Long,

@@ -294,14 +294,14 @@ internal class FakeCheckItRepository(
     override suspend fun deleteList(listId: Long) {
         deletedLists.add(listId)
         boardFlow.update { board ->
-            val inbox = board.lists.firstOrNull { it.title == "Inbox" } ?: ListItem.None
+            val inbox = board.lists.firstOrNull { it.title == "Inbox" }
             board.copy(
                 lists = board.lists.filterNot { it.id == listId },
                 tasks = board.tasks.map { task ->
-                    if (task.list.id == listId) task.copy(list = inbox) else task
+                    if (task.list?.id == listId) task.copy(list = inbox) else task
                 },
                 notes = board.notes.map { note ->
-                    if (note.list.id == listId) note.copy(list = inbox) else note
+                    if (note.list?.id == listId) note.copy(list = inbox) else note
                 }
             )
         }
@@ -1100,7 +1100,7 @@ private fun TaskWriteInput.toTaskItem(
     updatedAtMillis: Long = 0L
 ) = TaskItem(
     id = taskId,
-    list = ListItem.None, // Needs proper resolution if testing specific list assignment
+    list = null, // Needs proper resolution if testing specific list assignment
     planPriority = planPriority,
     keyResult = keyResult,
     name = name,

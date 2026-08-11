@@ -509,12 +509,14 @@ private fun TaskFormContent(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            ListPicker(
-                selectedListId = form.listId,
-                lists = availableLists,
-                onListChange = onListChange,
-                enabled = enabled
-            )
+            form.listId?.let { listId ->
+                ListPicker(
+                    selectedListId = listId,
+                    lists = availableLists,
+                    onListChange = onListChange,
+                    enabled = enabled
+                )
+            }
             TagPicker(
                 availableTags = availableTags,
                 selectedTagIds = form.selectedTagIds,
@@ -707,12 +709,14 @@ private fun NoteFormContent(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            ListPicker(
-                selectedListId = form.listId,
-                lists = availableLists,
-                onListChange = onListChange,
-                enabled = enabled
-            )
+            form.listId?.let { listId ->
+                ListPicker(
+                    selectedListId = listId,
+                    lists = availableLists,
+                    onListChange = onListChange,
+                    enabled = enabled
+                )
+            }
             TagPicker(
                 availableTags = availableTags,
                 selectedTagIds = form.selectedTagIds,

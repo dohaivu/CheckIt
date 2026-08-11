@@ -1,6 +1,5 @@
 package com.checkit.domain.usecase
 
-import com.checkit.domain.ListItem
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
@@ -225,7 +224,7 @@ class BuildDailyPlanMarkdownSummaryUseCaseTest {
         subtasks: List<SubTaskItem> = emptyList()
     ) = TaskItem(
         id = id,
-        list = ListItem.None,
+        list = null,
         name = name,
         description = description,
         subtasks = subtasks,

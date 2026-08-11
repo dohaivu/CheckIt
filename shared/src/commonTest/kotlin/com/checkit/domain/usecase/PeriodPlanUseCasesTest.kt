@@ -6,7 +6,6 @@ import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
-import com.checkit.domain.ListItem
 import com.checkit.domain.PeriodPlan
 import com.checkit.domain.PlanFocus
 import com.checkit.domain.PlanPeriod
@@ -339,7 +338,7 @@ class PeriodPlanUseCasesTest {
     fun workspaceBuildsTreeAndDedupesDailyItemsBackedByLinkedTasks() = runTest {
         val task = TaskItem(
             id = 1L,
-            list = ListItem.None,
+            list = null,
             name = "T1",
             doDate = date,
             sortOrder = 0,
@@ -414,7 +413,7 @@ class PeriodPlanUseCasesTest {
         )
         val taskOnDate = TaskItem(
             id = 1L,
-            list = ListItem.None,
+            list = null,
             name = "Today",
             doDate = date,
             sortOrder = 0,
@@ -423,7 +422,7 @@ class PeriodPlanUseCasesTest {
         )
         val taskOtherDate = TaskItem(
             id = 2L,
-            list = ListItem.None,
+            list = null,
             name = "Other day",
             doDate = date.plus(2, DateTimeUnit.DAY),
             sortOrder = 1,

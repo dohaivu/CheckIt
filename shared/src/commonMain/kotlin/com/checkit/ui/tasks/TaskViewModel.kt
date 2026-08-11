@@ -9,7 +9,6 @@ import com.checkit.data.TaskWriteInput
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.KeyResult
-import com.checkit.domain.ListItem
 import com.checkit.domain.NoteItem
 import com.checkit.domain.PlanPriority
 import com.checkit.domain.TaskBoard
@@ -265,7 +264,7 @@ class TaskViewModel(
     }
 
     fun openNewHabit() {
-        val listId = editableListId() ?: return sendEvent(UiEvent.ShowSnackbar("Create a list before adding habits"))
+        val listId = editableListId()
         cancelPendingTaskTextSave()
         _uiState.update {
             it.copy(
@@ -284,7 +283,7 @@ class TaskViewModel(
             it.copy(
                 editor = TaskEditorState.TaskForm(
                     mode = EditorMode.Add,
-                    listId = ListItem.None.id,
+                    listId = null,
                     keyResultId = keyResult.id,
                     doDate = null,
                 )
@@ -293,7 +292,7 @@ class TaskViewModel(
     }
 
     fun openNewTaskOnDate(date: LocalDate, addToMyDayOnSave: Boolean = false) {
-        val listId = editableListId() ?: return sendEvent(UiEvent.ShowSnackbar("Create a list before adding tasks"))
+        val listId = editableListId()
         cancelPendingTaskTextSave()
         _uiState.update {
             it.copy(
@@ -313,7 +312,7 @@ class TaskViewModel(
             it.copy(
                 editor = TaskEditorState.TaskForm(
                     mode = EditorMode.Add,
-                    listId = ListItem.None.id,
+                    listId = null,
                     planPriorityId = priority.id,
                     doDate = date
                 )
@@ -322,7 +321,7 @@ class TaskViewModel(
     }
 
     fun openNewTaskAt(startTimeMinutes: Int, endTimeMinutes: Int) {
-        val listId = editableListId() ?: return sendEvent(UiEvent.ShowSnackbar("Create a list before adding tasks"))
+        val listId = editableListId()
         cancelPendingTaskTextSave()
         _uiState.update {
             it.copy(
@@ -338,7 +337,7 @@ class TaskViewModel(
     }
 
     fun openNewNote() {
-        val listId = editableListId() ?: return sendEvent(UiEvent.ShowSnackbar("Create a list before adding notes"))
+        val listId = editableListId()
         cancelPendingTaskTextSave()
         _uiState.update {
             it.copy(editor = TaskEditorState.NoteForm(mode = EditorMode.Add, listId = listId, date = today()))
@@ -429,7 +428,7 @@ class TaskViewModel(
                 editor = TaskEditorState.TaskForm(
                     mode = EditorMode.Edit,
                     taskId = task.id,
-                    listId = task.list.id,
+                    listId = task.list?.id,
                     keyResultId = task.keyResult?.id,
                     planPriorityId = task.planPriority?.id,
                     name = task.name,
@@ -458,7 +457,7 @@ class TaskViewModel(
                 editor = TaskEditorState.NoteForm(
                     mode = EditorMode.Edit,
                     noteId = note.id,
-                    listId = note.list.id,
+                    listId = note.list?.id,
                     title = note.title,
                     content = note.content,
                     status = note.status,
@@ -709,7 +708,7 @@ class TaskViewModel(
             updateNote(
                 note.id,
                 NoteWriteInput(
-                    listId = note.list.id,
+                    listId = note.list?.id,
                     title = note.title,
                     content = note.content,
                     status = note.status,
@@ -799,8 +798,9 @@ class TaskViewModel(
         reminderOffsets: Set<Int>
     ): TaskWriteInput {
         return TaskWriteInput(
-            listId = list.id,
+            listId = list?.id,
             keyResultId = keyResult?.id,
+            planPriorityId = planPriority?.id,
             name = name,
             description = description,
             status = status,

@@ -67,8 +67,8 @@ class TaskCollectionDeleteViewModelTest {
         val board = repository.currentBoard
         assertEquals(listOf(errands.id), repository.deletedLists)
         assertEquals(listOf(inbox), board.lists)
-        assertEquals(inbox.id, board.tasks.single().list.id)
-        assertEquals(inbox.id, board.notes.single().list.id)
+        assertEquals(inbox.id, board.tasks.single().list?.id)
+        assertEquals(inbox.id, board.notes.single().list?.id)
         assertNull(viewModel.uiState.value.editor)
     }
 

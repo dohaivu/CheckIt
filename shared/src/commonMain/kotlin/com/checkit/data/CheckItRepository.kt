@@ -202,7 +202,7 @@ data class TagWriteInput(
 )
 
 data class TaskWriteInput(
-    val listId: Long,
+    val listId: Long? = null,
     val keyResultId: Long? = null,
     val planPriorityId: Long? = null,
     val name: String,
@@ -225,7 +225,7 @@ data class SubTaskWriteInput(
 )
 
 data class NoteWriteInput(
-    val listId: Long,
+    val listId: Long? = null,
     val title: String,
     val content: String,
     val status: TaskStatus,
@@ -353,7 +353,7 @@ class RoomCheckItRepository(
                     val listId = taskListMap[task.id]
                     val keyResultId = taskKeyResultMap[task.id]
                     task.toDomain(
-                        list = listId?.let { listsById[it] } ?: ListItem.None,
+                        list = listId?.let { listsById[it] },
                         keyResult = keyResultId?.let { keyResultsById[it] },
                         planPriority = priorityIdByTaskId[task.id]?.let { priorityById[it] },
                         subtasks = subTasksByTask[task.id].orEmpty().map { it.toDomain() },
@@ -364,7 +364,7 @@ class RoomCheckItRepository(
                 notes = rows.notes.map { note ->
                     val listId = noteListMap[note.id]
                     note.toDomain(
-                        list = listId?.let { listsById[it] } ?: ListItem.None,
+                        list = listId?.let { listsById[it] },
                         tags = noteTagIds[note.id].orEmpty().mapNotNull { tagsById[it] }
                     )
                 },
@@ -549,12 +549,12 @@ class RoomCheckItRepository(
                 startTimeMinutes = if (isHabit) null else input.startTimeMinutes,
                 endTimeMinutes = if (isHabit) null else input.endTimeMinutes,
                 repeatRRule = if (isHabit) null else input.repeatRRule,
-                sortOrder = dao.nextTaskSortOrder(input.listId),
+                sortOrder = input.listId?.let { dao.nextTaskSortOrder(it) } ?: 0,
                 createdAtMillis = now,
                 updatedAtMillis = now
             )
         )
-        dao.insertTaskList(TaskListEntity(taskId, input.listId))
+        input.listId?.let { dao.insertTaskList(TaskListEntity(taskId, it)) }
         input.keyResultId?.let { dao.insertTaskKeyResult(TaskKeyResultEntity(taskId, it)) }
         input.planPriorityId?.let { dao.insertPlanPriorityTask(PlanPriorityTaskEntity(it, taskId, 0)) }
         input.tagIds.forEach { tagId -> addTaskTag(taskId, tagId) }
@@ -583,7 +583,7 @@ class RoomCheckItRepository(
         )
         dao.deleteTaskList(taskId)
         dao.deleteTaskKeyResult(taskId)
-        dao.insertTaskList(TaskListEntity(taskId, input.listId))
+        input.listId?.let { dao.insertTaskList(TaskListEntity(taskId, it)) }
         input.keyResultId?.let { dao.insertTaskKeyResult(TaskKeyResultEntity(taskId, it)) }
         dao.deletePlanPriorityTasksForTask(taskId)
         input.planPriorityId?.let { dao.insertPlanPriorityTask(PlanPriorityTaskEntity(it, taskId, 0)) }
@@ -951,10 +951,10 @@ class RoomCheckItRepository(
                 startTimeMinutes = input.startTimeMinutes,
                 createdAtMillis = now,
                 editedAtMillis = now,
-                sortOrder = dao.nextNoteSortOrder(input.listId)
+                sortOrder = dao.nextNoteSortOrder(input.listId ?: -1L)
             )
         )
-        dao.insertNoteList(NoteListEntity(noteId, input.listId))
+        input.listId?.let { dao.insertNoteList(NoteListEntity(noteId, it)) }
         input.tagIds.forEach { tagId -> addNoteTag(noteId, tagId) }
         return noteId
     }
@@ -970,7 +970,7 @@ class RoomCheckItRepository(
             editedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
         dao.deleteNoteList(noteId)
-        dao.insertNoteList(NoteListEntity(noteId, input.listId))
+        input.listId?.let { dao.insertNoteList(NoteListEntity(noteId, it)) }
         dao.deleteNoteTags(noteId)
         input.tagIds.forEach { tagId -> addNoteTag(noteId, tagId) }
     }
@@ -1244,7 +1244,7 @@ private fun TaskEntity.hasDifferentScheduleThan(input: TaskWriteInput): Boolean 
         endTimeMinutes != input.endTimeMinutes
 
 private fun TaskEntity.toDomain(
-    list: ListItem,
+    list: ListItem?,
     keyResult: KeyResult?,
     planPriority: PlanPriority?,
     subtasks: List<SubTaskItem>,
@@ -1335,7 +1335,7 @@ private fun TaskReminderEntity.toDomain() = TaskReminder(
     label = label
 )
 
-private fun NoteEntity.toDomain(list: ListItem, tags: List<TagItem>) = NoteItem(
+private fun NoteEntity.toDomain(list: ListItem?, tags: List<TagItem>) = NoteItem(
     id = id,
     list = list,
     title = title,

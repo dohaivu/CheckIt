@@ -439,7 +439,7 @@ fun QuickSprintSheet(
                 items(suggestedTasks, key = { it.id }) { task ->
                     TaskTimelineCard(
                         task = task,
-                        timeLabel = task.doDate?.localizedCompactDateWithDayName() ?: task.list.title,
+                        timeLabel = task.doDate?.localizedCompactDateWithDayName() ?: task.list?.title ?: "",
                         trailingContent = {
                             SprintButton(onClick = {
                                 onStartSprintWithTask(task)

@@ -1,7 +1,6 @@
 package com.checkit.domain.usecase
 
 import com.checkit.domain.DueDatePreset
-import com.checkit.domain.ListItem
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskFilter
@@ -260,7 +259,7 @@ class UseCaseTest {
         trashedAtMillis: Long? = null
     ) = TaskItem(
         id = id,
-        list = ListItem.None,
+        list = null,
         name = "Task $id",
         tags = tags,
         priority = priority,
@@ -279,7 +278,7 @@ class UseCaseTest {
         trashedAtMillis: Long? = null
     ) = NoteItem(
         id = id,
-        list = ListItem.None,
+        list = null,
         content = "Note $id",
         tags = tags,
         date = date,

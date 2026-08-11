@@ -4,7 +4,6 @@ import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
-import com.checkit.domain.ListItem
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
@@ -148,7 +147,7 @@ class CalendarUiStateMarkersTest {
         date: LocalDate
     ) = TaskItem(
         id = id,
-        list = ListItem.None,
+        list = null,
         name = "Task $id",
         doDate = date,
         sortOrder = id.toInt(),
@@ -161,7 +160,7 @@ class CalendarUiStateMarkersTest {
         date: LocalDate
     ) = NoteItem(
         id = id,
-        list = ListItem.None,
+        list = null,
         content = "Note $id",
         date = date,
         createdAtMillis = 0L,
