@@ -307,15 +307,6 @@ private fun PriorityTaskRow(
                     task.endTimeMinutes,
                     isOverdue = task.isOverdue()
                 )
-                if (task.tags.isNotEmpty()) {
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        task.tags.forEach { tag -> TagPill(tag = tag) }
-                    }
-                }
             }
         }
     }

@@ -901,7 +901,8 @@ class TaskViewModel(
             selection = TaskSelectionState(
                 selectedListId = nextListId,
                 selectedTagId = nextTagId,
-                selectedGoalId = nextGoalId
+                selectedGoalId = nextGoalId,
+                isPlanSelected = selection.isPlanSelected
             ),
             options = options.copy(
                 selectedFilterId = nextFilterId,

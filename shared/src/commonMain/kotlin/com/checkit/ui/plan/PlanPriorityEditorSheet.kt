@@ -78,6 +78,9 @@ internal fun PlanPriorityEditorSheet(
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
 
+    var localTitle by remember(editor.priorityId, editor.mode) { mutableStateOf(editor.title) }
+    var localNote by remember(editor.priorityId, editor.mode) { mutableStateOf(editor.note) }
+
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
     }
@@ -119,8 +122,11 @@ internal fun PlanPriorityEditorSheet(
             }
 
             AppOutlinedTextField(
-                value = editor.title,
-                onValueChange = onTitleChange,
+                value = localTitle,
+                onValueChange = {
+                    localTitle = it
+                    onTitleChange(it)
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(focusRequester),
@@ -131,8 +137,11 @@ internal fun PlanPriorityEditorSheet(
             )
 
             AppOutlinedTextField(
-                value = editor.note,
-                onValueChange = onNoteChange,
+                value = localNote,
+                onValueChange = {
+                    localNote = it
+                    onNoteChange(it)
+                },
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = stringResource(Res.string.plan_note_label),
                 minLines = 2,
