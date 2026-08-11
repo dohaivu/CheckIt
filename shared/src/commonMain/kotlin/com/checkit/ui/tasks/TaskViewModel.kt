@@ -307,7 +307,7 @@ class TaskViewModel(
         }
     }
 
-    fun openNewTaskOnPlanPriority(priority: PlanPriority) {
+    fun openNewTaskOnPlanPriority(priority: PlanPriority, date: LocalDate = today()) {
         cancelPendingTaskTextSave()
         _uiState.update {
             it.copy(
@@ -315,7 +315,7 @@ class TaskViewModel(
                     mode = EditorMode.Add,
                     listId = ListItem.None.id,
                     planPriorityId = priority.id,
-                    doDate = today()
+                    doDate = date
                 )
             )
         }

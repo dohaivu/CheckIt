@@ -7,14 +7,19 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.ListItem
+import com.checkit.domain.PeriodPlan
 import com.checkit.domain.PlanFocus
 import com.checkit.domain.PlanPeriod
+import com.checkit.domain.PlanPriority
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.ui.tasks.FakeCheckItRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -388,5 +393,87 @@ class PeriodPlanUseCasesTest {
         assertNull(workspace.plan)
         assertTrue(workspace.rootNodes.isEmpty())
         assertTrue(workspace.parentCandidates.isEmpty())
+    }
+
+    @Test
+    fun workspaceForDayShowsWeekPrioritiesFilteredToDate() {
+        val weekStart = date.minus(date.dayOfWeek.ordinal, DateTimeUnit.DAY)
+        val plan = PeriodPlan(
+            id = 1L,
+            period = PlanPeriod.Week,
+            startEpochDays = weekStart.toEpochDays().toInt(),
+            endEpochDays = weekStart.plus(6, DateTimeUnit.DAY).toEpochDays().toInt()
+        )
+        val priority = PlanPriority(
+            id = 10L,
+            periodPlanId = plan.id,
+            title = "Week priority",
+            sortOrder = 0,
+            createdAtMillis = 0L,
+            updatedAtMillis = 0L
+        )
+        val taskOnDate = TaskItem(
+            id = 1L,
+            list = ListItem.None,
+            name = "Today",
+            doDate = date,
+            sortOrder = 0,
+            createdAtMillis = 0L,
+            updatedAtMillis = 0L
+        )
+        val taskOtherDate = TaskItem(
+            id = 2L,
+            list = ListItem.None,
+            name = "Other day",
+            doDate = date.plus(2, DateTimeUnit.DAY),
+            sortOrder = 1,
+            createdAtMillis = 0L,
+            updatedAtMillis = 0L
+        )
+        val dailyOnDate = DailyPlanItem(
+            id = 3L,
+            dateEpochDays = date.toEpochDays().toInt(),
+            taskId = null,
+            title = "Plan today",
+            source = DailyPlanItemSource.MyDayTask,
+            status = DailyPlanItemStatus.Planned,
+            sortOrder = 0,
+            addedAtMillis = 0L
+        )
+        val dailyOtherDate = DailyPlanItem(
+            id = 4L,
+            dateEpochDays = date.plus(3, DateTimeUnit.DAY).toEpochDays().toInt(),
+            taskId = null,
+            title = "Plan other day",
+            source = DailyPlanItemSource.MyDayTask,
+            status = DailyPlanItemStatus.Planned,
+            sortOrder = 1,
+            addedAtMillis = 0L
+        )
+
+        val workspace = ObservePlanWorkspaceUseCase(FakeCheckItRepository()).build(
+            focus = PlanFocus(PlanPeriod.Day, date),
+            plans = listOf(plan),
+            priorities = listOf(priority),
+            taskLinks = listOf(
+                PlanPriorityTaskLink(priority.id, taskOnDate.id, 0),
+                PlanPriorityTaskLink(priority.id, taskOtherDate.id, 0)
+            ),
+            dailyLinks = listOf(
+                PlanPriorityDailyPlanItemLink(priority.id, dailyOnDate.id, 0),
+                PlanPriorityDailyPlanItemLink(priority.id, dailyOtherDate.id, 0)
+            ),
+            tasks = listOf(taskOnDate, taskOtherDate),
+            dailyPlans = listOf(
+                DailyPlan(date, items = listOf(dailyOnDate, dailyOtherDate))
+            )
+        )
+
+        assertEquals(plan.id, workspace.plan?.id)
+        val root = workspace.rootNodes.single()
+        assertEquals(priority.id, root.priority.id)
+        assertEquals(listOf(taskOnDate.id), root.tasks.map { it.id })
+        assertEquals(listOf(dailyOnDate.id), root.dailyPlanItems.map { it.id })
+        assertEquals(listOf(priority.id), workspace.parentCandidates.map { it.id })
     }
 }

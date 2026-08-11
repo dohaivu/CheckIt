@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.checkit.domain.PlanFocus
+import com.checkit.domain.PlanPeriod
 import com.checkit.ui.components.HelpContent
 import com.checkit.ui.components.HelpTooltip
 import com.checkit.ui.components.TagOptionMenu
@@ -121,11 +122,13 @@ internal fun TaskScreen(
             floatingActionButton = {
                 val goalSelection = goalState.selectedItemType
                 if (state.isPlanSelected) {
-                    ExtendedFloatingActionButton(
-                        onClick = planViewModel::startAddPriority,
-                        icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                        text = { Text(stringResource(Res.string.plan_add_priority)) }
-                    )
+                    if (planState.focus.period != PlanPeriod.Day) {
+                        ExtendedFloatingActionButton(
+                            onClick = planViewModel::startAddPriority,
+                            icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                            text = { Text(stringResource(Res.string.plan_add_priority)) }
+                        )
+                    }
                 } else if (goalSelection != null) {
                     when (goalSelection) {
                         is GoalItemType.Objective -> TaskActionFab(
@@ -242,7 +245,14 @@ internal fun TaskScreen(
                     onAddPriority = planViewModel::startAddPriority,
                     onToggleDone = planViewModel::toggleDone,
                     onEditPriority = planViewModel::startEditPriority,
-                    onAddTaskClick = viewModel::openNewTaskOnPlanPriority,
+                    onAddTaskClick = { priority ->
+                        val date = if (planState.focus.period == PlanPeriod.Day) {
+                            planState.focus.start
+                        } else {
+                            today()
+                        }
+                        viewModel.openNewTaskOnPlanPriority(priority, date)
+                    },
                     onOpenTask = viewModel::openTask,
                     modifier = contentModifier
                 )

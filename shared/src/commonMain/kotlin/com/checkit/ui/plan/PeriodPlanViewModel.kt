@@ -3,6 +3,7 @@ package com.checkit.ui.plan
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.checkit.domain.PlanFocus
+import com.checkit.domain.PlanPeriod
 import com.checkit.domain.PlanPriority
 import com.checkit.domain.usecase.AddPlanPriorityUseCase
 import com.checkit.domain.usecase.DeletePlanPriorityUseCase
@@ -118,7 +119,9 @@ class PeriodPlanViewModel(
     fun savePriority() {
         val state = _uiState.value
         val editor = state.editor ?: return
-        val focus = state.focus
+        val focus = state.focus.let { current ->
+            if (current.period == PlanPeriod.Day) current.zoomOut() else current
+        }
         viewModelScope.launch {
             runCatching {
                 when (editor.mode) {

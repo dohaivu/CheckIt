@@ -130,9 +130,6 @@ private fun EmptyPlanState(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            OutlinedButton(onClick = onAddPriority) {
-                Text(stringResource(Res.string.plan_add_priority))
-            }
         }
     }
 }

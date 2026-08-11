@@ -37,6 +37,7 @@ import com.checkit.domain.TaskStatus
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.plan_add_task
 import checkit.shared.generated.resources.plan_edit_priority
+import com.checkit.ui.tasks.views.TaskRow
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -102,11 +103,15 @@ private fun PriorityItem(
             onEditPriority = onEditPriority,
             onAddTaskClick = onAddTaskClick
         )
-        node.tasks.forEach { task ->
-            LinkedTaskRow(
-                task = task,
-                onClick = { onOpenTask(task) }
-            )
+        Column(
+            modifier = Modifier.padding(start = 24.dp)
+        ) {
+            node.tasks.forEach { task ->
+                LinkedTaskRow(
+                    task = task,
+                    onClick = { onOpenTask(task) }
+                )
+            }
         }
         if (focus == PlanPeriod.Day) {
             node.dailyPlanItems.forEach { item ->

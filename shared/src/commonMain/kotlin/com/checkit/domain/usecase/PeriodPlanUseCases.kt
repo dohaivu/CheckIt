@@ -71,8 +71,15 @@ class ObservePlanWorkspaceUseCase(
         tasks: List<TaskItem>,
         dailyPlans: List<DailyPlan>
     ): PlanWorkspace {
+        val isDayView = focus.period == PlanPeriod.Day
         val plan = plans.firstOrNull {
-            it.period == focus.period && it.startEpochDays == focus.startEpochDays
+            if (isDayView) {
+                it.period == PlanPeriod.Week &&
+                    it.startEpochDays <= focus.startEpochDays &&
+                    it.endEpochDays >= focus.endInclusiveEpochDays
+            } else {
+                it.period == focus.period && it.startEpochDays == focus.startEpochDays
+            }
         }
         val homePriorities = if (plan == null) {
             emptyList()
@@ -95,9 +102,11 @@ class ObservePlanWorkspaceUseCase(
             val linkedTasks = taskIdsByPriority[priority.id].orEmpty()
                 .mapNotNull { tasksById[it] }
                 .filterNot { it.isTrashed }
+                .filter { task -> if (isDayView) task.doDate == focus.start else true }
                 .sortedBy { it.sortOrder }
             val linkedDaily = dailyIdsByPriority[priority.id].orEmpty()
                 .mapNotNull { dailyItemsById[it] }
+                .filter { item -> if (isDayView) item.dateEpochDays == focus.startEpochDays else true }
                 .filter { it.taskId == null || it.taskId !in linkedTaskIds }
                 .sortedBy { it.sortOrder }
             return PlanPriorityNode(
@@ -113,12 +122,14 @@ class ObservePlanWorkspaceUseCase(
             .sortedBy { it.sortOrder }
             .map { nodeFor(it) }
 
+        val displayFocus = if (isDayView) PlanFocus(PlanPeriod.Week, focus.anchorDate) else focus
+
         return PlanWorkspace(
             focus = focus,
             plan = plan,
             plans = plans,
             rootNodes = roots,
-            parentCandidates = parentCandidates(focus, plans, priorities)
+            parentCandidates = parentCandidates(displayFocus, plans, priorities)
         )
     }
 }
