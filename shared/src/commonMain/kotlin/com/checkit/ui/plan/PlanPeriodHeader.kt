@@ -47,9 +47,12 @@ import checkit.shared.generated.resources.plan_previous_period
 import com.checkit.domain.PlanFocus
 import com.checkit.domain.PlanPeriod
 import com.checkit.ui.localizedCompactDateWithDayName
+import com.checkit.ui.localizedName
 import com.checkit.ui.localizedMonthTitle
 import com.checkit.ui.localizedShortMonthName
+import com.checkit.ui.localizedShortName
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.toLocalIsoWeekDate
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -187,7 +190,7 @@ private fun PlanBreadcrumbRow(
         PlanPeriod.entries.forEach { period ->
             if (period.ordinal <= focus.period.ordinal) {
                 val crumbFocus = PlanFocus(period, focus.anchorDate)
-                add(PlanCrumb(period, crumbFocus, crumbFocus.title()))
+                add(PlanCrumb(period, crumbFocus, crumbFocus.crumbLabel()))
             }
         }
     }
@@ -251,6 +254,22 @@ internal fun PlanFocus.title(): String = when (period) {
     PlanPeriod.Month -> start.localizedMonthTitle()
     PlanPeriod.Week -> weekRangeTitle(start, endInclusive)
     PlanPeriod.Day -> start.localizedCompactDateWithDayName()
+}
+
+/** Compact per-level label for the breadcrumb; drops year/month info already shown by ancestor crumbs. */
+@Composable
+private fun PlanFocus.crumbLabel(): String = when (period) {
+    PlanPeriod.Year -> "${start.year}"
+    PlanPeriod.Quarter -> {
+        val quarter = ((start.monthNumber - 1) / 3) + 1
+        "Q$quarter"
+    }
+    PlanPeriod.Month -> start.month.localizedName()
+    PlanPeriod.Week -> {
+        val week = start.toLocalIsoWeekDate().isoWeekNumber
+        "W$week ${start.day} - ${endInclusive.day}"
+    }
+    PlanPeriod.Day -> "${start.day} ${start.dayOfWeek.localizedShortName()}"
 }
 
 @Composable
