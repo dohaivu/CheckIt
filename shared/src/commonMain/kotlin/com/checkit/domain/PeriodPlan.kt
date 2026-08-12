@@ -48,6 +48,8 @@ data class PlanFocus(
     fun zoomIn(to: PlanPeriod, anchor: LocalDate = anchorDate): PlanFocus =
         if (to.ordinal > period.ordinal) PlanFocus(to, anchor) else this
 
+    fun contains(date: LocalDate): Boolean = date >= start && date < endExclusive
+
     /** Move to the previous (negative) / next (positive) period of the same type. */
     fun shift(amount: Int): PlanFocus = PlanFocus(period, period.move(anchorDate, amount))
 

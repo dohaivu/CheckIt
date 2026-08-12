@@ -79,9 +79,8 @@ internal fun TaskScreen(
                     goals = state.board.goals,
                     lists = state.board.lists,
                     isBoardSelected = state.selectedGoalId == null &&
-                        state.selectedListId == null &&
-                        state.selectedFilterId == null &&
-                        state.selectedTagId == null,
+                            state.selectedListId == null &&
+                            !state.isPlanSelected,
                     selectedListId = state.selectedListId,
                     selectedGoalId = state.selectedGoalId,
                     isTagsSelected = false,

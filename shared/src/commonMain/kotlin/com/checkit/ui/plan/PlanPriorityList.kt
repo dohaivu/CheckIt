@@ -222,7 +222,7 @@ private fun PriorityHeader(
                 } else {
                     MaterialTheme.colorScheme.onSurface
                 },
-                maxLines = 1,
+                maxLines = 3,
                 overflow = TextOverflow.Ellipsis
             )
             if (priority.note.isNotBlank()) {

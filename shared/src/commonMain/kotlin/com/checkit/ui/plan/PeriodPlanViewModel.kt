@@ -19,9 +19,12 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -40,32 +43,48 @@ class PeriodPlanViewModel(
     private val _events = MutableSharedFlow<UiEvent>(extraBufferCapacity = 1)
     val events: SharedFlow<UiEvent> = _events.asSharedFlow()
 
+    private val refreshTrigger = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
     init {
         observeWorkspace()
     }
 
     private fun observeWorkspace() {
         viewModelScope.launch {
-            _uiState.map { it.focus }
-                .distinctUntilChanged()
+            combine(
+                _uiState.map { it.focus }.distinctUntilChanged(),
+                refreshTrigger.onStart { emit(Unit) }
+            ) { focus, _ -> focus }
                 .collectLatest { focus ->
-                    observePlanWorkspace(focus).collect { workspace ->
-                        _uiState.update {
-                            it.copy(workspace = workspace, isLoading = false)
+                    observePlanWorkspace(focus)
+                        .catch { error ->
+                            _uiState.update { it.copy(isLoading = false) }
+                            _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to load plan"))
                         }
-                    }
+                        .collect { workspace ->
+                            _uiState.update {
+                                it.copy(workspace = workspace, isLoading = false)
+                            }
+                        }
                 }
         }
     }
 
     fun selectFocus(focus: PlanFocus) {
         val normalized = focus.copy(anchorDate = focus.period.startOf(focus.anchorDate))
+        val focusChanged = _uiState.value.focus != normalized
+        val hasData = _uiState.value.workspace != null
+        
         _uiState.update { state ->
-            if (state.focus == normalized && state.workspace != null) {
+            if (state.focus == normalized && hasData) {
                 state
             } else {
                 state.copy(focus = normalized, isLoading = true, editor = null)
             }
+        }
+        
+        if (!focusChanged && !hasData) {
+            refreshTrigger.tryEmit(Unit)
         }
     }
 

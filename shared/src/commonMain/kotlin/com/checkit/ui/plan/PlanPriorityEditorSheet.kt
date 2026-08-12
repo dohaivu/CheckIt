@@ -116,9 +116,6 @@ internal fun PlanPriorityEditorSheet(
                         label = stringResource(Res.string.plan_delete_priority)
                     )
                 }
-                IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = stringResource(Res.string.plan_close))
-                }
             }
 
             AppOutlinedTextField(
@@ -162,10 +159,6 @@ internal fun PlanPriorityEditorSheet(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End)
             ) {
-                TextButton(onClick = onDismiss) {
-                    Text(stringResource(Res.string.cancel))
-                }
-
                 if (editor.mode == PlanEditorMode.Edit && editor.priorityId != null) {
                     Button(
                         onClick = { onToggleDone(editor.priorityId, !editor.isDone) },

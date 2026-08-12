@@ -51,6 +51,7 @@ import com.checkit.ui.localizedName
 import com.checkit.ui.localizedMonthTitle
 import com.checkit.ui.localizedShortMonthName
 import com.checkit.ui.localizedShortName
+import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.number
 import kotlinx.datetime.toLocalIsoWeekDate
@@ -71,7 +72,10 @@ internal fun PlanPeriodHeader(
     ) {
         PlanPeriodSwitcher(
             selectedPeriod = focus.period,
-            onPeriodSelected = { period -> onFocusSelected(PlanFocus(period, focus.anchorDate)) }
+            onPeriodSelected = { period ->
+                val anchor = if (focus.contains(today())) today() else focus.anchorDate
+                onFocusSelected(PlanFocus(period, anchor))
+            }
         )
         PlanPeriodNavHeader(
             focus = focus,
