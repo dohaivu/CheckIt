@@ -336,7 +336,9 @@ fun CheckItApp(
                             availableTags = taskUiState.board.tags,
                             availableKeyResults = taskUiState.board.keyResults,
                             availablePlanPriorities = taskUiState.board.planPriorities,
-                            availableTwelveWeekGoals = twelveWeekUiState.workspace.goals.map { it.goal },
+                            availableTwelveWeekGoals = twelveWeekUiState.workspace.cycleCards
+                                .flatMap { it.goals }
+                                .map { it.goal },
                             actions = TaskEditorActions(
                                 onDismiss = viewModels.task::dismissEditor,
                                 onSave = viewModels.task::saveEditor,

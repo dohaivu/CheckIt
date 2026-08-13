@@ -365,9 +365,10 @@ class RoomCheckItRepository(
             dao.observeSubTasks(),
             dao.observeReminders(),
             dao.observeTaskTags(),
-            dao.observeNoteTags()
-        ) { subTasks, reminders, taskTags, noteTags ->
-            TaskBoardJoins(subTasks, reminders, taskTags, noteTags)
+            dao.observeNoteTags(),
+            dao.observeTwelveWeekGoalTasks()
+        ) { subTasks, reminders, taskTags, noteTags, twelveWeekGoalTasks ->
+            TaskBoardJoins(subTasks, reminders, taskTags, noteTags, twelveWeekGoalTasks)
         }
 
         val metadataFlow = combine(
@@ -417,6 +418,7 @@ class RoomCheckItRepository(
                 .mapNotNull { entity -> plansById[entity.periodPlanId]?.let { plan -> entity.toDomain(plan) } }
                 .associateBy { it.id }
             val priorityIdByTaskId = metadata.planPriorityTasks.associate { it.taskId to it.priorityId }
+            val twelveWeekGoalIdByTaskId = joins.twelveWeekGoalTasks.associate { it.taskId to it.goalId }
 
             TaskBoard(
                 goals = domainGoals,
@@ -432,6 +434,7 @@ class RoomCheckItRepository(
                         list = listId?.let { listsById[it] },
                         keyResult = keyResultId?.let { keyResultsById[it] },
                         planPriority = priorityIdByTaskId[task.id]?.let { priorityById[it] },
+                        twelveWeekGoalId = twelveWeekGoalIdByTaskId[task.id],
                         subtasks = subTasksByTask[task.id].orEmpty().map { it.toDomain() },
                         reminders = remindersByTask[task.id].orEmpty().map { it.toDomain() },
                         tags = taskTagIds[task.id].orEmpty().mapNotNull { tagsById[it] }
@@ -1429,7 +1432,8 @@ private data class TaskBoardJoins(
     val subTasks: List<SubTaskEntity>,
     val reminders: List<TaskReminderEntity>,
     val taskTags: List<TaskTagEntity>,
-    val noteTags: List<NoteTagEntity>
+    val noteTags: List<NoteTagEntity>,
+    val twelveWeekGoalTasks: List<TwelveWeekGoalTaskEntity>
 )
 
 private data class TaskBoardMetadata(
@@ -1515,6 +1519,7 @@ private fun TaskEntity.toDomain(
     list: ListItem?,
     keyResult: KeyResult?,
     planPriority: PlanPriority?,
+    twelveWeekGoalId: Long? = null,
     subtasks: List<SubTaskItem>,
     reminders: List<TaskReminder>,
     tags: List<TagItem>
@@ -1523,6 +1528,7 @@ private fun TaskEntity.toDomain(
     list = list,
     keyResult = keyResult,
     planPriority = planPriority,
+    twelveWeekGoalId = twelveWeekGoalId,
     name = name,
     description = description,
     subtasks = subtasks,

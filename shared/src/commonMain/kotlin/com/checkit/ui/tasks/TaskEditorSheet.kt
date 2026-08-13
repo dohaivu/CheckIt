@@ -2,7 +2,6 @@ package com.checkit.ui.tasks
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,7 +16,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,7 +33,6 @@ import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -45,14 +42,9 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -69,9 +61,7 @@ import com.checkit.domain.TwelveWeekGoal
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.AppOutlinedTextField
-import com.checkit.ui.components.AppleStylePopup
 import com.checkit.ui.components.DatePicker
-import com.checkit.ui.components.DetailChip
 import com.checkit.ui.components.EditorOverflowMenu
 import com.checkit.ui.components.KeyResultPill
 import com.checkit.ui.components.ListPicker
@@ -79,6 +69,7 @@ import com.checkit.ui.components.PriorityPicker
 import com.checkit.ui.components.RichTextComposer
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.components.TimeRangePicker
+import com.checkit.ui.components.TwelveWeekGoalPill
 import com.checkit.ui.components.icons.AppIcons
 import com.checkit.ui.components.icons.Target
 import com.checkit.ui.plan.PlanPriorityPill
@@ -590,12 +581,9 @@ private fun TaskFormContent(
                 }
             }
             form.twelveWeekGoalId?.let { goalId ->
-                TwelveWeekGoalPicker(
-                    goals = availableTwelveWeekGoals,
-                    selectedGoalId = goalId,
-                    onGoalChange = onTwelveWeekGoalChange,
-                    enabled = enabled
-                )
+                availableTwelveWeekGoals.find { it.id == goalId }?.let { goal ->
+                    TwelveWeekGoalPill(goal)
+                }
             }
             TagPicker(
                 availableTags = availableTags,
@@ -604,65 +592,6 @@ private fun TaskFormContent(
                 onNewTagClick = onNewTagClick,
                 enabled = enabled
             )
-        }
-    }
-}
-
-@Composable
-private fun TwelveWeekGoalPicker(
-    goals: List<TwelveWeekGoal>,
-    selectedGoalId: Long?,
-    onGoalChange: (Long?) -> Unit,
-    enabled: Boolean = true
-) {
-    if (goals.isEmpty()) return
-    var expanded by remember { mutableStateOf(false) }
-    val selectedGoal = goals.firstOrNull { it.id == selectedGoalId }
-    AppleStylePopup(
-        isExpanded = expanded,
-        onDismissRequest = { expanded = false },
-        anchor = {
-            DetailChip(
-                icon = AppIcons.Target,
-                label = selectedGoal?.title ?: "Pick a goal",
-                onClick = { if (enabled) expanded = true }
-            )
-        }
-    ) {
-        Column(
-            modifier = Modifier
-                .width(250.dp)
-                .padding(vertical = 0.dp)
-        ) {
-            goals.forEachIndexed { index, goal ->
-                Row(
-                    modifier = Modifier
-                        .clickable(onClick = {
-                            onGoalChange(goal.id)
-                            expanded = false
-                        })
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        imageVector = AppIcons.Target,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Text(
-                        text = goal.title,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-                if (index < goals.size - 1) {
-                    HorizontalDivider(
-                        color = Color.LightGray.copy(alpha = 0.4f),
-                        thickness = 0.5.dp
-                    )
-                }
-            }
         }
     }
 }

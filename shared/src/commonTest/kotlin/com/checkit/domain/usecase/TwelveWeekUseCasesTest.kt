@@ -290,7 +290,7 @@ class TwelveWeekUseCasesTest {
         )
 
         assertEquals(1, workspace.currentWeekIndex)
-        val card = workspace.goals.single()
+        val card = workspace.cycleCards.single().goals.single()
         assertEquals(listOf(1L, 2L), card.tactics.map { it.id })
         assertEquals(8.0, card.averageScore)
         assertEquals(9, card.latestScore?.score)
@@ -370,7 +370,6 @@ class TwelveWeekUseCasesTest {
             todayEpochDays = 10
         )
         assertNull(workspace.cycle)
-        assertTrue(workspace.goals.isEmpty())
         assertTrue(workspace.cycleCards.isEmpty())
     }
 }

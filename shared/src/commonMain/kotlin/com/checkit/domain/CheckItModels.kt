@@ -106,6 +106,7 @@ data class TaskItem(
     val list: ListItem? = null,
     val keyResult: KeyResult? = null,
     val planPriority: PlanPriority? = null,
+    val twelveWeekGoalId: Long? = null,
     val name: String,
     val description: String = "",
     val subtasks: List<SubTaskItem> = emptyList(),

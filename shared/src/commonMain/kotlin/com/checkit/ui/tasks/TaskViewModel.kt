@@ -477,6 +477,7 @@ class TaskViewModel(
                     listId = task.list?.id,
                     keyResultId = task.keyResult?.id,
                     planPriorityId = task.planPriority?.id,
+                    twelveWeekGoalId = task.twelveWeekGoalId,
                     name = task.name,
                     description = task.description,
                     doDate = task.doDate,

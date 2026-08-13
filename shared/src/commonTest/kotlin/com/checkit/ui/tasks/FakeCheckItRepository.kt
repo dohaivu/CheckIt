@@ -1300,6 +1300,7 @@ private fun TaskWriteInput.toTaskItem(
     list = null, // Needs proper resolution if testing specific list assignment
     planPriority = planPriority,
     keyResult = keyResult,
+    twelveWeekGoalId = twelveWeekGoalId,
     name = name,
     description = description,
     subtasks = subtasks.mapIndexed { index, subtask ->

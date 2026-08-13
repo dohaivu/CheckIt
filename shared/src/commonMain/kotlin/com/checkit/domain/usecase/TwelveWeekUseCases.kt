@@ -127,10 +127,8 @@ class ObserveTwelveWeekWorkspaceUseCase(
             )
         }
 
-        val primaryGoals = cycleCards.first().goals
         return TwelveWeekWorkspace(
             cycle = primaryCycle,
-            goals = primaryGoals,
             cycleCards = cycleCards,
             currentWeekIndex = cycleCards.first().currentWeekIndex,
             checkIns = checkIns,
