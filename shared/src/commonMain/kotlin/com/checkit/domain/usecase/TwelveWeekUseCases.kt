@@ -24,6 +24,7 @@ import com.checkit.domain.TWELVE_WEEK_MAX_GOALS
 import com.checkit.domain.TWELVE_WEEK_MAX_SCORE
 import com.checkit.domain.TWELVE_WEEK_MIN_SCORE
 import com.checkit.domain.executionScore
+import com.checkit.domain.mondayOfWeek
 import com.checkit.domain.twelveWeekEndEpochDays
 import com.checkit.domain.weekIndexFor
 import kotlinx.coroutines.flow.Flow
@@ -68,7 +69,10 @@ class ObserveTwelveWeekWorkspaceUseCase(
         tasks: List<TaskItem>,
         todayEpochDays: Int
     ): TwelveWeekWorkspace {
-        val activeCycle = cycles.firstOrNull { it.status == TwelveWeekCycleStatus.Active }
+        val activeCycles = cycles
+            .filter { it.status == TwelveWeekCycleStatus.Active }
+            .sortedBy { it.startEpochDays }
+        val primaryCycle = activeCycles.firstOrNull()
         val pastCycles = cycles
             .filter { it.status != TwelveWeekCycleStatus.Active }
             .sortedByDescending { it.startEpochDays }
@@ -108,66 +112,69 @@ class ObserveTwelveWeekWorkspaceUseCase(
         }
 
         val cycleCards = buildList {
-            activeCycle?.let { add(buildCycleCard(it)) }
+            activeCycles.forEach { add(buildCycleCard(it)) }
             pastCycles.forEach { add(buildCycleCard(it)) }
         }
 
-        if (activeCycle == null) {
+        if (primaryCycle == null) {
             return TwelveWeekWorkspace(
                 cycle = null,
                 cycleCards = cycleCards,
                 currentWeekIndex = null,
+                checkIns = checkIns,
+                scores = scores,
                 pastCycles = pastCycles
             )
         }
 
-        val activeGoals = cycleCards.first().goals
-        val activeGoalIds = activeGoals.map { it.goal.id }
-        val cycleCheckIns = checkIns.filter { it.cycleId == activeCycle.id }
-        val cycleScores = scores.filter { score -> score.goalId in activeGoalIds }
-
+        val primaryGoals = cycleCards.first().goals
         return TwelveWeekWorkspace(
-            cycle = activeCycle,
-            goals = activeGoals,
+            cycle = primaryCycle,
+            goals = primaryGoals,
             cycleCards = cycleCards,
             currentWeekIndex = cycleCards.first().currentWeekIndex,
-            checkIns = cycleCheckIns,
-            scores = cycleScores,
+            checkIns = checkIns,
+            scores = scores,
             pastCycles = pastCycles
         )
     }
 }
 
-/** Starts a new Active cycle; fails if one already exists. */
+/**
+ * Starts a new Active cycle. Multiple active cycles are allowed. The cycle
+ * always starts on a Monday, so [startEpochDays] is snapped back to the start
+ * of its week.
+ */
 class StartTwelveWeekCycleUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(
-        title: String,
-        startEpochDays: Int,
-        goalTitles: List<String>
-    ): Long {
-        require(repository.countActiveTwelveWeekCycles() == 0) {
-            "Already have an active cycle"
-        }
-        val trimmedGoals = goalTitles.map { it.trim() }.filter { it.isNotEmpty() }
-        require(trimmedGoals.size in 1..TWELVE_WEEK_MAX_GOALS) {
-            "A cycle needs 1..$TWELVE_WEEK_MAX_GOALS goals"
-        }
-        val endEpochDays = twelveWeekEndEpochDays(startEpochDays)
-        val cycleId = repository.addTwelveWeekCycle(
+    suspend operator fun invoke(title: String, startEpochDays: Int): Long {
+        require(title.isNotBlank()) { "Cycle title must not be blank" }
+        val mondayStart = mondayOfWeek(startEpochDays)
+        return repository.addTwelveWeekCycle(
             TwelveWeekCycleWriteInput(
                 title = title.trim(),
-                startEpochDays = startEpochDays,
-                endEpochDays = endEpochDays
+                startEpochDays = mondayStart,
+                endEpochDays = twelveWeekEndEpochDays(mondayStart)
             )
         )
-        trimmedGoals.forEach { goalTitle ->
-            repository.addTwelveWeekGoal(
-                TwelveWeekGoalWriteInput(cycleId = cycleId, title = goalTitle)
-            )
-        }
-        return cycleId
+    }
+}
+
+/** Renames an Active cycle. */
+class UpdateTwelveWeekCycleUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(cycleId: Long, title: String) {
+        val cycle = requireActiveCycle(repository, cycleId)
+        require(title.isNotBlank()) { "Cycle title must not be blank" }
+        repository.updateTwelveWeekCycle(
+            cycleId = cycleId,
+            title = title.trim(),
+            status = cycle.status,
+            reviewNote = cycle.reviewNote,
+            completedAtMillis = cycle.completedAtMillis
+        )
     }
 }
 

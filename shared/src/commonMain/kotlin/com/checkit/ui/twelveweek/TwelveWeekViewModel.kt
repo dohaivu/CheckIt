@@ -4,12 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.checkit.data.TwelveWeekGoalScoreWriteInput
 import com.checkit.domain.TwelveWeekGoalFinalStatus
+import com.checkit.domain.mondayOfWeek
 import com.checkit.domain.usecase.AbandonTwelveWeekCycleUseCase
 import com.checkit.domain.usecase.AddTwelveWeekGoalUseCase
 import com.checkit.domain.usecase.CompleteTwelveWeekCycleUseCase
 import com.checkit.domain.usecase.DeleteTwelveWeekGoalUseCase
 import com.checkit.domain.usecase.ObserveTwelveWeekWorkspaceUseCase
 import com.checkit.domain.usecase.StartTwelveWeekCycleUseCase
+import com.checkit.domain.usecase.UpdateTwelveWeekCycleUseCase
 import com.checkit.domain.usecase.UpdateTwelveWeekGoalUseCase
 import com.checkit.domain.usecase.UpsertTwelveWeekCheckInUseCase
 import com.checkit.ui.UiEvent
@@ -26,12 +28,13 @@ import kotlinx.coroutines.launch
 class TwelveWeekViewModel(
     private val observeWorkspace: ObserveTwelveWeekWorkspaceUseCase,
     private val startCycle: StartTwelveWeekCycleUseCase,
+    private val updateCycle: UpdateTwelveWeekCycleUseCase,
     private val addGoal: AddTwelveWeekGoalUseCase,
     private val updateGoal: UpdateTwelveWeekGoalUseCase,
     private val deleteGoal: DeleteTwelveWeekGoalUseCase,
     private val upsertCheckIn: UpsertTwelveWeekCheckInUseCase,
     private val completeCycle: CompleteTwelveWeekCycleUseCase,
-    private val abandonCycle: AbandonTwelveWeekCycleUseCase
+    private val abandonCycleUseCase: AbandonTwelveWeekCycleUseCase
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(TwelveWeekUiState())
     val uiState: StateFlow<TwelveWeekUiState> = _uiState.asStateFlow()
@@ -55,64 +58,68 @@ class TwelveWeekViewModel(
         }
     }
 
-    fun openStartSheet() {
-        _uiState.update { it.copy(startSheet = TwelveWeekStartSheetState()) }
-    }
-
-    fun dismissStartSheet() {
-        _uiState.update { it.copy(startSheet = null) }
-    }
-
-    fun updateStartTitle(value: String) {
-        _uiState.update { state ->
-            state.copy(startSheet = state.startSheet?.copy(title = value))
+    fun openCycleEditor(cycleId: Long? = null) {
+        val cycle = cycleId?.let { id ->
+            _uiState.value.workspace.cycleCards
+                .firstOrNull { it.cycle.id == id }
+                ?.cycle
         }
-    }
-
-    fun updateStartGoalTitle(index: Int, value: String) {
-        _uiState.update { state ->
-            state.startSheet?.let { sheet ->
-                state.copy(
-                    startSheet = sheet.copy(
-                        goalTitles = sheet.goalTitles.mapIndexed { i, current ->
-                            if (i == index) value else current
-                        }
-                    )
+        _uiState.update {
+            it.copy(
+                cycleEditor = TwelveWeekCycleEditorState(
+                    cycleId = cycleId,
+                    title = cycle?.title.orEmpty(),
+                    startEpochDays = cycle?.startEpochDays
+                        ?: mondayOfWeek(today().toEpochDays().toInt())
                 )
-            } ?: state
+            )
         }
     }
 
-    fun saveStartCycle() {
-        val sheet = _uiState.value.startSheet ?: return
-        if (sheet.isSaving) return
-        _uiState.update { it.copy(startSheet = sheet.copy(isSaving = true)) }
+    fun dismissCycleEditor() {
+        _uiState.update { it.copy(cycleEditor = null) }
+    }
+
+    fun updateCycleEditorTitle(value: String) {
+        _uiState.update { state -> state.copy(cycleEditor = state.cycleEditor?.copy(title = value)) }
+    }
+
+    fun saveCycleEditor() {
+        val editor = _uiState.value.cycleEditor ?: return
+        if (editor.isSaving) return
+        _uiState.update { it.copy(cycleEditor = editor.copy(isSaving = true)) }
         viewModelScope.launch {
             runCatching {
-                startCycle(
-                    title = sheet.title,
-                    startEpochDays = today().toEpochDays().toInt(),
-                    goalTitles = sheet.goalTitles
-                )
+                if (editor.cycleId == null) {
+                    startCycle(
+                        title = editor.title,
+                        startEpochDays = today().toEpochDays().toInt()
+                    )
+                } else {
+                    updateCycle(editor.cycleId, editor.title)
+                }
             }.onSuccess {
-                _uiState.update { state -> state.copy(startSheet = null) }
-                sendEvent(UiEvent.ShowSnackbar("12-week cycle started"))
+                _uiState.update { state -> state.copy(cycleEditor = null) }
+                if (editor.cycleId == null) {
+                    sendEvent(UiEvent.ShowSnackbar("12-week cycle started"))
+                }
             }.onFailure { error ->
-                _uiState.update { state -> state.copy(startSheet = state.startSheet?.copy(isSaving = false)) }
-                sendEvent(UiEvent.ShowSnackbar(error.message ?: "Unable to start cycle"))
+                _uiState.update { state -> state.copy(cycleEditor = state.cycleEditor?.copy(isSaving = false)) }
+                sendEvent(UiEvent.ShowSnackbar(error.message ?: "Unable to save cycle"))
             }
         }
     }
 
-    fun openAddGoalEditor() {
-        val cycle = _uiState.value.workspace.cycle ?: return
+    fun openAddGoalEditor(cycleId: Long) {
         _uiState.update {
-            it.copy(goalEditor = TwelveWeekGoalEditorState(goalId = null, cycleId = cycle.id))
+            it.copy(goalEditor = TwelveWeekGoalEditorState(goalId = null, cycleId = cycleId))
         }
     }
 
     fun openEditGoalEditor(goalId: Long) {
-        val goal = _uiState.value.workspace.goals.firstOrNull { it.goal.id == goalId }?.goal ?: return
+        val goal = _uiState.value.workspace.cycleCards
+            .flatMap { it.goals }
+            .firstOrNull { it.goal.id == goalId }?.goal ?: return
         _uiState.update {
             it.copy(
                 goalEditor = TwelveWeekGoalEditorState(
@@ -171,18 +178,20 @@ class TwelveWeekViewModel(
         }
     }
 
-    fun openCheckInSheet(weekIndex: Int) {
+    fun openCheckInSheet(cycleId: Long, weekIndex: Int) {
         val workspace = _uiState.value.workspace
-        val existing = workspace.checkIns.firstOrNull { it.weekIndex == weekIndex }
+        val cycleCard = workspace.cycleCards.firstOrNull { it.cycle.id == cycleId } ?: return
+        val existing = workspace.checkIns.firstOrNull { it.cycleId == cycleId && it.weekIndex == weekIndex }
         val savedScores = existing?.let { checkIn ->
             workspace.scores.filter { it.checkInId == checkIn.id }
         }.orEmpty()
         _uiState.update {
             it.copy(
                 checkInSheet = TwelveWeekCheckInSheetState(
+                    cycleId = cycleId,
                     weekIndex = weekIndex,
                     note = existing?.note.orEmpty(),
-                    scores = workspace.goals.map { card ->
+                    scores = cycleCard.goals.map { card ->
                         TwelveWeekScoreField(
                             goalId = card.goal.id,
                             goalTitle = card.goal.title,
@@ -217,12 +226,11 @@ class TwelveWeekViewModel(
     fun saveCheckIn() {
         val sheet = _uiState.value.checkInSheet ?: return
         if (sheet.isSaving) return
-        val cycleId = _uiState.value.workspace.cycle?.id ?: return
         _uiState.update { it.copy(checkInSheet = sheet.copy(isSaving = true)) }
         viewModelScope.launch {
             runCatching {
                 upsertCheckIn(
-                    cycleId = cycleId,
+                    cycleId = sheet.cycleId,
                     weekIndex = sheet.weekIndex,
                     note = sheet.note,
                     scores = sheet.scores.mapNotNull { field ->
@@ -241,15 +249,16 @@ class TwelveWeekViewModel(
         }
     }
 
-    fun openCompleteSheet() {
+    fun openCompleteSheet(cycleId: Long) {
         val workspace = _uiState.value.workspace
-        val cycle = workspace.cycle ?: return
+        val cycleCard = workspace.cycleCards.firstOrNull { it.cycle.id == cycleId } ?: return
+        val goals = cycleCard.goals
         _uiState.update {
             it.copy(
                 completeSheet = TwelveWeekCompleteSheetState(
-                    cycleId = cycle.id,
-                    goalTitles = workspace.goals.associate { card -> card.goal.id to card.goal.title },
-                    finalStatuses = workspace.goals.associateTo(mutableMapOf()) { card ->
+                    cycleId = cycleId,
+                    goalTitles = goals.associate { card -> card.goal.id to card.goal.title },
+                    finalStatuses = goals.associateTo(mutableMapOf()) { card ->
                         card.goal.id to (card.goal.finalStatus ?: TwelveWeekGoalFinalStatus.Partial)
                     }
                 )
@@ -290,10 +299,9 @@ class TwelveWeekViewModel(
         }
     }
 
-    fun abandonCycle() {
-        val cycle = _uiState.value.workspace.cycle ?: return
+    fun abandonCycle(cycleId: Long) {
         viewModelScope.launch {
-            runCatching { abandonCycle(cycle.id) }
+            runCatching { abandonCycleUseCase(cycleId) }
                 .onSuccess { sendEvent(UiEvent.ShowSnackbar("Cycle abandoned")) }
                 .onFailure { error ->
                     sendEvent(UiEvent.ShowSnackbar(error.message ?: "Unable to abandon cycle"))

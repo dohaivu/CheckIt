@@ -14,6 +14,10 @@ fun LocalDate.localizedCompactDateWithDayName(): String =
     "${month.number}.$day (${dayOfWeek.localizedShortName()})"
 
 @Composable
+fun LocalDate.localizedCompactDate(): String =
+    "${month.localizedShortName()} $day"
+
+@Composable
 fun LocalDate.localizedShortMonthName(): String =
     month.localizedShortName()
 

@@ -6,15 +6,16 @@ import com.checkit.domain.TwelveWeekWorkspace
 data class TwelveWeekUiState(
     val workspace: TwelveWeekWorkspace = TwelveWeekWorkspace(),
     val isLoading: Boolean = true,
-    val startSheet: TwelveWeekStartSheetState? = null,
+    val cycleEditor: TwelveWeekCycleEditorState? = null,
     val goalEditor: TwelveWeekGoalEditorState? = null,
     val checkInSheet: TwelveWeekCheckInSheetState? = null,
     val completeSheet: TwelveWeekCompleteSheetState? = null
 )
 
-data class TwelveWeekStartSheetState(
+data class TwelveWeekCycleEditorState(
+    val cycleId: Long? = null,
     val title: String = "",
-    val goalTitles: List<String> = listOf("", "", ""),
+    val startEpochDays: Int = 0,
     val isSaving: Boolean = false
 )
 
@@ -27,6 +28,7 @@ data class TwelveWeekGoalEditorState(
 )
 
 data class TwelveWeekCheckInSheetState(
+    val cycleId: Long,
     val weekIndex: Int,
     val note: String = "",
     val scores: List<TwelveWeekScoreField> = emptyList(),

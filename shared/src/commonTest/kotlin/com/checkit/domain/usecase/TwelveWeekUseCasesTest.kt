@@ -5,6 +5,7 @@ import com.checkit.data.TwelveWeekGoalScoreWriteInput
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskType
+import com.checkit.domain.TWELVE_WEEK_MAX_GOALS
 import com.checkit.domain.TwelveWeekCycleStatus
 import com.checkit.domain.TwelveWeekGoalFinalStatus
 import com.checkit.domain.TwelveWeekGoalScore
@@ -58,58 +59,77 @@ class TwelveWeekUseCasesTest {
         tagIds = emptyList()
     )
 
+    private suspend fun cycleWithGoal(repository: FakeCheckItRepository): Long {
+        val cycleId = StartTwelveWeekCycleUseCase(repository)("A", 0)
+        AddTwelveWeekGoalUseCase(repository)(cycleId, "G1")
+        return cycleId
+    }
+
     @Test
-    fun startCycleCreatesActiveCycleWithTrimmedGoals() = runTest {
+    fun startCycleCreatesActiveCycleOnMonday() = runTest {
         val repository = FakeCheckItRepository()
         val id = StartTwelveWeekCycleUseCase(repository)(
             title = " My cycle ",
-            startEpochDays = 100,
-            goalTitles = listOf(" Goal 1 ", "", "Goal 3")
+            startEpochDays = 100
         )
 
         val cycle = repository.observeTwelveWeekCycles().first().single()
         assertEquals(id, cycle.id)
         assertEquals(TwelveWeekCycleStatus.Active, cycle.status)
         assertEquals("My cycle", cycle.title)
-        assertEquals(183, cycle.endEpochDays)
+        assertEquals(95, cycle.startEpochDays)
+        assertEquals(178, cycle.endEpochDays)
+        assertTrue(repository.observeTwelveWeekGoals().first().isEmpty())
+    }
+
+    @Test
+    fun startCycleRejectsBlankTitle() = runTest {
+        val repository = FakeCheckItRepository()
+        val start = StartTwelveWeekCycleUseCase(repository)
+
+        assertFailsWith<IllegalArgumentException> {
+            start("   ", 0)
+        }
+    }
+
+    @Test
+    fun startCycleAllowsMultipleActiveCycles() = runTest {
+        val repository = FakeCheckItRepository()
+        val start = StartTwelveWeekCycleUseCase(repository)
+        start("A", 0)
+        start("B", 0)
+
         assertEquals(
-            listOf("Goal 1", "Goal 3"),
-            repository.observeTwelveWeekGoals().first().map { it.title }
+            2,
+            repository.observeTwelveWeekCycles().first().count { it.status == TwelveWeekCycleStatus.Active }
         )
     }
 
     @Test
-    fun startCycleRejectsTooManyOrTooFewGoals() = runTest {
+    fun updateCycleRenamesActiveCycle() = runTest {
         val repository = FakeCheckItRepository()
-        val start = StartTwelveWeekCycleUseCase(repository)
+        val cycleId = StartTwelveWeekCycleUseCase(repository)("A", 0)
 
-        assertFailsWith<IllegalArgumentException> {
-            start("A", 0, emptyList())
-        }
-        assertFailsWith<IllegalArgumentException> {
-            start("A", 0, listOf("1", "2", "3", "4"))
-        }
-    }
+        UpdateTwelveWeekCycleUseCase(repository)(cycleId, "Renamed")
 
-    @Test
-    fun startCycleFailsIfActiveCycleExists() = runTest {
-        val repository = FakeCheckItRepository()
-        val start = StartTwelveWeekCycleUseCase(repository)
-        start("A", 0, listOf("G1"))
+        val cycle = repository.observeTwelveWeekCycles().first().single()
+        assertEquals("Renamed", cycle.title)
+        assertEquals(TwelveWeekCycleStatus.Active, cycle.status)
 
+        CompleteTwelveWeekCycleUseCase(repository)(cycleId, emptyMap(), "")
         assertFailsWith<IllegalArgumentException> {
-            start("B", 0, listOf("G2"))
+            UpdateTwelveWeekCycleUseCase(repository)(cycleId, "No")
         }
     }
 
     @Test
-    fun addGoalFailsAtMaxThreeAndWhenNotActive() = runTest {
+    fun addGoalFailsAtMaxAndWhenNotActive() = runTest {
         val repository = FakeCheckItRepository()
-        val start = StartTwelveWeekCycleUseCase(repository)
-        val cycleId = start("A", 0, listOf("1", "2", "3"))
+        val cycleId = StartTwelveWeekCycleUseCase(repository)("A", 0)
         val add = AddTwelveWeekGoalUseCase(repository)
+        repeat(TWELVE_WEEK_MAX_GOALS) { add(cycleId, "g$it") }
 
-        assertFailsWith<IllegalArgumentException> { add(cycleId, "4") }
+        assertFailsWith<IllegalArgumentException> { add(cycleId, "overflow") }
 
         val goals = repository.observeTwelveWeekGoals().first()
         CompleteTwelveWeekCycleUseCase(repository)(
@@ -123,7 +143,7 @@ class TwelveWeekUseCasesTest {
     @Test
     fun upsertCheckInReplacesScoresAndValidatesInput() = runTest {
         val repository = FakeCheckItRepository()
-        val cycleId = StartTwelveWeekCycleUseCase(repository)("A", 0, listOf("G1"))
+        val cycleId = cycleWithGoal(repository)
         val goalId = repository.observeTwelveWeekGoals().first().single().id
         val upsert = UpsertTwelveWeekCheckInUseCase(repository)
 
@@ -149,7 +169,7 @@ class TwelveWeekUseCasesTest {
     @Test
     fun completeCycleStampsFinalStatusesAndReview() = runTest {
         val repository = FakeCheckItRepository()
-        val cycleId = StartTwelveWeekCycleUseCase(repository)("A", 0, listOf("G1"))
+        val cycleId = cycleWithGoal(repository)
         val goalId = repository.observeTwelveWeekGoals().first().single().id
 
         CompleteTwelveWeekCycleUseCase(repository)(
@@ -171,7 +191,7 @@ class TwelveWeekUseCasesTest {
     @Test
     fun abandonCycleSetsAbandonedStatus() = runTest {
         val repository = FakeCheckItRepository()
-        val cycleId = StartTwelveWeekCycleUseCase(repository)("A", 0, listOf("G1"))
+        val cycleId = StartTwelveWeekCycleUseCase(repository)("A", 0)
 
         AbandonTwelveWeekCycleUseCase(repository)(cycleId)
 
@@ -184,7 +204,7 @@ class TwelveWeekUseCasesTest {
     @Test
     fun addTacticCreatesLinkedTacticAndRejectsInactiveCycle() = runTest {
         val repository = FakeCheckItRepository()
-        val cycleId = StartTwelveWeekCycleUseCase(repository)("A", 0, listOf("G1"))
+        val cycleId = cycleWithGoal(repository)
         val goalId = repository.observeTwelveWeekGoals().first().single().id
         val addTactic = AddTacticToGoalUseCase(repository, AddTaskUseCase(repository))
 
@@ -212,7 +232,7 @@ class TwelveWeekUseCasesTest {
     @Test
     fun unlinkTacticRemovesOnlyTheLink() = runTest {
         val repository = FakeCheckItRepository()
-        val cycleId = StartTwelveWeekCycleUseCase(repository)("A", 0, listOf("G1"))
+        val cycleId = cycleWithGoal(repository)
         val goalId = repository.observeTwelveWeekGoals().first().single().id
         val addTactic = AddTacticToGoalUseCase(repository, AddTaskUseCase(repository))
         val taskId = addTactic(goalId, tacticInput())
@@ -300,6 +320,14 @@ class TwelveWeekUseCasesTest {
             createdAtMillis = 0L,
             completedAtMillis = 5L
         )
+        val activeTwo = com.checkit.domain.TwelveWeekCycle(
+            id = 3,
+            title = "Active Two",
+            startEpochDays = 20,
+            endEpochDays = 103,
+            status = TwelveWeekCycleStatus.Active,
+            createdAtMillis = 0L
+        )
         val goal = com.checkit.domain.TwelveWeekGoal(
             id = 10,
             cycleId = 1,
@@ -310,7 +338,7 @@ class TwelveWeekUseCasesTest {
         )
 
         val workspace = observe.build(
-            cycles = listOf(completed, active),
+            cycles = listOf(completed, activeTwo, active),
             goals = listOf(goal),
             checkIns = emptyList(),
             scores = emptyList(),
@@ -319,11 +347,14 @@ class TwelveWeekUseCasesTest {
             todayEpochDays = 10
         )
 
-        assertEquals(listOf(1L, 2L), workspace.cycleCards.map { it.cycle.id })
+        assertEquals(listOf(1L, 3L, 2L), workspace.cycleCards.map { it.cycle.id })
+        assertEquals(1L, workspace.cycle?.id)
         assertEquals(0, workspace.cycleCards[0].currentWeekIndex)
         assertNull(workspace.cycleCards[1].currentWeekIndex)
+        assertNull(workspace.cycleCards[2].currentWeekIndex)
         assertEquals(1, workspace.cycleCards[0].goals.size)
         assertTrue(workspace.cycleCards[1].goals.isEmpty())
+        assertTrue(workspace.cycleCards[2].goals.isEmpty())
     }
 
     @Test

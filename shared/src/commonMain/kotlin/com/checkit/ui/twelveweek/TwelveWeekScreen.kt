@@ -1,7 +1,9 @@
 package com.checkit.ui.twelveweek
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -59,6 +61,7 @@ import checkit.shared.generated.resources.twelve_week_complete_title
 import checkit.shared.generated.resources.twelve_week_cycle_title_label
 import checkit.shared.generated.resources.twelve_week_delete_goal
 import checkit.shared.generated.resources.twelve_week_edit_goal
+import checkit.shared.generated.resources.twelve_week_edit_cycle
 import checkit.shared.generated.resources.twelve_week_empty_subtitle
 import checkit.shared.generated.resources.twelve_week_empty_title
 import checkit.shared.generated.resources.twelve_week_final_status_achieved
@@ -71,6 +74,7 @@ import checkit.shared.generated.resources.twelve_week_review_note
 import checkit.shared.generated.resources.twelve_week_score_label
 import checkit.shared.generated.resources.twelve_week_start
 import checkit.shared.generated.resources.twelve_week_start_sheet_title
+import checkit.shared.generated.resources.twelve_week_starts_on
 import checkit.shared.generated.resources.twelve_week_tactics_empty
 import checkit.shared.generated.resources.twelve_week_title
 import checkit.shared.generated.resources.twelve_week_week_of_12
@@ -88,6 +92,8 @@ import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.tasks.cardColor
 import com.checkit.ui.tasks.isOverdue
 import com.checkit.ui.tasks.views.TaskTitleRow
+import com.checkit.ui.localizedCompactDate
+import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -119,8 +125,8 @@ internal fun TwelveWeekScreen(
                     }
                 },
                 actions = {
-                    if (!state.isLoading && state.workspace.cycle == null) {
-                        IconButton(onClick = viewModel::openStartSheet) {
+                    if (!state.isLoading) {
+                        IconButton(onClick = { viewModel.openCycleEditor() }) {
                             Icon(
                                 Icons.Default.Add,
                                 contentDescription = stringResource(Res.string.twelve_week_add_cycle)
@@ -150,7 +156,7 @@ internal fun TwelveWeekScreen(
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    EmptyCycleCard(onStart = viewModel::openStartSheet)
+                    EmptyCycleCard(onStart = { viewModel.openCycleEditor() })
                 }
                 else -> Column(
                     modifier = Modifier
@@ -164,11 +170,14 @@ internal fun TwelveWeekScreen(
                             cycleCard = cycleCard,
                             isActive = cycleCard.cycle.status == TwelveWeekCycleStatus.Active,
                             onCheckIn = {
-                                cycleCard.currentWeekIndex?.let(viewModel::openCheckInSheet)
+                                cycleCard.currentWeekIndex?.let { index ->
+                                    viewModel.openCheckInSheet(cycleCard.cycle.id, index)
+                                }
                             },
-                            onComplete = viewModel::openCompleteSheet,
-                            onAbandon = viewModel::abandonCycle,
-                            onAddGoal = viewModel::openAddGoalEditor,
+                            onComplete = { viewModel.openCompleteSheet(cycleCard.cycle.id) },
+                            onAbandon = { viewModel.abandonCycle(cycleCard.cycle.id) },
+                            onEditCycle = { viewModel.openCycleEditor(cycleCard.cycle.id) },
+                            onAddGoal = { viewModel.openAddGoalEditor(cycleCard.cycle.id) },
                             onEditGoal = viewModel::openEditGoalEditor,
                             onAddTactic = onAddTactic,
                             onToggleTactic = onToggleTactic
@@ -179,13 +188,12 @@ internal fun TwelveWeekScreen(
         }
     }
 
-    state.startSheet?.let { sheet ->
-        StartCycleSheet(
-            sheet = sheet,
-            onDismiss = viewModel::dismissStartSheet,
-            onTitleChange = viewModel::updateStartTitle,
-            onGoalTitleChange = viewModel::updateStartGoalTitle,
-            onSave = viewModel::saveStartCycle
+    state.cycleEditor?.let { editor ->
+        CycleEditorSheet(
+            editor = editor,
+            onDismiss = viewModel::dismissCycleEditor,
+            onTitleChange = viewModel::updateCycleEditorTitle,
+            onSave = viewModel::saveCycleEditor
         )
     }
     state.goalEditor?.let { editor ->
@@ -258,6 +266,7 @@ private fun EmptyCycleCard(onStart: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun CycleCard(
     cycleCard: TwelveWeekCycleCard,
@@ -265,6 +274,7 @@ private fun CycleCard(
     onCheckIn: () -> Unit,
     onComplete: () -> Unit,
     onAbandon: () -> Unit,
+    onEditCycle: () -> Unit,
     onAddGoal: () -> Unit,
     onEditGoal: (Long) -> Unit,
     onAddTactic: (Long) -> Unit,
@@ -279,6 +289,13 @@ private fun CycleCard(
     val weekLabel = cycleCard.currentWeekIndex?.let { index ->
         stringResource(Res.string.twelve_week_week_of_12, index + 1)
     }.orEmpty()
+    val startDate = LocalDate.fromEpochDays(cycleCard.cycle.startEpochDays)
+    val endDate = LocalDate.fromEpochDays(cycleCard.cycle.endEpochDays)
+    val dateRangeLabel = if (startDate.year == endDate.year) {
+        "${startDate.localizedCompactDate()} – ${endDate.localizedCompactDate()}, ${endDate.year}"
+    } else {
+        "${startDate.localizedCompactDate()}, ${startDate.year} – ${endDate.localizedCompactDate()}, ${endDate.year}"
+    }
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -286,82 +303,92 @@ private fun CycleCard(
         shape = RoundedCornerShape(24.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(
                         brush = gradient,
                         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
                     )
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = cycleCard.cycle.title,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f),
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                if (weekLabel.isNotEmpty()) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = CircleShape
-                    ) {
-                        Text(
-                            text = weekLabel,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                    }
-                }
-                if (isActive) {
-                    EditorOverflowMenu { onDismiss ->
+                    .then(
                         if (isActive) {
+                            Modifier.combinedClickable(onClick = {}, onLongClick = onEditCycle)
+                        } else {
+                            Modifier
+                        }
+                    )
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = cycleCard.cycle.title,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (weekLabel.isNotEmpty()) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = CircleShape
+                        ) {
+                            Text(
+                                text = weekLabel,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
+                    }
+                    if (isActive) {
+                        EditorOverflowMenu { onDismiss ->
                             DropdownMenuItem(
                                 text = { Text(stringResource(Res.string.twelve_week_add_goal)) },
-                                leadingIcon = {
-                                    Icon(
-                                        Icons.Default.Add,
-                                        contentDescription = null
-                                    )
-                                },
+                                leadingIcon = { Icon(Icons.Default.Add, contentDescription = null) },
                                 onClick = {
                                     onDismiss()
                                     onAddGoal()
                                 }
                             )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(Res.string.twelve_week_check_in)) },
+                                leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+                                onClick = {
+                                    onDismiss()
+                                    onCheckIn()
+                                },
+                                enabled = cycleCard.currentWeekIndex != null
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(Res.string.twelve_week_complete_cycle)) },
+                                leadingIcon = { Icon(Icons.Default.Check, contentDescription = null) },
+                                onClick = {
+                                    onDismiss()
+                                    onComplete()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(Res.string.twelve_week_abandon_cycle)) },
+                                leadingIcon = { Icon(Icons.Default.Close, contentDescription = null) },
+                                onClick = {
+                                    onDismiss()
+                                    onAbandon()
+                                }
+                            )
                         }
-                        DropdownMenuItem(
-                            text = { Text(stringResource(Res.string.twelve_week_check_in)) },
-                            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
-                            onClick = {
-                                onDismiss()
-                                onCheckIn()
-                            },
-                            enabled = cycleCard.currentWeekIndex != null
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(Res.string.twelve_week_complete_cycle)) },
-                            leadingIcon = { Icon(Icons.Default.Check, contentDescription = null) },
-                            onClick = {
-                                onDismiss()
-                                onComplete()
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(Res.string.twelve_week_abandon_cycle)) },
-                            leadingIcon = { Icon(Icons.Default.Close, contentDescription = null) },
-                            onClick = {
-                                onDismiss()
-                                onAbandon()
-                            }
-                        )
                     }
                 }
+                Text(
+                    text = dateRangeLabel,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
             Column(
@@ -508,11 +535,10 @@ private fun TacticRow(task: TaskItem, onClick: () -> Unit) {
 }
 
 @Composable
-private fun StartCycleSheet(
-    sheet: TwelveWeekStartSheetState,
+private fun CycleEditorSheet(
+    editor: TwelveWeekCycleEditorState,
     onDismiss: () -> Unit,
     onTitleChange: (String) -> Unit,
-    onGoalTitleChange: (Int, String) -> Unit,
     onSave: () -> Unit
 ) {
     AppEditorBottomSheet(
@@ -526,41 +552,38 @@ private fun StartCycleSheet(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                text = stringResource(Res.string.twelve_week_start_sheet_title),
+                text = stringResource(
+                    if (editor.cycleId == null) Res.string.twelve_week_start_sheet_title
+                    else Res.string.twelve_week_edit_cycle
+                ),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
             AppOutlinedTextField(
-                value = sheet.title,
+                value = editor.title,
                 onValueChange = onTitleChange,
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = stringResource(Res.string.twelve_week_cycle_title_label),
                 maxLines = 1
             )
             Text(
-                text = stringResource(Res.string.twelve_week_goal_title_label),
+                text = stringResource(
+                    Res.string.twelve_week_starts_on,
+                    LocalDate.fromEpochDays(editor.startEpochDays).localizedCompactDate()
+                ),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            sheet.goalTitles.forEachIndexed { index, goalTitle ->
-                AppOutlinedTextField(
-                    value = goalTitle,
-                    onValueChange = { onGoalTitleChange(index, it) },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = stringResource(Res.string.twelve_week_goal_title_label) + " ${index + 1}",
-                    maxLines = 1
-                )
-            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End)
             ) {
-                TextButton(onClick = onDismiss, enabled = !sheet.isSaving) {
+                TextButton(onClick = onDismiss, enabled = !editor.isSaving) {
                     Text(stringResource(Res.string.cancel))
                 }
                 Button(
                     onClick = onSave,
-                    enabled = sheet.title.isNotBlank() && sheet.goalTitles.any { it.isNotBlank() } && !sheet.isSaving
+                    enabled = editor.title.isNotBlank() && !editor.isSaving
                 ) {
                     Text(stringResource(Res.string.plan_save))
                 }

@@ -65,6 +65,7 @@ import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.SmartScheduleDailyPlanUseCase
 import com.checkit.domain.usecase.SprintTransitionUseCase
 import com.checkit.domain.usecase.StartTwelveWeekCycleUseCase
+import com.checkit.domain.usecase.UpdateTwelveWeekCycleUseCase
 import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.usecase.TogglePlanPriorityDoneUseCase
 import com.checkit.domain.usecase.UnlinkTacticFromGoalUseCase
@@ -196,6 +197,7 @@ val provideInteractorModule = module {
     single { LinkDailyPlanItemToPlanPriorityUseCase(get()) }
     single { ObserveTwelveWeekWorkspaceUseCase(get()) }
     single { StartTwelveWeekCycleUseCase(get()) }
+    single { UpdateTwelveWeekCycleUseCase(get()) }
     single { AddTwelveWeekGoalUseCase(get()) }
     single { UpdateTwelveWeekGoalUseCase(get()) }
     single { DeleteTwelveWeekGoalUseCase(get()) }
@@ -294,12 +296,13 @@ val provideViewModelModule = module {
         TwelveWeekViewModel(
             observeWorkspace = get(),
             startCycle = get(),
+            updateCycle = get(),
             addGoal = get(),
             updateGoal = get(),
             deleteGoal = get(),
             upsertCheckIn = get(),
             completeCycle = get(),
-            abandonCycle = get()
+            abandonCycleUseCase = get()
         )
     }
 }

@@ -1,8 +1,11 @@
 package com.checkit.domain
 
+import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.LocalDate
+
 const val TWELVE_WEEK_LENGTH_DAYS = 84
 const val TWELVE_WEEK_LAST_INDEX = 11
-const val TWELVE_WEEK_MAX_GOALS = 3
+const val TWELVE_WEEK_MAX_GOALS = 5
 const val TWELVE_WEEK_MIN_SCORE = 0
 const val TWELVE_WEEK_MAX_SCORE = 10
 
@@ -93,6 +96,13 @@ fun weekIndexFor(cycleStartEpochDays: Int, dateEpochDays: Int): Int? {
     val delta = dateEpochDays - cycleStartEpochDays
     if (delta !in 0 until TWELVE_WEEK_LENGTH_DAYS) return null
     return delta / 7
+}
+
+/** Returns the Monday (ISO week start) of the week containing [epochDays]. */
+fun mondayOfWeek(epochDays: Int): Int {
+    val dayOfWeek = LocalDate.fromEpochDays(epochDays).dayOfWeek
+    val offset = (dayOfWeek.ordinal - DayOfWeek.MONDAY.ordinal + 7) % 7
+    return epochDays - offset
 }
 
 fun weekDateRange(cycleStartEpochDays: Int, weekIndex: Int): IntRange {

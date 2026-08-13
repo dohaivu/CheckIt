@@ -202,13 +202,15 @@
     <string name="twelve_week_start">Start a 12-week cycle</string>
     <string name="twelve_week_start_sheet_title">Start a 12-week cycle</string>
     <string name="twelve_week_add_cycle">Add cycle</string>
+    <string name="twelve_week_edit_cycle">Edit cycle</string>
+    <string name="twelve_week_starts_on">Starts %1$s</string>
     <string name="twelve_week_cycle_title_label">Cycle title</string>
     <string name="twelve_week_goal_title_label">Goal title</string>
     <string name="twelve_week_goal_note_label">Note</string>
     <string name="twelve_week_add_goal">Add goal</string>
     <string name="twelve_week_edit_goal">Edit goal</string>
     <string name="twelve_week_delete_goal">Delete goal</string>
-    <string name="twelve_week_no_goals">Add up to 3 goals to focus on.</string>
+    <string name="twelve_week_no_goals">Add up to 5 goals to focus on.</string>
     <string name="twelve_week_week_of_12">Week %1$d of 12</string>
     <string name="twelve_week_check_in">Check in</string>
     <string name="twelve_week_check_in_title">Weekly check-in</string>

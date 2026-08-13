@@ -178,13 +178,15 @@
     <string name="twelve_week_start">Bắt đầu chu kỳ 12 tuần</string>
     <string name="twelve_week_start_sheet_title">Bắt đầu chu kỳ 12 tuần</string>
     <string name="twelve_week_add_cycle">Thêm chu kỳ</string>
+    <string name="twelve_week_edit_cycle">Chỉnh sửa chu kỳ</string>
+    <string name="twelve_week_starts_on">Bắt đầu %1$s</string>
     <string name="twelve_week_cycle_title_label">Tên chu kỳ</string>
     <string name="twelve_week_goal_title_label">Tên mục tiêu</string>
     <string name="twelve_week_goal_note_label">Ghi chú</string>
     <string name="twelve_week_add_goal">Thêm mục tiêu</string>
     <string name="twelve_week_edit_goal">Sửa mục tiêu</string>
     <string name="twelve_week_delete_goal">Xóa mục tiêu</string>
-    <string name="twelve_week_no_goals">Thêm tối đa 3 mục tiêu cần tập trung.</string>
+    <string name="twelve_week_no_goals">Thêm tối đa 5 mục tiêu cần tập trung.</string>
     <string name="twelve_week_week_of_12">Tuần %1$d/12</string>
     <string name="twelve_week_check_in">Kiểm tra</string>
     <string name="twelve_week_check_in_title">Kiểm tra tuần</string>
