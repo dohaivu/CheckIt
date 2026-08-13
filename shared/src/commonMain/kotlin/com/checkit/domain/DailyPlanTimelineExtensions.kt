@@ -1,6 +1,6 @@
 package com.checkit.domain
 
-import com.checkit.ui.currentMyDayTimeMinutes
+import com.checkit.ui.tasks.views.TimelineStartHour
 
 fun nextAvailableTimeRange(
     preferredStartTimeMinutes: Int,
@@ -10,7 +10,7 @@ fun nextAvailableTimeRange(
 ): Pair<Int?, Int?> {
     val duration = durationMinutes.coerceIn(MinimumPlanDurationMinutes, MyDayMinutesPerDay)
     val lastStart = MyDayMinutesPerDay - duration
-    val earliestStart = earliestStartTimeMinutes.coerceIn(0, lastStart)
+    val earliestStart = earliestStartTimeMinutes.coerceIn(TimelineStartHour * 60, lastStart)
     val preferredStart = preferredStartTimeMinutes.coerceIn(earliestStart, lastStart)
     val occupiedRanges = items
         .mapNotNull { it.occupiedTimeRange() }

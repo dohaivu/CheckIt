@@ -139,4 +139,37 @@
     <string name="plan_assist_banner_dismiss">Để sau</string>
     <string name="settings_auto_carry_title">Tự chuyển việc còn lại</string>
     <string name="settings_auto_carry_subtitle">Tự động đưa việc chưa xong hôm qua sang hôm nay</string>
+
+    <string name="plan_screen_title">Kế hoạch</string>
+    <string name="plan_period_year">Năm</string>
+    <string name="plan_period_quarter">Quý</string>
+    <string name="plan_period_month">Tháng</string>
+    <string name="plan_period_week">Tuần</string>
+    <string name="plan_period_day">Ngày</string>
+    <string name="plan_previous_period">Kỳ trước</string>
+    <string name="plan_next_period">Kỳ sau</string>
+    <string name="plan_edit_priority">Sửa ưu tiên</string>
+    <string name="plan_delete_priority">Xóa ưu tiên</string>
+    <string name="plan_add_task">Thêm nhiệm vụ</string>
+    <string name="plan_new_priority">Ưu tiên mới</string>
+    <string name="plan_edit_priority_title">Sửa ưu tiên</string>
+    <string name="plan_priority_title_label">Tiêu đề ưu tiên</string>
+    <string name="plan_note_label">Ghi chú</string>
+    <string name="plan_parent_label">Cấp cha</string>
+    <string name="plan_parent_none">Không có</string>
+    <string name="plan_complete">Hoàn thành</string>
+    <string name="plan_reopen">Mở lại</string>
+    <string name="plan_add">Thêm</string>
+    <string name="plan_save">Lưu</string>
+    <string name="plan_close">Đóng</string>
+    <string name="plan_priority_added">Đã thêm ưu tiên</string>
+    <string name="plan_priority_saved">Đã lưu ưu tiên</string>
+    <string name="plan_priority_deleted">Đã xóa ưu tiên</string>
+    <string name="plan_save_error">Không thể lưu ưu tiên</string>
+    <string name="plan_task_added">Đã thêm nhiệm vụ</string>
+    <string name="plan_task_add_error">Không thể thêm nhiệm vụ</string>
+    <string name="plan_link_error">Không thể gắn nhiệm vụ</string>
+    <string name="plan_empty_title">Chưa có ưu tiên nào</string>
+    <string name="plan_empty_subtitle">Thêm điều quan trọng, rồi chia nhỏ khi kỳ thu hẹp dần.</string>
+    <string name="plan_add_priority">Thêm ưu tiên</string>
 </resources>

@@ -5,7 +5,6 @@ import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
-import com.checkit.domain.ListItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
@@ -344,7 +343,7 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
         tags: List<TagItem> = emptyList()
     ) = TaskItem(
         id = id,
-        list = ListItem.None,
+        list = null,
         name = "Task $id",
         status = status,
         type = type,

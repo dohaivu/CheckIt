@@ -4,7 +4,6 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.KeyResult
-import com.checkit.domain.ListItem
 import com.checkit.domain.Objective
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
@@ -37,7 +36,7 @@ class SyncKeyResultFromDailyPlanUseCaseTest {
         objective: Objective,
         keyResult: KeyResult? = null,
     ) = TaskItem(
-        id = id, list = ListItem.None, keyResult = keyResult, name = "Task $id",
+        id = id, list = null, keyResult = keyResult, name = "Task $id",
         sortOrder = 0, createdAtMillis = 0L, updatedAtMillis = 0L
     )
 

@@ -62,10 +62,12 @@ import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.localizedMonthTitle
 import com.checkit.ui.localizedName
 import com.checkit.ui.localizedShortMonthName
+import com.checkit.ui.localizedShortName
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
+import kotlinx.datetime.toLocalIsoWeekDate
 import org.jetbrains.compose.resources.stringResource
 
 enum class ReportPeriod {
@@ -224,8 +226,8 @@ private fun BreadcrumbRow(
     val weekEnd = weekStart.plus(6, DateTimeUnit.DAY)
     val yearLabel = selectedDate.year.toString()
     val monthLabel = selectedDate.month.localizedName()
-    val weekLabel = "${weekStart.day} - ${weekEnd.day}"
-    val dayLabel = selectedDate.localizedCompactDateWithDayName()
+    val weekLabel = "W${weekStart.toLocalIsoWeekDate().isoWeekNumber} ${weekStart.day} - ${weekEnd.day}"
+    val dayLabel = "${selectedDate.day} ${selectedDate.dayOfWeek.localizedShortName()}"
     val crumbs = remember(selectedDate, selectedPeriod) {
         buildList {
             if (selectedPeriod.ordinal <= ReportPeriod.Annual.ordinal) {

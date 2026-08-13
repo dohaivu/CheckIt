@@ -5,6 +5,7 @@ import com.checkit.ui.myday.MyDayViewModel
 import com.checkit.ui.okr.GoalViewModel
 import com.checkit.ui.okr.KeyResultViewModel
 import com.checkit.ui.okr.ObjectiveViewModel
+import com.checkit.ui.plan.PeriodPlanViewModel
 import com.checkit.ui.reflect.ReflectViewModel
 import com.checkit.ui.settings.SettingsViewModel
 import com.checkit.ui.tasks.TaskViewModel
@@ -23,6 +24,7 @@ data class CheckItViewModels(
     val myDay: MyDayViewModel,
     val calendar: CalendarViewModel,
     val reflect: ReflectViewModel,
+    val plan: PeriodPlanViewModel,
     val settings: SettingsViewModel
 )
 
@@ -37,5 +39,6 @@ fun koinCheckItViewModels(): CheckItViewModels = CheckItViewModels(
     myDay = koinViewModel(),
     calendar = koinViewModel(),
     reflect = koinViewModel(),
+    plan = koinViewModel(),
     settings = koinViewModel()
 )

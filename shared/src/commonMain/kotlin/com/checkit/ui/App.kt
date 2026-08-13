@@ -40,6 +40,7 @@ import com.checkit.ui.myday.DailyPlanItemEditorSheet
 import com.checkit.ui.myday.JournalEntryEditorSheet
 import com.checkit.ui.myday.JournalListSheet
 import com.checkit.ui.myday.MyDayScreen
+import com.checkit.ui.plan.PlanPriorityEditorSheet
 import com.checkit.ui.reflect.PeriodReviewEditorSheet
 import com.checkit.ui.reflect.ReflectScreen
 import com.checkit.ui.settings.SettingsScreen
@@ -93,7 +94,8 @@ fun CheckItApp(
             viewModels.tag.events,
             viewModels.myDay.events,
             viewModels.settings.events,
-            viewModels.reflect.events
+            viewModels.reflect.events,
+            viewModels.plan.events
         ).collect { event ->
             when (event) {
                 is UiEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
@@ -109,6 +111,7 @@ fun CheckItApp(
     val tagUiState by viewModels.tag.uiState.collectAsState()
     val myDayUiState by viewModels.myDay.uiState.collectAsState()
     val calendarUiState by viewModels.calendar.uiState.collectAsState()
+    val planUiState by viewModels.plan.uiState.collectAsState()
     val reflectEditorState by viewModels.reflect.editor.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
     val appScope = rememberCoroutineScope()
@@ -249,6 +252,7 @@ fun CheckItApp(
                                             keyResultViewModel = viewModels.keyResult,
                                             objectiveViewModel = viewModels.objective,
                                             listViewModel = viewModels.list,
+                                            planViewModel = viewModels.plan,
                                             onOpenTags = { navState.push(AppRoute.Tags) }
                                         )
                                     }
@@ -312,6 +316,8 @@ fun CheckItApp(
                             editor = editor,
                             availableLists = taskUiState.board.lists,
                             availableTags = taskUiState.board.tags,
+                            availableKeyResults = taskUiState.board.keyResults,
+                            availablePlanPriorities = taskUiState.board.planPriorities,
                             actions = TaskEditorActions(
                                 onDismiss = viewModels.task::dismissEditor,
                                 onSave = viewModels.task::saveEditor,
@@ -429,6 +435,19 @@ fun CheckItApp(
                             onGenerateDraft = viewModels.reflect::generateDraft,
                             onSave = viewModels.reflect::saveEditor,
                             onDismiss = viewModels.reflect::dismissEditor
+                        )
+                    }
+                    planUiState.editor?.let { planEditor ->
+                        PlanPriorityEditorSheet(
+                            editor = planEditor,
+                            parentCandidates = planUiState.parentCandidates,
+                            onDismiss = viewModels.plan::dismissEditor,
+                            onSave = viewModels.plan::savePriority,
+                            onDelete = { planEditor.priorityId?.let(viewModels.plan::deletePriority) },
+                            onToggleDone = viewModels.plan::toggleDone,
+                            onTitleChange = viewModels.plan::updateEditorTitle,
+                            onNoteChange = viewModels.plan::updateEditorNote,
+                            onParentChange = viewModels.plan::updateEditorParent
                         )
                     }
                 }

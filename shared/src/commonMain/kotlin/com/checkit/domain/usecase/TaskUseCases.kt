@@ -201,11 +201,11 @@ class SelectTaskBoardItemsUseCase {
         today: LocalDate
     ): TaskBoardItems {
         val listFilteredTasks = when (selection) {
-            is TaskBoardSelection.ListSelection -> board.tasks.filter { it.list.id == selection.listId && !it.isTrashed }
+            is TaskBoardSelection.ListSelection -> board.tasks.filter { it.list?.id == selection.listId && !it.isTrashed }
             is TaskBoardSelection.FilterSelection -> board.tasks.filter { it.matches(selection.filter, today) }
         }
         val listFilteredNotes = when (selection) {
-            is TaskBoardSelection.ListSelection -> board.notes.filter { it.list.id == selection.listId && !it.isTrashed }
+            is TaskBoardSelection.ListSelection -> board.notes.filter { it.list?.id == selection.listId && !it.isTrashed }
             is TaskBoardSelection.FilterSelection -> board.notes.filter { it.matches(selection.filter, today) }
         }
 
