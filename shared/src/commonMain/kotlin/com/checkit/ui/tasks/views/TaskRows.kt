@@ -38,6 +38,7 @@ import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskType
+import com.checkit.domain.TwelveWeekGoal
 import com.checkit.ui.components.DateTimeRangeDetailChip
 import com.checkit.ui.components.DetailChip
 import com.checkit.ui.components.RichTextPreview
@@ -60,7 +61,8 @@ internal fun TaskRow(
     task: TaskItem,
     onClick: () -> Unit,
     showList: Boolean = true,
-    displayType: TaskListDisplayType = TaskListDisplayType.Standard
+    displayType: TaskListDisplayType = TaskListDisplayType.Standard,
+    twelveWeekGoal: TwelveWeekGoal? = null,
 ) {
     BaseTaskRow(
         color = task.cardColor(),
@@ -71,8 +73,8 @@ internal fun TaskRow(
         Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
             when (displayType) {
                 TaskListDisplayType.Brief -> BriefTaskRowContent(task)
-                TaskListDisplayType.Standard -> StandardTaskRowContent(task, showList)
-                TaskListDisplayType.Detail -> DetailTaskRowContent(task, showList)
+                TaskListDisplayType.Standard -> StandardTaskRowContent(task, showList, twelveWeekGoal = twelveWeekGoal)
+                TaskListDisplayType.Detail -> DetailTaskRowContent(task, showList, twelveWeekGoal = twelveWeekGoal)
             }
         }
     }
@@ -321,7 +323,7 @@ internal fun BriefTaskRowContent(task: TaskItem) {
 }
 
 @Composable
-internal fun StandardTaskRowContent(task: TaskItem, showList: Boolean) {
+internal fun StandardTaskRowContent(task: TaskItem, showList: Boolean, twelveWeekGoal: TwelveWeekGoal? = null) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -335,6 +337,7 @@ internal fun StandardTaskRowContent(task: TaskItem, showList: Boolean) {
             list = if (showList) task.list else null,
             planPriority = task.planPriority,
             keyResult = task.keyResult,
+            twelveWeekGoal = twelveWeekGoal,
             tags = task.tags.take(2),
             overflowCount = (task.tags.size - 2).coerceAtLeast(0)
         )
@@ -342,7 +345,7 @@ internal fun StandardTaskRowContent(task: TaskItem, showList: Boolean) {
 }
 
 @Composable
-internal fun DetailTaskRowContent(task: TaskItem, showList: Boolean) {
+internal fun DetailTaskRowContent(task: TaskItem, showList: Boolean, twelveWeekGoal: TwelveWeekGoal? = null) {
     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         TaskTitleRow(task, descriptionMaxLines = 3)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -356,6 +359,7 @@ internal fun DetailTaskRowContent(task: TaskItem, showList: Boolean) {
             list = if (showList) task.list else null,
             planPriority = task.planPriority,
             keyResult = task.keyResult,
+            twelveWeekGoal = twelveWeekGoal,
             tags = task.tags
         )
     }

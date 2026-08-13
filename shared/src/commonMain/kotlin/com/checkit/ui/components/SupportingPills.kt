@@ -28,6 +28,7 @@ internal fun SupportingPills(
     list: ListItem? = null,
     planPriority: PlanPriority? = null,
     keyResult: KeyResult? = null,
+    twelveWeekGoal: TwelveWeekGoal? = null,
     tags: List<TagItem> = emptyList(),
     overflowCount: Int = 0,
     modifier: Modifier = Modifier
@@ -47,6 +48,7 @@ internal fun SupportingPills(
         }
         planPriority?.let { PlanPriorityPill(it) }
         keyResult?.let { KeyResultPill(it) }
+        twelveWeekGoal?.let { TwelveWeekGoalPill(it) }
 
         tags.forEach { tag -> TagPill(tag = tag) }
         if (overflowCount > 0) {

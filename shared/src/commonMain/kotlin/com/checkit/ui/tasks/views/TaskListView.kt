@@ -43,12 +43,14 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
+import com.checkit.domain.TwelveWeekGoal
 import com.checkit.ui.tasks.TaskListEntry
 import com.checkit.ui.tasks.TaskListDisplayType
 
 @Composable
 internal fun TaskListView(
     items: List<TaskListEntry>,
+    twelveWeekGoals: List<TwelveWeekGoal>,
     showListName: Boolean,
     displayType: TaskListDisplayType = TaskListDisplayType.Standard,
     onTaskClick: (TaskItem) -> Unit,
@@ -71,7 +73,8 @@ internal fun TaskListView(
                         task = task,
                         onClick = { onTaskClick(task) },
                         showList = showListName,
-                        displayType = displayType
+                        displayType = displayType,
+                        twelveWeekGoal = twelveWeekGoals.firstOrNull { it.id == task.twelveWeekGoalId }
                     )
                 }
                 is TaskListEntry.Note -> {

@@ -28,6 +28,7 @@ import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.plan_screen_title
 import com.checkit.domain.PlanFocus
 import com.checkit.domain.PlanPeriod
+import com.checkit.domain.TwelveWeekGoal
 import com.checkit.ui.components.HelpContent
 import com.checkit.ui.components.HelpTooltip
 import com.checkit.ui.components.TagOptionMenu
@@ -59,6 +60,7 @@ internal fun TaskScreen(
     objectiveViewModel: ObjectiveViewModel,
     listViewModel: ListViewModel,
     planViewModel: PeriodPlanViewModel,
+    twelveWeekGoals: List<TwelveWeekGoal>,
     onOpenTags: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -269,6 +271,7 @@ internal fun TaskScreen(
             } else {
                 TaskContent(
                     state = state,
+                    twelveWeekGoals = twelveWeekGoals,
                     onTaskClick = viewModel::openTask,
                     onNoteClick = viewModel::openNote,
                     onListDisplayTypeChange = viewModel::selectListDisplayType,

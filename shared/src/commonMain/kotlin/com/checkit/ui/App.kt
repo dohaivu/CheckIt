@@ -256,6 +256,9 @@ fun CheckItApp(
                                             objectiveViewModel = viewModels.objective,
                                             listViewModel = viewModels.list,
                                             planViewModel = viewModels.plan,
+                                            twelveWeekGoals = twelveWeekUiState.workspace.cycleCards
+                                                .flatMap { it.goals }
+                                                .map { it.goal },
                                             onOpenTags = { navState.push(AppRoute.Tags) }
                                         )
                                     }
