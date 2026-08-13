@@ -28,6 +28,7 @@ import com.checkit.domain.usecase.UpdateJournalEntryUseCase
 import com.checkit.domain.usecase.UpsertDailyPlanItemUseCase
 import com.checkit.ui.UiEvent
 import com.checkit.ui.currentMyDayTimeMinutes
+import com.checkit.ui.journal.JournalController
 import com.checkit.ui.today
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
@@ -36,7 +37,7 @@ import kotlinx.datetime.LocalDate
 /**
  * Orchestrates the My Day feature. Heavy lifting is split into small controllers:
  * [MyDayDataLoader], [DayCloseController], [LeftoversController], [PlanAssistController],
- * [DailyPlanEditorController], [SprintController], and [JournalController].
+ * [DailyPlanEditorController], [SprintController], and [com.checkit.ui.journal.JournalController].
  */
 class MyDayViewModel(
     observeTaskBoard: ObserveTaskBoardUseCase,

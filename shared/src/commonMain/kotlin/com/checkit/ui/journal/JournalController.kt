@@ -1,8 +1,11 @@
-package com.checkit.ui.myday
+package com.checkit.ui.journal
 
 import com.checkit.data.JournalEntryWriteInput
 import com.checkit.domain.JournalEntry
 import com.checkit.ui.UiEvent
+import com.checkit.ui.myday.JournalEntryEditorState
+import com.checkit.ui.myday.MyDayDependencies
+import com.checkit.ui.myday.MyDayStateHolder
 import com.checkit.ui.today
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch

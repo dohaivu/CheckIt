@@ -85,7 +85,7 @@ import com.checkit.ui.localizedMonthTitle
 import com.checkit.ui.localizedShortMonthName
 import com.checkit.ui.localizedWeekdayName
 import com.checkit.ui.myday.DayLinearTimeline
-import com.checkit.ui.myday.JournalHistorySheet
+import com.checkit.ui.journal.JournalHistorySheet
 import com.checkit.ui.myday.MyDayAgenda
 import com.checkit.ui.shortName
 import com.checkit.ui.tasks.TaskAgendaView

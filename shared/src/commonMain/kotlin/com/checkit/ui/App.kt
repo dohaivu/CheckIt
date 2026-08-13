@@ -37,8 +37,8 @@ import com.checkit.ui.calendar.CalendarScreen
 import com.checkit.ui.components.LocalSnackbarHostState
 import com.checkit.ui.localization.AppLocaleProvider
 import com.checkit.ui.myday.DailyPlanItemEditorSheet
-import com.checkit.ui.myday.JournalEntryEditorSheet
-import com.checkit.ui.myday.JournalListSheet
+import com.checkit.ui.journal.JournalEntryEditorSheet
+import com.checkit.ui.journal.JournalListSheet
 import com.checkit.ui.myday.MyDayScreen
 import com.checkit.ui.plan.PlanPriorityEditorSheet
 import com.checkit.ui.reflect.PeriodReviewEditorSheet
