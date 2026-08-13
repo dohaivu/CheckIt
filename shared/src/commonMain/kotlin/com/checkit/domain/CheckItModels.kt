@@ -240,7 +240,8 @@ data class TaskFilter(
 
 enum class TaskType {
     Task,
-    Habit
+    Habit,
+    Tactic
 }
 
 enum class TaskStatus {

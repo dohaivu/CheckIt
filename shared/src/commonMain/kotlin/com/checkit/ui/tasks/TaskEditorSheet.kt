@@ -2,6 +2,7 @@ package com.checkit.ui.tasks
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,6 +35,7 @@ import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -42,9 +45,14 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -57,10 +65,13 @@ import com.checkit.domain.TagItem
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskType
+import com.checkit.domain.TwelveWeekGoal
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.AppOutlinedTextField
+import com.checkit.ui.components.AppleStylePopup
 import com.checkit.ui.components.DatePicker
+import com.checkit.ui.components.DetailChip
 import com.checkit.ui.components.EditorOverflowMenu
 import com.checkit.ui.components.KeyResultPill
 import com.checkit.ui.components.ListPicker
@@ -68,6 +79,8 @@ import com.checkit.ui.components.PriorityPicker
 import com.checkit.ui.components.RichTextComposer
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.components.TimeRangePicker
+import com.checkit.ui.components.icons.AppIcons
+import com.checkit.ui.components.icons.Target
 import com.checkit.ui.plan.PlanPriorityPill
 import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
@@ -80,6 +93,7 @@ internal fun TaskEditorSheet(
     availableTags: List<TagItem>,
     availableKeyResults: List<KeyResult>,
     availablePlanPriorities: List<PlanPriority>,
+    availableTwelveWeekGoals: List<TwelveWeekGoal>,
     actions: TaskEditorActions
 ) {
     val onDismiss = actions.onDismiss
@@ -129,8 +143,10 @@ internal fun TaskEditorSheet(
             isAddMode = editor.isAddMode(),
             isTaskSelected = editor is TaskEditorState.TaskForm && editor.type == TaskType.Task,
             isHabitSelected = editor is TaskEditorState.TaskForm && editor.type == TaskType.Habit,
+            isTacticSelected = editor is TaskEditorState.TaskForm && editor.type == TaskType.Tactic,
             onSwitchAddModeToTask = onSwitchAddModeToTask,
             onSwitchAddModeToHabit = onSwitchAddModeToHabit,
+            onSwitchAddModeToTactic = actions.onSwitchAddModeToTactic,
             onSwitchAddModeToNote = onSwitchAddModeToNote,
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
         )
@@ -172,12 +188,14 @@ internal fun TaskEditorSheet(
                             availableTags = availableTags,
                             availableKeyResults = availableKeyResults,
                             availablePlanPriorities = availablePlanPriorities,
+                            availableTwelveWeekGoals = availableTwelveWeekGoals,
                             onNameChange = onTaskNameChange,
                             onListChange = onTaskListChange,
                             onDescriptionChange = onTaskDescriptionChange,
                             onDoDateChange = onTaskDoDateChange,
                             onTimeChange = onTaskTimeChange,
                             onRepeatChange = onTaskRepeatChange,
+                            onTwelveWeekGoalChange = actions.onTaskTwelveWeekGoalChange,
                             onPriorityChange = onTaskPriorityChange,
                             onReminderToggle = onTaskReminderToggle,
                             onSubTaskToggle = onSubTaskToggle,
@@ -233,15 +251,17 @@ internal fun TaskEditorSheet(
 private fun AddModeSwitch(
     isTaskSelected: Boolean,
     isHabitSelected: Boolean,
+    isTacticSelected: Boolean,
     onTaskClick: () -> Unit,
     onHabitClick: () -> Unit,
+    onTacticClick: () -> Unit,
     onNoteClick: () -> Unit
 ) {
     SingleChoiceSegmentedButtonRow {
         SegmentedButton(
             selected = isTaskSelected,
             onClick = onTaskClick,
-            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
+            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 4),
             icon = { Icon(Icons.Default.TaskAlt, contentDescription = null) },
             label = { Text("Task") },
             colors = SegmentedButtonDefaults.colors(activeContainerColor = MaterialTheme.colorScheme.primaryContainer, activeContentColor = MaterialTheme.colorScheme.primary)
@@ -249,15 +269,23 @@ private fun AddModeSwitch(
         SegmentedButton(
             selected = isHabitSelected,
             onClick = onHabitClick,
-            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
+            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 4),
             icon = { Icon(Icons.Default.Repeat, contentDescription = null) },
             label = { Text("Habit") },
             colors = SegmentedButtonDefaults.colors(activeContainerColor = MaterialTheme.colorScheme.primaryContainer, activeContentColor = MaterialTheme.colorScheme.primary)
         )
         SegmentedButton(
-            selected = !isTaskSelected && !isHabitSelected,
+            selected = isTacticSelected,
+            onClick = onTacticClick,
+            shape = SegmentedButtonDefaults.itemShape(index = 2, count = 4),
+            icon = { Icon(AppIcons.Target, contentDescription = null) },
+            label = { Text("Tactic") },
+            colors = SegmentedButtonDefaults.colors(activeContainerColor = MaterialTheme.colorScheme.primaryContainer, activeContentColor = MaterialTheme.colorScheme.primary)
+        )
+        SegmentedButton(
+            selected = !isTaskSelected && !isHabitSelected && !isTacticSelected,
             onClick = onNoteClick,
-            shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
+            shape = SegmentedButtonDefaults.itemShape(index = 3, count = 4),
             icon = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null) },
             label = { Text("Note") },
             colors = SegmentedButtonDefaults.colors(activeContainerColor = MaterialTheme.colorScheme.primaryContainer, activeContentColor = MaterialTheme.colorScheme.primary)
@@ -270,8 +298,10 @@ private fun SheetHeader(
     isAddMode: Boolean,
     isTaskSelected: Boolean,
     isHabitSelected: Boolean,
+    isTacticSelected: Boolean,
     onSwitchAddModeToTask: () -> Unit,
     onSwitchAddModeToHabit: () -> Unit,
+    onSwitchAddModeToTactic: () -> Unit,
     onSwitchAddModeToNote: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -281,8 +311,10 @@ private fun SheetHeader(
                 AddModeSwitch(
                     isTaskSelected = isTaskSelected,
                     isHabitSelected = isHabitSelected,
+                    isTacticSelected = isTacticSelected,
                     onTaskClick = onSwitchAddModeToTask,
                     onHabitClick = onSwitchAddModeToHabit,
+                    onTacticClick = onSwitchAddModeToTactic,
                     onNoteClick = onSwitchAddModeToNote
                 )
             }
@@ -408,12 +440,14 @@ private fun TaskFormContent(
     availableTags: List<TagItem>,
     availableKeyResults: List<KeyResult>,
     availablePlanPriorities: List<PlanPriority>,
+    availableTwelveWeekGoals: List<TwelveWeekGoal>,
     onNameChange: (String) -> Unit,
     onListChange: (Long) -> Unit,
     onDescriptionChange: (String) -> Unit,
     onDoDateChange: (LocalDate?) -> Unit,
     onTimeChange: (Int?, Int?) -> Unit,
     onRepeatChange: (RepeatPreset) -> Unit,
+    onTwelveWeekGoalChange: (Long?) -> Unit,
     onPriorityChange: (TaskPriority) -> Unit,
     onReminderToggle: (Int) -> Unit,
     onSubTaskToggle: (Int) -> Unit,
@@ -426,6 +460,7 @@ private fun TaskFormContent(
     enabled: Boolean = true
 ) {
     val isHabit = form.type == TaskType.Habit
+    val isTactic = form.type == TaskType.Tactic
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (isHabit) {
             Row(
@@ -438,6 +473,23 @@ private fun TaskFormContent(
                 )
                 Text(
                     text = "Every day · auto-added to My Day",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                PriorityPicker(selected = form.priority, onSelect = onPriorityChange, enabled = enabled)
+            }
+        } else if (isTactic) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                TacticIcon(
+                    completed = form.status == TaskStatus.Completed,
+                    color = form.priority.priorityColor()
+                )
+                Text(
+                    text = "12 Week Tactic",
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -537,6 +589,14 @@ private fun TaskFormContent(
                     KeyResultPill(kr)
                 }
             }
+            form.twelveWeekGoalId?.let { goalId ->
+                TwelveWeekGoalPicker(
+                    goals = availableTwelveWeekGoals,
+                    selectedGoalId = goalId,
+                    onGoalChange = onTwelveWeekGoalChange,
+                    enabled = enabled
+                )
+            }
             TagPicker(
                 availableTags = availableTags,
                 selectedTagIds = form.selectedTagIds,
@@ -544,6 +604,65 @@ private fun TaskFormContent(
                 onNewTagClick = onNewTagClick,
                 enabled = enabled
             )
+        }
+    }
+}
+
+@Composable
+private fun TwelveWeekGoalPicker(
+    goals: List<TwelveWeekGoal>,
+    selectedGoalId: Long?,
+    onGoalChange: (Long?) -> Unit,
+    enabled: Boolean = true
+) {
+    if (goals.isEmpty()) return
+    var expanded by remember { mutableStateOf(false) }
+    val selectedGoal = goals.firstOrNull { it.id == selectedGoalId }
+    AppleStylePopup(
+        isExpanded = expanded,
+        onDismissRequest = { expanded = false },
+        anchor = {
+            DetailChip(
+                icon = AppIcons.Target,
+                label = selectedGoal?.title ?: "Pick a goal",
+                onClick = { if (enabled) expanded = true }
+            )
+        }
+    ) {
+        Column(
+            modifier = Modifier
+                .width(250.dp)
+                .padding(vertical = 0.dp)
+        ) {
+            goals.forEachIndexed { index, goal ->
+                Row(
+                    modifier = Modifier
+                        .clickable(onClick = {
+                            onGoalChange(goal.id)
+                            expanded = false
+                        })
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = AppIcons.Target,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = goal.title,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                if (index < goals.size - 1) {
+                    HorizontalDivider(
+                        color = Color.LightGray.copy(alpha = 0.4f),
+                        thickness = 0.5.dp
+                    )
+                }
+            }
         }
     }
 }

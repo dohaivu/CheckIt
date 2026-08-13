@@ -51,6 +51,7 @@ import com.checkit.ui.tasks.TaskScreen
 import com.checkit.ui.tasks.tag.TagEditorSheet
 import com.checkit.ui.tasks.tag.TagScreen
 import com.checkit.ui.theme.AppTheme
+import com.checkit.ui.twelveweek.TwelveWeekScreen
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
@@ -95,7 +96,8 @@ fun CheckItApp(
             viewModels.myDay.events,
             viewModels.settings.events,
             viewModels.reflect.events,
-            viewModels.plan.events
+            viewModels.plan.events,
+            viewModels.twelveWeek.events
         ).collect { event ->
             when (event) {
                 is UiEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
@@ -112,6 +114,7 @@ fun CheckItApp(
     val myDayUiState by viewModels.myDay.uiState.collectAsState()
     val calendarUiState by viewModels.calendar.uiState.collectAsState()
     val planUiState by viewModels.plan.uiState.collectAsState()
+    val twelveWeekUiState by viewModels.twelveWeek.uiState.collectAsState()
     val reflectEditorState by viewModels.reflect.editor.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
     val appScope = rememberCoroutineScope()
@@ -301,6 +304,21 @@ fun CheckItApp(
                                         ReflectScreen(
                                             state = reflectState,
                                             viewModel = viewModels.reflect,
+                                            twelveWeekCycle = twelveWeekUiState.workspace.cycle,
+                                            twelveWeekWeekIndex = twelveWeekUiState.workspace.currentWeekIndex,
+                                            onOpenTwelveWeek = { navState.push(AppRoute.TwelveWeek) }
+                                        )
+                                    }
+
+                                    AppRoute.TwelveWeek -> {
+                                        TwelveWeekScreen(
+                                            state = twelveWeekUiState,
+                                            viewModel = viewModels.twelveWeek,
+                                            onBack = { navState.pop() },
+                                            onAddTactic = { goalId ->
+                                                viewModels.task.openNewTactic(goalId)
+                                            },
+                                            onToggleTactic = viewModels.task::openTask
                                         )
                                     }
 
@@ -318,6 +336,7 @@ fun CheckItApp(
                             availableTags = taskUiState.board.tags,
                             availableKeyResults = taskUiState.board.keyResults,
                             availablePlanPriorities = taskUiState.board.planPriorities,
+                            availableTwelveWeekGoals = twelveWeekUiState.workspace.goals.map { it.goal },
                             actions = TaskEditorActions(
                                 onDismiss = viewModels.task::dismissEditor,
                                 onSave = viewModels.task::saveEditor,
@@ -370,7 +389,9 @@ fun CheckItApp(
                                 onNewTagClick = viewModels.tag::openNewTag,
                                 onSwitchAddModeToTask = viewModels.task::switchAddEditorToTask,
                                 onSwitchAddModeToHabit = viewModels.task::switchAddEditorToHabit,
-                                onSwitchAddModeToNote = viewModels.task::switchAddEditorToNote
+                                onSwitchAddModeToTactic = viewModels.task::switchAddEditorToTactic,
+                                onSwitchAddModeToNote = viewModels.task::switchAddEditorToNote,
+                                onTaskTwelveWeekGoalChange = viewModels.task::updateTaskTwelveWeekGoalId
                             )
                         )
                     }

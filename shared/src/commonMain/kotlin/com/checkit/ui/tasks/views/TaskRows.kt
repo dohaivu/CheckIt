@@ -46,6 +46,7 @@ import com.checkit.ui.duration
 import com.checkit.ui.tasks.HabitIcon
 import com.checkit.ui.tasks.NoteIcon
 import com.checkit.ui.tasks.SubtaskBriefList
+import com.checkit.ui.tasks.TacticIcon
 import com.checkit.ui.tasks.TaskIcon
 import com.checkit.ui.tasks.TaskListDisplayType
 import com.checkit.ui.tasks.cardColor
@@ -298,6 +299,8 @@ internal fun BriefTaskRowContent(task: TaskItem) {
     ) {
         if (task.type == TaskType.Habit) {
             HabitIcon(task.status == TaskStatus.Completed, color = task.priority.priorityColor())
+        } else if (task.type == TaskType.Tactic) {
+            TacticIcon(task.status == TaskStatus.Completed, color = task.priority.priorityColor())
         } else {
             TaskIcon(
                 completed = task.status == TaskStatus.Completed,
@@ -456,6 +459,8 @@ internal fun TaskTitleRow(
     ) {
         if (task.type == TaskType.Habit) {
             HabitIcon(task.status == TaskStatus.Completed, task.priority.priorityColor())
+        } else if (task.type == TaskType.Tactic) {
+            TacticIcon(task.status == TaskStatus.Completed, task.priority.priorityColor())
         } else {
             TaskIcon(
                 completed = task.status == TaskStatus.Completed,

@@ -39,6 +39,7 @@ import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
+import com.checkit.domain.TaskType
 import com.checkit.ui.components.icons.AppIcons
 import com.checkit.ui.components.icons.Target
 import com.checkit.ui.shortMonthName
@@ -92,6 +93,29 @@ internal fun HabitIcon(completed: Boolean, color: Color) {
             tint = color,
             modifier = Modifier.size(20.dp)
         )
+    }
+}
+
+@Composable
+internal fun TacticIcon(completed: Boolean, color: Color) {
+    if (completed) {
+        BadgedActionIcon(baseIcon = AppIcons.Target, isDone = true, baseIconTint = color)
+    } else {
+        Icon(
+            imageVector = AppIcons.Target,
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.size(20.dp)
+        )
+    }
+}
+
+@Composable
+internal fun TaskTypeIcon(task: TaskItem, completed: Boolean, color: Color) {
+    when (task.type) {
+        TaskType.Habit -> HabitIcon(completed, color)
+        TaskType.Tactic -> TacticIcon(completed, color)
+        TaskType.Task -> TaskIcon(completed, color)
     }
 }
 

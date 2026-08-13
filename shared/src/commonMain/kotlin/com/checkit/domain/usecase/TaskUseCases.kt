@@ -86,7 +86,7 @@ class AutoAddTodayTasksToMyDayUseCase(
 private fun TaskItem.qualifiesForToday(today: LocalDate): Boolean =
     when (type) {
         TaskType.Task -> doDate == today
-        TaskType.Habit -> completedDate == null
+        TaskType.Habit, TaskType.Tactic -> completedDate == null
     }
 
 class AddTagUseCase(

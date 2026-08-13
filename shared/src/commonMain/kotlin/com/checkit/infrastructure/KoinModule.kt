@@ -21,9 +21,12 @@ import com.checkit.domain.usecase.AddNoteUseCase
 import com.checkit.domain.usecase.AddObjectiveUseCase
 import com.checkit.domain.usecase.AddPlanPriorityUseCase
 import com.checkit.domain.usecase.AddSuggestedTaskToMyDayUseCase
+import com.checkit.domain.usecase.AddTacticToGoalUseCase
 import com.checkit.domain.usecase.AddTagUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
+import com.checkit.domain.usecase.AddTwelveWeekGoalUseCase
+import com.checkit.domain.usecase.AbandonTwelveWeekCycleUseCase
 import com.checkit.domain.usecase.AutoAddTodayTasksToMyDayUseCase
 import com.checkit.domain.usecase.BuildDayCloseSummaryUseCase
 import com.checkit.domain.usecase.BuildPeriodReviewDraftUseCase
@@ -31,6 +34,7 @@ import com.checkit.domain.usecase.CarryOverDailyPlanItemsUseCase
 import com.checkit.domain.usecase.CompleteDayCloseUseCase
 import com.checkit.domain.usecase.CompleteNoteUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
+import com.checkit.domain.usecase.CompleteTwelveWeekCycleUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.DeleteGoalUseCase
 import com.checkit.domain.usecase.DeleteJournalEntryUseCase
@@ -40,6 +44,7 @@ import com.checkit.domain.usecase.DeleteObjectiveUseCase
 import com.checkit.domain.usecase.DeletePlanPriorityUseCase
 import com.checkit.domain.usecase.DeleteTagUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
+import com.checkit.domain.usecase.DeleteTwelveWeekGoalUseCase
 import com.checkit.domain.usecase.IsTagNameTakenUseCase
 import com.checkit.domain.usecase.LinkDailyPlanItemToPlanPriorityUseCase
 import com.checkit.domain.usecase.LinkTaskToPlanPriorityUseCase
@@ -48,6 +53,7 @@ import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
 import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
 import com.checkit.domain.usecase.ObservePlanWorkspaceUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
+import com.checkit.domain.usecase.ObserveTwelveWeekWorkspaceUseCase
 import com.checkit.domain.usecase.OpenNoteUseCase
 import com.checkit.domain.usecase.OpenTaskUseCase
 import com.checkit.domain.usecase.ReorderPlanPrioritiesUseCase
@@ -58,8 +64,10 @@ import com.checkit.domain.usecase.SaveSprintAsWinUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.SmartScheduleDailyPlanUseCase
 import com.checkit.domain.usecase.SprintTransitionUseCase
+import com.checkit.domain.usecase.StartTwelveWeekCycleUseCase
 import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.usecase.TogglePlanPriorityDoneUseCase
+import com.checkit.domain.usecase.UnlinkTacticFromGoalUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTagUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
@@ -72,7 +80,9 @@ import com.checkit.domain.usecase.UpdatePlanPriorityUseCase
 import com.checkit.domain.usecase.UpdateTagSortOrderUseCase
 import com.checkit.domain.usecase.UpdateTagUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
+import com.checkit.domain.usecase.UpdateTwelveWeekGoalUseCase
 import com.checkit.domain.usecase.UpsertDailyPlanItemUseCase
+import com.checkit.domain.usecase.UpsertTwelveWeekCheckInUseCase
 import com.checkit.notifications.AppReminderScheduler
 import com.checkit.ui.calendar.CalendarViewModel
 import com.checkit.ui.myday.MyDayViewModel
@@ -85,6 +95,7 @@ import com.checkit.ui.settings.SettingsViewModel
 import com.checkit.ui.tasks.TaskViewModel
 import com.checkit.ui.tasks.list.ListViewModel
 import com.checkit.ui.tasks.tag.TagViewModel
+import com.checkit.ui.twelveweek.TwelveWeekViewModel
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -183,6 +194,16 @@ val provideInteractorModule = module {
     single { ReorderPlanPrioritiesUseCase(get()) }
     single { LinkTaskToPlanPriorityUseCase(get()) }
     single { LinkDailyPlanItemToPlanPriorityUseCase(get()) }
+    single { ObserveTwelveWeekWorkspaceUseCase(get()) }
+    single { StartTwelveWeekCycleUseCase(get()) }
+    single { AddTwelveWeekGoalUseCase(get()) }
+    single { UpdateTwelveWeekGoalUseCase(get()) }
+    single { DeleteTwelveWeekGoalUseCase(get()) }
+    single { UpsertTwelveWeekCheckInUseCase(get()) }
+    single { CompleteTwelveWeekCycleUseCase(get()) }
+    single { AbandonTwelveWeekCycleUseCase(get()) }
+    single { AddTacticToGoalUseCase(get(), get()) }
+    single { UnlinkTacticFromGoalUseCase(get()) }
 }
 
 val provideDatabaseModule = module {
@@ -269,4 +290,16 @@ val provideViewModelModule = module {
         )
     }
     viewModel { SettingsViewModel(get(), get(), get(), get<AppReminderScheduler>()) }
+    viewModel {
+        TwelveWeekViewModel(
+            observeWorkspace = get(),
+            startCycle = get(),
+            addGoal = get(),
+            updateGoal = get(),
+            deleteGoal = get(),
+            upsertCheckIn = get(),
+            completeCycle = get(),
+            abandonCycle = get()
+        )
+    }
 }

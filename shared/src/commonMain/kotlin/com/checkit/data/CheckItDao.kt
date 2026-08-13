@@ -806,4 +806,112 @@ interface CheckItDao {
 
     @Query("SELECT * FROM plan_priority_daily_plan_items")
     fun observePlanPriorityDailyPlanItems(): Flow<List<PlanPriorityDailyPlanItemEntity>>
+
+    // ---------------- 12-Week Goals ----------------
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTwelveWeekCycle(cycle: TwelveWeekCycleEntity): Long
+
+    @Query(
+        """
+        UPDATE twelve_week_cycles
+        SET title = :title,
+            status = :status,
+            reviewNote = :reviewNote,
+            completedAtMillis = :completedAtMillis
+        WHERE id = :cycleId
+        """
+    )
+    suspend fun updateTwelveWeekCycle(
+        cycleId: Long,
+        title: String,
+        status: String,
+        reviewNote: String,
+        completedAtMillis: Long?
+    )
+
+    @Query("SELECT * FROM twelve_week_cycles ORDER BY startEpochDays ASC")
+    fun observeTwelveWeekCycles(): Flow<List<TwelveWeekCycleEntity>>
+
+    @Query("SELECT COUNT(*) FROM twelve_week_cycles WHERE status = 'Active'")
+    suspend fun countActiveTwelveWeekCycles(): Int
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTwelveWeekGoal(goal: TwelveWeekGoalEntity): Long
+
+    @Query(
+        """
+        UPDATE twelve_week_goals
+        SET title = :title,
+            note = :note,
+            finalStatus = :finalStatus,
+            updatedAtMillis = :updatedAtMillis
+        WHERE id = :goalId
+        """
+    )
+    suspend fun updateTwelveWeekGoal(
+        goalId: Long,
+        title: String,
+        note: String,
+        finalStatus: String?,
+        updatedAtMillis: Long
+    )
+
+    @Query("DELETE FROM twelve_week_goals WHERE id = :goalId")
+    suspend fun deleteTwelveWeekGoal(goalId: Long)
+
+    @Query("SELECT * FROM twelve_week_goals ORDER BY sortOrder ASC, id ASC")
+    fun observeTwelveWeekGoals(): Flow<List<TwelveWeekGoalEntity>>
+
+    @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM twelve_week_goals WHERE cycleId = :cycleId")
+    suspend fun nextTwelveWeekGoalSortOrder(cycleId: Long): Int
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTwelveWeekCheckIn(checkIn: TwelveWeekCheckInEntity): Long
+
+    @Query(
+        """
+        UPDATE twelve_week_check_ins
+        SET note = :note,
+            updatedAtMillis = :updatedAtMillis
+        WHERE id = :checkInId
+        """
+    )
+    suspend fun updateTwelveWeekCheckIn(checkInId: Long, note: String, updatedAtMillis: Long)
+
+    @Query("SELECT * FROM twelve_week_check_ins ORDER BY weekIndex ASC")
+    fun observeTwelveWeekCheckIns(): Flow<List<TwelveWeekCheckInEntity>>
+
+    @Query("SELECT * FROM twelve_week_check_ins WHERE cycleId = :cycleId AND weekIndex = :weekIndex LIMIT 1")
+    suspend fun twelveWeekCheckInFor(cycleId: Long, weekIndex: Int): TwelveWeekCheckInEntity?
+
+    @Query("DELETE FROM twelve_week_goal_scores WHERE checkInId = :checkInId")
+    suspend fun deleteTwelveWeekGoalScoresForCheckIn(checkInId: Long)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTwelveWeekGoalScore(score: TwelveWeekGoalScoreEntity)
+
+    @Query("SELECT * FROM twelve_week_goal_scores")
+    fun observeTwelveWeekGoalScores(): Flow<List<TwelveWeekGoalScoreEntity>>
+
+    @Transaction
+    suspend fun replaceTwelveWeekScores(checkInId: Long, scores: List<TwelveWeekGoalScoreEntity>) {
+        deleteTwelveWeekGoalScoresForCheckIn(checkInId)
+        scores.forEach { insertTwelveWeekGoalScore(it) }
+    }
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTwelveWeekGoalTask(link: TwelveWeekGoalTaskEntity)
+
+    @Query("DELETE FROM twelve_week_goal_tasks WHERE goalId = :goalId AND taskId = :taskId")
+    suspend fun deleteTwelveWeekGoalTask(goalId: Long, taskId: Long)
+
+    @Query("DELETE FROM twelve_week_goal_tasks WHERE taskId = :taskId")
+    suspend fun deleteTwelveWeekGoalTasksForTask(taskId: Long)
+
+    @Query("DELETE FROM twelve_week_goal_tasks WHERE goalId = :goalId")
+    suspend fun deleteTwelveWeekGoalTasksForGoal(goalId: Long)
+
+    @Query("SELECT * FROM twelve_week_goal_tasks ORDER BY sortOrder ASC, taskId ASC")
+    fun observeTwelveWeekGoalTasks(): Flow<List<TwelveWeekGoalTaskEntity>>
 }

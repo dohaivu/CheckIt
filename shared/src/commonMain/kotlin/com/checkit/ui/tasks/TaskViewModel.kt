@@ -277,6 +277,21 @@ class TaskViewModel(
         }
     }
 
+    fun openNewTactic(goalId: Long, date: LocalDate = today()) {
+        cancelPendingTaskTextSave()
+        _uiState.update {
+            it.copy(
+                editor = TaskEditorState.TaskForm(
+                    mode = EditorMode.Add,
+                    listId = null,
+                    twelveWeekGoalId = goalId,
+                    type = TaskType.Tactic,
+                    doDate = date
+                )
+            )
+        }
+    }
+
     fun openNewTaskOnKeyResult(keyResult: KeyResult) {
         cancelPendingTaskTextSave()
         _uiState.update {
@@ -403,6 +418,37 @@ class TaskViewModel(
         }
     }
 
+    fun switchAddEditorToTactic() {
+        _uiState.update { state ->
+            when (val current = state.editor) {
+                is TaskEditorState.TaskForm -> {
+                    if (current.mode != EditorMode.Add || current.type == TaskType.Tactic) return@update state
+                    state.copy(
+                        editor = current.copy(
+                            type = TaskType.Tactic,
+                            repeatPreset = RepeatPreset.None,
+                            reminderOffsets = emptySet()
+                        )
+                    )
+                }
+                is TaskEditorState.NoteForm -> {
+                    if (current.mode != EditorMode.Add) return@update state
+                    state.copy(
+                        editor = TaskEditorState.TaskForm(
+                            mode = EditorMode.Add,
+                            listId = current.listId,
+                            name = current.title,
+                            description = current.content,
+                            type = TaskType.Tactic,
+                            selectedTagIds = current.selectedTagIds
+                        )
+                    )
+                }
+                null -> state
+            }
+        }
+    }
+
     fun switchAddEditorToNote() {
         _uiState.update { state ->
             val task = state.editor as? TaskEditorState.TaskForm ?: return@update state
@@ -503,6 +549,7 @@ class TaskViewModel(
         )
     }
     fun updateTaskRepeat(repeatPreset: RepeatPreset) = updateTaskForm { it.copy(repeatPreset = repeatPreset) }
+    fun updateTaskTwelveWeekGoalId(goalId: Long?) = updateTaskForm { it.copy(twelveWeekGoalId = goalId) }
     fun updateTaskPriority(priority: TaskPriority) = updateTaskForm { it.copy(priority = priority) }
     fun toggleTaskReminder(offsetMinutes: Int) = updateTaskForm { form ->
         form.copy(reminderOffsets = form.reminderOffsets.toggle(offsetMinutes))
@@ -770,6 +817,7 @@ class TaskViewModel(
             listId = listId,
             keyResultId = keyResultId,
             planPriorityId = planPriorityId,
+            twelveWeekGoalId = twelveWeekGoalId,
             name = name.trim(),
             description = description.trim(),
             status = status,

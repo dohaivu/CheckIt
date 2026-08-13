@@ -14,6 +14,10 @@ import com.checkit.data.PlanPriorityTaskLink
 import com.checkit.data.PlanPriorityDailyPlanItemLink
 import com.checkit.data.TagWriteInput
 import com.checkit.data.TaskWriteInput
+import com.checkit.data.TwelveWeekCheckInWriteInput
+import com.checkit.data.TwelveWeekCycleWriteInput
+import com.checkit.data.TwelveWeekGoalScoreWriteInput
+import com.checkit.data.TwelveWeekGoalWriteInput
 import com.checkit.data.UserSettings
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
@@ -37,6 +41,13 @@ import com.checkit.domain.TaskItem
 import com.checkit.domain.Objective
 import com.checkit.domain.TaskReminder
 import com.checkit.domain.TagItem
+import com.checkit.domain.TwelveWeekCheckIn
+import com.checkit.domain.TwelveWeekCycle
+import com.checkit.domain.TwelveWeekCycleStatus
+import com.checkit.domain.TwelveWeekGoal
+import com.checkit.domain.TwelveWeekGoalFinalStatus
+import com.checkit.domain.TwelveWeekGoalScore
+import com.checkit.domain.TwelveWeekGoalTaskLink
 import com.checkit.domain.hasEndTime
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -110,6 +121,22 @@ internal class FakeCheckItRepository(
     val deletedPlanPriorityIds = mutableListOf<Long>()
     val linkedTasks = mutableListOf<Pair<Long, Long>>()
     val linkedDailyPlanItems = mutableListOf<Pair<Long, Long>>()
+
+    private val twelveWeekCyclesFlow = MutableStateFlow<List<TwelveWeekCycle>>(emptyList())
+    private val twelveWeekGoalsFlow = MutableStateFlow<List<TwelveWeekGoal>>(emptyList())
+    private val twelveWeekCheckInsFlow = MutableStateFlow<List<TwelveWeekCheckIn>>(emptyList())
+    private val twelveWeekScoresFlow = MutableStateFlow<List<TwelveWeekGoalScore>>(emptyList())
+    private val twelveWeekGoalTaskLinksFlow = MutableStateFlow<List<TwelveWeekGoalTaskLink>>(emptyList())
+    private var nextTwelveWeekCycleId: Long = 40_000L
+    private var nextTwelveWeekGoalId: Long = 41_000L
+    private var nextTwelveWeekCheckInId: Long = 42_000L
+    private var nextTwelveWeekScoreId: Long = 43_000L
+    val addedTwelveWeekCycles = mutableListOf<TwelveWeekCycleWriteInput>()
+    val addedTwelveWeekGoals = mutableListOf<TwelveWeekGoalWriteInput>()
+    val savedTwelveWeekCheckIns = mutableListOf<TwelveWeekCheckInWriteInput>()
+    val updatedTwelveWeekCycles = mutableListOf<Pair<Long, Triple<String, TwelveWeekCycleStatus, String>>>()
+    val linkedTwelveWeekGoalTasks = mutableListOf<Pair<Long, Long>>()
+    val unlinkedTwelveWeekGoalTasks = mutableListOf<Pair<Long, Long>>()
 
     override fun observeTaskBoard(): Flow<TaskBoard> = boardFlow
     override fun observeDailyPlans(): Flow<List<DailyPlan>> = dailyPlansFlow
@@ -444,6 +471,12 @@ internal class FakeCheckItRepository(
                     PlanPriorityTaskLink(priority.id, id, 0)
             }
         }
+        input.twelveWeekGoalId?.let { goalId ->
+            twelveWeekGoalTaskLinksFlow.update { links ->
+                links.filterNot { it.taskId == id } +
+                    TwelveWeekGoalTaskLink(goalId = goalId, taskId = id, sortOrder = 0)
+            }
+        }
         return id
     }
 
@@ -483,10 +516,22 @@ internal class FakeCheckItRepository(
                 links.filterNot { it.taskId == taskId }
             }
         }
+        when {
+            input.type == com.checkit.domain.TaskType.Tactic && input.twelveWeekGoalId != null -> {
+                twelveWeekGoalTaskLinksFlow.update { links ->
+                    links.filterNot { it.taskId == taskId } +
+                        TwelveWeekGoalTaskLink(goalId = input.twelveWeekGoalId, taskId = taskId, sortOrder = 0)
+                }
+            }
+            input.type != com.checkit.domain.TaskType.Tactic -> {
+                twelveWeekGoalTaskLinksFlow.update { links -> links.filterNot { it.taskId == taskId } }
+            }
+        }
     }
     override suspend fun trashTask(taskId: Long) {
         trashedTasks.add(taskId)
         planTaskLinksFlow.update { links -> links.filterNot { it.taskId == taskId } }
+        twelveWeekGoalTaskLinksFlow.update { links -> links.filterNot { it.taskId == taskId } }
         boardFlow.update { board ->
             board.copy(
                 tasks = board.tasks.map { task ->
@@ -998,6 +1043,156 @@ internal class FakeCheckItRepository(
                 PlanPriorityDailyPlanItemLink(priorityId, dailyPlanItemId, 0)
         }
     }
+
+    override fun observeTwelveWeekCycles(): Flow<List<TwelveWeekCycle>> = twelveWeekCyclesFlow
+
+    override fun observeTwelveWeekGoals(): Flow<List<TwelveWeekGoal>> = twelveWeekGoalsFlow
+
+    override fun observeTwelveWeekCheckIns(): Flow<List<TwelveWeekCheckIn>> = twelveWeekCheckInsFlow
+
+    override fun observeTwelveWeekGoalScores(): Flow<List<TwelveWeekGoalScore>> = twelveWeekScoresFlow
+
+    override fun observeTwelveWeekGoalTaskLinks(): Flow<List<TwelveWeekGoalTaskLink>> =
+        twelveWeekGoalTaskLinksFlow
+
+    override suspend fun addTwelveWeekCycle(input: TwelveWeekCycleWriteInput): Long {
+        addedTwelveWeekCycles.add(input)
+        val id = nextTwelveWeekCycleId++
+        twelveWeekCyclesFlow.update { it + TwelveWeekCycle(
+            id = id,
+            title = input.title,
+            startEpochDays = input.startEpochDays,
+            endEpochDays = input.endEpochDays,
+            status = input.status,
+            createdAtMillis = 0L
+        ) }
+        return id
+    }
+
+    override suspend fun updateTwelveWeekCycle(
+        cycleId: Long,
+        title: String,
+        status: TwelveWeekCycleStatus,
+        reviewNote: String,
+        completedAtMillis: Long?
+    ) {
+        updatedTwelveWeekCycles.add(cycleId to Triple(title, status, reviewNote))
+        twelveWeekCyclesFlow.update { cycles ->
+            cycles.map { cycle ->
+                if (cycle.id == cycleId) {
+                    cycle.copy(
+                        title = title,
+                        status = status,
+                        reviewNote = reviewNote,
+                        completedAtMillis = completedAtMillis ?: cycle.completedAtMillis
+                    )
+                } else {
+                    cycle
+                }
+            }
+        }
+    }
+
+    override suspend fun addTwelveWeekGoal(input: TwelveWeekGoalWriteInput): Long {
+        addedTwelveWeekGoals.add(input)
+        val id = nextTwelveWeekGoalId++
+        twelveWeekGoalsFlow.update { goals ->
+            goals + TwelveWeekGoal(
+                id = id,
+                cycleId = input.cycleId,
+                title = input.title,
+                note = input.note,
+                sortOrder = goals.count { it.cycleId == input.cycleId },
+                createdAtMillis = 0L,
+                updatedAtMillis = 0L
+            )
+        }
+        return id
+    }
+
+    override suspend fun updateTwelveWeekGoal(
+        goalId: Long,
+        title: String,
+        note: String,
+        finalStatus: TwelveWeekGoalFinalStatus?,
+        updatedAtMillis: Long
+    ) {
+        twelveWeekGoalsFlow.update { goals ->
+            goals.map { goal ->
+                if (goal.id == goalId) {
+                    goal.copy(title = title, note = note, finalStatus = finalStatus, updatedAtMillis = updatedAtMillis)
+                } else {
+                    goal
+                }
+            }
+        }
+    }
+
+    override suspend fun deleteTwelveWeekGoal(goalId: Long) {
+        twelveWeekGoalsFlow.update { goals -> goals.filterNot { it.id == goalId } }
+        twelveWeekGoalTaskLinksFlow.update { links -> links.filterNot { it.goalId == goalId } }
+        twelveWeekScoresFlow.update { scores -> scores.filterNot { it.goalId == goalId } }
+    }
+
+    override suspend fun upsertTwelveWeekCheckIn(
+        cycleId: Long,
+        weekIndex: Int,
+        note: String,
+        scores: List<TwelveWeekGoalScoreWriteInput>
+    ): Long {
+        savedTwelveWeekCheckIns.add(TwelveWeekCheckInWriteInput(cycleId, weekIndex, note, scores))
+        val existing = twelveWeekCheckInsFlow.value.firstOrNull { it.cycleId == cycleId && it.weekIndex == weekIndex }
+        val checkInId: Long
+        if (existing != null) {
+            checkInId = existing.id
+            twelveWeekCheckInsFlow.update { checkIns ->
+                checkIns.map { checkIn ->
+                    if (checkIn.id == checkInId) checkIn.copy(note = note, updatedAtMillis = checkIn.updatedAtMillis + 1) else checkIn
+                }
+            }
+        } else {
+            checkInId = nextTwelveWeekCheckInId++
+            twelveWeekCheckInsFlow.update { checkIns ->
+                checkIns + TwelveWeekCheckIn(
+                    id = checkInId,
+                    cycleId = cycleId,
+                    weekIndex = weekIndex,
+                    note = note,
+                    createdAtMillis = 0L,
+                    updatedAtMillis = 0L
+                )
+            }
+        }
+        twelveWeekScoresFlow.update { existingScores ->
+            existingScores.filterNot { it.checkInId == checkInId } +
+                scores.map { TwelveWeekGoalScore(
+                    id = nextTwelveWeekScoreId++,
+                    checkInId = checkInId,
+                    goalId = it.goalId,
+                    score = it.score,
+                    note = it.note
+                ) }
+        }
+        return checkInId
+    }
+
+    override suspend fun linkTwelveWeekGoalTask(goalId: Long, taskId: Long, sortOrder: Int) {
+        linkedTwelveWeekGoalTasks.add(goalId to taskId)
+        twelveWeekGoalTaskLinksFlow.update { links ->
+            links.filterNot { it.taskId == taskId } +
+                TwelveWeekGoalTaskLink(goalId = goalId, taskId = taskId, sortOrder = sortOrder)
+        }
+    }
+
+    override suspend fun unlinkTwelveWeekGoalTask(goalId: Long, taskId: Long) {
+        unlinkedTwelveWeekGoalTasks.add(goalId to taskId)
+        twelveWeekGoalTaskLinksFlow.update { links ->
+            links.filterNot { it.goalId == goalId && it.taskId == taskId }
+        }
+    }
+
+    override suspend fun countActiveTwelveWeekCycles(): Int =
+        twelveWeekCyclesFlow.value.count { it.status == TwelveWeekCycleStatus.Active }
 }
 
 internal class FakeSettingsRepository(
