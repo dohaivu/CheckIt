@@ -309,6 +309,42 @@ class TwelveWeekViewModel(
         }
     }
 
+    fun openCheckInHistory(cycleId: Long) {
+        val workspace = _uiState.value.workspace
+        val cycleCard = workspace.cycleCards.firstOrNull { it.cycle.id == cycleId } ?: return
+        val goalTitles = cycleCard.goals.associate { it.goal.id to it.goal.title }
+        val weeks = workspace.checkIns
+            .filter { it.cycleId == cycleId }
+            .sortedBy { it.weekIndex }
+            .map { checkIn ->
+                TwelveWeekHistoryEntry(
+                    weekIndex = checkIn.weekIndex,
+                    note = checkIn.note,
+                    scores = workspace.scores
+                        .filter { it.checkInId == checkIn.id }
+                        .mapNotNull { score ->
+                            goalTitles[score.goalId]?.let { title ->
+                                TwelveWeekHistoryScore(goalTitle = title, score = score.score)
+                            }
+                        }
+                )
+            }
+        _uiState.update {
+            it.copy(
+                checkInHistory = TwelveWeekCheckInHistoryState(
+                    cycleId = cycleId,
+                    cycleTitle = cycleCard.cycle.title,
+                    startEpochDays = cycleCard.cycle.startEpochDays,
+                    weeks = weeks
+                )
+            )
+        }
+    }
+
+    fun dismissCheckInHistory() {
+        _uiState.update { it.copy(checkInHistory = null) }
+    }
+
     private fun sendEvent(event: UiEvent) {
         viewModelScope.launch { _events.send(event) }
     }

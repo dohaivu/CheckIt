@@ -55,6 +55,8 @@ import checkit.shared.generated.resources.twelve_week_add_goal
 import checkit.shared.generated.resources.twelve_week_check_in
 import checkit.shared.generated.resources.twelve_week_check_in_note
 import checkit.shared.generated.resources.twelve_week_check_in_save
+import checkit.shared.generated.resources.twelve_week_check_in_history
+import checkit.shared.generated.resources.twelve_week_check_in_history_empty
 import checkit.shared.generated.resources.twelve_week_check_in_title
 import checkit.shared.generated.resources.twelve_week_complete_cycle
 import checkit.shared.generated.resources.twelve_week_complete_title
@@ -77,12 +79,16 @@ import checkit.shared.generated.resources.twelve_week_start_sheet_title
 import checkit.shared.generated.resources.twelve_week_starts_on
 import checkit.shared.generated.resources.twelve_week_tactics_empty
 import checkit.shared.generated.resources.twelve_week_title
+import checkit.shared.generated.resources.twelve_week_average
+import checkit.shared.generated.resources.twelve_week_latest
+import checkit.shared.generated.resources.twelve_week_week_number
 import checkit.shared.generated.resources.twelve_week_week_of_12
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TwelveWeekCycleCard
 import com.checkit.domain.TwelveWeekCycleStatus
 import com.checkit.domain.TwelveWeekGoalCard
 import com.checkit.domain.TwelveWeekGoalFinalStatus
+import com.checkit.domain.weekDateRange
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DateTimeRangeDetailChip
@@ -94,6 +100,7 @@ import com.checkit.ui.tasks.isOverdue
 import com.checkit.ui.tasks.views.TaskTitleRow
 import com.checkit.ui.localizedCompactDate
 import kotlinx.datetime.LocalDate
+import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -169,6 +176,7 @@ internal fun TwelveWeekScreen(
                         CycleCard(
                             cycleCard = cycleCard,
                             isActive = cycleCard.cycle.status == TwelveWeekCycleStatus.Active,
+                            hasCheckIns = state.workspace.checkIns.any { it.cycleId == cycleCard.cycle.id },
                             onCheckIn = {
                                 cycleCard.currentWeekIndex?.let { index ->
                                     viewModel.openCheckInSheet(cycleCard.cycle.id, index)
@@ -178,6 +186,7 @@ internal fun TwelveWeekScreen(
                             onAbandon = { viewModel.abandonCycle(cycleCard.cycle.id) },
                             onEditCycle = { viewModel.openCycleEditor(cycleCard.cycle.id) },
                             onAddGoal = { viewModel.openAddGoalEditor(cycleCard.cycle.id) },
+                            onCheckInHistory = { viewModel.openCheckInHistory(cycleCard.cycle.id) },
                             onEditGoal = viewModel::openEditGoalEditor,
                             onAddTactic = onAddTactic,
                             onToggleTactic = onToggleTactic
@@ -222,6 +231,12 @@ internal fun TwelveWeekScreen(
             onStatusChange = viewModel::setFinalStatus,
             onNoteChange = viewModel::updateCompleteNote,
             onSave = viewModel::saveCompleteCycle
+        )
+    }
+    state.checkInHistory?.let { sheet ->
+        CheckInHistorySheet(
+            sheet = sheet,
+            onDismiss = viewModel::dismissCheckInHistory
         )
     }
 }
@@ -271,11 +286,13 @@ private fun EmptyCycleCard(onStart: () -> Unit) {
 private fun CycleCard(
     cycleCard: TwelveWeekCycleCard,
     isActive: Boolean,
+    hasCheckIns: Boolean,
     onCheckIn: () -> Unit,
     onComplete: () -> Unit,
     onAbandon: () -> Unit,
     onEditCycle: () -> Unit,
     onAddGoal: () -> Unit,
+    onCheckInHistory: () -> Unit,
     onEditGoal: (Long) -> Unit,
     onAddTactic: (Long) -> Unit,
     onToggleTactic: (TaskItem) -> Unit
@@ -366,6 +383,15 @@ private fun CycleCard(
                                 enabled = cycleCard.currentWeekIndex != null
                             )
                             DropdownMenuItem(
+                                text = { Text(stringResource(Res.string.twelve_week_check_in_history)) },
+                                leadingIcon = { Icon(Icons.Default.Check, contentDescription = null) },
+                                onClick = {
+                                    onDismiss()
+                                    onCheckInHistory()
+                                },
+                                enabled = hasCheckIns
+                            )
+                            DropdownMenuItem(
                                 text = { Text(stringResource(Res.string.twelve_week_complete_cycle)) },
                                 leadingIcon = { Icon(Icons.Default.Check, contentDescription = null) },
                                 onClick = {
@@ -380,6 +406,18 @@ private fun CycleCard(
                                     onDismiss()
                                     onAbandon()
                                 }
+                            )
+                        }
+                    } else {
+                        EditorOverflowMenu { onDismiss ->
+                            DropdownMenuItem(
+                                text = { Text(stringResource(Res.string.twelve_week_check_in_history)) },
+                                leadingIcon = { Icon(Icons.Default.Check, contentDescription = null) },
+                                onClick = {
+                                    onDismiss()
+                                    onCheckInHistory()
+                                },
+                                enabled = hasCheckIns
                             )
                         }
                     }
@@ -471,6 +509,31 @@ private fun GoalCard(
                 if (isEditable) {
                     IconButton(onClick = onAddTactic) {
                         Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+                    }
+                }
+            }
+
+            if (card.averageScore != null || card.latestScore != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    card.averageScore?.let { average ->
+                        SummaryChip(
+                            label = stringResource(
+                                Res.string.twelve_week_average,
+                                formatAverage(average)
+                            )
+                        )
+                    }
+                    card.latestScore?.let { latest ->
+                        SummaryChip(
+                            label = stringResource(
+                                Res.string.twelve_week_latest,
+                                latest.score.toString()
+                            )
+                        )
                     }
                 }
             }
@@ -844,5 +907,140 @@ private fun FinalStatusButton(
             },
             textAlign = TextAlign.Center
         )
+    }
+}
+
+@Composable
+private fun SummaryChip(label: String) {
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        shape = RoundedCornerShape(10.dp)
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSecondaryContainer
+        )
+    }
+}
+
+private fun formatAverage(value: Double): String =
+    if (value == value.toInt().toDouble()) {
+        value.toInt().toString()
+    } else {
+        (value * 10).roundToInt().toString().let { tenths ->
+            "${tenths.dropLast(1)}.${tenths.last()}"
+        }
+    }
+
+@Composable
+private fun CheckInHistorySheet(
+    sheet: TwelveWeekCheckInHistoryState,
+    onDismiss: () -> Unit
+) {
+    AppEditorBottomSheet(
+        onDismiss = onDismiss,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 8.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = stringResource(Res.string.twelve_week_check_in_history),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = sheet.cycleTitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (sheet.weeks.isEmpty()) {
+                Text(
+                    text = stringResource(Res.string.twelve_week_check_in_history_empty),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+            } else {
+                sheet.weeks.forEach { entry ->
+                    WeekHistoryEntryCard(
+                        entry = entry,
+                        startEpochDays = sheet.startEpochDays
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WeekHistoryEntryCard(entry: TwelveWeekHistoryEntry, startEpochDays: Int) {
+    val range = weekDateRange(startEpochDays, entry.weekIndex)
+    val startDate = LocalDate.fromEpochDays(range.first)
+    val endDate = LocalDate.fromEpochDays(range.last)
+    val dateLabel = "${startDate.localizedCompactDate()} – ${endDate.localizedCompactDate()}"
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(Res.string.twelve_week_week_number, entry.weekIndex + 1),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = dateLabel,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (entry.note.isNotBlank()) {
+                Text(
+                    text = entry.note,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            entry.scores.forEach { score ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = score.goalTitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = score.score.toString(),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
     }
 }

@@ -192,6 +192,11 @@
     <string name="twelve_week_check_in_title">每周复盘</string>
     <string name="twelve_week_check_in_note">这周过得怎么样？</string>
     <string name="twelve_week_check_in_save">保存复盘</string>
+    <string name="twelve_week_check_in_history">复盘记录</string>
+    <string name="twelve_week_check_in_history_empty">还没有复盘记录。</string>
+    <string name="twelve_week_week_number">第 %1$d 周</string>
+    <string name="twelve_week_average">平均 %1$s</string>
+    <string name="twelve_week_latest">最近 %1$s</string>
     <string name="twelve_week_score_label">评分</string>
     <string name="twelve_week_complete_cycle">完成周期</string>
     <string name="twelve_week_complete_title">完成周期</string>

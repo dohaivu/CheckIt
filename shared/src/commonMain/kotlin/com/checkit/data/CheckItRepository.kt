@@ -613,7 +613,7 @@ class RoomCheckItRepository(
 
     override suspend fun addTask(input: TaskWriteInput): Long {
         val now = Clock.System.now().toEpochMilliseconds()
-        val isHabit = input.type == TaskType.Habit
+        val isTask = input.type == TaskType.Task
         val taskId = dao.insertTask(
             TaskEntity(
                 name = input.name,
@@ -621,10 +621,10 @@ class RoomCheckItRepository(
                 status = input.status.name,
                 priority = input.priority.name,
                 type = input.type.name,
-                doDateEpochDays = if (isHabit) null else input.doDate?.toEpochDays()?.toInt(),
-                startTimeMinutes = if (isHabit) null else input.startTimeMinutes,
-                endTimeMinutes = if (isHabit) null else input.endTimeMinutes,
-                repeatRRule = if (isHabit) null else input.repeatRRule,
+                doDateEpochDays = if (isTask) input.doDate?.toEpochDays()?.toInt() else null,
+                startTimeMinutes = if (isTask) input.startTimeMinutes else null,
+                endTimeMinutes = if (isTask) input.endTimeMinutes else null,
+                repeatRRule = if (isTask) input.repeatRRule else null,
                 sortOrder = input.listId?.let { dao.nextTaskSortOrder(it) } ?: 0,
                 createdAtMillis = now,
                 updatedAtMillis = now
@@ -647,7 +647,7 @@ class RoomCheckItRepository(
     override suspend fun updateTask(taskId: Long, input: TaskWriteInput) {
         val existingTask = dao.taskById(taskId)
         val shouldRemoveOpenDailyPlanItems = existingTask?.hasDifferentScheduleThan(input) == true
-        val isHabit = input.type == TaskType.Habit
+        val isTask = input.type == TaskType.Task
         dao.updateTask(
             taskId = taskId,
             name = input.name,
@@ -655,10 +655,10 @@ class RoomCheckItRepository(
             status = input.status.name,
             priority = input.priority.name,
             type = input.type.name,
-            doDateEpochDays = if (isHabit) null else input.doDate?.toEpochDays()?.toInt(),
-            startTimeMinutes = if (isHabit) null else input.startTimeMinutes,
-            endTimeMinutes = if (isHabit) null else input.endTimeMinutes,
-            repeatRRule = if (isHabit) null else input.repeatRRule,
+            doDateEpochDays = if (isTask) input.doDate?.toEpochDays()?.toInt() else null,
+            startTimeMinutes = if (isTask) input.startTimeMinutes else null,
+            endTimeMinutes = if (isTask) input.endTimeMinutes else null,
+            repeatRRule = if (isTask) input.repeatRRule else null,
             updatedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
         dao.deleteTaskList(taskId)

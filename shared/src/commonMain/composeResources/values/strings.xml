@@ -216,6 +216,11 @@
     <string name="twelve_week_check_in_title">Weekly check-in</string>
     <string name="twelve_week_check_in_note">How did the week go?</string>
     <string name="twelve_week_check_in_save">Save check-in</string>
+    <string name="twelve_week_check_in_history">Check-In History</string>
+    <string name="twelve_week_check_in_history_empty">No check-ins yet.</string>
+    <string name="twelve_week_week_number">Week %1$d</string>
+    <string name="twelve_week_average">Avg %1$s</string>
+    <string name="twelve_week_latest">Latest %1$s</string>
     <string name="twelve_week_score_label">Score</string>
     <string name="twelve_week_complete_cycle">Complete cycle</string>
     <string name="twelve_week_complete_title">Complete cycle</string>

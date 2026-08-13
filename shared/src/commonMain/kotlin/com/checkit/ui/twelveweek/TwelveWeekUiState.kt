@@ -9,7 +9,8 @@ data class TwelveWeekUiState(
     val cycleEditor: TwelveWeekCycleEditorState? = null,
     val goalEditor: TwelveWeekGoalEditorState? = null,
     val checkInSheet: TwelveWeekCheckInSheetState? = null,
-    val completeSheet: TwelveWeekCompleteSheetState? = null
+    val completeSheet: TwelveWeekCompleteSheetState? = null,
+    val checkInHistory: TwelveWeekCheckInHistoryState? = null
 )
 
 data class TwelveWeekCycleEditorState(
@@ -49,4 +50,22 @@ data class TwelveWeekCompleteSheetState(
     val finalStatuses: MutableMap<Long, TwelveWeekGoalFinalStatus>,
     val reviewNote: String = "",
     val isSaving: Boolean = false
+)
+
+data class TwelveWeekCheckInHistoryState(
+    val cycleId: Long,
+    val cycleTitle: String,
+    val startEpochDays: Int,
+    val weeks: List<TwelveWeekHistoryEntry>
+)
+
+data class TwelveWeekHistoryEntry(
+    val weekIndex: Int,
+    val note: String,
+    val scores: List<TwelveWeekHistoryScore>
+)
+
+data class TwelveWeekHistoryScore(
+    val goalTitle: String,
+    val score: Int
 )

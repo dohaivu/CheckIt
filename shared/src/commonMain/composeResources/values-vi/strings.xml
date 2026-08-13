@@ -192,6 +192,11 @@
     <string name="twelve_week_check_in_title">Kiểm tra tuần</string>
     <string name="twelve_week_check_in_note">Tuần này thế nào?</string>
     <string name="twelve_week_check_in_save">Lưu kiểm tra</string>
+    <string name="twelve_week_check_in_history">Lịch sử kiểm tra</string>
+    <string name="twelve_week_check_in_history_empty">Chưa có lần kiểm tra nào.</string>
+    <string name="twelve_week_week_number">Tuần %1$d</string>
+    <string name="twelve_week_average">Trung bình %1$s</string>
+    <string name="twelve_week_latest">Gần nhất %1$s</string>
     <string name="twelve_week_score_label">Điểm</string>
     <string name="twelve_week_complete_cycle">Hoàn thành chu kỳ</string>
     <string name="twelve_week_complete_title">Hoàn thành chu kỳ</string>
