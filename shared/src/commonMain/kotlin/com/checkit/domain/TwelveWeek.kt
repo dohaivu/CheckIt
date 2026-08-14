@@ -79,9 +79,7 @@ data class TwelveWeekGoalTaskLink(
 )
 
 data class TwelveWeekWorkspace(
-    val cycle: TwelveWeekCycle? = null,
     val cycleCards: List<TwelveWeekCycleCard> = emptyList(),
-    val currentWeekIndex: Int? = null,
     val checkIns: List<TwelveWeekCheckIn> = emptyList(),
     val scores: List<TwelveWeekGoalScore> = emptyList(),
     val pastCycles: List<TwelveWeekCycle> = emptyList()

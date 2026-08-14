@@ -36,7 +36,6 @@ sealed interface AppRoute : NavKey {
     @Serializable data object Calendar : AppRoute
     @Serializable data object MyDay : AppRoute
     @Serializable data object Reflect : AppRoute
-    @Serializable data object TwelveWeek : AppRoute
     @Serializable data object Settings : AppRoute
 }
 

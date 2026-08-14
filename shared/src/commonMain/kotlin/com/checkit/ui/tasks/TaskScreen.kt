@@ -48,6 +48,12 @@ import com.checkit.ui.tasks.views.ViewOptionsMenu
 import com.checkit.ui.theme.materialIcon
 import com.checkit.ui.theme.toColor
 import com.checkit.ui.today
+import com.checkit.ui.components.icons.AppIcons
+import com.checkit.ui.components.icons.Target
+import com.checkit.ui.twelveweek.TwelveWeekScreen
+import com.checkit.ui.twelveweek.TwelveWeekViewModel
+import com.checkit.ui.twelveweek.TwelveWeekViewOptionsMenu
+import checkit.shared.generated.resources.twelve_week_title
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 
@@ -60,6 +66,7 @@ internal fun TaskScreen(
     objectiveViewModel: ObjectiveViewModel,
     listViewModel: ListViewModel,
     planViewModel: PeriodPlanViewModel,
+    twelveWeekViewModel: TwelveWeekViewModel,
     twelveWeekGoals: List<TwelveWeekGoal>,
     onOpenTags: () -> Unit,
     modifier: Modifier = Modifier
@@ -70,6 +77,7 @@ internal fun TaskScreen(
     val objectiveState by objectiveViewModel.uiState.collectAsState()
     val listState by listViewModel.uiState.collectAsState()
     val planState by planViewModel.uiState.collectAsState()
+    val twelveWeekUiState by twelveWeekViewModel.uiState.collectAsState()
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -82,17 +90,23 @@ internal fun TaskScreen(
                     lists = state.board.lists,
                     isBoardSelected = state.selectedGoalId == null &&
                             state.selectedListId == null &&
-                            !state.isPlanSelected,
+                            !state.isPlanSelected &&
+                            !state.isTwelveWeekSelected,
                     selectedListId = state.selectedListId,
                     selectedGoalId = state.selectedGoalId,
                     isTagsSelected = false,
                     isPlanSelected = state.isPlanSelected,
+                    isTwelveWeekSelected = state.isTwelveWeekSelected,
                     onBoardClick = {
                         viewModel.selectBoard()
                         scope.launch { drawerState.close() }
                     },
                     onPlanClick = {
                         viewModel.selectPlan()
+                        scope.launch { drawerState.close() }
+                    },
+                    onTwelveWeekClick = {
+                        viewModel.selectTwelveWeek()
                         scope.launch { drawerState.close() }
                     },
                     onListClick = { listId ->
@@ -128,6 +142,8 @@ internal fun TaskScreen(
                             Icon(Icons.Default.Add, contentDescription = "Add")
                         }
                     }
+                } else if (state.isTwelveWeekSelected) {
+                    // No action FAB on the 12-week hub.
                 } else if (goalSelection != null) {
                     when (goalSelection) {
                         is GoalItemType.Objective -> TaskActionFab(
@@ -172,6 +188,11 @@ internal fun TaskScreen(
                                 titleColor = MaterialTheme.colorScheme.primary
                                 titleText = stringResource(Res.string.plan_screen_title)
                             }
+                            state.isTwelveWeekSelected -> {
+                                titleIcon = AppIcons.Target
+                                titleColor = MaterialTheme.colorScheme.primary
+                                titleText = stringResource(Res.string.twelve_week_title)
+                            }
                             state.selectedGoal != null -> {
                                 titleIcon = materialIcon(state.selectedGoal.icon)
                                 titleColor = state.selectedGoal.color.toColor()
@@ -201,6 +222,15 @@ internal fun TaskScreen(
                     },
                     actions = {
                         if (state.isPlanSelected) return@TinyTopAppBar
+                        if (state.isTwelveWeekSelected) {
+                            TwelveWeekViewOptionsMenu(
+                                showCompletedTactic = twelveWeekUiState.viewOptions.showCompletedTactic,
+                                showCompletedCycle = twelveWeekUiState.viewOptions.showCompletedCycle,
+                                onShowCompletedTacticChange = twelveWeekViewModel::setShowCompletedTactic,
+                                onShowCompletedCycleChange = twelveWeekViewModel::setShowCompletedCycle
+                            )
+                            return@TinyTopAppBar
+                        }
                         if (state.selectedGoal != null) {
                             HelpTooltip(markdownContent = HelpContent.okrTips)
                         }
@@ -253,6 +283,14 @@ internal fun TaskScreen(
                     },
                     onOpenTask = viewModel::openTask,
                     onZoomIntoPriority = planViewModel::zoomIntoPriority,
+                    modifier = contentModifier
+                )
+            } else if (state.isTwelveWeekSelected) {
+                TwelveWeekScreen(
+                    state = twelveWeekUiState,
+                    viewModel = twelveWeekViewModel,
+                    onAddTactic = { goalId -> viewModel.openNewTactic(goalId) },
+                    onToggleTactic = viewModel::openTask,
                     modifier = contentModifier
                 )
             } else if (state.selectedView == TaskWorkspaceView.Goal && state.selectedGoal != null) {

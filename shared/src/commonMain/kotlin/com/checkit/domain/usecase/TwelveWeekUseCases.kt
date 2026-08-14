@@ -75,7 +75,6 @@ class ObserveTwelveWeekWorkspaceUseCase(
         val activeCycles = cycles
             .filter { it.status == TwelveWeekCycleStatus.Active }
             .sortedBy { it.startEpochDays }
-        val primaryCycle = activeCycles.firstOrNull()
         val pastCycles = cycles
             .filter { it.status != TwelveWeekCycleStatus.Active }
             .sortedByDescending { it.startEpochDays }
@@ -149,9 +148,7 @@ class ObserveTwelveWeekWorkspaceUseCase(
         }
 
         return TwelveWeekWorkspace(
-            cycle = primaryCycle,
             cycleCards = cycleCards,
-            currentWeekIndex = primaryCycle?.let { weekIndexFor(it.startEpochDays, todayEpochDays) },
             checkIns = checkIns,
             scores = scores,
             pastCycles = pastCycles

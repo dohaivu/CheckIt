@@ -139,6 +139,12 @@ class TaskViewModel(
         }
     }
 
+    fun selectTwelveWeek() {
+        _uiState.update {
+            it.copy(selection = TaskSelectionState(isTwelveWeekSelected = true))
+        }
+    }
+
     fun selectList(listId: Long) {
         _uiState.update {
             it.copy(selection = TaskSelectionState(selectedListId = listId))
@@ -951,7 +957,8 @@ class TaskViewModel(
                 selectedListId = nextListId,
                 selectedTagId = nextTagId,
                 selectedGoalId = nextGoalId,
-                isPlanSelected = selection.isPlanSelected
+                isPlanSelected = selection.isPlanSelected,
+                isTwelveWeekSelected = selection.isTwelveWeekSelected
             ),
             options = options.copy(
                 selectedFilterId = nextFilterId,

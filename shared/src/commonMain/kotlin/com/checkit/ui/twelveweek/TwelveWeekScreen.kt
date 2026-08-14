@@ -22,7 +22,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -34,7 +33,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -81,7 +79,6 @@ import checkit.shared.generated.resources.twelve_week_start
 import checkit.shared.generated.resources.twelve_week_start_sheet_title
 import checkit.shared.generated.resources.twelve_week_starts_on
 import checkit.shared.generated.resources.twelve_week_tactics_empty
-import checkit.shared.generated.resources.twelve_week_title
 import checkit.shared.generated.resources.twelve_week_average
 import checkit.shared.generated.resources.twelve_week_latest
 import checkit.shared.generated.resources.twelve_week_week_number
@@ -99,7 +96,6 @@ import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DateTimeRangeDetailChip
 import com.checkit.ui.components.DeleteOverflowMenu
 import com.checkit.ui.components.EditorOverflowMenu
-import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.tasks.cardColor
 import com.checkit.ui.tasks.isOverdue
 import com.checkit.ui.tasks.views.TaskTitleRow
@@ -113,47 +109,12 @@ import org.jetbrains.compose.resources.stringResource
 internal fun TwelveWeekScreen(
     state: TwelveWeekUiState,
     viewModel: TwelveWeekViewModel,
-    onBack: () -> Unit,
     onAddTactic: (Long) -> Unit,
-    onToggleTactic: (TaskItem) -> Unit
+    onToggleTactic: (TaskItem) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            TinyTopAppBar(
-                title = {
-                    Text(
-                        text = stringResource(Res.string.twelve_week_title),
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(Res.string.cancel)
-                        )
-                    }
-                },
-                actions = {
-                    TwelveWeekViewOptionsMenu(
-                        showCompletedTactic = state.viewOptions.showCompletedTactic,
-                        showCompletedCycle = state.viewOptions.showCompletedCycle,
-                        onShowCompletedTacticChange = viewModel::setShowCompletedTactic,
-                        onShowCompletedCycleChange = viewModel::setShowCompletedCycle
-                    )
-                }
-            )
-        }
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = padding.calculateTopPadding())
-        ) {
-            when {
+    Box(modifier = modifier.fillMaxSize()) {
+        when {
                 state.isLoading -> Text(
                     text = stringResource(Res.string.twelve_week_empty_subtitle),
                     modifier = Modifier.align(Alignment.Center),
@@ -167,7 +128,7 @@ internal fun TwelveWeekScreen(
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    if (state.workspace.cycle == null) {
+                    if (state.workspace.cycleCards.none { it.cycle.status == TwelveWeekCycleStatus.Active }) {
                         EmptyCycleCard(onStart = { viewModel.openCycleEditor() })
                     }
                     state.visibleCycleCards.forEach { cycleCard ->
@@ -194,7 +155,6 @@ internal fun TwelveWeekScreen(
                 }
             }
         }
-    }
 
     state.cycleEditor?.let { editor ->
         CycleEditorSheet(

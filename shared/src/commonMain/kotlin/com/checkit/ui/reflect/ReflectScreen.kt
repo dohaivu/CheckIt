@@ -1,6 +1,5 @@
 package com.checkit.ui.reflect
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -26,9 +25,6 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -38,7 +34,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -53,25 +48,18 @@ import checkit.shared.generated.resources.reflect_period_week
 import checkit.shared.generated.resources.reflect_period_year
 import checkit.shared.generated.resources.reflect_review_card_title
 import checkit.shared.generated.resources.reflect_review_empty
-import checkit.shared.generated.resources.reflect_review_status_complete
 import checkit.shared.generated.resources.reflect_review_status_draft
 import checkit.shared.generated.resources.reflect_reviews_empty
 import checkit.shared.generated.resources.reflect_reviews_subtitle
 import checkit.shared.generated.resources.reflect_reviews_title
 import checkit.shared.generated.resources.reflect_reviews_written
 import checkit.shared.generated.resources.tab_reflect
-import checkit.shared.generated.resources.twelve_week_empty_title
-import checkit.shared.generated.resources.twelve_week_title
-import checkit.shared.generated.resources.twelve_week_week_of_12
 import com.checkit.domain.PeriodReview
 import com.checkit.domain.ReviewPeriod
-import com.checkit.domain.TwelveWeekCycle
 import com.checkit.ui.components.MarkdownView
 import com.checkit.ui.components.ReportPeriod
 import com.checkit.ui.components.ReportPeriodHeader
 import com.checkit.ui.components.TinyTopAppBar
-import com.checkit.ui.components.icons.AppIcons
-import com.checkit.ui.components.icons.Target
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.localizedMonthTitle
 import com.checkit.ui.localizedShortMonthName
@@ -89,9 +77,6 @@ private val ReflectPeriods = listOf(
 internal fun ReflectScreen(
     state: ReflectUiState,
     viewModel: ReflectViewModel,
-    twelveWeekCycle: TwelveWeekCycle? = null,
-    twelveWeekWeekIndex: Int? = null,
-    onOpenTwelveWeek: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Scaffold(
@@ -125,12 +110,6 @@ internal fun ReflectScreen(
                 onCurrentPeriod = viewModel::resetToCurrentPeriod,
                 onZoomOutTo = viewModel::zoomOutTo,
                 periods = ReflectPeriods
-            )
-
-            TwelveWeekEntryCard(
-                cycle = twelveWeekCycle,
-                weekIndex = twelveWeekWeekIndex,
-                onOpen = onOpenTwelveWeek
             )
 
             Column(
@@ -200,73 +179,6 @@ internal fun ReflectScreen(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun TwelveWeekEntryCard(
-    cycle: TwelveWeekCycle?,
-    weekIndex: Int?,
-    onOpen: () -> Unit
-) {
-    val gradient = Brush.linearGradient(
-        colors = listOf(
-            MaterialTheme.colorScheme.primaryContainer,
-            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f)
-        )
-    )
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(gradient, RoundedCornerShape(20.dp))
-            .clickable(onClick = onOpen)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .background(MaterialTheme.colorScheme.primary, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = AppIcons.Target,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = MaterialTheme.colorScheme.onPrimary
-            )
-        }
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            Text(
-                text = stringResource(Res.string.twelve_week_title),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
-            )
-            val subtitle = if (cycle == null) {
-                stringResource(Res.string.twelve_week_empty_title)
-            } else {
-                val weekLabel = weekIndex?.plus(1)?.let { week ->
-                    stringResource(Res.string.twelve_week_week_of_12, week)
-                }.orEmpty()
-                if (weekLabel.isEmpty()) cycle.title else "$weekLabel · ${cycle.title}"
-            }
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-        )
     }
 }
 

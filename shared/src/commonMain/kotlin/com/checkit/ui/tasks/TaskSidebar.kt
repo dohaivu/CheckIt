@@ -37,6 +37,9 @@ import com.checkit.ui.theme.materialIcon
 import com.checkit.ui.theme.toColor
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.plan_screen_title
+import checkit.shared.generated.resources.twelve_week_title
+import com.checkit.ui.components.icons.AppIcons
+import com.checkit.ui.components.icons.Target
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -48,11 +51,13 @@ internal fun TaskSidebar(
     selectedGoalId: Long?,
     isTagsSelected: Boolean,
     isPlanSelected: Boolean,
+    isTwelveWeekSelected: Boolean,
     onBoardClick: () -> Unit,
     onGoalClick: (Long) -> Unit,
     onListClick: (Long) -> Unit,
     onTagsClick: () -> Unit,
     onPlanClick: () -> Unit,
+    onTwelveWeekClick: () -> Unit,
     onAddGoalClick: () -> Unit,
     onEditGoalClick: (Goal) -> Unit,
     onAddListClick: () -> Unit,
@@ -146,6 +151,15 @@ internal fun TaskSidebar(
                 color = MaterialTheme.colorScheme.primary,
                 selected = isPlanSelected,
                 onClick = onPlanClick
+            )
+        }
+        item {
+            SidebarItem(
+                title = stringResource(Res.string.twelve_week_title),
+                icon = AppIcons.Target,
+                color = MaterialTheme.colorScheme.primary,
+                selected = isTwelveWeekSelected,
+                onClick = onTwelveWeekClick
             )
         }
     }

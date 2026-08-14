@@ -256,6 +256,7 @@ fun CheckItApp(
                                             objectiveViewModel = viewModels.objective,
                                             listViewModel = viewModels.list,
                                             planViewModel = viewModels.plan,
+                                            twelveWeekViewModel = viewModels.twelveWeek,
                                             twelveWeekGoals = twelveWeekUiState.workspace.cycleCards
                                                 .flatMap { it.goals }
                                                 .map { it.goal },
@@ -306,22 +307,7 @@ fun CheckItApp(
                                         val reflectState by viewModels.reflect.uiState.collectAsState()
                                         ReflectScreen(
                                             state = reflectState,
-                                            viewModel = viewModels.reflect,
-                                            twelveWeekCycle = twelveWeekUiState.workspace.cycle,
-                                            twelveWeekWeekIndex = twelveWeekUiState.workspace.currentWeekIndex,
-                                            onOpenTwelveWeek = { navState.push(AppRoute.TwelveWeek) }
-                                        )
-                                    }
-
-                                    AppRoute.TwelveWeek -> {
-                                        TwelveWeekScreen(
-                                            state = twelveWeekUiState,
-                                            viewModel = viewModels.twelveWeek,
-                                            onBack = { navState.pop() },
-                                            onAddTactic = { goalId ->
-                                                viewModels.task.openNewTactic(goalId)
-                                            },
-                                            onToggleTactic = viewModels.task::openTask
+                                            viewModel = viewModels.reflect
                                         )
                                     }
 
