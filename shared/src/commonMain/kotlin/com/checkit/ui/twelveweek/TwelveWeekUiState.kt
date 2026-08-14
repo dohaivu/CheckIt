@@ -1,6 +1,8 @@
 package com.checkit.ui.twelveweek
 
+import com.checkit.domain.TaskStatus
 import com.checkit.domain.TwelveWeekCycleCard
+import com.checkit.domain.TwelveWeekCycleStatus
 import com.checkit.domain.TwelveWeekGoalFinalStatus
 import com.checkit.domain.TwelveWeekWorkspace
 
@@ -55,7 +57,7 @@ data class TwelveWeekScoreField(
 data class TwelveWeekCompleteSheetState(
     val cycleId: Long,
     val goalTitles: Map<Long, String>,
-    val finalStatuses: MutableMap<Long, TwelveWeekGoalFinalStatus>,
+    val finalStatuses: Map<Long, TwelveWeekGoalFinalStatus>,
     val reviewNote: String = "",
     val isSaving: Boolean = false
 )
@@ -77,3 +79,22 @@ data class TwelveWeekHistoryScore(
     val goalTitle: String,
     val score: Int
 )
+
+/** Filters the workspace cards down to what should be visible for [options]. */
+internal fun TwelveWeekWorkspace.visibleCards(
+    options: TwelveWeekViewOptionsState
+): List<TwelveWeekCycleCard> {
+    val cycles = if (options.showCompletedCycle) {
+        cycleCards
+    } else {
+        cycleCards.filter { it.cycle.status == TwelveWeekCycleStatus.Active }
+    }
+    if (options.showCompletedTactic) return cycles
+    return cycles.map { card ->
+        card.copy(
+            goals = card.goals.map { goal ->
+                goal.copy(tactics = goal.tactics.filter { it.status != TaskStatus.Completed })
+            }
+        )
+    }
+}

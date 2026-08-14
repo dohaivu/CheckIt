@@ -83,13 +83,16 @@ class ObserveTwelveWeekWorkspaceUseCase(
         val tasksById = tasks.associateBy { it.id }
         val taskIdsByGoal = links
             .groupBy({ it.goalId }, { it.taskId })
+        val goalsByCycle = goals.groupBy { it.cycleId }
+        val scoresByGoal = scores.groupBy { it.goalId }
+        val checkInsByCycle = checkIns.groupBy { it.cycleId }
 
         fun buildGoalCard(goal: TwelveWeekGoal): TwelveWeekGoalCard {
             val tacticIds = taskIdsByGoal[goal.id].orEmpty()
             val tactics = tacticIds
                 .mapNotNull { tasksById[it] }
                 .filterNot { it.isTrashed }
-            val goalScores = scores.filter { it.goalId == goal.id }
+            val goalScores = scoresByGoal[goal.id].orEmpty()
             return TwelveWeekGoalCard(
                 goal = goal,
                 tactics = tactics,
@@ -103,8 +106,7 @@ class ObserveTwelveWeekWorkspaceUseCase(
             currentWeekIndex: Int?
         ): TwelveWeekCheckInReminder? {
             if (currentWeekIndex == null) return null
-            val checkedInWeeks = checkIns
-                .filter { it.cycleId == cycle.id }
+            val checkedInWeeks = checkInsByCycle[cycle.id].orEmpty()
                 .map { it.weekIndex }
                 .toSet()
             val pendingWeek = (0..currentWeekIndex).firstOrNull { it !in checkedInWeeks }
@@ -133,8 +135,7 @@ class ObserveTwelveWeekWorkspaceUseCase(
             }
             return TwelveWeekCycleCard(
                 cycle = cycle,
-                goals = goals
-                    .filter { it.cycleId == cycle.id }
+                goals = goalsByCycle[cycle.id].orEmpty()
                     .sortedBy { it.sortOrder }
                     .map(::buildGoalCard),
                 currentWeekIndex = currentWeekIndex,
@@ -147,21 +148,10 @@ class ObserveTwelveWeekWorkspaceUseCase(
             pastCycles.forEach { add(buildCycleCard(it)) }
         }
 
-        if (primaryCycle == null) {
-            return TwelveWeekWorkspace(
-                cycle = null,
-                cycleCards = cycleCards,
-                currentWeekIndex = null,
-                checkIns = checkIns,
-                scores = scores,
-                pastCycles = pastCycles
-            )
-        }
-
         return TwelveWeekWorkspace(
             cycle = primaryCycle,
             cycleCards = cycleCards,
-            currentWeekIndex = cycleCards.first().currentWeekIndex,
+            currentWeekIndex = primaryCycle?.let { weekIndexFor(it.startEpochDays, todayEpochDays) },
             checkIns = checkIns,
             scores = scores,
             pastCycles = pastCycles

@@ -3,11 +3,7 @@ package com.checkit.ui.twelveweek
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.checkit.data.TwelveWeekGoalScoreWriteInput
-import com.checkit.domain.TaskStatus
-import com.checkit.domain.TwelveWeekCycleCard
-import com.checkit.domain.TwelveWeekCycleStatus
 import com.checkit.domain.TwelveWeekGoalFinalStatus
-import com.checkit.domain.TwelveWeekWorkspace
 import com.checkit.domain.mondayOfWeek
 import com.checkit.domain.usecase.AbandonTwelveWeekCycleUseCase
 import com.checkit.domain.usecase.AddTwelveWeekGoalUseCase
@@ -77,24 +73,6 @@ class TwelveWeekViewModel(
         _uiState.update { state ->
             val options = state.viewOptions.copy(showCompletedCycle = show)
             state.copy(viewOptions = options, visibleCycleCards = state.workspace.visibleCards(options))
-        }
-    }
-
-    private fun TwelveWeekWorkspace.visibleCards(
-        options: TwelveWeekViewOptionsState
-    ): List<TwelveWeekCycleCard> {
-        val cycles = if (options.showCompletedCycle) {
-            cycleCards
-        } else {
-            cycleCards.filter { it.cycle.status == TwelveWeekCycleStatus.Active }
-        }
-        if (options.showCompletedTactic) return cycles
-        return cycles.map { card ->
-            card.copy(
-                goals = card.goals.map { goal ->
-                    goal.copy(tactics = goal.tactics.filter { it.status != TaskStatus.Completed })
-                }
-            )
         }
     }
 
@@ -222,8 +200,8 @@ class TwelveWeekViewModel(
         val workspace = _uiState.value.workspace
         val cycleCard = workspace.cycleCards.firstOrNull { it.cycle.id == cycleId } ?: return
         val existing = workspace.checkIns.firstOrNull { it.cycleId == cycleId && it.weekIndex == weekIndex }
-        val savedScores = existing?.let { checkIn ->
-            workspace.scores.filter { it.checkInId == checkIn.id }
+        val savedScoresByGoal = existing?.let { checkIn ->
+            workspace.scores.filter { it.checkInId == checkIn.id }.associateBy { it.goalId }
         }.orEmpty()
         _uiState.update {
             it.copy(
@@ -235,7 +213,7 @@ class TwelveWeekViewModel(
                         TwelveWeekScoreField(
                             goalId = card.goal.id,
                             goalTitle = card.goal.title,
-                            score = savedScores.firstOrNull { s -> s.goalId == card.goal.id }?.score?.toString().orEmpty()
+                            score = savedScoresByGoal[card.goal.id]?.score?.toString().orEmpty()
                         )
                     }
                 )
@@ -298,7 +276,7 @@ class TwelveWeekViewModel(
                 completeSheet = TwelveWeekCompleteSheetState(
                     cycleId = cycleId,
                     goalTitles = goals.associate { card -> card.goal.id to card.goal.title },
-                    finalStatuses = goals.associateTo(mutableMapOf()) { card ->
+                    finalStatuses = goals.associate { card ->
                         card.goal.id to (card.goal.finalStatus ?: TwelveWeekGoalFinalStatus.Partial)
                     }
                 )
@@ -313,7 +291,7 @@ class TwelveWeekViewModel(
     fun setFinalStatus(goalId: Long, status: TwelveWeekGoalFinalStatus) {
         _uiState.update { state ->
             state.completeSheet?.let { sheet ->
-                state.copy(completeSheet = sheet.copy(finalStatuses = sheet.finalStatuses.toMutableMap().apply { put(goalId, status) }))
+                state.copy(completeSheet = sheet.copy(finalStatuses = sheet.finalStatuses + (goalId to status)))
             } ?: state
         }
     }
@@ -328,7 +306,7 @@ class TwelveWeekViewModel(
         _uiState.update { it.copy(completeSheet = sheet.copy(isSaving = true)) }
         viewModelScope.launch {
             runCatching {
-                completeCycle(sheet.cycleId, sheet.finalStatuses.toMap(), sheet.reviewNote)
+                completeCycle(sheet.cycleId, sheet.finalStatuses, sheet.reviewNote)
             }.onSuccess {
                 _uiState.update { state -> state.copy(completeSheet = null) }
                 sendEvent(UiEvent.ShowSnackbar("Cycle completed"))
@@ -353,6 +331,7 @@ class TwelveWeekViewModel(
         val workspace = _uiState.value.workspace
         val cycleCard = workspace.cycleCards.firstOrNull { it.cycle.id == cycleId } ?: return
         val goalTitles = cycleCard.goals.associate { it.goal.id to it.goal.title }
+        val scoresByCheckIn = workspace.scores.groupBy { it.checkInId }
         val weeks = workspace.checkIns
             .filter { it.cycleId == cycleId }
             .sortedBy { it.weekIndex }
@@ -360,13 +339,11 @@ class TwelveWeekViewModel(
                 TwelveWeekHistoryEntry(
                     weekIndex = checkIn.weekIndex,
                     note = checkIn.note,
-                    scores = workspace.scores
-                        .filter { it.checkInId == checkIn.id }
-                        .mapNotNull { score ->
-                            goalTitles[score.goalId]?.let { title ->
-                                TwelveWeekHistoryScore(goalTitle = title, score = score.score)
-                            }
+                    scores = scoresByCheckIn[checkIn.id].orEmpty().mapNotNull { score ->
+                        goalTitles[score.goalId]?.let { title ->
+                            TwelveWeekHistoryScore(goalTitle = title, score = score.score)
                         }
+                    }
                 )
             }
         _uiState.update {
