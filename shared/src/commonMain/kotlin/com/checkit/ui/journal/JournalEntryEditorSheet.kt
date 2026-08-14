@@ -53,6 +53,7 @@ internal fun JournalEntryEditorSheet(
     onDismiss: () -> Unit,
     onContextChange: (String) -> Unit,
     onContentChange: (String) -> Unit,
+    onPresetSelected: (JournalContextPreset) -> Unit,
     onMoodToggle: (String) -> Unit,
     onTagToggle: (Long) -> Unit,
     onNewTagClick: () -> Unit,
@@ -117,13 +118,16 @@ internal fun JournalEntryEditorSheet(
                     if (contextFocused) {
                         Spacer(Modifier.height(8.dp))
                         FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             JournalContextPresets.forEach { preset ->
                                 PresetChip(
-                                    label = preset,
-                                    onClick = { onContextChange(appendContextPreset(state.context, preset)) }
+                                    label = preset.type,
+                                    onClick = {
+                                        onPresetSelected(preset)
+                                        contextFocused = false
+                                    }
                                 )
                             }
                         }
@@ -139,17 +143,41 @@ internal fun JournalEntryEditorSheet(
                         .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
                         .padding(horizontal = 16.dp, vertical = 12.dp)
                 ) {
-                    AppOutlinedTextField(
-                        value = state.content,
-                        onValueChange = onContentChange,
-                        textStyle = MaterialTheme.typography.bodyLarge.copy(
-                            color = MaterialTheme.colorScheme.onSurface
-                        ),
-                        placeholder = "What's on your mind? Share your thoughts...",
-                        minLines = 5,
-                        modifier = Modifier.fillMaxWidth(),
-                        visualTransformation = remember { MarkdownVisualTransformation() }
-                    )
+                    Column {
+                        if (state.prompt.isNotBlank()) {
+                            Text(
+                                text = state.prompt,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                        }
+                        AppOutlinedTextField(
+                            value = state.content,
+                            onValueChange = onContentChange,
+                            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                color = MaterialTheme.colorScheme.onSurface
+                            ),
+                            placeholder = "What's on your mind? Share your thoughts...",
+                            minLines = 8,
+                            modifier = Modifier.fillMaxWidth(),
+                            visualTransformation = remember { MarkdownVisualTransformation() }
+                        )
+
+                        val wordCount = remember(state.content) {
+                            state.content.split(Regex("\\s+")).filter { it.isNotBlank() }.size
+                        }
+                        if (wordCount > 0) {
+                            Text(
+                                text = "$wordCount words",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                modifier = Modifier
+                                    .align(Alignment.End)
+                                    .padding(top = 8.dp)
+                            )
+                        }
+                    }
                 }
             }
             item {
@@ -169,14 +197,6 @@ internal fun JournalEntryEditorSheet(
             }
         }
     }
-}
-
-/** Appends a preset to the current context, avoiding duplicates. */
-private fun appendContextPreset(current: String, preset: String): String {
-    val parts = current.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-    if (preset in parts) return current
-    val combined = if (parts.isEmpty()) preset else parts.joinToString(", ") + ", " + preset
-    return combined
 }
 
 @Composable

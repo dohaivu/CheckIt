@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,6 +52,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -83,10 +85,84 @@ import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.stringResource
 
 /** Quick context presets shown as tappable chips in the entry editor. */
+data class JournalContextPreset(
+    val type: String,
+    val prompt: String,
+    val template: String
+)
+
 internal val JournalContextPresets = listOf(
-    "deep thoughts", "idea", "random", "lazying",
-    "cafe", "biking", "code", "reading", "learning language",
-    "event", "at home")
+    JournalContextPreset(
+        type = "gratitude",
+        prompt = "What are you thankful for today?",
+        template =
+"""**I am grateful for:**:
+1. 
+2. 
+3. 
+""".trimMargin()
+    ),
+    JournalContextPreset(
+        type = "growth log",
+        prompt = "How did today go? Any wins or lessons?",
+        template =
+            """**Growth Log**:
+- **Win**: 
+- **Friction**:
+- **Insight**: 
+""".trimMargin()
+    ),
+    JournalContextPreset(
+        type = "deep thoughts",
+        prompt = "What's on your mind right now?",
+        template = "**<Tôi đắn đo suy nghĩ về>**\n- "
+    ),
+    JournalContextPreset(
+        type = "idea",
+        prompt = "Got a new idea? Jot it down.",
+        template = "## Idea\n\n"
+    ),
+    JournalContextPreset(
+        type = "random",
+        prompt = "Anything else you want to record?",
+        template = ""
+    ),
+    JournalContextPreset(
+        type = "lazying",
+        prompt = "How's your rest going?",
+        template = "Resting and recharging. "
+    ),
+    JournalContextPreset(
+        type = "biking",
+        prompt = "How was the ride?",
+        template = "Out on a bike ride. "
+    ),
+    JournalContextPreset(
+        type = "coding",
+        prompt = "What are you working on?",
+        template = "Coding: "
+    ),
+    JournalContextPreset(
+        type = "reading",
+        prompt = "What are you reading about?",
+        template = "Reading: "
+    ),
+    JournalContextPreset(
+        type = "learning",
+        prompt = "What's something new you learned?",
+        template = "Learning: "
+    ),
+    JournalContextPreset(
+        type = "event",
+        prompt = "How was the event?",
+        template = "At an event: "
+    ),
+    JournalContextPreset(
+        type = "at home",
+        prompt = "How's the vibe at home?",
+        template = "Relaxing at home. "
+    )
+)
 
 private val MoodCategories = listOf(
     "Happy" to MoodHappyEmojis,
@@ -404,12 +480,7 @@ internal fun JournalAgendaView(
 
     AgendaView(
         items = timelineItems,
-        onItemClick = { item ->
-            when (val tag = item.tag) {
-                is JournalEntry -> onEntryClick(tag)
-                is PeriodReview -> onReviewClick(tag)
-            }
-        },
+        onItemClick = { item -> },
         itemContent = { item ->
             when (val tag = item.tag) {
                 is JournalEntry -> JournalHistoryEntryCard(
@@ -419,6 +490,7 @@ internal fun JournalAgendaView(
                 )
                 is PeriodReview -> JournalAgendaReviewCard(
                     review = tag,
+                    onClick = { onReviewClick(tag)},
                     modifier = Modifier.padding(start = 8.dp)
                 )
             }
@@ -430,6 +502,7 @@ internal fun JournalAgendaView(
 @Composable
 private fun JournalAgendaReviewCard(
     review: PeriodReview,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -437,7 +510,12 @@ private fun JournalAgendaReviewCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp)
+            .pointerInput(review.id) {
+                detectTapGestures(
+                    onLongPress = { onClick() }
+                )
+            },
         verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
         Text(
@@ -479,7 +557,11 @@ internal fun JournalEntryCard(
                     strokeWidth = 8.dp.toPx()
                 )
             }
-            .clickable(onClick = onClick)
+            .pointerInput(entry.id) {
+                detectTapGestures(
+                    onLongPress = { onClick() }
+                )
+            }
             .padding(horizontal = 12.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.Top
@@ -577,7 +659,11 @@ internal fun JournalHistoryEntryCard(
                     strokeWidth = 8.dp.toPx()
                 )
             }
-            .clickable(onClick = onClick)
+            .pointerInput(entry.id) {
+                detectTapGestures(
+                    onLongPress = { onClick() }
+                )
+            }
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {

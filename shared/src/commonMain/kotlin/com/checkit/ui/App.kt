@@ -407,6 +407,7 @@ fun CheckItApp(
                             onDismiss = viewModels.myDay::dismissJournalEditor,
                             onContextChange = viewModels.myDay::updateJournalEditorContext,
                             onContentChange = viewModels.myDay::updateJournalEditorContent,
+                            onPresetSelected = viewModels.myDay::applyJournalContextPreset,
                             onMoodToggle = viewModels.myDay::toggleJournalEditorMood,
                             onTagToggle = viewModels.myDay::toggleJournalEditorTag,
                             onNewTagClick = viewModels.tag::openNewTag,

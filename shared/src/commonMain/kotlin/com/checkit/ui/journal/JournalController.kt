@@ -54,6 +54,9 @@ internal class JournalController(
 
     fun updateJournalEditorContext(value: String) = updateEditor { it.copy(context = value) }
     fun updateJournalEditorContent(value: String) = updateEditor { it.copy(content = value) }
+    fun applyJournalContextPreset(preset: JournalContextPreset) = updateEditor {
+        it.copy(context = preset.type, content = preset.template, prompt = preset.prompt)
+    }
     fun toggleJournalEditorMood(mood: String) = updateEditor {
         val next = if (mood in it.moods) it.moods - mood else it.moods + mood
         it.copy(moods = next)
