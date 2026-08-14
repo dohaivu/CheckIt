@@ -12,7 +12,6 @@ import com.mikepenz.markdown.m3.markdownTypography
 import com.mikepenz.markdown.model.markdownPadding
 import com.mohamedrejeb.richeditor.annotation.ExperimentalRichTextApi
 
-@OptIn(ExperimentalRichTextApi::class)
 @Composable
 fun MarkdownView(
     markdown: String,

@@ -1,7 +1,6 @@
 package com.checkit.ui.tasks.views
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,14 +12,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,15 +29,13 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.NoteItem
-import com.checkit.domain.ListItem
-import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskType
 import com.checkit.domain.TwelveWeekGoal
 import com.checkit.ui.components.DateTimeRangeDetailChip
 import com.checkit.ui.components.DetailChip
-import com.checkit.ui.components.RichTextPreview
+import com.checkit.ui.components.MarkdownView
 import com.checkit.ui.components.SupportingPills
 import com.checkit.ui.duration
 import com.checkit.ui.tasks.HabitIcon
@@ -398,10 +392,9 @@ internal fun StandardNoteRowContent(note: NoteItem, showList: Boolean) {
                     Text(note.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                 }
                 if (note.content.isNotBlank()) {
-                    RichTextPreview(
+                    MarkdownView(
                         markdown = note.content,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 2,
+                        style = MaterialTheme.typography.bodyMedium
                     )
                 }
             }
@@ -434,10 +427,9 @@ internal fun DetailNoteRowContent(note: NoteItem, showList: Boolean) {
                     Text(note.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                 }
                 if (note.content.isNotBlank()) {
-                    RichTextPreview(
+                    MarkdownView(
                         markdown = note.content,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 5,
+                        style = MaterialTheme.typography.bodyMedium
                     )
                 }
             }

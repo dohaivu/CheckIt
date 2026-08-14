@@ -41,6 +41,7 @@ import com.checkit.domain.TagItem
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DeleteOverflowMenu
+import com.checkit.ui.components.MarkdownVisualTransformation
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.myday.JournalEntryEditorState
 
@@ -146,7 +147,8 @@ internal fun JournalEntryEditorSheet(
                         ),
                         placeholder = "What's on your mind? Share your thoughts...",
                         minLines = 5,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        visualTransformation = remember { MarkdownVisualTransformation() }
                     )
                 }
             }

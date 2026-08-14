@@ -76,7 +76,6 @@ import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.usecase.BuildDailyPlanMarkdownSummaryUseCase
 import com.checkit.ui.components.MarkdownView
-import com.checkit.ui.components.RichTextPreview
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.firstDayOfMonth
@@ -609,7 +608,7 @@ private fun DailyPlanMarkdownSummary(
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
-    RichTextPreview(
+    MarkdownView(
         markdown = markdown,
         modifier = modifier.verticalScroll(scrollState)
     )

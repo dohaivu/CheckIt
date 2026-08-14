@@ -52,6 +52,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -489,7 +490,7 @@ internal fun JournalEntryCard(
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(
-                text = entry.content,
+                text = entry.annotatedContent,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface,
                 lineHeight = 20.sp
@@ -582,7 +583,7 @@ internal fun JournalHistoryEntryCard(
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Text(
-            text = entry.content,
+            text = entry.annotatedContent,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
             lineHeight = 24.sp
@@ -635,7 +636,7 @@ internal fun JournalThoughtCard(
             RichTooltip(
                 title = { Text(entry.context ?: "Check-In") }
             ) {
-                Text(entry.content)
+                Text(entry.annotatedContent)
             }
         },
         state = tooltipState
@@ -657,7 +658,7 @@ internal fun JournalThoughtCard(
                 .padding(horizontal = 12.dp, vertical = 6.dp)
         ) {
             Text(
-                text = entry.content.ifBlank { entry.context.orEmpty() },
+                text = if (entry.content.isNotBlank()) entry.annotatedContent else AnnotatedString(entry.context.orEmpty()),
                 style = MaterialTheme.typography.bodyMedium,
                 fontFamily = FontFamily.Cursive,
                 fontSize = 16.sp,

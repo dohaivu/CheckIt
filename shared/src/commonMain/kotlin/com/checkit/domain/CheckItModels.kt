@@ -1,5 +1,7 @@
 package com.checkit.domain
 
+import com.checkit.ui.components.parseMarkdownToAnnotatedString
+import androidx.compose.ui.text.AnnotatedString
 import kotlinx.datetime.LocalDate
 
 data class AppConfig(val versionName: String)
@@ -205,7 +207,11 @@ data class JournalEntry(
     val tags: List<TagItem> = emptyList(),
     val createdTimeMinutes: Int,
     val attachments: List<String> = emptyList()
-)
+) {
+    val annotatedContent: AnnotatedString by lazy {
+        parseMarkdownToAnnotatedString(content)
+    }
+}
 
 data class TagItem(
     val id: Long,
