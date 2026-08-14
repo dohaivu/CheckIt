@@ -72,7 +72,6 @@ import com.checkit.domain.MoodTiredEmojis
 import com.checkit.domain.PeriodReview
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.EmojiPicker
-import com.checkit.ui.components.MarkdownView
 import com.checkit.ui.components.TagPlain
 import com.checkit.ui.components.getMoodColorFromEmoji
 import com.checkit.ui.tasks.TimelineItem
@@ -447,8 +446,8 @@ private fun JournalAgendaReviewCard(
             fontWeight = FontWeight.SemiBold
         )
         if (review.content.isNotBlank()) {
-            MarkdownView(
-                markdown = review.content,
+            Text(
+                text = review.annotatedContent,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

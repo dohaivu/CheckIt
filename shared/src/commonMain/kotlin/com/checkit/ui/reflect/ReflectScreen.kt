@@ -31,6 +31,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -56,10 +57,10 @@ import checkit.shared.generated.resources.reflect_reviews_written
 import checkit.shared.generated.resources.tab_reflect
 import com.checkit.domain.PeriodReview
 import com.checkit.domain.ReviewPeriod
-import com.checkit.ui.components.MarkdownView
 import com.checkit.ui.components.ReportPeriod
 import com.checkit.ui.components.ReportPeriodHeader
 import com.checkit.ui.components.TinyTopAppBar
+import com.checkit.ui.components.parseMarkdownToAnnotatedString
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.localizedMonthTitle
 import com.checkit.ui.localizedShortMonthName
@@ -245,8 +246,8 @@ private fun ReviewCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                 )
             } else {
-                MarkdownView(
-                    markdown = review.content,
+                Text(
+                    text = review.annotatedContent,
                     style = MaterialTheme.typography.bodyMedium.copy(
                         lineHeight = 24.sp,
                         fontWeight = FontWeight.Medium,
@@ -280,8 +281,8 @@ private fun ReviewCard(
                                 color = MaterialTheme.colorScheme.primary
                             )
                         }
-                        MarkdownView(
-                            markdown = intent,
+                        Text(
+                            text = remember { parseMarkdownToAnnotatedString(intent) },
                             style = MaterialTheme.typography.bodySmall.copy(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -421,8 +422,8 @@ private fun ReviewRow(
                 ReviewStatusPill(review = review)
             }
             if (review.content.isNotBlank()) {
-                MarkdownView(
-                    markdown = review.content,
+                Text(
+                    text = review.annotatedContent,
                     style = MaterialTheme.typography.bodySmall.copy(
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                     ),

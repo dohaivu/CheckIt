@@ -224,7 +224,8 @@ class MarkdownVisualTransformation : VisualTransformation {
     }
 }
 
-fun parseMarkdownToAnnotatedString(markdown: String): AnnotatedString {
+fun parseMarkdownToAnnotatedString(markdown: String?): AnnotatedString {
+    if (markdown.isNullOrEmpty()) return AnnotatedString("")
     return buildAnnotatedString {
         val lines = markdown.split('\n')
 

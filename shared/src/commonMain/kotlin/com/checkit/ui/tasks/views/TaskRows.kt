@@ -35,7 +35,6 @@ import com.checkit.domain.TaskType
 import com.checkit.domain.TwelveWeekGoal
 import com.checkit.ui.components.DateTimeRangeDetailChip
 import com.checkit.ui.components.DetailChip
-import com.checkit.ui.components.MarkdownView
 import com.checkit.ui.components.SupportingPills
 import com.checkit.ui.duration
 import com.checkit.ui.tasks.HabitIcon
@@ -392,9 +391,11 @@ internal fun StandardNoteRowContent(note: NoteItem, showList: Boolean) {
                     Text(note.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                 }
                 if (note.content.isNotBlank()) {
-                    MarkdownView(
-                        markdown = note.content,
-                        style = MaterialTheme.typography.bodyMedium
+                    Text(
+                        text = note.annotatedContent,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
@@ -427,9 +428,11 @@ internal fun DetailNoteRowContent(note: NoteItem, showList: Boolean) {
                     Text(note.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                 }
                 if (note.content.isNotBlank()) {
-                    MarkdownView(
-                        markdown = note.content,
-                        style = MaterialTheme.typography.bodyMedium
+                    Text(
+                        text = note.annotatedContent,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 5,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }

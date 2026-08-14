@@ -128,6 +128,9 @@ data class TaskItem(
     val trashedAtMillis: Long? = null
 ) {
     val isTrashed: Boolean get() = trashedAtMillis != null
+    val annotatedContent: AnnotatedString by lazy {
+        parseMarkdownToAnnotatedString(description)
+    }
 }
 
 data class SubTaskItem(
@@ -153,6 +156,9 @@ data class NoteItem(
     val trashedAtMillis: Long? = null
 ) {
     val isTrashed: Boolean get() = trashedAtMillis != null
+    val annotatedContent: AnnotatedString by lazy {
+        parseMarkdownToAnnotatedString(content)
+    }
 }
 
 data class DailyPlan(
@@ -179,7 +185,11 @@ data class DailyPlanItem(
     val carriedFromItemId: Long? = null,
     /** Timestamp (epoch millis) when this item was resolved by a review or carry-over. */
     val handledAtMillis: Long? = null
-)
+) {
+    val annotatedContent: AnnotatedString by lazy {
+        parseMarkdownToAnnotatedString(note)
+    }
+}
 
 enum class DailyPlanItemSource {
     ExistingTask,

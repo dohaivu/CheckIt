@@ -1,5 +1,6 @@
 package com.checkit.ui.calendar
 
+import androidx.compose.ui.text.AnnotatedString
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.JournalEntry
@@ -8,6 +9,7 @@ import com.checkit.domain.PeriodReview
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.ui.components.ReportPeriod
+import com.checkit.ui.components.parseMarkdownToAnnotatedString
 import com.checkit.ui.firstDayOfMonth
 import com.checkit.ui.isSameMonth
 import com.checkit.ui.myday.doneWorkMinutes
@@ -27,11 +29,11 @@ data class CalendarUiState(
     val selectedTagIds: Set<Long> = emptySet(),
     val isMonthlyWinsExpanded: Boolean = false
 ) {
-    val monthlyWins: List<Pair<LocalDate, String>> by lazy {
+    val monthlyWins: List<Pair<LocalDate, AnnotatedString>> by lazy {
         dayReviews
             .filter { it.periodStartDate.isSameMonth(selectedMonth) && it.content.isNotBlank() }
             .sortedByDescending { it.periodStartDate }
-            .map { it.periodStartDate to it.content }
+            .map { it.periodStartDate to parseMarkdownToAnnotatedString(it.content) }
     }
 
     /** Win-of-the-day note for the currently selected date, if one was recorded. */
