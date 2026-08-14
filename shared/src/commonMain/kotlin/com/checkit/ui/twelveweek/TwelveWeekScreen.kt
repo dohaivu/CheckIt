@@ -99,6 +99,7 @@ import com.checkit.ui.tasks.cardColor
 import com.checkit.ui.tasks.isOverdue
 import com.checkit.ui.tasks.views.TaskTitleRow
 import com.checkit.ui.localizedCompactDate
+import com.checkit.ui.tasks.views.ViewOptionsMenu
 import kotlinx.datetime.LocalDate
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.stringResource

@@ -5,7 +5,6 @@ import com.checkit.data.NoteWriteInput
 import com.checkit.data.SettingsRepository
 import com.checkit.data.TagWriteInput
 import com.checkit.data.TaskWriteInput
-import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DueDatePreset
 import com.checkit.domain.NoteItem
@@ -60,7 +59,7 @@ class AutoAddTodayTasksToMyDayUseCase(
             .filter { task ->
                 !task.isTrashed &&
                     task.status == TaskStatus.Open &&
-                    task.qualifiesForToday(today) &&
+                    task.qualifiesForAddToMyDay(today) &&
                     task.id !in alreadyPlannedTaskIds
             }
 
@@ -83,10 +82,11 @@ class AutoAddTodayTasksToMyDayUseCase(
     }
 }
 
-private fun TaskItem.qualifiesForToday(today: LocalDate): Boolean =
+private fun TaskItem.qualifiesForAddToMyDay(today: LocalDate): Boolean =
     when (type) {
         TaskType.Task -> doDate == today
-        TaskType.Habit, TaskType.Tactic -> completedDate == null
+        TaskType.Habit -> completedDate == null
+        TaskType.Tactic -> false
     }
 
 class AddTagUseCase(
