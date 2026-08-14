@@ -293,50 +293,48 @@ private data class StyleMarker(val style: SpanStyle, val start: Int, val end: In
 
 private fun processInlineStyles(inputLine: String): Pair<String, List<StyleMarker>> {
     val styles = mutableListOf<StyleMarker>()
-    val boldRegex = Regex("\\*\\*(.*?)\\*\\*")
-    val italicRegex = Regex("\\*(.*?)\\*")
+    // Use a combined regex to find all bold and italic markers in order.
+    // Bold (**...**) is matched first, then italic (*...*).
+    val combinedRegex = Regex("(\\*\\*(.*?)\\*\\*)|(\\*(.*?)\\*)")
 
-    // Step A: Parse Bold first
-    var workingText = inputLine
-    var boldMatch = boldRegex.find(workingText)
+    val resultText = StringBuilder()
+    var lastIndex = 0
 
-    while (boldMatch != null) {
-        val fullMatchText = boldMatch.groupValues[0] // e.g. "**bold text**"
-        val innerText = boldMatch.groupValues[1]     // e.g. "bold text"
-        val matchIndex = boldMatch.range.first
+    combinedRegex.findAll(inputLine).forEach { match ->
+        // Append plain text before the match
+        resultText.append(inputLine.substring(lastIndex, match.range.first))
 
-        // Save where the clean inner text will sit
+        // groupValues[1] is the full bold match, groupValues[2] is the bold inner text
+        // groupValues[3] is the full italic match, groupValues[4] is the italic inner text
+        val isBold = match.groupValues[1].isNotEmpty()
+        val innerTextRaw = if (isBold) match.groupValues[2] else match.groupValues[4]
+
+        val start = resultText.length
+        // Recursive call to handle nested styles (e.g., ***bold italic***)
+        val (innerTextClean, innerStyles) = processInlineStyles(innerTextRaw)
+
+        resultText.append(innerTextClean)
+        val end = resultText.length
+
+        // Add the outer style
         styles.add(
             StyleMarker(
-                style = SpanStyle(fontWeight = FontWeight.Bold),
-                start = matchIndex,
-                end = matchIndex + innerText.length
+                style = if (isBold) SpanStyle(fontWeight = FontWeight.Bold) else SpanStyle(fontStyle = FontStyle.Italic),
+                start = start,
+                end = end
             )
         )
 
-        // Remove the symbols by replacing the full match with the inner text
-        workingText = workingText.replaceFirst(fullMatchText, innerText)
-        boldMatch = boldRegex.find(workingText)
+        // Add inner styles with adjusted offsets
+        innerStyles.forEach { inner ->
+            styles.add(inner.copy(start = start + inner.start, end = start + inner.end))
+        }
+
+        lastIndex = match.range.last + 1
     }
 
-    // Step B: Parse Italic second on the cleaned string
-    var italicMatch = italicRegex.find(workingText)
-    while (italicMatch != null) {
-        val fullMatchText = italicMatch.groupValues[0] // e.g. "*italic text*"
-        val innerText = italicMatch.groupValues[1]     // e.g. "italic text"
-        val matchIndex = italicMatch.range.first
+    // Append remaining text after the last match
+    resultText.append(inputLine.substring(lastIndex))
 
-        styles.add(
-            StyleMarker(
-                style = SpanStyle(fontStyle = FontStyle.Italic),
-                start = matchIndex,
-                end = matchIndex + innerText.length
-            )
-        )
-
-        workingText = workingText.replaceFirst(fullMatchText, innerText)
-        italicMatch = italicRegex.find(workingText)
-    }
-
-    return Pair(workingText, styles)
+    return Pair(resultText.toString(), styles)
 }
