@@ -10,7 +10,6 @@ import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownColor
 import com.mikepenz.markdown.m3.markdownTypography
 import com.mikepenz.markdown.model.markdownPadding
-import com.mohamedrejeb.richeditor.annotation.ExperimentalRichTextApi
 
 @Composable
 fun MarkdownView(

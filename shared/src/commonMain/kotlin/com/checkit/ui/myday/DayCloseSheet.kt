@@ -33,7 +33,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.cancel
 import checkit.shared.generated.resources.day_close_action_carry
@@ -52,9 +51,8 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DayCloseTagMinutes
 import com.checkit.domain.LeftoverAction
 import com.checkit.ui.components.AppEditorBottomSheet
-import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.AppOutlinedTextField
-import com.checkit.ui.components.RichTextComposer
+import com.checkit.ui.components.MarkdownVisualTransformation
 import com.checkit.ui.tasks.isOverdue
 import com.checkit.ui.tasks.toDurationLabel
 import com.checkit.ui.tasks.views.DailyPlanTimelineCard
@@ -194,13 +192,6 @@ private fun ReflectionSection(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
         )
-//        RichTextComposer(
-//            value = value,
-//            onValueChange = onValueChange,
-//            placeholder = stringResource(Res.string.day_close_win_note_placeholder),
-//            modifier = Modifier.fillMaxWidth(),
-//            enabled = enabled
-//        )
 
         AppOutlinedTextField(
             value = value,
@@ -213,7 +204,8 @@ private fun ReflectionSection(
             placeholder = stringResource(Res.string.day_close_win_note_placeholder),
             minLines = 4,
             maxLines = 8,
-            enabled = enabled
+            enabled = enabled,
+            visualTransformation = remember { MarkdownVisualTransformation() }
         )
     }
 }

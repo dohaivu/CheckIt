@@ -36,6 +36,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,8 +60,8 @@ import com.checkit.ui.components.DatePicker
 import com.checkit.ui.components.EditorOverflowMenu
 import com.checkit.ui.components.KeyResultPill
 import com.checkit.ui.components.ListPicker
+import com.checkit.ui.components.MarkdownVisualTransformation
 import com.checkit.ui.components.PriorityPicker
-import com.checkit.ui.components.RichTextComposer
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.components.TimeRangePicker
 import com.checkit.ui.components.TwelveWeekGoalPill
@@ -435,7 +436,8 @@ private fun TaskFormContent(
                 fontWeight = FontWeight.Normal
             ),
             maxLines = 5,
-            enabled = enabled
+            enabled = enabled,
+            visualTransformation = remember { MarkdownVisualTransformation() }
         )
 
         SubtaskChecklist(
@@ -669,12 +671,19 @@ private fun NoteFormContent(
             enabled = enabled,
             modifier = Modifier.fillMaxWidth()
         )
-        RichTextComposer(
+        AppOutlinedTextField(
             value = form.content,
             onValueChange = onContentChange,
+            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Normal
+            ),
+            minLines = 5,
+            maxLines = 10,
             placeholder = "Add more details",
             enabled = enabled,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().height(130.dp),
+            visualTransformation = remember { MarkdownVisualTransformation() }
         )
 
         FlowRow(

@@ -31,6 +31,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,7 +45,7 @@ import com.checkit.domain.TagItem
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DeleteOverflowMenu
-import com.checkit.ui.components.RichTextComposer
+import com.checkit.ui.components.MarkdownVisualTransformation
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.components.TimePicker
 import com.checkit.ui.components.TimeRangePicker
@@ -273,12 +274,19 @@ private fun DailyPlanItemFormContent(
             modifier = Modifier.fillMaxWidth()
         )
 
-        RichTextComposer(
+        AppOutlinedTextField(
             value = state.note,
             onValueChange = onNoteChange,
+            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Normal
+            ),
+            minLines = 5,
+            maxLines = 10,
             placeholder = if (sourceLocked) null else "Add details",
             enabled = enabled,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            visualTransformation = remember { MarkdownVisualTransformation() }
         )
 
         if (sourceLocked) {
