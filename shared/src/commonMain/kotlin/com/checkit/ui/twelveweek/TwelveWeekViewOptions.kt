@@ -23,7 +23,6 @@ import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -100,14 +99,11 @@ internal fun TwelveWeekViewOptionsMenu(
                         animationSpec = tween(150)
                     ) + fadeOut()
                 ) {
-                    Surface(
-                        shape = MaterialTheme.shapes.medium,
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        contentColor = MaterialTheme.colorScheme.onSurface,
-                        tonalElevation = 8.dp,
+                    Box(
                         modifier = Modifier
                             .padding(horizontal = 12.dp)
                             .heightIn(min = 100.dp)
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.shapes.medium)
                     ) {
                         Column(
                             modifier = Modifier.padding(8.dp),

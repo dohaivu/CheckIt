@@ -28,19 +28,22 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -79,8 +82,6 @@ import checkit.shared.generated.resources.twelve_week_start
 import checkit.shared.generated.resources.twelve_week_start_sheet_title
 import checkit.shared.generated.resources.twelve_week_starts_on
 import checkit.shared.generated.resources.twelve_week_tactics_empty
-import checkit.shared.generated.resources.twelve_week_average
-import checkit.shared.generated.resources.twelve_week_latest
 import checkit.shared.generated.resources.twelve_week_week_number
 import checkit.shared.generated.resources.twelve_week_week_of_12
 import com.checkit.domain.TaskItem
@@ -202,16 +203,10 @@ internal fun TwelveWeekScreen(
 
 @Composable
 private fun EmptyCycleCard(onStart: () -> Unit) {
-    val gradient = Brush.linearGradient(
-        colors = listOf(
-            MaterialTheme.colorScheme.primaryContainer,
-            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f)
-        )
-    )
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(gradient, RoundedCornerShape(24.dp))
+            .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(16.dp))
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -256,12 +251,6 @@ private fun CycleView(
     onAddTactic: (Long) -> Unit,
     onToggleTactic: (TaskItem) -> Unit
 ) {
-    val gradient = Brush.linearGradient(
-        colors = listOf(
-            MaterialTheme.colorScheme.primaryContainer,
-            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f)
-        )
-    )
     val weekLabel = cycleCard.currentWeekIndex?.let { index ->
         stringResource(Res.string.twelve_week_week_of_12, index + 1)
     }.orEmpty()
@@ -274,28 +263,25 @@ private fun CycleView(
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerLow),
+        modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(
-                    brush = gradient,
-                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                    color = MaterialTheme.colorScheme.primary,
+                    shape = RoundedCornerShape(8.dp)
                 )
-                    .then(
-                        if (isActive) {
-                            Modifier.combinedClickable(onClick = {}, onLongClick = onEditCycle)
-                        } else {
-                            Modifier
-                        }
-                    )
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                .then(
+                    if (isActive) {
+                        Modifier.combinedClickable(onClick = {}, onLongClick = onEditCycle)
+                    } else {
+                        Modifier
+                    }
+                )
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -305,18 +291,19 @@ private fun CycleView(
                     text = cycleCard.cycle.title,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.weight(1f),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
                 if (weekLabel.isNotEmpty()) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = CircleShape
+                    Box(
+                        modifier = Modifier
+                            .background(MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f), CircleShape)
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
                             text = weekLabel,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimary
@@ -324,7 +311,7 @@ private fun CycleView(
                     }
                 }
                 if (isActive) {
-                    EditorOverflowMenu { onDismiss ->
+                    EditorOverflowMenu(tint = MaterialTheme.colorScheme.onPrimary) { onDismiss ->
                         DropdownMenuItem(
                             text = { Text(stringResource(Res.string.twelve_week_add_goal)) },
                             leadingIcon = { Icon(Icons.Default.Add, contentDescription = null) },
@@ -360,7 +347,7 @@ private fun CycleView(
                         )
                     }
                 } else {
-                    EditorOverflowMenu { onDismiss ->
+                    EditorOverflowMenu(tint = MaterialTheme.colorScheme.onPrimary) { onDismiss ->
                         DropdownMenuItem(
                             text = { Text(stringResource(Res.string.twelve_week_check_in_history)) },
                             leadingIcon = { Icon(Icons.Default.Check, contentDescription = null) },
@@ -381,7 +368,7 @@ private fun CycleView(
                 Text(
                     text = dateRangeLabel,
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
                 )
                 cycleCard.checkInReminder?.let { reminder ->
                     CheckInReminderChip(
@@ -393,8 +380,8 @@ private fun CycleView(
         }
 
         Column(
-            modifier = Modifier.padding(horizontal = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.padding(horizontal = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             if (cycleCard.goals.isEmpty()) {
                 if (isActive) {
@@ -432,13 +419,18 @@ private fun GoalCard(
     onAddTactic: () -> Unit,
     onToggleTactic: (TaskItem) -> Unit
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(16.dp)
+    Row(
+        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        Box(
+            modifier = Modifier
+                .width(4.dp)
+                .fillMaxHeight()
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.6f), RoundedCornerShape(2.dp))
+        )
         Column(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Row(
@@ -469,8 +461,8 @@ private fun GoalCard(
                     }
                 }
                 if (isEditable) {
-                    IconButton(onClick = onAddTactic) {
-                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+                    IconButton(onClick = onAddTactic, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                     }
                 }
             }
@@ -482,19 +474,17 @@ private fun GoalCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     card.averageScore?.let { average ->
-                        SummaryChip(
-                            label = stringResource(
-                                Res.string.twelve_week_average,
-                                formatAverage(average)
-                            )
+                        ScoreIndicator(
+                            score = average,
+                            icon = Icons.Default.QueryStats,
+                            contentDescription = "Average score"
                         )
                     }
                     card.latestScore?.let { latest ->
-                        SummaryChip(
-                            label = stringResource(
-                                Res.string.twelve_week_latest,
-                                latest.score.toString()
-                            )
+                        ScoreIndicator(
+                            score = latest.score.toDouble(),
+                            icon = Icons.Default.Flag,
+                            contentDescription = "Latest score"
                         )
                     }
                 }
@@ -504,17 +494,16 @@ private fun GoalCard(
                 if (isEditable) {
                     Text(
                         text = stringResource(Res.string.twelve_week_tactics_empty),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp)
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        modifier = Modifier.padding(vertical = 4.dp)
                     )
                 }
             } else {
-                card.tactics.forEach { tactic ->
-                    TacticRow(task = tactic, onClick = { onToggleTactic(tactic) })
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    card.tactics.forEach { tactic ->
+                        TacticRow(task = tactic, onClick = { onToggleTactic(tactic) })
+                    }
                 }
             }
         }
@@ -523,40 +512,49 @@ private fun GoalCard(
 
 @Composable
 private fun TacticRow(task: TaskItem, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)
-            .clickable { onClick() }
-            .height(IntrinsicSize.Min)
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f), RoundedCornerShape(4.dp))
+                .clickable { onClick() }
+                .height(IntrinsicSize.Min),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Box(
                 modifier = Modifier
                     .width(4.dp)
                     .fillMaxHeight()
-                    .background(task.cardColor())
+                    .background(task.cardColor(), RoundedCornerShape(2.dp))
             )
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                    .padding(vertical = 4.dp, horizontal = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 TaskTitleRow(task, descriptionMaxLines = 0)
-                task.subtasks.takeIf { it.isNotEmpty() }?.let { SubtaskProgressText(task) }
-                DateTimeRangeDetailChip(
-                    task.doDate,
-                    task.startTimeMinutes,
-                    task.endTimeMinutes,
-                    isOverdue = task.isOverdue()
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    task.subtasks.takeIf { it.isNotEmpty() }?.let { SubtaskProgressText(task) }
+                    DateTimeRangeDetailChip(
+                        task.doDate,
+                        task.startTimeMinutes,
+                        task.endTimeMinutes,
+                        isOverdue = task.isOverdue()
+                    )
+                }
             }
         }
+        HorizontalDivider(
+            modifier = Modifier.padding(top = 4.dp, start = 12.dp),
+            thickness = 0.5.dp,
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+        )
     }
 }
 
@@ -847,20 +845,22 @@ private fun FinalStatusButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Surface(
-        color = if (selected) {
-            MaterialTheme.colorScheme.primaryContainer
-        } else {
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        },
-        shape = RoundedCornerShape(12.dp),
+    Box(
         modifier = modifier
+            .background(
+                color = if (selected) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                },
+                shape = RoundedCornerShape(8.dp)
+            )
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+        contentAlignment = Alignment.Center
     ) {
         Text(
             text = label,
-            modifier = Modifier
-                .clickable(onClick = onClick)
-                .padding(vertical = 8.dp),
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
             color = if (selected) {
@@ -930,17 +930,34 @@ private fun CheckInReminderChip(
 }
 
 @Composable
-private fun SummaryChip(label: String) {
-    Surface(
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        shape = RoundedCornerShape(10.dp)
+private fun ScoreIndicator(
+    score: Double,
+    icon: ImageVector,
+    contentDescription: String
+) {
+    val color = when {
+        score >= 9.0 -> Color(0xFF4CAF50) // Good
+        score >= 7.0 -> Color(0xFFFBC02D) // Normal
+        else -> MaterialTheme.colorScheme.error // Bad
+    }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier
+            .background(color.copy(alpha = 0.1f), RoundedCornerShape(4.dp))
+            .padding(horizontal = 6.dp, vertical = 2.dp)
     ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            modifier = Modifier.size(12.dp),
+            tint = color
+        )
         Text(
-            text = label,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSecondaryContainer
+            text = formatAverage(score),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = color
         )
     }
 }
@@ -1009,56 +1026,53 @@ private fun WeekHistoryEntryCard(entry: TwelveWeekHistoryEntry, startEpochDays: 
     val startDate = LocalDate.fromEpochDays(range.first)
     val endDate = LocalDate.fromEpochDays(range.last)
     val dateLabel = "${startDate.localizedCompactDate()} – ${endDate.localizedCompactDate()}"
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        shape = RoundedCornerShape(12.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(8.dp))
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
+            Text(
+                text = stringResource(Res.string.twelve_week_week_number, entry.weekIndex + 1),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = dateLabel,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        if (entry.note.isNotBlank()) {
+            Text(
+                text = entry.note,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        entry.scores.forEach { score ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = stringResource(Res.string.twelve_week_week_number, entry.weekIndex + 1),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = dateLabel,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            if (entry.note.isNotBlank()) {
-                Text(
-                    text = entry.note,
+                    text = score.goalTitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-            }
-            entry.scores.forEach { score ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = score.goalTitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.weight(1f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = score.score.toString(),
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                Text(
+                    text = score.score.toString(),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }

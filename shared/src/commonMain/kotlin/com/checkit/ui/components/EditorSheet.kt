@@ -65,6 +65,7 @@ internal fun AppEditorBottomSheet(
 @Composable
 internal fun EditorOverflowMenu(
     modifier: Modifier = Modifier,
+    tint: androidx.compose.ui.graphics.Color = androidx.compose.material3.LocalContentColor.current,
     contentDescription: String = "Options",
     content: @Composable ColumnScope.(onDismiss: () -> Unit) -> Unit
 ) {
@@ -73,7 +74,11 @@ internal fun EditorOverflowMenu(
 
     Box(modifier = modifier) {
         IconButton(onClick = { menuExpanded = true }) {
-            Icon(Icons.Default.MoreVert, contentDescription = contentDescription)
+            Icon(
+                imageVector = Icons.Default.MoreVert,
+                contentDescription = contentDescription,
+                tint = tint
+            )
         }
         DropdownMenu(
             expanded = menuExpanded,
