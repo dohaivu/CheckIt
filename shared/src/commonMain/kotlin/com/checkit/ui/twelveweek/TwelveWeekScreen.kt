@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -52,7 +53,10 @@ import checkit.shared.generated.resources.plan_save
 import checkit.shared.generated.resources.twelve_week_abandon_cycle
 import checkit.shared.generated.resources.twelve_week_add_goal
 import checkit.shared.generated.resources.twelve_week_check_in
+import checkit.shared.generated.resources.twelve_week_check_in_checked_in
+import checkit.shared.generated.resources.twelve_week_check_in_due
 import checkit.shared.generated.resources.twelve_week_check_in_note
+import checkit.shared.generated.resources.twelve_week_check_in_overdue
 import checkit.shared.generated.resources.twelve_week_check_in_save
 import checkit.shared.generated.resources.twelve_week_check_in_history
 import checkit.shared.generated.resources.twelve_week_check_in_history_empty
@@ -83,6 +87,8 @@ import checkit.shared.generated.resources.twelve_week_latest
 import checkit.shared.generated.resources.twelve_week_week_number
 import checkit.shared.generated.resources.twelve_week_week_of_12
 import com.checkit.domain.TaskItem
+import com.checkit.domain.TwelveWeekCheckInReminder
+import com.checkit.domain.TwelveWeekCheckInReminderStatus
 import com.checkit.domain.TwelveWeekCycleCard
 import com.checkit.domain.TwelveWeekCycleStatus
 import com.checkit.domain.TwelveWeekGoalCard
@@ -98,6 +104,7 @@ import com.checkit.ui.tasks.cardColor
 import com.checkit.ui.tasks.isOverdue
 import com.checkit.ui.tasks.views.TaskTitleRow
 import com.checkit.ui.localizedCompactDate
+import com.checkit.ui.tasks.views.SubtaskProgressText
 import kotlinx.datetime.LocalDate
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.stringResource
@@ -164,12 +171,13 @@ internal fun TwelveWeekScreen(
                         EmptyCycleCard(onStart = { viewModel.openCycleEditor() })
                     }
                     state.visibleCycleCards.forEach { cycleCard ->
-                        CycleCard(
+                        CycleView(
                             cycleCard = cycleCard,
                             isActive = cycleCard.cycle.status == TwelveWeekCycleStatus.Active,
                             hasCheckIns = state.workspace.checkIns.any { it.cycleId == cycleCard.cycle.id },
                             onCheckIn = {
-                                cycleCard.currentWeekIndex?.let { index ->
+                                val week = cycleCard.checkInReminder?.weekIndex ?: cycleCard.currentWeekIndex
+                                week?.let { index ->
                                     viewModel.openCheckInSheet(cycleCard.cycle.id, index)
                                 }
                             },
@@ -274,7 +282,7 @@ private fun EmptyCycleCard(onStart: () -> Unit) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun CycleCard(
+private fun CycleView(
     cycleCard: TwelveWeekCycleCard,
     isActive: Boolean,
     hasCheckIns: Boolean,
@@ -328,129 +336,132 @@ private fun CycleCard(
                     )
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = cycleCard.cycle.title,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f),
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    if (weekLabel.isNotEmpty()) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.primary,
-                            shape = CircleShape
-                        ) {
-                            Text(
-                                text = weekLabel,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimary
-                            )
-                        }
-                    }
-                    if (isActive) {
-                        EditorOverflowMenu { onDismiss ->
-                            DropdownMenuItem(
-                                text = { Text(stringResource(Res.string.twelve_week_add_goal)) },
-                                leadingIcon = { Icon(Icons.Default.Add, contentDescription = null) },
-                                onClick = {
-                                    onDismiss()
-                                    onAddGoal()
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(Res.string.twelve_week_check_in)) },
-                                leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
-                                onClick = {
-                                    onDismiss()
-                                    onCheckIn()
-                                },
-                                enabled = cycleCard.currentWeekIndex != null
-                            )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(Res.string.twelve_week_check_in_history)) },
-                                leadingIcon = { Icon(Icons.Default.Check, contentDescription = null) },
-                                onClick = {
-                                    onDismiss()
-                                    onCheckInHistory()
-                                },
-                                enabled = hasCheckIns
-                            )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(Res.string.twelve_week_complete_cycle)) },
-                                leadingIcon = { Icon(Icons.Default.Check, contentDescription = null) },
-                                onClick = {
-                                    onDismiss()
-                                    onComplete()
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(Res.string.twelve_week_abandon_cycle)) },
-                                leadingIcon = { Icon(Icons.Default.Close, contentDescription = null) },
-                                onClick = {
-                                    onDismiss()
-                                    onAbandon()
-                                }
-                            )
-                        }
-                    } else {
-                        EditorOverflowMenu { onDismiss ->
-                            DropdownMenuItem(
-                                text = { Text(stringResource(Res.string.twelve_week_check_in_history)) },
-                                leadingIcon = { Icon(Icons.Default.Check, contentDescription = null) },
-                                onClick = {
-                                    onDismiss()
-                                    onCheckInHistory()
-                                },
-                                enabled = hasCheckIns
-                            )
-                        }
+                Text(
+                    text = cycleCard.cycle.title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (weekLabel.isNotEmpty()) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = CircleShape
+                    ) {
+                        Text(
+                            text = weekLabel,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
                     }
                 }
+                if (isActive) {
+                    EditorOverflowMenu { onDismiss ->
+                        DropdownMenuItem(
+                            text = { Text(stringResource(Res.string.twelve_week_add_goal)) },
+                            leadingIcon = { Icon(Icons.Default.Add, contentDescription = null) },
+                            onClick = {
+                                onDismiss()
+                                onAddGoal()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(Res.string.twelve_week_check_in_history)) },
+                            leadingIcon = { Icon(Icons.Default.Check, contentDescription = null) },
+                            onClick = {
+                                onDismiss()
+                                onCheckInHistory()
+                            },
+                            enabled = hasCheckIns
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(Res.string.twelve_week_complete_cycle)) },
+                            leadingIcon = { Icon(Icons.Default.Check, contentDescription = null) },
+                            onClick = {
+                                onDismiss()
+                                onComplete()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(Res.string.twelve_week_abandon_cycle)) },
+                            leadingIcon = { Icon(Icons.Default.Close, contentDescription = null) },
+                            onClick = {
+                                onDismiss()
+                                onAbandon()
+                            }
+                        )
+                    }
+                } else {
+                    EditorOverflowMenu { onDismiss ->
+                        DropdownMenuItem(
+                            text = { Text(stringResource(Res.string.twelve_week_check_in_history)) },
+                            leadingIcon = { Icon(Icons.Default.Check, contentDescription = null) },
+                            onClick = {
+                                onDismiss()
+                                onCheckInHistory()
+                            },
+                            enabled = hasCheckIns
+                        )
+                    }
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
                 Text(
                     text = dateRangeLabel,
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-            }
-
-            Column(
-                modifier = Modifier.padding(horizontal = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                if (cycleCard.goals.isEmpty()) {
-                    if (isActive) {
-                        Text(
-                            text = stringResource(Res.string.twelve_week_no_goals),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 8.dp),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                } else {
-                    cycleCard.goals.forEach { goalCard ->
-                        GoalCard(
-                            card = goalCard,
-                            isEditable = isActive,
-                            onClick = { onEditGoal(goalCard.goal.id) },
-                            onAddTactic = { onAddTactic(goalCard.goal.id) },
-                            onToggleTactic = onToggleTactic
-                        )
-                    }
+                cycleCard.checkInReminder?.let { reminder ->
+                    CheckInReminderChip(
+                        reminder = reminder,
+                        onClick = onCheckIn
+                    )
                 }
             }
-            Spacer(Modifier.size(4.dp))
         }
+
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            if (cycleCard.goals.isEmpty()) {
+                if (isActive) {
+                    Text(
+                        text = stringResource(Res.string.twelve_week_no_goals),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            } else {
+                cycleCard.goals.forEach { goalCard ->
+                    GoalCard(
+                        card = goalCard,
+                        isEditable = isActive,
+                        onClick = { onEditGoal(goalCard.goal.id) },
+                        onAddTactic = { onAddTactic(goalCard.goal.id) },
+                        onToggleTactic = onToggleTactic
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.size(4.dp))
+    }
 }
 
 @Composable
@@ -577,6 +588,7 @@ private fun TacticRow(task: TaskItem, onClick: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 TaskTitleRow(task, descriptionMaxLines = 0)
+                task.subtasks.takeIf { it.isNotEmpty() }?.let { SubtaskProgressText(task) }
                 DateTimeRangeDetailChip(
                     task.doDate,
                     task.startTimeMinutes,
@@ -897,6 +909,62 @@ private fun FinalStatusButton(
                 MaterialTheme.colorScheme.onSurfaceVariant
             },
             textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+private fun CheckInReminderChip(
+    reminder: TwelveWeekCheckInReminder,
+    onClick: () -> Unit
+) {
+    val weekNumber = reminder.weekIndex + 1
+    val label = when (reminder.status) {
+        TwelveWeekCheckInReminderStatus.Normal -> stringResource(Res.string.twelve_week_check_in)
+        TwelveWeekCheckInReminderStatus.Due -> stringResource(Res.string.twelve_week_check_in_due)
+        TwelveWeekCheckInReminderStatus.Overdue ->
+            stringResource(Res.string.twelve_week_check_in_overdue, weekNumber)
+        TwelveWeekCheckInReminderStatus.CheckedIn ->
+            stringResource(Res.string.twelve_week_check_in_checked_in, weekNumber)
+    }
+    val containerColor = when (reminder.status) {
+        TwelveWeekCheckInReminderStatus.Normal -> MaterialTheme.colorScheme.primaryContainer
+        TwelveWeekCheckInReminderStatus.Due,
+        TwelveWeekCheckInReminderStatus.Overdue -> MaterialTheme.colorScheme.errorContainer
+        TwelveWeekCheckInReminderStatus.CheckedIn -> MaterialTheme.colorScheme.secondaryContainer
+    }
+    val contentColor = when (reminder.status) {
+        TwelveWeekCheckInReminderStatus.Normal -> MaterialTheme.colorScheme.onPrimaryContainer
+        TwelveWeekCheckInReminderStatus.Due,
+        TwelveWeekCheckInReminderStatus.Overdue -> MaterialTheme.colorScheme.onErrorContainer
+        TwelveWeekCheckInReminderStatus.CheckedIn -> MaterialTheme.colorScheme.onSecondaryContainer
+    }
+    val icon = when (reminder.status) {
+        TwelveWeekCheckInReminderStatus.Normal -> Icons.Default.Edit
+        TwelveWeekCheckInReminderStatus.Due,
+        TwelveWeekCheckInReminderStatus.Overdue -> Icons.Default.Notifications
+        TwelveWeekCheckInReminderStatus.CheckedIn -> Icons.Default.Check
+    }
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(containerColor)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            tint = contentColor
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = contentColor
         )
     }
 }

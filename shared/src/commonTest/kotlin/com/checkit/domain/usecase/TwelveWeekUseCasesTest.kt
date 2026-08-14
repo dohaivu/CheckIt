@@ -6,6 +6,7 @@ import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskType
 import com.checkit.domain.TWELVE_WEEK_MAX_GOALS
+import com.checkit.domain.TwelveWeekCheckInReminderStatus
 import com.checkit.domain.TwelveWeekCycleStatus
 import com.checkit.domain.TwelveWeekGoalFinalStatus
 import com.checkit.domain.TwelveWeekGoalScore
@@ -372,5 +373,106 @@ class TwelveWeekUseCasesTest {
         )
         assertNull(workspace.cycle)
         assertTrue(workspace.cycleCards.isEmpty())
+    }
+
+    private fun activeCycle(id: Long = 1) = com.checkit.domain.TwelveWeekCycle(
+        id = id,
+        title = "A",
+        startEpochDays = 0,
+        endEpochDays = 83,
+        status = TwelveWeekCycleStatus.Active,
+        createdAtMillis = 0L
+    )
+
+    private fun checkIn(cycleId: Long, weekIndex: Int) = com.checkit.domain.TwelveWeekCheckIn(
+        id = cycleId * 100 + weekIndex,
+        cycleId = cycleId,
+        weekIndex = weekIndex,
+        createdAtMillis = 0L,
+        updatedAtMillis = 0L
+    )
+
+    private fun buildWorkspace(
+        cycles: List<com.checkit.domain.TwelveWeekCycle>,
+        checkIns: List<com.checkit.domain.TwelveWeekCheckIn>,
+        todayEpochDays: Int
+    ): TwelveWeekWorkspace {
+        val observe = ObserveTwelveWeekWorkspaceUseCase(FakeCheckItRepository())
+        return observe.build(
+            cycles = cycles,
+            goals = emptyList(),
+            checkIns = checkIns,
+            scores = emptyList(),
+            links = emptyList(),
+            tasks = emptyList(),
+            todayEpochDays = todayEpochDays
+        )
+    }
+
+    @Test
+    fun checkInReminderIsNormalMidWeek() {
+        val workspace = buildWorkspace(
+            cycles = listOf(activeCycle()),
+            checkIns = emptyList(),
+            todayEpochDays = 2
+        )
+        val reminder = workspace.cycleCards.single().checkInReminder
+        assertEquals(0, reminder?.weekIndex)
+        assertEquals(TwelveWeekCheckInReminderStatus.Normal, reminder?.status)
+    }
+
+    @Test
+    fun checkInReminderIsDueOnLastDayOfWeek() {
+        val workspace = buildWorkspace(
+            cycles = listOf(activeCycle()),
+            checkIns = emptyList(),
+            todayEpochDays = 6
+        )
+        val reminder = workspace.cycleCards.single().checkInReminder
+        assertEquals(TwelveWeekCheckInReminderStatus.Due, reminder?.status)
+    }
+
+    @Test
+    fun checkInReminderIsOverdueForMissedWeek() {
+        val workspace = buildWorkspace(
+            cycles = listOf(activeCycle()),
+            checkIns = emptyList(),
+            todayEpochDays = 10
+        )
+        val reminder = workspace.cycleCards.single().checkInReminder
+        assertEquals(0, reminder?.weekIndex)
+        assertEquals(TwelveWeekCheckInReminderStatus.Overdue, reminder?.status)
+    }
+
+    @Test
+    fun checkInReminderIsCheckedInWhenCurrentWeekDone() {
+        val cycle = activeCycle()
+        val workspace = buildWorkspace(
+            cycles = listOf(cycle),
+            checkIns = listOf(checkIn(cycle.id, 0), checkIn(cycle.id, 1)),
+            todayEpochDays = 10
+        )
+        val reminder = workspace.cycleCards.single().checkInReminder
+        assertEquals(1, reminder?.weekIndex)
+        assertEquals(TwelveWeekCheckInReminderStatus.CheckedIn, reminder?.status)
+    }
+
+    @Test
+    fun checkInReminderIsNullForPastCycle() {
+        val completed = com.checkit.domain.TwelveWeekCycle(
+            id = 2,
+            title = "Old",
+            startEpochDays = 0,
+            endEpochDays = 83,
+            status = TwelveWeekCycleStatus.Completed,
+            createdAtMillis = 0L,
+            completedAtMillis = 5L
+        )
+        val workspace = buildWorkspace(
+            cycles = listOf(completed),
+            checkIns = emptyList(),
+            todayEpochDays = 10
+        )
+        assertNull(workspace.cycleCards.single().checkInReminder)
     }
 }

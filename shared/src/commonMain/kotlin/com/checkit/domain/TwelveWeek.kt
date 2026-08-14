@@ -21,6 +21,18 @@ enum class TwelveWeekGoalFinalStatus {
     Missed
 }
 
+enum class TwelveWeekCheckInReminderStatus {
+    Normal,
+    Due,
+    Overdue,
+    CheckedIn
+}
+
+data class TwelveWeekCheckInReminder(
+    val weekIndex: Int,
+    val status: TwelveWeekCheckInReminderStatus
+)
+
 data class TwelveWeekCycle(
     val id: Long = 0L,
     val title: String = "",
@@ -85,7 +97,8 @@ data class TwelveWeekGoalCard(
 data class TwelveWeekCycleCard(
     val cycle: TwelveWeekCycle,
     val goals: List<TwelveWeekGoalCard>,
-    val currentWeekIndex: Int?
+    val currentWeekIndex: Int?,
+    val checkInReminder: TwelveWeekCheckInReminder? = null
 )
 
 fun twelveWeekEndEpochDays(startEpochDays: Int): Int =

@@ -194,6 +194,9 @@
     <string name="twelve_week_check_in_save">Lưu kiểm tra</string>
     <string name="twelve_week_check_in_history">Lịch sử kiểm tra</string>
     <string name="twelve_week_check_in_history_empty">Chưa có lần kiểm tra nào.</string>
+    <string name="twelve_week_check_in_due">Kiểm tra hôm nay</string>
+    <string name="twelve_week_check_in_overdue">Tuần %1$d: kiểm tra quá hạn</string>
+    <string name="twelve_week_check_in_checked_in">Đã kiểm tra tuần %1$d</string>
     <string name="twelve_week_week_number">Tuần %1$d</string>
     <string name="twelve_week_average">Trung bình %1$s</string>
     <string name="twelve_week_latest">Gần nhất %1$s</string>

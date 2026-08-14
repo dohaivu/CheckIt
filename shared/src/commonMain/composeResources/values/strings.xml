@@ -218,6 +218,9 @@
     <string name="twelve_week_check_in_save">Save check-in</string>
     <string name="twelve_week_check_in_history">Check-In History</string>
     <string name="twelve_week_check_in_history_empty">No check-ins yet.</string>
+    <string name="twelve_week_check_in_due">Check in today</string>
+    <string name="twelve_week_check_in_overdue">Week %1$d check-in overdue</string>
+    <string name="twelve_week_check_in_checked_in">Week %1$d checked in</string>
     <string name="twelve_week_week_number">Week %1$d</string>
     <string name="twelve_week_average">Avg %1$s</string>
     <string name="twelve_week_latest">Latest %1$s</string>

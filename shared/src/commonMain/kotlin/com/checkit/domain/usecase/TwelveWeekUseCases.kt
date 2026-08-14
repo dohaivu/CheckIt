@@ -10,6 +10,8 @@ import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskType
 import com.checkit.domain.TwelveWeekCheckIn
+import com.checkit.domain.TwelveWeekCheckInReminder
+import com.checkit.domain.TwelveWeekCheckInReminderStatus
 import com.checkit.domain.TwelveWeekCycle
 import com.checkit.domain.TwelveWeekCycleStatus
 import com.checkit.domain.TwelveWeekCycleCard
@@ -26,6 +28,7 @@ import com.checkit.domain.TWELVE_WEEK_MIN_SCORE
 import com.checkit.domain.executionScore
 import com.checkit.domain.mondayOfWeek
 import com.checkit.domain.twelveWeekEndEpochDays
+import com.checkit.domain.weekDateRange
 import com.checkit.domain.weekIndexFor
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -95,19 +98,47 @@ class ObserveTwelveWeekWorkspaceUseCase(
             )
         }
 
+        fun buildCheckInReminder(
+            cycle: TwelveWeekCycle,
+            currentWeekIndex: Int?
+        ): TwelveWeekCheckInReminder? {
+            if (currentWeekIndex == null) return null
+            val checkedInWeeks = checkIns
+                .filter { it.cycleId == cycle.id }
+                .map { it.weekIndex }
+                .toSet()
+            val pendingWeek = (0..currentWeekIndex).firstOrNull { it !in checkedInWeeks }
+            return if (pendingWeek == null) {
+                TwelveWeekCheckInReminder(
+                    weekIndex = currentWeekIndex,
+                    status = TwelveWeekCheckInReminderStatus.CheckedIn
+                )
+            } else {
+                val weekEnd = weekDateRange(cycle.startEpochDays, pendingWeek).last
+                val status = when {
+                    pendingWeek < currentWeekIndex -> TwelveWeekCheckInReminderStatus.Overdue
+                    todayEpochDays >= weekEnd -> TwelveWeekCheckInReminderStatus.Due
+                    else -> TwelveWeekCheckInReminderStatus.Normal
+                }
+                TwelveWeekCheckInReminder(weekIndex = pendingWeek, status = status)
+            }
+        }
+
         fun buildCycleCard(cycle: TwelveWeekCycle): TwelveWeekCycleCard {
             val isActive = cycle.status == TwelveWeekCycleStatus.Active
+            val currentWeekIndex = if (isActive) {
+                weekIndexFor(cycle.startEpochDays, todayEpochDays)
+            } else {
+                null
+            }
             return TwelveWeekCycleCard(
                 cycle = cycle,
                 goals = goals
                     .filter { it.cycleId == cycle.id }
                     .sortedBy { it.sortOrder }
                     .map(::buildGoalCard),
-                currentWeekIndex = if (isActive) {
-                    weekIndexFor(cycle.startEpochDays, todayEpochDays)
-                } else {
-                    null
-                }
+                currentWeekIndex = currentWeekIndex,
+                checkInReminder = buildCheckInReminder(cycle, currentWeekIndex)
             )
         }
 
