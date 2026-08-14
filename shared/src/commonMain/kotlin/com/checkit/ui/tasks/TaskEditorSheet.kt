@@ -20,15 +20,12 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RestoreFromTrash
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
@@ -37,9 +34,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -70,8 +64,6 @@ import com.checkit.ui.components.RichTextComposer
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.components.TimeRangePicker
 import com.checkit.ui.components.TwelveWeekGoalPill
-import com.checkit.ui.components.icons.AppIcons
-import com.checkit.ui.components.icons.Target
 import com.checkit.ui.plan.PlanPriorityPill
 import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
@@ -120,9 +112,6 @@ internal fun TaskEditorSheet(
     val onNoteListChange = actions.onNoteListChange
     val onNoteDateChange = actions.onNoteDateChange
     val onNoteStartTimeChange = actions.onNoteStartTimeChange
-    val onSwitchAddModeToTask = actions.onSwitchAddModeToTask
-    val onSwitchAddModeToHabit = actions.onSwitchAddModeToHabit
-    val onSwitchAddModeToNote = actions.onSwitchAddModeToNote
 
     AppEditorBottomSheet(
         onDismiss = onDismiss,
@@ -130,17 +119,6 @@ internal fun TaskEditorSheet(
             .fillMaxHeight(0.9f)
             .windowInsetsPadding(WindowInsets.ime)
     ) {
-        SheetHeader(
-            isAddMode = editor.isAddMode(),
-            isTaskSelected = editor is TaskEditorState.TaskForm && editor.type == TaskType.Task,
-            isHabitSelected = editor is TaskEditorState.TaskForm && editor.type == TaskType.Habit,
-            isTacticSelected = editor is TaskEditorState.TaskForm && editor.type == TaskType.Tactic,
-            onSwitchAddModeToTask = onSwitchAddModeToTask,
-            onSwitchAddModeToHabit = onSwitchAddModeToHabit,
-            onSwitchAddModeToTactic = actions.onSwitchAddModeToTactic,
-            onSwitchAddModeToNote = onSwitchAddModeToNote,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
-        )
         TrashedStatusSection(
             isTrashed = editor.isTrashed(),
             onRestore = onRestore,
@@ -186,7 +164,6 @@ internal fun TaskEditorSheet(
                             onDoDateChange = onTaskDoDateChange,
                             onTimeChange = onTaskTimeChange,
                             onRepeatChange = onTaskRepeatChange,
-                            onTwelveWeekGoalChange = actions.onTaskTwelveWeekGoalChange,
                             onPriorityChange = onTaskPriorityChange,
                             onReminderToggle = onTaskReminderToggle,
                             onSubTaskToggle = onSubTaskToggle,
@@ -234,82 +211,6 @@ internal fun TaskEditorSheet(
             onOpen = onOpen,
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
         )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun AddModeSwitch(
-    isTaskSelected: Boolean,
-    isHabitSelected: Boolean,
-    isTacticSelected: Boolean,
-    onTaskClick: () -> Unit,
-    onHabitClick: () -> Unit,
-    onTacticClick: () -> Unit,
-    onNoteClick: () -> Unit
-) {
-    SingleChoiceSegmentedButtonRow {
-        SegmentedButton(
-            selected = isTaskSelected,
-            onClick = onTaskClick,
-            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 4),
-            icon = { Icon(Icons.Default.TaskAlt, contentDescription = null) },
-            label = { Text("Task") },
-            colors = SegmentedButtonDefaults.colors(activeContainerColor = MaterialTheme.colorScheme.primaryContainer, activeContentColor = MaterialTheme.colorScheme.primary)
-        )
-        SegmentedButton(
-            selected = isHabitSelected,
-            onClick = onHabitClick,
-            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 4),
-            icon = { Icon(Icons.Default.Repeat, contentDescription = null) },
-            label = { Text("Habit") },
-            colors = SegmentedButtonDefaults.colors(activeContainerColor = MaterialTheme.colorScheme.primaryContainer, activeContentColor = MaterialTheme.colorScheme.primary)
-        )
-        SegmentedButton(
-            selected = isTacticSelected,
-            onClick = onTacticClick,
-            shape = SegmentedButtonDefaults.itemShape(index = 2, count = 4),
-            icon = { Icon(AppIcons.Target, contentDescription = null) },
-            label = { Text("Tactic") },
-            colors = SegmentedButtonDefaults.colors(activeContainerColor = MaterialTheme.colorScheme.primaryContainer, activeContentColor = MaterialTheme.colorScheme.primary)
-        )
-        SegmentedButton(
-            selected = !isTaskSelected && !isHabitSelected && !isTacticSelected,
-            onClick = onNoteClick,
-            shape = SegmentedButtonDefaults.itemShape(index = 3, count = 4),
-            icon = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null) },
-            label = { Text("Note") },
-            colors = SegmentedButtonDefaults.colors(activeContainerColor = MaterialTheme.colorScheme.primaryContainer, activeContentColor = MaterialTheme.colorScheme.primary)
-        )
-    }
-}
-
-@Composable
-private fun SheetHeader(
-    isAddMode: Boolean,
-    isTaskSelected: Boolean,
-    isHabitSelected: Boolean,
-    isTacticSelected: Boolean,
-    onSwitchAddModeToTask: () -> Unit,
-    onSwitchAddModeToHabit: () -> Unit,
-    onSwitchAddModeToTactic: () -> Unit,
-    onSwitchAddModeToNote: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Box(modifier = modifier.fillMaxWidth()) {
-        if (isAddMode) {
-            Box(modifier = Modifier.align(Alignment.Center)) {
-                AddModeSwitch(
-                    isTaskSelected = isTaskSelected,
-                    isHabitSelected = isHabitSelected,
-                    isTacticSelected = isTacticSelected,
-                    onTaskClick = onSwitchAddModeToTask,
-                    onHabitClick = onSwitchAddModeToHabit,
-                    onTacticClick = onSwitchAddModeToTactic,
-                    onNoteClick = onSwitchAddModeToNote
-                )
-            }
-        }
     }
 }
 
@@ -438,7 +339,6 @@ private fun TaskFormContent(
     onDoDateChange: (LocalDate?) -> Unit,
     onTimeChange: (Int?, Int?) -> Unit,
     onRepeatChange: (RepeatPreset) -> Unit,
-    onTwelveWeekGoalChange: (Long?) -> Unit,
     onPriorityChange: (TaskPriority) -> Unit,
     onReminderToggle: (Int) -> Unit,
     onSubTaskToggle: (Int) -> Unit,
@@ -452,6 +352,11 @@ private fun TaskFormContent(
 ) {
     val isHabit = form.type == TaskType.Habit
     val isTactic = form.type == TaskType.Tactic
+    val namePlaceholder = when (form.type) {
+        TaskType.Task -> "What would you like to do?"
+        TaskType.Habit -> "What habit do you want to build?"
+        TaskType.Tactic -> "What tactic will move your goal forward?"
+    }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (isHabit) {
             Row(
@@ -480,7 +385,7 @@ private fun TaskFormContent(
                     color = form.priority.priorityColor()
                 )
                 Text(
-                    text = "12 Week Tactic",
+                    text = "12-Week Tactic",
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -519,7 +424,7 @@ private fun TaskFormContent(
                 fontWeight = FontWeight.SemiBold
             ),
             maxLines = 3,
-            placeholder = "What would you like to do?",
+            placeholder = namePlaceholder,
             enabled = enabled
         )
         AppOutlinedTextField(

@@ -378,11 +378,6 @@ fun CheckItApp(
                                 onNoteStartTimeChange = viewModels.task::updateNoteStartTime,
                                 onNoteTagToggle = viewModels.task::toggleNoteTag,
                                 onNewTagClick = viewModels.tag::openNewTag,
-                                onSwitchAddModeToTask = viewModels.task::switchAddEditorToTask,
-                                onSwitchAddModeToHabit = viewModels.task::switchAddEditorToHabit,
-                                onSwitchAddModeToTactic = viewModels.task::switchAddEditorToTactic,
-                                onSwitchAddModeToNote = viewModels.task::switchAddEditorToNote,
-                                onTaskTwelveWeekGoalChange = viewModels.task::updateTaskTwelveWeekGoalId
                             )
                         )
                     }
