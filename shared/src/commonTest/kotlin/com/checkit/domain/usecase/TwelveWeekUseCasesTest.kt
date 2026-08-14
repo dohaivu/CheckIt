@@ -93,14 +93,15 @@ class TwelveWeekUseCasesTest {
     }
 
     @Test
-    fun startCycleAllowsMultipleActiveCycles() = runTest {
+    fun startCycleRejectsWhenActiveCycleExists() = runTest {
         val repository = FakeCheckItRepository()
         val start = StartTwelveWeekCycleUseCase(repository)
         start("A", 0)
-        start("B", 0)
+
+        assertFailsWith<IllegalArgumentException> { start("B", 0) }
 
         assertEquals(
-            2,
+            1,
             repository.observeTwelveWeekCycles().first().count { it.status == TwelveWeekCycleStatus.Active }
         )
     }

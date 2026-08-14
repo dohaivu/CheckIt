@@ -3,7 +3,11 @@ package com.checkit.ui.twelveweek
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.checkit.data.TwelveWeekGoalScoreWriteInput
+import com.checkit.domain.TaskStatus
+import com.checkit.domain.TwelveWeekCycleCard
+import com.checkit.domain.TwelveWeekCycleStatus
 import com.checkit.domain.TwelveWeekGoalFinalStatus
+import com.checkit.domain.TwelveWeekWorkspace
 import com.checkit.domain.mondayOfWeek
 import com.checkit.domain.usecase.AbandonTwelveWeekCycleUseCase
 import com.checkit.domain.usecase.AddTwelveWeekGoalUseCase
@@ -51,10 +55,46 @@ class TwelveWeekViewModel(
                     sendEvent(UiEvent.ShowSnackbar(error.message ?: "Unable to load 12-week goals"))
                 }
                 .collect { workspace ->
-                    _uiState.update {
-                        it.copy(workspace = workspace, isLoading = false)
+                    _uiState.update { state ->
+                        state.copy(
+                            workspace = workspace,
+                            visibleCycleCards = workspace.visibleCards(state.viewOptions),
+                            isLoading = false
+                        )
                     }
                 }
+        }
+    }
+
+    fun setShowCompletedTactic(show: Boolean) {
+        _uiState.update { state ->
+            val options = state.viewOptions.copy(showCompletedTactic = show)
+            state.copy(viewOptions = options, visibleCycleCards = state.workspace.visibleCards(options))
+        }
+    }
+
+    fun setShowCompletedCycle(show: Boolean) {
+        _uiState.update { state ->
+            val options = state.viewOptions.copy(showCompletedCycle = show)
+            state.copy(viewOptions = options, visibleCycleCards = state.workspace.visibleCards(options))
+        }
+    }
+
+    private fun TwelveWeekWorkspace.visibleCards(
+        options: TwelveWeekViewOptionsState
+    ): List<TwelveWeekCycleCard> {
+        val cycles = if (options.showCompletedCycle) {
+            cycleCards
+        } else {
+            cycleCards.filter { it.cycle.status == TwelveWeekCycleStatus.Active }
+        }
+        if (options.showCompletedTactic) return cycles
+        return cycles.map { card ->
+            card.copy(
+                goals = card.goals.map { goal ->
+                    goal.copy(tactics = goal.tactics.filter { it.status != TaskStatus.Completed })
+                }
+            )
         }
     }
 

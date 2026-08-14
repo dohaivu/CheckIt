@@ -39,7 +39,7 @@ import androidx.compose.ui.window.PopupProperties
 import com.checkit.ui.tasks.views.ViewOptionChip
 
 @Composable
-internal fun ViewOptionsMenu(
+internal fun TwelveWeekViewOptionsMenu(
     showCompletedTactic: Boolean,
     showCompletedCycle: Boolean,
     onShowCompletedTacticChange: (Boolean) -> Unit,

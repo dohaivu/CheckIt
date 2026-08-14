@@ -139,15 +139,18 @@ class ObserveTwelveWeekWorkspaceUseCase(
 }
 
 /**
- * Starts a new Active cycle. Multiple active cycles are allowed. The cycle
- * always starts on a Monday, so [startEpochDays] is snapped back to the start
- * of its week.
+ * Starts a new Active cycle. Only one active cycle is allowed at a time. The
+ * cycle always starts on a Monday, so [startEpochDays] is snapped back to the
+ * start of its week.
  */
 class StartTwelveWeekCycleUseCase(
     private val repository: CheckItRepository
 ) {
     suspend operator fun invoke(title: String, startEpochDays: Int): Long {
         require(title.isNotBlank()) { "Cycle title must not be blank" }
+        require(repository.countActiveTwelveWeekCycles() == 0) {
+            "There is already an active 12-week cycle"
+        }
         val mondayStart = mondayOfWeek(startEpochDays)
         return repository.addTwelveWeekCycle(
             TwelveWeekCycleWriteInput(

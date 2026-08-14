@@ -50,7 +50,6 @@ import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.cancel
 import checkit.shared.generated.resources.plan_save
 import checkit.shared.generated.resources.twelve_week_abandon_cycle
-import checkit.shared.generated.resources.twelve_week_add_cycle
 import checkit.shared.generated.resources.twelve_week_add_goal
 import checkit.shared.generated.resources.twelve_week_check_in
 import checkit.shared.generated.resources.twelve_week_check_in_note
@@ -99,7 +98,6 @@ import com.checkit.ui.tasks.cardColor
 import com.checkit.ui.tasks.isOverdue
 import com.checkit.ui.tasks.views.TaskTitleRow
 import com.checkit.ui.localizedCompactDate
-import com.checkit.ui.tasks.views.ViewOptionsMenu
 import kotlinx.datetime.LocalDate
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.stringResource
@@ -133,14 +131,12 @@ internal fun TwelveWeekScreen(
                     }
                 },
                 actions = {
-                    if (!state.isLoading) {
-                        IconButton(onClick = { viewModel.openCycleEditor() }) {
-                            Icon(
-                                Icons.Default.Add,
-                                contentDescription = stringResource(Res.string.twelve_week_add_cycle)
-                            )
-                        }
-                    }
+                    TwelveWeekViewOptionsMenu(
+                        showCompletedTactic = state.viewOptions.showCompletedTactic,
+                        showCompletedCycle = state.viewOptions.showCompletedCycle,
+                        onShowCompletedTacticChange = viewModel::setShowCompletedTactic,
+                        onShowCompletedCycleChange = viewModel::setShowCompletedCycle
+                    )
                 }
             )
         }
@@ -157,15 +153,6 @@ internal fun TwelveWeekScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                state.workspace.cycleCards.isEmpty() -> Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    EmptyCycleCard(onStart = { viewModel.openCycleEditor() })
-                }
                 else -> Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -173,7 +160,10 @@ internal fun TwelveWeekScreen(
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    state.workspace.cycleCards.forEach { cycleCard ->
+                    if (state.workspace.cycle == null) {
+                        EmptyCycleCard(onStart = { viewModel.openCycleEditor() })
+                    }
+                    state.visibleCycleCards.forEach { cycleCard ->
                         CycleCard(
                             cycleCard = cycleCard,
                             isActive = cycleCard.cycle.status == TwelveWeekCycleStatus.Active,
@@ -315,19 +305,20 @@ private fun CycleCard(
         "${startDate.localizedCompactDate()}, ${startDate.year} – ${endDate.localizedCompactDate()}, ${endDate.year}"
     }
 
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        shape = RoundedCornerShape(24.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerLow),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        brush = gradient,
-                        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-                    )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    brush = gradient,
+                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                )
                     .then(
                         if (isActive) {
                             Modifier.combinedClickable(onClick = {}, onLongClick = onEditCycle)
@@ -460,7 +451,6 @@ private fun CycleCard(
             }
             Spacer(Modifier.size(4.dp))
         }
-    }
 }
 
 @Composable

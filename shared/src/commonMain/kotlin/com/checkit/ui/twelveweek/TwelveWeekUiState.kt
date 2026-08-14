@@ -1,11 +1,19 @@
 package com.checkit.ui.twelveweek
 
+import com.checkit.domain.TwelveWeekCycleCard
 import com.checkit.domain.TwelveWeekGoalFinalStatus
 import com.checkit.domain.TwelveWeekWorkspace
+
+data class TwelveWeekViewOptionsState(
+    val showCompletedTactic: Boolean = false,
+    val showCompletedCycle: Boolean = false
+)
 
 data class TwelveWeekUiState(
     val workspace: TwelveWeekWorkspace = TwelveWeekWorkspace(),
     val isLoading: Boolean = true,
+    val viewOptions: TwelveWeekViewOptionsState = TwelveWeekViewOptionsState(),
+    val visibleCycleCards: List<TwelveWeekCycleCard> = emptyList(),
     val cycleEditor: TwelveWeekCycleEditorState? = null,
     val goalEditor: TwelveWeekGoalEditorState? = null,
     val checkInSheet: TwelveWeekCheckInSheetState? = null,
