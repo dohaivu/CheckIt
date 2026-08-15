@@ -133,6 +133,7 @@ class NestedMovePlannerTest {
         val moves = useCase.outdent(items, 4L)
         assertEquals(
             listOf(
+                NestedItemMove(5L, 2L, 0),
                 NestedItemMove(4L, null, 2),
                 NestedItemMove(3L, null, 3)
             ),
@@ -147,6 +148,46 @@ class NestedMovePlannerTest {
         assertEquals(
             listOf(NestedItemMove(3L, 2L, 2)),
             moves
+        )
+    }
+
+    @Test
+    fun indentRenormalizesTheSourceAndTargetSiblingGroups() {
+        val useCase = MoveNestedItemsUseCase(FakeCheckItRepository())
+        val sparse = items.map { item ->
+            when (item.id) {
+                2L -> item.copy(position = 3)
+                3L -> item.copy(position = 8)
+                4L -> item.copy(position = 4)
+                5L -> item.copy(position = 9)
+                else -> item
+            }
+        }
+
+        assertEquals(
+            listOf(
+                NestedItemMove(2L, null, 1),
+                NestedItemMove(4L, 2L, 0),
+                NestedItemMove(5L, 2L, 1),
+                NestedItemMove(3L, 2L, 2)
+            ),
+            useCase.indent(sparse, 3L)
+        )
+    }
+
+    @Test
+    fun outdentRenormalizesTheSourceSiblingGroup() {
+        val useCase = MoveNestedItemsUseCase(FakeCheckItRepository())
+        val sparse = items.map { item ->
+            if (item.id == 5L) item.copy(position = 7) else item
+        }
+
+        assertEquals(
+            listOf(
+                NestedItemMove(5L, null, 2),
+                NestedItemMove(3L, null, 3)
+            ),
+            useCase.outdent(sparse, 5L)
         )
     }
 }

@@ -97,6 +97,7 @@ internal fun NestedListEditorScreen(
 
     val focusedNode = state.focusedItem
     val visibleRoots = focusedNode?.let { listOf(it) } ?: tree.rootNodes
+    val visibleRows = flattenVisibleNodes(visibleRoots)
     val breadcrumbs = buildBreadcrumbs(state, tree.rootNodes)
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -152,10 +153,10 @@ internal fun NestedListEditorScreen(
             modifier = Modifier.weight(1f).fillMaxWidth(),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 8.dp)
         ) {
-            items(visibleRoots, key = { it.item.id }) { node ->
+            items(visibleRows, key = { it.node.item.id }) { row ->
                 NestedTree(
-                    node = node,
-                    depth = 0,
+                    node = row.node,
+                    depth = row.depth,
                     state = state,
                     viewModel = viewModel
                 )
@@ -503,31 +504,47 @@ private fun NestedTree(
             )
         }
 
-        if (item.collapsed) {
-            if (node.hasChildren) {
-                Text(
-                    text = "${countVisibleChildren(node)} items hidden",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                    modifier = Modifier.padding(start = (depth * 16 + 40).dp, top = 2.dp, bottom = 2.dp)
-                )
-            }
-        } else {
-            node.children.forEach { child ->
-                NestedTree(
-                    node = child,
-                    depth = depth + 1,
-                    state = state,
-                    viewModel = viewModel
-                )
-            }
+        if (item.collapsed && node.hasChildren) {
+            Text(
+                text = "${countVisibleChildren(node)} items hidden",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                modifier = Modifier.padding(start = (depth * 16 + 40).dp, top = 2.dp, bottom = 2.dp)
+            )
         }
     }
 }
 
+private data class VisibleNestedRow(
+    val node: NestedItemNode,
+    val depth: Int
+)
+
+/** Iterative pre-order traversal avoids composing a recursive tree for every row. */
+private fun flattenVisibleNodes(roots: List<NestedItemNode>): List<VisibleNestedRow> {
+    if (roots.isEmpty()) return emptyList()
+    val result = ArrayList<VisibleNestedRow>()
+    val stack = ArrayDeque<Pair<NestedItemNode, Int>>()
+    roots.asReversed().forEach { stack.addLast(it to 0) }
+    while (stack.isNotEmpty()) {
+        val (node, depth) = stack.removeLast()
+        result += VisibleNestedRow(node, depth)
+        if (!node.item.collapsed) {
+            node.children.asReversed().forEach { stack.addLast(it to depth + 1) }
+        }
+    }
+    return result
+}
+
 private fun countVisibleChildren(node: NestedItemNode): Int {
-    var count = node.children.size
-    node.children.forEach { count += countVisibleChildren(it) }
+    var count = 0
+    val stack = ArrayDeque<NestedItemNode>()
+    node.children.forEach(stack::addLast)
+    while (stack.isNotEmpty()) {
+        val current = stack.removeLast()
+        count++
+        current.children.forEach(stack::addLast)
+    }
     return count
 }
 

@@ -113,9 +113,11 @@ class MoveNestedItemsUseCase(
         val index = siblings.indexOfFirst { it.id == itemId }
         if (index <= 0) return emptyList()
         val newParent = siblings[index - 1]
-        val newPosition = (items.filter { it.parentId == newParent.id }
-            .maxOfOrNull { it.position } ?: -1) + 1
-        return listOf(NestedItemMove(item.id, newParent.id, newPosition))
+        val targetSiblings = siblingsOf(items, newParent.id) + item
+        // Keep both groups contiguous. This matters after repeated indent/outdent
+        // operations and makes subsequent moves deterministic.
+        val sourceMoves = renormalizeGroup(siblings.filterNot { it.id == item.id }, item.parentId)
+        return sourceMoves + renormalizeGroup(targetSiblings, newParent.id)
     }
 
     /** Outdents [itemId] to sit right after its parent. No-op if it has none. */
@@ -125,9 +127,10 @@ class MoveNestedItemsUseCase(
         val siblings = siblingsOf(items, parent.parentId)
         val parentIndex = siblings.indexOfFirst { it.id == parent.id }
         if (parentIndex < 0) return emptyList()
-        val reordered = siblings.toMutableList()
-        reordered.add(parentIndex + 1, item)
-        return renormalizeGroup(reordered, parent.parentId)
+        val sourceSiblings = siblingsOf(items, item.parentId).filterNot { it.id == item.id }
+        val targetSiblings = siblings.toMutableList().apply { add(parentIndex + 1, item) }
+        return renormalizeGroup(sourceSiblings, item.parentId) +
+            renormalizeGroup(targetSiblings, parent.parentId)
     }
 
     /** Moves [itemId] one slot up within its siblings. No-op if already first. */

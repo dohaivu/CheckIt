@@ -32,6 +32,9 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 data class NestedListsUiState(
     val documents: List<NestedDocument> = emptyList(),
@@ -97,6 +100,8 @@ class NestedListsViewModel(
 
     private val _events = MutableSharedFlow<UiEvent>(extraBufferCapacity = 1)
     val events: SharedFlow<UiEvent> = _events.asSharedFlow()
+    private var editorObservationJob: Job? = null
+    private val moveMutex = Mutex()
 
     init {
         collectDocuments()
@@ -118,8 +123,9 @@ class NestedListsViewModel(
     fun openDocument(documentId: Long) {
         val editing = _editor.value
         if (editing?.documentId == documentId) return
+        editorObservationJob?.cancel()
         _editor.value = NestedListEditorUiState(documentId = documentId)
-        viewModelScope.launch {
+        editorObservationJob = viewModelScope.launch {
             observeTreeUseCase(documentId)
                 .catch { error ->
                     _editor.update { it?.copy(isLoading = false) }
@@ -132,6 +138,8 @@ class NestedListsViewModel(
     }
 
     fun closeDocument() {
+        editorObservationJob?.cancel()
+        editorObservationJob = null
         _editor.value = null
     }
 
@@ -340,7 +348,7 @@ class NestedListsViewModel(
         val moves = planner(items)
         if (moves.isEmpty()) return
         viewModelScope.launch {
-            runCatching { moveItemsUseCase(moves) }
+            runCatching { moveMutex.withLock { moveItemsUseCase(moves) } }
                 .onFailure { error ->
                     _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to move item"))
                 }
