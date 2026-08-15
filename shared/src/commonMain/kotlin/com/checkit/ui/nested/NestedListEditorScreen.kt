@@ -6,7 +6,9 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
@@ -60,7 +62,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -224,8 +229,12 @@ internal fun NestedListEditorScreen(
             text = {
                 OutlinedTextField(
                     value = note,
-                    onValueChange = { note = it },
-                    minLines = 3,
+                    onValueChange = { note = it.take(2_000) },
+                    label = { Text("Note") },
+                    placeholder = { Text("Add context or details") },
+                    minLines = 4,
+                    maxLines = 8,
+                    supportingText = { Text("${note.length}/2,000") },
                     modifier = Modifier.fillMaxWidth()
                 )
             },
@@ -298,7 +307,7 @@ private fun BreadcrumbBar(
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier
-                .clip(RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(8.dp))
                 .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f))
                 .clickable { onRootClick() }
                 .padding(horizontal = 10.dp, vertical = 6.dp)
@@ -512,8 +521,9 @@ private fun NestedTree(
         MaterialTheme.colorScheme.tertiary.copy(alpha = 0.34f),
         MaterialTheme.colorScheme.outline.copy(alpha = 0.30f)
     )
-    val isSelected = item.id in state.selectedItemIds
-    val isEditing = state.editingItemId == item.id
+    val isSelected = item.id in state.selectedItemIds ||
+        (!state.selectionMode && state.editingItemId == item.id)
+    val isEditing = state.isEditingText && state.editingItemId == item.id
     val showNewItemRow = state.isAddingItem && state.addingItemAnchorId == item.id
 
     AnimatedVisibility(
@@ -539,45 +549,38 @@ private fun NestedTree(
                     }
                 }
         ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = (depth * 16).dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(
-                    when {
-                        isSelected -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
-                        isEditing -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                        else -> androidx.compose.ui.graphics.Color.Transparent
-                    }
-                )
-                .clickable {
-                    if (state.selectionMode) {
-                        viewModel.toggleSelect(item.id)
-                    } else {
-                        viewModel.startEditText(item.id)
-                    }
-                }
-                .padding(horizontal = 4.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (node.hasChildren) {
-                Box(
-                    modifier = Modifier
-                        .size(28.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (item.collapsed) {
-                                MaterialTheme.colorScheme.primaryContainer
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = (depth * 16).dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(
+                        when {
+                            isSelected -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+                            isEditing -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            else -> androidx.compose.ui.graphics.Color.Transparent
+                        }
+                    )
+                    .combinedClickable(
+                        onClick = {
+                            if (state.selectionMode) {
+                                viewModel.toggleSelect(item.id)
                             } else {
-                                androidx.compose.ui.graphics.Color.Transparent
+                                viewModel.selectItem(item.id)
+                                if (state.isAddingItem) viewModel.cancelAddItem()
                             }
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
+                        },
+                        onDoubleClick = {
+                            if (!state.selectionMode) viewModel.startEditText(item.id)
+                        }
+                    )
+                    .padding(horizontal = 4.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (node.hasChildren) {
                     IconButton(
                         onClick = { viewModel.toggleCollapsed(item.id) },
-                        modifier = Modifier.size(28.dp)
+                        modifier = Modifier.size(20.dp)
                     ) {
                         Crossfade(targetState = item.collapsed, label = "collapseToggle") { collapsed ->
                             Icon(
@@ -592,69 +595,77 @@ private fun NestedTree(
                             )
                         }
                     }
+                } else {
+                    Spacer(Modifier.width(18.dp))
                 }
-            } else {
-                Spacer(Modifier.width(28.dp))
-            }
 
-            if (item.checkboxEnabled) {
-                Checkbox(
-                    checked = item.checked,
-                    onCheckedChange = { viewModel.toggleChecked(item.id) },
-                    modifier = Modifier.size(28.dp)
-                )
-            } else {
-                Spacer(Modifier.width(8.dp))
-            }
-
-            if (isEditing) {
-                var text by remember(item.id) { mutableStateOf(item.text) }
-                LaunchedEffect(item.id) { text = item.text }
-                val focusManager = LocalFocusManager.current
-                BasicTextField(
-                    value = text,
-                    onValueChange = { text = it },
-                    singleLine = true,
-                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
-                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = {
-                        focusManager.clearFocus()
-                        viewModel.saveItemText(item.id, text)
-                    }),
-                    modifier = Modifier.weight(1f)
-                )
-            } else {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = item.text,
-                        style = MaterialTheme.typography.bodyLarge,
-                        textDecoration = if (item.checked) TextDecoration.LineThrough else TextDecoration.None,
-                        color = when {
-                            isInCheckedBranch -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.68f)
-                            else -> MaterialTheme.colorScheme.onSurface
-                        },
-                        fontWeight = if (depth == 0 && !node.hasChildren) FontWeight.Bold else FontWeight.Normal
+                if (item.checkboxEnabled) {
+                    Checkbox(
+                        checked = item.checked,
+                        onCheckedChange = { viewModel.toggleChecked(item.id) },
+                        modifier = Modifier.size(28.dp).scale(0.7f)
                     )
-                    if (item.note.isNullOrBlank().not()) {
+                } else {
+                    Spacer(Modifier.width(8.dp))
+                }
+
+                if (isEditing) {
+                    var text by remember(item.id) { mutableStateOf(item.text) }
+                    val focusRequester = remember(item.id) { FocusRequester() }
+                    LaunchedEffect(item.id) {
+                        text = item.text
+                        focusRequester.requestFocus()
+                    }
+                    val focusManager = LocalFocusManager.current
+                    BasicTextField(
+                        value = text,
+                        onValueChange = { text = it },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = {
+                            focusManager.clearFocus()
+                            viewModel.saveItemText(item.id, text)
+                        }),
+                        modifier = Modifier
+                            .weight(1f)
+                            .focusRequester(focusRequester)
+                    )
+                } else {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = item.note,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                            maxLines = 2
+                            text = item.text,
+                            style = MaterialTheme.typography.bodyLarge,
+                            textDecoration = if (item.checked) TextDecoration.LineThrough else TextDecoration.None,
+                            color = when {
+                                isInCheckedBranch -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.68f)
+                                else -> MaterialTheme.colorScheme.onSurface
+                            },
+                            fontWeight = if (depth == 0 && !node.hasChildren) FontWeight.Bold else FontWeight.Normal
                         )
+                        if (item.note.isNullOrBlank().not()) {
+                            Row(verticalAlignment = Alignment.Top) {
+                                Text(
+                                    text = item.note,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.78f),
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
                     }
                 }
-            }
 
-            if (state.selectionMode) {
-                Checkbox(
-                    checked = isSelected,
-                    onCheckedChange = { viewModel.toggleSelect(item.id) },
-                    modifier = Modifier.size(28.dp)
-                )
+                if (state.selectionMode) {
+                    Checkbox(
+                        checked = isSelected,
+                        onCheckedChange = { viewModel.toggleSelect(item.id) },
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
             }
-        }
         }
 
         if (showNewItemRow) {
@@ -720,41 +731,48 @@ private fun NewItemRow(
     onCommit: () -> Unit,
     onCancel: () -> Unit
 ) {
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = (depth * 16).dp, top = 2.dp, bottom = 2.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(start = (depth * 16).dp, top = 0.dp, bottom = 0.dp),
     ) {
-        val focusManager = LocalFocusManager.current
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .height(48.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .padding(horizontal = 12.dp),
-            contentAlignment = Alignment.CenterStart
-        ) {
-            BasicTextField(
-                value = text,
-                onValueChange = onTextChange,
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
-                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = {
-                    focusManager.clearFocus()
-                    onCommit()
-                }),
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-        IconButton(
-            onClick = onCancel,
-            modifier = Modifier.size(48.dp)
-        ) {
-            Icon(Icons.Default.Close, contentDescription = "Cancel")
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            val focusManager = LocalFocusManager.current
+            val focusRequester = remember { FocusRequester() }
+            LaunchedEffect(Unit) {
+                focusRequester.requestFocus()
+            }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(36.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .padding(horizontal = 12.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                BasicTextField(
+                    value = text,
+                    onValueChange = onTextChange,
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = {
+                        focusManager.clearFocus()
+                        onCommit()
+                    }),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focusRequester)
+                )
+            }
+            IconButton(
+                onClick = onCancel,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(Icons.Default.Close, contentDescription = "Cancel")
+            }
         }
     }
 }

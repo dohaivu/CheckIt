@@ -53,6 +53,7 @@ data class NestedListEditorUiState(
     val selectionMode: Boolean = false,
     val showDeleteConfirm: Boolean = false,
     val editingItemId: Long? = null,
+    val isEditingText: Boolean = false,
     val editingNoteItemId: Long? = null,
     val isAddingItem: Boolean = false,
     val addingItemAnchorId: Long? = null,
@@ -247,7 +248,7 @@ class NestedListsViewModel(
         val state = _editor.value ?: return
         val text = state.newItemText
         if (text.isBlank()) {
-            _editor.update { it?.copy(isAddingItem = false, addingItemAnchorId = null, newItemParentId = null, newItemText = "") }
+            cancelAddItem()
             return
         }
         val items = flatItems(state)
@@ -257,9 +258,11 @@ class NestedListsViewModel(
             items.firstOrNull { it.id == state.addingItemAnchorId }?.position?.plus(1)
         }
         viewModelScope.launch {
-            runCatching { addItemUseCase(state.documentId, state.newItemParentId, text, position) }
+            runCatching {
+                addItemUseCase(state.documentId, state.newItemParentId, text, position)
+            }
                 .onSuccess {
-                    _editor.update { it?.copy(isAddingItem = false, addingItemAnchorId = null, newItemParentId = null, newItemText = "") }
+                    cancelAddItem()
                 }
                 .onFailure { error ->
                     _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to add item"))
@@ -268,11 +271,17 @@ class NestedListsViewModel(
     }
 
     fun startEditText(itemId: Long) {
-        _editor.update { it?.copy(editingItemId = itemId) }
+        _editor.update { it?.copy(editingItemId = itemId, isEditingText = true) }
+    }
+
+    fun selectItem(itemId: Long) {
+        _editor.update { state ->
+            state?.copy(editingItemId = itemId, isEditingText = false)
+        }
     }
 
     fun stopEditText() {
-        _editor.update { it?.copy(editingItemId = null) }
+        _editor.update { it?.copy(editingItemId = null, isEditingText = false) }
     }
 
     fun saveItemText(itemId: Long, text: String) {
@@ -297,11 +306,15 @@ class NestedListsViewModel(
     fun saveItemNote(itemId: Long, note: String?) {
         stopEditNote()
         viewModelScope.launch {
-            runCatching { updateItemNoteUseCase(itemId, note) }
+            runCatching { updateItemNoteUseCase(itemId, note?.take(MAX_NOTE_LENGTH)) }
                 .onFailure { error ->
                     _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to save note"))
                 }
         }
+    }
+
+    private companion object {
+        const val MAX_NOTE_LENGTH = 2_000
     }
 
     // ---------------- checkbox / collapse ----------------
