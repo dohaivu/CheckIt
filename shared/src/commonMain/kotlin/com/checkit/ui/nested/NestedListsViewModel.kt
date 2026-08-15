@@ -19,7 +19,6 @@ import com.checkit.domain.usecase.SetNestedItemsCheckedUseCase
 import com.checkit.domain.usecase.ToggleNestedItemCollapsedUseCase
 import com.checkit.domain.usecase.UpdateNestedItemNoteUseCase
 import com.checkit.domain.usecase.UpdateNestedItemTextUseCase
-import com.checkit.domain.usecase.flattenNestedItems
 import com.checkit.ui.UiEvent
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -61,7 +60,7 @@ data class NestedListEditorUiState(
     val newItemText: String = "",
     val isLoading: Boolean = true
 ) {
-    val focusedItem: NestedItemNode? by lazy { focusedNode(tree?.rootNodes.orEmpty()) }
+    val focusedItem: NestedItemNode? by lazy { tree?.nodeById?.get(focusItemIds.lastOrNull()) }
 
     fun focusedNode(nodes: List<NestedItemNode>): NestedItemNode? {
         val last = focusItemIds.lastOrNull() ?: return null
@@ -175,7 +174,7 @@ class NestedListsViewModel(
     fun zoomIn(item: NestedItemNode) {
         if (!item.hasChildren) return
         val state = _editor.value ?: return
-        val chain = ancestorChain(state.tree?.rootNodes.orEmpty(), item.item.id)
+        val chain = ancestorChain(item.item.id)
         if (chain.isNotEmpty()) {
             _editor.update { it?.copy(focusItemIds = chain) }
         }
@@ -184,7 +183,7 @@ class NestedListsViewModel(
     fun zoomInSelected() {
         val state = _editor.value ?: return
         val id = state.editingItemId ?: return
-        val node = findNode(state.tree?.rootNodes.orEmpty(), id) ?: return
+        val node = state.tree?.nodeById?.get(id) ?: return
         zoomIn(node)
     }
 
@@ -198,6 +197,15 @@ class NestedListsViewModel(
         }
     }
 
+    /** Zooms directly to the tapped breadcrumb item, independent of display depth. */
+    fun zoomToItem(itemId: Long) {
+        val state = _editor.value ?: return
+        val chain = ancestorChain(itemId)
+        if (chain.isNotEmpty() && state.tree?.nodeById?.containsKey(itemId) == true) {
+            _editor.update { it?.copy(focusItemIds = chain) }
+        }
+    }
+
     fun zoomToRoot() = zoomOutTo(0)
 
     // ---------------- item editing ----------------
@@ -208,9 +216,15 @@ class NestedListsViewModel(
         }
     }
 
+    fun startAddRoot() {
+        _editor.update {
+            it?.copy(isAddingItem = true, addingItemAnchorId = null, newItemParentId = null, newItemText = "")
+        }
+    }
+
     fun startAddSibling(siblingId: Long) {
         val state = _editor.value ?: return
-        val item = flatItems(state).firstOrNull { it.id == siblingId }
+        val item = state.tree?.itemById?.get(siblingId)
         _editor.update {
             it?.copy(
                 isAddingItem = true,
@@ -294,7 +308,7 @@ class NestedListsViewModel(
 
     fun toggleCheckboxEnabled(itemId: Long) {
         val state = _editor.value ?: return
-        val item = flatItems(state).firstOrNull { it.id == itemId } ?: return
+        val item = state.tree?.itemById?.get(itemId) ?: return
         viewModelScope.launch {
             runCatching { setCheckboxEnabledUseCase(itemId, !item.checkboxEnabled) }
                 .onFailure { error ->
@@ -305,7 +319,7 @@ class NestedListsViewModel(
 
     fun toggleChecked(itemId: Long) {
         val state = _editor.value ?: return
-        val item = flatItems(state).firstOrNull { it.id == itemId } ?: return
+        val item = state.tree?.itemById?.get(itemId) ?: return
         if (!item.checkboxEnabled) return
         viewModelScope.launch {
             runCatching { setItemsCheckedUseCase(listOf(itemId), !item.checked) }
@@ -417,23 +431,18 @@ class NestedListsViewModel(
     // ---------------- helpers ----------------
 
     private fun flatItems(state: NestedListEditorUiState): List<NestedListItem> =
-        flattenNestedItems(state.tree?.rootNodes.orEmpty())
-
-    private fun findNode(nodes: List<NestedItemNode>, id: Long): NestedItemNode? {
-        for (node in nodes) {
-            if (node.item.id == id) return node
-            findNode(node.children, id)?.let { return it }
-        }
-        return null
-    }
+        state.tree?.flatItems.orEmpty()
 
     /** Returns the ids from a root down to [id], or empty if [id] is not found. */
-    private fun ancestorChain(nodes: List<NestedItemNode>, id: Long): List<Long> {
-        for (node in nodes) {
-            if (node.item.id == id) return listOf(node.item.id)
-            val sub = ancestorChain(node.children, id)
-            if (sub.isNotEmpty()) return listOf(node.item.id) + sub
+    private fun ancestorChain(id: Long): List<Long> {
+        val tree = _editor.value?.tree ?: return emptyList()
+        val chain = ArrayDeque<Long>()
+        var current = tree.itemById[id] ?: return emptyList()
+        while (true) {
+            chain.addFirst(current.id)
+            val parentId = current.parentId ?: break
+            current = tree.itemById[parentId] ?: return emptyList()
         }
-        return emptyList()
+        return chain.toList()
     }
 }

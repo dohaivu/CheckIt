@@ -183,6 +183,12 @@ class DeleteNestedItemsUseCase(
 
 /** Flattens a node forest back into a list of items (depth-first, pre-order). */
 fun flattenNestedItems(nodes: List<NestedItemNode>): List<NestedListItem> =
-    nodes.flatMap { node ->
-        listOf(node.item) + flattenNestedItems(node.children)
+    buildList {
+        val stack = ArrayDeque<NestedItemNode>()
+        nodes.asReversed().forEach(stack::addLast)
+        while (stack.isNotEmpty()) {
+            val node = stack.removeLast()
+            add(node.item)
+            node.children.asReversed().forEach(stack::addLast)
+        }
     }

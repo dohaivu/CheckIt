@@ -40,7 +40,12 @@ data class NestedItemNode(
 data class NestedDocumentTree(
     val document: NestedDocument,
     val rootNodes: List<NestedItemNode>
-)
+) {
+    /** Lazily-built indexes keep repeated editor actions from rescanning the tree. */
+    val nodeById: Map<Long, NestedItemNode> by lazy { indexNestedNodes(rootNodes) }
+    val itemById: Map<Long, NestedListItem> by lazy { nodeById.mapValues { it.value.item } }
+    val flatItems: List<NestedListItem> by lazy { flattenNestedNodes(rootNodes) }
+}
 
 /**
  * A single re-parent/reorder instruction produced by [planNestedMoves].
@@ -60,15 +65,52 @@ data class NestedItemMove(
 fun buildNestedTree(items: List<NestedListItem>): List<NestedItemNode> {
     if (items.isEmpty()) return emptyList()
     val childrenByParent = items.groupBy { it.parentId }
-    fun nodeFor(item: NestedListItem): NestedItemNode {
-        val children = childrenByParent[item.id].orEmpty()
-            .sortedWith(compareBy<NestedListItem> { it.position }.thenBy { it.id })
-            .map { nodeFor(it) }
-        return NestedItemNode(item = item, children = children)
+    val sortedChildren = childrenByParent.mapValues { (_, children) ->
+        children.sortedWith(compareBy<NestedListItem> { it.position }.thenBy { it.id })
     }
-    return childrenByParent[null].orEmpty()
-        .sortedWith(compareBy<NestedListItem> { it.position }.thenBy { it.id })
-        .map { nodeFor(it) }
+    val nodesById = HashMap<Long, NestedItemNode>(items.size)
+    val roots = sortedChildren[null].orEmpty()
+    val stack = ArrayDeque<Pair<NestedListItem, Boolean>>()
+    roots.asReversed().forEach { stack.addLast(it to false) }
+    while (stack.isNotEmpty()) {
+        val (item, expanded) = stack.removeLast()
+        if (!expanded) {
+            stack.addLast(item to true)
+            sortedChildren[item.id].orEmpty().asReversed().forEach { child ->
+                stack.addLast(child to false)
+            }
+        } else {
+            nodesById[item.id] = NestedItemNode(
+                item = item,
+                children = sortedChildren[item.id].orEmpty().mapNotNull { child -> nodesById[child.id] }
+            )
+        }
+    }
+    return roots.mapNotNull { root -> nodesById[root.id] }
+}
+
+private fun indexNestedNodes(roots: List<NestedItemNode>): Map<Long, NestedItemNode> {
+    val result = HashMap<Long, NestedItemNode>()
+    val stack = ArrayDeque<NestedItemNode>()
+    roots.asReversed().forEach(stack::addLast)
+    while (stack.isNotEmpty()) {
+        val node = stack.removeLast()
+        result[node.item.id] = node
+        node.children.asReversed().forEach(stack::addLast)
+    }
+    return result
+}
+
+private fun flattenNestedNodes(roots: List<NestedItemNode>): List<NestedListItem> {
+    val result = ArrayList<NestedListItem>()
+    val stack = ArrayDeque<NestedItemNode>()
+    roots.asReversed().forEach(stack::addLast)
+    while (stack.isNotEmpty()) {
+        val node = stack.removeLast()
+        result += node.item
+        node.children.asReversed().forEach(stack::addLast)
+    }
+    return result
 }
 
 /**
@@ -92,8 +134,8 @@ fun planNestedMoves(
     val itemsById = items.associateBy { it.id }
     val selected = itemIds.mapNotNull { itemsById[it] }
 
+    val childrenByParent = items.groupBy { it.parentId }
     fun descendantsOf(id: Long): Set<Long> {
-        val childrenByParent = items.groupBy { it.parentId }
         val result = mutableSetOf<Long>()
         val queue = ArrayDeque<Long>()
         queue.add(id)

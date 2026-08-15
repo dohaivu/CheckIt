@@ -1,7 +1,11 @@
 package com.checkit.ui.nested
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -22,17 +26,18 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
-import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.NoteAdd
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOut
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
@@ -54,11 +59,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.cancel
@@ -121,7 +128,7 @@ internal fun NestedListEditorScreen(
         )
         BreadcrumbBar(
             breadcrumbs = breadcrumbs,
-            onCrumbClick = { depth -> viewModel.zoomOutTo(depth) },
+            onCrumbClick = { itemId -> viewModel.zoomToItem(itemId) },
             onRootClick = viewModel::zoomToRoot
         )
 
@@ -145,7 +152,8 @@ internal fun NestedListEditorScreen(
                 onAddSibling = { state.editingItemId?.let(viewModel::startAddSibling) },
                 onToggleNote = { state.editingItemId?.let(viewModel::startEditNote) },
                 onToggleCheckbox = { state.editingItemId?.let(viewModel::toggleCheckboxEnabled) },
-                onDelete = { state.editingItemId?.let(viewModel::requestDeleteItem) }
+                onDelete = { state.editingItemId?.let(viewModel::requestDeleteItem) },
+                onAddRoot = viewModel::startAddRoot
             )
         }
 
@@ -153,13 +161,33 @@ internal fun NestedListEditorScreen(
             modifier = Modifier.weight(1f).fillMaxWidth(),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 8.dp)
         ) {
-            items(visibleRows, key = { it.node.item.id }) { row ->
-                NestedTree(
-                    node = row.node,
-                    depth = row.depth,
-                    state = state,
-                    viewModel = viewModel
-                )
+            if (state.isAddingItem && state.addingItemAnchorId == null) {
+                item(key = "new-root") {
+                    NewItemRow(
+                        depth = 0,
+                        text = state.newItemText,
+                        onTextChange = viewModel::updateNewItemText,
+                        onCommit = viewModel::commitNewItem,
+                        onCancel = viewModel::cancelAddItem
+                    )
+                }
+            }
+            if (visibleRows.isEmpty()) {
+                if (!state.isAddingItem || state.addingItemAnchorId != null) {
+                    item(key = "empty-list") {
+                        EmptyNestedList(onAddItem = viewModel::startAddRoot)
+                    }
+                }
+            } else {
+                items(visibleRows, key = { it.node.item.id }) { row ->
+                    NestedTree(
+                        node = row.node,
+                        depth = row.depth,
+                        isVisible = row.isVisible,
+                        state = state,
+                        viewModel = viewModel
+                    )
+                }
             }
         }
     }
@@ -183,7 +211,7 @@ internal fun NestedListEditorScreen(
     }
 
     state.editingNoteItemId?.let { noteItemId ->
-        val noteItem = state.tree?.let { findNode(flattenEditorNodes(visibleRoots), noteItemId) }
+        val noteItem = state.tree?.nodeById?.get(noteItemId)
         val initialNote = noteItem?.item?.note.orEmpty()
         var note by remember(noteItemId) { mutableStateOf(initialNote) }
         AlertDialog(
@@ -214,7 +242,8 @@ internal fun NestedListEditorScreen(
 private data class Breadcrumb(
     val label: String,
     val depth: Int,
-    val isRoot: Boolean
+    val isRoot: Boolean,
+    val itemId: Long? = null
 )
 
 private fun buildBreadcrumbs(state: NestedListEditorUiState, roots: List<NestedItemNode>): List<Breadcrumb> {
@@ -223,7 +252,14 @@ private fun buildBreadcrumbs(state: NestedListEditorUiState, roots: List<NestedI
     val focusedId = state.focusItemIds.lastOrNull() ?: return result
     val chain = findAncestorChain(roots, focusedId) ?: return result
     chain.forEach { node ->
-        result.add(Breadcrumb(label = node.item.text, depth = result.size, isRoot = false))
+        result.add(
+            Breadcrumb(
+                label = node.item.text,
+                depth = result.size,
+                isRoot = false,
+                itemId = node.item.id
+            )
+        )
     }
     return result
 }
@@ -237,21 +273,10 @@ private fun findAncestorChain(nodes: List<NestedItemNode>, id: Long): List<Neste
     return null
 }
 
-private fun findNode(nodes: List<NestedItemNode>, id: Long): NestedItemNode? {
-    for (node in nodes) {
-        if (node.item.id == id) return node
-        findNode(node.children, id)?.let { return it }
-    }
-    return null
-}
-
-private fun flattenEditorNodes(nodes: List<NestedItemNode>): List<NestedItemNode> =
-    nodes.flatMap { node -> listOf(node) + flattenEditorNodes(node.children) }
-
 @Composable
 private fun BreadcrumbBar(
     breadcrumbs: List<Breadcrumb>,
-    onCrumbClick: (Int) -> Unit,
+    onCrumbClick: (Long) -> Unit,
     onRootClick: () -> Unit
 ) {
     val scrollState = rememberScrollState()
@@ -259,37 +284,52 @@ private fun BreadcrumbBar(
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(scrollState)
-            .padding(horizontal = 12.dp, vertical = 4.dp),
+            .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Text(
             text = stringResource(Res.string.nested_root),
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier
-                .clip(RoundedCornerShape(6.dp))
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f))
                 .clickable { onRootClick() }
-                .padding(horizontal = 6.dp, vertical = 4.dp)
+                .padding(horizontal = 10.dp, vertical = 6.dp)
         )
         breadcrumbs.drop(1).forEach { crumb ->
+            val isCurrent = crumb.depth == breadcrumbs.lastOrNull()?.depth
             Icon(
                 imageVector = Icons.Default.KeyboardArrowRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(16.dp)
             )
-            Text(
-                text = crumb.label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
+            Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))
-                    .clickable { onCrumbClick(crumb.depth) }
-                    .padding(horizontal = 6.dp, vertical = 4.dp)
-            )
+                    .background(
+                        if (isCurrent) MaterialTheme.colorScheme.surfaceVariant
+                        else androidx.compose.ui.graphics.Color.Transparent
+                    )
+                    .clickable(enabled = !isCurrent) { crumb.itemId?.let(onCrumbClick) }
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = crumb.label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (isCurrent) {
+                        MaterialTheme.colorScheme.onSurface
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }
@@ -309,13 +349,15 @@ private fun EditorToolbar(
     onAddSibling: () -> Unit,
     onToggleNote: () -> Unit,
     onToggleCheckbox: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onAddRoot: () -> Unit
 ) {
     val hasSelection = state.editingItemId != null
-    val selectedNode = state.editingItemId?.let { id -> findNode(state.tree?.rootNodes.orEmpty(), id) }
+    val selectedNode = state.editingItemId?.let { id -> state.tree?.nodeById?.get(id) }
     val canZoomIn = hasSelection && (selectedNode?.hasChildren == true)
     val canZoomOut = state.focusItemIds.isNotEmpty()
     val canAddSibling = hasSelection && (selectedNode?.item?.parentId != null)
+    var showMore by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -330,12 +372,42 @@ private fun EditorToolbar(
         ToolbarButton(Icons.AutoMirrored.Filled.KeyboardArrowLeft, stringResource(Res.string.nested_outdent), hasSelection, onOutdent)
         ToolbarButton(Icons.Default.KeyboardArrowUp, stringResource(Res.string.nested_move_up), hasSelection, onMoveUp)
         ToolbarButton(Icons.Default.KeyboardArrowDown, stringResource(Res.string.nested_move_down), hasSelection, onMoveDown)
-        ToolbarButton(Icons.Default.Add, stringResource(Res.string.nested_add_child), hasSelection, onAddChild)
-        ToolbarButton(Icons.Default.NoteAdd, stringResource(Res.string.nested_add_sibling), canAddSibling, onAddSibling)
-        ToolbarButton(Icons.Default.Flag, stringResource(Res.string.nested_edit_note), hasSelection, onToggleNote)
-        ToolbarButton(Icons.Default.Done, "Checkbox", hasSelection, onToggleCheckbox)
-        ToolbarButton(Icons.Default.Delete, stringResource(Res.string.nested_batch_delete), hasSelection, onDelete)
+        Box {
+            ToolbarButton(Icons.Default.MoreVert, "More actions", true) { showMore = true }
+            androidx.compose.material3.DropdownMenu(
+                expanded = showMore,
+                onDismissRequest = { showMore = false }
+            ) {
+                ToolbarMenuItem(stringResource(Res.string.nested_add_child), hasSelection) {
+                    showMore = false; onAddChild()
+                }
+                ToolbarMenuItem(stringResource(Res.string.nested_add_sibling), canAddSibling) {
+                    showMore = false; onAddSibling()
+                }
+                ToolbarMenuItem("Add root item", true) {
+                    showMore = false; onAddRoot()
+                }
+                ToolbarMenuItem(stringResource(Res.string.nested_edit_note), hasSelection) {
+                    showMore = false; onToggleNote()
+                }
+                ToolbarMenuItem("Checkbox", hasSelection) {
+                    showMore = false; onToggleCheckbox()
+                }
+                ToolbarMenuItem(stringResource(Res.string.nested_batch_delete), hasSelection) {
+                    showMore = false; onDelete()
+                }
+            }
+        }
     }
+}
+
+@Composable
+private fun ToolbarMenuItem(label: String, enabled: Boolean, onClick: () -> Unit) {
+    androidx.compose.material3.DropdownMenuItem(
+        text = { Text(label) },
+        onClick = onClick,
+        enabled = enabled
+    )
 }
 
 @Composable
@@ -386,20 +458,74 @@ private fun SelectionToolbar(
 // ---------------- tree ----------------
 
 @Composable
+private fun EmptyNestedList(onAddItem: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 72.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Text(
+            text = "Nothing here yet",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = "Start with a root item, then indent items to build your outline.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        androidx.compose.material3.Button(onClick = onAddItem) {
+            Icon(Icons.Default.Add, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text("Add item")
+        }
+    }
+}
+
+@Composable
 private fun NestedTree(
     node: NestedItemNode,
     depth: Int,
+    isVisible: Boolean,
     state: NestedListEditorUiState,
     viewModel: NestedListsViewModel
 ) {
     val item = node.item
+    val guideColors = listOf(
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.34f),
+        MaterialTheme.colorScheme.secondary.copy(alpha = 0.34f),
+        MaterialTheme.colorScheme.tertiary.copy(alpha = 0.34f),
+        MaterialTheme.colorScheme.outline.copy(alpha = 0.30f)
+    )
     val isSelected = item.id in state.selectedItemIds
     val isEditing = state.editingItemId == item.id
     val showNewItemRow = state.isAddingItem && state.addingItemAnchorId == item.id
 
-    Column(
-        modifier = Modifier.fillMaxWidth()
+    AnimatedVisibility(
+        visible = isVisible,
+        enter = expandVertically(),
+        exit = shrinkVertically()
     ) {
+    Column(modifier = Modifier.fillMaxWidth().animateContentSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .drawBehind {
+                    // Draw in the unpadded container so every depth shares the
+                    // same x-coordinate across all rows.
+                    repeat(depth) { level ->
+                        val x = level * 16.dp.toPx() + 8.dp.toPx()
+                        drawLine(
+                            color = guideColors[level % guideColors.size],
+                            start = androidx.compose.ui.geometry.Offset(x, 0f),
+                            end = androidx.compose.ui.geometry.Offset(x, size.height),
+                            strokeWidth = 1.dp.toPx()
+                        )
+                    }
+                }
+        ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -419,23 +545,43 @@ private fun NestedTree(
                         viewModel.startEditText(item.id)
                     }
                 }
-                .padding(horizontal = 4.dp, vertical = 2.dp),
+                .padding(horizontal = 4.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (node.hasChildren) {
-                IconButton(
-                    onClick = { viewModel.toggleCollapsed(item.id) },
-                    modifier = Modifier.size(20.dp)
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (item.collapsed) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                androidx.compose.ui.graphics.Color.Transparent
+                            }
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = if (item.collapsed) Icons.Default.Add else Icons.Default.Remove,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(16.dp)
-                    )
+                    IconButton(
+                        onClick = { viewModel.toggleCollapsed(item.id) },
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Crossfade(targetState = item.collapsed, label = "collapseToggle") { collapsed ->
+                            Icon(
+                                imageVector = if (collapsed) Icons.Default.Add else Icons.Default.Remove,
+                                contentDescription = if (collapsed) "Expand children" else "Collapse children",
+                                tint = if (collapsed) {
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                                modifier = Modifier.size(17.dp)
+                            )
+                        }
+                    }
                 }
             } else {
-                Spacer(Modifier.width(20.dp))
+                Spacer(Modifier.width(28.dp))
             }
 
             if (item.checkboxEnabled) {
@@ -492,6 +638,7 @@ private fun NestedTree(
                 )
             }
         }
+        }
 
         if (showNewItemRow) {
             val isChild = state.newItemParentId == item.id
@@ -504,48 +651,31 @@ private fun NestedTree(
             )
         }
 
-        if (item.collapsed && node.hasChildren) {
-            Text(
-                text = "${countVisibleChildren(node)} items hidden",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                modifier = Modifier.padding(start = (depth * 16 + 40).dp, top = 2.dp, bottom = 2.dp)
-            )
-        }
+    }
     }
 }
 
 private data class VisibleNestedRow(
     val node: NestedItemNode,
-    val depth: Int
+    val depth: Int,
+    val isVisible: Boolean
 )
 
-/** Iterative pre-order traversal avoids composing a recursive tree for every row. */
+/** Iterative traversal keeps stable rows available for expand/collapse animation. */
 private fun flattenVisibleNodes(roots: List<NestedItemNode>): List<VisibleNestedRow> {
     if (roots.isEmpty()) return emptyList()
     val result = ArrayList<VisibleNestedRow>()
-    val stack = ArrayDeque<Pair<NestedItemNode, Int>>()
-    roots.asReversed().forEach { stack.addLast(it to 0) }
+    val stack = ArrayDeque<Triple<NestedItemNode, Int, Boolean>>()
+    roots.asReversed().forEach { stack.addLast(Triple(it, 0, true)) }
     while (stack.isNotEmpty()) {
-        val (node, depth) = stack.removeLast()
-        result += VisibleNestedRow(node, depth)
-        if (!node.item.collapsed) {
-            node.children.asReversed().forEach { stack.addLast(it to depth + 1) }
+        val (node, depth, isVisible) = stack.removeLast()
+        result += VisibleNestedRow(node, depth, isVisible)
+        val childrenVisible = isVisible && !node.item.collapsed
+        node.children.asReversed().forEach { child ->
+            stack.addLast(Triple(child, depth + 1, childrenVisible))
         }
     }
     return result
-}
-
-private fun countVisibleChildren(node: NestedItemNode): Int {
-    var count = 0
-    val stack = ArrayDeque<NestedItemNode>()
-    node.children.forEach(stack::addLast)
-    while (stack.isNotEmpty()) {
-        val current = stack.removeLast()
-        count++
-        current.children.forEach(stack::addLast)
-    }
-    return count
 }
 
 @Composable
@@ -563,23 +693,34 @@ private fun NewItemRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         val focusManager = LocalFocusManager.current
-        BasicTextField(
-            value = text,
-            onValueChange = onTextChange,
-            singleLine = true,
-            textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
-            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = {
-                focusManager.clearFocus()
-                onCommit()
-            }),
+        Box(
             modifier = Modifier
                 .weight(1f)
+                .height(48.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
-                .padding(horizontal = 10.dp, vertical = 2.dp)
-        )
-        IconButton(onClick = onCancel) { Icon(Icons.Default.ArrowBack, contentDescription = "Cancel") }
+                .padding(horizontal = 12.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            BasicTextField(
+                value = text,
+                onValueChange = onTextChange,
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = {
+                    focusManager.clearFocus()
+                    onCommit()
+                }),
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        IconButton(
+            onClick = onCancel,
+            modifier = Modifier.size(48.dp)
+        ) {
+            Icon(Icons.Default.Close, contentDescription = "Cancel")
+        }
     }
 }
