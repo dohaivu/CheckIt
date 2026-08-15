@@ -11,6 +11,7 @@ import com.checkit.ui.settings.SettingsViewModel
 import com.checkit.ui.tasks.TaskViewModel
 import com.checkit.ui.tasks.list.ListViewModel
 import com.checkit.ui.tasks.tag.TagViewModel
+import com.checkit.ui.twelveweek.TwelveWeekViewModel
 import androidx.compose.runtime.Composable
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -25,6 +26,7 @@ data class CheckItViewModels(
     val calendar: CalendarViewModel,
     val reflect: ReflectViewModel,
     val plan: PeriodPlanViewModel,
+    val twelveWeek: TwelveWeekViewModel,
     val settings: SettingsViewModel
 )
 
@@ -40,5 +42,6 @@ fun koinCheckItViewModels(): CheckItViewModels = CheckItViewModels(
     calendar = koinViewModel(),
     reflect = koinViewModel(),
     plan = koinViewModel(),
+    twelveWeek = koinViewModel(),
     settings = koinViewModel()
 )

@@ -4,7 +4,7 @@ android-compileSdk = "37"
 android-minSdk = "28"
 android-targetSdk = "37"
 androidx-activity = "1.13.0"
-androidx-appcompat = "1.7.1"
+androidx-appcompat = "1.8.0"
 androidx-core = "1.19.0"
 androidx-espresso = "3.7.0"
 androidx-lifecycle = "2.11.0"
@@ -39,14 +39,13 @@ calendar = "2.10.1"
 androidgitversion = "0.4.14"
 doistx-normalize = "1.3.3"
 markdownRenderer = "0.43.0"
-richeditor = "1.0.0"
 colorpicker = "1.2.0"
 emoji-kt="2.5.0"
 
 mockk = "1.14.11"
 turbine = "1.2.1"
 
-paging = "3.5.0"
+paging = "3.5.1"
 glance = "1.1.1"
 google-services-plugin = "4.5.0"
 firebase-crashlytics-plugin = "3.0.7"
@@ -105,7 +104,6 @@ kermit-io = { module = "co.touchlab:kermit-io", version.ref = "kermit" }
 #calendar-compose = { module = "com.kizitonwose.calendar:compose-multiplatform", version.ref = "calendar" }
 doist-normalize = { module = "com.doist.x:normalize", version.ref = "doistx-normalize" }
 markdown-renderer = { module = "com.mikepenz:multiplatform-markdown-renderer-m3", version.ref = "markdownRenderer" }
-richeditor-compose = { module = "com.mohamedrejeb.richeditor:richeditor-compose", version.ref = "richeditor" }
 compose-colorpicker = { module = "com.github.skydoves:colorpicker-compose", version.ref = "colorpicker" }
 emoji-kt = { module = "org.kodein.emoji:emoji-kt", version.ref = "emoji-kt" }
 

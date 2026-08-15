@@ -1,10 +1,11 @@
-package com.checkit.ui.myday
+package com.checkit.ui.journal
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,6 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -46,13 +48,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -72,25 +74,95 @@ import com.checkit.domain.MoodTiredEmojis
 import com.checkit.domain.PeriodReview
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.EmojiPicker
-import com.checkit.ui.components.MarkdownView
-import com.checkit.ui.components.TagPill
 import com.checkit.ui.components.TagPlain
 import com.checkit.ui.components.getMoodColorFromEmoji
 import com.checkit.ui.tasks.TimelineItem
 import com.checkit.ui.tasks.TimelineItemType
 import com.checkit.ui.tasks.toClockLabel
 import com.checkit.ui.tasks.views.AgendaView
-import com.checkit.ui.toTimeMinutes
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.stringResource
-import org.kodein.emoji.Emoji
 
 /** Quick context presets shown as tappable chips in the entry editor. */
+data class JournalContextPreset(
+    val type: String,
+    val prompt: String,
+    val template: String
+)
+
 internal val JournalContextPresets = listOf(
-    "deep thoughts", "idea", "random", "lazying",
-    "cafe", "biking", "code", "reading", "learning language",
-    "event", "at home")
+    JournalContextPreset(
+        type = "gratitude",
+        prompt = "What are you thankful for today?",
+        template =
+"""**I am grateful for:**:
+1. 
+2. 
+3. 
+""".trimMargin()
+    ),
+    JournalContextPreset(
+        type = "growth log",
+        prompt = "How did today go? Any wins or lessons?",
+        template =
+            """**Growth Log**:
+- **Win**: 
+- **Friction**:
+- **Insight**: 
+""".trimMargin()
+    ),
+    JournalContextPreset(
+        type = "deep thoughts",
+        prompt = "What's on your mind right now?",
+        template = "**<Tôi đắn đo suy nghĩ về>**\n- "
+    ),
+    JournalContextPreset(
+        type = "idea",
+        prompt = "Got a new idea? Jot it down.",
+        template = "## Idea\n\n"
+    ),
+    JournalContextPreset(
+        type = "random",
+        prompt = "Anything else you want to record?",
+        template = ""
+    ),
+    JournalContextPreset(
+        type = "lazying",
+        prompt = "How's your rest going?",
+        template = "Resting and recharging. "
+    ),
+    JournalContextPreset(
+        type = "biking",
+        prompt = "How was the ride?",
+        template = "Out on a bike ride. "
+    ),
+    JournalContextPreset(
+        type = "coding",
+        prompt = "What are you working on?",
+        template = "Coding: "
+    ),
+    JournalContextPreset(
+        type = "reading",
+        prompt = "What are you reading about?",
+        template = "Reading: "
+    ),
+    JournalContextPreset(
+        type = "learning",
+        prompt = "What's something new you learned?",
+        template = "Learning: "
+    ),
+    JournalContextPreset(
+        type = "event",
+        prompt = "How was the event?",
+        template = "At an event: "
+    ),
+    JournalContextPreset(
+        type = "at home",
+        prompt = "How's the vibe at home?",
+        template = "Relaxing at home. "
+    )
+)
 
 private val MoodCategories = listOf(
     "Happy" to MoodHappyEmojis,
@@ -342,7 +414,7 @@ internal fun JournalEntryList(
     }
 }
 
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun JournalHistorySheet(
     entries: List<JournalEntry>,
@@ -408,12 +480,7 @@ internal fun JournalAgendaView(
 
     AgendaView(
         items = timelineItems,
-        onItemClick = { item ->
-            when (val tag = item.tag) {
-                is JournalEntry -> onEntryClick(tag)
-                is PeriodReview -> onReviewClick(tag)
-            }
-        },
+        onItemClick = { item -> },
         itemContent = { item ->
             when (val tag = item.tag) {
                 is JournalEntry -> JournalHistoryEntryCard(
@@ -423,6 +490,7 @@ internal fun JournalAgendaView(
                 )
                 is PeriodReview -> JournalAgendaReviewCard(
                     review = tag,
+                    onClick = { onReviewClick(tag)},
                     modifier = Modifier.padding(start = 8.dp)
                 )
             }
@@ -434,6 +502,7 @@ internal fun JournalAgendaView(
 @Composable
 private fun JournalAgendaReviewCard(
     review: PeriodReview,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -441,7 +510,12 @@ private fun JournalAgendaReviewCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp)
+            .pointerInput(review.id) {
+                detectTapGestures(
+                    onLongPress = { onClick() }
+                )
+            },
         verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
         Text(
@@ -450,8 +524,8 @@ private fun JournalAgendaReviewCard(
             fontWeight = FontWeight.SemiBold
         )
         if (review.content.isNotBlank()) {
-            MarkdownView(
-                markdown = review.content,
+            Text(
+                text = review.annotatedContent,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -483,7 +557,11 @@ internal fun JournalEntryCard(
                     strokeWidth = 8.dp.toPx()
                 )
             }
-            .clickable(onClick = onClick)
+            .pointerInput(entry.id) {
+                detectTapGestures(
+                    onLongPress = { onClick() }
+                )
+            }
             .padding(horizontal = 12.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.Top
@@ -493,7 +571,7 @@ internal fun JournalEntryCard(
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(
-                text = entry.content,
+                text = entry.annotatedContent,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface,
                 lineHeight = 20.sp
@@ -581,12 +659,16 @@ internal fun JournalHistoryEntryCard(
                     strokeWidth = 8.dp.toPx()
                 )
             }
-            .clickable(onClick = onClick)
+            .pointerInput(entry.id) {
+                detectTapGestures(
+                    onLongPress = { onClick() }
+                )
+            }
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Text(
-            text = entry.content,
+            text = entry.annotatedContent,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
             lineHeight = 24.sp
@@ -620,7 +702,7 @@ internal fun JournalHistoryEntryCard(
     }
 }
 
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun JournalThoughtCard(
     entry: JournalEntry,
@@ -639,7 +721,7 @@ internal fun JournalThoughtCard(
             RichTooltip(
                 title = { Text(entry.context ?: "Check-In") }
             ) {
-                Text(entry.content)
+                Text(entry.annotatedContent)
             }
         },
         state = tooltipState
@@ -661,7 +743,7 @@ internal fun JournalThoughtCard(
                 .padding(horizontal = 12.dp, vertical = 6.dp)
         ) {
             Text(
-                text = entry.content.ifBlank { entry.context.orEmpty() },
+                text = if (entry.content.isNotBlank()) entry.annotatedContent else AnnotatedString(entry.context.orEmpty()),
                 style = MaterialTheme.typography.bodyMedium,
                 fontFamily = FontFamily.Cursive,
                 fontSize = 16.sp,

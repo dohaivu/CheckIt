@@ -29,6 +29,13 @@ import com.checkit.domain.TaskReminderWriteInput
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TagItem
 import com.checkit.domain.TaskType
+import com.checkit.domain.TwelveWeekCheckIn
+import com.checkit.domain.TwelveWeekCycle
+import com.checkit.domain.TwelveWeekCycleStatus
+import com.checkit.domain.TwelveWeekGoal
+import com.checkit.domain.TwelveWeekGoalFinalStatus
+import com.checkit.domain.TwelveWeekGoalScore
+import com.checkit.domain.TwelveWeekGoalTaskLink
 import com.checkit.domain.hasEndTime
 import com.checkit.notifications.DailyPlanScheduleReminderScheduler
 import com.checkit.notifications.NoOpDailyPlanScheduleReminderScheduler
@@ -159,6 +166,41 @@ interface CheckItRepository {
 
     suspend fun linkTaskToPriority(priorityId: Long, taskId: Long)
     suspend fun linkDailyPlanItemToPriority(priorityId: Long, dailyPlanItemId: Long)
+
+    // ---------------- 12-Week Goals ----------------
+
+    fun observeTwelveWeekCycles(): Flow<List<TwelveWeekCycle>>
+    fun observeTwelveWeekGoals(): Flow<List<TwelveWeekGoal>>
+    fun observeTwelveWeekCheckIns(): Flow<List<TwelveWeekCheckIn>>
+    fun observeTwelveWeekGoalScores(): Flow<List<TwelveWeekGoalScore>>
+    fun observeTwelveWeekGoalTaskLinks(): Flow<List<TwelveWeekGoalTaskLink>>
+
+    suspend fun addTwelveWeekCycle(input: TwelveWeekCycleWriteInput): Long
+    suspend fun updateTwelveWeekCycle(
+        cycleId: Long,
+        title: String,
+        status: TwelveWeekCycleStatus,
+        reviewNote: String,
+        completedAtMillis: Long?
+    )
+    suspend fun addTwelveWeekGoal(input: TwelveWeekGoalWriteInput): Long
+    suspend fun updateTwelveWeekGoal(
+        goalId: Long,
+        title: String,
+        note: String,
+        finalStatus: TwelveWeekGoalFinalStatus?,
+        updatedAtMillis: Long
+    )
+    suspend fun deleteTwelveWeekGoal(goalId: Long)
+    suspend fun upsertTwelveWeekCheckIn(
+        cycleId: Long,
+        weekIndex: Int,
+        note: String,
+        scores: List<TwelveWeekGoalScoreWriteInput>
+    ): Long
+    suspend fun linkTwelveWeekGoalTask(goalId: Long, taskId: Long, sortOrder: Int)
+    suspend fun unlinkTwelveWeekGoalTask(goalId: Long, taskId: Long)
+    suspend fun countActiveTwelveWeekCycles(): Int
 }
 
 data class DailyPlanItemTimeUpdate(
@@ -205,6 +247,7 @@ data class TaskWriteInput(
     val listId: Long? = null,
     val keyResultId: Long? = null,
     val planPriorityId: Long? = null,
+    val twelveWeekGoalId: Long? = null,
     val name: String,
     val description: String,
     val subtasks: List<SubTaskWriteInput>,
@@ -274,6 +317,33 @@ data class PlanPriorityDailyPlanItemLink(
     val sortOrder: Int
 )
 
+data class TwelveWeekCycleWriteInput(
+    val title: String,
+    val startEpochDays: Int,
+    // end computed in use case
+    val endEpochDays: Int,
+    val status: TwelveWeekCycleStatus = TwelveWeekCycleStatus.Active
+)
+
+data class TwelveWeekGoalWriteInput(
+    val cycleId: Long,
+    val title: String,
+    val note: String = ""
+)
+
+data class TwelveWeekCheckInWriteInput(
+    val cycleId: Long,
+    val weekIndex: Int,
+    val note: String = "",
+    val scores: List<TwelveWeekGoalScoreWriteInput> = emptyList()
+)
+
+data class TwelveWeekGoalScoreWriteInput(
+    val goalId: Long,
+    val score: Int,
+    val note: String = ""
+)
+
 class RoomCheckItRepository(
     private val dao: CheckItDao,
     private val reminderNotificationScheduler: TaskReminderNotificationScheduler = NoOpTaskReminderNotificationScheduler(),
@@ -295,9 +365,10 @@ class RoomCheckItRepository(
             dao.observeSubTasks(),
             dao.observeReminders(),
             dao.observeTaskTags(),
-            dao.observeNoteTags()
-        ) { subTasks, reminders, taskTags, noteTags ->
-            TaskBoardJoins(subTasks, reminders, taskTags, noteTags)
+            dao.observeNoteTags(),
+            dao.observeTwelveWeekGoalTasks()
+        ) { subTasks, reminders, taskTags, noteTags, twelveWeekGoalTasks ->
+            TaskBoardJoins(subTasks, reminders, taskTags, noteTags, twelveWeekGoalTasks)
         }
 
         val metadataFlow = combine(
@@ -347,6 +418,7 @@ class RoomCheckItRepository(
                 .mapNotNull { entity -> plansById[entity.periodPlanId]?.let { plan -> entity.toDomain(plan) } }
                 .associateBy { it.id }
             val priorityIdByTaskId = metadata.planPriorityTasks.associate { it.taskId to it.priorityId }
+            val twelveWeekGoalIdByTaskId = joins.twelveWeekGoalTasks.associate { it.taskId to it.goalId }
 
             TaskBoard(
                 goals = domainGoals,
@@ -362,6 +434,7 @@ class RoomCheckItRepository(
                         list = listId?.let { listsById[it] },
                         keyResult = keyResultId?.let { keyResultsById[it] },
                         planPriority = priorityIdByTaskId[task.id]?.let { priorityById[it] },
+                        twelveWeekGoalId = twelveWeekGoalIdByTaskId[task.id],
                         subtasks = subTasksByTask[task.id].orEmpty().map { it.toDomain() },
                         reminders = remindersByTask[task.id].orEmpty().map { it.toDomain() },
                         tags = taskTagIds[task.id].orEmpty().mapNotNull { tagsById[it] }
@@ -543,7 +616,7 @@ class RoomCheckItRepository(
 
     override suspend fun addTask(input: TaskWriteInput): Long {
         val now = Clock.System.now().toEpochMilliseconds()
-        val isHabit = input.type == TaskType.Habit
+        val isTask = input.type == TaskType.Task
         val taskId = dao.insertTask(
             TaskEntity(
                 name = input.name,
@@ -551,10 +624,10 @@ class RoomCheckItRepository(
                 status = input.status.name,
                 priority = input.priority.name,
                 type = input.type.name,
-                doDateEpochDays = if (isHabit) null else input.doDate?.toEpochDays()?.toInt(),
-                startTimeMinutes = if (isHabit) null else input.startTimeMinutes,
-                endTimeMinutes = if (isHabit) null else input.endTimeMinutes,
-                repeatRRule = if (isHabit) null else input.repeatRRule,
+                doDateEpochDays = if (isTask) input.doDate?.toEpochDays()?.toInt() else null,
+                startTimeMinutes = if (isTask) input.startTimeMinutes else null,
+                endTimeMinutes = if (isTask) input.endTimeMinutes else null,
+                repeatRRule = if (isTask) input.repeatRRule else null,
                 sortOrder = input.listId?.let { dao.nextTaskSortOrder(it) } ?: 0,
                 createdAtMillis = now,
                 updatedAtMillis = now
@@ -563,6 +636,10 @@ class RoomCheckItRepository(
         input.listId?.let { dao.insertTaskList(TaskListEntity(taskId, it)) }
         input.keyResultId?.let { dao.insertTaskKeyResult(TaskKeyResultEntity(taskId, it)) }
         input.planPriorityId?.let { dao.insertPlanPriorityTask(PlanPriorityTaskEntity(it, taskId, 0)) }
+        input.twelveWeekGoalId?.let { goalId ->
+            dao.deleteTwelveWeekGoalTasksForTask(taskId)
+            dao.insertTwelveWeekGoalTask(TwelveWeekGoalTaskEntity(goalId = goalId, taskId = taskId, sortOrder = 0))
+        }
         input.tagIds.forEach { tagId -> addTaskTag(taskId, tagId) }
         dao.replaceTaskSubTasks(taskId, input.subtasks)
         dao.replaceTaskReminders(taskId, input.reminders)
@@ -573,7 +650,7 @@ class RoomCheckItRepository(
     override suspend fun updateTask(taskId: Long, input: TaskWriteInput) {
         val existingTask = dao.taskById(taskId)
         val shouldRemoveOpenDailyPlanItems = existingTask?.hasDifferentScheduleThan(input) == true
-        val isHabit = input.type == TaskType.Habit
+        val isTask = input.type == TaskType.Task
         dao.updateTask(
             taskId = taskId,
             name = input.name,
@@ -581,10 +658,10 @@ class RoomCheckItRepository(
             status = input.status.name,
             priority = input.priority.name,
             type = input.type.name,
-            doDateEpochDays = if (isHabit) null else input.doDate?.toEpochDays()?.toInt(),
-            startTimeMinutes = if (isHabit) null else input.startTimeMinutes,
-            endTimeMinutes = if (isHabit) null else input.endTimeMinutes,
-            repeatRRule = if (isHabit) null else input.repeatRRule,
+            doDateEpochDays = if (isTask) input.doDate?.toEpochDays()?.toInt() else null,
+            startTimeMinutes = if (isTask) input.startTimeMinutes else null,
+            endTimeMinutes = if (isTask) input.endTimeMinutes else null,
+            repeatRRule = if (isTask) input.repeatRRule else null,
             updatedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
         dao.deleteTaskList(taskId)
@@ -593,6 +670,15 @@ class RoomCheckItRepository(
         input.keyResultId?.let { dao.insertTaskKeyResult(TaskKeyResultEntity(taskId, it)) }
         dao.deletePlanPriorityTasksForTask(taskId)
         input.planPriorityId?.let { dao.insertPlanPriorityTask(PlanPriorityTaskEntity(it, taskId, 0)) }
+        when {
+            input.type == TaskType.Tactic && input.twelveWeekGoalId != null -> {
+                dao.deleteTwelveWeekGoalTasksForTask(taskId)
+                dao.insertTwelveWeekGoalTask(
+                    TwelveWeekGoalTaskEntity(goalId = input.twelveWeekGoalId, taskId = taskId, sortOrder = 0)
+                )
+            }
+            input.type != TaskType.Tactic -> dao.deleteTwelveWeekGoalTasksForTask(taskId)
+        }
         dao.deleteTaskTags(taskId)
         input.tagIds.forEach { tagId -> addTaskTag(taskId, tagId) }
         dao.replaceTaskSubTasks(taskId, input.subtasks)
@@ -608,6 +694,7 @@ class RoomCheckItRepository(
         dao.trashTask(taskId, Clock.System.now().toEpochMilliseconds())
         dao.deletePlannedDailyPlanItemsForTask(taskId)
         dao.deletePlanPriorityTasksForTask(taskId)
+        dao.deleteTwelveWeekGoalTasksForTask(taskId)
         dao.deleteTaskKeyResult(taskId)
         reminderNotificationScheduler.cancelTaskReminders(taskId)
         dailyPlanScheduleReminderScheduler.rescheduleNext()
@@ -1109,6 +1196,175 @@ class RoomCheckItRepository(
         )
     }
 
+    override fun observeTwelveWeekCycles(): Flow<List<TwelveWeekCycle>> =
+        dao.observeTwelveWeekCycles().map { entities ->
+            entities.map {
+                TwelveWeekCycle(
+                    id = it.id,
+                    title = it.title,
+                    startEpochDays = it.startEpochDays,
+                    endEpochDays = it.endEpochDays,
+                    status = enumValueOf(it.status),
+                    reviewNote = it.reviewNote,
+                    createdAtMillis = it.createdAtMillis,
+                    completedAtMillis = it.completedAtMillis
+                )
+            }
+        }
+
+    override fun observeTwelveWeekGoals(): Flow<List<TwelveWeekGoal>> =
+        dao.observeTwelveWeekGoals().map { entities ->
+            entities.map {
+                TwelveWeekGoal(
+                    id = it.id,
+                    cycleId = it.cycleId,
+                    title = it.title,
+                    note = it.note,
+                    sortOrder = it.sortOrder,
+                    finalStatus = it.finalStatus?.let { status -> enumValueOf<TwelveWeekGoalFinalStatus>(status) },
+                    createdAtMillis = it.createdAtMillis,
+                    updatedAtMillis = it.updatedAtMillis
+                )
+            }
+        }
+
+    override fun observeTwelveWeekCheckIns(): Flow<List<TwelveWeekCheckIn>> =
+        dao.observeTwelveWeekCheckIns().map { entities ->
+            entities.map {
+                TwelveWeekCheckIn(
+                    id = it.id,
+                    cycleId = it.cycleId,
+                    weekIndex = it.weekIndex,
+                    note = it.note,
+                    createdAtMillis = it.createdAtMillis,
+                    updatedAtMillis = it.updatedAtMillis
+                )
+            }
+        }
+
+    override fun observeTwelveWeekGoalScores(): Flow<List<TwelveWeekGoalScore>> =
+        dao.observeTwelveWeekGoalScores().map { entities ->
+            entities.map {
+                TwelveWeekGoalScore(
+                    id = it.id,
+                    checkInId = it.checkInId,
+                    goalId = it.goalId,
+                    score = it.score,
+                    note = it.note
+                )
+            }
+        }
+
+    override fun observeTwelveWeekGoalTaskLinks(): Flow<List<TwelveWeekGoalTaskLink>> =
+        dao.observeTwelveWeekGoalTasks().map { links ->
+            links.map { TwelveWeekGoalTaskLink(goalId = it.goalId, taskId = it.taskId, sortOrder = it.sortOrder) }
+        }
+
+    override suspend fun addTwelveWeekCycle(input: TwelveWeekCycleWriteInput): Long {
+        val now = Clock.System.now().toEpochMilliseconds()
+        return dao.insertTwelveWeekCycle(
+            TwelveWeekCycleEntity(
+                title = input.title.trim(),
+                startEpochDays = input.startEpochDays,
+                endEpochDays = input.endEpochDays,
+                status = input.status.name,
+                createdAtMillis = now
+            )
+        )
+    }
+
+    override suspend fun updateTwelveWeekCycle(
+        cycleId: Long,
+        title: String,
+        status: TwelveWeekCycleStatus,
+        reviewNote: String,
+        completedAtMillis: Long?
+    ) {
+        dao.updateTwelveWeekCycle(
+            cycleId = cycleId,
+            title = title.trim(),
+            status = status.name,
+            reviewNote = reviewNote.trim(),
+            completedAtMillis = completedAtMillis
+        )
+    }
+
+    override suspend fun addTwelveWeekGoal(input: TwelveWeekGoalWriteInput): Long {
+        val now = Clock.System.now().toEpochMilliseconds()
+        return dao.insertTwelveWeekGoal(
+            TwelveWeekGoalEntity(
+                cycleId = input.cycleId,
+                title = input.title.trim(),
+                note = input.note.trim(),
+                sortOrder = dao.nextTwelveWeekGoalSortOrder(input.cycleId),
+                createdAtMillis = now,
+                updatedAtMillis = now
+            )
+        )
+    }
+
+    override suspend fun updateTwelveWeekGoal(
+        goalId: Long,
+        title: String,
+        note: String,
+        finalStatus: TwelveWeekGoalFinalStatus?,
+        updatedAtMillis: Long
+    ) {
+        dao.updateTwelveWeekGoal(
+            goalId = goalId,
+            title = title.trim(),
+            note = note.trim(),
+            finalStatus = finalStatus?.name,
+            updatedAtMillis = updatedAtMillis
+        )
+    }
+
+    override suspend fun deleteTwelveWeekGoal(goalId: Long) {
+        dao.deleteTwelveWeekGoal(goalId)
+    }
+
+    override suspend fun upsertTwelveWeekCheckIn(
+        cycleId: Long,
+        weekIndex: Int,
+        note: String,
+        scores: List<TwelveWeekGoalScoreWriteInput>
+    ): Long {
+        val now = Clock.System.now().toEpochMilliseconds()
+        val existing = dao.twelveWeekCheckInFor(cycleId, weekIndex)
+        val checkInId = if (existing != null) {
+            dao.updateTwelveWeekCheckIn(existing.id, note.trim(), now)
+            existing.id
+        } else {
+            dao.insertTwelveWeekCheckIn(
+                TwelveWeekCheckInEntity(
+                    cycleId = cycleId,
+                    weekIndex = weekIndex,
+                    note = note.trim(),
+                    createdAtMillis = now,
+                    updatedAtMillis = now
+                )
+            )
+        }
+        dao.replaceTwelveWeekScores(
+            checkInId = checkInId,
+            scores = scores.map { TwelveWeekGoalScoreEntity(checkInId = checkInId, goalId = it.goalId, score = it.score, note = it.note.trim()) }
+        )
+        return checkInId
+    }
+
+    override suspend fun linkTwelveWeekGoalTask(goalId: Long, taskId: Long, sortOrder: Int) {
+        dao.deleteTwelveWeekGoalTasksForTask(taskId)
+        dao.insertTwelveWeekGoalTask(
+            TwelveWeekGoalTaskEntity(goalId = goalId, taskId = taskId, sortOrder = sortOrder)
+        )
+    }
+
+    override suspend fun unlinkTwelveWeekGoalTask(goalId: Long, taskId: Long) {
+        dao.deleteTwelveWeekGoalTask(goalId, taskId)
+    }
+
+    override suspend fun countActiveTwelveWeekCycles(): Int = dao.countActiveTwelveWeekCycles()
+
     private suspend fun addTaskTag(taskId: Long, tagId: Long) {
         dao.insertTaskTagIfParentsExist(taskId, tagId)
         dao.updateTagLastUsedAtMillis(tagId, Clock.System.now().toEpochMilliseconds())
@@ -1176,7 +1432,8 @@ private data class TaskBoardJoins(
     val subTasks: List<SubTaskEntity>,
     val reminders: List<TaskReminderEntity>,
     val taskTags: List<TaskTagEntity>,
-    val noteTags: List<NoteTagEntity>
+    val noteTags: List<NoteTagEntity>,
+    val twelveWeekGoalTasks: List<TwelveWeekGoalTaskEntity>
 )
 
 private data class TaskBoardMetadata(
@@ -1262,6 +1519,7 @@ private fun TaskEntity.toDomain(
     list: ListItem?,
     keyResult: KeyResult?,
     planPriority: PlanPriority?,
+    twelveWeekGoalId: Long? = null,
     subtasks: List<SubTaskItem>,
     reminders: List<TaskReminder>,
     tags: List<TagItem>
@@ -1270,6 +1528,7 @@ private fun TaskEntity.toDomain(
     list = list,
     keyResult = keyResult,
     planPriority = planPriority,
+    twelveWeekGoalId = twelveWeekGoalId,
     name = name,
     description = description,
     subtasks = subtasks,

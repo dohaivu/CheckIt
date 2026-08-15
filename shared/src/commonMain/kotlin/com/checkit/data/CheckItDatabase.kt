@@ -542,6 +542,120 @@ data class PlanPriorityDailyPlanItemEntity(
     val sortOrder: Int
 )
 
+@Entity(
+    tableName = "twelve_week_cycles",
+    indices = [Index("status")]
+)
+data class TwelveWeekCycleEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0L,
+    val title: String,
+    val startEpochDays: Int,
+    val endEpochDays: Int,
+    val status: String,
+    val reviewNote: String = "",
+    val createdAtMillis: Long,
+    val completedAtMillis: Long? = null
+)
+
+@Entity(
+    tableName = "twelve_week_goals",
+    foreignKeys = [
+        ForeignKey(
+            entity = TwelveWeekCycleEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["cycleId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("cycleId")]
+)
+data class TwelveWeekGoalEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0L,
+    val cycleId: Long,
+    val title: String,
+    val note: String = "",
+    val sortOrder: Int,
+    val finalStatus: String? = null,
+    val createdAtMillis: Long,
+    val updatedAtMillis: Long
+)
+
+@Entity(
+    tableName = "twelve_week_check_ins",
+    foreignKeys = [
+        ForeignKey(
+            entity = TwelveWeekCycleEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["cycleId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index(value = ["cycleId", "weekIndex"], unique = true)]
+)
+data class TwelveWeekCheckInEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0L,
+    val cycleId: Long,
+    val weekIndex: Int,
+    val note: String = "",
+    val createdAtMillis: Long,
+    val updatedAtMillis: Long
+)
+
+@Entity(
+    tableName = "twelve_week_goal_scores",
+    foreignKeys = [
+        ForeignKey(
+            entity = TwelveWeekCheckInEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["checkInId"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = TwelveWeekGoalEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["goalId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index(value = ["checkInId", "goalId"], unique = true)]
+)
+data class TwelveWeekGoalScoreEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0L,
+    val checkInId: Long,
+    val goalId: Long,
+    val score: Int,
+    val note: String = ""
+)
+
+@Entity(
+    tableName = "twelve_week_goal_tasks",
+    primaryKeys = ["goalId", "taskId"],
+    foreignKeys = [
+        ForeignKey(
+            entity = TwelveWeekGoalEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["goalId"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = TaskEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["taskId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("taskId", unique = true)]
+)
+data class TwelveWeekGoalTaskEntity(
+    val goalId: Long,
+    val taskId: Long,
+    val sortOrder: Int
+)
+
 @Database(
     entities = [
         GoalEntity::class,
@@ -567,7 +681,12 @@ data class PlanPriorityDailyPlanItemEntity(
         PeriodPlanEntity::class,
         PlanPriorityEntity::class,
         PlanPriorityTaskEntity::class,
-        PlanPriorityDailyPlanItemEntity::class
+        PlanPriorityDailyPlanItemEntity::class,
+        TwelveWeekCycleEntity::class,
+        TwelveWeekGoalEntity::class,
+        TwelveWeekCheckInEntity::class,
+        TwelveWeekGoalScoreEntity::class,
+        TwelveWeekGoalTaskEntity::class
     ],
     version = 1,
     exportSchema = false

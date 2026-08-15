@@ -139,6 +139,12 @@ class TaskViewModel(
         }
     }
 
+    fun selectTwelveWeek() {
+        _uiState.update {
+            it.copy(selection = TaskSelectionState(isTwelveWeekSelected = true))
+        }
+    }
+
     fun selectList(listId: Long) {
         _uiState.update {
             it.copy(selection = TaskSelectionState(selectedListId = listId))
@@ -277,6 +283,21 @@ class TaskViewModel(
         }
     }
 
+    fun openNewTactic(goalId: Long, date: LocalDate = today()) {
+        cancelPendingTaskTextSave()
+        _uiState.update {
+            it.copy(
+                editor = TaskEditorState.TaskForm(
+                    mode = EditorMode.Add,
+                    listId = null,
+                    twelveWeekGoalId = goalId,
+                    type = TaskType.Tactic,
+                    doDate = date
+                )
+            )
+        }
+    }
+
     fun openNewTaskOnKeyResult(keyResult: KeyResult) {
         cancelPendingTaskTextSave()
         _uiState.update {
@@ -344,83 +365,6 @@ class TaskViewModel(
         }
     }
 
-    fun switchAddEditorToTask() {
-        _uiState.update { state ->
-            when (val current = state.editor) {
-                is TaskEditorState.TaskForm -> {
-                    if (current.mode != EditorMode.Add || current.type == TaskType.Task) return@update state
-                    state.copy(editor = current.copy(type = TaskType.Task))
-                }
-                is TaskEditorState.NoteForm -> {
-                    if (current.mode != EditorMode.Add) return@update state
-                    state.copy(
-                        editor = TaskEditorState.TaskForm(
-                            mode = EditorMode.Add,
-                            listId = current.listId,
-                            name = current.title,
-                            description = current.content,
-                            doDate = current.date,
-                            selectedTagIds = current.selectedTagIds
-                        )
-                    )
-                }
-                null -> state
-            }
-        }
-    }
-
-    fun switchAddEditorToHabit() {
-        _uiState.update { state ->
-            when (val current = state.editor) {
-                is TaskEditorState.TaskForm -> {
-                    if (current.mode != EditorMode.Add || current.type == TaskType.Habit) return@update state
-                    state.copy(
-                        editor = current.copy(
-                            type = TaskType.Habit,
-                            doDate = null,
-                            startTimeMinutes = null,
-                            endTimeMinutes = null,
-                            repeatPreset = RepeatPreset.None,
-                            reminderOffsets = emptySet()
-                        )
-                    )
-                }
-                is TaskEditorState.NoteForm -> {
-                    if (current.mode != EditorMode.Add) return@update state
-                    state.copy(
-                        editor = TaskEditorState.TaskForm(
-                            mode = EditorMode.Add,
-                            listId = current.listId,
-                            name = current.title,
-                            description = current.content,
-                            type = TaskType.Habit,
-                            selectedTagIds = current.selectedTagIds
-                        )
-                    )
-                }
-                null -> state
-            }
-        }
-    }
-
-    fun switchAddEditorToNote() {
-        _uiState.update { state ->
-            val task = state.editor as? TaskEditorState.TaskForm ?: return@update state
-            if (task.mode != EditorMode.Add) return@update state
-            state.copy(
-                editor = TaskEditorState.NoteForm(
-                    mode = EditorMode.Add,
-                    listId = task.listId,
-                    title = task.name,
-                    content = task.description,
-                    date = task.doDate ?: today(),
-                    startTimeMinutes = task.startTimeMinutes,
-                    selectedTagIds = task.selectedTagIds
-                )
-            )
-        }
-    }
-
     fun openTask(task: TaskItem, dailyPlan: DailyPlanItem? = null) {
         cancelPendingTaskTextSave()
         _uiState.update {
@@ -431,6 +375,7 @@ class TaskViewModel(
                     listId = task.list?.id,
                     keyResultId = task.keyResult?.id,
                     planPriorityId = task.planPriority?.id,
+                    twelveWeekGoalId = task.twelveWeekGoalId,
                     name = task.name,
                     description = task.description,
                     doDate = task.doDate,
@@ -770,6 +715,7 @@ class TaskViewModel(
             listId = listId,
             keyResultId = keyResultId,
             planPriorityId = planPriorityId,
+            twelveWeekGoalId = twelveWeekGoalId,
             name = name.trim(),
             description = description.trim(),
             status = status,
@@ -902,7 +848,8 @@ class TaskViewModel(
                 selectedListId = nextListId,
                 selectedTagId = nextTagId,
                 selectedGoalId = nextGoalId,
-                isPlanSelected = selection.isPlanSelected
+                isPlanSelected = selection.isPlanSelected,
+                isTwelveWeekSelected = selection.isTwelveWeekSelected
             ),
             options = options.copy(
                 selectedFilterId = nextFilterId,

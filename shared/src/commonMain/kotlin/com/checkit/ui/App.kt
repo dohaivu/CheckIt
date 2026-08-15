@@ -37,8 +37,8 @@ import com.checkit.ui.calendar.CalendarScreen
 import com.checkit.ui.components.LocalSnackbarHostState
 import com.checkit.ui.localization.AppLocaleProvider
 import com.checkit.ui.myday.DailyPlanItemEditorSheet
-import com.checkit.ui.myday.JournalEntryEditorSheet
-import com.checkit.ui.myday.JournalListSheet
+import com.checkit.ui.journal.JournalEntryEditorSheet
+import com.checkit.ui.journal.JournalListSheet
 import com.checkit.ui.myday.MyDayScreen
 import com.checkit.ui.plan.PlanPriorityEditorSheet
 import com.checkit.ui.reflect.PeriodReviewEditorSheet
@@ -51,6 +51,7 @@ import com.checkit.ui.tasks.TaskScreen
 import com.checkit.ui.tasks.tag.TagEditorSheet
 import com.checkit.ui.tasks.tag.TagScreen
 import com.checkit.ui.theme.AppTheme
+import com.checkit.ui.twelveweek.TwelveWeekScreen
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
@@ -95,7 +96,8 @@ fun CheckItApp(
             viewModels.myDay.events,
             viewModels.settings.events,
             viewModels.reflect.events,
-            viewModels.plan.events
+            viewModels.plan.events,
+            viewModels.twelveWeek.events
         ).collect { event ->
             when (event) {
                 is UiEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
@@ -112,6 +114,7 @@ fun CheckItApp(
     val myDayUiState by viewModels.myDay.uiState.collectAsState()
     val calendarUiState by viewModels.calendar.uiState.collectAsState()
     val planUiState by viewModels.plan.uiState.collectAsState()
+    val twelveWeekUiState by viewModels.twelveWeek.uiState.collectAsState()
     val reflectEditorState by viewModels.reflect.editor.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
     val appScope = rememberCoroutineScope()
@@ -253,6 +256,10 @@ fun CheckItApp(
                                             objectiveViewModel = viewModels.objective,
                                             listViewModel = viewModels.list,
                                             planViewModel = viewModels.plan,
+                                            twelveWeekViewModel = viewModels.twelveWeek,
+                                            twelveWeekGoals = twelveWeekUiState.workspace.cycleCards
+                                                .flatMap { it.goals }
+                                                .map { it.goal },
                                             onOpenTags = { navState.push(AppRoute.Tags) }
                                         )
                                     }
@@ -300,7 +307,7 @@ fun CheckItApp(
                                         val reflectState by viewModels.reflect.uiState.collectAsState()
                                         ReflectScreen(
                                             state = reflectState,
-                                            viewModel = viewModels.reflect,
+                                            viewModel = viewModels.reflect
                                         )
                                     }
 
@@ -318,6 +325,9 @@ fun CheckItApp(
                             availableTags = taskUiState.board.tags,
                             availableKeyResults = taskUiState.board.keyResults,
                             availablePlanPriorities = taskUiState.board.planPriorities,
+                            availableTwelveWeekGoals = twelveWeekUiState.workspace.cycleCards
+                                .flatMap { it.goals }
+                                .map { it.goal },
                             actions = TaskEditorActions(
                                 onDismiss = viewModels.task::dismissEditor,
                                 onSave = viewModels.task::saveEditor,
@@ -368,9 +378,6 @@ fun CheckItApp(
                                 onNoteStartTimeChange = viewModels.task::updateNoteStartTime,
                                 onNoteTagToggle = viewModels.task::toggleNoteTag,
                                 onNewTagClick = viewModels.tag::openNewTag,
-                                onSwitchAddModeToTask = viewModels.task::switchAddEditorToTask,
-                                onSwitchAddModeToHabit = viewModels.task::switchAddEditorToHabit,
-                                onSwitchAddModeToNote = viewModels.task::switchAddEditorToNote
                             )
                         )
                     }
@@ -400,6 +407,7 @@ fun CheckItApp(
                             onDismiss = viewModels.myDay::dismissJournalEditor,
                             onContextChange = viewModels.myDay::updateJournalEditorContext,
                             onContentChange = viewModels.myDay::updateJournalEditorContent,
+                            onPresetSelected = viewModels.myDay::applyJournalContextPreset,
                             onMoodToggle = viewModels.myDay::toggleJournalEditorMood,
                             onTagToggle = viewModels.myDay::toggleJournalEditorTag,
                             onNewTagClick = viewModels.tag::openNewTag,

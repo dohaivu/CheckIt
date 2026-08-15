@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -73,6 +72,8 @@ import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.hasEndTime
 import com.checkit.ui.components.TinyTopAppBar
+import com.checkit.ui.journal.JournalSection
+import com.checkit.ui.journal.JournalThoughtCard
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.tasks.TimelineItem
 import com.checkit.ui.tasks.TimelineItemType
@@ -88,7 +89,6 @@ import com.checkit.ui.tasks.views.TaskAllDayCard
 import com.checkit.ui.tasks.views.TaskTimelineCard
 import com.checkit.ui.tasks.views.TimelineView
 import com.checkit.ui.today
-import com.checkit.ui.toTimeMinutes
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.stringResource
 

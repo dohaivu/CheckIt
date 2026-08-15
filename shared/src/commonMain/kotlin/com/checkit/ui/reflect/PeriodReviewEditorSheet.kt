@@ -25,6 +25,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -41,6 +42,7 @@ import checkit.shared.generated.resources.reflect_review_save
 import com.checkit.domain.ReviewSource
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
+import com.checkit.ui.components.MarkdownVisualTransformation
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -109,7 +111,8 @@ internal fun PeriodReviewEditorSheet(
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = stringResource(Res.string.reflect_review_content_placeholder),
                 minLines = 10,
-                enabled = !editor.isSaving
+                enabled = !editor.isSaving,
+                visualTransformation = remember { MarkdownVisualTransformation() }
             )
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -138,7 +141,8 @@ internal fun PeriodReviewEditorSheet(
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = stringResource(Res.string.reflect_review_intent_placeholder),
                 minLines = 5,
-                enabled = !editor.isSaving
+                enabled = !editor.isSaving,
+                visualTransformation = remember { MarkdownVisualTransformation() }
             )
             Spacer(modifier = Modifier.weight(1f))
             Row(

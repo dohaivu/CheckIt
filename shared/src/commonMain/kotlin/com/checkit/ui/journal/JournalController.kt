@@ -1,8 +1,11 @@
-package com.checkit.ui.myday
+package com.checkit.ui.journal
 
 import com.checkit.data.JournalEntryWriteInput
 import com.checkit.domain.JournalEntry
 import com.checkit.ui.UiEvent
+import com.checkit.ui.myday.JournalEntryEditorState
+import com.checkit.ui.myday.MyDayDependencies
+import com.checkit.ui.myday.MyDayStateHolder
 import com.checkit.ui.today
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -51,6 +54,9 @@ internal class JournalController(
 
     fun updateJournalEditorContext(value: String) = updateEditor { it.copy(context = value) }
     fun updateJournalEditorContent(value: String) = updateEditor { it.copy(content = value) }
+    fun applyJournalContextPreset(preset: JournalContextPreset) = updateEditor {
+        it.copy(context = preset.type, content = preset.template, prompt = preset.prompt)
+    }
     fun toggleJournalEditorMood(mood: String) = updateEditor {
         val next = if (mood in it.moods) it.moods - mood else it.moods + mood
         it.copy(moods = next)

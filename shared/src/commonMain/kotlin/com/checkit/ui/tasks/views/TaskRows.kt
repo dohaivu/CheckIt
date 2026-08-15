@@ -1,7 +1,6 @@
 package com.checkit.ui.tasks.views
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,14 +12,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,19 +29,18 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.NoteItem
-import com.checkit.domain.ListItem
-import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskType
+import com.checkit.domain.TwelveWeekGoal
 import com.checkit.ui.components.DateTimeRangeDetailChip
 import com.checkit.ui.components.DetailChip
-import com.checkit.ui.components.RichTextPreview
 import com.checkit.ui.components.SupportingPills
 import com.checkit.ui.duration
 import com.checkit.ui.tasks.HabitIcon
 import com.checkit.ui.tasks.NoteIcon
 import com.checkit.ui.tasks.SubtaskBriefList
+import com.checkit.ui.tasks.TacticIcon
 import com.checkit.ui.tasks.TaskIcon
 import com.checkit.ui.tasks.TaskListDisplayType
 import com.checkit.ui.tasks.cardColor
@@ -59,7 +54,8 @@ internal fun TaskRow(
     task: TaskItem,
     onClick: () -> Unit,
     showList: Boolean = true,
-    displayType: TaskListDisplayType = TaskListDisplayType.Standard
+    displayType: TaskListDisplayType = TaskListDisplayType.Standard,
+    twelveWeekGoal: TwelveWeekGoal? = null,
 ) {
     BaseTaskRow(
         color = task.cardColor(),
@@ -70,8 +66,8 @@ internal fun TaskRow(
         Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
             when (displayType) {
                 TaskListDisplayType.Brief -> BriefTaskRowContent(task)
-                TaskListDisplayType.Standard -> StandardTaskRowContent(task, showList)
-                TaskListDisplayType.Detail -> DetailTaskRowContent(task, showList)
+                TaskListDisplayType.Standard -> StandardTaskRowContent(task, showList, twelveWeekGoal = twelveWeekGoal)
+                TaskListDisplayType.Detail -> DetailTaskRowContent(task, showList, twelveWeekGoal = twelveWeekGoal)
             }
         }
     }
@@ -298,6 +294,8 @@ internal fun BriefTaskRowContent(task: TaskItem) {
     ) {
         if (task.type == TaskType.Habit) {
             HabitIcon(task.status == TaskStatus.Completed, color = task.priority.priorityColor())
+        } else if (task.type == TaskType.Tactic) {
+            TacticIcon(task.status == TaskStatus.Completed, color = task.priority.priorityColor())
         } else {
             TaskIcon(
                 completed = task.status == TaskStatus.Completed,
@@ -318,7 +316,7 @@ internal fun BriefTaskRowContent(task: TaskItem) {
 }
 
 @Composable
-internal fun StandardTaskRowContent(task: TaskItem, showList: Boolean) {
+internal fun StandardTaskRowContent(task: TaskItem, showList: Boolean, twelveWeekGoal: TwelveWeekGoal? = null) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -332,6 +330,7 @@ internal fun StandardTaskRowContent(task: TaskItem, showList: Boolean) {
             list = if (showList) task.list else null,
             planPriority = task.planPriority,
             keyResult = task.keyResult,
+            twelveWeekGoal = twelveWeekGoal,
             tags = task.tags.take(2),
             overflowCount = (task.tags.size - 2).coerceAtLeast(0)
         )
@@ -339,7 +338,7 @@ internal fun StandardTaskRowContent(task: TaskItem, showList: Boolean) {
 }
 
 @Composable
-internal fun DetailTaskRowContent(task: TaskItem, showList: Boolean) {
+internal fun DetailTaskRowContent(task: TaskItem, showList: Boolean, twelveWeekGoal: TwelveWeekGoal? = null) {
     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         TaskTitleRow(task, descriptionMaxLines = 3)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -353,6 +352,7 @@ internal fun DetailTaskRowContent(task: TaskItem, showList: Boolean) {
             list = if (showList) task.list else null,
             planPriority = task.planPriority,
             keyResult = task.keyResult,
+            twelveWeekGoal = twelveWeekGoal,
             tags = task.tags
         )
     }
@@ -391,10 +391,11 @@ internal fun StandardNoteRowContent(note: NoteItem, showList: Boolean) {
                     Text(note.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                 }
                 if (note.content.isNotBlank()) {
-                    RichTextPreview(
-                        markdown = note.content,
+                    Text(
+                        text = note.annotatedContent,
                         style = MaterialTheme.typography.bodyMedium,
                         maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
@@ -427,10 +428,11 @@ internal fun DetailNoteRowContent(note: NoteItem, showList: Boolean) {
                     Text(note.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                 }
                 if (note.content.isNotBlank()) {
-                    RichTextPreview(
-                        markdown = note.content,
+                    Text(
+                        text = note.annotatedContent,
                         style = MaterialTheme.typography.bodyMedium,
                         maxLines = 5,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
@@ -456,6 +458,8 @@ internal fun TaskTitleRow(
     ) {
         if (task.type == TaskType.Habit) {
             HabitIcon(task.status == TaskStatus.Completed, task.priority.priorityColor())
+        } else if (task.type == TaskType.Tactic) {
+            TacticIcon(task.status == TaskStatus.Completed, task.priority.priorityColor())
         } else {
             TaskIcon(
                 completed = task.status == TaskStatus.Completed,

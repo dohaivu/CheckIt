@@ -1,5 +1,7 @@
 package com.checkit.domain
 
+import androidx.compose.ui.text.AnnotatedString
+import com.checkit.ui.components.parseMarkdownToAnnotatedString
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
@@ -89,6 +91,9 @@ data class PeriodReview(
 ) {
     val periodStartDate: LocalDate get() = LocalDate.fromEpochDays(periodStartEpochDays)
     val isComplete: Boolean get() = status == ReviewStatus.Complete
+    val annotatedContent: AnnotatedString by lazy {
+        parseMarkdownToAnnotatedString(content)
+    }
 }
 
 private fun LocalDate.firstDayOfWeek(): LocalDate =

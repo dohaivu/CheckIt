@@ -1,5 +1,7 @@
 package com.checkit.domain
 
+import com.checkit.ui.components.parseMarkdownToAnnotatedString
+import androidx.compose.ui.text.AnnotatedString
 import kotlinx.datetime.LocalDate
 
 data class AppConfig(val versionName: String)
@@ -106,6 +108,7 @@ data class TaskItem(
     val list: ListItem? = null,
     val keyResult: KeyResult? = null,
     val planPriority: PlanPriority? = null,
+    val twelveWeekGoalId: Long? = null,
     val name: String,
     val description: String = "",
     val subtasks: List<SubTaskItem> = emptyList(),
@@ -125,6 +128,9 @@ data class TaskItem(
     val trashedAtMillis: Long? = null
 ) {
     val isTrashed: Boolean get() = trashedAtMillis != null
+    val annotatedContent: AnnotatedString by lazy {
+        parseMarkdownToAnnotatedString(description)
+    }
 }
 
 data class SubTaskItem(
@@ -150,6 +156,9 @@ data class NoteItem(
     val trashedAtMillis: Long? = null
 ) {
     val isTrashed: Boolean get() = trashedAtMillis != null
+    val annotatedContent: AnnotatedString by lazy {
+        parseMarkdownToAnnotatedString(content)
+    }
 }
 
 data class DailyPlan(
@@ -176,7 +185,11 @@ data class DailyPlanItem(
     val carriedFromItemId: Long? = null,
     /** Timestamp (epoch millis) when this item was resolved by a review or carry-over. */
     val handledAtMillis: Long? = null
-)
+) {
+    val annotatedContent: AnnotatedString by lazy {
+        parseMarkdownToAnnotatedString(note)
+    }
+}
 
 enum class DailyPlanItemSource {
     ExistingTask,
@@ -204,7 +217,11 @@ data class JournalEntry(
     val tags: List<TagItem> = emptyList(),
     val createdTimeMinutes: Int,
     val attachments: List<String> = emptyList()
-)
+) {
+    val annotatedContent: AnnotatedString by lazy {
+        parseMarkdownToAnnotatedString(content)
+    }
+}
 
 data class TagItem(
     val id: Long,
@@ -240,7 +257,8 @@ data class TaskFilter(
 
 enum class TaskType {
     Task,
-    Habit
+    Habit,
+    Tactic
 }
 
 enum class TaskStatus {

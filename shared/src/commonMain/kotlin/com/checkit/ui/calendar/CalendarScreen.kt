@@ -59,6 +59,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -76,22 +77,22 @@ import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.usecase.BuildDailyPlanMarkdownSummaryUseCase
 import com.checkit.ui.components.MarkdownView
-import com.checkit.ui.components.RichTextPreview
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TinyTopAppBar
+import com.checkit.ui.components.parseMarkdownToAnnotatedString
 import com.checkit.ui.firstDayOfMonth
 import com.checkit.ui.isSameMonth
+import com.checkit.ui.journal.JournalHistorySheet
 import com.checkit.ui.localizedMonthTitle
 import com.checkit.ui.localizedShortMonthName
 import com.checkit.ui.localizedWeekdayName
 import com.checkit.ui.myday.DayLinearTimeline
-import com.checkit.ui.myday.JournalHistorySheet
 import com.checkit.ui.myday.MyDayAgenda
 import com.checkit.ui.shortName
 import com.checkit.ui.tasks.TaskAgendaView
+import com.checkit.ui.tasks.toDurationLabel
 import com.checkit.ui.tasks.views.ContentContainerAlpha
 import com.checkit.ui.today
-import com.checkit.ui.tasks.toDurationLabel
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
@@ -577,9 +578,9 @@ private fun SelectedDateHeader(
                                     tint = Color(0xFFEAB308)
                                 )
                             }
-                            MarkdownView(
+                            Text(
                                 modifier = Modifier.weight(1f),
-                                markdown = winNote,
+                                text = remember(winNote) { parseMarkdownToAnnotatedString(winNote) },
                                 style = MaterialTheme.typography.bodySmall.copy(
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
@@ -609,7 +610,7 @@ private fun DailyPlanMarkdownSummary(
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
-    RichTextPreview(
+    MarkdownView(
         markdown = markdown,
         modifier = modifier.verticalScroll(scrollState)
     )
@@ -1028,7 +1029,7 @@ private fun HallOfFameHandle(
 
 @Composable
 private fun MonthlyWinsGallery(
-    wins: List<Pair<LocalDate, String>>,
+    wins: List<Pair<LocalDate, AnnotatedString>>,
     onDateClick: (LocalDate) -> Unit
 ) {
     if (wins.isEmpty()) {
@@ -1059,7 +1060,7 @@ private fun MonthlyWinsGallery(
 @Composable
 private fun WinCard(
     date: LocalDate,
-    winNote: String,
+    winNote: AnnotatedString,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null
 ) {
@@ -1086,7 +1087,7 @@ private fun WinCard(
 @Composable
 private fun WinCardContent(
     date: LocalDate,
-    winNote: String
+    winNote: AnnotatedString
 ) {
     Row(
         modifier = Modifier
@@ -1121,8 +1122,8 @@ private fun WinCardContent(
                     color = Color(0xFFEAB308)
                 )
             }
-            MarkdownView(
-                markdown = winNote,
+            Text(
+                text = winNote,
                 style = MaterialTheme.typography.bodyMedium.copy(
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface

@@ -16,17 +16,25 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.stringResource
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.clear_text
 import com.checkit.ui.tasks.views.ContentContainerAlpha
+import androidx.compose.ui.unit.sp
 
 @Composable
 fun AppOutlinedTextField(
@@ -45,6 +53,7 @@ fun AppOutlinedTextField(
     clearEnabled: Boolean = false,
     readOnly: Boolean = false,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    visualTransformation: VisualTransformation = VisualTransformation.None,
     trailingIcon: @Composable (() -> Unit)? = null,
     contentPadding: PaddingValues = PaddingValues(horizontal = 0.dp, vertical = 0.dp)
 ) {
@@ -71,6 +80,7 @@ fun AppOutlinedTextField(
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+        visualTransformation = visualTransformation,
         decorationBox = { innerTextField ->
             OutlinedTextFieldDefaults.DecorationBox(
                 value = value,
@@ -111,4 +121,220 @@ fun AppOutlinedTextField(
             )
         }
     )
+}
+
+class MarkdownVisualTransformation : VisualTransformation {
+    private val boldRegex = Regex("\\*\\*(.*?)\\*\\*")
+    private val italicRegex = Regex("\\*(.*?)\\*")
+    // Matches any digit followed by a period and a space (e.g., "1. ", "12. ")
+    private val numberedListRegex = Regex("^\\d+\\.\\s")
+
+    override fun filter(text: AnnotatedString): TransformedText {
+        val rawText = text.text
+
+        val transformed = buildAnnotatedString {
+            // 1. Put down the raw text first
+            append(rawText)
+
+            // 2. Format Line-Based Elements: Headers & Lists
+            var currentLineStart = 0
+            val lines = rawText.split('\n')
+
+            lines.forEach { line ->
+                val lineLength = line.length
+
+                when {
+                    // Header 1: "# "
+                    line.startsWith("# ") -> {
+                        addStyle(
+                            style = SpanStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold),
+                            start = currentLineStart,
+                            end = currentLineStart + lineLength
+                        )
+                    }
+                    // Header 2: "## "
+                    line.startsWith("## ") -> {
+                        addStyle(
+                            style = SpanStyle(fontSize = 20.sp, fontWeight = FontWeight.Bold),
+                            start = currentLineStart,
+                            end = currentLineStart + lineLength
+                        )
+                    }
+                    // Header 3: "### "
+                    line.startsWith("### ") -> {
+                        addStyle(
+                            style = SpanStyle(fontSize = 18.sp, fontWeight = FontWeight.SemiBold),
+                            start = currentLineStart,
+                            end = currentLineStart + lineLength
+                        )
+                    }
+                    // Bullet Lists: Starts with "- " or "* " (followed by space, not bolding)
+                    line.startsWith("- ") || line.startsWith("* ") -> {
+                        // Style just the marker symbol to make it look clean
+                        addStyle(
+                            style = SpanStyle(
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace
+                            ),
+                            start = currentLineStart,
+                            end = currentLineStart + 2
+                        )
+                    }
+                    // Numbered Lists: Starts with digits like "1. " or "2. "
+                    numberedListRegex.find(line) != null -> {
+                        val match = numberedListRegex.find(line)!!
+                        val markerLength = match.value.length
+                        // Style the number prefix to keep spacing consistent
+                        addStyle(
+                            style = SpanStyle(
+                                fontWeight = FontWeight.Medium,
+                                fontFamily = FontFamily.Monospace
+                            ),
+                            start = currentLineStart,
+                            end = currentLineStart + markerLength
+                        )
+                    }
+                }
+                // Move index tracker past the current line and its \n newline token
+                currentLineStart += lineLength + 1
+            }
+
+            // 3. Format Inline Elements: Bold (**text**)
+            boldRegex.findAll(rawText).forEach { matchResult ->
+                val range = matchResult.range
+                addStyle(
+                    style = SpanStyle(fontWeight = FontWeight.Bold),
+                    start = range.first,
+                    end = range.last + 1
+                )
+            }
+
+            // 4. Format Inline Elements: Italic (*text*)
+            italicRegex.findAll(rawText).forEach { matchResult ->
+                val range = matchResult.range
+                addStyle(
+                    style = SpanStyle(fontStyle = FontStyle.Italic),
+                    start = range.first,
+                    end = range.last + 1
+                )
+            }
+        }
+
+        return TransformedText(transformed, OffsetMapping.Identity)
+    }
+}
+
+fun parseMarkdownToAnnotatedString(markdown: String?): AnnotatedString {
+    if (markdown.isNullOrEmpty()) return AnnotatedString("")
+    return buildAnnotatedString {
+        val lines = markdown.split('\n')
+
+        lines.forEachIndexed { index, line ->
+            var cleanLine = line
+            var isHeader = false
+            var headerStyle: SpanStyle? = null
+
+            // 1. Process Line-Based Elements (Headers & Lists)
+            when {
+                cleanLine.startsWith("# ") -> {
+                    cleanLine = cleanLine.removePrefix("# ")
+                    isHeader = true
+                    headerStyle = SpanStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                }
+                cleanLine.startsWith("## ") -> {
+                    cleanLine = cleanLine.removePrefix("## ")
+                    isHeader = true
+                    headerStyle = SpanStyle(fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                }
+                cleanLine.startsWith("### ") -> {
+                    cleanLine = cleanLine.removePrefix("### ")
+                    isHeader = true
+                    headerStyle = SpanStyle(fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                }
+                cleanLine.startsWith("- ") || cleanLine.startsWith("* ") -> {
+                    cleanLine = "•  " + cleanLine.substring(2)
+                }
+            }
+
+            // Track exactly where this line starts in our main builder string
+            val lineStartIndex = this.length
+
+            // 2. Clear markdown inline symbols and calculate exact styling positions
+            val (finalLineText, stylesToApply) = processInlineStyles(cleanLine)
+
+            // Append only the clean text without structural markers
+            append(finalLineText)
+            val lineEndIndex = this.length
+
+            // Apply header styling if matched
+            if (isHeader && headerStyle != null) {
+                addStyle(headerStyle, lineStartIndex, lineEndIndex)
+            }
+
+            // Apply all saved bold and italic styles using their adjusted positions
+            stylesToApply.forEach { styleMarker ->
+                addStyle(
+                    style = styleMarker.style,
+                    start = lineStartIndex + styleMarker.start,
+                    end = lineStartIndex + styleMarker.end
+                )
+            }
+
+            // Add a newline character for all lines except the last one
+            if (index < lines.lastIndex) {
+                append("\n")
+            }
+        }
+    }
+}
+
+// A simple helper data class to store layout positions
+private data class StyleMarker(val style: SpanStyle, val start: Int, val end: Int)
+
+private fun processInlineStyles(inputLine: String): Pair<String, List<StyleMarker>> {
+    val styles = mutableListOf<StyleMarker>()
+    // Use a combined regex to find all bold and italic markers in order.
+    // Bold (**...**) is matched first, then italic (*...*).
+    val combinedRegex = Regex("(\\*\\*(.*?)\\*\\*)|(\\*(.*?)\\*)")
+
+    val resultText = StringBuilder()
+    var lastIndex = 0
+
+    combinedRegex.findAll(inputLine).forEach { match ->
+        // Append plain text before the match
+        resultText.append(inputLine.substring(lastIndex, match.range.first))
+
+        // groupValues[1] is the full bold match, groupValues[2] is the bold inner text
+        // groupValues[3] is the full italic match, groupValues[4] is the italic inner text
+        val isBold = match.groupValues[1].isNotEmpty()
+        val innerTextRaw = if (isBold) match.groupValues[2] else match.groupValues[4]
+
+        val start = resultText.length
+        // Recursive call to handle nested styles (e.g., ***bold italic***)
+        val (innerTextClean, innerStyles) = processInlineStyles(innerTextRaw)
+
+        resultText.append(innerTextClean)
+        val end = resultText.length
+
+        // Add the outer style
+        styles.add(
+            StyleMarker(
+                style = if (isBold) SpanStyle(fontWeight = FontWeight.Bold) else SpanStyle(fontStyle = FontStyle.Italic),
+                start = start,
+                end = end
+            )
+        )
+
+        // Add inner styles with adjusted offsets
+        innerStyles.forEach { inner ->
+            styles.add(inner.copy(start = start + inner.start, end = start + inner.end))
+        }
+
+        lastIndex = match.range.last + 1
+    }
+
+    // Append remaining text after the last match
+    resultText.append(inputLine.substring(lastIndex))
+
+    return Pair(resultText.toString(), styles)
 }

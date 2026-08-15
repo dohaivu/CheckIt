@@ -48,6 +48,7 @@ import com.checkit.domain.TaskType
 import com.checkit.ui.tasks.DailyPlanIcon
 import com.checkit.ui.tasks.HabitIcon
 import com.checkit.ui.tasks.NoteIcon
+import com.checkit.ui.tasks.TacticIcon
 import com.checkit.ui.tasks.TaskIcon
 import com.checkit.ui.tasks.cardColor
 import com.checkit.ui.tasks.isOverdue
@@ -238,6 +239,8 @@ internal fun TaskTimelineCard(
         leadingContent = {
             if (task.type == TaskType.Habit) {
                 HabitIcon(completed, task.priority.priorityColor())
+            } else if (task.type == TaskType.Tactic) {
+                TacticIcon(completed, task.priority.priorityColor())
             } else {
                 TaskIcon(
                     completed = completed,
@@ -370,6 +373,8 @@ internal fun TaskAllDayCard(
         icon = {
             if (task.type == TaskType.Habit) {
                 HabitIcon(completed = task.status == TaskStatus.Completed, color = task.priority.priorityColor())
+            } else if (task.type == TaskType.Tactic) {
+                TacticIcon(completed = task.status == TaskStatus.Completed, color = task.priority.priorityColor())
             } else {
                 TaskIcon(
                     completed = task.status == TaskStatus.Completed,

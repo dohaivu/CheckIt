@@ -20,15 +20,12 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RestoreFromTrash
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
@@ -37,11 +34,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,6 +52,7 @@ import com.checkit.domain.TagItem
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskType
+import com.checkit.domain.TwelveWeekGoal
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.AppOutlinedTextField
@@ -64,10 +60,11 @@ import com.checkit.ui.components.DatePicker
 import com.checkit.ui.components.EditorOverflowMenu
 import com.checkit.ui.components.KeyResultPill
 import com.checkit.ui.components.ListPicker
+import com.checkit.ui.components.MarkdownVisualTransformation
 import com.checkit.ui.components.PriorityPicker
-import com.checkit.ui.components.RichTextComposer
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.components.TimeRangePicker
+import com.checkit.ui.components.TwelveWeekGoalPill
 import com.checkit.ui.plan.PlanPriorityPill
 import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
@@ -80,6 +77,7 @@ internal fun TaskEditorSheet(
     availableTags: List<TagItem>,
     availableKeyResults: List<KeyResult>,
     availablePlanPriorities: List<PlanPriority>,
+    availableTwelveWeekGoals: List<TwelveWeekGoal>,
     actions: TaskEditorActions
 ) {
     val onDismiss = actions.onDismiss
@@ -115,9 +113,6 @@ internal fun TaskEditorSheet(
     val onNoteListChange = actions.onNoteListChange
     val onNoteDateChange = actions.onNoteDateChange
     val onNoteStartTimeChange = actions.onNoteStartTimeChange
-    val onSwitchAddModeToTask = actions.onSwitchAddModeToTask
-    val onSwitchAddModeToHabit = actions.onSwitchAddModeToHabit
-    val onSwitchAddModeToNote = actions.onSwitchAddModeToNote
 
     AppEditorBottomSheet(
         onDismiss = onDismiss,
@@ -125,15 +120,6 @@ internal fun TaskEditorSheet(
             .fillMaxHeight(0.9f)
             .windowInsetsPadding(WindowInsets.ime)
     ) {
-        SheetHeader(
-            isAddMode = editor.isAddMode(),
-            isTaskSelected = editor is TaskEditorState.TaskForm && editor.type == TaskType.Task,
-            isHabitSelected = editor is TaskEditorState.TaskForm && editor.type == TaskType.Habit,
-            onSwitchAddModeToTask = onSwitchAddModeToTask,
-            onSwitchAddModeToHabit = onSwitchAddModeToHabit,
-            onSwitchAddModeToNote = onSwitchAddModeToNote,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
-        )
         TrashedStatusSection(
             isTrashed = editor.isTrashed(),
             onRestore = onRestore,
@@ -172,6 +158,7 @@ internal fun TaskEditorSheet(
                             availableTags = availableTags,
                             availableKeyResults = availableKeyResults,
                             availablePlanPriorities = availablePlanPriorities,
+                            availableTwelveWeekGoals = availableTwelveWeekGoals,
                             onNameChange = onTaskNameChange,
                             onListChange = onTaskListChange,
                             onDescriptionChange = onTaskDescriptionChange,
@@ -225,68 +212,6 @@ internal fun TaskEditorSheet(
             onOpen = onOpen,
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
         )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun AddModeSwitch(
-    isTaskSelected: Boolean,
-    isHabitSelected: Boolean,
-    onTaskClick: () -> Unit,
-    onHabitClick: () -> Unit,
-    onNoteClick: () -> Unit
-) {
-    SingleChoiceSegmentedButtonRow {
-        SegmentedButton(
-            selected = isTaskSelected,
-            onClick = onTaskClick,
-            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
-            icon = { Icon(Icons.Default.TaskAlt, contentDescription = null) },
-            label = { Text("Task") },
-            colors = SegmentedButtonDefaults.colors(activeContainerColor = MaterialTheme.colorScheme.primaryContainer, activeContentColor = MaterialTheme.colorScheme.primary)
-        )
-        SegmentedButton(
-            selected = isHabitSelected,
-            onClick = onHabitClick,
-            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
-            icon = { Icon(Icons.Default.Repeat, contentDescription = null) },
-            label = { Text("Habit") },
-            colors = SegmentedButtonDefaults.colors(activeContainerColor = MaterialTheme.colorScheme.primaryContainer, activeContentColor = MaterialTheme.colorScheme.primary)
-        )
-        SegmentedButton(
-            selected = !isTaskSelected && !isHabitSelected,
-            onClick = onNoteClick,
-            shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
-            icon = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null) },
-            label = { Text("Note") },
-            colors = SegmentedButtonDefaults.colors(activeContainerColor = MaterialTheme.colorScheme.primaryContainer, activeContentColor = MaterialTheme.colorScheme.primary)
-        )
-    }
-}
-
-@Composable
-private fun SheetHeader(
-    isAddMode: Boolean,
-    isTaskSelected: Boolean,
-    isHabitSelected: Boolean,
-    onSwitchAddModeToTask: () -> Unit,
-    onSwitchAddModeToHabit: () -> Unit,
-    onSwitchAddModeToNote: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Box(modifier = modifier.fillMaxWidth()) {
-        if (isAddMode) {
-            Box(modifier = Modifier.align(Alignment.Center)) {
-                AddModeSwitch(
-                    isTaskSelected = isTaskSelected,
-                    isHabitSelected = isHabitSelected,
-                    onTaskClick = onSwitchAddModeToTask,
-                    onHabitClick = onSwitchAddModeToHabit,
-                    onNoteClick = onSwitchAddModeToNote
-                )
-            }
-        }
     }
 }
 
@@ -408,6 +333,7 @@ private fun TaskFormContent(
     availableTags: List<TagItem>,
     availableKeyResults: List<KeyResult>,
     availablePlanPriorities: List<PlanPriority>,
+    availableTwelveWeekGoals: List<TwelveWeekGoal>,
     onNameChange: (String) -> Unit,
     onListChange: (Long) -> Unit,
     onDescriptionChange: (String) -> Unit,
@@ -426,6 +352,12 @@ private fun TaskFormContent(
     enabled: Boolean = true
 ) {
     val isHabit = form.type == TaskType.Habit
+    val isTactic = form.type == TaskType.Tactic
+    val namePlaceholder = when (form.type) {
+        TaskType.Task -> "What would you like to do?"
+        TaskType.Habit -> "What habit do you want to build?"
+        TaskType.Tactic -> "What tactic will move your goal forward?"
+    }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (isHabit) {
             Row(
@@ -438,6 +370,23 @@ private fun TaskFormContent(
                 )
                 Text(
                     text = "Every day · auto-added to My Day",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                PriorityPicker(selected = form.priority, onSelect = onPriorityChange, enabled = enabled)
+            }
+        } else if (isTactic) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                TacticIcon(
+                    completed = form.status == TaskStatus.Completed,
+                    color = form.priority.priorityColor()
+                )
+                Text(
+                    text = "12-Week Tactic",
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -476,7 +425,7 @@ private fun TaskFormContent(
                 fontWeight = FontWeight.SemiBold
             ),
             maxLines = 3,
-            placeholder = "What would you like to do?",
+            placeholder = namePlaceholder,
             enabled = enabled
         )
         AppOutlinedTextField(
@@ -487,7 +436,8 @@ private fun TaskFormContent(
                 fontWeight = FontWeight.Normal
             ),
             maxLines = 5,
-            enabled = enabled
+            enabled = enabled,
+            visualTransformation = remember { MarkdownVisualTransformation() }
         )
 
         SubtaskChecklist(
@@ -535,6 +485,11 @@ private fun TaskFormContent(
             form.keyResultId?.let { krId ->
                 availableKeyResults.find { it.id == krId }?.let { kr ->
                     KeyResultPill(kr)
+                }
+            }
+            form.twelveWeekGoalId?.let { goalId ->
+                availableTwelveWeekGoals.find { it.id == goalId }?.let { goal ->
+                    TwelveWeekGoalPill(goal)
                 }
             }
             TagPicker(
@@ -716,12 +671,19 @@ private fun NoteFormContent(
             enabled = enabled,
             modifier = Modifier.fillMaxWidth()
         )
-        RichTextComposer(
+        AppOutlinedTextField(
             value = form.content,
             onValueChange = onContentChange,
+            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Normal
+            ),
+            minLines = 5,
+            maxLines = 10,
             placeholder = "Add more details",
             enabled = enabled,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().height(130.dp),
+            visualTransformation = remember { MarkdownVisualTransformation() }
         )
 
         FlowRow(

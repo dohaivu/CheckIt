@@ -1,4 +1,4 @@
-package com.checkit.ui.myday
+package com.checkit.ui.journal
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column

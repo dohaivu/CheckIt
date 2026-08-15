@@ -298,6 +298,29 @@ class TaskViewModelViewsTest {
     }
 
 
+    @Test
+    fun openTaskPreservesTwelveWeekGoalId() = runTest(dispatcher) {
+        val goalId = 7L
+        val tacticTask = TaskItem(
+            id = 42L,
+            name = "Tactic task",
+            type = TaskType.Tactic,
+            twelveWeekGoalId = goalId,
+            sortOrder = 0,
+            createdAtMillis = 0L,
+            updatedAtMillis = 0L
+        )
+        viewModel = createViewModel(TaskBoard(tasks = listOf(tacticTask)))
+        dispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.openTask(tacticTask)
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val editor = viewModel.uiState.value.editor as TaskEditorState.TaskForm
+        assertEquals(goalId, editor.twelveWeekGoalId)
+    }
+
+
     private fun createViewModel(board: TaskBoard): TaskViewModel {
         repository = FakeCheckItRepository(initialBoard = board)
         return TaskViewModel(

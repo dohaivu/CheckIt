@@ -147,6 +147,7 @@ data class JournalEntryEditorState(
     val date: LocalDate = today(),
     val context: String = "",
     val content: String = "",
+    val prompt: String = "",
     val moods: List<String> = emptyList(),
     val selectedTagIds: Set<Long> = emptySet()
 ) {
