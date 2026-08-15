@@ -39,6 +39,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -97,6 +98,8 @@ import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DateTimeRangeDetailChip
 import com.checkit.ui.components.DeleteOverflowMenu
 import com.checkit.ui.components.EditorOverflowMenu
+import com.checkit.ui.components.MarkdownVisualTransformation
+import com.checkit.ui.components.parseMarkdownToAnnotatedString
 import com.checkit.ui.tasks.cardColor
 import com.checkit.ui.tasks.isOverdue
 import com.checkit.ui.tasks.views.TaskTitleRow
@@ -452,7 +455,7 @@ private fun GoalCard(
                     )
                     card.goal.note.takeIf { it.isNotBlank() }?.let { note ->
                         Text(
-                            text = note,
+                            text = remember { parseMarkdownToAnnotatedString(note) },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 2,
@@ -587,6 +590,7 @@ private fun CycleEditorSheet(
                 value = editor.title,
                 onValueChange = onTitleChange,
                 modifier = Modifier.fillMaxWidth(),
+                textStyle = MaterialTheme.typography.titleLarge,
                 placeholder = stringResource(Res.string.twelve_week_cycle_title_label),
                 maxLines = 1
             )
@@ -659,6 +663,7 @@ private fun GoalEditorSheet(
                 value = editor.title,
                 onValueChange = onTitleChange,
                 modifier = Modifier.fillMaxWidth(),
+                textStyle = MaterialTheme.typography.titleMedium,
                 placeholder = stringResource(Res.string.twelve_week_goal_title_label),
                 maxLines = 1
             )
@@ -667,8 +672,9 @@ private fun GoalEditorSheet(
                 onValueChange = onNoteChange,
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = stringResource(Res.string.twelve_week_goal_note_label),
-                minLines = 2,
-                maxLines = 4
+                minLines = 3,
+                maxLines = 6,
+                visualTransformation = remember { MarkdownVisualTransformation() }
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
