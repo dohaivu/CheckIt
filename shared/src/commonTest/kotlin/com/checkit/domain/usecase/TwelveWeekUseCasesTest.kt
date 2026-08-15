@@ -78,8 +78,8 @@ class TwelveWeekUseCasesTest {
         assertEquals(id, cycle.id)
         assertEquals(TwelveWeekCycleStatus.Active, cycle.status)
         assertEquals("My cycle", cycle.title)
-        assertEquals(95, cycle.startEpochDays)
-        assertEquals(178, cycle.endEpochDays)
+        assertEquals(102, cycle.startEpochDays)
+        assertEquals(185, cycle.endEpochDays)
         assertTrue(repository.observeTwelveWeekGoals().first().isEmpty())
     }
 

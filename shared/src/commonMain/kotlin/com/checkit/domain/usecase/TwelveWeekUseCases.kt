@@ -158,8 +158,8 @@ class ObserveTwelveWeekWorkspaceUseCase(
 
 /**
  * Starts a new Active cycle. Only one active cycle is allowed at a time. The
- * cycle always starts on a Monday, so [startEpochDays] is snapped back to the
- * start of its week.
+ * cycle always starts on a Monday, so [startEpochDays] is snapped forward to
+ * the next Monday.
  */
 class StartTwelveWeekCycleUseCase(
     private val repository: CheckItRepository

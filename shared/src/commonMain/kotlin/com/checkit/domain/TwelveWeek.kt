@@ -108,11 +108,12 @@ fun weekIndexFor(cycleStartEpochDays: Int, dateEpochDays: Int): Int? {
     return delta / 7
 }
 
-/** Returns the Monday (ISO week start) of the week containing [epochDays]. */
+/** Returns the next Monday, or [epochDays] itself if it is already a Monday. */
 fun mondayOfWeek(epochDays: Int): Int {
     val dayOfWeek = LocalDate.fromEpochDays(epochDays).dayOfWeek
+    if (dayOfWeek == DayOfWeek.MONDAY) return epochDays
     val offset = (dayOfWeek.ordinal - DayOfWeek.MONDAY.ordinal + 7) % 7
-    return epochDays - offset
+    return epochDays + (7 - offset)
 }
 
 fun weekDateRange(cycleStartEpochDays: Int, weekIndex: Int): IntRange {
