@@ -656,6 +656,48 @@ data class TwelveWeekGoalTaskEntity(
     val sortOrder: Int
 )
 
+@Entity(tableName = "nested_documents")
+data class NestedDocumentEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0L,
+    val title: String,
+    val createdAtMillis: Long,
+    val updatedAtMillis: Long
+)
+
+@Entity(
+    tableName = "nested_list_items",
+    foreignKeys = [
+        ForeignKey(
+            entity = NestedDocumentEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["documentId"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = NestedListItemEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["parentId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("documentId"), Index("parentId")]
+)
+data class NestedListItemEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0L,
+    val documentId: Long,
+    val parentId: Long? = null,
+    val position: Int,
+    val text: String,
+    val note: String? = null,
+    val checkboxEnabled: Boolean = false,
+    val checked: Boolean = false,
+    val collapsed: Boolean = false,
+    val createdAtMillis: Long,
+    val updatedAtMillis: Long
+)
+
 @Database(
     entities = [
         GoalEntity::class,
@@ -686,9 +728,11 @@ data class TwelveWeekGoalTaskEntity(
         TwelveWeekGoalEntity::class,
         TwelveWeekCheckInEntity::class,
         TwelveWeekGoalScoreEntity::class,
-        TwelveWeekGoalTaskEntity::class
+        TwelveWeekGoalTaskEntity::class,
+        NestedDocumentEntity::class,
+        NestedListItemEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)

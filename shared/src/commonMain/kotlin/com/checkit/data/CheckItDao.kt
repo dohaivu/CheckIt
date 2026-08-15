@@ -914,4 +914,85 @@ interface CheckItDao {
 
     @Query("SELECT * FROM twelve_week_goal_tasks ORDER BY sortOrder ASC, taskId ASC")
     fun observeTwelveWeekGoalTasks(): Flow<List<TwelveWeekGoalTaskEntity>>
+
+    // ---------------- Nested Documents ----------------
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNestedDocument(document: NestedDocumentEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNestedListItem(item: NestedListItemEntity): Long
+
+    @Transaction
+    suspend fun insertNestedDocumentWithRoot(
+        document: NestedDocumentEntity,
+        rootItem: NestedListItemEntity
+    ): Long {
+        val documentId = insertNestedDocument(document)
+        insertNestedListItem(rootItem.copy(documentId = documentId))
+        return documentId
+    }
+
+    @Query("SELECT * FROM nested_documents ORDER BY updatedAtMillis DESC, id ASC")
+    fun observeNestedDocuments(): Flow<List<NestedDocumentEntity>>
+
+    @Query("SELECT * FROM nested_list_items WHERE documentId = :documentId ORDER BY position ASC, id ASC")
+    fun observeNestedItems(documentId: Long): Flow<List<NestedListItemEntity>>
+
+    @Query("SELECT COALESCE(MAX(position), -1) + 1 FROM nested_list_items WHERE documentId = :documentId AND parentId IS :parentId")
+    suspend fun nextNestedItemPosition(documentId: Long, parentId: Long?): Int
+
+    @Query("UPDATE nested_documents SET title = :title, updatedAtMillis = :updatedAtMillis WHERE id = :documentId")
+    suspend fun updateNestedDocumentTitle(documentId: Long, title: String, updatedAtMillis: Long)
+
+    @Query("DELETE FROM nested_documents WHERE id = :documentId")
+    suspend fun deleteNestedDocument(documentId: Long)
+
+    @Query("UPDATE nested_list_items SET text = :text, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
+    suspend fun updateNestedItemText(itemId: Long, text: String, updatedAtMillis: Long)
+
+    @Query("UPDATE nested_list_items SET note = :note, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
+    suspend fun updateNestedItemNote(itemId: Long, note: String?, updatedAtMillis: Long)
+
+    @Query("UPDATE nested_list_items SET checkboxEnabled = :checkboxEnabled WHERE id = :itemId")
+    suspend fun setNestedItemCheckboxEnabled(itemId: Long, checkboxEnabled: Boolean)
+
+    @Query("UPDATE nested_list_items SET checked = :checked WHERE id IN (:itemIds)")
+    suspend fun setNestedItemsChecked(itemIds: List<Long>, checked: Boolean)
+
+    @Query("UPDATE nested_list_items SET collapsed = :collapsed WHERE id = :itemId")
+    suspend fun setNestedItemCollapsed(itemId: Long, collapsed: Boolean)
+
+    @Query("UPDATE nested_list_items SET collapsed = NOT collapsed WHERE id = :itemId")
+    suspend fun toggleNestedItemCollapsed(itemId: Long)
+
+    @Query("UPDATE nested_list_items SET parentId = :parentId, position = :position, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
+    suspend fun updateNestedItemPosition(
+        itemId: Long,
+        parentId: Long?,
+        position: Int,
+        updatedAtMillis: Long
+    )
+
+    @Query("DELETE FROM nested_list_items WHERE id IN (:itemIds)")
+    suspend fun deleteNestedItems(itemIds: List<Long>)
+
+    @Transaction
+    suspend fun applyNestedMoves(moves: List<NestedMoveRow>) {
+        moves.forEach { move ->
+            updateNestedItemPosition(
+                itemId = move.itemId,
+                parentId = move.parentId,
+                position = move.position,
+                updatedAtMillis = move.updatedAtMillis
+            )
+        }
+    }
 }
+
+data class NestedMoveRow(
+    val itemId: Long,
+    val parentId: Long?,
+    val position: Int,
+    val updatedAtMillis: Long
+)

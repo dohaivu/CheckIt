@@ -28,6 +28,12 @@ import com.checkit.domain.Goal
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.KeyResult
 import com.checkit.domain.ListItem
+import com.checkit.domain.NestedDocument
+import com.checkit.domain.NestedDocumentTree
+import com.checkit.domain.NestedItemMove
+import com.checkit.domain.NestedListItem
+import com.checkit.domain.buildNestedTree
+import com.checkit.domain.planNestedMoves
 import com.checkit.domain.PeriodPlan
 import com.checkit.domain.PeriodReview
 import com.checkit.domain.PlanPeriod
@@ -1193,6 +1199,155 @@ internal class FakeCheckItRepository(
 
     override suspend fun countActiveTwelveWeekCycles(): Int =
         twelveWeekCyclesFlow.value.count { it.status == TwelveWeekCycleStatus.Active }
+
+    // ---------------- Nested Documents ----------------
+
+    private val nestedDocumentsFlow = MutableStateFlow<List<NestedDocument>>(emptyList())
+    private val nestedItemsFlow = MutableStateFlow<List<NestedListItem>>(emptyList())
+    val addedNestedDocuments = mutableListOf<String>()
+    val deletedNestedDocuments = mutableListOf<Long>()
+    val addedNestedItems = mutableListOf<Triple<Long, Long?, String>>()
+    val deletedNestedItems = mutableListOf<Long>()
+    val nestedMoves = mutableListOf<List<NestedItemMove>>()
+    private var nextNestedDocumentId: Long = 50_000L
+    private var nextNestedItemId: Long = 51_000L
+
+    override fun observeNestedDocuments(): Flow<List<NestedDocument>> = nestedDocumentsFlow
+
+    override fun observeNestedDocumentTree(documentId: Long): Flow<NestedDocumentTree> {
+        return kotlinx.coroutines.flow.combine(nestedDocumentsFlow, nestedItemsFlow) { documents, items ->
+            val document = documents.firstOrNull { it.id == documentId }
+                ?: NestedDocument(id = documentId, title = "", createdAtMillis = 0L, updatedAtMillis = 0L)
+            NestedDocumentTree(
+                document = document,
+                rootNodes = buildNestedTree(items.filter { it.documentId == documentId })
+            )
+        }
+    }
+
+    override suspend fun addNestedDocument(title: String): Long {
+        addedNestedDocuments.add(title)
+        val id = nextNestedDocumentId++
+        nestedDocumentsFlow.update {
+            it + NestedDocument(id = id, title = title, createdAtMillis = 0L, updatedAtMillis = 0L)
+        }
+        val rootId = nextNestedItemId++
+        nestedItemsFlow.update {
+            it + NestedListItem(
+                id = rootId,
+                documentId = id,
+                parentId = null,
+                position = 0,
+                text = title,
+                note = null,
+                checkboxEnabled = false,
+                checked = false,
+                collapsed = false,
+                createdAtMillis = 0L,
+                updatedAtMillis = 0L
+            )
+        }
+        return id
+    }
+
+    override suspend fun renameNestedDocument(documentId: Long, title: String) {
+        nestedDocumentsFlow.update { documents ->
+            documents.map { if (it.id == documentId) it.copy(title = title) else it }
+        }
+    }
+
+    override suspend fun deleteNestedDocument(documentId: Long) {
+        deletedNestedDocuments.add(documentId)
+        nestedDocumentsFlow.update { documents -> documents.filterNot { it.id == documentId } }
+        nestedItemsFlow.update { items -> items.filterNot { it.documentId == documentId } }
+    }
+
+    override suspend fun addNestedItem(
+        documentId: Long,
+        parentId: Long?,
+        text: String,
+        position: Int?
+    ): Long {
+        addedNestedItems.add(Triple(documentId, parentId, text))
+        val id = nextNestedItemId++
+        val items = nestedItemsFlow.value
+        val newPosition = position ?: items.count { it.documentId == documentId && it.parentId == parentId }
+        nestedItemsFlow.update {
+            it + NestedListItem(
+                id = id,
+                documentId = documentId,
+                parentId = parentId,
+                text = text,
+                note = null,
+                checkboxEnabled = false,
+                checked = false,
+                collapsed = false,
+                position = newPosition,
+                createdAtMillis = 0L,
+                updatedAtMillis = 0L
+            )
+        }
+        return id
+    }
+
+    override suspend fun updateNestedItemText(itemId: Long, text: String) {
+        nestedItemsFlow.update { items ->
+            items.map { if (it.id == itemId) it.copy(text = text) else it }
+        }
+    }
+
+    override suspend fun updateNestedItemNote(itemId: Long, note: String?) {
+        nestedItemsFlow.update { items ->
+            items.map { if (it.id == itemId) it.copy(note = note) else it }
+        }
+    }
+
+    override suspend fun setNestedItemCheckboxEnabled(itemId: Long, checkboxEnabled: Boolean) {
+        nestedItemsFlow.update { items ->
+            items.map { if (it.id == itemId) it.copy(checkboxEnabled = checkboxEnabled) else it }
+        }
+    }
+
+    override suspend fun setNestedItemsChecked(itemIds: List<Long>, checked: Boolean) {
+        nestedItemsFlow.update { items ->
+            items.map { if (it.id in itemIds) it.copy(checked = checked) else it }
+        }
+    }
+
+    override suspend fun toggleNestedItemCollapsed(itemId: Long) {
+        nestedItemsFlow.update { items ->
+            items.map { if (it.id == itemId) it.copy(collapsed = !it.collapsed) else it }
+        }
+    }
+
+    override suspend fun moveNestedItems(moves: List<NestedItemMove>) {
+        nestedMoves.add(moves)
+        val items = nestedItemsFlow.value.toMutableList()
+        val moveById = moves.associateBy { it.itemId }
+        items.forEachIndexed { index, item ->
+            val move = moveById[item.id] ?: return@forEachIndexed
+            items[index] = item.copy(
+                parentId = move.parentId,
+                position = move.position
+            )
+        }
+        nestedItemsFlow.value = items
+    }
+
+    override suspend fun deleteNestedItems(itemIds: List<Long>) {
+        deletedNestedItems.addAll(itemIds)
+        val idsToDelete = mutableSetOf<Long>()
+        fun collect(itemId: Long) {
+            idsToDelete.add(itemId)
+            nestedItemsFlow.value.filter { it.parentId == itemId }.forEach { collect(it.id) }
+        }
+        itemIds.forEach { collect(it) }
+        nestedItemsFlow.update { items -> items.filterNot { it.id in idsToDelete } }
+    }
+
+    fun currentNestedItems(): List<NestedListItem> = nestedItemsFlow.value
+
+    fun currentNestedDocuments(): List<NestedDocument> = nestedDocumentsFlow.value
 }
 
 internal class FakeSettingsRepository(

@@ -18,6 +18,11 @@ import com.checkit.domain.JournalEntry
 import com.checkit.domain.KeyResult
 import com.checkit.domain.ListItem
 import com.checkit.domain.NoteItem
+import com.checkit.domain.NestedDocument
+import com.checkit.domain.NestedDocumentTree
+import com.checkit.domain.NestedItemMove
+import com.checkit.domain.NestedListItem
+import com.checkit.domain.buildNestedTree
 import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskFilter
@@ -201,6 +206,22 @@ interface CheckItRepository {
     suspend fun linkTwelveWeekGoalTask(goalId: Long, taskId: Long, sortOrder: Int)
     suspend fun unlinkTwelveWeekGoalTask(goalId: Long, taskId: Long)
     suspend fun countActiveTwelveWeekCycles(): Int
+
+    // ---------------- Nested Documents ----------------
+
+    fun observeNestedDocuments(): Flow<List<NestedDocument>>
+    fun observeNestedDocumentTree(documentId: Long): Flow<NestedDocumentTree>
+    suspend fun addNestedDocument(title: String): Long
+    suspend fun renameNestedDocument(documentId: Long, title: String)
+    suspend fun deleteNestedDocument(documentId: Long)
+suspend fun addNestedItem(documentId: Long, parentId: Long?, text: String, position: Int? = null): Long
+    suspend fun updateNestedItemText(itemId: Long, text: String)
+    suspend fun updateNestedItemNote(itemId: Long, note: String?)
+    suspend fun setNestedItemCheckboxEnabled(itemId: Long, checkboxEnabled: Boolean)
+    suspend fun setNestedItemsChecked(itemIds: List<Long>, checked: Boolean)
+    suspend fun toggleNestedItemCollapsed(itemId: Long)
+    suspend fun moveNestedItems(moves: List<NestedItemMove>)
+    suspend fun deleteNestedItems(itemIds: List<Long>)
 }
 
 data class DailyPlanItemTimeUpdate(
@@ -1365,6 +1386,118 @@ class RoomCheckItRepository(
 
     override suspend fun countActiveTwelveWeekCycles(): Int = dao.countActiveTwelveWeekCycles()
 
+    // ---------------- Nested Documents ----------------
+
+    override fun observeNestedDocuments(): Flow<List<NestedDocument>> =
+        dao.observeNestedDocuments().map { entities ->
+            entities.map { entity ->
+                NestedDocument(
+                    id = entity.id,
+                    title = entity.title,
+                    createdAtMillis = entity.createdAtMillis,
+                    updatedAtMillis = entity.updatedAtMillis
+                )
+            }
+        }
+
+    override fun observeNestedDocumentTree(documentId: Long): Flow<NestedDocumentTree> =
+        combine(
+            dao.observeNestedDocuments(),
+            dao.observeNestedItems(documentId)
+        ) { documents, items ->
+            NestedDocumentTree(
+                document = documents.firstOrNull { it.id == documentId }
+                    ?.let { NestedDocument(it.id, it.title, it.createdAtMillis, it.updatedAtMillis) }
+                    ?: NestedDocument(id = documentId, title = "", createdAtMillis = 0L, updatedAtMillis = 0L),
+                rootNodes = buildNestedTree(items.map { it.toNestedListItem() })
+            )
+        }
+
+    override suspend fun addNestedDocument(title: String): Long {
+        val now = Clock.System.now().toEpochMilliseconds()
+        val trimmed = title.trim()
+        return dao.insertNestedDocumentWithRoot(
+            NestedDocumentEntity(
+                title = trimmed,
+                createdAtMillis = now,
+                updatedAtMillis = now
+            ),
+            NestedListItemEntity(
+                documentId = 0L,
+                parentId = null,
+                position = 0,
+                text = trimmed,
+                createdAtMillis = now,
+                updatedAtMillis = now
+            )
+        )
+    }
+
+    override suspend fun renameNestedDocument(documentId: Long, title: String) {
+        dao.updateNestedDocumentTitle(documentId, title.trim(), Clock.System.now().toEpochMilliseconds())
+    }
+
+    override suspend fun deleteNestedDocument(documentId: Long) {
+        dao.deleteNestedDocument(documentId)
+    }
+
+    override suspend fun addNestedItem(documentId: Long, parentId: Long?, text: String, position: Int?): Long {
+        val now = Clock.System.now().toEpochMilliseconds()
+        return dao.insertNestedListItem(
+            NestedListItemEntity(
+                documentId = documentId,
+                parentId = parentId,
+                position = position ?: dao.nextNestedItemPosition(documentId, parentId),
+                text = text.trim(),
+                createdAtMillis = now,
+                updatedAtMillis = now
+            )
+        )
+    }
+
+    override suspend fun updateNestedItemText(itemId: Long, text: String) {
+        dao.updateNestedItemText(itemId, text.trim(), Clock.System.now().toEpochMilliseconds())
+    }
+
+    override suspend fun updateNestedItemNote(itemId: Long, note: String?) {
+        dao.updateNestedItemNote(
+            itemId,
+            note?.trim()?.takeIf { it.isNotBlank() },
+            Clock.System.now().toEpochMilliseconds()
+        )
+    }
+
+    override suspend fun setNestedItemCheckboxEnabled(itemId: Long, checkboxEnabled: Boolean) {
+        dao.setNestedItemCheckboxEnabled(itemId, checkboxEnabled)
+    }
+
+    override suspend fun setNestedItemsChecked(itemIds: List<Long>, checked: Boolean) {
+        if (itemIds.isEmpty()) return
+        dao.setNestedItemsChecked(itemIds, checked)
+    }
+
+    override suspend fun toggleNestedItemCollapsed(itemId: Long) {
+        dao.toggleNestedItemCollapsed(itemId)
+    }
+
+    override suspend fun moveNestedItems(moves: List<NestedItemMove>) {
+        if (moves.isEmpty()) return
+        val now = Clock.System.now().toEpochMilliseconds()
+        dao.applyNestedMoves(moves.map { move ->
+            NestedMoveRow(
+                itemId = move.itemId,
+                parentId = move.parentId,
+                position = move.position,
+                updatedAtMillis = now
+            )
+        })
+    }
+
+    override suspend fun deleteNestedItems(itemIds: List<Long>) {
+        if (itemIds.isEmpty()) return
+        dao.deleteNestedItems(itemIds)
+    }
+
     private suspend fun addTaskTag(taskId: Long, tagId: Long) {
         dao.insertTaskTagIfParentsExist(taskId, tagId)
         dao.updateTagLastUsedAtMillis(tagId, Clock.System.now().toEpochMilliseconds())
@@ -1642,4 +1775,18 @@ private fun PlanPriorityEntity.toDomain(periodPlan: PeriodPlan) = PlanPriority(
     createdAtMillis = createdAtMillis,
     updatedAtMillis = updatedAtMillis,
     completedAtMillis = completedAtMillis
+)
+
+private fun NestedListItemEntity.toNestedListItem() = NestedListItem(
+    id = id,
+    documentId = documentId,
+    parentId = parentId,
+    position = position,
+    text = text,
+    note = note,
+    checkboxEnabled = checkboxEnabled,
+    checked = checked,
+    collapsed = collapsed,
+    createdAtMillis = createdAtMillis,
+    updatedAtMillis = updatedAtMillis
 )

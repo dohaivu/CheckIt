@@ -48,24 +48,37 @@ import com.checkit.domain.usecase.DeleteTwelveWeekGoalUseCase
 import com.checkit.domain.usecase.IsTagNameTakenUseCase
 import com.checkit.domain.usecase.LinkDailyPlanItemToPlanPriorityUseCase
 import com.checkit.domain.usecase.LinkTaskToPlanPriorityUseCase
+import com.checkit.domain.usecase.MoveNestedItemsUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
+import com.checkit.domain.usecase.ObserveNestedDocumentTreeUseCase
+import com.checkit.domain.usecase.ObserveNestedDocumentsUseCase
 import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
 import com.checkit.domain.usecase.ObservePlanWorkspaceUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.ObserveTwelveWeekWorkspaceUseCase
 import com.checkit.domain.usecase.OpenNoteUseCase
 import com.checkit.domain.usecase.OpenTaskUseCase
+import com.checkit.domain.usecase.RenameNestedDocumentUseCase
 import com.checkit.domain.usecase.ReorderPlanPrioritiesUseCase
 import com.checkit.domain.usecase.RestoreNoteUseCase
 import com.checkit.domain.usecase.RestoreTaskUseCase
 import com.checkit.domain.usecase.SavePeriodReviewUseCase
 import com.checkit.domain.usecase.SaveSprintAsWinUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
+import com.checkit.domain.usecase.SetNestedItemCheckboxEnabledUseCase
+import com.checkit.domain.usecase.SetNestedItemsCheckedUseCase
 import com.checkit.domain.usecase.SmartScheduleDailyPlanUseCase
 import com.checkit.domain.usecase.SprintTransitionUseCase
 import com.checkit.domain.usecase.StartTwelveWeekCycleUseCase
+import com.checkit.domain.usecase.ToggleNestedItemCollapsedUseCase
 import com.checkit.domain.usecase.UpdateTwelveWeekCycleUseCase
+import com.checkit.domain.usecase.AddNestedDocumentUseCase
+import com.checkit.domain.usecase.AddNestedItemUseCase
+import com.checkit.domain.usecase.DeleteNestedDocumentUseCase
+import com.checkit.domain.usecase.DeleteNestedItemsUseCase
+import com.checkit.domain.usecase.UpdateNestedItemNoteUseCase
+import com.checkit.domain.usecase.UpdateNestedItemTextUseCase
 import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.usecase.TogglePlanPriorityDoneUseCase
 import com.checkit.domain.usecase.UnlinkTacticFromGoalUseCase
@@ -87,6 +100,7 @@ import com.checkit.domain.usecase.UpsertTwelveWeekCheckInUseCase
 import com.checkit.notifications.AppReminderScheduler
 import com.checkit.ui.calendar.CalendarViewModel
 import com.checkit.ui.myday.MyDayViewModel
+import com.checkit.ui.nested.NestedListsViewModel
 import com.checkit.ui.okr.GoalViewModel
 import com.checkit.ui.okr.KeyResultViewModel
 import com.checkit.ui.okr.ObjectiveViewModel
@@ -206,6 +220,19 @@ val provideInteractorModule = module {
     single { AbandonTwelveWeekCycleUseCase(get()) }
     single { AddTacticToGoalUseCase(get(), get()) }
     single { UnlinkTacticFromGoalUseCase(get()) }
+    single { ObserveNestedDocumentsUseCase(get()) }
+    single { ObserveNestedDocumentTreeUseCase(get()) }
+    single { AddNestedDocumentUseCase(get()) }
+    single { RenameNestedDocumentUseCase(get()) }
+    single { DeleteNestedDocumentUseCase(get()) }
+    single { AddNestedItemUseCase(get()) }
+    single { UpdateNestedItemTextUseCase(get()) }
+    single { UpdateNestedItemNoteUseCase(get()) }
+    single { SetNestedItemCheckboxEnabledUseCase(get()) }
+    single { SetNestedItemsCheckedUseCase(get()) }
+    single { ToggleNestedItemCollapsedUseCase(get()) }
+    single { MoveNestedItemsUseCase(get()) }
+    single { DeleteNestedItemsUseCase(get()) }
 }
 
 val provideDatabaseModule = module {
@@ -292,6 +319,23 @@ val provideViewModelModule = module {
         )
     }
     viewModel { SettingsViewModel(get(), get(), get(), get<AppReminderScheduler>()) }
+    viewModel {
+        NestedListsViewModel(
+            observeDocumentsUseCase = get(),
+            observeTreeUseCase = get(),
+            addDocumentUseCase = get(),
+            renameDocumentUseCase = get(),
+            deleteDocumentUseCase = get(),
+            addItemUseCase = get(),
+            updateItemTextUseCase = get(),
+            updateItemNoteUseCase = get(),
+            setCheckboxEnabledUseCase = get(),
+            setItemsCheckedUseCase = get(),
+            toggleCollapsedUseCase = get(),
+            moveItemsUseCase = get(),
+            deleteItemsUseCase = get()
+        )
+    }
     viewModel {
         TwelveWeekViewModel(
             observeWorkspace = get(),

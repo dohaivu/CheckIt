@@ -236,4 +236,25 @@
     <string name="twelve_week_all_tactics">All tactics</string>
     <string name="twelve_week_this_week">This week</string>
     <string name="twelve_week_tactics_empty">No tactics yet. Add one to make progress.</string>
+
+    <string name="tab_lists">Lists</string>
+    <string name="nested_lists_title">Nested lists</string>
+    <string name="nested_documents_empty">No documents yet. Tap + to create one.</string>
+    <string name="nested_new_document">New document</string>
+    <string name="nested_delete_document">Delete document</string>
+    <string name="nested_delete_confirm">Delete “%1$s” and everything inside it?</string>
+    <string name="nested_untitled_document">Untitled</string>
+    <string name="nested_root">Document</string>
+    <string name="nested_confirm_delete">Delete items</string>
+    <string name="nested_batch_delete">Delete</string>
+    <string name="nested_selection_mode">Selection mode</string>
+    <string name="nested_indent">Indent</string>
+    <string name="nested_outdent">Outdent</string>
+    <string name="nested_move_up">Move up</string>
+    <string name="nested_move_down">Move down</string>
+    <string name="nested_add_child">Add child</string>
+    <string name="nested_add_sibling">Add sibling</string>
+    <string name="nested_zoom_in">Zoom in</string>
+    <string name="nested_zoom_out">Zoom out</string>
+    <string name="nested_edit_note">Note</string>
 </resources>
