@@ -329,6 +329,15 @@ class NestedListsViewModel(
         }
     }
 
+    fun setChecked(itemId: Long, checked: Boolean) {
+        viewModelScope.launch {
+            runCatching { setItemsCheckedUseCase(listOf(itemId), checked) }
+                .onFailure { error ->
+                    _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to update item"))
+                }
+        }
+    }
+
     fun toggleCollapsed(itemId: Long) {
         viewModelScope.launch {
             runCatching { toggleCollapsedUseCase(itemId) }

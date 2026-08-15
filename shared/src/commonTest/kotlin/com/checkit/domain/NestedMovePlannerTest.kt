@@ -95,8 +95,8 @@ class NestedMovePlannerTest {
         val moves = useCase.moveDown(items, 1L)
         assertEquals(
             listOf(
-                NestedItemMove(1L, null, 1),
-                NestedItemMove(2L, null, 0)
+                NestedItemMove(2L, null, 0),
+                NestedItemMove(1L, null, 1)
             ),
             moves
         )
@@ -124,6 +124,21 @@ class NestedMovePlannerTest {
                 NestedItemMove(4L, 2L, 1)
             ),
             moves
+        )
+    }
+
+    @Test
+    fun moveUpRenormalizesDuplicatePositionsSoTheOrderActuallyChanges() {
+        val useCase = MoveNestedItemsUseCase(FakeCheckItRepository())
+        val duplicatePositions = items.map { item ->
+            if (item.id == 2L || item.id == 3L) item.copy(position = 1) else item
+        }
+
+        assertEquals(
+            listOf(
+                NestedItemMove(2L, null, 2)
+            ),
+            useCase.moveUp(duplicatePositions, 3L)
         )
     }
 

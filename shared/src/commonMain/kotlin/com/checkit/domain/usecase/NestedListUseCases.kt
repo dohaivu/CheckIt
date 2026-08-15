@@ -139,11 +139,10 @@ class MoveNestedItemsUseCase(
         val siblings = siblingsOf(items, item.parentId)
         val index = siblings.indexOfFirst { it.id == itemId }
         if (index <= 0) return emptyList()
-        val above = siblings[index - 1]
-        return listOf(
-            NestedItemMove(item.id, item.parentId, above.position),
-            NestedItemMove(above.id, above.parentId, item.position)
-        )
+        val reordered = siblings.toMutableList().apply {
+            add(index - 1, removeAt(index))
+        }
+        return renormalizeGroup(reordered, item.parentId)
     }
 
     /** Moves [itemId] one slot down within its siblings. No-op if already last. */
@@ -151,12 +150,11 @@ class MoveNestedItemsUseCase(
         val item = items.firstOrNull { it.id == itemId } ?: return emptyList()
         val siblings = siblingsOf(items, item.parentId)
         val index = siblings.indexOfFirst { it.id == itemId }
-        if (index == siblings.lastIndex) return emptyList()
-        val below = siblings[index + 1]
-        return listOf(
-            NestedItemMove(item.id, item.parentId, below.position),
-            NestedItemMove(below.id, below.parentId, item.position)
-        )
+        if (index < 0 || index >= siblings.lastIndex) return emptyList()
+        val reordered = siblings.toMutableList().apply {
+            add(index + 1, removeAt(index))
+        }
+        return renormalizeGroup(reordered, item.parentId)
     }
 
     /**

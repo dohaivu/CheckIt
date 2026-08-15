@@ -152,6 +152,9 @@ internal fun NestedListEditorScreen(
                 onAddSibling = { state.editingItemId?.let(viewModel::startAddSibling) },
                 onToggleNote = { state.editingItemId?.let(viewModel::startEditNote) },
                 onToggleCheckbox = { state.editingItemId?.let(viewModel::toggleCheckboxEnabled) },
+                onSetChecked = { checked ->
+                    state.editingItemId?.let { viewModel.setChecked(it, checked) }
+                },
                 onDelete = { state.editingItemId?.let(viewModel::requestDeleteItem) },
                 onAddRoot = viewModel::startAddRoot
             )
@@ -184,6 +187,7 @@ internal fun NestedListEditorScreen(
                         node = row.node,
                         depth = row.depth,
                         isVisible = row.isVisible,
+                        isInCheckedBranch = row.isInCheckedBranch,
                         state = state,
                         viewModel = viewModel
                     )
@@ -349,6 +353,7 @@ private fun EditorToolbar(
     onAddSibling: () -> Unit,
     onToggleNote: () -> Unit,
     onToggleCheckbox: () -> Unit,
+    onSetChecked: (Boolean) -> Unit,
     onDelete: () -> Unit,
     onAddRoot: () -> Unit
 ) {
@@ -392,6 +397,13 @@ private fun EditorToolbar(
                 }
                 ToolbarMenuItem("Checkbox", hasSelection) {
                     showMore = false; onToggleCheckbox()
+                }
+                ToolbarMenuItem(
+                    if (selectedNode?.item?.checked == true) "Uncheck" else "Check off",
+                    hasSelection
+                ) {
+                    showMore = false
+                    onSetChecked(selectedNode?.item?.checked != true)
                 }
                 ToolbarMenuItem(stringResource(Res.string.nested_batch_delete), hasSelection) {
                     showMore = false; onDelete()
@@ -489,6 +501,7 @@ private fun NestedTree(
     node: NestedItemNode,
     depth: Int,
     isVisible: Boolean,
+    isInCheckedBranch: Boolean,
     state: NestedListEditorUiState,
     viewModel: NestedListsViewModel
 ) {
@@ -588,7 +601,7 @@ private fun NestedTree(
                 Checkbox(
                     checked = item.checked,
                     onCheckedChange = { viewModel.toggleChecked(item.id) },
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(28.dp)
                 )
             } else {
                 Spacer(Modifier.width(8.dp))
@@ -617,7 +630,10 @@ private fun NestedTree(
                         text = item.text,
                         style = MaterialTheme.typography.bodyLarge,
                         textDecoration = if (item.checked) TextDecoration.LineThrough else TextDecoration.None,
-                        color = if (item.checked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                        color = when {
+                            isInCheckedBranch -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.68f)
+                            else -> MaterialTheme.colorScheme.onSurface
+                        },
                         fontWeight = if (depth == 0 && !node.hasChildren) FontWeight.Bold else FontWeight.Normal
                     )
                     if (item.note.isNullOrBlank().not()) {
@@ -634,7 +650,8 @@ private fun NestedTree(
             if (state.selectionMode) {
                 Checkbox(
                     checked = isSelected,
-                    onCheckedChange = { viewModel.toggleSelect(item.id) }
+                    onCheckedChange = { viewModel.toggleSelect(item.id) },
+                    modifier = Modifier.size(28.dp)
                 )
             }
         }
@@ -658,21 +675,38 @@ private fun NestedTree(
 private data class VisibleNestedRow(
     val node: NestedItemNode,
     val depth: Int,
-    val isVisible: Boolean
+    val isVisible: Boolean,
+    val isInCheckedBranch: Boolean
+)
+
+private data class NestedTraversalEntry(
+    val node: NestedItemNode,
+    val depth: Int,
+    val isVisible: Boolean,
+    val ancestorChecked: Boolean
 )
 
 /** Iterative traversal keeps stable rows available for expand/collapse animation. */
 private fun flattenVisibleNodes(roots: List<NestedItemNode>): List<VisibleNestedRow> {
     if (roots.isEmpty()) return emptyList()
     val result = ArrayList<VisibleNestedRow>()
-    val stack = ArrayDeque<Triple<NestedItemNode, Int, Boolean>>()
-    roots.asReversed().forEach { stack.addLast(Triple(it, 0, true)) }
+    val stack = ArrayDeque<NestedTraversalEntry>()
+    roots.asReversed().forEach { stack.addLast(NestedTraversalEntry(it, 0, true, false)) }
     while (stack.isNotEmpty()) {
-        val (node, depth, isVisible) = stack.removeLast()
-        result += VisibleNestedRow(node, depth, isVisible)
-        val childrenVisible = isVisible && !node.item.collapsed
+        val entry = stack.removeLast()
+        val node = entry.node
+        val isInCheckedBranch = entry.ancestorChecked || node.item.checked
+        result += VisibleNestedRow(node, entry.depth, entry.isVisible, isInCheckedBranch)
+        val childrenVisible = entry.isVisible && !node.item.collapsed
         node.children.asReversed().forEach { child ->
-            stack.addLast(Triple(child, depth + 1, childrenVisible))
+            stack.addLast(
+                NestedTraversalEntry(
+                    node = child,
+                    depth = entry.depth + 1,
+                    isVisible = childrenVisible,
+                    ancestorChecked = isInCheckedBranch
+                )
+            )
         }
     }
     return result
