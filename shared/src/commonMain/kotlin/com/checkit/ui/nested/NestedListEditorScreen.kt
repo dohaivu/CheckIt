@@ -34,6 +34,11 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.FormatColorFill
+import androidx.compose.material.icons.filled.FormatColorText
+import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -43,6 +48,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOut
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -97,7 +103,7 @@ import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.TaskPriority
 import com.checkit.ui.components.DatePicker
-import com.checkit.ui.components.TagPicker
+import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TagPlain
 import com.checkit.ui.components.TinyTopAppBar
 import org.jetbrains.compose.resources.stringResource
@@ -164,11 +170,6 @@ internal fun NestedListEditorScreen(
                 onMoveDown = { state.editingItemId?.let(viewModel::moveDown) },
                 onAddChild = { state.editingItemId?.let(viewModel::startAddChild) },
                 onAddSibling = { state.editingItemId?.let(viewModel::startAddSibling) },
-                onToggleNote = { state.editingItemId?.let(viewModel::startEditNote) },
-                onToggleCheckbox = { state.editingItemId?.let(viewModel::toggleCheckboxEnabled) },
-                onSetChecked = { checked ->
-                    state.editingItemId?.let { viewModel.setChecked(it, checked) }
-                },
                 onDelete = { state.editingItemId?.let(viewModel::requestDeleteItem) },
                 onAddRoot = viewModel::startAddRoot
             )
@@ -220,7 +221,10 @@ internal fun NestedListEditorScreen(
                         viewModel.updateItemMetadata(selectedItem.id, date, priority)
                     },
                     availableTags = state.availableTags,
-                    onTagsChange = { viewModel.updateItemTags(selectedItem.id, it) }
+                    onTagsChange = { viewModel.updateItemTags(selectedItem.id, it) },
+                    onToggleNote = { viewModel.startEditNote(selectedItem.id) },
+                    onToggleCheckbox = { viewModel.toggleCheckboxEnabled(selectedItem.id) },
+                    onSetChecked = { checked -> viewModel.setChecked(selectedItem.id, checked) }
                 )
             }
         }
@@ -281,7 +285,10 @@ private fun NestedFormattingBottomBar(
     onFormattingChange: (NestedTextStyle, NestedColorToken, NestedColorToken) -> Unit,
     onMetadataChange: (kotlinx.datetime.LocalDate?, TaskPriority) -> Unit,
     availableTags: List<com.checkit.domain.TagItem>,
-    onTagsChange: (List<Long>) -> Unit
+    onTagsChange: (List<Long>) -> Unit,
+    onToggleNote: () -> Unit,
+    onToggleCheckbox: () -> Unit,
+    onSetChecked: (Boolean) -> Unit
 ) {
     var priorityExpanded by remember { mutableStateOf(false) }
     var styleExpanded by remember { mutableStateOf(false) }
@@ -302,36 +309,52 @@ private fun NestedFormattingBottomBar(
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Box {
-                TextButton(onClick = { styleExpanded = true }) { Text(item.textStyle.name) }
+                IconButton(onClick = { styleExpanded = true }, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Default.FormatSize, contentDescription = "Text style")
+                }
                 DropdownMenu(expanded = styleExpanded, onDismissRequest = { styleExpanded = false }) {
                     NestedTextStyle.entries.forEach { style ->
                         DropdownMenuItem(
                             text = { Text(style.name) },
+                            modifier = if (style == item.textStyle) {
+                                Modifier.background(MaterialTheme.colorScheme.secondaryContainer)
+                            } else {
+                                Modifier
+                            },
                             onClick = {
                                 styleExpanded = false
                                 onFormattingChange(style, item.textColor, item.backgroundColor)
                             }
                         )
                     }
+                    DropdownMenuItem(
+                        text = { Text("Checkbox") },
+                        modifier = if (item.checkboxEnabled) {
+                            Modifier.background(MaterialTheme.colorScheme.secondaryContainer)
+                        } else {
+                            Modifier
+                        },
+                        onClick = {
+                            styleExpanded = false
+                            onToggleCheckbox()
+                        }
+                    )
                 }
             }
             ColorTokenMenu(
-                label = "Text: ${item.textColor.name}",
+                icon = Icons.Default.FormatColorText,
                 selected = item.textColor,
                 tokens = colorTokens
             ) { token -> onFormattingChange(item.textStyle, token, item.backgroundColor) }
             ColorTokenMenu(
-                label = "Fill: ${item.backgroundColor.name}",
+                icon = Icons.Default.FormatColorFill,
                 selected = item.backgroundColor,
                 tokens = colorTokens,
                 filled = true
             ) { token -> onFormattingChange(item.textStyle, item.textColor, token) }
             Box {
-                TextButton(onClick = { priorityExpanded = true }) {
-                    Text(
-                        text = "Priority ${priorityMarker(item.priority)}",
-                        color = priorityColor(item.priority)
-                    )
+                IconButton(onClick = { priorityExpanded = true }, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Default.Flag, contentDescription = "Priority", tint = priorityColor(item.priority))
                 }
                 DropdownMenu(expanded = priorityExpanded, onDismissRequest = { priorityExpanded = false }) {
                     TaskPriority.entries.forEach { priority ->
@@ -350,7 +373,7 @@ private fun NestedFormattingBottomBar(
                     }
                 }
             }
-            TagPicker(
+            TagOptionMenu(
                 availableTags = availableTags,
                 selectedTagIds = item.tags.map { it.id }.toSet(),
                 onTagToggle = { tagId ->
@@ -365,15 +388,26 @@ private fun NestedFormattingBottomBar(
                 endTimeMinutes = null,
                 onDateChange = { onMetadataChange(it, item.priority) },
                 onTimeChange = { _, _ -> },
-                supportsEndTime = false
+                supportsEndTime = false,
+                iconOnly = true
             )
+            IconButton(onClick = onToggleNote, modifier = Modifier.size(36.dp)) {
+                Icon(Icons.Default.EditNote, contentDescription = "Edit note")
+            }
+            IconButton(onClick = { onSetChecked(!item.checked) }, modifier = Modifier.size(36.dp)) {
+                Icon(
+                    Icons.Default.Done,
+                    contentDescription = if (item.checked) "Uncheck" else "Check off",
+                    tint = if (item.checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
 
 @Composable
 private fun ColorTokenMenu(
-    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
     selected: NestedColorToken,
     tokens: List<NestedColorToken>,
     filled: Boolean = false,
@@ -381,16 +415,23 @@ private fun ColorTokenMenu(
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
-        TextButton(onClick = { expanded = true }) {
-            ColorTokenSwatch(selected, filled = filled)
-            Spacer(Modifier.width(6.dp))
-            Text(label)
+        IconButton(onClick = { expanded = true }, modifier = Modifier.size(36.dp)) {
+            Icon(
+                imageVector = icon,
+                contentDescription = if (filled) "Background color" else "Text color",
+                tint = nestedColor(selected)
+            )
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             tokens.forEach { token ->
                 DropdownMenuItem(
                     leadingIcon = { ColorTokenSwatch(token, filled = filled) },
                     text = { Text(token.name) },
+                    modifier = if (token == selected) {
+                        Modifier.background(MaterialTheme.colorScheme.secondaryContainer)
+                    } else {
+                        Modifier
+                    },
                     onClick = {
                         expanded = false
                         onSelected(token)
@@ -466,7 +507,7 @@ private fun NestedItemMetadataPreview(item: com.checkit.domain.NestedListItem) {
                 item.tags.forEach { tag -> TagPlain(tag) }
                 item.doDate?.let { date ->
                     Text(
-                        text = "Due $date",
+                        text = "$date",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -586,9 +627,6 @@ private fun EditorToolbar(
     onMoveDown: () -> Unit,
     onAddChild: () -> Unit,
     onAddSibling: () -> Unit,
-    onToggleNote: () -> Unit,
-    onToggleCheckbox: () -> Unit,
-    onSetChecked: (Boolean) -> Unit,
     onDelete: () -> Unit,
     onAddRoot: () -> Unit
 ) {
@@ -626,19 +664,6 @@ private fun EditorToolbar(
                 }
                 ToolbarMenuItem("Add root item", true) {
                     showMore = false; onAddRoot()
-                }
-                ToolbarMenuItem(stringResource(Res.string.nested_edit_note), hasSelection) {
-                    showMore = false; onToggleNote()
-                }
-                ToolbarMenuItem("Checkbox", hasSelection) {
-                    showMore = false; onToggleCheckbox()
-                }
-                ToolbarMenuItem(
-                    if (selectedNode?.item?.checked == true) "Uncheck" else "Check off",
-                    hasSelection
-                ) {
-                    showMore = false
-                    onSetChecked(selectedNode?.item?.checked != true)
                 }
                 ToolbarMenuItem(stringResource(Res.string.nested_batch_delete), hasSelection) {
                     showMore = false; onDelete()
