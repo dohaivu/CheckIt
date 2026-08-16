@@ -67,6 +67,7 @@ data class NestedListEditorUiState(
     val isAddingItem: Boolean = false,
     val addingItemAnchorId: Long? = null,
     val newItemParentId: Long? = null,
+    val newItemDepth: Int = 0,
     val newItemText: String = "",
     val availableTags: List<TagItem> = emptyList(),
     val isLoading: Boolean = true
@@ -233,14 +234,26 @@ class NestedListsViewModel(
     // ---------------- item editing ----------------
 
     fun startAddChild(parentId: Long) {
+        val state = _editor.value ?: return
+        val parent = state.tree?.nodeById?.get(parentId) ?: return
+        var anchor = parent
+        while (anchor.children.isNotEmpty() && !anchor.item.collapsed) {
+            anchor = anchor.children.last()
+        }
         _editor.update {
-            it?.copy(isAddingItem = true, addingItemAnchorId = parentId, newItemParentId = parentId, newItemText = "")
+            it?.copy(
+                isAddingItem = true,
+                addingItemAnchorId = anchor.item.id,
+                newItemParentId = parentId,
+                newItemDepth = state.ancestorDepth(parentId) + 1,
+                newItemText = ""
+            )
         }
     }
 
     fun startAddRoot() {
         _editor.update {
-            it?.copy(isAddingItem = true, addingItemAnchorId = null, newItemParentId = null, newItemText = "")
+            it?.copy(isAddingItem = true, addingItemAnchorId = null, newItemParentId = null, newItemDepth = 0, newItemText = "")
         }
     }
 
@@ -252,6 +265,7 @@ class NestedListsViewModel(
                 isAddingItem = true,
                 addingItemAnchorId = siblingId,
                 newItemParentId = item?.parentId,
+                newItemDepth = item?.let { state.ancestorDepth(it.id) } ?: 0,
                 newItemText = ""
             )
         }
@@ -262,7 +276,15 @@ class NestedListsViewModel(
     }
 
     fun cancelAddItem() {
-        _editor.update { it?.copy(isAddingItem = false, addingItemAnchorId = null, newItemParentId = null, newItemText = "") }
+        _editor.update {
+            it?.copy(
+                isAddingItem = false,
+                addingItemAnchorId = null,
+                newItemParentId = null,
+                newItemDepth = 0,
+                newItemText = ""
+            )
+        }
     }
 
     fun commitNewItem() {
@@ -273,10 +295,16 @@ class NestedListsViewModel(
             return
         }
         val items = flatItems(state)
-        val position = if (state.newItemParentId == state.addingItemAnchorId) {
-            0
+        val anchor = items.firstOrNull { it.id == state.addingItemAnchorId }
+        val isAddingChild = state.newItemParentId != null &&
+            (anchor?.id == state.newItemParentId || anchor?.parentId != state.newItemParentId)
+        val position = if (isAddingChild) {
+            items.filter { it.parentId == state.newItemParentId }
+                .maxOfOrNull { it.position }
+                ?.plus(1)
+                ?: 0
         } else {
-            items.firstOrNull { it.id == state.addingItemAnchorId }?.position?.plus(1)
+            anchor?.position?.plus(1)
         }
         viewModelScope.launch {
             runCatching {
@@ -297,7 +325,10 @@ class NestedListsViewModel(
 
     fun selectItem(itemId: Long) {
         _editor.update { state ->
-            state?.copy(editingItemId = itemId, isEditingText = false)
+            state?.copy(
+                editingItemId = if (state.editingItemId == itemId) null else itemId,
+                isEditingText = false
+            )
         }
     }
 
@@ -505,6 +536,23 @@ class NestedListsViewModel(
     /** Returns the ids from a root down to [id], or empty if [id] is not found. */
     private fun ancestorChain(id: Long): List<Long> {
         val tree = _editor.value?.tree ?: return emptyList()
+        val chain = ArrayDeque<Long>()
+        var current = tree.itemById[id] ?: return emptyList()
+        while (true) {
+            chain.addFirst(current.id)
+            val parentId = current.parentId ?: break
+            current = tree.itemById[parentId] ?: return emptyList()
+        }
+        return chain.toList()
+    }
+
+    private fun NestedListEditorUiState.ancestorDepth(id: Long): Int {
+        val chain = ancestorChainFromTree(tree, id)
+        return (chain.size - 1).coerceAtLeast(0)
+    }
+
+    private fun ancestorChainFromTree(tree: NestedDocumentTree?, id: Long): List<Long> {
+        if (tree == null) return emptyList()
         val chain = ArrayDeque<Long>()
         var current = tree.itemById[id] ?: return emptyList()
         while (true) {

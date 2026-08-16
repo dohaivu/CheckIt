@@ -206,6 +206,15 @@ internal fun NestedListEditorScreen(
                         state = state,
                         viewModel = viewModel
                     )
+                    if (state.isAddingItem && state.addingItemAnchorId == row.node.item.id) {
+                        NewItemRow(
+                            depth = state.newItemDepth,
+                            text = state.newItemText,
+                            onTextChange = viewModel::updateNewItemText,
+                            onCommit = viewModel::commitNewItem,
+                            onCancel = viewModel::cancelAddItem
+                        )
+                    }
                 }
             }
         }
@@ -775,7 +784,6 @@ private fun NestedTree(
     val isSelected = item.id in state.selectedItemIds ||
         (!state.selectionMode && state.editingItemId == item.id)
     val isEditing = state.isEditingText && state.editingItemId == item.id
-    val showNewItemRow = state.isAddingItem && state.addingItemAnchorId == item.id
 
     AnimatedVisibility(
         visible = isVisible,
@@ -793,10 +801,14 @@ private fun NestedTree(
                             val x = level * 16.dp.toPx() + 8.dp.toPx()
                             drawLine(
                                 color = guideColors[level % guideColors.size],
-                                start = androidx.compose.ui.geometry.Offset(
-                                    x,
-                                    if (level == depth) 14.dp.toPx() else 0f
-                                ),
+                            start = androidx.compose.ui.geometry.Offset(
+                                x,
+                                if (level == depth) {
+                                    (12.dp + if (item.collapsed && node.hasChildren) 14.dp else 7.dp).toPx()
+                                } else {
+                                    0f
+                                }
+                            ),
                                 end = androidx.compose.ui.geometry.Offset(x, size.height),
                                 strokeWidth = 1.dp.toPx()
                             )
@@ -948,17 +960,6 @@ private fun NestedTree(
                     )
                 }
             }
-        }
-
-        if (showNewItemRow) {
-            val isChild = state.newItemParentId == item.id
-            NewItemRow(
-                depth = if (isChild) depth + 1 else depth,
-                text = state.newItemText,
-                onTextChange = viewModel::updateNewItemText,
-                onCommit = viewModel::commitNewItem,
-                onCancel = viewModel::cancelAddItem
-            )
         }
 
     }
