@@ -47,7 +47,6 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOut
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -175,40 +174,17 @@ internal fun NestedListEditorScreen(
             )
         }
 
-        LazyColumn(
-            modifier = Modifier.weight(1f).fillMaxWidth(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+        Box(
+            modifier = Modifier.weight(1f).fillMaxWidth()
         ) {
-            if (state.isAddingItem && state.addingItemAnchorId == null) {
-                item(key = "new-root") {
-                    NewItemRow(
-                        depth = 0,
-                        text = state.newItemText,
-                        onTextChange = viewModel::updateNewItemText,
-                        onCommit = viewModel::commitNewItem,
-                        onCancel = viewModel::cancelAddItem
-                    )
-                }
-            }
-            if (visibleRows.isEmpty()) {
-                if (!state.isAddingItem || state.addingItemAnchorId != null) {
-                    item(key = "empty-list") {
-                        EmptyNestedList(onAddItem = viewModel::startAddRoot)
-                    }
-                }
-            } else {
-                items(visibleRows, key = { it.node.item.id }) { row ->
-                    NestedTree(
-                        node = row.node,
-                        depth = row.depth,
-                        isVisible = row.isVisible,
-                        isInCheckedBranch = row.isInCheckedBranch,
-                        state = state,
-                        viewModel = viewModel
-                    )
-                    if (state.isAddingItem && state.addingItemAnchorId == row.node.item.id) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                if (state.isAddingItem && state.addingItemAnchorId == null) {
+                    item(key = "new-root") {
                         NewItemRow(
-                            depth = state.newItemDepth,
+                            depth = 0,
                             text = state.newItemText,
                             onTextChange = viewModel::updateNewItemText,
                             onCommit = viewModel::commitNewItem,
@@ -216,25 +192,54 @@ internal fun NestedListEditorScreen(
                         )
                     }
                 }
+                if (visibleRows.isEmpty()) {
+                    if (!state.isAddingItem || state.addingItemAnchorId != null) {
+                        item(key = "empty-list") {
+                            EmptyNestedList(onAddItem = viewModel::startAddRoot)
+                        }
+                    }
+                } else {
+                    items(visibleRows, key = { it.node.item.id }) { row ->
+                        NestedTree(
+                            node = row.node,
+                            depth = row.depth,
+                            isVisible = row.isVisible,
+                            isInCheckedBranch = row.isInCheckedBranch,
+                            state = state,
+                            viewModel = viewModel
+                        )
+                        if (state.isAddingItem && state.addingItemAnchorId == row.node.item.id) {
+                            NewItemRow(
+                                depth = state.newItemDepth,
+                                text = state.newItemText,
+                                onTextChange = viewModel::updateNewItemText,
+                                onCommit = viewModel::commitNewItem,
+                                onCancel = viewModel::cancelAddItem
+                            )
+                        }
+                    }
+                }
             }
-        }
-        if (!state.selectionMode) {
-            val selectedItem = state.editingItemId?.let { tree.itemById[it] }
-            if (selectedItem != null) {
-                NestedFormattingBottomBar(
-                    item = selectedItem,
-                    onFormattingChange = { style, textColor, backgroundColor ->
-                        viewModel.updateItemFormatting(selectedItem.id, style, textColor, backgroundColor)
-                    },
-                    onMetadataChange = { date, priority ->
-                        viewModel.updateItemMetadata(selectedItem.id, date, priority)
-                    },
-                    availableTags = state.availableTags,
-                    onTagsChange = { viewModel.updateItemTags(selectedItem.id, it) },
-                    onToggleNote = { viewModel.startEditNote(selectedItem.id) },
-                    onToggleCheckbox = { viewModel.toggleCheckboxEnabled(selectedItem.id) },
-                    onSetChecked = { checked -> viewModel.setChecked(selectedItem.id, checked) }
-                )
+            if (!state.selectionMode) {
+                val selectedItem = state.editingItemId?.let { tree.itemById[it] }
+                if (selectedItem != null) {
+                    Box(modifier = Modifier.align(Alignment.BottomCenter)) {
+                        NestedFormattingBottomBar(
+                            item = selectedItem,
+                            onFormattingChange = { style, textColor, backgroundColor ->
+                                viewModel.updateItemFormatting(selectedItem.id, style, textColor, backgroundColor)
+                            },
+                            onMetadataChange = { date, priority ->
+                                viewModel.updateItemMetadata(selectedItem.id, date, priority)
+                            },
+                            availableTags = state.availableTags,
+                            onTagsChange = { viewModel.updateItemTags(selectedItem.id, it) },
+                            onToggleNote = { viewModel.startEditNote(selectedItem.id) },
+                            onToggleCheckbox = { viewModel.toggleCheckboxEnabled(selectedItem.id) },
+                            onSetChecked = { checked -> viewModel.setChecked(selectedItem.id, checked) }
+                        )
+                    }
+                }
             }
         }
     }
@@ -306,20 +311,23 @@ private fun NestedFormattingBottomBar(
         NestedColorToken.Yellow, NestedColorToken.Green, NestedColorToken.Blue,
         NestedColorToken.Purple, NestedColorToken.Pink
     )
-    Column(
+    Row(
         modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .horizontalScroll(rememberScrollState())
+            .background(
+                MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.90f),
+                RoundedCornerShape(18.dp)
+            )
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
             Box {
-                IconButton(onClick = { styleExpanded = true }, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Default.FormatSize, contentDescription = "Text style")
+                IconButton(onClick = { styleExpanded = true }, modifier = Modifier.size(32.dp)) {
+                    Icon(imageVector = Icons.Default.FormatSize,
+                        contentDescription = "Text style",
+                        tint = if (item.textStyle != NestedTextStyle.Body) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
                 DropdownMenu(expanded = styleExpanded, onDismissRequest = { styleExpanded = false }) {
                     NestedTextStyle.entries.forEach { style ->
@@ -362,7 +370,7 @@ private fun NestedFormattingBottomBar(
                 filled = true
             ) { token -> onFormattingChange(item.textStyle, item.textColor, token) }
             Box {
-                IconButton(onClick = { priorityExpanded = true }, modifier = Modifier.size(36.dp)) {
+                IconButton(onClick = { priorityExpanded = true }, modifier = Modifier.size(32.dp)) {
                     Icon(Icons.Default.Flag, contentDescription = "Priority", tint = priorityColor(item.priority))
                 }
                 DropdownMenu(expanded = priorityExpanded, onDismissRequest = { priorityExpanded = false }) {
@@ -400,10 +408,12 @@ private fun NestedFormattingBottomBar(
                 supportsEndTime = false,
                 iconOnly = true
             )
-            IconButton(onClick = onToggleNote, modifier = Modifier.size(36.dp)) {
-                Icon(Icons.Default.EditNote, contentDescription = "Edit note")
+            IconButton(onClick = onToggleNote, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Default.EditNote,
+                    contentDescription = "Edit note",
+                    tint = if (!item.note.isNullOrEmpty()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            IconButton(onClick = { onSetChecked(!item.checked) }, modifier = Modifier.size(36.dp)) {
+            IconButton(onClick = { onSetChecked(!item.checked) }, modifier = Modifier.size(32.dp)) {
                 Icon(
                     Icons.Default.Done,
                     contentDescription = if (item.checked) "Uncheck" else "Check off",
@@ -412,7 +422,6 @@ private fun NestedFormattingBottomBar(
             }
         }
     }
-}
 
 @Composable
 private fun ColorTokenMenu(
@@ -424,7 +433,7 @@ private fun ColorTokenMenu(
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { expanded = true }, modifier = Modifier.size(36.dp)) {
+        IconButton(onClick = { expanded = true }, modifier = Modifier.size(32.dp)) {
             Icon(
                 imageVector = icon,
                 contentDescription = if (filled) "Background color" else "Text color",
@@ -980,7 +989,7 @@ private fun nestedTextColor(token: NestedColorToken) =
 
 @Composable
 private fun nestedColor(token: NestedColorToken) = when (token) {
-    NestedColorToken.Default -> MaterialTheme.colorScheme.onSurface
+    NestedColorToken.Default -> MaterialTheme.colorScheme.onSurfaceVariant
     NestedColorToken.Red -> androidx.compose.ui.graphics.Color(0xFFE57373)
     NestedColorToken.Orange -> androidx.compose.ui.graphics.Color(0xFFFFB74D)
     NestedColorToken.Yellow -> androidx.compose.ui.graphics.Color(0xFFFFD54F)

@@ -44,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -89,6 +90,7 @@ internal fun DatePicker(
         DetailChip(
             icon = Icons.Default.Event,
             label = if (date == null) "No date" else dateTimeRangeDetailLabel(date, startTimeMinutes, endTimeMinutes),
+            iconTint = if (date != null && iconOnly) MaterialTheme.colorScheme.primary else Color.Unspecified,
             isHighlighted = isOverdue,
             iconOnly = iconOnly,
             onClick = {
