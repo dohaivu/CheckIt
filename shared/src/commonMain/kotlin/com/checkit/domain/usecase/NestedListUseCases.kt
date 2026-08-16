@@ -9,6 +9,8 @@ import com.checkit.domain.NestedItemNode
 import com.checkit.domain.TagItem
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.NestedColorToken
+import com.checkit.domain.MetricRollupPolicy
+import com.checkit.domain.NestedManualMetric
 import com.checkit.domain.TaskPriority
 import kotlinx.datetime.LocalDate
 import kotlinx.coroutines.flow.Flow
@@ -109,6 +111,26 @@ class UpdateNestedItemTagsUseCase(
 ) {
     suspend operator fun invoke(itemId: Long, tagIds: List<Long>) =
         repository.updateNestedItemTags(itemId, tagIds)
+}
+
+class UpdateNestedItemMetricSettingsUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(
+        itemId: Long,
+        actualMinutes: Int,
+        metricRollupPolicy: MetricRollupPolicy,
+        showTrackedMinutes: Boolean
+    ) = repository.updateNestedItemMetricSettings(
+        itemId, actualMinutes, metricRollupPolicy, showTrackedMinutes
+    )
+}
+
+class ReplaceNestedManualMetricsUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(itemId: Long, metrics: List<NestedManualMetric>) =
+        repository.replaceNestedManualMetrics(itemId, metrics)
 }
 
 class SetNestedItemCheckboxEnabledUseCase(

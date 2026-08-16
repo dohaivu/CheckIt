@@ -10,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -46,6 +48,7 @@ import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOut
+import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
@@ -101,6 +104,10 @@ import com.checkit.domain.NestedItemNode
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.TaskPriority
+import com.checkit.domain.MetricRollupPolicy
+import com.checkit.domain.NestedManualMetric
+import com.checkit.domain.NestedMetricSummary
+import com.checkit.domain.NestedMetricUnit
 import com.checkit.ui.components.DatePicker
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TagPlain
@@ -113,6 +120,7 @@ internal fun NestedListEditorScreen(
     viewModel: NestedListsViewModel,
     onNavigateBack: () -> Unit
 ) {
+    var metricsItemId by remember { mutableStateOf<Long?>(null) }
     val tree = state.tree
     if (tree == null) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -170,7 +178,8 @@ internal fun NestedListEditorScreen(
                 onAddChild = { state.editingItemId?.let(viewModel::startAddChild) },
                 onAddSibling = { state.editingItemId?.let(viewModel::startAddSibling) },
                 onDelete = { state.editingItemId?.let(viewModel::requestDeleteItem) },
-                onAddRoot = viewModel::startAddRoot
+                onAddRoot = viewModel::startAddRoot,
+                onManageMetrics = { state.editingItemId?.let { metricsItemId = it } }
             )
         }
 
@@ -290,6 +299,22 @@ internal fun NestedListEditorScreen(
                 TextButton(onClick = viewModel::stopEditNote) { Text(stringResource(Res.string.cancel)) }
             }
         )
+    }
+
+    metricsItemId?.let { itemId ->
+        state.tree?.itemById?.get(itemId)?.let { item ->
+            NestedMetricsDialog(
+                item = item,
+                summary = state.tree.metricSummaryById[itemId] ?: NestedMetricSummary(),
+                isLeaf = state.tree.nodeById[itemId]?.hasChildren != true,
+                onDismiss = { metricsItemId = null },
+                onSave = { actualMinutes, policy, showTrackedMinutes, manualMetrics ->
+                    viewModel.updateItemMetricSettings(itemId, actualMinutes, policy, showTrackedMinutes)
+                    viewModel.replaceManualMetrics(itemId, manualMetrics)
+                    metricsItemId = null
+                }
+            )
+        }
     }
 }
 
@@ -500,13 +525,37 @@ private fun priorityColor(priority: TaskPriority): Color = when (priority) {
 }
 
 @Composable
-private fun NestedItemMetadataPreview(item: com.checkit.domain.NestedListItem) {
+private fun NestedItemMetadataPreview(
+    item: com.checkit.domain.NestedListItem,
+    summary: NestedMetricSummary,
+    isLeaf: Boolean
+) {
     val hasNote = !item.note.isNullOrBlank()
     val hasTags = item.tags.isNotEmpty()
     val hasDate = item.doDate != null
-    if (!hasNote && !hasTags && !hasDate) return
-
+    val showTracked = isLeaf || item.showTrackedMinutes
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (summary.doneItemCount > 0) MetricChip("${summary.doneItemCount} done")
+            if (showTracked && summary.trackedMinutes > 0) MetricChip("${summary.trackedMinutes} min")
+            item.manualMetrics.filter { it.enabled }.forEach { metric ->
+                if (metric.value.isNotBlank()) {
+                    val target = metric.targetValue?.takeIf { it.isNotBlank() }?.let { " / $it" }.orEmpty()
+                    val unit = metric.displayUnit()
+                    MetricChip(
+                        listOfNotNull(metric.name.takeIf { it.isNotBlank() }, "${metric.value}$target", unit)
+                            .joinToString(" "),
+                        manual = true
+                    )
+                }
+            }
+        }
+        if (!hasNote && !hasTags && !hasDate) return@Column
+
         if (hasNote) {
             Text(
                 text = item.note.orEmpty(),
@@ -533,6 +582,220 @@ private fun NestedItemMetadataPreview(item: com.checkit.domain.NestedListItem) {
             }
         }
     }
+}
+
+@Composable
+private fun MetricChip(text: String, manual: Boolean = false) {
+    androidx.compose.material3.Surface(
+        shape = RoundedCornerShape(6.dp),
+        color = if (manual) {
+            MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.88f)
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f)
+        }
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = if (manual) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            maxLines = 1
+        )
+    }
+}
+
+private fun NestedManualMetric.displayUnit(): String? = when (unit) {
+    NestedMetricUnit.None -> null
+    NestedMetricUnit.Custom -> customUnit?.takeIf { it.isNotBlank() }
+    else -> unitLabel(unit)
+}
+
+private fun NestedMetricUnit.displayName(customUnit: String? = null): String = when (this) {
+    NestedMetricUnit.None -> "None"
+    NestedMetricUnit.Custom -> customUnit?.takeIf { it.isNotBlank() } ?: "Custom"
+    else -> unitLabel(this)
+}
+
+private fun unitLabel(unit: NestedMetricUnit): String = when (unit) {
+    NestedMetricUnit.None -> ""
+    NestedMetricUnit.Percentage -> "%"
+    NestedMetricUnit.Points -> "points"
+    NestedMetricUnit.Count -> "count"
+    NestedMetricUnit.Items -> "items"
+    NestedMetricUnit.Hours -> "hours"
+    NestedMetricUnit.Days -> "days"
+    NestedMetricUnit.Currency -> "currency"
+    NestedMetricUnit.Rating -> "rating"
+    NestedMetricUnit.Custom -> ""
+}
+
+@Composable
+private fun NestedMetricsDialog(
+    item: com.checkit.domain.NestedListItem,
+    summary: NestedMetricSummary,
+    isLeaf: Boolean,
+    onDismiss: () -> Unit,
+    onSave: (Int, MetricRollupPolicy, Boolean, List<NestedManualMetric>) -> Unit
+) {
+    var actualMinutes by remember(item.id) { mutableStateOf(item.actualMinutes.toString()) }
+    var policy by remember(item.id) { mutableStateOf(item.metricRollupPolicy) }
+    var showTrackedMinutes by remember(item.id) { mutableStateOf(item.showTrackedMinutes) }
+    var metrics by remember(item.id) { mutableStateOf(item.manualMetrics) }
+    var policyExpanded by remember { mutableStateOf(false) }
+    var unitExpandedIndex by remember { mutableStateOf<Int?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("Metrics", style = MaterialTheme.typography.titleLarge)
+                Text(item.text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = actualMinutes,
+                        onValueChange = { value -> if (value.all { it.isDigit() }) actualMinutes = value },
+                        label = { Text("Minutes") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                        modifier = Modifier.weight(0.8f)
+                    )
+                    Box(modifier = Modifier.weight(1.2f)) {
+                        TextButton(onClick = { policyExpanded = true }, modifier = Modifier.fillMaxWidth()) {
+                            Text(policyLabel(policy), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(18.dp))
+                        }
+                        DropdownMenu(expanded = policyExpanded, onDismissRequest = { policyExpanded = false }) {
+                            MetricRollupPolicy.entries.forEach { option ->
+                                DropdownMenuItem(
+                                    text = { Text(policyLabel(option)) },
+                                    onClick = { policy = option; policyExpanded = false }
+                                )
+                            }
+                        }
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Tracked minutes", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "${summary.doneItemCount} children done · ${summary.trackedMinutes} min",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    androidx.compose.material3.Switch(
+                        checked = showTrackedMinutes || isLeaf,
+                        onCheckedChange = { if (!isLeaf) showTrackedMinutes = it },
+                        modifier = Modifier.scale(0.8f)
+                    )
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Manual", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                    TextButton(onClick = {
+                        metrics = metrics + NestedManualMetric(itemId = item.id, name = "", value = "", sortOrder = metrics.size)
+                    }) { Text("Add") }
+                }
+                metrics.forEachIndexed { index, metric ->
+                    androidx.compose.material3.Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.30f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                OutlinedTextField(
+                                    value = metric.name,
+                                    onValueChange = { value -> metrics = metrics.toMutableList().also { it[index] = metric.copy(name = value) } },
+                                    placeholder = { Text("Metric name") },
+                                    singleLine = true,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                IconButton(onClick = { metrics = metrics.filterIndexed { metricIndex, _ -> metricIndex != index } }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Delete metric")
+                                }
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                OutlinedTextField(
+                                    value = metric.value,
+                                    onValueChange = { value -> metrics = metrics.toMutableList().also { it[index] = metric.copy(value = value) } },
+                                    placeholder = { Text("Value") },
+                                    singleLine = true,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                OutlinedTextField(
+                                    value = metric.targetValue.orEmpty(),
+                                    onValueChange = { value -> metrics = metrics.toMutableList().also { it[index] = metric.copy(targetValue = value) } },
+                                    placeholder = { Text("Target") },
+                                    singleLine = true,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            Box {
+                                TextButton(onClick = { unitExpandedIndex = index }) {
+                                    Text(metric.unit.displayName(metric.customUnit))
+                                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(18.dp))
+                                }
+                                DropdownMenu(
+                                    expanded = unitExpandedIndex == index,
+                                    onDismissRequest = { unitExpandedIndex = null }
+                                ) {
+                                    NestedMetricUnit.entries.forEach { unit ->
+                                        DropdownMenuItem(
+                                            text = { Text(unit.displayName()) },
+                                            onClick = {
+                                                metrics = metrics.toMutableList().also {
+                                                    it[index] = metric.copy(
+                                                        unit = unit,
+                                                        customUnit = if (unit == NestedMetricUnit.Custom) metric.customUnit else null
+                                                    )
+                                                }
+                                                unitExpandedIndex = null
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                            if (metric.unit == NestedMetricUnit.Custom) {
+                                OutlinedTextField(
+                                    value = metric.customUnit.orEmpty(),
+                                    onValueChange = { value -> metrics = metrics.toMutableList().also { it[index] = metric.copy(customUnit = value) } },
+                                    placeholder = { Text("Custom unit") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                onSave(actualMinutes.toIntOrNull() ?: 0, policy, showTrackedMinutes, metrics.filter { it.name.isNotBlank() && it.value.isNotBlank() })
+            }) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
+
+private fun policyLabel(policy: MetricRollupPolicy): String = when (policy) {
+    MetricRollupPolicy.IncludeChildren -> "Include children"
+    MetricRollupPolicy.OwnOnly -> "Own item only"
+    MetricRollupPolicy.ExcludeFromParent -> "Exclude from parent"
 }
 
 // ---------------- breadcrumbs ----------------
@@ -646,7 +909,8 @@ private fun EditorToolbar(
     onAddChild: () -> Unit,
     onAddSibling: () -> Unit,
     onDelete: () -> Unit,
-    onAddRoot: () -> Unit
+    onAddRoot: () -> Unit,
+    onManageMetrics: () -> Unit
 ) {
     val hasSelection = state.editingItemId != null
     val selectedNode = state.editingItemId?.let { id -> state.tree?.nodeById?.get(id) }
@@ -668,6 +932,7 @@ private fun EditorToolbar(
         ToolbarButton(Icons.AutoMirrored.Filled.KeyboardArrowLeft, stringResource(Res.string.nested_outdent), hasSelection, onOutdent)
         ToolbarButton(Icons.Default.KeyboardArrowUp, stringResource(Res.string.nested_move_up), hasSelection, onMoveUp)
         ToolbarButton(Icons.Default.KeyboardArrowDown, stringResource(Res.string.nested_move_down), hasSelection, onMoveDown)
+        ToolbarButton(Icons.Default.QueryStats, "Manage metrics", hasSelection, onManageMetrics)
         Box {
             ToolbarButton(Icons.Default.MoreVert, "More actions", true) { showMore = true }
             androidx.compose.material3.DropdownMenu(
@@ -948,7 +1213,11 @@ private fun NestedTree(
                             fontWeight = if (depth == 0 && !node.hasChildren) FontWeight.Bold else null
                         )
                     }
-                    NestedItemMetadataPreview(item)
+                    NestedItemMetadataPreview(
+                        item = item,
+                        summary = state.tree?.metricSummaryById?.get(item.id) ?: NestedMetricSummary(),
+                        isLeaf = !node.hasChildren
+                    )
                 }
 
                 if (item.priority != TaskPriority.None) {

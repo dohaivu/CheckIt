@@ -24,6 +24,9 @@ import com.checkit.domain.NestedItemMove
 import com.checkit.domain.NestedListItem
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.NestedColorToken
+import com.checkit.domain.MetricRollupPolicy
+import com.checkit.domain.NestedManualMetric
+import com.checkit.domain.NestedMetricUnit
 import com.checkit.domain.buildNestedTree
 import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
@@ -228,6 +231,13 @@ suspend fun addNestedItem(documentId: Long, parentId: Long?, text: String, posit
     )
     suspend fun updateNestedItemMetadata(itemId: Long, doDate: LocalDate?, priority: TaskPriority)
     suspend fun updateNestedItemTags(itemId: Long, tagIds: List<Long>)
+    suspend fun updateNestedItemMetricSettings(
+        itemId: Long,
+        actualMinutes: Int,
+        metricRollupPolicy: MetricRollupPolicy,
+        showTrackedMinutes: Boolean
+    )
+    suspend fun replaceNestedManualMetrics(itemId: Long, metrics: List<NestedManualMetric>)
     suspend fun setNestedItemCheckboxEnabled(itemId: Long, checkboxEnabled: Boolean)
     suspend fun setNestedItemsChecked(itemIds: List<Long>, checked: Boolean)
     suspend fun toggleNestedItemCollapsed(itemId: Long)
@@ -1417,20 +1427,23 @@ class RoomCheckItRepository(
         combine(
             dao.observeNestedDocuments(),
             dao.observeNestedItems(documentId),
-            dao.observeNestedItemTags(documentId)
-        ) { documents, items, links ->
+            dao.observeNestedItemTags(documentId),
+            dao.observeNestedManualMetrics(documentId)
+        ) { documents, items, links, metricEntities ->
             val tagsById = links.map { it.tagId }.distinct()
                 .takeIf { it.isNotEmpty() }
                 ?.let { dao.tagsByIds(it).associateBy(TagEntity::id) }
                 .orEmpty()
             val tagsByItemId = links.groupBy(NestedItemTagEntity::itemId)
+            val metricsByItemId = metricEntities.groupBy(NestedManualMetricEntity::itemId)
             NestedDocumentTree(
                 document = documents.firstOrNull { it.id == documentId }
                     ?.let { NestedDocument(it.id, it.title, it.createdAtMillis, it.updatedAtMillis) }
                     ?: NestedDocument(id = documentId, title = "", createdAtMillis = 0L, updatedAtMillis = 0L),
                 rootNodes = buildNestedTree(items.map { item ->
                     item.toNestedListItem(
-                        tags = tagsByItemId[item.id].orEmpty().mapNotNull { tagsById[it.tagId]?.toDomain() }
+                        tags = tagsByItemId[item.id].orEmpty().mapNotNull { tagsById[it.tagId]?.toDomain() },
+                        manualMetrics = metricsByItemId[item.id].orEmpty().map { it.toDomain() }
                     )
                 })
             )
@@ -1493,6 +1506,25 @@ class RoomCheckItRepository(
 
     override suspend fun updateNestedItemMetadata(itemId: Long, doDate: LocalDate?, priority: TaskPriority) {
         dao.updateNestedItemMetadata(itemId, doDate?.toEpochDays()?.toInt(), priority.name, Clock.System.now().toEpochMilliseconds())
+    }
+
+    override suspend fun updateNestedItemMetricSettings(
+        itemId: Long,
+        actualMinutes: Int,
+        metricRollupPolicy: MetricRollupPolicy,
+        showTrackedMinutes: Boolean
+    ) {
+        dao.updateNestedItemActualMinutes(itemId, actualMinutes.coerceAtLeast(0), Clock.System.now().toEpochMilliseconds())
+        dao.updateNestedItemMetricSettings(
+            itemId,
+            metricRollupPolicy.name,
+            showTrackedMinutes,
+            Clock.System.now().toEpochMilliseconds()
+        )
+    }
+
+    override suspend fun replaceNestedManualMetrics(itemId: Long, metrics: List<NestedManualMetric>) {
+        dao.replaceNestedManualMetrics(itemId, metrics.map { it.toEntity(itemId) })
     }
 
     override suspend fun updateNestedItemTags(itemId: Long, tagIds: List<Long>) {
@@ -1811,7 +1843,10 @@ private fun PlanPriorityEntity.toDomain(periodPlan: PeriodPlan) = PlanPriority(
     completedAtMillis = completedAtMillis
 )
 
-private fun NestedListItemEntity.toNestedListItem(tags: List<TagItem> = emptyList()) = NestedListItem(
+private fun NestedListItemEntity.toNestedListItem(
+    tags: List<TagItem> = emptyList(),
+    manualMetrics: List<NestedManualMetric> = emptyList()
+) = NestedListItem(
     id = id,
     documentId = documentId,
     parentId = parentId,
@@ -1827,6 +1862,35 @@ private fun NestedListItemEntity.toNestedListItem(tags: List<TagItem> = emptyLis
     doDate = doDateEpochDays?.let { LocalDate.fromEpochDays(it) },
     priority = runCatching { TaskPriority.valueOf(priority) }.getOrDefault(TaskPriority.None),
     tags = tags,
+    actualMinutes = actualMinutes,
+    metricRollupPolicy = runCatching { MetricRollupPolicy.valueOf(metricRollupPolicy) }
+        .getOrDefault(MetricRollupPolicy.IncludeChildren),
+    showTrackedMinutes = showTrackedMinutes,
+    manualMetrics = manualMetrics,
     createdAtMillis = createdAtMillis,
     updatedAtMillis = updatedAtMillis
+)
+
+private fun NestedManualMetricEntity.toDomain() = NestedManualMetric(
+    id = id,
+    itemId = itemId,
+    name = name,
+    value = value,
+    targetValue = targetValue,
+    unit = runCatching { NestedMetricUnit.valueOf(unit) }.getOrDefault(NestedMetricUnit.None),
+    customUnit = customUnit,
+    sortOrder = sortOrder,
+    enabled = enabled
+)
+
+private fun NestedManualMetric.toEntity(itemId: Long) = NestedManualMetricEntity(
+    id = id,
+    itemId = itemId,
+    name = name.trim(),
+    value = value.trim(),
+    targetValue = targetValue?.trim()?.takeIf { it.isNotEmpty() },
+    unit = unit.name,
+    customUnit = customUnit?.trim()?.takeIf { it.isNotEmpty() },
+    sortOrder = sortOrder,
+    enabled = enabled
 )

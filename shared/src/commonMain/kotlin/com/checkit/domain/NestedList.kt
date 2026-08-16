@@ -19,6 +19,42 @@ enum class NestedColorToken {
     Pink
 }
 
+enum class MetricRollupPolicy {
+    IncludeChildren,
+    OwnOnly,
+    ExcludeFromParent
+}
+
+enum class NestedMetricUnit {
+    None,
+    Percentage,
+    Points,
+    Count,
+    Items,
+    Hours,
+    Days,
+    Currency,
+    Rating,
+    Custom
+}
+
+data class NestedManualMetric(
+    val id: Long = 0L,
+    val itemId: Long,
+    val name: String,
+    val value: String,
+    val targetValue: String? = null,
+    val unit: NestedMetricUnit = NestedMetricUnit.None,
+    val customUnit: String? = null,
+    val sortOrder: Int = 0,
+    val enabled: Boolean = true
+)
+
+data class NestedMetricSummary(
+    val doneItemCount: Int = 0,
+    val trackedMinutes: Int = 0
+)
+
 /**
  * A single nested-lists document. Holds one unlimited-depth item tree.
  */
@@ -49,6 +85,10 @@ data class NestedListItem(
     val doDate: LocalDate? = null,
     val priority: TaskPriority = TaskPriority.None,
     val tags: List<TagItem> = emptyList(),
+    val actualMinutes: Int = 0,
+    val metricRollupPolicy: MetricRollupPolicy = MetricRollupPolicy.IncludeChildren,
+    val showTrackedMinutes: Boolean = false,
+    val manualMetrics: List<NestedManualMetric> = emptyList(),
     val createdAtMillis: Long,
     val updatedAtMillis: Long
 )
@@ -70,6 +110,33 @@ data class NestedDocumentTree(
     val nodeById: Map<Long, NestedItemNode> by lazy { indexNestedNodes(rootNodes) }
     val itemById: Map<Long, NestedListItem> by lazy { nodeById.mapValues { it.value.item } }
     val flatItems: List<NestedListItem> by lazy { flattenNestedNodes(rootNodes) }
+    val metricSummaryById: Map<Long, NestedMetricSummary> by lazy { calculateNestedMetricSummaries(rootNodes) }
+}
+
+fun calculateNestedMetricSummaries(roots: List<NestedItemNode>): Map<Long, NestedMetricSummary> {
+    val summaries = HashMap<Long, NestedMetricSummary>()
+    val stack = ArrayDeque<Pair<NestedItemNode, Boolean>>()
+    roots.asReversed().forEach { stack.addLast(it to false) }
+    while (stack.isNotEmpty()) {
+        val (node, visited) = stack.removeLast()
+        if (!visited) {
+            stack.addLast(node to true)
+            node.children.asReversed().forEach { stack.addLast(it to false) }
+            continue
+        }
+        val doneItemCount = node.children.count { it.item.checked }
+        var trackedMinutes = node.item.actualMinutes.coerceAtLeast(0)
+        node.children.forEach { child ->
+            val childSummary = summaries[child.item.id] ?: return@forEach
+            if (node.item.metricRollupPolicy != MetricRollupPolicy.OwnOnly &&
+                child.item.metricRollupPolicy != MetricRollupPolicy.ExcludeFromParent
+            ) {
+                trackedMinutes += childSummary.trackedMinutes
+            }
+        }
+        summaries[node.item.id] = NestedMetricSummary(doneItemCount, trackedMinutes)
+    }
+    return summaries
 }
 
 /**

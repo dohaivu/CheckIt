@@ -942,6 +942,9 @@ interface CheckItDao {
     @Query("SELECT * FROM nested_item_tags WHERE itemId IN (SELECT id FROM nested_list_items WHERE documentId = :documentId)")
     fun observeNestedItemTags(documentId: Long): Flow<List<NestedItemTagEntity>>
 
+    @Query("SELECT * FROM nested_manual_metrics WHERE itemId IN (SELECT id FROM nested_list_items WHERE documentId = :documentId) ORDER BY itemId ASC, sortOrder ASC, id ASC")
+    fun observeNestedManualMetrics(documentId: Long): Flow<List<NestedManualMetricEntity>>
+
     @Query("SELECT COALESCE(MAX(position), -1) + 1 FROM nested_list_items WHERE documentId = :documentId AND parentId IS :parentId")
     suspend fun nextNestedItemPosition(documentId: Long, parentId: Long?): Int
 
@@ -971,6 +974,17 @@ interface CheckItDao {
         itemId: Long,
         doDateEpochDays: Int?,
         priority: String,
+        updatedAtMillis: Long
+    )
+
+    @Query("UPDATE nested_list_items SET actualMinutes = :actualMinutes, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
+    suspend fun updateNestedItemActualMinutes(itemId: Long, actualMinutes: Int, updatedAtMillis: Long)
+
+    @Query("UPDATE nested_list_items SET metricRollupPolicy = :policy, showTrackedMinutes = :showTrackedMinutes, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
+    suspend fun updateNestedItemMetricSettings(
+        itemId: Long,
+        policy: String,
+        showTrackedMinutes: Boolean,
         updatedAtMillis: Long
     )
 
@@ -1007,6 +1021,21 @@ interface CheckItDao {
     suspend fun replaceNestedItemTags(itemId: Long, tagIds: List<Long>) {
         deleteNestedItemTags(itemId)
         tagIds.distinct().forEach { tagId -> insertNestedItemTag(NestedItemTagEntity(itemId, tagId)) }
+    }
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNestedManualMetric(metric: NestedManualMetricEntity): Long
+
+    @Query("DELETE FROM nested_manual_metrics WHERE id = :metricId")
+    suspend fun deleteNestedManualMetric(metricId: Long)
+
+    @Query("DELETE FROM nested_manual_metrics WHERE itemId = :itemId")
+    suspend fun deleteNestedManualMetrics(itemId: Long)
+
+    @Transaction
+    suspend fun replaceNestedManualMetrics(itemId: Long, metrics: List<NestedManualMetricEntity>) {
+        deleteNestedManualMetrics(itemId)
+        metrics.forEach { insertNestedManualMetric(it.copy(id = 0L, itemId = itemId)) }
     }
 
     @Transaction

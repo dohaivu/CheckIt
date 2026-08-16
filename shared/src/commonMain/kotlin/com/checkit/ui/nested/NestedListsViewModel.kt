@@ -10,6 +10,8 @@ import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TagItem
+import com.checkit.domain.MetricRollupPolicy
+import com.checkit.domain.NestedManualMetric
 import com.checkit.domain.usecase.AddNestedDocumentUseCase
 import com.checkit.domain.usecase.AddNestedItemUseCase
 import com.checkit.domain.usecase.DeleteNestedDocumentUseCase
@@ -27,6 +29,8 @@ import com.checkit.domain.usecase.UpdateNestedItemTextUseCase
 import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
 import com.checkit.domain.usecase.UpdateNestedItemMetadataUseCase
 import com.checkit.domain.usecase.UpdateNestedItemTagsUseCase
+import com.checkit.domain.usecase.UpdateNestedItemMetricSettingsUseCase
+import com.checkit.domain.usecase.ReplaceNestedManualMetricsUseCase
 import kotlinx.datetime.LocalDate
 import com.checkit.ui.UiEvent
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -100,6 +104,8 @@ class NestedListsViewModel(
     private val updateItemFormattingUseCase: UpdateNestedItemFormattingUseCase,
     private val updateItemMetadataUseCase: UpdateNestedItemMetadataUseCase,
     private val updateItemTagsUseCase: UpdateNestedItemTagsUseCase,
+    private val updateItemMetricSettingsUseCase: UpdateNestedItemMetricSettingsUseCase,
+    private val replaceNestedManualMetricsUseCase: ReplaceNestedManualMetricsUseCase,
     private val setCheckboxEnabledUseCase: SetNestedItemCheckboxEnabledUseCase,
     private val setItemsCheckedUseCase: SetNestedItemsCheckedUseCase,
     private val toggleCollapsedUseCase: ToggleNestedItemCollapsedUseCase,
@@ -388,6 +394,30 @@ class NestedListsViewModel(
         viewModelScope.launch {
             runCatching { updateItemTagsUseCase(itemId, tagIds) }
                 .onFailure { error -> _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to update item tags")) }
+        }
+    }
+
+    fun updateItemMetricSettings(
+        itemId: Long,
+        actualMinutes: Int,
+        policy: MetricRollupPolicy,
+        showTrackedMinutes: Boolean
+    ) {
+        viewModelScope.launch {
+            runCatching {
+                updateItemMetricSettingsUseCase(itemId, actualMinutes, policy, showTrackedMinutes)
+            }.onFailure { error ->
+                _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to update metrics"))
+            }
+        }
+    }
+
+    fun replaceManualMetrics(itemId: Long, metrics: List<NestedManualMetric>) {
+        viewModelScope.launch {
+            runCatching { replaceNestedManualMetricsUseCase(itemId, metrics) }
+                .onFailure { error ->
+                    _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to update metrics"))
+                }
         }
     }
 

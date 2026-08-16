@@ -34,6 +34,8 @@ import com.checkit.domain.NestedItemMove
 import com.checkit.domain.NestedListItem
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.NestedColorToken
+import com.checkit.domain.MetricRollupPolicy
+import com.checkit.domain.NestedManualMetric
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.buildNestedTree
 import com.checkit.domain.planNestedMoves
@@ -1329,6 +1331,29 @@ internal class FakeCheckItRepository(
         val tags = boardFlow.value.tags.filter { it.id in tagIds }
         nestedItemsFlow.update { items ->
             items.map { if (it.id == itemId) it.copy(tags = tags) else it }
+        }
+    }
+
+    override suspend fun updateNestedItemMetricSettings(
+        itemId: Long,
+        actualMinutes: Int,
+        metricRollupPolicy: MetricRollupPolicy,
+        showTrackedMinutes: Boolean
+    ) {
+        nestedItemsFlow.update { items ->
+            items.map {
+                if (it.id == itemId) it.copy(
+                    actualMinutes = actualMinutes,
+                    metricRollupPolicy = metricRollupPolicy,
+                    showTrackedMinutes = showTrackedMinutes
+                ) else it
+            }
+        }
+    }
+
+    override suspend fun replaceNestedManualMetrics(itemId: Long, metrics: List<NestedManualMetric>) {
+        nestedItemsFlow.update { items ->
+            items.map { if (it.id == itemId) it.copy(manualMetrics = metrics) else it }
         }
     }
 

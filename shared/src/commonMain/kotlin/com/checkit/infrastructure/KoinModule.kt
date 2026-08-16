@@ -83,6 +83,8 @@ import com.checkit.domain.usecase.UpdateNestedItemTextUseCase
 import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
 import com.checkit.domain.usecase.UpdateNestedItemMetadataUseCase
 import com.checkit.domain.usecase.UpdateNestedItemTagsUseCase
+import com.checkit.domain.usecase.UpdateNestedItemMetricSettingsUseCase
+import com.checkit.domain.usecase.ReplaceNestedManualMetricsUseCase
 import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.usecase.TogglePlanPriorityDoneUseCase
 import com.checkit.domain.usecase.UnlinkTacticFromGoalUseCase
@@ -236,6 +238,8 @@ val provideInteractorModule = module {
     single { UpdateNestedItemFormattingUseCase(get()) }
     single { UpdateNestedItemMetadataUseCase(get()) }
     single { UpdateNestedItemTagsUseCase(get()) }
+    single { UpdateNestedItemMetricSettingsUseCase(get()) }
+    single { ReplaceNestedManualMetricsUseCase(get()) }
     single { SetNestedItemCheckboxEnabledUseCase(get()) }
     single { SetNestedItemsCheckedUseCase(get()) }
     single { ToggleNestedItemCollapsedUseCase(get()) }
@@ -341,6 +345,8 @@ val provideViewModelModule = module {
             updateItemFormattingUseCase = get(),
             updateItemMetadataUseCase = get(),
             updateItemTagsUseCase = get(),
+            updateItemMetricSettingsUseCase = get(),
+            replaceNestedManualMetricsUseCase = get(),
             setCheckboxEnabledUseCase = get(),
             setItemsCheckedUseCase = get(),
             toggleCollapsedUseCase = get(),

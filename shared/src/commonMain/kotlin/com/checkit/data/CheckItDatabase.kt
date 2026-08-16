@@ -699,8 +699,36 @@ data class NestedListItemEntity(
     val backgroundColor: String = "Default",
     val doDateEpochDays: Int? = null,
     val priority: String = "None",
+    val actualMinutes: Int = 0,
+    val metricRollupPolicy: String = "IncludeChildren",
+    val showTrackedMinutes: Boolean = false,
     val createdAtMillis: Long,
     val updatedAtMillis: Long
+)
+
+@Entity(
+    tableName = "nested_manual_metrics",
+    foreignKeys = [
+        ForeignKey(
+            entity = NestedListItemEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["itemId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("itemId"), Index(value = ["itemId", "sortOrder"])]
+)
+data class NestedManualMetricEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0L,
+    val itemId: Long,
+    val name: String,
+    val value: String,
+    val targetValue: String? = null,
+    val unit: String = "None",
+    val customUnit: String? = null,
+    val sortOrder: Int = 0,
+    val enabled: Boolean = true
 )
 
 @Entity(
@@ -760,7 +788,8 @@ data class NestedItemTagEntity(
         TwelveWeekGoalTaskEntity::class,
         NestedDocumentEntity::class,
         NestedListItemEntity::class,
-        NestedItemTagEntity::class
+        NestedItemTagEntity::class,
+        NestedManualMetricEntity::class
     ],
     version = 3,
     exportSchema = false
