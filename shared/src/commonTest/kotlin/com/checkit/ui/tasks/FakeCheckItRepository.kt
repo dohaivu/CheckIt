@@ -32,6 +32,9 @@ import com.checkit.domain.NestedDocument
 import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemMove
 import com.checkit.domain.NestedListItem
+import com.checkit.domain.NestedTextStyle
+import com.checkit.domain.NestedColorToken
+import com.checkit.domain.TaskPriority
 import com.checkit.domain.buildNestedTree
 import com.checkit.domain.planNestedMoves
 import com.checkit.domain.PeriodPlan
@@ -57,6 +60,7 @@ import com.checkit.domain.TwelveWeekGoalTaskLink
 import com.checkit.domain.hasEndTime
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.datetime.LocalDate
 import kotlinx.coroutines.flow.update
 
@@ -1214,6 +1218,8 @@ internal class FakeCheckItRepository(
 
     override fun observeNestedDocuments(): Flow<List<NestedDocument>> = nestedDocumentsFlow
 
+    override fun observeTags(): Flow<List<TagItem>> = boardFlow.map { it.tags }
+
     override fun observeNestedDocumentTree(documentId: Long): Flow<NestedDocumentTree> {
         return kotlinx.coroutines.flow.combine(nestedDocumentsFlow, nestedItemsFlow) { documents, items ->
             val document = documents.firstOrNull { it.id == documentId }
@@ -1299,6 +1305,30 @@ internal class FakeCheckItRepository(
     override suspend fun updateNestedItemNote(itemId: Long, note: String?) {
         nestedItemsFlow.update { items ->
             items.map { if (it.id == itemId) it.copy(note = note) else it }
+        }
+    }
+
+    override suspend fun updateNestedItemFormatting(
+        itemId: Long,
+        textStyle: NestedTextStyle,
+        textColor: NestedColorToken,
+        backgroundColor: NestedColorToken
+    ) {
+        nestedItemsFlow.update { items ->
+            items.map { if (it.id == itemId) it.copy(textStyle = textStyle, textColor = textColor, backgroundColor = backgroundColor) else it }
+        }
+    }
+
+    override suspend fun updateNestedItemMetadata(itemId: Long, doDate: LocalDate?, priority: TaskPriority) {
+        nestedItemsFlow.update { items ->
+            items.map { if (it.id == itemId) it.copy(doDate = doDate, priority = priority) else it }
+        }
+    }
+
+    override suspend fun updateNestedItemTags(itemId: Long, tagIds: List<Long>) {
+        val tags = boardFlow.value.tags.filter { it.id in tagIds }
+        nestedItemsFlow.update { items ->
+            items.map { if (it.id == itemId) it.copy(tags = tags) else it }
         }
     }
 

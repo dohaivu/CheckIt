@@ -6,6 +6,11 @@ import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemMove
 import com.checkit.domain.NestedListItem
 import com.checkit.domain.NestedItemNode
+import com.checkit.domain.TagItem
+import com.checkit.domain.NestedTextStyle
+import com.checkit.domain.NestedColorToken
+import com.checkit.domain.TaskPriority
+import kotlinx.datetime.LocalDate
 import kotlinx.coroutines.flow.Flow
 
 class ObserveNestedDocumentsUseCase(
@@ -13,6 +18,12 @@ class ObserveNestedDocumentsUseCase(
 ) {
     operator fun invoke(): Flow<List<NestedDocument>> =
         repository.observeNestedDocuments()
+}
+
+class ObserveNestedTagsUseCase(
+    private val repository: CheckItRepository
+) {
+    operator fun invoke(): Flow<List<TagItem>> = repository.observeTags()
 }
 
 class ObserveNestedDocumentTreeUseCase(
@@ -73,6 +84,31 @@ class UpdateNestedItemNoteUseCase(
 ) {
     suspend operator fun invoke(itemId: Long, note: String?) =
         repository.updateNestedItemNote(itemId, note)
+}
+
+class UpdateNestedItemFormattingUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(
+        itemId: Long,
+        textStyle: NestedTextStyle,
+        textColor: NestedColorToken,
+        backgroundColor: NestedColorToken
+    ) = repository.updateNestedItemFormatting(itemId, textStyle, textColor, backgroundColor)
+}
+
+class UpdateNestedItemMetadataUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(itemId: Long, doDate: LocalDate?, priority: TaskPriority) =
+        repository.updateNestedItemMetadata(itemId, doDate, priority)
+}
+
+class UpdateNestedItemTagsUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(itemId: Long, tagIds: List<Long>) =
+        repository.updateNestedItemTags(itemId, tagIds)
 }
 
 class SetNestedItemCheckboxEnabledUseCase(

@@ -681,7 +681,7 @@ data class NestedDocumentEntity(
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("documentId"), Index("parentId")]
+    indices = [Index("documentId"), Index("parentId"), Index("doDateEpochDays"), Index("priority")]
 )
 data class NestedListItemEntity(
     @PrimaryKey(autoGenerate = true)
@@ -694,8 +694,37 @@ data class NestedListItemEntity(
     val checkboxEnabled: Boolean = false,
     val checked: Boolean = false,
     val collapsed: Boolean = false,
+    val textStyle: String = "Body",
+    val textColor: String = "Default",
+    val backgroundColor: String = "Default",
+    val doDateEpochDays: Int? = null,
+    val priority: String = "None",
     val createdAtMillis: Long,
     val updatedAtMillis: Long
+)
+
+@Entity(
+    tableName = "nested_item_tags",
+    primaryKeys = ["itemId", "tagId"],
+    foreignKeys = [
+        ForeignKey(
+            entity = NestedListItemEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["itemId"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = TagEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["tagId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("itemId"), Index("tagId")]
+)
+data class NestedItemTagEntity(
+    val itemId: Long,
+    val tagId: Long
 )
 
 @Database(
@@ -730,9 +759,10 @@ data class NestedListItemEntity(
         TwelveWeekGoalScoreEntity::class,
         TwelveWeekGoalTaskEntity::class,
         NestedDocumentEntity::class,
-        NestedListItemEntity::class
+        NestedListItemEntity::class,
+        NestedItemTagEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)

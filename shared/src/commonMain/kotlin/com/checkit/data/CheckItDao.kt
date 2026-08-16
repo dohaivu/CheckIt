@@ -939,6 +939,9 @@ interface CheckItDao {
     @Query("SELECT * FROM nested_list_items WHERE documentId = :documentId ORDER BY position ASC, id ASC")
     fun observeNestedItems(documentId: Long): Flow<List<NestedListItemEntity>>
 
+    @Query("SELECT * FROM nested_item_tags WHERE itemId IN (SELECT id FROM nested_list_items WHERE documentId = :documentId)")
+    fun observeNestedItemTags(documentId: Long): Flow<List<NestedItemTagEntity>>
+
     @Query("SELECT COALESCE(MAX(position), -1) + 1 FROM nested_list_items WHERE documentId = :documentId AND parentId IS :parentId")
     suspend fun nextNestedItemPosition(documentId: Long, parentId: Long?): Int
 
@@ -953,6 +956,23 @@ interface CheckItDao {
 
     @Query("UPDATE nested_list_items SET note = :note, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
     suspend fun updateNestedItemNote(itemId: Long, note: String?, updatedAtMillis: Long)
+
+    @Query("UPDATE nested_list_items SET textStyle = :textStyle, textColor = :textColor, backgroundColor = :backgroundColor, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
+    suspend fun updateNestedItemFormatting(
+        itemId: Long,
+        textStyle: String,
+        textColor: String,
+        backgroundColor: String,
+        updatedAtMillis: Long
+    )
+
+    @Query("UPDATE nested_list_items SET doDateEpochDays = :doDateEpochDays, priority = :priority, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
+    suspend fun updateNestedItemMetadata(
+        itemId: Long,
+        doDateEpochDays: Int?,
+        priority: String,
+        updatedAtMillis: Long
+    )
 
     @Query("UPDATE nested_list_items SET checkboxEnabled = :checkboxEnabled WHERE id = :itemId")
     suspend fun setNestedItemCheckboxEnabled(itemId: Long, checkboxEnabled: Boolean)
@@ -976,6 +996,18 @@ interface CheckItDao {
 
     @Query("DELETE FROM nested_list_items WHERE id IN (:itemIds)")
     suspend fun deleteNestedItems(itemIds: List<Long>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNestedItemTag(link: NestedItemTagEntity)
+
+    @Query("DELETE FROM nested_item_tags WHERE itemId = :itemId")
+    suspend fun deleteNestedItemTags(itemId: Long)
+
+    @Transaction
+    suspend fun replaceNestedItemTags(itemId: Long, tagIds: List<Long>) {
+        deleteNestedItemTags(itemId)
+        tagIds.distinct().forEach { tagId -> insertNestedItemTag(NestedItemTagEntity(itemId, tagId)) }
+    }
 
     @Transaction
     suspend fun applyNestedMoves(moves: List<NestedMoveRow>) {

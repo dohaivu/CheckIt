@@ -1,5 +1,24 @@
 package com.checkit.domain
 
+import kotlinx.datetime.LocalDate
+
+enum class NestedTextStyle {
+    Body,
+    Header,
+    Subheader
+}
+
+enum class NestedColorToken {
+    Default,
+    Red,
+    Orange,
+    Yellow,
+    Green,
+    Blue,
+    Purple,
+    Pink
+}
+
 /**
  * A single nested-lists document. Holds one unlimited-depth item tree.
  */
@@ -24,6 +43,12 @@ data class NestedListItem(
     val checkboxEnabled: Boolean = false,
     val checked: Boolean = false,
     val collapsed: Boolean = false,
+    val textStyle: NestedTextStyle = NestedTextStyle.Body,
+    val textColor: NestedColorToken = NestedColorToken.Default,
+    val backgroundColor: NestedColorToken = NestedColorToken.Default,
+    val doDate: LocalDate? = null,
+    val priority: TaskPriority = TaskPriority.None,
+    val tags: List<TagItem> = emptyList(),
     val createdAtMillis: Long,
     val updatedAtMillis: Long
 )

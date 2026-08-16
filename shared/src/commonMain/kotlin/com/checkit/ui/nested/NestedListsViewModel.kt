@@ -6,6 +6,10 @@ import com.checkit.domain.NestedDocument
 import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedListItem
 import com.checkit.domain.NestedItemNode
+import com.checkit.domain.NestedTextStyle
+import com.checkit.domain.NestedColorToken
+import com.checkit.domain.TaskPriority
+import com.checkit.domain.TagItem
 import com.checkit.domain.usecase.AddNestedDocumentUseCase
 import com.checkit.domain.usecase.AddNestedItemUseCase
 import com.checkit.domain.usecase.DeleteNestedDocumentUseCase
@@ -13,12 +17,17 @@ import com.checkit.domain.usecase.DeleteNestedItemsUseCase
 import com.checkit.domain.usecase.MoveNestedItemsUseCase
 import com.checkit.domain.usecase.ObserveNestedDocumentTreeUseCase
 import com.checkit.domain.usecase.ObserveNestedDocumentsUseCase
+import com.checkit.domain.usecase.ObserveNestedTagsUseCase
 import com.checkit.domain.usecase.RenameNestedDocumentUseCase
 import com.checkit.domain.usecase.SetNestedItemCheckboxEnabledUseCase
 import com.checkit.domain.usecase.SetNestedItemsCheckedUseCase
 import com.checkit.domain.usecase.ToggleNestedItemCollapsedUseCase
 import com.checkit.domain.usecase.UpdateNestedItemNoteUseCase
 import com.checkit.domain.usecase.UpdateNestedItemTextUseCase
+import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
+import com.checkit.domain.usecase.UpdateNestedItemMetadataUseCase
+import com.checkit.domain.usecase.UpdateNestedItemTagsUseCase
+import kotlinx.datetime.LocalDate
 import com.checkit.ui.UiEvent
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -59,6 +68,7 @@ data class NestedListEditorUiState(
     val addingItemAnchorId: Long? = null,
     val newItemParentId: Long? = null,
     val newItemText: String = "",
+    val availableTags: List<TagItem> = emptyList(),
     val isLoading: Boolean = true
 ) {
     val focusedItem: NestedItemNode? by lazy { tree?.nodeById?.get(focusItemIds.lastOrNull()) }
@@ -78,6 +88,7 @@ data class NestedListEditorUiState(
 
 class NestedListsViewModel(
     private val observeDocumentsUseCase: ObserveNestedDocumentsUseCase,
+    private val observeTagsUseCase: ObserveNestedTagsUseCase,
     private val observeTreeUseCase: ObserveNestedDocumentTreeUseCase,
     private val addDocumentUseCase: AddNestedDocumentUseCase,
     private val renameDocumentUseCase: RenameNestedDocumentUseCase,
@@ -85,6 +96,9 @@ class NestedListsViewModel(
     private val addItemUseCase: AddNestedItemUseCase,
     private val updateItemTextUseCase: UpdateNestedItemTextUseCase,
     private val updateItemNoteUseCase: UpdateNestedItemNoteUseCase,
+    private val updateItemFormattingUseCase: UpdateNestedItemFormattingUseCase,
+    private val updateItemMetadataUseCase: UpdateNestedItemMetadataUseCase,
+    private val updateItemTagsUseCase: UpdateNestedItemTagsUseCase,
     private val setCheckboxEnabledUseCase: SetNestedItemCheckboxEnabledUseCase,
     private val setItemsCheckedUseCase: SetNestedItemsCheckedUseCase,
     private val toggleCollapsedUseCase: ToggleNestedItemCollapsedUseCase,
@@ -102,9 +116,16 @@ class NestedListsViewModel(
     val events: SharedFlow<UiEvent> = _events.asSharedFlow()
     private var editorObservationJob: Job? = null
     private val moveMutex = Mutex()
+    private var latestTags: List<TagItem> = emptyList()
 
     init {
         collectDocuments()
+        viewModelScope.launch {
+            observeTagsUseCase().collect { tags ->
+                latestTags = tags
+                _editor.update { it?.copy(availableTags = tags) }
+            }
+        }
     }
 
     private fun collectDocuments() {
@@ -124,7 +145,7 @@ class NestedListsViewModel(
         val editing = _editor.value
         if (editing?.documentId == documentId) return
         editorObservationJob?.cancel()
-        _editor.value = NestedListEditorUiState(documentId = documentId)
+        _editor.value = NestedListEditorUiState(documentId = documentId, availableTags = latestTags)
         editorObservationJob = viewModelScope.launch {
             observeTreeUseCase(documentId)
                 .catch { error ->
@@ -310,6 +331,32 @@ class NestedListsViewModel(
                 .onFailure { error ->
                     _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to save note"))
                 }
+        }
+    }
+
+    fun updateItemFormatting(
+        itemId: Long,
+        textStyle: NestedTextStyle,
+        textColor: NestedColorToken,
+        backgroundColor: NestedColorToken
+    ) {
+        viewModelScope.launch {
+            runCatching { updateItemFormattingUseCase(itemId, textStyle, textColor, backgroundColor) }
+                .onFailure { error -> _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to format item")) }
+        }
+    }
+
+    fun updateItemMetadata(itemId: Long, doDate: LocalDate?, priority: TaskPriority) {
+        viewModelScope.launch {
+            runCatching { updateItemMetadataUseCase(itemId, doDate, priority) }
+                .onFailure { error -> _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to update item metadata")) }
+        }
+    }
+
+    fun updateItemTags(itemId: Long, tagIds: List<Long>) {
+        viewModelScope.launch {
+            runCatching { updateItemTagsUseCase(itemId, tagIds) }
+                .onFailure { error -> _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to update item tags")) }
         }
     }
 

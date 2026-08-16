@@ -53,6 +53,7 @@ import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
 import com.checkit.domain.usecase.ObserveNestedDocumentTreeUseCase
 import com.checkit.domain.usecase.ObserveNestedDocumentsUseCase
+import com.checkit.domain.usecase.ObserveNestedTagsUseCase
 import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
 import com.checkit.domain.usecase.ObservePlanWorkspaceUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
@@ -79,6 +80,9 @@ import com.checkit.domain.usecase.DeleteNestedDocumentUseCase
 import com.checkit.domain.usecase.DeleteNestedItemsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemNoteUseCase
 import com.checkit.domain.usecase.UpdateNestedItemTextUseCase
+import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
+import com.checkit.domain.usecase.UpdateNestedItemMetadataUseCase
+import com.checkit.domain.usecase.UpdateNestedItemTagsUseCase
 import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.usecase.TogglePlanPriorityDoneUseCase
 import com.checkit.domain.usecase.UnlinkTacticFromGoalUseCase
@@ -221,6 +225,7 @@ val provideInteractorModule = module {
     single { AddTacticToGoalUseCase(get(), get()) }
     single { UnlinkTacticFromGoalUseCase(get()) }
     single { ObserveNestedDocumentsUseCase(get()) }
+    single { ObserveNestedTagsUseCase(get()) }
     single { ObserveNestedDocumentTreeUseCase(get()) }
     single { AddNestedDocumentUseCase(get()) }
     single { RenameNestedDocumentUseCase(get()) }
@@ -228,6 +233,9 @@ val provideInteractorModule = module {
     single { AddNestedItemUseCase(get()) }
     single { UpdateNestedItemTextUseCase(get()) }
     single { UpdateNestedItemNoteUseCase(get()) }
+    single { UpdateNestedItemFormattingUseCase(get()) }
+    single { UpdateNestedItemMetadataUseCase(get()) }
+    single { UpdateNestedItemTagsUseCase(get()) }
     single { SetNestedItemCheckboxEnabledUseCase(get()) }
     single { SetNestedItemsCheckedUseCase(get()) }
     single { ToggleNestedItemCollapsedUseCase(get()) }
@@ -322,6 +330,7 @@ val provideViewModelModule = module {
     viewModel {
         NestedListsViewModel(
             observeDocumentsUseCase = get(),
+            observeTagsUseCase = get(),
             observeTreeUseCase = get(),
             addDocumentUseCase = get(),
             renameDocumentUseCase = get(),
@@ -329,6 +338,9 @@ val provideViewModelModule = module {
             addItemUseCase = get(),
             updateItemTextUseCase = get(),
             updateItemNoteUseCase = get(),
+            updateItemFormattingUseCase = get(),
+            updateItemMetadataUseCase = get(),
+            updateItemTagsUseCase = get(),
             setCheckboxEnabledUseCase = get(),
             setItemsCheckedUseCase = get(),
             toggleCollapsedUseCase = get(),

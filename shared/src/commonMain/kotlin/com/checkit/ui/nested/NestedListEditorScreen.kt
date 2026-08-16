@@ -52,6 +52,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -64,6 +66,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
@@ -90,6 +93,12 @@ import checkit.shared.generated.resources.nested_untitled_document
 import checkit.shared.generated.resources.nested_zoom_in
 import checkit.shared.generated.resources.nested_zoom_out
 import com.checkit.domain.NestedItemNode
+import com.checkit.domain.NestedTextStyle
+import com.checkit.domain.NestedColorToken
+import com.checkit.domain.TaskPriority
+import com.checkit.ui.components.DatePicker
+import com.checkit.ui.components.TagPicker
+import com.checkit.ui.components.TagPlain
 import com.checkit.ui.components.TinyTopAppBar
 import org.jetbrains.compose.resources.stringResource
 
@@ -199,6 +208,22 @@ internal fun NestedListEditorScreen(
                 }
             }
         }
+        if (!state.selectionMode) {
+            val selectedItem = state.editingItemId?.let { tree.itemById[it] }
+            if (selectedItem != null) {
+                NestedFormattingBottomBar(
+                    item = selectedItem,
+                    onFormattingChange = { style, textColor, backgroundColor ->
+                        viewModel.updateItemFormatting(selectedItem.id, style, textColor, backgroundColor)
+                    },
+                    onMetadataChange = { date, priority ->
+                        viewModel.updateItemMetadata(selectedItem.id, date, priority)
+                    },
+                    availableTags = state.availableTags,
+                    onTagsChange = { viewModel.updateItemTags(selectedItem.id, it) }
+                )
+            }
+        }
     }
 
     if (state.showDeleteConfirm) {
@@ -247,6 +272,207 @@ internal fun NestedListEditorScreen(
                 TextButton(onClick = viewModel::stopEditNote) { Text(stringResource(Res.string.cancel)) }
             }
         )
+    }
+}
+
+@Composable
+private fun NestedFormattingBottomBar(
+    item: com.checkit.domain.NestedListItem,
+    onFormattingChange: (NestedTextStyle, NestedColorToken, NestedColorToken) -> Unit,
+    onMetadataChange: (kotlinx.datetime.LocalDate?, TaskPriority) -> Unit,
+    availableTags: List<com.checkit.domain.TagItem>,
+    onTagsChange: (List<Long>) -> Unit
+) {
+    var priorityExpanded by remember { mutableStateOf(false) }
+    var styleExpanded by remember { mutableStateOf(false) }
+    val colorTokens = listOf(
+        NestedColorToken.Default, NestedColorToken.Red, NestedColorToken.Orange,
+        NestedColorToken.Yellow, NestedColorToken.Green, NestedColorToken.Blue,
+        NestedColorToken.Purple, NestedColorToken.Pink
+    )
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Box {
+                TextButton(onClick = { styleExpanded = true }) { Text(item.textStyle.name) }
+                DropdownMenu(expanded = styleExpanded, onDismissRequest = { styleExpanded = false }) {
+                    NestedTextStyle.entries.forEach { style ->
+                        DropdownMenuItem(
+                            text = { Text(style.name) },
+                            onClick = {
+                                styleExpanded = false
+                                onFormattingChange(style, item.textColor, item.backgroundColor)
+                            }
+                        )
+                    }
+                }
+            }
+            ColorTokenMenu(
+                label = "Text: ${item.textColor.name}",
+                selected = item.textColor,
+                tokens = colorTokens
+            ) { token -> onFormattingChange(item.textStyle, token, item.backgroundColor) }
+            ColorTokenMenu(
+                label = "Fill: ${item.backgroundColor.name}",
+                selected = item.backgroundColor,
+                tokens = colorTokens,
+                filled = true
+            ) { token -> onFormattingChange(item.textStyle, item.textColor, token) }
+            Box {
+                TextButton(onClick = { priorityExpanded = true }) {
+                    Text(
+                        text = "Priority ${priorityMarker(item.priority)}",
+                        color = priorityColor(item.priority)
+                    )
+                }
+                DropdownMenu(expanded = priorityExpanded, onDismissRequest = { priorityExpanded = false }) {
+                    TaskPriority.entries.forEach { priority ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = "${priorityMarker(priority)}  ${priority.name}",
+                                    color = priorityColor(priority)
+                                )
+                            },
+                            onClick = {
+                                priorityExpanded = false
+                                onMetadataChange(item.doDate, priority)
+                            }
+                        )
+                    }
+                }
+            }
+            TagPicker(
+                availableTags = availableTags,
+                selectedTagIds = item.tags.map { it.id }.toSet(),
+                onTagToggle = { tagId ->
+                    val selected = item.tags.map { it.id }.toMutableSet()
+                    if (!selected.add(tagId)) selected.remove(tagId)
+                    onTagsChange(selected.toList())
+                }
+            )
+            DatePicker(
+                date = item.doDate,
+                startTimeMinutes = null,
+                endTimeMinutes = null,
+                onDateChange = { onMetadataChange(it, item.priority) },
+                onTimeChange = { _, _ -> },
+                supportsEndTime = false
+            )
+        }
+    }
+}
+
+@Composable
+private fun ColorTokenMenu(
+    label: String,
+    selected: NestedColorToken,
+    tokens: List<NestedColorToken>,
+    filled: Boolean = false,
+    onSelected: (NestedColorToken) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        TextButton(onClick = { expanded = true }) {
+            ColorTokenSwatch(selected, filled = filled)
+            Spacer(Modifier.width(6.dp))
+            Text(label)
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            tokens.forEach { token ->
+                DropdownMenuItem(
+                    leadingIcon = { ColorTokenSwatch(token, filled = filled) },
+                    text = { Text(token.name) },
+                    onClick = {
+                        expanded = false
+                        onSelected(token)
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ColorTokenSwatch(
+    token: NestedColorToken,
+    filled: Boolean = false
+) {
+    val color = when (token) {
+        NestedColorToken.Default -> MaterialTheme.colorScheme.onSurfaceVariant
+        NestedColorToken.Red -> androidx.compose.ui.graphics.Color(0xFFE57373)
+        NestedColorToken.Orange -> androidx.compose.ui.graphics.Color(0xFFFFB74D)
+        NestedColorToken.Yellow -> androidx.compose.ui.graphics.Color(0xFFFFD54F)
+        NestedColorToken.Green -> androidx.compose.ui.graphics.Color(0xFF81C784)
+        NestedColorToken.Blue -> androidx.compose.ui.graphics.Color(0xFF64B5F6)
+        NestedColorToken.Purple -> androidx.compose.ui.graphics.Color(0xFFBA68C8)
+        NestedColorToken.Pink -> androidx.compose.ui.graphics.Color(0xFFF06292)
+    }
+    Box(modifier = Modifier
+            .size(20.dp)
+            .clip(CircleShape)
+            .background(if (filled && token != NestedColorToken.Default) color.copy(alpha = 0.28f) else androidx.compose.ui.graphics.Color.Transparent)
+            .border(1.dp, color.copy(alpha = 0.75f), CircleShape), contentAlignment = Alignment.Center) {
+        if (!filled && token != NestedColorToken.Default) Box(Modifier.size(10.dp).clip(CircleShape).background(color))
+    }
+}
+
+private fun priorityMarker(priority: TaskPriority): String = when (priority) {
+    TaskPriority.None -> ""
+    TaskPriority.Low -> "!"
+    TaskPriority.Medium -> "!!"
+    TaskPriority.High -> "!!!"
+}
+
+@Composable
+private fun priorityColor(priority: TaskPriority): Color = when (priority) {
+    TaskPriority.None -> MaterialTheme.colorScheme.onSurfaceVariant
+    TaskPriority.Low -> Color(0xFF4CAF50)
+    TaskPriority.Medium -> Color(0xFFFF9800)
+    TaskPriority.High -> Color(0xFFE53935)
+}
+
+@Composable
+private fun NestedItemMetadataPreview(item: com.checkit.domain.NestedListItem) {
+    val hasNote = !item.note.isNullOrBlank()
+    val hasTags = item.tags.isNotEmpty()
+    val hasDate = item.doDate != null
+    if (!hasNote && !hasTags && !hasDate) return
+
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        if (hasNote) {
+            Text(
+                text = item.note.orEmpty(),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.78f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        if (hasTags || hasDate) {
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                item.tags.forEach { tag -> TagPlain(tag) }
+                item.doDate?.let { date ->
+                    Text(
+                        text = "Due $date",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -558,6 +784,7 @@ private fun NestedTree(
                         when {
                             isSelected -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
                             isEditing -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            item.backgroundColor != NestedColorToken.Default -> nestedColor(item.backgroundColor).copy(alpha = 0.18f)
                             else -> androidx.compose.ui.graphics.Color.Transparent
                         }
                     )
@@ -609,53 +836,52 @@ private fun NestedTree(
                     Spacer(Modifier.width(8.dp))
                 }
 
-                if (isEditing) {
-                    var text by remember(item.id) { mutableStateOf(item.text) }
-                    val focusRequester = remember(item.id) { FocusRequester() }
-                    LaunchedEffect(item.id) {
-                        text = item.text
-                        focusRequester.requestFocus()
-                    }
-                    val focusManager = LocalFocusManager.current
-                    BasicTextField(
-                        value = text,
-                        onValueChange = { text = it },
-                        singleLine = true,
-                        textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
-                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(onDone = {
-                            focusManager.clearFocus()
-                            viewModel.saveItemText(item.id, text)
-                        }),
-                        modifier = Modifier
-                            .weight(1f)
-                            .focusRequester(focusRequester)
-                    )
-                } else {
-                    Column(modifier = Modifier.weight(1f)) {
+                Column(modifier = Modifier.weight(1f)) {
+                    if (isEditing) {
+                        var text by remember(item.id) { mutableStateOf(item.text) }
+                        val focusRequester = remember(item.id) { FocusRequester() }
+                        LaunchedEffect(item.id) {
+                            text = item.text
+                            focusRequester.requestFocus()
+                        }
+                        val focusManager = LocalFocusManager.current
+                        BasicTextField(
+                            value = text,
+                            onValueChange = { text = it },
+                            singleLine = true,
+                            textStyle = nestedTextStyle(item.textStyle).copy(color = nestedTextColor(item.textColor)),
+                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(onDone = {
+                                focusManager.clearFocus()
+                                viewModel.saveItemText(item.id, text)
+                            }),
+                            modifier = Modifier.fillMaxWidth().focusRequester(focusRequester)
+                        )
+                    } else {
                         Text(
                             text = item.text,
-                            style = MaterialTheme.typography.bodyLarge,
+                            style = nestedTextStyle(item.textStyle),
                             textDecoration = if (item.checked) TextDecoration.LineThrough else TextDecoration.None,
                             color = when {
                                 isInCheckedBranch -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.68f)
+                                item.textColor != NestedColorToken.Default -> nestedColor(item.textColor)
                                 else -> MaterialTheme.colorScheme.onSurface
                             },
-                            fontWeight = if (depth == 0 && !node.hasChildren) FontWeight.Bold else FontWeight.Normal
+                            fontWeight = if (depth == 0 && !node.hasChildren) FontWeight.Bold else null
                         )
-                        if (item.note.isNullOrBlank().not()) {
-                            Row(verticalAlignment = Alignment.Top) {
-                                Text(
-                                    text = item.note,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.78f),
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        }
                     }
+                    NestedItemMetadataPreview(item)
+                }
+
+                if (item.priority != TaskPriority.None) {
+                    Text(
+                        text = priorityMarker(item.priority),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = priorityColor(item.priority),
+                        modifier = Modifier.padding(horizontal = 6.dp)
+                    )
                 }
 
                 if (state.selectionMode) {
@@ -681,6 +907,29 @@ private fun NestedTree(
 
     }
     }
+}
+
+@Composable
+private fun nestedTextStyle(style: NestedTextStyle) = when (style) {
+    NestedTextStyle.Body -> MaterialTheme.typography.bodyLarge
+    NestedTextStyle.Header -> MaterialTheme.typography.titleLarge
+    NestedTextStyle.Subheader -> MaterialTheme.typography.titleMedium
+}
+
+@Composable
+private fun nestedTextColor(token: NestedColorToken) =
+    if (token == NestedColorToken.Default) MaterialTheme.colorScheme.onSurface else nestedColor(token)
+
+@Composable
+private fun nestedColor(token: NestedColorToken) = when (token) {
+    NestedColorToken.Default -> MaterialTheme.colorScheme.onSurface
+    NestedColorToken.Red -> androidx.compose.ui.graphics.Color(0xFFE57373)
+    NestedColorToken.Orange -> androidx.compose.ui.graphics.Color(0xFFFFB74D)
+    NestedColorToken.Yellow -> androidx.compose.ui.graphics.Color(0xFFFFD54F)
+    NestedColorToken.Green -> androidx.compose.ui.graphics.Color(0xFF66BB6A)
+    NestedColorToken.Blue -> androidx.compose.ui.graphics.Color(0xFF42A5F5)
+    NestedColorToken.Purple -> androidx.compose.ui.graphics.Color(0xFFAB47BC)
+    NestedColorToken.Pink -> androidx.compose.ui.graphics.Color(0xFFEC407A)
 }
 
 private data class VisibleNestedRow(

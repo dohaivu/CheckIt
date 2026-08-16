@@ -22,6 +22,8 @@ import com.checkit.domain.NestedDocument
 import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemMove
 import com.checkit.domain.NestedListItem
+import com.checkit.domain.NestedTextStyle
+import com.checkit.domain.NestedColorToken
 import com.checkit.domain.buildNestedTree
 import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
@@ -210,6 +212,7 @@ interface CheckItRepository {
     // ---------------- Nested Documents ----------------
 
     fun observeNestedDocuments(): Flow<List<NestedDocument>>
+    fun observeTags(): Flow<List<TagItem>>
     fun observeNestedDocumentTree(documentId: Long): Flow<NestedDocumentTree>
     suspend fun addNestedDocument(title: String): Long
     suspend fun renameNestedDocument(documentId: Long, title: String)
@@ -217,6 +220,14 @@ interface CheckItRepository {
 suspend fun addNestedItem(documentId: Long, parentId: Long?, text: String, position: Int? = null): Long
     suspend fun updateNestedItemText(itemId: Long, text: String)
     suspend fun updateNestedItemNote(itemId: Long, note: String?)
+    suspend fun updateNestedItemFormatting(
+        itemId: Long,
+        textStyle: NestedTextStyle,
+        textColor: NestedColorToken,
+        backgroundColor: NestedColorToken
+    )
+    suspend fun updateNestedItemMetadata(itemId: Long, doDate: LocalDate?, priority: TaskPriority)
+    suspend fun updateNestedItemTags(itemId: Long, tagIds: List<Long>)
     suspend fun setNestedItemCheckboxEnabled(itemId: Long, checkboxEnabled: Boolean)
     suspend fun setNestedItemsChecked(itemIds: List<Long>, checked: Boolean)
     suspend fun toggleNestedItemCollapsed(itemId: Long)
@@ -1400,33 +1411,37 @@ class RoomCheckItRepository(
             }
         }
 
+    override fun observeTags(): Flow<List<TagItem>> = dao.observeTags().map { tags -> tags.map { it.toDomain() } }
+
     override fun observeNestedDocumentTree(documentId: Long): Flow<NestedDocumentTree> =
         combine(
             dao.observeNestedDocuments(),
-            dao.observeNestedItems(documentId)
-        ) { documents, items ->
+            dao.observeNestedItems(documentId),
+            dao.observeNestedItemTags(documentId)
+        ) { documents, items, links ->
+            val tagsById = links.map { it.tagId }.distinct()
+                .takeIf { it.isNotEmpty() }
+                ?.let { dao.tagsByIds(it).associateBy(TagEntity::id) }
+                .orEmpty()
+            val tagsByItemId = links.groupBy(NestedItemTagEntity::itemId)
             NestedDocumentTree(
                 document = documents.firstOrNull { it.id == documentId }
                     ?.let { NestedDocument(it.id, it.title, it.createdAtMillis, it.updatedAtMillis) }
                     ?: NestedDocument(id = documentId, title = "", createdAtMillis = 0L, updatedAtMillis = 0L),
-                rootNodes = buildNestedTree(items.map { it.toNestedListItem() })
+                rootNodes = buildNestedTree(items.map { item ->
+                    item.toNestedListItem(
+                        tags = tagsByItemId[item.id].orEmpty().mapNotNull { tagsById[it.tagId]?.toDomain() }
+                    )
+                })
             )
         }
 
     override suspend fun addNestedDocument(title: String): Long {
         val now = Clock.System.now().toEpochMilliseconds()
         val trimmed = title.trim()
-        return dao.insertNestedDocumentWithRoot(
+        return dao.insertNestedDocument(
             NestedDocumentEntity(
                 title = trimmed,
-                createdAtMillis = now,
-                updatedAtMillis = now
-            ),
-            NestedListItemEntity(
-                documentId = 0L,
-                parentId = null,
-                position = 0,
-                text = trimmed,
                 createdAtMillis = now,
                 updatedAtMillis = now
             )
@@ -1465,6 +1480,25 @@ class RoomCheckItRepository(
             note?.trim()?.takeIf { it.isNotBlank() },
             Clock.System.now().toEpochMilliseconds()
         )
+    }
+
+    override suspend fun updateNestedItemFormatting(
+        itemId: Long,
+        textStyle: NestedTextStyle,
+        textColor: NestedColorToken,
+        backgroundColor: NestedColorToken
+    ) {
+        dao.updateNestedItemFormatting(itemId, textStyle.name, textColor.name, backgroundColor.name, Clock.System.now().toEpochMilliseconds())
+    }
+
+    override suspend fun updateNestedItemMetadata(itemId: Long, doDate: LocalDate?, priority: TaskPriority) {
+        dao.updateNestedItemMetadata(itemId, doDate?.toEpochDays()?.toInt(), priority.name, Clock.System.now().toEpochMilliseconds())
+    }
+
+    override suspend fun updateNestedItemTags(itemId: Long, tagIds: List<Long>) {
+        dao.replaceNestedItemTags(itemId, tagIds)
+        val now = Clock.System.now().toEpochMilliseconds()
+        tagIds.distinct().forEach { dao.updateTagLastUsedAtMillis(it, now) }
     }
 
     override suspend fun setNestedItemCheckboxEnabled(itemId: Long, checkboxEnabled: Boolean) {
@@ -1777,7 +1811,7 @@ private fun PlanPriorityEntity.toDomain(periodPlan: PeriodPlan) = PlanPriority(
     completedAtMillis = completedAtMillis
 )
 
-private fun NestedListItemEntity.toNestedListItem() = NestedListItem(
+private fun NestedListItemEntity.toNestedListItem(tags: List<TagItem> = emptyList()) = NestedListItem(
     id = id,
     documentId = documentId,
     parentId = parentId,
@@ -1787,6 +1821,12 @@ private fun NestedListItemEntity.toNestedListItem() = NestedListItem(
     checkboxEnabled = checkboxEnabled,
     checked = checked,
     collapsed = collapsed,
+    textStyle = runCatching { com.checkit.domain.NestedTextStyle.valueOf(textStyle) }.getOrDefault(com.checkit.domain.NestedTextStyle.Body),
+    textColor = runCatching { com.checkit.domain.NestedColorToken.valueOf(textColor) }.getOrDefault(com.checkit.domain.NestedColorToken.Default),
+    backgroundColor = runCatching { com.checkit.domain.NestedColorToken.valueOf(backgroundColor) }.getOrDefault(com.checkit.domain.NestedColorToken.Default),
+    doDate = doDateEpochDays?.let { LocalDate.fromEpochDays(it) },
+    priority = runCatching { TaskPriority.valueOf(priority) }.getOrDefault(TaskPriority.None),
+    tags = tags,
     createdAtMillis = createdAtMillis,
     updatedAtMillis = updatedAtMillis
 )
