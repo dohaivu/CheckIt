@@ -1,6 +1,5 @@
 package com.checkit.ui.nested
 
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -71,6 +70,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
+import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.focus.FocusRequester
@@ -789,73 +789,104 @@ private fun NestedTree(
                 .drawBehind {
                     // Draw in the unpadded container so every depth shares the
                     // same x-coordinate across all rows.
-                    repeat(depth) { level ->
-                        val x = level * 16.dp.toPx() + 8.dp.toPx()
-                        drawLine(
-                            color = guideColors[level % guideColors.size],
-                            start = androidx.compose.ui.geometry.Offset(x, 0f),
-                            end = androidx.compose.ui.geometry.Offset(x, size.height),
-                            strokeWidth = 1.dp.toPx()
-                        )
+                    repeat(depth + if (node.hasChildren) 1 else 0) { level ->
+                            val x = level * 16.dp.toPx() + 8.dp.toPx()
+                            drawLine(
+                                color = guideColors[level % guideColors.size],
+                                start = androidx.compose.ui.geometry.Offset(
+                                    x,
+                                    if (level == depth) 14.dp.toPx() else 0f
+                                ),
+                                end = androidx.compose.ui.geometry.Offset(x, size.height),
+                                strokeWidth = 1.dp.toPx()
+                            )
                     }
                 }
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = (depth * 16).dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(
-                        when {
-                            isSelected -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
-                            isEditing -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                            item.backgroundColor != NestedColorToken.Default -> nestedColor(item.backgroundColor).copy(alpha = 0.18f)
-                            else -> androidx.compose.ui.graphics.Color.Transparent
-                        }
-                    )
-                    .combinedClickable(
-                        onClick = {
-                            if (state.selectionMode) {
-                                viewModel.toggleSelect(item.id)
-                            } else {
-                                viewModel.selectItem(item.id)
-                                if (state.isAddingItem) viewModel.cancelAddItem()
-                            }
-                        },
-                        onDoubleClick = {
-                            if (!state.selectionMode) viewModel.startEditText(item.id)
-                        }
-                    )
-                    .padding(horizontal = 4.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(start = (depth * 16).dp),
+                verticalAlignment = Alignment.Top
             ) {
-                if (node.hasChildren) {
-                    IconButton(
-                        onClick = { viewModel.toggleCollapsed(item.id) },
-                        modifier = Modifier.size(20.dp)
+                Box(
+                    modifier = Modifier
+                        .width(24.dp)
+                        .height(36.dp)
+                        .clickable(
+                            enabled = node.hasChildren,
+                            onClick = { viewModel.toggleCollapsed(item.id) }
+                        ),
+                    contentAlignment = Alignment.TopStart
+                ) {
+                    val dotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.68f)
+                    Box(
+                        modifier = Modifier
+                            .width(16.dp)
+                            .height(36.dp),
+                        contentAlignment = Alignment.TopCenter
                     ) {
-                        Crossfade(targetState = item.collapsed, label = "collapseToggle") { collapsed ->
-                            Icon(
-                                imageVector = if (collapsed) Icons.Default.Add else Icons.Default.Remove,
-                                contentDescription = if (collapsed) "Expand children" else "Collapse children",
-                                tint = if (collapsed) {
-                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                },
-                                modifier = Modifier.size(17.dp)
-                            )
+                        Box(
+                            modifier = Modifier
+                                .padding(top = 12.dp)
+                                .size(if (item.collapsed && node.hasChildren) 14.dp else 7.dp)
+                                .clip(CircleShape)
+                                .then(
+                                    if (item.collapsed && node.hasChildren) {
+                                        Modifier.border(2.dp, dotColor, CircleShape)
+                                    } else {
+                                        Modifier.background(dotColor)
+                                    }
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (item.collapsed && node.hasChildren) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .clip(CircleShape)
+                                        .background(dotColor)
+                                )
+                            }
                         }
                     }
-                } else {
-                    Spacer(Modifier.width(18.dp))
                 }
+
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .offset(x = (-8).dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(
+                            when {
+                                isSelected -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+                                isEditing -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                item.backgroundColor != NestedColorToken.Default -> nestedColor(item.backgroundColor).copy(alpha = 0.18f)
+                                else -> androidx.compose.ui.graphics.Color.Transparent
+                            }
+                        )
+                        .combinedClickable(
+                            onClick = {
+                                if (state.selectionMode) {
+                                    viewModel.toggleSelect(item.id)
+                                } else {
+                                    viewModel.selectItem(item.id)
+                                    if (state.isAddingItem) viewModel.cancelAddItem()
+                                }
+                            },
+                            onDoubleClick = {
+                                if (!state.selectionMode) viewModel.startEditText(item.id)
+                            }
+                        )
+                        .padding(horizontal = 4.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
 
                 if (item.checkboxEnabled) {
                     Checkbox(
                         checked = item.checked,
                         onCheckedChange = { viewModel.toggleChecked(item.id) },
-                        modifier = Modifier.size(28.dp).scale(0.7f)
+                        modifier = Modifier.size(28.dp).scale(0.7f).align(Alignment.Top)
                     )
                 } else {
                     Spacer(Modifier.width(8.dp))
@@ -913,7 +944,7 @@ private fun NestedTree(
                     Checkbox(
                         checked = isSelected,
                         onCheckedChange = { viewModel.toggleSelect(item.id) },
-                        modifier = Modifier.size(28.dp)
+                        modifier = Modifier.size(28.dp).align(Alignment.Top)
                     )
                 }
             }
@@ -932,6 +963,7 @@ private fun NestedTree(
 
     }
     }
+}
 }
 
 @Composable
