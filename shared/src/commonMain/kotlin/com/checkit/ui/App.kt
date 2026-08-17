@@ -333,6 +333,7 @@ fun CheckItApp(
                                         NestedListEditorScreen(
                                             state = nestedEditorState ?: NestedListEditorUiState(documentId = key.documentId),
                                             viewModel = viewModels.nested,
+                                            onAddToDailyPlan = viewModels.myDay::addDailyPlanItem,
                                             onNavigateBack = {
                                                 viewModels.nested.closeDocument()
                                                 navState.pop()

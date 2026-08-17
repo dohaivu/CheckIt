@@ -118,6 +118,7 @@ import org.jetbrains.compose.resources.stringResource
 internal fun NestedListEditorScreen(
     state: NestedListEditorUiState,
     viewModel: NestedListsViewModel,
+    onAddToDailyPlan: (title: String, tagIds: List<Long>) -> Unit = { _, _ -> },
     onNavigateBack: () -> Unit
 ) {
     var detailsItemId by remember { mutableStateOf<Long?>(null) }
@@ -179,7 +180,14 @@ internal fun NestedListEditorScreen(
                 onAddSibling = { state.editingItemId?.let(viewModel::startAddSibling) },
                 onDelete = { state.editingItemId?.let(viewModel::requestDeleteItem) },
                 onAddRoot = viewModel::startAddRoot,
-                onManageDetails = { state.editingItemId?.let { detailsItemId = it } }
+                onManageDetails = { state.editingItemId?.let { detailsItemId = it } },
+                onAddToDailyPlan = {
+                    state.editingItemId?.let { id ->
+                        state.tree?.nodeById?.get(id)?.item?.let { item ->
+                            onAddToDailyPlan(item.text, item.tags.map { it.id })
+                        }
+                    }
+                }
             )
         }
 
@@ -911,7 +919,8 @@ private fun EditorToolbar(
     onAddSibling: () -> Unit,
     onDelete: () -> Unit,
     onAddRoot: () -> Unit,
-    onManageDetails: () -> Unit
+    onManageDetails: () -> Unit,
+    onAddToDailyPlan: () -> Unit
 ) {
     val hasSelection = state.editingItemId != null
     val selectedNode = state.editingItemId?.let { id -> state.tree?.nodeById?.get(id) }
@@ -942,6 +951,9 @@ private fun EditorToolbar(
                 onDismissRequest = { showMore = false }
             ) {
                 ToolbarMenuItem("Details", hasSelection, onManageDetails)
+                ToolbarMenuItem("Add to daily plan", hasSelection) {
+                    showMore = false; onAddToDailyPlan()
+                }
                 ToolbarMenuItem("Add root item", true) {
                     showMore = false; onAddRoot()
                 }
