@@ -8,8 +8,6 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshots.SnapshotStateList
@@ -39,12 +37,11 @@ sealed interface AppRoute : NavKey {
     @Serializable data object MyDay : AppRoute
     @Serializable data object Reflect : AppRoute
     @Serializable data object Settings : AppRoute
-    @Serializable data object Lists : AppRoute
-    @Serializable data class NestedList(val documentId: Long) : AppRoute
+    @Serializable data object NestedLists : AppRoute
 }
 
 enum class CheckItTab {
-    Task, Lists, MyDay, Calendar, Reflect, Settings;
+    Task, NestedLists, MyDay, Calendar, Reflect, Settings;
 
     fun route(): AppRoute = when (this) {
         MyDay -> AppRoute.MyDay
@@ -52,7 +49,7 @@ enum class CheckItTab {
         Calendar -> AppRoute.Calendar
         Reflect -> AppRoute.Reflect
         Settings -> AppRoute.Settings
-        Lists -> AppRoute.Lists
+        NestedLists -> AppRoute.NestedLists
     }
 
     fun icon(): ImageVector = when (this) {
@@ -61,7 +58,7 @@ enum class CheckItTab {
         Calendar -> Icons.Default.CalendarMonth
         Reflect -> Icons.AutoMirrored.Filled.Notes
         Settings -> Icons.Default.MoreHoriz
-        Lists -> Icons.AutoMirrored.Filled.ViewList
+        NestedLists -> Icons.AutoMirrored.Filled.ViewList
     }
 
     @Composable
@@ -71,7 +68,7 @@ enum class CheckItTab {
         Calendar -> stringResource(Res.string.tab_calendar)
         Reflect -> stringResource(Res.string.tab_reflect)
         Settings -> stringResource(Res.string.tab_settings)
-        Lists -> stringResource(Res.string.tab_lists)
+        NestedLists -> stringResource(Res.string.tab_lists)
     }
 
     companion object {
@@ -81,7 +78,7 @@ enum class CheckItTab {
             AppRoute.Calendar -> Calendar
             AppRoute.Reflect -> Reflect
             AppRoute.Settings -> Settings
-            AppRoute.Lists, AppRoute.NestedList -> Lists
+            AppRoute.NestedLists -> NestedLists
             else -> null
         }
     }

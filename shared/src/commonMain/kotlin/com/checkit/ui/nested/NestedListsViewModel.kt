@@ -2,16 +2,17 @@ package com.checkit.ui.nested
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.checkit.data.SettingsRepository
+import com.checkit.domain.MetricRollupPolicy
+import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedDocument
 import com.checkit.domain.NestedDocumentTree
-import com.checkit.domain.NestedListItem
 import com.checkit.domain.NestedItemNode
-import com.checkit.domain.NestedTextStyle
-import com.checkit.domain.NestedColorToken
-import com.checkit.domain.TaskPriority
-import com.checkit.domain.TagItem
-import com.checkit.domain.MetricRollupPolicy
+import com.checkit.domain.NestedListItem
 import com.checkit.domain.NestedManualMetric
+import com.checkit.domain.NestedTextStyle
+import com.checkit.domain.TagItem
+import com.checkit.domain.TaskPriority
 import com.checkit.domain.usecase.AddNestedDocumentUseCase
 import com.checkit.domain.usecase.AddNestedItemUseCase
 import com.checkit.domain.usecase.DeleteNestedDocumentUseCase
@@ -21,19 +22,19 @@ import com.checkit.domain.usecase.ObserveNestedDocumentTreeUseCase
 import com.checkit.domain.usecase.ObserveNestedDocumentsUseCase
 import com.checkit.domain.usecase.ObserveNestedTagsUseCase
 import com.checkit.domain.usecase.RenameNestedDocumentUseCase
+import com.checkit.domain.usecase.ReplaceNestedManualMetricsUseCase
 import com.checkit.domain.usecase.SetNestedItemCheckboxEnabledUseCase
 import com.checkit.domain.usecase.SetNestedItemsCheckedUseCase
 import com.checkit.domain.usecase.ToggleNestedItemCollapsedUseCase
-import com.checkit.domain.usecase.UpdateNestedItemNoteUseCase
-import com.checkit.domain.usecase.UpdateNestedItemTextUseCase
-import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
-import com.checkit.domain.usecase.UpdateNestedItemPriorityUseCase
 import com.checkit.domain.usecase.UpdateNestedItemDateRangeUseCase
-import com.checkit.domain.usecase.UpdateNestedItemTagsUseCase
+import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
 import com.checkit.domain.usecase.UpdateNestedItemMetricSettingsUseCase
-import com.checkit.domain.usecase.ReplaceNestedManualMetricsUseCase
-import kotlinx.datetime.LocalDate
+import com.checkit.domain.usecase.UpdateNestedItemNoteUseCase
+import com.checkit.domain.usecase.UpdateNestedItemPriorityUseCase
+import com.checkit.domain.usecase.UpdateNestedItemTagsUseCase
+import com.checkit.domain.usecase.UpdateNestedItemTextUseCase
 import com.checkit.ui.UiEvent
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -44,52 +45,56 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.datetime.LocalDate
 
-data class NestedListsUiState(
-    val documents: List<NestedDocument> = emptyList(),
-    val isLoading: Boolean = true
+// --- State Hierarchy ---
+
+data class NewItemDraft(
+    val anchorId: Long? = null,
+    val parentId: Long? = null,
+    val depth: Int = 0,
+    val text: String = ""
 )
 
-/**
- * Editor view state. [focusItemIds] is the zoom chain from the document root
- * down to the currently focused node (empty = document root). The visible tree
- * is the subtree of the last focused id, or all roots when empty.
- */
-data class NestedListEditorUiState(
-    val documentId: Long = 0L,
-    val tree: NestedDocumentTree? = null,
-    val focusItemIds: List<Long> = emptyList(),
-    val selectedItemIds: Set<Long> = emptySet(),
-    val selectionMode: Boolean = false,
-    val showDeleteConfirm: Boolean = false,
-    val editingItemId: Long? = null,
-    val isEditingText: Boolean = false,
-    val editingNoteItemId: Long? = null,
-    val isAddingItem: Boolean = false,
-    val addingItemAnchorId: Long? = null,
-    val newItemParentId: Long? = null,
-    val newItemDepth: Int = 0,
-    val newItemText: String = "",
-    val availableTags: List<TagItem> = emptyList(),
-    val isLoading: Boolean = true
-) {
-    val focusedItem: NestedItemNode? by lazy { tree?.nodeById?.get(focusItemIds.lastOrNull()) }
+data class SelectionState(
+    val isActive: Boolean = false,
+    val selectedIds: Set<Long> = emptySet()
+)
 
-    fun focusedNode(nodes: List<NestedItemNode>): NestedItemNode? {
-        val last = focusItemIds.lastOrNull() ?: return null
-        fun find(ns: List<NestedItemNode>): NestedItemNode? {
-            for (n in ns) {
-                if (n.item.id == last) return n
-                find(n.children)?.let { return it }
-            }
-            return null
-        }
-        return find(nodes)
+sealed interface NestedEditorOverlay {
+    data object None : NestedEditorOverlay
+    data class AddingItem(val draft: NewItemDraft) : NestedEditorOverlay
+    data class EditingNote(val itemId: Long, val initialText: String) : NestedEditorOverlay
+    data class ConfirmDelete(val itemIds: List<Long>) : NestedEditorOverlay
+}
+
+sealed interface NestedEditorState {
+    data object Loading : NestedEditorState
+    data class Error(val message: String) : NestedEditorState
+    data class Active(
+        val documentId: Long,
+        val tree: NestedDocumentTree,
+        val zoomPath: List<Long> = emptyList(),
+        val selection: SelectionState = SelectionState(),
+        val overlay: NestedEditorOverlay = NestedEditorOverlay.None,
+        val selectedItemId: Long? = null,
+        val editingTextItemId: Long? = null,
+        val availableTags: List<TagItem> = emptyList()
+    ) : NestedEditorState {
+        val focusedItem: NestedItemNode? get() = tree.nodeById[zoomPath.lastOrNull()]
     }
 }
+
+data class NestedUiState(
+    val documents: List<NestedDocument> = emptyList(),
+    val isListLoading: Boolean = true,
+    val documentDeleting: NestedDocument? = null,
+    val showNewDocumentDialog: Boolean = false,
+    val newDocumentTitle: String = "",
+    val editor: NestedEditorState? = null
+)
 
 class NestedListsViewModel(
     private val observeDocumentsUseCase: ObserveNestedDocumentsUseCase,
@@ -111,17 +116,16 @@ class NestedListsViewModel(
     private val setItemsCheckedUseCase: SetNestedItemsCheckedUseCase,
     private val toggleCollapsedUseCase: ToggleNestedItemCollapsedUseCase,
     private val moveItemsUseCase: MoveNestedItemsUseCase,
-    private val deleteItemsUseCase: DeleteNestedItemsUseCase
+    private val deleteItemsUseCase: DeleteNestedItemsUseCase,
+    private val settingsRepository: SettingsRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(NestedListsUiState())
-    val uiState: StateFlow<NestedListsUiState> = _uiState.asStateFlow()
-
-    private val _editor = MutableStateFlow<NestedListEditorUiState?>(null)
-    val editor: StateFlow<NestedListEditorUiState?> = _editor.asStateFlow()
+    private val _uiState = MutableStateFlow(NestedUiState())
+    val uiState: StateFlow<NestedUiState> = _uiState.asStateFlow()
 
     private val _events = MutableSharedFlow<UiEvent>(extraBufferCapacity = 1)
     val events: SharedFlow<UiEvent> = _events.asSharedFlow()
+    
     private var editorObservationJob: Job? = null
     private val moveMutex = Mutex()
     private var latestTags: List<TagItem> = emptyList()
@@ -131,7 +135,11 @@ class NestedListsViewModel(
         viewModelScope.launch {
             observeTagsUseCase().collect { tags ->
                 latestTags = tags
-                _editor.update { it?.copy(availableTags = tags) }
+                _uiState.update { current ->
+                    if (current.editor is NestedEditorState.Active) {
+                        current.copy(editor = current.editor.copy(availableTags = tags))
+                    } else current
+                }
             }
         }
     }
@@ -140,28 +148,42 @@ class NestedListsViewModel(
         viewModelScope.launch {
             observeDocumentsUseCase()
                 .catch { error ->
-                    _uiState.update { it.copy(isLoading = false) }
+                    _uiState.update { it.copy(isListLoading = false) }
                     _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to load documents"))
                 }
                 .collect { documents ->
-                    _uiState.update { it.copy(documents = documents, isLoading = false) }
+                    _uiState.update { it.copy(documents = documents, isListLoading = false) }
                 }
         }
     }
 
     fun openDocument(documentId: Long) {
-        val editing = _editor.value
-        if (editing?.documentId == documentId) return
+        val currentEditor = _uiState.value.editor
+        if (currentEditor is NestedEditorState.Active && currentEditor.documentId == documentId) return
+        
         editorObservationJob?.cancel()
-        _editor.value = NestedListEditorUiState(documentId = documentId, availableTags = latestTags)
+        
+        viewModelScope.launch {
+            settingsRepository.setLastNestedDocumentId(documentId)
+        }
+
+        _uiState.update { it.copy(editor = NestedEditorState.Loading) }
+        
         editorObservationJob = viewModelScope.launch {
             observeTreeUseCase(documentId)
                 .catch { error ->
-                    _editor.update { it?.copy(isLoading = false) }
+                    _uiState.update { it.copy(editor = NestedEditorState.Error(error.message ?: "Failed to load")) }
                     _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to load document"))
                 }
                 .collectLatest { tree ->
-                    _editor.update { it?.copy(tree = tree, isLoading = false) }
+                    _uiState.update { current ->
+                        val active = (current.editor as? NestedEditorState.Active) ?: NestedEditorState.Active(
+                            documentId = documentId,
+                            tree = tree,
+                            availableTags = latestTags
+                        )
+                        current.copy(editor = active.copy(tree = tree))
+                    }
                 }
         }
     }
@@ -169,410 +191,331 @@ class NestedListsViewModel(
     fun closeDocument() {
         editorObservationJob?.cancel()
         editorObservationJob = null
-        _editor.value = null
+        _uiState.update { it.copy(editor = null) }
+        viewModelScope.launch {
+            settingsRepository.setLastNestedDocumentId(null)
+        }
     }
 
-    fun addDocument(title: String, onCreated: (Long) -> Unit = {}) {
+    // --- Document Management ---
+
+    fun startNewDocument() {
+        _uiState.update { it.copy(showNewDocumentDialog = true, newDocumentTitle = "") }
+    }
+
+    fun updateNewDocumentTitle(title: String) {
+        _uiState.update { it.copy(newDocumentTitle = title) }
+    }
+
+    fun cancelNewDocument() {
+        _uiState.update { it.copy(showNewDocumentDialog = false) }
+    }
+
+    fun addDocument(title: String) {
         viewModelScope.launch {
             runCatching { addDocumentUseCase(title) }
-                .onSuccess { id -> onCreated(id) }
+                .onSuccess { id -> 
+                    _uiState.update { it.copy(showNewDocumentDialog = false) }
+                    openDocument(id) 
+                }
                 .onFailure { error ->
                     _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to create document"))
                 }
         }
     }
 
-    fun renameDocument(documentId: Long, title: String) {
-        viewModelScope.launch {
-            runCatching { renameDocumentUseCase(documentId, title) }
-                .onFailure { error ->
-                    _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to rename document"))
-                }
-        }
+    fun requestDeleteDocument(document: NestedDocument) {
+        _uiState.update { it.copy(documentDeleting = document) }
     }
 
-    fun deleteDocument(documentId: Long) {
+    fun cancelDeleteDocument() {
+        _uiState.update { it.copy(documentDeleting = null) }
+    }
+
+    fun confirmDeleteDocument(documentId: Long) {
         viewModelScope.launch {
             deleteDocumentUseCase(documentId)
-            closeDocument()
+            _uiState.update { 
+                val newEditor = if (it.editor is NestedEditorState.Active && it.editor.documentId == documentId) null else it.editor
+                it.copy(documentDeleting = null, editor = newEditor)
+            }
             _events.tryEmit(UiEvent.ShowSnackbar("Document deleted"))
         }
     }
 
-    // ---------------- zoom (focus) ----------------
-
-    fun zoomIn(item: NestedItemNode) {
-        if (!item.hasChildren) return
-        val state = _editor.value ?: return
-        val chain = ancestorChain(item.item.id)
-        if (chain.isNotEmpty()) {
-            _editor.update { it?.copy(focusItemIds = chain) }
-        }
-    }
+    // --- Zoom ---
 
     fun zoomInSelected() {
-        val state = _editor.value ?: return
-        val id = state.editingItemId ?: return
-        val node = state.tree?.nodeById?.get(id) ?: return
-        zoomIn(node)
+        updateActiveEditor { current ->
+            val id = current.selectedItemId ?: return@updateActiveEditor current
+            val node = current.tree.nodeById[id] ?: return@updateActiveEditor current
+            if (!node.hasChildren) return@updateActiveEditor current
+            
+            val chain = ancestorChain(current.tree, id)
+            current.copy(zoomPath = chain)
+        }
     }
 
     fun zoomOut() {
-        _editor.update { it?.copy(focusItemIds = it.focusItemIds.dropLast(1)) }
+        updateActiveEditor { it.copy(zoomPath = it.zoomPath.dropLast(1)) }
     }
 
-    fun zoomOutTo(depth: Int) {
-        _editor.update { state ->
-            state?.copy(focusItemIds = state.focusItemIds.take(depth))
-        }
-    }
-
-    /** Zooms directly to the tapped breadcrumb item, independent of display depth. */
     fun zoomToItem(itemId: Long) {
-        val state = _editor.value ?: return
-        val chain = ancestorChain(itemId)
-        if (chain.isNotEmpty() && state.tree?.nodeById?.containsKey(itemId) == true) {
-            _editor.update { it?.copy(focusItemIds = chain) }
+        updateActiveEditor { current ->
+            val chain = ancestorChain(current.tree, itemId)
+            if (chain.isNotEmpty()) current.copy(zoomPath = chain) else current
         }
     }
 
-    fun zoomToRoot() = zoomOutTo(0)
+    fun zoomToRoot() = updateActiveEditor { it.copy(zoomPath = emptyList()) }
 
-    // ---------------- item editing ----------------
+    // --- Item Editing ---
 
     fun startAddChild(parentId: Long) {
-        val state = _editor.value ?: return
-        val parent = state.tree?.nodeById?.get(parentId) ?: return
-        var anchor = parent
-        while (anchor.children.isNotEmpty() && !anchor.item.collapsed) {
-            anchor = anchor.children.last()
-        }
-        _editor.update {
-            it?.copy(
-                isAddingItem = true,
-                addingItemAnchorId = anchor.item.id,
-                newItemParentId = parentId,
-                newItemDepth = state.ancestorDepth(parentId) + 1,
-                newItemText = ""
+        updateActiveEditor { current ->
+            val parent = current.tree.nodeById[parentId] ?: return@updateActiveEditor current
+            var anchor = parent
+            while (anchor.children.isNotEmpty() && !anchor.item.collapsed) {
+                anchor = anchor.children.last()
+            }
+            current.copy(
+                overlay = NestedEditorOverlay.AddingItem(
+                    NewItemDraft(
+                        anchorId = anchor.item.id,
+                        parentId = parentId,
+                        depth = current.ancestorDepth(parentId) + 1
+                    )
+                )
             )
         }
     }
 
     fun startAddRoot() {
-        _editor.update {
-            it?.copy(isAddingItem = true, addingItemAnchorId = null, newItemParentId = null, newItemDepth = 0, newItemText = "")
+        updateActiveEditor { current ->
+            current.copy(overlay = NestedEditorOverlay.AddingItem(NewItemDraft()))
         }
     }
 
     fun startAddSibling(siblingId: Long) {
-        val state = _editor.value ?: return
-        val item = state.tree?.itemById?.get(siblingId)
-        _editor.update {
-            it?.copy(
-                isAddingItem = true,
-                addingItemAnchorId = siblingId,
-                newItemParentId = item?.parentId,
-                newItemDepth = item?.let { state.ancestorDepth(it.id) } ?: 0,
-                newItemText = ""
+        updateActiveEditor { current ->
+            val item = current.tree.itemById[siblingId] ?: return@updateActiveEditor current
+            current.copy(
+                overlay = NestedEditorOverlay.AddingItem(
+                    NewItemDraft(
+                        anchorId = siblingId,
+                        parentId = item.parentId,
+                        depth = current.ancestorDepth(siblingId)
+                    )
+                )
             )
         }
     }
 
     fun updateNewItemText(text: String) {
-        _editor.update { it?.copy(newItemText = text) }
-    }
-
-    fun cancelAddItem() {
-        _editor.update {
-            it?.copy(
-                isAddingItem = false,
-                addingItemAnchorId = null,
-                newItemParentId = null,
-                newItemDepth = 0,
-                newItemText = ""
-            )
+        updateActiveEditor { current ->
+            val overlay = current.overlay as? NestedEditorOverlay.AddingItem ?: return@updateActiveEditor current
+            current.copy(overlay = overlay.copy(draft = overlay.draft.copy(text = text)))
         }
     }
 
+    fun cancelAddItem() {
+        updateActiveEditor { it.copy(overlay = NestedEditorOverlay.None) }
+    }
+
     fun commitNewItem() {
-        val state = _editor.value ?: return
-        val text = state.newItemText
+        val active = getActiveEditor() ?: return
+        val overlay = active.overlay as? NestedEditorOverlay.AddingItem ?: return
+        val text = overlay.draft.text
         if (text.isBlank()) {
             cancelAddItem()
             return
         }
-        val items = flatItems(state)
-        val anchor = items.firstOrNull { it.id == state.addingItemAnchorId }
-        val isAddingChild = state.newItemParentId != null &&
-            (anchor?.id == state.newItemParentId || anchor?.parentId != state.newItemParentId)
+        
+        val items = active.tree.flatItems
+        val anchor = items.firstOrNull { it.id == overlay.draft.anchorId }
+        val isAddingChild = overlay.draft.parentId != null && 
+            (anchor?.id == overlay.draft.parentId || anchor?.parentId != overlay.draft.parentId)
+        
         val position = if (isAddingChild) {
-            items.filter { it.parentId == state.newItemParentId }
-                .maxOfOrNull { it.position }
-                ?.plus(1)
-                ?: 0
+            items.filter { it.parentId == overlay.draft.parentId }.maxOfOrNull { it.position }?.plus(1) ?: 0
         } else {
             anchor?.position?.plus(1)
         }
+
         viewModelScope.launch {
-            runCatching {
-                addItemUseCase(state.documentId, state.newItemParentId, text, position)
-            }
-                .onSuccess {
-                    cancelAddItem()
-                }
-                .onFailure { error ->
-                    _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to add item"))
-                }
+            runCatching { addItemUseCase(active.documentId, overlay.draft.parentId, text, position) }
+                .onSuccess { cancelAddItem() }
+                .onFailure { error -> _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to add item")) }
         }
     }
 
     fun startEditText(itemId: Long) {
-        _editor.update { it?.copy(editingItemId = itemId, isEditingText = true) }
+        updateActiveEditor { it.copy(selectedItemId = itemId, editingTextItemId = itemId) }
     }
 
     fun selectItem(itemId: Long) {
-        _editor.update { state ->
-            state?.copy(
-                editingItemId = if (state.editingItemId == itemId) null else itemId,
-                isEditingText = false
+        updateActiveEditor { current ->
+            current.copy(
+                selectedItemId = if (current.selectedItemId == itemId) null else itemId,
+                editingTextItemId = null
             )
         }
     }
 
     fun stopEditText() {
-        _editor.update { it?.copy(editingItemId = null, isEditingText = false) }
+        updateActiveEditor { it.copy(editingTextItemId = null) }
     }
 
     fun saveItemText(itemId: Long, text: String) {
-        stopEditText()
+        updateActiveEditor { it.copy(editingTextItemId = null) }
         if (text.isBlank()) return
         viewModelScope.launch {
-            runCatching { updateItemTextUseCase(itemId, text) }
-                .onFailure { error ->
-                    _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to save item"))
-                }
+            updateItemTextUseCase(itemId, text)
         }
     }
 
     fun startEditNote(itemId: Long) {
-        _editor.update { it?.copy(editingNoteItemId = itemId) }
+        updateActiveEditor { current ->
+            val item = current.tree.itemById[itemId] ?: return@updateActiveEditor current
+            current.copy(overlay = NestedEditorOverlay.EditingNote(itemId, item.note.orEmpty()))
+        }
     }
 
-    fun stopEditNote() {
-        _editor.update { it?.copy(editingNoteItemId = null) }
-    }
+    fun stopEditNote() = updateActiveEditor { it.copy(overlay = NestedEditorOverlay.None) }
 
     fun saveItemNote(itemId: Long, note: String?) {
         stopEditNote()
         viewModelScope.launch {
-            runCatching { updateItemNoteUseCase(itemId, note?.take(MAX_NOTE_LENGTH)) }
-                .onFailure { error ->
-                    _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to save note"))
-                }
+            updateItemNoteUseCase(itemId, note?.take(2_000))
         }
     }
 
-    fun updateItemFormatting(
-        itemId: Long,
-        textStyle: NestedTextStyle,
-        textColor: NestedColorToken,
-        backgroundColor: NestedColorToken
-    ) {
-        viewModelScope.launch {
-            runCatching { updateItemFormattingUseCase(itemId, textStyle, textColor, backgroundColor) }
-                .onFailure { error -> _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to format item")) }
-        }
+    // --- Formatting & Metadata ---
+
+    fun updateItemFormatting(itemId: Long, style: NestedTextStyle, text: NestedColorToken, bg: NestedColorToken) {
+        viewModelScope.launch { updateItemFormattingUseCase(itemId, style, text, bg) }
     }
 
-    fun updateItemDateRange(itemId: Long, startDate: LocalDate?, endDate: LocalDate?) {
-        viewModelScope.launch {
-            runCatching { updateItemDateRangeUseCase (itemId, startDate, endDate) }
-                .onFailure { error -> _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to update item date range")) }
-        }
+    fun updateItemDateRange(itemId: Long, start: LocalDate?, end: LocalDate?) {
+        viewModelScope.launch { updateItemDateRangeUseCase(itemId, start, end) }
     }
+
     fun updateItemPriority(itemId: Long, priority: TaskPriority) {
-        viewModelScope.launch {
-            runCatching { updateItemPriorityUseCase (itemId, priority) }
-                .onFailure { error -> _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to update item priority")) }
-        }
+        viewModelScope.launch { updateItemPriorityUseCase(itemId, priority) }
     }
 
     fun updateItemTags(itemId: Long, tagIds: List<Long>) {
-        viewModelScope.launch {
-            runCatching { updateItemTagsUseCase(itemId, tagIds) }
-                .onFailure { error -> _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to update item tags")) }
-        }
+        viewModelScope.launch { updateItemTagsUseCase(itemId, tagIds) }
     }
 
-    fun updateItemMetricSettings(
-        itemId: Long,
-        actualMinutes: Int,
-        policy: MetricRollupPolicy,
-        showTrackedMinutes: Boolean
-    ) {
-        viewModelScope.launch {
-            runCatching {
-                updateItemMetricSettingsUseCase(itemId, actualMinutes, policy, showTrackedMinutes)
-            }.onFailure { error ->
-                _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to update metrics"))
-            }
-        }
+    fun updateItemMetricSettings(itemId: Long, min: Int, policy: MetricRollupPolicy, show: Boolean) {
+        viewModelScope.launch { updateItemMetricSettingsUseCase(itemId, min, policy, show) }
     }
 
     fun replaceManualMetrics(itemId: Long, metrics: List<NestedManualMetric>) {
-        viewModelScope.launch {
-            runCatching { replaceNestedManualMetricsUseCase(itemId, metrics) }
-                .onFailure { error ->
-                    _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to update metrics"))
-                }
-        }
+        viewModelScope.launch { replaceNestedManualMetricsUseCase(itemId, metrics) }
     }
 
-    private companion object {
-        const val MAX_NOTE_LENGTH = 2_000
-    }
-
-    // ---------------- checkbox / collapse ----------------
+    // --- Checkbox & Structure ---
 
     fun toggleCheckboxEnabled(itemId: Long) {
-        val state = _editor.value ?: return
-        val item = state.tree?.itemById?.get(itemId) ?: return
-        viewModelScope.launch {
-            runCatching { setCheckboxEnabledUseCase(itemId, !item.checkboxEnabled) }
-                .onFailure { error ->
-                    _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to update checkbox"))
-                }
-        }
+        val item = getActiveEditor()?.tree?.itemById?.get(itemId) ?: return
+        viewModelScope.launch { setCheckboxEnabledUseCase(itemId, !item.checkboxEnabled) }
     }
 
     fun toggleChecked(itemId: Long) {
-        val state = _editor.value ?: return
-        val item = state.tree?.itemById?.get(itemId) ?: return
+        val item = getActiveEditor()?.tree?.itemById?.get(itemId) ?: return
         if (!item.checkboxEnabled) return
-        viewModelScope.launch {
-            runCatching { setItemsCheckedUseCase(listOf(itemId), !item.checked) }
-                .onFailure { error ->
-                    _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to update item"))
-                }
-        }
+        viewModelScope.launch { setItemsCheckedUseCase(listOf(itemId), !item.checked) }
     }
 
     fun setChecked(itemId: Long, checked: Boolean) {
-        viewModelScope.launch {
-            runCatching { setItemsCheckedUseCase(listOf(itemId), checked) }
-                .onFailure { error ->
-                    _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to update item"))
-                }
-        }
+        viewModelScope.launch { setItemsCheckedUseCase(listOf(itemId), checked) }
     }
 
     fun toggleCollapsed(itemId: Long) {
-        viewModelScope.launch {
-            runCatching { toggleCollapsedUseCase(itemId) }
-                .onFailure { error ->
-                    _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to collapse"))
-                }
-        }
+        viewModelScope.launch { toggleCollapsedUseCase(itemId) }
     }
 
-    // ---------------- structure ----------------
-
-    fun indent(itemId: Long) {
-        applyMove { items -> moveItemsUseCase.indent(items, itemId) }
-    }
-
-    fun outdent(itemId: Long) {
-        applyMove { items -> moveItemsUseCase.outdent(items, itemId) }
-    }
-
-    fun moveUp(itemId: Long) {
-        applyMove { items -> moveItemsUseCase.moveUp(items, itemId) }
-    }
-
-    fun moveDown(itemId: Long) {
-        applyMove { items -> moveItemsUseCase.moveDown(items, itemId) }
-    }
+    fun indent(itemId: Long) = applyMove { items -> moveItemsUseCase.indent(items, itemId) }
+    fun outdent(itemId: Long) = applyMove { items -> moveItemsUseCase.outdent(items, itemId) }
+    fun moveUp(itemId: Long) = applyMove { items -> moveItemsUseCase.moveUp(items, itemId) }
+    fun moveDown(itemId: Long) = applyMove { items -> moveItemsUseCase.moveDown(items, itemId) }
 
     private fun applyMove(planner: (List<NestedListItem>) -> List<com.checkit.domain.NestedItemMove>) {
-        val state = _editor.value ?: return
-        val items = flatItems(state)
-        val moves = planner(items)
+        val active = getActiveEditor() ?: return
+        val moves = planner(active.tree.flatItems)
         if (moves.isEmpty()) return
         viewModelScope.launch {
-            runCatching { moveMutex.withLock { moveItemsUseCase(moves) } }
-                .onFailure { error ->
-                    _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to move item"))
-                }
+            moveMutex.withLock { moveItemsUseCase(moves) }
         }
     }
 
-    // ---------------- selection mode ----------------
+    // --- Selection Mode ---
 
     fun enterSelectionMode() {
-        _editor.update { it?.copy(selectionMode = true) }
+        updateActiveEditor { it.copy(selection = SelectionState(isActive = true)) }
     }
 
     fun exitSelectionMode() {
-        _editor.update { it?.copy(selectionMode = false, selectedItemIds = emptySet()) }
+        updateActiveEditor { it.copy(selection = SelectionState()) }
     }
 
     fun toggleSelect(itemId: Long) {
-        _editor.update { state ->
-            state?.let { current ->
-                val selected = current.selectedItemIds
-                current.copy(
-                    selectedItemIds = if (itemId in selected) selected - itemId else selected + itemId
-                )
-            }
+        updateActiveEditor { current ->
+            val selected = current.selection.selectedIds
+            val next = if (itemId in selected) selected - itemId else selected + itemId
+            current.copy(selection = current.selection.copy(selectedIds = next))
         }
     }
 
     fun selectAll() {
-        val state = _editor.value ?: return
-        _editor.update { it?.copy(selectedItemIds = flatItems(state).map { it.id }.toSet()) }
-    }
-
-    fun batchSetChecked(checked: Boolean) {
-        val ids = _editor.value?.selectedItemIds.orEmpty().toList()
-        if (ids.isEmpty()) return
-        viewModelScope.launch {
-            runCatching { setItemsCheckedUseCase(ids, checked) }
-                .onFailure { error ->
-                    _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to update items"))
-                }
+        updateActiveEditor { current ->
+            current.copy(selection = current.selection.copy(selectedIds = current.tree.flatItems.map { it.id }.toSet()))
         }
     }
 
-    fun requestDeleteSelected() {
-        _editor.update { it?.copy(showDeleteConfirm = true) }
+    fun batchSetChecked(checked: Boolean) {
+        val ids = getActiveEditor()?.selection?.selectedIds?.toList().orEmpty()
+        if (ids.isEmpty()) return
+        viewModelScope.launch { setItemsCheckedUseCase(ids, checked) }
     }
 
-    fun dismissDeleteConfirm() {
-        _editor.update { it?.copy(showDeleteConfirm = false) }
+    fun requestDeleteSelected() {
+        updateActiveEditor { current ->
+            val ids = if (current.selection.isActive) {
+                current.selection.selectedIds.toList()
+            } else {
+                listOfNotNull(current.selectedItemId)
+            }
+            current.copy(overlay = NestedEditorOverlay.ConfirmDelete(ids))
+        }
     }
+
+    fun dismissDeleteConfirm() = updateActiveEditor { it.copy(overlay = NestedEditorOverlay.None) }
 
     fun confirmDeleteSelected() {
-        val ids = _editor.value?.selectedItemIds.orEmpty().toList()
-        _editor.update { it?.copy(showDeleteConfirm = false, selectionMode = false, selectedItemIds = emptySet()) }
-        if (ids.isEmpty()) return
+        val active = getActiveEditor() ?: return
+        val overlay = active.overlay as? NestedEditorOverlay.ConfirmDelete ?: return
+        updateActiveEditor { it.copy(overlay = NestedEditorOverlay.None, selection = SelectionState(), selectedItemId = null, editingTextItemId = null) }
         viewModelScope.launch {
-            deleteItemsUseCase(ids)
+            deleteItemsUseCase(overlay.itemIds)
             _events.tryEmit(UiEvent.ShowSnackbar("Items deleted"))
         }
     }
 
-    fun requestDeleteItem(itemId: Long) {
-        _editor.update { it?.copy(selectedItemIds = setOf(itemId), showDeleteConfirm = true) }
+    // --- Private Helpers ---
+
+    private fun getActiveEditor(): NestedEditorState.Active? = _uiState.value.editor as? NestedEditorState.Active
+
+    private fun updateActiveEditor(action: (NestedEditorState.Active) -> NestedEditorState.Active) {
+        _uiState.update { current ->
+            val active = current.editor as? NestedEditorState.Active ?: return@update current
+            current.copy(editor = action(active))
+        }
     }
 
-    // ---------------- helpers ----------------
-
-    private fun flatItems(state: NestedListEditorUiState): List<NestedListItem> =
-        state.tree?.flatItems.orEmpty()
-
-    /** Returns the ids from a root down to [id], or empty if [id] is not found. */
-    private fun ancestorChain(id: Long): List<Long> {
-        val tree = _editor.value?.tree ?: return emptyList()
+    private fun ancestorChain(tree: NestedDocumentTree, id: Long): List<Long> {
         val chain = ArrayDeque<Long>()
         var current = tree.itemById[id] ?: return emptyList()
         while (true) {
@@ -583,20 +526,13 @@ class NestedListsViewModel(
         return chain.toList()
     }
 
-    private fun NestedListEditorUiState.ancestorDepth(id: Long): Int {
-        val chain = ancestorChainFromTree(tree, id)
-        return (chain.size - 1).coerceAtLeast(0)
-    }
-
-    private fun ancestorChainFromTree(tree: NestedDocumentTree?, id: Long): List<Long> {
-        if (tree == null) return emptyList()
-        val chain = ArrayDeque<Long>()
-        var current = tree.itemById[id] ?: return emptyList()
-        while (true) {
-            chain.addFirst(current.id)
-            val parentId = current.parentId ?: break
-            current = tree.itemById[parentId] ?: return emptyList()
+    private fun NestedEditorState.Active.ancestorDepth(id: Long): Int {
+        var depth = 0
+        var currentId = tree.itemById[id]?.parentId
+        while (currentId != null) {
+            depth++
+            currentId = tree.itemById[currentId]?.parentId
         }
-        return chain.toList()
+        return depth
     }
 }

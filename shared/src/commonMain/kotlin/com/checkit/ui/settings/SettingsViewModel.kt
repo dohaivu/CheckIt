@@ -41,6 +41,7 @@ class SettingsViewModel(
                         language = AppLanguage.fromCode(stored.languageCode),
                         themeMode = AppThemeMode.fromCode(stored.themeModeCode),
                         colorSchemeMode = AppColorSchemeMode.fromCode(stored.colorSchemeModeCode),
+                        lastNestedDocumentId = stored.lastNestedDocumentId,
                         reminders = stored.toReminderSettingsUiState(),
                     )
                 }

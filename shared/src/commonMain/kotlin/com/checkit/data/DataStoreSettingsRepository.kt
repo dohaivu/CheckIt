@@ -91,4 +91,8 @@ class DataStoreSettingsRepository(
     override suspend fun setLastFabAction(type: String, id: Long?) {
         dataStore.setLastFabAction(type, id)
     }
+
+    override suspend fun setLastNestedDocumentId(id: Long?) {
+        dataStore.setLastNestedDocumentId(id)
+    }
 }

@@ -12,6 +12,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -54,7 +55,6 @@ import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOut
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -108,61 +108,36 @@ import com.checkit.domain.NestedManualMetric
 import com.checkit.domain.NestedMetricSummary
 import com.checkit.domain.NestedMetricUnit
 import com.checkit.domain.NestedTextStyle
+import com.checkit.domain.TagItem
 import com.checkit.domain.TaskPriority
+import com.checkit.ui.components.DateRangePill
 import com.checkit.ui.components.PeriodPicker
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TagPlain
-import com.checkit.ui.components.DateRangePill
-import com.checkit.ui.components.TinyTopAppBar
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun NestedListEditorScreen(
-    state: NestedListEditorUiState,
+    state: NestedEditorState.Active,
     viewModel: NestedListsViewModel,
-    onAddToDailyPlan: (title: String, tagIds: List<Long>) -> Unit = { _, _ -> },
-    onNavigateBack: () -> Unit
+    modifier: Modifier = Modifier,
+    onAddToDailyPlan: (title: String, tagIds: List<Long>) -> Unit = { _, _ -> }
 ) {
     var detailsItemId by remember { mutableStateOf<Long?>(null) }
     val tree = state.tree
-    if (tree == null) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
-        return
-    }
-
     val focusedNode = state.focusedItem
     val visibleRoots = focusedNode?.let { listOf(it) } ?: tree.rootNodes
     val visibleRows = flattenVisibleNodes(visibleRoots)
     val breadcrumbs = buildBreadcrumbs(state, tree.rootNodes)
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        TinyTopAppBar(
-            title = {
-                Text(
-                    text = tree.document.title.ifBlank { stringResource(Res.string.nested_untitled_document) },
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1
-                )
-            },
-            navigationIcon = {
-                IconButton(onClick = onNavigateBack) { Icon(Icons.Default.ArrowBack, contentDescription = "Back") }
-            },
-            actions = {
-                if (state.selectionMode) {
-                    TextButton(onClick = viewModel::selectAll) { Text("Select all") }
-                    TextButton(onClick = viewModel::exitSelectionMode) { Text(stringResource(Res.string.cancel)) }
-                }
-            }
-        )
+    Column(modifier = modifier.fillMaxSize()) {
         BreadcrumbBar(
             breadcrumbs = breadcrumbs,
             onCrumbClick = { itemId -> viewModel.zoomToItem(itemId) },
             onRootClick = viewModel::zoomToRoot
         )
 
-        if (state.selectionMode) {
+        if (state.selection.isActive) {
             SelectionToolbar(
                 state = state,
                 onToggleDone = { viewModel.batchSetChecked(true) },
@@ -174,18 +149,18 @@ internal fun NestedListEditorScreen(
                 state = state,
                 onZoomIn = viewModel::zoomInSelected,
                 onZoomOut = viewModel::zoomOut,
-                onIndent = { state.editingItemId?.let(viewModel::indent) },
-                onOutdent = { state.editingItemId?.let(viewModel::outdent) },
-                onMoveUp = { state.editingItemId?.let(viewModel::moveUp) },
-                onMoveDown = { state.editingItemId?.let(viewModel::moveDown) },
-                onAddChild = { state.editingItemId?.let(viewModel::startAddChild) },
-                onAddSibling = { state.editingItemId?.let(viewModel::startAddSibling) },
-                onDelete = { state.editingItemId?.let(viewModel::requestDeleteItem) },
+                onIndent = { state.selectedItemId?.let(viewModel::indent) },
+                onOutdent = { state.selectedItemId?.let(viewModel::outdent) },
+                onMoveUp = { state.selectedItemId?.let(viewModel::moveUp) },
+                onMoveDown = { state.selectedItemId?.let(viewModel::moveDown) },
+                onAddChild = { state.selectedItemId?.let(viewModel::startAddChild) },
+                onAddSibling = { state.selectedItemId?.let(viewModel::startAddSibling) },
+                onDelete = viewModel::requestDeleteSelected,
                 onAddRoot = viewModel::startAddRoot,
-                onManageDetails = { state.editingItemId?.let { detailsItemId = it } },
+                onManageDetails = { state.selectedItemId?.let { detailsItemId = it } },
                 onAddToDailyPlan = {
-                    state.editingItemId?.let { id ->
-                        state.tree?.nodeById?.get(id)?.item?.let { item ->
+                    state.selectedItemId?.let { id ->
+                        state.tree.nodeById[id]?.item?.let { item ->
                             onAddToDailyPlan(item.text, item.tags.map { it.id })
                         }
                     }
@@ -196,15 +171,16 @@ internal fun NestedListEditorScreen(
         Box(
             modifier = Modifier.weight(1f).fillMaxWidth()
         ) {
+            val addingItem = state.overlay as? NestedEditorOverlay.AddingItem
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
             ) {
-                if (state.isAddingItem && state.addingItemAnchorId == null) {
+                if (addingItem != null && addingItem.draft.anchorId == null) {
                     item(key = "new-root") {
                         NewItemRow(
                             depth = 0,
-                            text = state.newItemText,
+                            text = addingItem.draft.text,
                             onTextChange = viewModel::updateNewItemText,
                             onCommit = viewModel::commitNewItem,
                             onCancel = viewModel::cancelAddItem
@@ -212,7 +188,7 @@ internal fun NestedListEditorScreen(
                     }
                 }
                 if (visibleRows.isEmpty()) {
-                    if (!state.isAddingItem || state.addingItemAnchorId != null) {
+                    if (addingItem == null || addingItem.draft.anchorId != null) {
                         item(key = "empty-list") {
                             EmptyNestedList(onAddItem = viewModel::startAddRoot)
                         }
@@ -227,10 +203,10 @@ internal fun NestedListEditorScreen(
                             state = state,
                             viewModel = viewModel
                         )
-                        if (state.isAddingItem && state.addingItemAnchorId == row.node.item.id) {
+                        if (addingItem != null && addingItem.draft.anchorId == row.node.item.id) {
                             NewItemRow(
-                                depth = state.newItemDepth,
-                                text = state.newItemText,
+                                depth = addingItem.draft.depth,
+                                text = addingItem.draft.text,
                                 onTextChange = viewModel::updateNewItemText,
                                 onCommit = viewModel::commitNewItem,
                                 onCancel = viewModel::cancelAddItem
@@ -239,8 +215,8 @@ internal fun NestedListEditorScreen(
                     }
                 }
             }
-            if (!state.selectionMode) {
-                val selectedItem = state.editingItemId?.let { tree.itemById[it] }
+            if (!state.selection.isActive) {
+                val selectedItem = state.selectedItemId?.let { tree.itemById[it] }
                 if (selectedItem != null) {
                     Box(modifier = Modifier.align(Alignment.BottomCenter)) {
                         NestedFormattingBottomBar(
@@ -266,56 +242,56 @@ internal fun NestedListEditorScreen(
         }
     }
 
-    if (state.showDeleteConfirm) {
-        AlertDialog(
-            onDismissRequest = viewModel::dismissDeleteConfirm,
-            title = { Text(stringResource(Res.string.nested_confirm_delete)) },
-            text = { Text(stringResource(Res.string.nested_delete_confirm)) },
-            confirmButton = {
-                TextButton(onClick = viewModel::confirmDeleteSelected) {
-                    Text(stringResource(Res.string.nested_batch_delete))
+    when (val overlay = state.overlay) {
+        is NestedEditorOverlay.ConfirmDelete -> {
+            AlertDialog(
+                onDismissRequest = viewModel::dismissDeleteConfirm,
+                title = { Text(stringResource(Res.string.nested_confirm_delete)) },
+                text = { Text(stringResource(Res.string.nested_delete_confirm)) },
+                confirmButton = {
+                    TextButton(onClick = viewModel::confirmDeleteSelected) {
+                        Text(stringResource(Res.string.nested_batch_delete))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = viewModel::dismissDeleteConfirm) {
+                        Text(stringResource(Res.string.cancel))
+                    }
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = viewModel::dismissDeleteConfirm) {
-                    Text(stringResource(Res.string.cancel))
+            )
+        }
+        is NestedEditorOverlay.EditingNote -> {
+            var note by remember(overlay.itemId) { mutableStateOf(overlay.initialText) }
+            AlertDialog(
+                onDismissRequest = viewModel::stopEditNote,
+                title = { Text(stringResource(Res.string.nested_edit_note)) },
+                text = {
+                    OutlinedTextField(
+                        value = note,
+                        onValueChange = { note = it.take(2_000) },
+                        label = { Text("Note") },
+                        placeholder = { Text("Add context or details") },
+                        minLines = 4,
+                        maxLines = 8,
+                        supportingText = { Text("${note.length}/2,000") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.saveItemNote(overlay.itemId, note) }) {
+                        Text(stringResource(Res.string.nested_edit_note))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = viewModel::stopEditNote) { Text(stringResource(Res.string.cancel)) }
                 }
-            }
-        )
-    }
-
-    state.editingNoteItemId?.let { noteItemId ->
-        val noteItem = state.tree?.nodeById?.get(noteItemId)
-        val initialNote = noteItem?.item?.note.orEmpty()
-        var note by remember(noteItemId) { mutableStateOf(initialNote) }
-        AlertDialog(
-            onDismissRequest = viewModel::stopEditNote,
-            title = { Text(stringResource(Res.string.nested_edit_note)) },
-            text = {
-                OutlinedTextField(
-                    value = note,
-                    onValueChange = { note = it.take(2_000) },
-                    label = { Text("Note") },
-                    placeholder = { Text("Add context or details") },
-                    minLines = 4,
-                    maxLines = 8,
-                    supportingText = { Text("${note.length}/2,000") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = { viewModel.saveItemNote(noteItemId, note) }) {
-                    Text(stringResource(Res.string.nested_edit_note))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = viewModel::stopEditNote) { Text(stringResource(Res.string.cancel)) }
-            }
-        )
+            )
+        }
+        else -> {}
     }
 
     detailsItemId?.let { itemId ->
-        state.tree.nodeById.get(itemId)?.let { node ->
+        state.tree.nodeById[itemId]?.let { node ->
             NestedItemDetailsDialog(
                 node = node,
                 summary = state.tree.metricSummaryById[itemId] ?: NestedMetricSummary(),
@@ -894,7 +870,7 @@ private fun NestedItemDetailsDialog(
                                     sortOrder = metrics.size
                                 )
                             },
-                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
                             modifier = Modifier.height(28.dp)
                         ) {
                             Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
@@ -1159,10 +1135,10 @@ private data class Breadcrumb(
     val itemId: Long? = null
 )
 
-private fun buildBreadcrumbs(state: NestedListEditorUiState, roots: List<NestedItemNode>): List<Breadcrumb> {
+private fun buildBreadcrumbs(state: NestedEditorState.Active, roots: List<NestedItemNode>): List<Breadcrumb> {
     val result = mutableListOf<Breadcrumb>()
     result.add(Breadcrumb(label = "", depth = 0, isRoot = true))
-    val focusedId = state.focusItemIds.lastOrNull() ?: return result
+    val focusedId = state.zoomPath.lastOrNull() ?: return result
     val chain = findAncestorChain(roots, focusedId) ?: return result
     chain.forEach { node ->
         result.add(
@@ -1225,7 +1201,7 @@ private fun BreadcrumbBar(
                     .clip(RoundedCornerShape(6.dp))
                     .background(
                         if (isCurrent) MaterialTheme.colorScheme.surfaceVariant
-                        else androidx.compose.ui.graphics.Color.Transparent
+                        else Color.Transparent
                     )
                     .clickable(enabled = !isCurrent) { crumb.itemId?.let(onCrumbClick) }
                     .padding(horizontal = 8.dp, vertical = 6.dp),
@@ -1251,7 +1227,7 @@ private fun BreadcrumbBar(
 
 @Composable
 private fun EditorToolbar(
-    state: NestedListEditorUiState,
+    state: NestedEditorState.Active,
     onZoomIn: () -> Unit,
     onZoomOut: () -> Unit,
     onIndent: () -> Unit,
@@ -1265,10 +1241,10 @@ private fun EditorToolbar(
     onManageDetails: () -> Unit,
     onAddToDailyPlan: () -> Unit
 ) {
-    val hasSelection = state.editingItemId != null
-    val selectedNode = state.editingItemId?.let { id -> state.tree?.nodeById?.get(id) }
+    val hasSelection = state.selectedItemId != null
+    val selectedNode = state.selectedItemId?.let { id -> state.tree.nodeById[id] }
     val canZoomIn = hasSelection && (selectedNode?.hasChildren == true)
-    val canZoomOut = state.focusItemIds.isNotEmpty()
+    val canZoomOut = state.zoomPath.isNotEmpty()
     val canAddSibling = hasSelection && (selectedNode?.item?.parentId != null)
     var showMore by remember { mutableStateOf(false) }
     Row(
@@ -1336,12 +1312,12 @@ private fun ToolbarButton(
 
 @Composable
 private fun SelectionToolbar(
-    state: NestedListEditorUiState,
+    state: NestedEditorState.Active,
     onToggleDone: () -> Unit,
     onDelete: () -> Unit,
     onExit: () -> Unit
 ) {
-    val count = state.selectedItemIds.size
+    val count = state.selection.selectedIds.size
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1397,7 +1373,7 @@ private fun NestedTree(
     depth: Int,
     isVisible: Boolean,
     isInCheckedBranch: Boolean,
-    state: NestedListEditorUiState,
+    state: NestedEditorState.Active,
     viewModel: NestedListsViewModel
 ) {
     val item = node.item
@@ -1407,9 +1383,9 @@ private fun NestedTree(
         MaterialTheme.colorScheme.tertiary.copy(alpha = 0.34f),
         MaterialTheme.colorScheme.outline.copy(alpha = 0.30f)
     )
-    val isSelected = item.id in state.selectedItemIds ||
-        (!state.selectionMode && state.editingItemId == item.id)
-    val isEditing = state.isEditingText && state.editingItemId == item.id
+    val isSelected = item.id in state.selection.selectedIds ||
+        (!state.selection.isActive && state.selectedItemId == item.id)
+    val isEditing = state.editingTextItemId == item.id
 
     AnimatedVisibility(
         visible = isVisible,
@@ -1500,20 +1476,20 @@ private fun NestedTree(
                                 isSelected -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
                                 isEditing -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                                 item.backgroundColor != NestedColorToken.Default -> nestedColor(item.backgroundColor).copy(alpha = 0.18f)
-                                else -> androidx.compose.ui.graphics.Color.Transparent
+                                else -> Color.Transparent
                             }
                         )
                         .combinedClickable(
                             onClick = {
-                                if (state.selectionMode) {
+                                if (state.selection.isActive) {
                                     viewModel.toggleSelect(item.id)
                                 } else {
                                     viewModel.selectItem(item.id)
-                                    if (state.isAddingItem) viewModel.cancelAddItem()
+                                    if (state.overlay is NestedEditorOverlay.AddingItem) viewModel.cancelAddItem()
                                 }
                             },
                             onDoubleClick = {
-                                if (!state.selectionMode) viewModel.startEditText(item.id)
+                                if (!state.selection.isActive) viewModel.startEditText(item.id)
                             }
                         )
                         .padding(horizontal = 4.dp, vertical = 6.dp),
@@ -1567,7 +1543,7 @@ private fun NestedTree(
                     }
                     NestedItemMetadataPreview(
                         item = item,
-                        summary = state.tree?.metricSummaryById?.get(item.id) ?: NestedMetricSummary(),
+                        summary = state.tree.metricSummaryById[item.id] ?: NestedMetricSummary(),
                         isLeaf = !node.hasChildren
                     )
                 }
@@ -1582,7 +1558,7 @@ private fun NestedTree(
                     )
                 }
 
-                if (state.selectionMode) {
+                if (state.selection.isActive) {
                     Checkbox(
                         checked = isSelected,
                         onCheckedChange = { viewModel.toggleSelect(item.id) },
@@ -1611,13 +1587,13 @@ private fun nestedTextColor(token: NestedColorToken) =
 @Composable
 private fun nestedColor(token: NestedColorToken) = when (token) {
     NestedColorToken.Default -> MaterialTheme.colorScheme.onSurfaceVariant
-    NestedColorToken.Red -> androidx.compose.ui.graphics.Color(0xFFE57373)
-    NestedColorToken.Orange -> androidx.compose.ui.graphics.Color(0xFFFFB74D)
-    NestedColorToken.Yellow -> androidx.compose.ui.graphics.Color(0xFFFFD54F)
-    NestedColorToken.Green -> androidx.compose.ui.graphics.Color(0xFF66BB6A)
-    NestedColorToken.Blue -> androidx.compose.ui.graphics.Color(0xFF42A5F5)
-    NestedColorToken.Purple -> androidx.compose.ui.graphics.Color(0xFFAB47BC)
-    NestedColorToken.Pink -> androidx.compose.ui.graphics.Color(0xFFEC407A)
+    NestedColorToken.Red -> Color(0xFFE57373)
+    NestedColorToken.Orange -> Color(0xFFFFB74D)
+    NestedColorToken.Yellow -> Color(0xFFFFD54F)
+    NestedColorToken.Green -> Color(0xFF66BB6A)
+    NestedColorToken.Blue -> Color(0xFF42A5F5)
+    NestedColorToken.Purple -> Color(0xFFAB47BC)
+    NestedColorToken.Pink -> Color(0xFFEC407A)
 }
 
 private data class VisibleNestedRow(

@@ -354,7 +354,8 @@ val provideViewModelModule = module {
             setItemsCheckedUseCase = get(),
             toggleCollapsedUseCase = get(),
             moveItemsUseCase = get(),
-            deleteItemsUseCase = get()
+            deleteItemsUseCase = get(),
+            settingsRepository = get()
         )
     }
     viewModel {

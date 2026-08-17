@@ -43,7 +43,8 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
                 leftoversBannerDismissedEpochDay = prefs[KEY_LEFTOVERS_BANNER_DISMISSED_EPOCH_DAY],
                 lastDayPlanDismissedEpochDay = prefs[KEY_LAST_DAY_PLAN_DISMISSED_EPOCH_DAY],
                 lastFabActionType = prefs[KEY_LAST_FAB_ACTION_TYPE] ?: UserSettings().lastFabActionType,
-                lastFabActionId = prefs[KEY_LAST_FAB_ACTION_ID]
+                lastFabActionId = prefs[KEY_LAST_FAB_ACTION_ID],
+                lastNestedDocumentId = prefs[KEY_LAST_NESTED_DOCUMENT_ID]
             )
         }
 
@@ -138,6 +139,16 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
         }
     }
 
+    suspend fun setLastNestedDocumentId(id: Long?) {
+        dataStore.edit { prefs ->
+            if (id != null) {
+                prefs[KEY_LAST_NESTED_DOCUMENT_ID] = id
+            } else {
+                prefs.remove(KEY_LAST_NESTED_DOCUMENT_ID)
+            }
+        }
+    }
+
     private companion object {
         val KEY_LANGUAGE = stringPreferencesKey("language")
         val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
@@ -161,6 +172,7 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
         val KEY_LAST_DAY_PLAN_DISMISSED_EPOCH_DAY = intPreferencesKey("last_day_plan_dismissed_epoch_day")
         val KEY_LAST_FAB_ACTION_TYPE = stringPreferencesKey("last_fab_action_type")
         val KEY_LAST_FAB_ACTION_ID = longPreferencesKey("last_fab_action_id")
+        val KEY_LAST_NESTED_DOCUMENT_ID = longPreferencesKey("last_nested_document_id")
     }
 }
 

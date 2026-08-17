@@ -19,6 +19,7 @@ data class SettingsUiState(
     val language: AppLanguage = AppLanguage.English,
     val themeMode: AppThemeMode = AppThemeMode.System,
     val colorSchemeMode: AppColorSchemeMode = AppColorSchemeMode.SkyBlue,
+    val lastNestedDocumentId: Long? = null,
     val reminders: ReminderSettingsUiState = ReminderSettingsUiState(),
     val tagUsageSort: TagUsageSort = TagUsageSort.MostUsed
 )

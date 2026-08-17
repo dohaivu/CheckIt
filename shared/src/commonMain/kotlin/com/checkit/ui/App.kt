@@ -40,8 +40,6 @@ import com.checkit.ui.myday.DailyPlanItemEditorSheet
 import com.checkit.ui.journal.JournalEntryEditorSheet
 import com.checkit.ui.journal.JournalListSheet
 import com.checkit.ui.myday.MyDayScreen
-import com.checkit.ui.nested.NestedListEditorScreen
-import com.checkit.ui.nested.NestedListEditorUiState
 import com.checkit.ui.nested.NestedListScreen
 import com.checkit.ui.plan.PlanPriorityEditorSheet
 import com.checkit.ui.reflect.PeriodReviewEditorSheet
@@ -54,7 +52,6 @@ import com.checkit.ui.tasks.TaskScreen
 import com.checkit.ui.tasks.tag.TagEditorSheet
 import com.checkit.ui.tasks.tag.TagScreen
 import com.checkit.ui.theme.AppTheme
-import com.checkit.ui.twelveweek.TwelveWeekScreen
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
@@ -120,7 +117,6 @@ fun CheckItApp(
     val planUiState by viewModels.plan.uiState.collectAsState()
     val twelveWeekUiState by viewModels.twelveWeek.uiState.collectAsState()
     val nestedUiState by viewModels.nested.uiState.collectAsState()
-    val nestedEditorState by viewModels.nested.editor.collectAsState()
     val reflectEditorState by viewModels.reflect.editor.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
     val appScope = rememberCoroutineScope()
@@ -317,27 +313,18 @@ fun CheckItApp(
                                         )
                                     }
 
-                                    AppRoute.Lists -> {
+                                    AppRoute.NestedLists -> {
+                                        val settingsUiState by viewModels.settings.uiState.collectAsState()
+                                        LaunchedEffect(Unit) {
+                                            val lastId = settingsUiState.lastNestedDocumentId
+                                            if (lastId != null && nestedUiState.editor == null) {
+                                                viewModels.nested.openDocument(lastId)
+                                            }
+                                        }
                                         NestedListScreen(
                                             state = nestedUiState,
                                             viewModel = viewModels.nested,
-                                            onOpenDocument = { documentId ->
-                                                navState.push(AppRoute.NestedList(documentId))
-                                            }
-                                        )
-                                    }
-                                    is AppRoute.NestedList -> {
-                                        LaunchedEffect(key.documentId) {
-                                            viewModels.nested.openDocument(key.documentId)
-                                        }
-                                        NestedListEditorScreen(
-                                            state = nestedEditorState ?: NestedListEditorUiState(documentId = key.documentId),
-                                            viewModel = viewModels.nested,
-                                            onAddToDailyPlan = viewModels.myDay::addDailyPlanItem,
-                                            onNavigateBack = {
-                                                viewModels.nested.closeDocument()
-                                                navState.pop()
-                                            }
+                                            onAddToDailyPlan = viewModels.myDay::addDailyPlanItem
                                         )
                                     }
                                     AppRoute.Settings -> SettingsScreen(
