@@ -77,7 +77,7 @@ internal class PlanAssistController(
         addTaskToMyDay(task, clearSuggestions = false)
     }
 
-    fun quickAddDailyPlanItem(title: String, tagIds: List<Long>) {
+    fun addDailyPlanItem(title: String, tagIds: List<Long>) {
         if (title.isBlank()) return
         val current = state.uiState.value
 

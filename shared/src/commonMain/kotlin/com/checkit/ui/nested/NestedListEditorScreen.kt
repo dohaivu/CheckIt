@@ -1,19 +1,14 @@
 package com.checkit.ui.nested
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,16 +18,26 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.NoteAdd
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.EditNote
@@ -43,24 +48,20 @@ import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOut
-import androidx.compose.material.icons.filled.QueryStats
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -72,17 +73,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
-import androidx.compose.foundation.layout.offset
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.cancel
 import checkit.shared.generated.resources.nested_add_child
@@ -96,18 +97,17 @@ import checkit.shared.generated.resources.nested_move_down
 import checkit.shared.generated.resources.nested_move_up
 import checkit.shared.generated.resources.nested_outdent
 import checkit.shared.generated.resources.nested_root
-import checkit.shared.generated.resources.nested_selection_mode
 import checkit.shared.generated.resources.nested_untitled_document
 import checkit.shared.generated.resources.nested_zoom_in
 import checkit.shared.generated.resources.nested_zoom_out
-import com.checkit.domain.NestedItemNode
-import com.checkit.domain.NestedTextStyle
-import com.checkit.domain.NestedColorToken
-import com.checkit.domain.TaskPriority
 import com.checkit.domain.MetricRollupPolicy
+import com.checkit.domain.NestedColorToken
+import com.checkit.domain.NestedItemNode
 import com.checkit.domain.NestedManualMetric
 import com.checkit.domain.NestedMetricSummary
 import com.checkit.domain.NestedMetricUnit
+import com.checkit.domain.NestedTextStyle
+import com.checkit.domain.TaskPriority
 import com.checkit.ui.components.DatePicker
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TagPlain
@@ -120,7 +120,7 @@ internal fun NestedListEditorScreen(
     viewModel: NestedListsViewModel,
     onNavigateBack: () -> Unit
 ) {
-    var metricsItemId by remember { mutableStateOf<Long?>(null) }
+    var detailsItemId by remember { mutableStateOf<Long?>(null) }
     val tree = state.tree
     if (tree == null) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -179,7 +179,7 @@ internal fun NestedListEditorScreen(
                 onAddSibling = { state.editingItemId?.let(viewModel::startAddSibling) },
                 onDelete = { state.editingItemId?.let(viewModel::requestDeleteItem) },
                 onAddRoot = viewModel::startAddRoot,
-                onManageMetrics = { state.editingItemId?.let { metricsItemId = it } }
+                onManageDetails = { state.editingItemId?.let { detailsItemId = it } }
             )
         }
 
@@ -301,17 +301,17 @@ internal fun NestedListEditorScreen(
         )
     }
 
-    metricsItemId?.let { itemId ->
-        state.tree?.itemById?.get(itemId)?.let { item ->
-            NestedMetricsDialog(
+    detailsItemId?.let { itemId ->
+        state.tree.itemById.get(itemId)?.let { item ->
+            NestedItemDetailsDialog(
                 item = item,
                 summary = state.tree.metricSummaryById[itemId] ?: NestedMetricSummary(),
                 isLeaf = state.tree.nodeById[itemId]?.hasChildren != true,
-                onDismiss = { metricsItemId = null },
+                onDismiss = { detailsItemId = null },
                 onSave = { actualMinutes, policy, showTrackedMinutes, manualMetrics ->
                     viewModel.updateItemMetricSettings(itemId, actualMinutes, policy, showTrackedMinutes)
                     viewModel.replaceManualMetrics(itemId, manualMetrics)
-                    metricsItemId = null
+                    detailsItemId = null
                 }
             )
         }
@@ -630,7 +630,7 @@ private fun unitLabel(unit: NestedMetricUnit): String = when (unit) {
 }
 
 @Composable
-private fun NestedMetricsDialog(
+private fun NestedItemDetailsDialog(
     item: com.checkit.domain.NestedListItem,
     summary: NestedMetricSummary,
     isLeaf: Boolean,
@@ -646,9 +646,10 @@ private fun NestedMetricsDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
         title = {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text("Metrics", style = MaterialTheme.typography.titleLarge)
+                Text("Details", style = MaterialTheme.typography.titleLarge)
                 Text(item.text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         },
@@ -910,7 +911,7 @@ private fun EditorToolbar(
     onAddSibling: () -> Unit,
     onDelete: () -> Unit,
     onAddRoot: () -> Unit,
-    onManageMetrics: () -> Unit
+    onManageDetails: () -> Unit
 ) {
     val hasSelection = state.editingItemId != null
     val selectedNode = state.editingItemId?.let { id -> state.tree?.nodeById?.get(id) }
@@ -928,23 +929,19 @@ private fun EditorToolbar(
     ) {
         ToolbarButton(Icons.Default.ZoomIn, stringResource(Res.string.nested_zoom_in), canZoomIn, onZoomIn)
         ToolbarButton(Icons.Default.ZoomOut, stringResource(Res.string.nested_zoom_out), canZoomOut, onZoomOut)
-        ToolbarButton(Icons.Default.KeyboardArrowRight, stringResource(Res.string.nested_indent), hasSelection, onIndent)
+        ToolbarButton(Icons.AutoMirrored.Filled.KeyboardArrowRight, stringResource(Res.string.nested_indent), hasSelection, onIndent)
         ToolbarButton(Icons.AutoMirrored.Filled.KeyboardArrowLeft, stringResource(Res.string.nested_outdent), hasSelection, onOutdent)
         ToolbarButton(Icons.Default.KeyboardArrowUp, stringResource(Res.string.nested_move_up), hasSelection, onMoveUp)
         ToolbarButton(Icons.Default.KeyboardArrowDown, stringResource(Res.string.nested_move_down), hasSelection, onMoveDown)
-        ToolbarButton(Icons.Default.QueryStats, "Manage metrics", hasSelection, onManageMetrics)
+        ToolbarButton(Icons.Default.Add, stringResource(Res.string.nested_add_child), hasSelection, onAddChild)
+        ToolbarButton(Icons.AutoMirrored.Filled.NoteAdd, stringResource(Res.string.nested_add_sibling), canAddSibling, onAddSibling)
         Box {
             ToolbarButton(Icons.Default.MoreVert, "More actions", true) { showMore = true }
-            androidx.compose.material3.DropdownMenu(
+            DropdownMenu(
                 expanded = showMore,
                 onDismissRequest = { showMore = false }
             ) {
-                ToolbarMenuItem(stringResource(Res.string.nested_add_child), hasSelection) {
-                    showMore = false; onAddChild()
-                }
-                ToolbarMenuItem(stringResource(Res.string.nested_add_sibling), canAddSibling) {
-                    showMore = false; onAddSibling()
-                }
+                ToolbarMenuItem("Details", hasSelection, onManageDetails)
                 ToolbarMenuItem("Add root item", true) {
                     showMore = false; onAddRoot()
                 }
