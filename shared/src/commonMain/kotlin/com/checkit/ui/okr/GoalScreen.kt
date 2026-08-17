@@ -56,7 +56,7 @@ import com.checkit.domain.Objective
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.ui.components.DonutProgressIndicator
-import com.checkit.ui.components.TimeframePill
+import com.checkit.ui.components.DateRangePill
 import com.checkit.ui.components.icons.AppIcons
 import com.checkit.ui.components.icons.Target
 import com.checkit.ui.tasks.views.OKRTaskContent
@@ -166,7 +166,7 @@ private fun ObjectiveBranch(
             Spacer(modifier = Modifier.width(4.dp))
         },
         trailingContent = {
-            TimeframePill(
+            DateRangePill(
                 startDate = objective.startDate,
                 endDate = objective.endDate
             )

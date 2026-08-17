@@ -12,13 +12,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
@@ -61,12 +58,40 @@ sealed class Period(val label: String) {
         override fun getRange(reference: LocalDate) = reference to reference
     }
 
+    data class MonthPeriod(val month: Month) : Period(
+        when (month) {
+            Month.JANUARY -> "Jan"
+            Month.FEBRUARY -> "Feb"
+            Month.MARCH -> "Mar"
+            Month.APRIL -> "Apr"
+            Month.MAY -> "May"
+            Month.JUNE -> "Jun"
+            Month.JULY -> "Jul"
+            Month.AUGUST -> "Aug"
+            Month.SEPTEMBER -> "Sep"
+            Month.OCTOBER -> "Oct"
+            Month.NOVEMBER -> "Nov"
+            Month.DECEMBER -> "Dec"
+        }
+    ) {
+        override fun getRange(reference: LocalDate): Pair<LocalDate, LocalDate> {
+            val start = LocalDate(reference.year, month, 1)
+            val lastDay = when (month) {
+                Month.JANUARY, Month.MARCH, Month.MAY, Month.JULY, Month.AUGUST, Month.OCTOBER, Month.DECEMBER -> 31
+                Month.APRIL, Month.JUNE, Month.SEPTEMBER, Month.NOVEMBER -> 30
+                Month.FEBRUARY -> if (isLeapYear(reference.year)) 29 else 28
+            }
+            return start to LocalDate(reference.year, month, lastDay)
+        }
+    }
+
     companion object {
+        val Months = Month.values().map { MonthPeriod(it) }
         val Presets = listOf(Q1, Q2, Q3, Q4, H1, H2, Year)
 
         fun fromRange(start: LocalDate?, end: LocalDate?): Period {
             if (start == null || end == null) return Custom
-            return Presets.firstOrNull { 
+            return (Presets + Months).firstOrNull { 
                 val range = it.getRange(start)
                 range.first == start && range.second == end
             } ?: Custom
@@ -90,6 +115,22 @@ internal fun PeriodPicker(
             modifier = Modifier.fillMaxWidth()
         ) {
             items(Period.Presets) { period ->
+                PeriodChip(
+                    label = period.label,
+                    isSelected = currentPeriod == period,
+                    onClick = {
+                        val range = period.getRange()
+                        onRangeChange(range.first, range.second)
+                    }
+                )
+            }
+        }
+
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            items(Period.Months) { period ->
                 PeriodChip(
                     label = period.label,
                     isSelected = currentPeriod == period,
@@ -133,7 +174,7 @@ private fun PeriodChip(
 }
 
 @Composable
-internal fun TimeframePill(
+internal fun DateRangePill(
     startDate: LocalDate?,
     endDate: LocalDate?,
     modifier: Modifier = Modifier
@@ -142,11 +183,14 @@ internal fun TimeframePill(
 
     val period = remember(startDate, endDate) { Period.fromRange(startDate, endDate) }
     val label = if (period is Period.Custom) {
-        val startStr = startDate?.let { "${it.month.name.take(3)} ${it.day}" } ?: "..."
-        val endStr = endDate?.let { "${it.month.name.take(3)} ${it.day}" } ?: "..."
-        "$startStr - $endStr"
+        when {
+            startDate != null && endDate != null && startDate == endDate -> "${startDate.month.name.take(3)} ${startDate.day}"
+            startDate != null && endDate != null -> "${startDate.month.name.take(3)} ${startDate.day} - ${endDate.month.name.take(3)} ${endDate.day}"
+            startDate != null -> "${startDate.month.name.take(3)} ${startDate.day}"
+            else -> ""
+        }
     } else {
-        period.label
+        period.label.uppercase()
     }
 
     DetailChip(
@@ -155,3 +199,5 @@ internal fun TimeframePill(
         modifier = modifier
     )
 }
+
+private fun isLeapYear(year: Int): Boolean = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)

@@ -112,6 +112,7 @@ import com.checkit.domain.TaskPriority
 import com.checkit.ui.components.PeriodPicker
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TagPlain
+import com.checkit.ui.components.DateRangePill
 import com.checkit.ui.components.TinyTopAppBar
 import org.jetbrains.compose.resources.stringResource
 
@@ -638,20 +639,10 @@ private fun NestedItemMetadataPreview(
             ) {
                 item.tags.forEach { tag -> TagPlain(tag) }
                 if (hasDateRange) {
-                    val dateLabel = when {
-                        item.startDate != null && item.endDate != null && item.startDate == item.endDate -> "${item.startDate}"
-                        item.startDate != null && item.endDate != null -> "${item.startDate} - ${item.endDate}"
-                        item.startDate != null -> "${item.startDate} - ..."
-                        item.endDate != null -> "... - ${item.endDate}"
-                        else -> ""
-                    }
-                    if (dateLabel.isNotEmpty()) {
-                        Text(
-                            text = dateLabel,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
+                    DateRangePill(
+                        startDate = item.startDate,
+                        endDate = item.endDate
+                    )
                 }
             }
         }
