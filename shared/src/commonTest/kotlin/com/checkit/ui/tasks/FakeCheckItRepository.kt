@@ -1321,9 +1321,9 @@ internal class FakeCheckItRepository(
         }
     }
 
-    override suspend fun updateNestedItemMetadata(itemId: Long, doDate: LocalDate?, priority: TaskPriority) {
+    override suspend fun updateNestedItemMetadata(itemId: Long, startDate: LocalDate?, endDate: LocalDate?, priority: TaskPriority) {
         nestedItemsFlow.update { items ->
-            items.map { if (it.id == itemId) it.copy(doDate = doDate, priority = priority) else it }
+            items.map { if (it.id == itemId) it.copy(startDate = startDate, endDate = endDate, priority = priority) else it }
         }
     }
 

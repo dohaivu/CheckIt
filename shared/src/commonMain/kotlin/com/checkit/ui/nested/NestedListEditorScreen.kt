@@ -38,6 +38,7 @@ import androidx.compose.material.icons.automirrored.filled.NoteAdd
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.EditNote
@@ -108,7 +109,7 @@ import com.checkit.domain.NestedMetricSummary
 import com.checkit.domain.NestedMetricUnit
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.TaskPriority
-import com.checkit.ui.components.DatePicker
+import com.checkit.ui.components.PeriodPicker
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TagPlain
 import com.checkit.ui.components.TinyTopAppBar
@@ -246,8 +247,11 @@ internal fun NestedListEditorScreen(
                             onFormattingChange = { style, textColor, backgroundColor ->
                                 viewModel.updateItemFormatting(selectedItem.id, style, textColor, backgroundColor)
                             },
-                            onMetadataChange = { date, priority ->
-                                viewModel.updateItemMetadata(selectedItem.id, date, priority)
+                            onPriorityChange = { priority ->
+                                viewModel.updateItemPriority(selectedItem.id, priority)
+                            },
+                            onDateRangeChange = { startDate, endDate ->
+                                viewModel.updateItemDateRange(selectedItem.id, startDate, endDate)
                             },
                             availableTags = state.availableTags,
                             onTagsChange = { viewModel.updateItemTags(selectedItem.id, it) },
@@ -329,7 +333,8 @@ internal fun NestedListEditorScreen(
 private fun NestedFormattingBottomBar(
     item: com.checkit.domain.NestedListItem,
     onFormattingChange: (NestedTextStyle, NestedColorToken, NestedColorToken) -> Unit,
-    onMetadataChange: (kotlinx.datetime.LocalDate?, TaskPriority) -> Unit,
+    onPriorityChange: (TaskPriority) -> Unit,
+    onDateRangeChange: (kotlinx.datetime.LocalDate?, kotlinx.datetime.LocalDate?) -> Unit,
     availableTags: List<com.checkit.domain.TagItem>,
     onTagsChange: (List<Long>) -> Unit,
     onToggleNote: () -> Unit,
@@ -338,6 +343,7 @@ private fun NestedFormattingBottomBar(
 ) {
     var priorityExpanded by remember { mutableStateOf(false) }
     var styleExpanded by remember { mutableStateOf(false) }
+    var showPeriodPicker by remember { mutableStateOf(false) }
     val colorTokens = listOf(
         NestedColorToken.Default, NestedColorToken.Red, NestedColorToken.Orange,
         NestedColorToken.Yellow, NestedColorToken.Green, NestedColorToken.Blue,
@@ -354,106 +360,158 @@ private fun NestedFormattingBottomBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)
     ) {
-            Box {
-                IconButton(onClick = { styleExpanded = true }, modifier = Modifier.size(32.dp)) {
-                    Icon(imageVector = Icons.Default.FormatSize,
-                        contentDescription = "Text style",
-                        tint = if (item.textStyle != NestedTextStyle.Body) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                DropdownMenu(expanded = styleExpanded, onDismissRequest = { styleExpanded = false }) {
-                    NestedTextStyle.entries.forEach { style ->
-                        DropdownMenuItem(
-                            text = { Text(style.name) },
-                            modifier = if (style == item.textStyle) {
-                                Modifier.background(MaterialTheme.colorScheme.secondaryContainer)
-                            } else {
-                                Modifier
-                            },
-                            onClick = {
-                                styleExpanded = false
-                                onFormattingChange(style, item.textColor, item.backgroundColor)
-                            }
-                        )
-                    }
+        Box {
+            IconButton(onClick = { styleExpanded = true }, modifier = Modifier.size(32.dp)) {
+                Icon(
+                    imageVector = Icons.Default.FormatSize,
+                    contentDescription = "Text style",
+                    tint = if (item.textStyle != NestedTextStyle.Body) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            DropdownMenu(expanded = styleExpanded, onDismissRequest = { styleExpanded = false }) {
+                NestedTextStyle.entries.forEach { style ->
                     DropdownMenuItem(
-                        text = { Text("Checkbox") },
-                        modifier = if (item.checkboxEnabled) {
+                        text = { Text(style.name) },
+                        modifier = if (style == item.textStyle) {
                             Modifier.background(MaterialTheme.colorScheme.secondaryContainer)
                         } else {
                             Modifier
                         },
                         onClick = {
                             styleExpanded = false
-                            onToggleCheckbox()
+                            onFormattingChange(style, item.textColor, item.backgroundColor)
+                        }
+                    )
+                }
+                DropdownMenuItem(
+                    text = { Text("Checkbox") },
+                    modifier = if (item.checkboxEnabled) {
+                        Modifier.background(MaterialTheme.colorScheme.secondaryContainer)
+                    } else {
+                        Modifier
+                    },
+                    onClick = {
+                        styleExpanded = false
+                        onToggleCheckbox()
+                    }
+                )
+            }
+        }
+        ColorTokenMenu(
+            icon = Icons.Default.FormatColorText,
+            selected = item.textColor,
+            tokens = colorTokens
+        ) { token -> onFormattingChange(item.textStyle, token, item.backgroundColor) }
+        ColorTokenMenu(
+            icon = Icons.Default.FormatColorFill,
+            selected = item.backgroundColor,
+            tokens = colorTokens,
+            filled = true
+        ) { token -> onFormattingChange(item.textStyle, item.textColor, token) }
+
+        // Priority button (separated)
+        Box {
+            IconButton(onClick = { priorityExpanded = true }, modifier = Modifier.size(32.dp)) {
+                Icon(
+                    imageVector = Icons.Default.Flag,
+                    contentDescription = "Priority",
+                    tint = priorityColor(item.priority)
+                )
+            }
+            DropdownMenu(expanded = priorityExpanded, onDismissRequest = { priorityExpanded = false }) {
+                TaskPriority.entries.forEach { priority ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = "${priorityMarker(priority)}  ${priority.name}",
+                                color = priorityColor(priority)
+                            )
+                        },
+                        onClick = {
+                            priorityExpanded = false
+                            onPriorityChange(priority)
                         }
                     )
                 }
             }
-            ColorTokenMenu(
-                icon = Icons.Default.FormatColorText,
-                selected = item.textColor,
-                tokens = colorTokens
-            ) { token -> onFormattingChange(item.textStyle, token, item.backgroundColor) }
-            ColorTokenMenu(
-                icon = Icons.Default.FormatColorFill,
-                selected = item.backgroundColor,
-                tokens = colorTokens,
-                filled = true
-            ) { token -> onFormattingChange(item.textStyle, item.textColor, token) }
-            Box {
-                IconButton(onClick = { priorityExpanded = true }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Flag, contentDescription = "Priority", tint = priorityColor(item.priority))
-                }
-                DropdownMenu(expanded = priorityExpanded, onDismissRequest = { priorityExpanded = false }) {
-                    TaskPriority.entries.forEach { priority ->
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    text = "${priorityMarker(priority)}  ${priority.name}",
-                                    color = priorityColor(priority)
-                                )
-                            },
-                            onClick = {
-                                priorityExpanded = false
-                                onMetadataChange(item.doDate, priority)
-                            }
-                        )
-                    }
-                }
-            }
-            TagOptionMenu(
-                availableTags = availableTags,
-                selectedTagIds = item.tags.map { it.id }.toSet(),
-                onTagToggle = { tagId ->
-                    val selected = item.tags.map { it.id }.toMutableSet()
-                    if (!selected.add(tagId)) selected.remove(tagId)
-                    onTagsChange(selected.toList())
-                }
+        }
+
+        // Date Range button (separated, opens PeriodPicker dialog)
+        val hasDateRange = item.startDate != null || item.endDate != null
+        IconButton(
+            onClick = { showPeriodPicker = true },
+            modifier = Modifier.size(32.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.DateRange,
+                contentDescription = "Date range",
+                tint = if (hasDateRange) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
             )
-            DatePicker(
-                date = item.doDate,
-                startTimeMinutes = null,
-                endTimeMinutes = null,
-                onDateChange = { onMetadataChange(it, item.priority) },
-                onTimeChange = { _, _ -> },
-                supportsEndTime = false,
-                iconOnly = true
+        }
+
+        TagOptionMenu(
+            availableTags = availableTags,
+            selectedTagIds = item.tags.map { it.id }.toSet(),
+            onTagToggle = { tagId ->
+                val selected = item.tags.map { it.id }.toMutableSet()
+                if (!selected.add(tagId)) selected.remove(tagId)
+                onTagsChange(selected.toList())
+            }
+        )
+        IconButton(onClick = onToggleNote, modifier = Modifier.size(32.dp)) {
+            Icon(
+                imageVector = Icons.Default.EditNote,
+                contentDescription = "Edit note",
+                tint = if (!item.note.isNullOrEmpty()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
             )
-            IconButton(onClick = onToggleNote, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Default.EditNote,
-                    contentDescription = "Edit note",
-                    tint = if (!item.note.isNullOrEmpty()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            IconButton(onClick = { onSetChecked(!item.checked) }, modifier = Modifier.size(32.dp)) {
-                Icon(
-                    Icons.Default.Done,
-                    contentDescription = if (item.checked) "Uncheck" else "Check off",
-                    tint = if (item.checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+        }
+        IconButton(onClick = { onSetChecked(!item.checked) }, modifier = Modifier.size(32.dp)) {
+            Icon(
+                imageVector = Icons.Default.Done,
+                contentDescription = if (item.checked) "Uncheck" else "Check off",
+                tint = if (item.checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
+
+    if (showPeriodPicker) {
+        AlertDialog(
+            onDismissRequest = { showPeriodPicker = false },
+            title = {
+                Text(
+                    text = "Timeframe",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            },
+            text = {
+                PeriodPicker(
+                    startDate = item.startDate,
+                    endDate = item.endDate,
+                    onRangeChange = { start, end ->
+                        onDateRangeChange(start, end)
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showPeriodPicker = false }) {
+                    Text("Done")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        onDateRangeChange(null, null)
+                        showPeriodPicker = false
+                    }
+                ) {
+                    Text("Clear")
+                }
+            }
+        )
+    }
+}
 
 @Composable
 private fun ColorTokenMenu(
@@ -539,7 +597,7 @@ private fun NestedItemMetadataPreview(
 ) {
     val hasNote = !item.note.isNullOrBlank()
     val hasTags = item.tags.isNotEmpty()
-    val hasDate = item.doDate != null
+    val hasDateRange = item.startDate != null || item.endDate != null
     val showTracked = isLeaf || item.showTrackedMinutes
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Row(
@@ -561,7 +619,7 @@ private fun NestedItemMetadataPreview(
                 }
             }
         }
-        if (!hasNote && !hasTags && !hasDate) return@Column
+        if (!hasNote && !hasTags && !hasDateRange) return@Column
 
         if (hasNote) {
             Text(
@@ -572,19 +630,28 @@ private fun NestedItemMetadataPreview(
                 overflow = TextOverflow.Ellipsis
             )
         }
-        if (hasTags || hasDate) {
+        if (hasTags || hasDateRange) {
             Row(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 item.tags.forEach { tag -> TagPlain(tag) }
-                item.doDate?.let { date ->
-                    Text(
-                        text = "$date",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                if (hasDateRange) {
+                    val dateLabel = when {
+                        item.startDate != null && item.endDate != null && item.startDate == item.endDate -> "${item.startDate}"
+                        item.startDate != null && item.endDate != null -> "${item.startDate} - ${item.endDate}"
+                        item.startDate != null -> "${item.startDate} - ..."
+                        item.endDate != null -> "... - ${item.endDate}"
+                        else -> ""
+                    }
+                    if (dateLabel.isNotEmpty()) {
+                        Text(
+                            text = dateLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
             }
         }

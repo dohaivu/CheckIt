@@ -99,11 +99,18 @@ class UpdateNestedItemFormattingUseCase(
     ) = repository.updateNestedItemFormatting(itemId, textStyle, textColor, backgroundColor)
 }
 
-class UpdateNestedItemMetadataUseCase(
+class UpdateNestedItemPriorityUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(itemId: Long, doDate: LocalDate?, priority: TaskPriority) =
-        repository.updateNestedItemMetadata(itemId, doDate, priority)
+    suspend operator fun invoke(itemId: Long, priority: TaskPriority) =
+        repository.updateNestedItemPriority(itemId, priority)
+}
+
+class UpdateNestedItemDateRangeUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(itemId: Long, startDate: LocalDate?, endDate: LocalDate?) =
+        repository.updateNestedItemDateRange(itemId, startDate, endDate)
 }
 
 class UpdateNestedItemTagsUseCase(

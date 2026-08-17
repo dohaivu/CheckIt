@@ -969,11 +969,18 @@ interface CheckItDao {
         updatedAtMillis: Long
     )
 
-    @Query("UPDATE nested_list_items SET doDateEpochDays = :doDateEpochDays, priority = :priority, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
-    suspend fun updateNestedItemMetadata(
+    @Query("UPDATE nested_list_items SET priority = :priority, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
+    suspend fun updateNestedItemPriority(
         itemId: Long,
-        doDateEpochDays: Int?,
         priority: String,
+        updatedAtMillis: Long
+    )
+
+    @Query("UPDATE nested_list_items SET startDateEpochDays = :startDateEpochDays, endDateEpochDays = :endDateEpochDays, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
+    suspend fun updateNestedItemDateRange(
+        itemId: Long,
+        startDateEpochDays: Int?,
+        endDateEpochDays: Int?,
         updatedAtMillis: Long
     )
 

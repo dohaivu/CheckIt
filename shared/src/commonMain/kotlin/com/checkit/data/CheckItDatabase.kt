@@ -681,7 +681,7 @@ data class NestedDocumentEntity(
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("documentId"), Index("parentId"), Index("doDateEpochDays"), Index("priority")]
+    indices = [Index("documentId"), Index("parentId"), Index("startDateEpochDays"), Index("endDateEpochDays"), Index("priority")]
 )
 data class NestedListItemEntity(
     @PrimaryKey(autoGenerate = true)
@@ -697,7 +697,8 @@ data class NestedListItemEntity(
     val textStyle: String = "Body",
     val textColor: String = "Default",
     val backgroundColor: String = "Default",
-    val doDateEpochDays: Int? = null,
+    val startDateEpochDays: Int? = null,
+    val endDateEpochDays: Int? = null,
     val priority: String = "None",
     val actualMinutes: Int = 0,
     val metricRollupPolicy: String = "IncludeChildren",

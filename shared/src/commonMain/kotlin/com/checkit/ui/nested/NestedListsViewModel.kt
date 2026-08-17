@@ -27,7 +27,8 @@ import com.checkit.domain.usecase.ToggleNestedItemCollapsedUseCase
 import com.checkit.domain.usecase.UpdateNestedItemNoteUseCase
 import com.checkit.domain.usecase.UpdateNestedItemTextUseCase
 import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
-import com.checkit.domain.usecase.UpdateNestedItemMetadataUseCase
+import com.checkit.domain.usecase.UpdateNestedItemPriorityUseCase
+import com.checkit.domain.usecase.UpdateNestedItemDateRangeUseCase
 import com.checkit.domain.usecase.UpdateNestedItemTagsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemMetricSettingsUseCase
 import com.checkit.domain.usecase.ReplaceNestedManualMetricsUseCase
@@ -41,7 +42,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Job
@@ -102,7 +102,8 @@ class NestedListsViewModel(
     private val updateItemTextUseCase: UpdateNestedItemTextUseCase,
     private val updateItemNoteUseCase: UpdateNestedItemNoteUseCase,
     private val updateItemFormattingUseCase: UpdateNestedItemFormattingUseCase,
-    private val updateItemMetadataUseCase: UpdateNestedItemMetadataUseCase,
+    private val updateItemDateRangeUseCase: UpdateNestedItemDateRangeUseCase,
+    private val updateItemPriorityUseCase: UpdateNestedItemPriorityUseCase,
     private val updateItemTagsUseCase: UpdateNestedItemTagsUseCase,
     private val updateItemMetricSettingsUseCase: UpdateNestedItemMetricSettingsUseCase,
     private val replaceNestedManualMetricsUseCase: ReplaceNestedManualMetricsUseCase,
@@ -383,10 +384,16 @@ class NestedListsViewModel(
         }
     }
 
-    fun updateItemMetadata(itemId: Long, doDate: LocalDate?, priority: TaskPriority) {
+    fun updateItemDateRange(itemId: Long, startDate: LocalDate?, endDate: LocalDate?) {
         viewModelScope.launch {
-            runCatching { updateItemMetadataUseCase(itemId, doDate, priority) }
-                .onFailure { error -> _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to update item metadata")) }
+            runCatching { updateItemDateRangeUseCase (itemId, startDate, endDate) }
+                .onFailure { error -> _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to update item date range")) }
+        }
+    }
+    fun updateItemPriority(itemId: Long, priority: TaskPriority) {
+        viewModelScope.launch {
+            runCatching { updateItemPriorityUseCase (itemId, priority) }
+                .onFailure { error -> _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to update item priority")) }
         }
     }
 

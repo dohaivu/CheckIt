@@ -13,10 +13,13 @@ import com.checkit.data.provideDatabaseBuilder
 import com.checkit.domain.CheckInReminderPolicy
 import com.checkit.domain.DailyPlanScheduleReminderPolicy
 import com.checkit.domain.SprintManager
+import com.checkit.domain.usecase.AbandonTwelveWeekCycleUseCase
 import com.checkit.domain.usecase.AddDailyPlanItemUseCase
 import com.checkit.domain.usecase.AddGoalUseCase
 import com.checkit.domain.usecase.AddJournalEntryUseCase
 import com.checkit.domain.usecase.AddListUseCase
+import com.checkit.domain.usecase.AddNestedDocumentUseCase
+import com.checkit.domain.usecase.AddNestedItemUseCase
 import com.checkit.domain.usecase.AddNoteUseCase
 import com.checkit.domain.usecase.AddObjectiveUseCase
 import com.checkit.domain.usecase.AddPlanPriorityUseCase
@@ -26,7 +29,6 @@ import com.checkit.domain.usecase.AddTagUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
 import com.checkit.domain.usecase.AddTwelveWeekGoalUseCase
-import com.checkit.domain.usecase.AbandonTwelveWeekCycleUseCase
 import com.checkit.domain.usecase.AutoAddTodayTasksToMyDayUseCase
 import com.checkit.domain.usecase.BuildDayCloseSummaryUseCase
 import com.checkit.domain.usecase.BuildPeriodReviewDraftUseCase
@@ -39,6 +41,8 @@ import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.DeleteGoalUseCase
 import com.checkit.domain.usecase.DeleteJournalEntryUseCase
 import com.checkit.domain.usecase.DeleteListUseCase
+import com.checkit.domain.usecase.DeleteNestedDocumentUseCase
+import com.checkit.domain.usecase.DeleteNestedItemsUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteObjectiveUseCase
 import com.checkit.domain.usecase.DeletePlanPriorityUseCase
@@ -62,6 +66,7 @@ import com.checkit.domain.usecase.OpenNoteUseCase
 import com.checkit.domain.usecase.OpenTaskUseCase
 import com.checkit.domain.usecase.RenameNestedDocumentUseCase
 import com.checkit.domain.usecase.ReorderPlanPrioritiesUseCase
+import com.checkit.domain.usecase.ReplaceNestedManualMetricsUseCase
 import com.checkit.domain.usecase.RestoreNoteUseCase
 import com.checkit.domain.usecase.RestoreTaskUseCase
 import com.checkit.domain.usecase.SavePeriodReviewUseCase
@@ -72,20 +77,8 @@ import com.checkit.domain.usecase.SetNestedItemsCheckedUseCase
 import com.checkit.domain.usecase.SmartScheduleDailyPlanUseCase
 import com.checkit.domain.usecase.SprintTransitionUseCase
 import com.checkit.domain.usecase.StartTwelveWeekCycleUseCase
-import com.checkit.domain.usecase.ToggleNestedItemCollapsedUseCase
-import com.checkit.domain.usecase.UpdateTwelveWeekCycleUseCase
-import com.checkit.domain.usecase.AddNestedDocumentUseCase
-import com.checkit.domain.usecase.AddNestedItemUseCase
-import com.checkit.domain.usecase.DeleteNestedDocumentUseCase
-import com.checkit.domain.usecase.DeleteNestedItemsUseCase
-import com.checkit.domain.usecase.UpdateNestedItemNoteUseCase
-import com.checkit.domain.usecase.UpdateNestedItemTextUseCase
-import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
-import com.checkit.domain.usecase.UpdateNestedItemMetadataUseCase
-import com.checkit.domain.usecase.UpdateNestedItemTagsUseCase
-import com.checkit.domain.usecase.UpdateNestedItemMetricSettingsUseCase
-import com.checkit.domain.usecase.ReplaceNestedManualMetricsUseCase
 import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
+import com.checkit.domain.usecase.ToggleNestedItemCollapsedUseCase
 import com.checkit.domain.usecase.TogglePlanPriorityDoneUseCase
 import com.checkit.domain.usecase.UnlinkTacticFromGoalUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
@@ -94,12 +87,20 @@ import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.domain.usecase.UpdateGoalUseCase
 import com.checkit.domain.usecase.UpdateJournalEntryUseCase
 import com.checkit.domain.usecase.UpdateListUseCase
+import com.checkit.domain.usecase.UpdateNestedItemDateRangeUseCase
+import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
+import com.checkit.domain.usecase.UpdateNestedItemMetricSettingsUseCase
+import com.checkit.domain.usecase.UpdateNestedItemNoteUseCase
+import com.checkit.domain.usecase.UpdateNestedItemPriorityUseCase
+import com.checkit.domain.usecase.UpdateNestedItemTagsUseCase
+import com.checkit.domain.usecase.UpdateNestedItemTextUseCase
 import com.checkit.domain.usecase.UpdateNoteUseCase
 import com.checkit.domain.usecase.UpdateObjectiveUseCase
 import com.checkit.domain.usecase.UpdatePlanPriorityUseCase
 import com.checkit.domain.usecase.UpdateTagSortOrderUseCase
 import com.checkit.domain.usecase.UpdateTagUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
+import com.checkit.domain.usecase.UpdateTwelveWeekCycleUseCase
 import com.checkit.domain.usecase.UpdateTwelveWeekGoalUseCase
 import com.checkit.domain.usecase.UpsertDailyPlanItemUseCase
 import com.checkit.domain.usecase.UpsertTwelveWeekCheckInUseCase
@@ -236,7 +237,8 @@ val provideInteractorModule = module {
     single { UpdateNestedItemTextUseCase(get()) }
     single { UpdateNestedItemNoteUseCase(get()) }
     single { UpdateNestedItemFormattingUseCase(get()) }
-    single { UpdateNestedItemMetadataUseCase(get()) }
+    single { UpdateNestedItemPriorityUseCase(get()) }
+    single { UpdateNestedItemDateRangeUseCase(get()) }
     single { UpdateNestedItemTagsUseCase(get()) }
     single { UpdateNestedItemMetricSettingsUseCase(get()) }
     single { ReplaceNestedManualMetricsUseCase(get()) }
@@ -343,7 +345,8 @@ val provideViewModelModule = module {
             updateItemTextUseCase = get(),
             updateItemNoteUseCase = get(),
             updateItemFormattingUseCase = get(),
-            updateItemMetadataUseCase = get(),
+            updateItemDateRangeUseCase = get(),
+            updateItemPriorityUseCase = get(),
             updateItemTagsUseCase = get(),
             updateItemMetricSettingsUseCase = get(),
             replaceNestedManualMetricsUseCase = get(),

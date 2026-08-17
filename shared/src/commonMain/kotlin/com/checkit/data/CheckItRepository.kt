@@ -229,7 +229,8 @@ suspend fun addNestedItem(documentId: Long, parentId: Long?, text: String, posit
         textColor: NestedColorToken,
         backgroundColor: NestedColorToken
     )
-    suspend fun updateNestedItemMetadata(itemId: Long, doDate: LocalDate?, priority: TaskPriority)
+    suspend fun updateNestedItemPriority(itemId: Long, priority: TaskPriority)
+    suspend fun updateNestedItemDateRange(itemId: Long, startDate: LocalDate?, endDate: LocalDate?)
     suspend fun updateNestedItemTags(itemId: Long, tagIds: List<Long>)
     suspend fun updateNestedItemMetricSettings(
         itemId: Long,
@@ -1504,8 +1505,17 @@ class RoomCheckItRepository(
         dao.updateNestedItemFormatting(itemId, textStyle.name, textColor.name, backgroundColor.name, Clock.System.now().toEpochMilliseconds())
     }
 
-    override suspend fun updateNestedItemMetadata(itemId: Long, doDate: LocalDate?, priority: TaskPriority) {
-        dao.updateNestedItemMetadata(itemId, doDate?.toEpochDays()?.toInt(), priority.name, Clock.System.now().toEpochMilliseconds())
+    override suspend fun updateNestedItemPriority(itemId: Long, priority: TaskPriority) {
+        dao.updateNestedItemPriority(itemId, priority.name, Clock.System.now().toEpochMilliseconds())
+    }
+
+    override suspend fun updateNestedItemDateRange(itemId: Long, startDate: LocalDate?, endDate: LocalDate?) {
+        dao.updateNestedItemDateRange(
+            itemId,
+            startDate?.toEpochDays()?.toInt(),
+            endDate?.toEpochDays()?.toInt(),
+            Clock.System.now().toEpochMilliseconds()
+        )
     }
 
     override suspend fun updateNestedItemMetricSettings(
@@ -1859,7 +1869,8 @@ private fun NestedListItemEntity.toNestedListItem(
     textStyle = runCatching { com.checkit.domain.NestedTextStyle.valueOf(textStyle) }.getOrDefault(com.checkit.domain.NestedTextStyle.Body),
     textColor = runCatching { com.checkit.domain.NestedColorToken.valueOf(textColor) }.getOrDefault(com.checkit.domain.NestedColorToken.Default),
     backgroundColor = runCatching { com.checkit.domain.NestedColorToken.valueOf(backgroundColor) }.getOrDefault(com.checkit.domain.NestedColorToken.Default),
-    doDate = doDateEpochDays?.let { LocalDate.fromEpochDays(it) },
+    startDate = startDateEpochDays?.let { LocalDate.fromEpochDays(it) },
+    endDate = endDateEpochDays?.let { LocalDate.fromEpochDays(it) },
     priority = runCatching { TaskPriority.valueOf(priority) }.getOrDefault(TaskPriority.None),
     tags = tags,
     actualMinutes = actualMinutes,
