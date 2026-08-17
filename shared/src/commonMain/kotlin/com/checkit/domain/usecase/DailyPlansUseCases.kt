@@ -14,7 +14,8 @@ import kotlinx.datetime.LocalDate
 class ObserveDailyPlansUseCase(
     private val repository: CheckItRepository
 ) {
-    operator fun invoke(): Flow<List<DailyPlan>> = repository.observeDailyPlans()
+    operator fun invoke(startDate: LocalDate? = null, endDate: LocalDate? = null): Flow<List<DailyPlan>> = 
+        repository.observeDailyPlans(startDate, endDate)
 }
 
 class BuildDailyPlanMarkdownSummaryUseCase {

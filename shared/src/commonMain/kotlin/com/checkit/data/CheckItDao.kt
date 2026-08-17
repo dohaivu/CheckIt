@@ -163,6 +163,9 @@ interface CheckItDao {
     @Query("SELECT * FROM daily_plan_items ORDER BY sortOrder ASC, addedAtMillis ASC")
     fun observeDailyPlanItems(): Flow<List<DailyPlanItemEntity>>
 
+    @Query("SELECT * FROM daily_plan_items WHERE dateEpochDays BETWEEN :startEpochDays AND :endEpochDays ORDER BY sortOrder ASC, addedAtMillis ASC")
+    fun observeDailyPlanItemsInRange(startEpochDays: Int, endEpochDays: Int): Flow<List<DailyPlanItemEntity>>
+
     @Query("SELECT * FROM daily_plan_items WHERE id = :itemId LIMIT 1")
     suspend fun dailyPlanItemById(itemId: Long): DailyPlanItemEntity?
 
@@ -640,6 +643,73 @@ interface CheckItDao {
             carriedCount = carriedCount,
             skippedCount = skippedCount
         )
+    }
+
+    @Transaction
+    suspend fun updateDailyPlanItemWithTags(
+        itemId: Long,
+        title: String,
+        note: String?,
+        source: String,
+        status: String,
+        startTimeMinutes: Int?,
+        endTimeMinutes: Int?,
+        completedAtMillis: Long?,
+        nestedListItemId: Long?,
+        tagIds: List<Long>,
+        nowMillis: Long
+    ) {
+        val oldEntity = dailyPlanItemById(itemId) ?: return
+        
+        updateDailyPlanItem(
+            itemId, title, note, source, status, 
+            startTimeMinutes, endTimeMinutes, completedAtMillis, nestedListItemId
+        )
+
+        if (oldEntity.nestedListItemId != null) {
+            val oldStatus = enumValueOf<DailyPlanItemStatus>(oldEntity.status)
+            val oldMinutes = if (oldStatus == DailyPlanItemStatus.Done) {
+                (oldEntity.endTimeMinutes ?: 0) - (oldEntity.startTimeMinutes ?: 0)
+            } else 0
+            val newMinutes = if (status == DailyPlanItemStatus.Done.name) {
+                (endTimeMinutes ?: 0) - (startTimeMinutes ?: 0)
+            } else 0
+            val delta = newMinutes.coerceAtLeast(0) - oldMinutes.coerceAtLeast(0)
+            if (delta != 0) {
+                updateNestedItemActualMinutesDelta(oldEntity.nestedListItemId, delta, nowMillis)
+            }
+        }
+
+        deleteDailyPlanItemTags(itemId)
+        tagIds.distinct().forEach { tagId ->
+            insertDailyPlanItemTagIfParentsExist(itemId, tagId)
+            updateTagLastUsedAtMillis(tagId, nowMillis)
+        }
+    }
+
+    @Transaction
+    suspend fun updateDailyPlanItemStatusWithMinutes(
+        itemId: Long,
+        status: String,
+        completedAtMillis: Long?,
+        nowMillis: Long
+    ) {
+        val oldEntity = dailyPlanItemById(itemId) ?: return
+        if (oldEntity.status == status) return
+
+        updateDailyPlanItemStatus(itemId, status, completedAtMillis)
+
+        if (oldEntity.nestedListItemId != null) {
+            val start = oldEntity.startTimeMinutes
+            val end = oldEntity.endTimeMinutes
+            if (start != null && end != null) {
+                val minutes = (end - start).coerceAtLeast(0)
+                if (minutes > 0) {
+                    val delta = if (status == DailyPlanItemStatus.Done.name) minutes else -minutes
+                    updateNestedItemActualMinutesDelta(oldEntity.nestedListItemId, delta, nowMillis)
+                }
+            }
+        }
     }
 
     @Query(

@@ -18,13 +18,18 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class CalendarViewModel(
     private val observeTaskBoard: ObserveTaskBoardUseCase,
     private val observeDailyPlans: ObserveDailyPlansUseCase,
@@ -36,14 +41,20 @@ class CalendarViewModel(
 
     init {
         viewModelScope.launch {
-            combine(
-                observeTaskBoard(),
-                observeDailyPlans(),
-                observePeriodReviews(),
-                observeJournalEntries()
-            ) { board, dailyPlans, periodReviews, journalEntries ->
-                CalendarCombined(board, dailyPlans, periodReviews, journalEntries)
-            }
+            _uiState.map { it.selectedMonth }
+                .distinctUntilChanged()
+                .flatMapLatest { month ->
+                    val start = month.minus(1, DateTimeUnit.MONTH)
+                    val end = month.plus(2, DateTimeUnit.MONTH)
+                    combine(
+                        observeTaskBoard(),
+                        observeDailyPlans(startDate = start, endDate = end),
+                        observePeriodReviews(),
+                        observeJournalEntries()
+                    ) { board, dailyPlans, periodReviews, journalEntries ->
+                        CalendarCombined(board, dailyPlans, periodReviews, journalEntries)
+                    }
+                }
                 .catch { _ ->
                     _uiState.update { it.copy() }
                 }

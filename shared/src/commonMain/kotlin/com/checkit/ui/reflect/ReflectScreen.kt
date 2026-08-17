@@ -60,7 +60,7 @@ import com.checkit.domain.ReviewPeriod
 import com.checkit.ui.components.ReportPeriod
 import com.checkit.ui.components.ReportPeriodHeader
 import com.checkit.ui.components.TinyTopAppBar
-import com.checkit.ui.components.parseMarkdownToAnnotatedString
+import com.checkit.ui.components.asAnnotatedString
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.localizedMonthTitle
 import com.checkit.ui.localizedShortMonthName
@@ -247,7 +247,7 @@ private fun ReviewCard(
                 )
             } else {
                 Text(
-                    text = review.annotatedContent,
+                    text = review.content.asAnnotatedString(),
                     style = MaterialTheme.typography.bodyMedium.copy(
                         lineHeight = 24.sp,
                         fontWeight = FontWeight.Medium,
@@ -282,7 +282,7 @@ private fun ReviewCard(
                             )
                         }
                         Text(
-                            text = remember { parseMarkdownToAnnotatedString(intent) },
+                            text = intent.asAnnotatedString(),
                             style = MaterialTheme.typography.bodySmall.copy(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -423,7 +423,7 @@ private fun ReviewRow(
             }
             if (review.content.isNotBlank()) {
                 Text(
-                    text = review.annotatedContent,
+                    text = review.content.asAnnotatedString(),
                     style = MaterialTheme.typography.bodySmall.copy(
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                     ),
