@@ -310,11 +310,10 @@ internal fun NestedListEditorScreen(
     }
 
     detailsItemId?.let { itemId ->
-        state.tree.itemById.get(itemId)?.let { item ->
+        state.tree.nodeById.get(itemId)?.let { node ->
             NestedItemDetailsDialog(
-                item = item,
+                node = node,
                 summary = state.tree.metricSummaryById[itemId] ?: NestedMetricSummary(),
-                isLeaf = state.tree.nodeById[itemId]?.hasChildren != true,
                 onDismiss = { detailsItemId = null },
                 onSave = { actualMinutes, policy, showTrackedMinutes, manualMetrics ->
                     viewModel.updateItemMetricSettings(itemId, actualMinutes, policy, showTrackedMinutes)
@@ -639,151 +638,330 @@ private fun unitLabel(unit: NestedMetricUnit): String = when (unit) {
 
 @Composable
 private fun NestedItemDetailsDialog(
-    item: com.checkit.domain.NestedListItem,
+    node: NestedItemNode,
     summary: NestedMetricSummary,
-    isLeaf: Boolean,
     onDismiss: () -> Unit,
     onSave: (Int, MetricRollupPolicy, Boolean, List<NestedManualMetric>) -> Unit
 ) {
-    var actualMinutes by remember(item.id) { mutableStateOf(item.actualMinutes.toString()) }
+    val item = node.item
+    val isLeaf = !node.hasChildren
+    var actualMinutes by remember(item.id) { mutableStateOf(if (item.actualMinutes > 0) item.actualMinutes.toString() else "") }
     var policy by remember(item.id) { mutableStateOf(item.metricRollupPolicy) }
     var showTrackedMinutes by remember(item.id) { mutableStateOf(item.showTrackedMinutes) }
     var metrics by remember(item.id) { mutableStateOf(item.manualMetrics) }
     var policyExpanded by remember { mutableStateOf(false) }
     var unitExpandedIndex by remember { mutableStateOf<Int?>(null) }
 
+    val directChildCount = node.children.size
+    val totalChildCount = remember(node) { countTotalDescendants(node) }
+    val doneChildCount = summary.doneItemCount
+    val totalTrackedMinutes = summary.trackedMinutes
+
     AlertDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
         title = {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text("Details", style = MaterialTheme.typography.titleLarge)
-                Text(item.text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-        },
-        text = {
-            Column(
-                modifier = Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(
-                        value = actualMinutes,
-                        onValueChange = { value -> if (value.all { it.isDigit() }) actualMinutes = value },
-                        label = { Text("Minutes") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
-                        modifier = Modifier.weight(0.8f)
-                    )
-                    Box(modifier = Modifier.weight(1.2f)) {
-                        TextButton(onClick = { policyExpanded = true }, modifier = Modifier.fillMaxWidth()) {
-                            Text(policyLabel(policy), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(18.dp))
-                        }
-                        DropdownMenu(expanded = policyExpanded, onDismissRequest = { policyExpanded = false }) {
-                            MetricRollupPolicy.entries.forEach { option ->
-                                DropdownMenuItem(
-                                    text = { Text(policyLabel(option)) },
-                                    onClick = { policy = option; policyExpanded = false }
-                                )
-                            }
-                        }
-                    }
-                }
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Tracked minutes", style = MaterialTheme.typography.bodyMedium)
-                        Text(
-                            "${summary.doneItemCount} children done · ${summary.trackedMinutes} min",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    Text(
+                        text = "Item details",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", modifier = Modifier.size(18.dp))
                     }
-                    androidx.compose.material3.Switch(
-                        checked = showTrackedMinutes || isLeaf,
-                        onCheckedChange = { if (!isLeaf) showTrackedMinutes = it },
-                        modifier = Modifier.scale(0.8f)
+                }
+                Text(
+                    text = item.text.ifBlank { "Untitled item" },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 480.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                // Section 1: Overview stats cards (Compact flat design)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    DetailMetricStatCard(
+                        title = "Children",
+                        value = if (directChildCount == totalChildCount) "$totalChildCount" else "$directChildCount ($totalChildCount)",
+                        subtitle = if (totalChildCount > 0) "$doneChildCount done" else "Leaf item",
+                        modifier = Modifier.weight(1f)
+                    )
+                    DetailMetricStatCard(
+                        title = "Actual time",
+                        value = "${item.actualMinutes}m",
+                        subtitle = if (!isLeaf && totalTrackedMinutes != item.actualMinutes) "Total: ${totalTrackedMinutes}m" else "Direct time",
+                        modifier = Modifier.weight(1f)
                     )
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Manual", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-                    TextButton(onClick = {
-                        metrics = metrics + NestedManualMetric(itemId = item.id, name = "", value = "", sortOrder = metrics.size)
-                    }) { Text("Add") }
-                }
-                metrics.forEachIndexed { index, metric ->
-                    androidx.compose.material3.Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.30f),
-                        modifier = Modifier.fillMaxWidth()
+
+                // Section 2: Time tracking and rollup settings
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "TIME & ROLLUP",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        CompactFlatTextField(
+                            value = actualMinutes,
+                            onValueChange = { value -> if (value.all { it.isDigit() }) actualMinutes = value },
+                            placeholder = "0",
+                            suffix = "min",
+                            keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        Box(modifier = Modifier.weight(1.3f)) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(36.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(MaterialTheme.colorScheme.surface)
+                                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f), RoundedCornerShape(6.dp))
+                                    .clickable { policyExpanded = true }
+                                    .padding(horizontal = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = policyLabel(policy),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.KeyboardArrowDown,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = policyExpanded,
+                                onDismissRequest = { policyExpanded = false }
+                            ) {
+                                MetricRollupPolicy.entries.forEach { option ->
+                                    DropdownMenuItem(
+                                        text = { Text(policyLabel(option), style = MaterialTheme.typography.bodyMedium) },
+                                        onClick = { policy = option; policyExpanded = false }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    if (!isLeaf) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                OutlinedTextField(
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Show tracked minutes on row",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                Text(
+                                    text = "$totalTrackedMinutes min total rollup",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            androidx.compose.material3.Switch(
+                                checked = showTrackedMinutes,
+                                onCheckedChange = { showTrackedMinutes = it },
+                                modifier = Modifier.scale(0.75f)
+                            )
+                        }
+                    }
+                }
+
+                // Section 3: Custom/Manual Metrics
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "CUSTOM METRICS",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        TextButton(
+                            onClick = {
+                                metrics = metrics + NestedManualMetric(
+                                    itemId = item.id,
+                                    name = "",
+                                    value = "",
+                                    sortOrder = metrics.size
+                                )
+                            },
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                            modifier = Modifier.height(28.dp)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(2.dp))
+                            Text("Add", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+
+                    if (metrics.isEmpty()) {
+                        Text(
+                            text = "No custom metrics added.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                    }
+
+                    metrics.forEachIndexed { index, metric ->
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                                .padding(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                CompactFlatTextField(
                                     value = metric.name,
-                                    onValueChange = { value -> metrics = metrics.toMutableList().also { it[index] = metric.copy(name = value) } },
-                                    placeholder = { Text("Metric name") },
-                                    singleLine = true,
+                                    onValueChange = { value ->
+                                        metrics = metrics.toMutableList().also { it[index] = metric.copy(name = value) }
+                                    },
+                                    placeholder = "Metric name",
                                     modifier = Modifier.weight(1f)
                                 )
-                                IconButton(onClick = { metrics = metrics.filterIndexed { metricIndex, _ -> metricIndex != index } }) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Delete metric")
-                                }
-                            }
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                                OutlinedTextField(
-                                    value = metric.value,
-                                    onValueChange = { value -> metrics = metrics.toMutableList().also { it[index] = metric.copy(value = value) } },
-                                    placeholder = { Text("Value") },
-                                    singleLine = true,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                OutlinedTextField(
-                                    value = metric.targetValue.orEmpty(),
-                                    onValueChange = { value -> metrics = metrics.toMutableList().also { it[index] = metric.copy(targetValue = value) } },
-                                    placeholder = { Text("Target") },
-                                    singleLine = true,
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                            Box {
-                                TextButton(onClick = { unitExpandedIndex = index }) {
-                                    Text(metric.unit.displayName(metric.customUnit))
-                                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(18.dp))
-                                }
-                                DropdownMenu(
-                                    expanded = unitExpandedIndex == index,
-                                    onDismissRequest = { unitExpandedIndex = null }
+                                IconButton(
+                                    onClick = { metrics = metrics.filterIndexed { metricIndex, _ -> metricIndex != index } },
+                                    modifier = Modifier.size(28.dp)
                                 ) {
-                                    NestedMetricUnit.entries.forEach { unit ->
-                                        DropdownMenuItem(
-                                            text = { Text(unit.displayName()) },
-                                            onClick = {
-                                                metrics = metrics.toMutableList().also {
-                                                    it[index] = metric.copy(
-                                                        unit = unit,
-                                                        customUnit = if (unit == NestedMetricUnit.Custom) metric.customUnit else null
-                                                    )
-                                                }
-                                                unitExpandedIndex = null
-                                            }
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Delete metric",
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                CompactFlatTextField(
+                                    value = metric.value,
+                                    onValueChange = { value ->
+                                        metrics = metrics.toMutableList().also { it[index] = metric.copy(value = value) }
+                                    },
+                                    placeholder = "Value",
+                                    modifier = Modifier.weight(1f)
+                                )
+                                CompactFlatTextField(
+                                    value = metric.targetValue.orEmpty(),
+                                    onValueChange = { value ->
+                                        metrics = metrics.toMutableList().also { it[index] = metric.copy(targetValue = value) }
+                                    },
+                                    placeholder = "Target",
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Box(modifier = Modifier.weight(1f)) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(34.dp)
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .background(MaterialTheme.colorScheme.surface)
+                                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                                            .clickable { unitExpandedIndex = index }
+                                            .padding(horizontal = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = metric.unit.displayName(metric.customUnit),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
                                         )
+                                        Icon(
+                                            imageVector = Icons.Default.KeyboardArrowDown,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                    }
+                                    DropdownMenu(
+                                        expanded = unitExpandedIndex == index,
+                                        onDismissRequest = { unitExpandedIndex = null }
+                                    ) {
+                                        NestedMetricUnit.entries.forEach { unit ->
+                                            DropdownMenuItem(
+                                                text = { Text(unit.displayName(), style = MaterialTheme.typography.bodySmall) },
+                                                onClick = {
+                                                    metrics = metrics.toMutableList().also {
+                                                        it[index] = metric.copy(
+                                                            unit = unit,
+                                                            customUnit = if (unit == NestedMetricUnit.Custom) metric.customUnit else null
+                                                        )
+                                                    }
+                                                    unitExpandedIndex = null
+                                                }
+                                            )
+                                        }
                                     }
                                 }
                             }
+
                             if (metric.unit == NestedMetricUnit.Custom) {
-                                OutlinedTextField(
+                                CompactFlatTextField(
                                     value = metric.customUnit.orEmpty(),
-                                    onValueChange = { value -> metrics = metrics.toMutableList().also { it[index] = metric.copy(customUnit = value) } },
-                                    placeholder = { Text("Custom unit") },
-                                    singleLine = true,
+                                    onValueChange = { value ->
+                                        metrics = metrics.toMutableList().also { it[index] = metric.copy(customUnit = value) }
+                                    },
+                                    placeholder = "Custom unit (e.g. kg, pts)",
                                     modifier = Modifier.fillMaxWidth()
                                 )
                             }
@@ -793,12 +971,119 @@ private fun NestedItemDetailsDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = {
-                onSave(actualMinutes.toIntOrNull() ?: 0, policy, showTrackedMinutes, metrics.filter { it.name.isNotBlank() && it.value.isNotBlank() })
-            }) { Text("Save") }
+            TextButton(
+                onClick = {
+                    onSave(
+                        actualMinutes.toIntOrNull() ?: 0,
+                        policy,
+                        showTrackedMinutes,
+                        metrics.filter { it.name.isNotBlank() && it.value.isNotBlank() }
+                    )
+                }
+            ) {
+                Text("Save", fontWeight = FontWeight.Bold)
+            }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(Res.string.cancel))
+            }
+        }
     )
+}
+
+@Composable
+private fun DetailMetricStatCard(
+    title: String,
+    value: String,
+    subtitle: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .padding(horizontal = 10.dp, vertical = 8.dp)
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Text(
+            text = subtitle,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun CompactFlatTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    modifier: Modifier = Modifier,
+    suffix: String? = null,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default
+) {
+    Row(
+        modifier = modifier
+            .height(34.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f), RoundedCornerShape(6.dp))
+            .padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier.weight(1f),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            if (value.isEmpty()) {
+                Text(
+                    text = placeholder,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            BasicTextField(
+                value = value,
+                onValueChange = onValueChange,
+                textStyle = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurface),
+                singleLine = true,
+                keyboardOptions = keyboardOptions,
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        if (suffix != null) {
+            Text(
+                text = suffix,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                modifier = Modifier.padding(start = 4.dp)
+            )
+        }
+    }
+}
+
+private fun countTotalDescendants(node: NestedItemNode): Int {
+    var count = node.children.size
+    for (child in node.children) {
+        count += countTotalDescendants(child)
+    }
+    return count
 }
 
 private fun policyLabel(policy: MetricRollupPolicy): String = when (policy) {
