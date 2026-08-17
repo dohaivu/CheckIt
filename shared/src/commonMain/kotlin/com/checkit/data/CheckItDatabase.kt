@@ -173,15 +173,22 @@ data class NoteEntity(
             parentColumns = ["id"],
             childColumns = ["taskId"],
             onDelete = ForeignKey.SET_NULL
+        ),
+        ForeignKey(
+            entity = NestedListItemEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["nestedListItemId"],
+            onDelete = ForeignKey.SET_NULL
         )
     ],
-    indices = [Index("dateEpochDays"), Index("taskId"), Index("status")]
+    indices = [Index("dateEpochDays"), Index("taskId"), Index("status"), Index("nestedListItemId")]
 )
 data class DailyPlanItemEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0L,
     val dateEpochDays: Int,
     val taskId: Long? = null,
+    val nestedListItemId: Long? = null,
     val title: String,
     val note: String? = null,
     val source: String,
@@ -792,7 +799,7 @@ data class NestedItemTagEntity(
         NestedItemTagEntity::class,
         NestedManualMetricEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)

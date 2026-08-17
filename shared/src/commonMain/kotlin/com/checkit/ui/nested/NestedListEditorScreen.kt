@@ -121,7 +121,7 @@ internal fun NestedListEditorScreen(
     state: NestedEditorState.Active,
     viewModel: NestedListsViewModel,
     modifier: Modifier = Modifier,
-    onAddToDailyPlan: (title: String, tagIds: List<Long>) -> Unit = { _, _ -> }
+    onAddToDailyPlan: (title: String, tagIds: List<Long>, nestedListItemId: Long?) -> Unit = { _, _, _ -> }
 ) {
     var detailsItemId by remember { mutableStateOf<Long?>(null) }
     val tree = state.tree
@@ -161,7 +161,7 @@ internal fun NestedListEditorScreen(
                 onAddToDailyPlan = {
                     state.selectedItemId?.let { id ->
                         state.tree.nodeById[id]?.item?.let { item ->
-                            onAddToDailyPlan(item.text, item.tags.map { it.id })
+                            onAddToDailyPlan(item.text, item.tags.map { it.id }, item.id)
                         }
                     }
                 }

@@ -170,6 +170,7 @@ data class DailyPlanItem(
     val id: Long,
     val dateEpochDays: Int,
     val taskId: Long? = null,
+    val nestedListItemId: Long? = null,
     val title: String,
     val note: String? = null,
     val source: DailyPlanItemSource,
@@ -188,6 +189,12 @@ data class DailyPlanItem(
 ) {
     val annotatedContent: AnnotatedString by lazy {
         parseMarkdownToAnnotatedString(note)
+    }
+
+    fun workMinutes(): Int {
+        val start = startTimeMinutes ?: return 0
+        val end = endTimeMinutes ?: return 0
+        return (end - start).coerceAtLeast(0)
     }
 }
 

@@ -13,7 +13,6 @@ import com.checkit.domain.DayCloseSummary
 import com.checkit.domain.DayCloseTagMinutes
 import com.checkit.domain.LeftoverAction
 import com.checkit.domain.PeriodReview
-import com.checkit.ui.myday.workMinutes
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow

@@ -13,7 +13,6 @@ import com.checkit.domain.isGoodMood
 import com.checkit.ui.components.ReportPeriod
 import com.checkit.ui.firstDayOfMonth
 import com.checkit.ui.myday.doneWorkMinutes
-import com.checkit.ui.myday.workMinutes
 import com.checkit.ui.today
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate

@@ -571,6 +571,19 @@ interface CheckItDao {
         targetDateEpochDays: Int,
         nowMillis: Long
     ): DayCloseCommitResult {
+        markDoneItemIds.forEach { itemId ->
+            val source = dailyPlanItemById(itemId) ?: return@forEach
+            if (source.nestedListItemId != null) {
+                val start = source.startTimeMinutes
+                val end = source.endTimeMinutes
+                if (start != null && end != null) {
+                    val minutes = (end - start).coerceAtLeast(0)
+                    if (minutes > 0) {
+                        updateNestedItemActualMinutesDelta(source.nestedListItemId, minutes, nowMillis)
+                    }
+                }
+            }
+        }
         updateDailyPlanItemsStatus(markDoneItemIds, DailyPlanItemStatus.Done.name, nowMillis)
         markDailyPlanItemsHandled(markDoneItemIds, nowMillis)
         markDailyPlanItemsHandled(dropItemIds, nowMillis)
@@ -585,6 +598,7 @@ interface CheckItDao {
                     DailyPlanItemEntity(
                         dateEpochDays = targetDateEpochDays,
                         taskId = source.taskId,
+                        nestedListItemId = source.nestedListItemId,
                         title = source.title,
                         note = source.note,
                         source = source.source,
@@ -637,7 +651,8 @@ interface CheckItDao {
             status = :status,
             startTimeMinutes = :startTimeMinutes,
             endTimeMinutes = :endTimeMinutes,
-            completedAtMillis = :completedAtMillis
+            completedAtMillis = :completedAtMillis,
+            nestedListItemId = :nestedListItemId
         WHERE id = :itemId
         """
     )
@@ -649,7 +664,8 @@ interface CheckItDao {
         status: String,
         startTimeMinutes: Int?,
         endTimeMinutes: Int?,
-        completedAtMillis: Long?
+        completedAtMillis: Long?,
+        nestedListItemId: Long?
     )
 
     @Query("DELETE FROM daily_plan_items WHERE id = :itemId")
@@ -1044,6 +1060,9 @@ interface CheckItDao {
         deleteNestedManualMetrics(itemId)
         metrics.forEach { insertNestedManualMetric(it.copy(id = 0L, itemId = itemId)) }
     }
+
+    @Query("UPDATE nested_list_items SET actualMinutes = actualMinutes + :delta, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
+    suspend fun updateNestedItemActualMinutesDelta(itemId: Long, delta: Int, updatedAtMillis: Long)
 
     @Transaction
     suspend fun applyNestedMoves(moves: List<NestedMoveRow>) {

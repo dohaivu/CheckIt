@@ -99,7 +99,8 @@ interface CheckItRepository {
         endTimeMinutes: Int?,
         source: DailyPlanItemSource = DailyPlanItemSource.MyDayTask,
         status: DailyPlanItemStatus = DailyPlanItemStatus.Done,
-        tagIds: List<Long> = emptyList()
+        tagIds: List<Long> = emptyList(),
+        nestedListItemId: Long? = null
     ): Long
     suspend fun updateDailyPlanItemTime(itemId: Long, startTimeMinutes: Int?, endTimeMinutes: Int?)
     suspend fun updateDailyPlanItemTimes(updates: List<DailyPlanItemTimeUpdate>) {
@@ -327,7 +328,8 @@ data class DailyPlanItemWriteInput(
     val status: DailyPlanItemStatus,
     val startTimeMinutes: Int?,
     val endTimeMinutes: Int?,
-    val tagIds: List<Long>
+    val tagIds: List<Long>,
+    val nestedListItemId: Long? = null
 )
 
 data class JournalEntryWriteInput(
@@ -809,13 +811,15 @@ class RoomCheckItRepository(
         endTimeMinutes: Int?,
         source: DailyPlanItemSource,
         status: DailyPlanItemStatus,
-        tagIds: List<Long>
+        tagIds: List<Long>,
+        nestedListItemId: Long?
     ): Long {
         val dateEpochDays = date.toEpochDays().toInt()
         val now = Clock.System.now().toEpochMilliseconds()
         val itemId = dao.insertDailyPlanItem(
             DailyPlanItemEntity(
                 dateEpochDays = dateEpochDays,
+                nestedListItemId = nestedListItemId,
                 title = title.trim(),
                 note = note?.trim()?.takeIf { it.isNotBlank() },
                 source = source.name,
@@ -856,6 +860,9 @@ class RoomCheckItRepository(
     }
 
     override suspend fun updateDailyPlanItemStatus(itemId: Long, status: DailyPlanItemStatus) {
+        val oldEntity = dao.dailyPlanItemById(itemId) ?: return
+        if (oldEntity.status == status.name) return
+
         dao.updateDailyPlanItemStatus(
             itemId = itemId,
             status = status.name,
@@ -865,6 +872,19 @@ class RoomCheckItRepository(
                 null
             }
         )
+
+        if (oldEntity.nestedListItemId != null) {
+            val minutes = oldEntity.toDomain().workMinutes()
+            if (minutes > 0) {
+                val delta = if (status == DailyPlanItemStatus.Done) minutes else -minutes
+                dao.updateNestedItemActualMinutesDelta(
+                    itemId = oldEntity.nestedListItemId,
+                    delta = delta,
+                    updatedAtMillis = Clock.System.now().toEpochMilliseconds()
+                )
+            }
+        }
+
         dailyPlanScheduleReminderScheduler.rescheduleNext()
     }
 
@@ -873,19 +893,37 @@ class RoomCheckItRepository(
         status: DailyPlanItemStatus
     ) {
         if (itemIds.isEmpty()) return
-        dao.updateDailyPlanItemsStatus(
-            itemIds = itemIds,
-            status = status.name,
-            completedAtMillis = if (status == DailyPlanItemStatus.Done) {
-                Clock.System.now().toEpochMilliseconds()
-            } else {
-                null
+        val now = Clock.System.now().toEpochMilliseconds()
+        
+        itemIds.forEach { itemId ->
+            val oldEntity = dao.dailyPlanItemById(itemId) ?: return@forEach
+            if (oldEntity.status == status.name) return@forEach
+            
+            dao.updateDailyPlanItemStatus(
+                itemId = itemId,
+                status = status.name,
+                completedAtMillis = if (status == DailyPlanItemStatus.Done) now else null
+            )
+
+            if (oldEntity.nestedListItemId != null) {
+                val minutes = oldEntity.toDomain().workMinutes()
+                if (minutes > 0) {
+                    val delta = if (status == DailyPlanItemStatus.Done) minutes else -minutes
+                    dao.updateNestedItemActualMinutesDelta(
+                        itemId = oldEntity.nestedListItemId,
+                        delta = delta,
+                        updatedAtMillis = now
+                    )
+                }
             }
-        )
+        }
+        
         dailyPlanScheduleReminderScheduler.rescheduleNext()
     }
 
     override suspend fun updateDailyPlanItem(itemId: Long, input: DailyPlanItemWriteInput) {
+        val oldEntity = dao.dailyPlanItemById(itemId) ?: return
+        
         dao.updateDailyPlanItem(
             itemId = itemId,
             title = input.title.trim(),
@@ -898,8 +936,28 @@ class RoomCheckItRepository(
                 Clock.System.now().toEpochMilliseconds()
             } else {
                 null
-            }
+            },
+            nestedListItemId = input.nestedListItemId
         )
+        
+        if (oldEntity.nestedListItemId != null) {
+            val oldStatus = enumValueOf<DailyPlanItemStatus>(oldEntity.status)
+            val oldMinutes = if (oldStatus == DailyPlanItemStatus.Done) oldEntity.toDomain().workMinutes() else 0
+            val newMinutes = if (input.status == DailyPlanItemStatus.Done) {
+                val start = input.startTimeMinutes ?: 0
+                val end = input.endTimeMinutes ?: 0
+                (end - start).coerceAtLeast(0)
+            } else 0
+            val delta = newMinutes - oldMinutes
+            if (delta != 0) {
+                dao.updateNestedItemActualMinutesDelta(
+                    itemId = oldEntity.nestedListItemId,
+                    delta = delta,
+                    updatedAtMillis = Clock.System.now().toEpochMilliseconds()
+                )
+            }
+        }
+
         dao.deleteDailyPlanItemTags(itemId)
         input.tagIds.forEach { tagId -> addDailyPlanItemTag(itemId, tagId) }
         dailyPlanScheduleReminderScheduler.rescheduleNext()
@@ -911,6 +969,17 @@ class RoomCheckItRepository(
     }
 
     override suspend fun deleteDailyPlanItem(itemId: Long) {
+        val oldEntity = dao.dailyPlanItemById(itemId)
+        if (oldEntity?.nestedListItemId != null && oldEntity.status == DailyPlanItemStatus.Done.name) {
+            val minutes = oldEntity.toDomain().workMinutes()
+            if (minutes > 0) {
+                dao.updateNestedItemActualMinutesDelta(
+                    itemId = oldEntity.nestedListItemId,
+                    delta = -minutes,
+                    updatedAtMillis = Clock.System.now().toEpochMilliseconds()
+                )
+            }
+        }
         dao.deletePlanPriorityDailyPlanItemsForDailyPlanItem(itemId)
         dao.deleteDailyPlanItem(itemId)
         dailyPlanScheduleReminderScheduler.rescheduleNext()
@@ -991,6 +1060,7 @@ class RoomCheckItRepository(
             DailyPlanItemEntity(
                 dateEpochDays = targetEpochDays,
                 taskId = source.taskId,
+                nestedListItemId = source.nestedListItemId,
                 title = source.title.ifBlank { "Untitled" },
                 note = source.note,
                 source = source.source.name,
@@ -1761,6 +1831,7 @@ private fun DailyPlanItemEntity.toDomain(tags: List<TagItem> = emptyList()) = Da
     id = id,
     dateEpochDays = dateEpochDays,
     taskId = taskId,
+    nestedListItemId = nestedListItemId,
     title = title,
     note = note,
     source = enumValueOf(source),

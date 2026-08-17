@@ -81,6 +81,7 @@ internal class DailyPlanEditorController(
                     mode = EditorMode.Edit,
                     itemId = item.id,
                     taskId = item.taskId,
+                    nestedListItemId = item.nestedListItemId,
                     date = date,
                     source = item.source,
                     title = item.title,
@@ -110,6 +111,8 @@ internal class DailyPlanEditorController(
             it.copy(
                 itemEditor = DailyPlanItemEditorState(
                     mode = EditorMode.Add,
+                    taskId = editor.taskId,
+                    nestedListItemId = editor.nestedListItemId,
                     date = editor.date,
                     source = editor.source,
                     title = editor.title,
