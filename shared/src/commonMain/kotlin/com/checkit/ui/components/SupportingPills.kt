@@ -1,39 +1,37 @@
 package com.checkit.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.checkit.domain.Goal
-import com.checkit.domain.KeyResult
 import com.checkit.domain.ListItem
-import com.checkit.domain.PlanPriority
 import com.checkit.domain.TagItem
-import com.checkit.domain.TwelveWeekGoal
-import com.checkit.ui.components.icons.AppIcons
-import com.checkit.ui.components.icons.Target
-import com.checkit.ui.plan.PlanPriorityPill
 import com.checkit.ui.theme.materialIcon
 import com.checkit.ui.theme.toColor
 
 @Composable
 internal fun SupportingPills(
     list: ListItem? = null,
-    planPriority: PlanPriority? = null,
-    keyResult: KeyResult? = null,
-    twelveWeekGoal: TwelveWeekGoal? = null,
     tags: List<TagItem> = emptyList(),
     overflowCount: Int = 0,
     modifier: Modifier = Modifier
 ) {
-    if (list == null && planPriority == null && keyResult == null && tags.isEmpty() && overflowCount == 0) return
+    if (list == null && tags.isEmpty() && overflowCount == 0) return
     FlowRow(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -46,36 +44,41 @@ internal fun SupportingPills(
                 iconTint = it.color.toColor()
             )
         }
-        planPriority?.let { PlanPriorityPill(it) }
-        keyResult?.let { KeyResultPill(it) }
-        twelveWeekGoal?.let { TwelveWeekGoalPill(it) }
 
         tags.forEach { tag -> TagPill(tag = tag) }
         if (overflowCount > 0) {
             Text(
                 text = "+$overflowCount",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp)
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                modifier = Modifier.padding(start = 2.dp).align(Alignment.CenterVertically)
             )
         }
     }
 }
 
 @Composable
-internal fun KeyResultPill(keyResult: KeyResult) {
-    DetailChip(
-        icon = Icons.Default.Bolt,
-        label = keyResult.title,
-        iconTint = MaterialTheme.colorScheme.primary
-    )
-}
-
-@Composable
-internal fun TwelveWeekGoalPill(goal: TwelveWeekGoal) {
-    DetailChip(
-        icon = AppIcons.Target,
-        label = goal.title,
-        iconTint = MaterialTheme.colorScheme.primary
-    )
+internal fun TagPill(tag: TagItem) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(tag.color.toColor().copy(alpha = 0.08f))
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(6.dp)
+                .background(tag.color.toColor(), CircleShape)
+        )
+        Text(
+            text = tag.name,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Medium,
+            color = tag.color.toColor(),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
 }

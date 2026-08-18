@@ -41,7 +41,6 @@ import com.checkit.ui.journal.JournalEntryEditorSheet
 import com.checkit.ui.journal.JournalListSheet
 import com.checkit.ui.myday.MyDayScreen
 import com.checkit.ui.nested.NestedListScreen
-import com.checkit.ui.plan.PlanPriorityEditorSheet
 import com.checkit.ui.reflect.PeriodReviewEditorSheet
 import com.checkit.ui.reflect.ReflectScreen
 import com.checkit.ui.settings.SettingsScreen
@@ -89,15 +88,10 @@ fun CheckItApp(
     LaunchedEffect(Unit) {
         merge(
             viewModels.task.events,
-            viewModels.goal.events,
-            viewModels.keyResult.events,
-            viewModels.objective.events,
             viewModels.tag.events,
             viewModels.myDay.events,
             viewModels.settings.events,
             viewModels.reflect.events,
-            viewModels.plan.events,
-            viewModels.twelveWeek.events,
             viewModels.nested.events
         ).collect { event ->
             when (event) {
@@ -114,8 +108,6 @@ fun CheckItApp(
     val tagUiState by viewModels.tag.uiState.collectAsState()
     val myDayUiState by viewModels.myDay.uiState.collectAsState()
     val calendarUiState by viewModels.calendar.uiState.collectAsState()
-    val planUiState by viewModels.plan.uiState.collectAsState()
-    val twelveWeekUiState by viewModels.twelveWeek.uiState.collectAsState()
     val nestedUiState by viewModels.nested.uiState.collectAsState()
     val reflectEditorState by viewModels.reflect.editor.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -253,15 +245,7 @@ fun CheckItApp(
                                         TaskScreen(
                                             state = taskUiState,
                                             viewModel = viewModels.task,
-                                            goalViewModel = viewModels.goal,
-                                            keyResultViewModel = viewModels.keyResult,
-                                            objectiveViewModel = viewModels.objective,
                                             listViewModel = viewModels.list,
-                                            planViewModel = viewModels.plan,
-                                            twelveWeekViewModel = viewModels.twelveWeek,
-                                            twelveWeekGoals = twelveWeekUiState.workspace.cycleCards
-                                                .flatMap { it.goals }
-                                                .map { it.goal },
                                             onOpenTags = { navState.push(AppRoute.Tags) }
                                         )
                                     }
@@ -339,11 +323,6 @@ fun CheckItApp(
                             editor = editor,
                             availableLists = taskUiState.board.lists,
                             availableTags = taskUiState.board.tags,
-                            availableKeyResults = taskUiState.board.keyResults,
-                            availablePlanPriorities = taskUiState.board.planPriorities,
-                            availableTwelveWeekGoals = twelveWeekUiState.workspace.cycleCards
-                                .flatMap { it.goals }
-                                .map { it.goal },
                             actions = TaskEditorActions(
                                 onDismiss = viewModels.task::dismissEditor,
                                 onSave = viewModels.task::saveEditor,
@@ -459,19 +438,6 @@ fun CheckItApp(
                             onGenerateDraft = viewModels.reflect::generateDraft,
                             onSave = viewModels.reflect::saveEditor,
                             onDismiss = viewModels.reflect::dismissEditor
-                        )
-                    }
-                    planUiState.editor?.let { planEditor ->
-                        PlanPriorityEditorSheet(
-                            editor = planEditor,
-                            parentCandidates = planUiState.parentCandidates,
-                            onDismiss = viewModels.plan::dismissEditor,
-                            onSave = viewModels.plan::savePriority,
-                            onDelete = { planEditor.priorityId?.let(viewModels.plan::deletePriority) },
-                            onToggleDone = viewModels.plan::toggleDone,
-                            onTitleChange = viewModels.plan::updateEditorTitle,
-                            onNoteChange = viewModels.plan::updateEditorNote,
-                            onParentChange = viewModels.plan::updateEditorParent
                         )
                     }
                 }

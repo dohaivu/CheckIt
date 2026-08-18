@@ -45,27 +45,21 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
-import com.checkit.domain.KeyResult
 import com.checkit.domain.ListItem
-import com.checkit.domain.PlanPriority
 import com.checkit.domain.TagItem
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskType
-import com.checkit.domain.TwelveWeekGoal
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DatePicker
 import com.checkit.ui.components.EditorOverflowMenu
-import com.checkit.ui.components.KeyResultPill
 import com.checkit.ui.components.ListPicker
 import com.checkit.ui.components.MarkdownVisualTransformation
 import com.checkit.ui.components.PriorityPicker
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.components.TimeRangePicker
-import com.checkit.ui.components.TwelveWeekGoalPill
-import com.checkit.ui.plan.PlanPriorityPill
 import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
 
@@ -75,9 +69,6 @@ internal fun TaskEditorSheet(
     editor: TaskEditorState,
     availableLists: List<ListItem>,
     availableTags: List<TagItem>,
-    availableKeyResults: List<KeyResult>,
-    availablePlanPriorities: List<PlanPriority>,
-    availableTwelveWeekGoals: List<TwelveWeekGoal>,
     actions: TaskEditorActions
 ) {
     val onDismiss = actions.onDismiss
@@ -97,9 +88,7 @@ internal fun TaskEditorSheet(
     val onDailyPlanDelete = actions.onDailyPlanDelete
     val onDailyPlanStartSprint = actions.onDailyPlanStartSprint
     val onDailyPlanStartOngoingSprint = actions.onDailyPlanStartOngoingSprint
-    val onTaskRepeatChange = actions.onTaskRepeatChange
     val onTaskPriorityChange = actions.onTaskPriorityChange
-    val onTaskReminderToggle = actions.onTaskReminderToggle
     val onSubTaskToggle = actions.onSubTaskToggle
     val onSubTaskAdd = actions.onSubTaskAdd
     val onSubTaskNameChange = actions.onSubTaskNameChange
@@ -156,17 +145,12 @@ internal fun TaskEditorSheet(
                             form = editor,
                             availableLists = availableLists,
                             availableTags = availableTags,
-                            availableKeyResults = availableKeyResults,
-                            availablePlanPriorities = availablePlanPriorities,
-                            availableTwelveWeekGoals = availableTwelveWeekGoals,
                             onNameChange = onTaskNameChange,
                             onListChange = onTaskListChange,
                             onDescriptionChange = onTaskDescriptionChange,
                             onDoDateChange = onTaskDoDateChange,
                             onTimeChange = onTaskTimeChange,
-                            onRepeatChange = onTaskRepeatChange,
                             onPriorityChange = onTaskPriorityChange,
-                            onReminderToggle = onTaskReminderToggle,
                             onSubTaskToggle = onSubTaskToggle,
                             onSubTaskAdd = onSubTaskAdd,
                             onSubTaskNameChange = onSubTaskNameChange,
@@ -331,17 +315,12 @@ private fun TaskFormContent(
     form: TaskEditorState.TaskForm,
     availableLists: List<ListItem>,
     availableTags: List<TagItem>,
-    availableKeyResults: List<KeyResult>,
-    availablePlanPriorities: List<PlanPriority>,
-    availableTwelveWeekGoals: List<TwelveWeekGoal>,
     onNameChange: (String) -> Unit,
     onListChange: (Long) -> Unit,
     onDescriptionChange: (String) -> Unit,
     onDoDateChange: (LocalDate?) -> Unit,
     onTimeChange: (Int?, Int?) -> Unit,
-    onRepeatChange: (RepeatPreset) -> Unit,
     onPriorityChange: (TaskPriority) -> Unit,
-    onReminderToggle: (Int) -> Unit,
     onSubTaskToggle: (Int) -> Unit,
     onSubTaskAdd: () -> Unit,
     onSubTaskNameChange: (Int, String) -> Unit,
@@ -352,11 +331,9 @@ private fun TaskFormContent(
     enabled: Boolean = true
 ) {
     val isHabit = form.type == TaskType.Habit
-    val isTactic = form.type == TaskType.Tactic
     val namePlaceholder = when (form.type) {
         TaskType.Task -> "What would you like to do?"
         TaskType.Habit -> "What habit do you want to build?"
-        TaskType.Tactic -> "What tactic will move your goal forward?"
     }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (isHabit) {
@@ -370,23 +347,6 @@ private fun TaskFormContent(
                 )
                 Text(
                     text = "Every day · auto-added to My Day",
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                PriorityPicker(selected = form.priority, onSelect = onPriorityChange, enabled = enabled)
-            }
-        } else if (isTactic) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                TacticIcon(
-                    completed = form.status == TaskStatus.Completed,
-                    color = form.priority.priorityColor()
-                )
-                Text(
-                    text = "12-Week Tactic",
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -450,20 +410,6 @@ private fun TaskFormContent(
             enabled = enabled
         )
 
-//        Row(
-//            verticalAlignment = Alignment.CenterVertically,
-//            horizontalArrangement = Arrangement.spacedBy(6.dp),
-//        ) {
-//            RepeatPicker(selected = form.repeatPreset, onSelect = onRepeatChange, enabled = enabled)
-//            ReminderPicker(
-//                reminderOffsets = form.reminderOffsets,
-//                hasDate = form.doDate != null,
-//                startTimeMinutes = form.startTimeMinutes,
-//                onReminderToggle = onReminderToggle,
-//                enabled = enabled
-//            )
-//        }
-
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -476,21 +422,6 @@ private fun TaskFormContent(
                     onListChange = onListChange,
                     enabled = enabled
                 )
-            }
-            form.planPriorityId?.let { priorityId ->
-                availablePlanPriorities.find { it.id == priorityId }?.let { priority ->
-                    PlanPriorityPill(priority)
-                }
-            }
-            form.keyResultId?.let { krId ->
-                availableKeyResults.find { it.id == krId }?.let { kr ->
-                    KeyResultPill(kr)
-                }
-            }
-            form.twelveWeekGoalId?.let { goalId ->
-                availableTwelveWeekGoals.find { it.id == goalId }?.let { goal ->
-                    TwelveWeekGoalPill(goal)
-                }
             }
             TagPicker(
                 availableTags = availableTags,

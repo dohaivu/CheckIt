@@ -6,9 +6,7 @@ import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 class PlanPeriodDateTest {
 
@@ -138,54 +136,6 @@ class PlanPeriodDateTest {
         assertEquals(PlanPeriod.Month, PlanPeriod.Quarter.child())
         assertEquals(PlanPeriod.Quarter, PlanPeriod.Year.child())
     }
-
-    @Test
-    fun periodPlanCoversFocus() {
-        val weekPlan = PeriodPlan(
-            period = PlanPeriod.Week,
-            startEpochDays = PlanFocus(PlanPeriod.Week, day).startEpochDays,
-            endEpochDays = PlanFocus(PlanPeriod.Week, day).endInclusiveEpochDays
-        )
-        assertTrue(weekPlan.covers(PlanFocus(PlanPeriod.Week, day)))
-        assertTrue(weekPlan.covers(PlanFocus(PlanPeriod.Week, LocalDate(2026, 3, 12))))
-        assertFalse(weekPlan.covers(PlanFocus(PlanPeriod.Week, LocalDate(2026, 3, 23))))
-        assertFalse(weekPlan.covers(PlanFocus(PlanPeriod.Month, day)))
-    }
-
-    @Test
-    fun cycleDetectionRejectsSelfAndDescendant() {
-        val a = priority(1, parentId = null)
-        val b = priority(2, parentId = 1)
-        val c = priority(3, parentId = 2)
-        val priorities = listOf(a, b, c)
-
-        assertTrue(wouldCreateCycle(priorities, id = 1, newParentId = 1))
-        assertTrue(wouldCreateCycle(priorities, id = 1, newParentId = 3))
-        assertTrue(wouldCreateCycle(priorities, id = 2, newParentId = 3))
-        assertFalse(wouldCreateCycle(priorities, id = 3, newParentId = 1))
-        assertFalse(wouldCreateCycle(priorities, id = 2, newParentId = 1))
-        assertFalse(wouldCreateCycle(priorities, id = 1, newParentId = null))
-    }
-
-    @Test
-    fun cycleDetectionAllowsReparentSiblings() {
-        val a = priority(1, parentId = null)
-        val b = priority(2, parentId = 1)
-        val c = priority(3, parentId = 1)
-        val priorities = listOf(a, b, c)
-        assertFalse(wouldCreateCycle(priorities, id = 2, newParentId = 3))
-        assertFalse(wouldCreateCycle(priorities, id = 3, newParentId = 2))
-    }
-
-    private fun priority(id: Long, parentId: Long?) = PlanPriority(
-        id = id,
-        periodPlan = PeriodPlan(id = 1L, period = PlanPeriod.Year, startEpochDays = 0, endEpochDays = 0),
-        parentId = parentId,
-        title = "P$id",
-        sortOrder = id.toInt(),
-        createdAtMillis = 0L,
-        updatedAtMillis = 0L
-    )
 }
 
 private fun PlanPeriod.parent(): PlanPeriod? = when (this) {

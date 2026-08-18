@@ -6,8 +6,7 @@ import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 
 /**
- * The five zoom levels of the Period Plan feature. Order matters: coarser
- * periods have lower ordinals (Year is the top, Day is the finest).
+ * The five zoom levels of time periods used in the app.
  */
 enum class PlanPeriod {
     Year,
@@ -18,9 +17,7 @@ enum class PlanPeriod {
 }
 
 /**
- * Navigation currency for Period Plan (mirrors [PeriodFocus] but includes
- * Quarter). Identifies a single period by its zoom level plus any anchor date
- * inside it.
+ * Identifies a single period by its zoom level plus any anchor date inside it.
  */
 data class PlanFocus(
     val period: PlanPeriod,
@@ -94,73 +91,4 @@ fun PlanPeriod.move(anchorDate: LocalDate, amount: Int): LocalDate = when (this)
     PlanPeriod.Month -> startOf(anchorDate.plus(amount, DateTimeUnit.MONTH))
     PlanPeriod.Quarter -> startOf(anchorDate.plus(amount * 3, DateTimeUnit.MONTH))
     PlanPeriod.Year -> startOf(anchorDate.plus(amount, DateTimeUnit.YEAR))
-}
-
-/**
- * A single period's plan row. Carries only period identity — no title, note,
- * content or status. Uniquely keyed by [period] + [startEpochDays].
- */
-data class PeriodPlan(
-    val id: Long = 0L,
-    val period: PlanPeriod,
-    val startEpochDays: Int,
-    /** Inclusive end-of-period day. */
-    val endEpochDays: Int
-) {
-    val startDate: LocalDate get() = LocalDate.fromEpochDays(startEpochDays)
-    val endDate: LocalDate get() = LocalDate.fromEpochDays(endEpochDays)
-
-    fun covers(focus: PlanFocus): Boolean =
-        startEpochDays <= focus.startEpochDays && endEpochDays >= focus.endInclusiveEpochDays
-}
-
-/**
- * One plan priority node. Belongs to exactly one [PeriodPlan]; trees are built
- * through [parentId]. Task / daily-plan-item work is attached via join tables.
- */
-data class PlanPriority(
-    val id: Long = 0L,
-    val periodPlan: PeriodPlan,
-    val parentId: Long? = null,
-    val title: String,
-    val note: String = "",
-    val sortOrder: Int,
-    val isDone: Boolean = false,
-    val createdAtMillis: Long,
-    val updatedAtMillis: Long,
-    val completedAtMillis: Long? = null
-)
-
-/** UI/read model for one priority node with its nested children and work. */
-data class PlanPriorityNode(
-    val priority: PlanPriority,
-    val children: List<PlanPriorityNode> = emptyList(),
-    val tasks: List<TaskItem> = emptyList(), // Week/Day only
-    val dailyPlanItems: List<DailyPlanItem> = emptyList() // Day only
-)
-
-/** Root of the read model for a [PlanFocus]: tree + parent candidates. */
-data class PlanWorkspace(
-    val focus: PlanFocus,
-    val plan: PeriodPlan? = null,
-    val plans: List<PeriodPlan> = emptyList(),
-    val rootNodes: List<PlanPriorityNode> = emptyList(),
-    val parentCandidates: List<PlanPriority> = emptyList()
-)
-
-/**
- * Returns true if assigning [id] a new parent of [newParentId] would introduce
- * a cycle (i.e. the new parent is [id] itself or one of its descendants).
- */
-fun wouldCreateCycle(priorities: List<PlanPriority>, id: Long, newParentId: Long?): Boolean {
-    if (newParentId == null) return false
-    val byId = priorities.associateBy { it.id }
-    val visited = mutableSetOf<Long>()
-    var current: PlanPriority? = byId[newParentId]
-    while (current != null) {
-        if (current.id == id) return true
-        if (!visited.add(current.id)) return true
-        current = current.parentId?.let { byId[it] }
-    }
-    return false
 }

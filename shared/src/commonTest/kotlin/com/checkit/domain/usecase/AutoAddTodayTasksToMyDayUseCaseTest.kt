@@ -121,7 +121,7 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
         useCase()
 
         assertEquals(1, repository.updatedDailyPlanItemTimes.size)
-        assertEquals(Triple(10_000L, 540, 600), repository.updatedDailyPlanItemTimes.single())
+        assertEquals(Triple(400L, 540, 600), repository.updatedDailyPlanItemTimes.single())
     }
 
     @Test

@@ -26,7 +26,6 @@ data class TaskUiState(
     val isLoading: Boolean = true
 ) {
     val selectedListId: Long? get() = selection.selectedListId
-    val selectedGoalId: Long? get() = selection.selectedGoalId
     val selectedFilterId: Long? get() = options.selectedFilterId
     val selectedTagId: Long? get() = selection.selectedTagId
     val selectedView: TaskWorkspaceView get() = options.selectedView
@@ -38,23 +37,16 @@ data class TaskUiState(
     val visibleNotes: List<NoteItem> get() = visibleItems.notes
     val visibleListItems: List<TaskListEntry> get() = visibleItems.listItems
     val selectedList: ListItem? = board.lists.firstOrNull { it.id == selectedListId }
-    val selectedGoal = board.goals.firstOrNull { it.id == selectedGoalId }
     val selectedFilter: TaskFilter? = board.filters.firstOrNull { it.id == selectedFilterId }
     val selectedTag = board.tags.firstOrNull { it.id == selectedTagId }
-    val isPlanSelected: Boolean get() = selection.isPlanSelected
-    val isTwelveWeekSelected: Boolean get() = selection.isTwelveWeekSelected
     val dayLimit: Int? = if (selectedFilter?.dueDatePreset == DueDatePreset.Today) 1 else null
     val availableViews: List<TaskWorkspaceView> = TaskWorkspaceView.entries
         .filter { it != TaskWorkspaceView.Timeline || dayLimit == 1 }
-        .filter { it != TaskWorkspaceView.Goal || selectedGoal != null }
 }
 
 data class TaskSelectionState(
-    val selectedGoalId: Long? = null,
     val selectedListId: Long? = null,
-    val selectedTagId: Long? = null,
-    val isPlanSelected: Boolean = false,
-    val isTwelveWeekSelected: Boolean = false
+    val selectedTagId: Long? = null
 )
 
 data class TaskViewOptionsState(
@@ -88,7 +80,6 @@ sealed interface TaskListEntry {
 enum class TaskWorkspaceView {
     List,
     Agenda,
-    Goal,
     Timeline,
     Habits;
 
@@ -132,9 +123,6 @@ sealed interface TaskEditorState {
         val mode: EditorMode,
         val taskId: Long? = null,
         val listId: Long? = null,
-        val keyResultId: Long? = null,
-        val planPriorityId: Long? = null,
-        val twelveWeekGoalId: Long? = null,
         val name: String = "",
         val description: String = "",
         val doDate: LocalDate? = null,
@@ -182,17 +170,6 @@ fun SubTaskItem.toEditorState() = SubTaskEditorState(
 private var subTaskEditorKeySeed = 0L
 
 private fun nextSubTaskEditorKey(): Long = --subTaskEditorKeySeed
-
-data class ObjectiveEditorState(
-    val mode: EditorMode,
-    val objectiveId: Long? = null,
-    val goalId: Long? = null,
-    val name: String = "",
-    val color: String = AppIconColorDefaults.ListColors.first(),
-    val icon: String = AppIconColorDefaults.ListIcons.first(),
-    val startDate: LocalDate? = null,
-    val endDate: LocalDate? = null
-)
 
 data class TagEditorState(
     val mode: EditorMode,

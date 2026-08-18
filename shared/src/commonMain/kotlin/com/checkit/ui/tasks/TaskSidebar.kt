@@ -31,35 +31,19 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.checkit.domain.Goal
 import com.checkit.domain.ListItem
 import com.checkit.ui.theme.materialIcon
 import com.checkit.ui.theme.toColor
-import checkit.shared.generated.resources.Res
-import checkit.shared.generated.resources.plan_screen_title
-import checkit.shared.generated.resources.twelve_week_title
-import com.checkit.ui.components.icons.AppIcons
-import com.checkit.ui.components.icons.Target
-import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun TaskSidebar(
-    goals: List<Goal>,
     lists: List<ListItem>,
     isBoardSelected: Boolean,
     selectedListId: Long?,
-    selectedGoalId: Long?,
     isTagsSelected: Boolean,
-    isPlanSelected: Boolean,
-    isTwelveWeekSelected: Boolean,
     onBoardClick: () -> Unit,
-    onGoalClick: (Long) -> Unit,
     onListClick: (Long) -> Unit,
     onTagsClick: () -> Unit,
-    onPlanClick: () -> Unit,
-    onTwelveWeekClick: () -> Unit,
-    onAddGoalClick: () -> Unit,
-    onEditGoalClick: (Goal) -> Unit,
     onAddListClick: () -> Unit,
     onEditListClick: (ListItem) -> Unit
 ) {
@@ -77,33 +61,6 @@ internal fun TaskSidebar(
                 color = MaterialTheme.colorScheme.primary,
                 selected = isBoardSelected,
                 onClick = onBoardClick
-            )
-        }
-        item {
-            SidebarSectionDivider()
-            SidebarHeader(
-                text = "Goals",
-                action = {
-                    IconButton(onClick = onAddGoalClick, modifier = Modifier.size(28.dp)) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Add goal",
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
-            )
-        }
-        items(goals, key = { "goal-${it.id}" }) { goal ->
-            SidebarItem(
-                title = goal.title,
-                icon = materialIcon(goal.icon),
-                color = goal.color.toColor(),
-                selected = selectedGoalId == goal.id,
-                onClick = { onGoalClick(goal.id) },
-                onLongClick = {
-                    onEditGoalClick(goal)
-                }
             )
         }
         item {
@@ -141,25 +98,6 @@ internal fun TaskSidebar(
                 color = MaterialTheme.colorScheme.primary,
                 selected = isTagsSelected,
                 onClick = onTagsClick
-            )
-        }
-        item {
-            SidebarSectionDivider()
-            SidebarItem(
-                title = stringResource(Res.string.plan_screen_title),
-                icon = materialIcon("Flag"),
-                color = MaterialTheme.colorScheme.primary,
-                selected = isPlanSelected,
-                onClick = onPlanClick
-            )
-        }
-        item {
-            SidebarItem(
-                title = stringResource(Res.string.twelve_week_title),
-                icon = AppIcons.Target,
-                color = MaterialTheme.colorScheme.primary,
-                selected = isTwelveWeekSelected,
-                onClick = onTwelveWeekClick
             )
         }
     }

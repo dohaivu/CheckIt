@@ -68,7 +68,6 @@ internal class DailyPlanEditorController(
     fun updateItemTime(item: DailyPlanItem, startTimeMinutes: Int, endTimeMinutes: Int) {
         val nextEndTime = if (item.source.hasEndTime()) endTimeMinutes else null
         scope.launch {
-            deps.syncKeyResultFromDailyPlan(itemId = item.id, proposedStartTime = startTimeMinutes, proposedEndTime = nextEndTime)
             deps.updateDailyPlanItemTime(item.id, startTimeMinutes, nextEndTime)
         }
     }

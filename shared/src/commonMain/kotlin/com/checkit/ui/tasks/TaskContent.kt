@@ -19,7 +19,6 @@ import androidx.compose.ui.unit.dp
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
-import com.checkit.domain.TwelveWeekGoal
 import com.checkit.ui.tasks.views.AgendaView
 import com.checkit.ui.tasks.views.ListDisplayTypeMenu
 import com.checkit.ui.tasks.views.NoteAllDayCard
@@ -34,7 +33,6 @@ import kotlinx.datetime.LocalDate
 @Composable
 internal fun TaskContent(
     state: TaskUiState,
-    twelveWeekGoals: List<TwelveWeekGoal>,
     onTaskClick: (TaskItem) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
     onListDisplayTypeChange: (TaskListDisplayType) -> Unit,
@@ -62,11 +60,9 @@ internal fun TaskContent(
         }
         Spacer(Modifier.height(4.dp))
         when (state.selectedView) {
-            TaskWorkspaceView.Goal,
             TaskWorkspaceView.List,
             TaskWorkspaceView.Habits -> TaskListView(
                 items = state.visibleListItems,
-                twelveWeekGoals = twelveWeekGoals,
                 showListName = showListName,
                 displayType = state.listDisplayType,
                 onTaskClick = onTaskClick,

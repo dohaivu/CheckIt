@@ -23,7 +23,6 @@ data class TaskEditorActions(
     val onDailyPlanStartSprint: (DailyPlanItem) -> Unit,
     val onDailyPlanStartOngoingSprint: (DailyPlanItem) -> Unit,
     val onTaskRepeatChange: (RepeatPreset) -> Unit,
-    val onTaskTwelveWeekGoalChange: (Long?) -> Unit = { },
     val onTaskPriorityChange: (TaskPriority) -> Unit,
     val onTaskReminderToggle: (Int) -> Unit,
     val onSubTaskToggle: (Int) -> Unit,

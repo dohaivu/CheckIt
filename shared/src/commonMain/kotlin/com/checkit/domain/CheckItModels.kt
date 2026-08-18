@@ -5,11 +5,7 @@ import kotlinx.datetime.LocalDate
 data class AppConfig(val versionName: String)
 
 data class TaskBoard(
-    val goals: List<Goal> = emptyList(),
-    val objectives: List<Objective> = emptyList(),
     val lists: List<ListItem> = emptyList(),
-    val keyResults: List<KeyResult> = emptyList(),
-    val planPriorities: List<PlanPriority> = emptyList(),
     val filters: List<TaskFilter> = emptyList(),
     val tasks: List<TaskItem> = emptyList(),
     val notes: List<NoteItem> = emptyList(),
@@ -37,61 +33,6 @@ data class TaskBoard(
     }
 }
 
-data class Goal(
-    val id: Long,
-    val title: String,
-    val icon: String,
-    val color: String,
-    val sortOrder: Int,
-    val isArchived: Boolean = false
-)
-
-data class Objective(
-    val id: Long,
-    val goalId: Long,
-    val name: String,
-    val startDate: LocalDate? = null,
-    val endDate: LocalDate? = null,
-    val color: String,
-    val icon: String,
-    val sortOrder: Int,
-    val isArchived: Boolean = false
-) {
-    val title: String get() = name
-
-    companion object {
-        val None = Objective(id = -1L, goalId = -1L, name = "", color = "", icon = "", sortOrder = -1)
-    }
-}
-
-data class KeyResult(
-    val id: Long,
-    val objectiveId: Long,
-    val title: String,
-    val targetValue: Double,
-    val currentValue: Double = 0.0,
-    val unit: String,
-    val sortOrder: Int
-) {
-    val progress: Double
-        get() = if (targetValue == 0.0) 0.0 else (currentValue / targetValue).coerceIn(0.0, 1.0)
-}
-
-enum class KeyResultUnit(val label: String) {
-    Percentage("%"),
-    Number("#"), // quantity, count
-    Currency("$"),
-    Hours("h"),
-    Days("d"),
-    Points("pts"),
-    Binary("completed"); // yes-1, no-0
-
-    companion object {
-        fun fromString(value: String): KeyResultUnit =
-            entries.firstOrNull { it.name == value || it.label == value } ?: Number
-    }
-}
-
 data class ListItem(
     val id: Long,
     val title: String,
@@ -104,9 +45,6 @@ data class ListItem(
 data class TaskItem(
     val id: Long,
     val list: ListItem? = null,
-    val keyResult: KeyResult? = null,
-    val planPriority: PlanPriority? = null,
-    val twelveWeekGoalId: Long? = null,
     val name: String,
     val description: String = "",
     val subtasks: List<SubTaskItem> = emptyList(),
@@ -269,8 +207,7 @@ data class TaskFilter(
 
 enum class TaskType {
     Task,
-    Habit,
-    Tactic
+    Habit
 }
 
 enum class TaskStatus {

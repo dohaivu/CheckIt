@@ -8,72 +8,12 @@ import androidx.room3.Index
 import androidx.room3.PrimaryKey
 import androidx.room3.RoomDatabase
 import androidx.room3.RoomDatabaseConstructor
-import androidx.room3.migration.Migration
-import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.sqlite.execSQL
+import androidx.sqlite.SQLiteConnection
 import com.checkit.domain.TaskType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
-
-@Entity(tableName = "goals")
-data class GoalEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0L,
-    val title: String,
-    val icon: String,
-    val color: String,
-    val sortOrder: Int,
-    val isArchived: Boolean = false
-)
-
-@Entity(
-    tableName = "objectives",
-    foreignKeys = [
-        ForeignKey(
-            entity = GoalEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["goalId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [Index("goalId")]
-)
-data class ObjectiveEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0L,
-    val title: String,
-    val goalId: Long,
-    val startDateEpochDays: Int? = null,
-    val endDateEpochDays: Int? = null,
-    val color: String? = null,
-    val icon: String? = null,
-    val sortOrder: Int,
-    val isArchived: Boolean = false
-)
-
-@Entity(
-    tableName = "key_results",
-    foreignKeys = [
-        ForeignKey(
-            entity = ObjectiveEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["objectiveId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [Index("objectiveId")]
-)
-data class KeyResultEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0L,
-    val objectiveId: Long,
-    val title: String,
-    val targetValue: Double,
-    val currentValue: Double = 0.0,
-    val unit: String,
-    val sortOrder: Int
-)
 
 @Entity(tableName = "lists")
 data class ListEntity(
@@ -431,238 +371,6 @@ data class NoteListEntity(
     val listId: Long
 )
 
-@Entity(
-    tableName = "task_key_result",
-    primaryKeys = ["taskId", "keyResultId"],
-    foreignKeys = [
-        ForeignKey(
-            entity = TaskEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["taskId"],
-            onDelete = ForeignKey.CASCADE
-        ),
-        ForeignKey(
-            entity = KeyResultEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["keyResultId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [Index("taskId"), Index("keyResultId")]
-)
-data class TaskKeyResultEntity(
-    val taskId: Long,
-    val keyResultId: Long
-)
-
-@Entity(
-    tableName = "period_plans",
-    indices = [Index(value = ["periodType", "startEpochDays"], unique = true)]
-)
-data class PeriodPlanEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0L,
-    val periodType: String,
-    val startEpochDays: Int,
-    val endEpochDays: Int
-)
-
-@Entity(
-    tableName = "plan_priorities",
-    foreignKeys = [
-        ForeignKey(
-            entity = PeriodPlanEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["periodPlanId"],
-            onDelete = ForeignKey.CASCADE
-        ),
-        ForeignKey(
-            entity = PlanPriorityEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["parentId"],
-            onDelete = ForeignKey.SET_NULL
-        )
-    ],
-    indices = [Index("periodPlanId"), Index("parentId")]
-)
-data class PlanPriorityEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0L,
-    val periodPlanId: Long,
-    val parentId: Long? = null,
-    val title: String,
-    val note: String = "",
-    val sortOrder: Int,
-    val isDone: Boolean = false,
-    val createdAtMillis: Long,
-    val updatedAtMillis: Long,
-    val completedAtMillis: Long? = null
-)
-
-@Entity(
-    tableName = "plan_priority_tasks",
-    primaryKeys = ["priorityId", "taskId"],
-    foreignKeys = [
-        ForeignKey(
-            entity = PlanPriorityEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["priorityId"],
-            onDelete = ForeignKey.CASCADE
-        ),
-        ForeignKey(
-            entity = TaskEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["taskId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [Index("taskId")]
-)
-data class PlanPriorityTaskEntity(
-    val priorityId: Long,
-    val taskId: Long,
-    val sortOrder: Int
-)
-
-@Entity(
-    tableName = "plan_priority_daily_plan_items",
-    primaryKeys = ["priorityId", "dailyPlanItemId"],
-    foreignKeys = [
-        ForeignKey(
-            entity = PlanPriorityEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["priorityId"],
-            onDelete = ForeignKey.CASCADE
-        ),
-        ForeignKey(
-            entity = DailyPlanItemEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["dailyPlanItemId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [Index("dailyPlanItemId")]
-)
-data class PlanPriorityDailyPlanItemEntity(
-    val priorityId: Long,
-    val dailyPlanItemId: Long,
-    val sortOrder: Int
-)
-
-@Entity(
-    tableName = "twelve_week_cycles",
-    indices = [Index("status")]
-)
-data class TwelveWeekCycleEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0L,
-    val title: String,
-    val startEpochDays: Int,
-    val endEpochDays: Int,
-    val status: String,
-    val reviewNote: String = "",
-    val createdAtMillis: Long,
-    val completedAtMillis: Long? = null
-)
-
-@Entity(
-    tableName = "twelve_week_goals",
-    foreignKeys = [
-        ForeignKey(
-            entity = TwelveWeekCycleEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["cycleId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [Index("cycleId")]
-)
-data class TwelveWeekGoalEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0L,
-    val cycleId: Long,
-    val title: String,
-    val note: String = "",
-    val sortOrder: Int,
-    val finalStatus: String? = null,
-    val createdAtMillis: Long,
-    val updatedAtMillis: Long
-)
-
-@Entity(
-    tableName = "twelve_week_check_ins",
-    foreignKeys = [
-        ForeignKey(
-            entity = TwelveWeekCycleEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["cycleId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [Index(value = ["cycleId", "weekIndex"], unique = true)]
-)
-data class TwelveWeekCheckInEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0L,
-    val cycleId: Long,
-    val weekIndex: Int,
-    val note: String = "",
-    val createdAtMillis: Long,
-    val updatedAtMillis: Long
-)
-
-@Entity(
-    tableName = "twelve_week_goal_scores",
-    foreignKeys = [
-        ForeignKey(
-            entity = TwelveWeekCheckInEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["checkInId"],
-            onDelete = ForeignKey.CASCADE
-        ),
-        ForeignKey(
-            entity = TwelveWeekGoalEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["goalId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [Index(value = ["checkInId", "goalId"], unique = true)]
-)
-data class TwelveWeekGoalScoreEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0L,
-    val checkInId: Long,
-    val goalId: Long,
-    val score: Int,
-    val note: String = ""
-)
-
-@Entity(
-    tableName = "twelve_week_goal_tasks",
-    primaryKeys = ["goalId", "taskId"],
-    foreignKeys = [
-        ForeignKey(
-            entity = TwelveWeekGoalEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["goalId"],
-            onDelete = ForeignKey.CASCADE
-        ),
-        ForeignKey(
-            entity = TaskEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["taskId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [Index("taskId", unique = true)]
-)
-data class TwelveWeekGoalTaskEntity(
-    val goalId: Long,
-    val taskId: Long,
-    val sortOrder: Int
-)
-
 @Entity(tableName = "nested_documents")
 data class NestedDocumentEntity(
     @PrimaryKey(autoGenerate = true)
@@ -765,9 +473,6 @@ data class NestedItemTagEntity(
 
 @Database(
     entities = [
-        GoalEntity::class,
-        ObjectiveEntity::class,
-        KeyResultEntity::class,
         TaskEntity::class,
         SubTaskEntity::class,
         NoteEntity::class,
@@ -781,19 +486,9 @@ data class NestedItemTagEntity(
         JournalEntryTagEntity::class,
         TaskReminderEntity::class,
         TaskFilterEntity::class,
-        TaskKeyResultEntity::class,
         ListEntity::class,
         TaskListEntity::class,
         NoteListEntity::class,
-        PeriodPlanEntity::class,
-        PlanPriorityEntity::class,
-        PlanPriorityTaskEntity::class,
-        PlanPriorityDailyPlanItemEntity::class,
-        TwelveWeekCycleEntity::class,
-        TwelveWeekGoalEntity::class,
-        TwelveWeekCheckInEntity::class,
-        TwelveWeekGoalScoreEntity::class,
-        TwelveWeekGoalTaskEntity::class,
         NestedDocumentEntity::class,
         NestedListItemEntity::class,
         NestedItemTagEntity::class,

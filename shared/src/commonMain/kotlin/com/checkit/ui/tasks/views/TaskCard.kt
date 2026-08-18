@@ -14,11 +14,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -36,8 +39,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Icon
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
@@ -48,7 +49,6 @@ import com.checkit.domain.TaskType
 import com.checkit.ui.tasks.DailyPlanIcon
 import com.checkit.ui.tasks.HabitIcon
 import com.checkit.ui.tasks.NoteIcon
-import com.checkit.ui.tasks.TacticIcon
 import com.checkit.ui.tasks.TaskIcon
 import com.checkit.ui.tasks.cardColor
 import com.checkit.ui.tasks.isOverdue
@@ -239,8 +239,6 @@ internal fun TaskTimelineCard(
         leadingContent = {
             if (task.type == TaskType.Habit) {
                 HabitIcon(completed, task.priority.priorityColor())
-            } else if (task.type == TaskType.Tactic) {
-                TacticIcon(completed, task.priority.priorityColor())
             } else {
                 TaskIcon(
                     completed = completed,
@@ -373,8 +371,6 @@ internal fun TaskAllDayCard(
         icon = {
             if (task.type == TaskType.Habit) {
                 HabitIcon(completed = task.status == TaskStatus.Completed, color = task.priority.priorityColor())
-            } else if (task.type == TaskType.Tactic) {
-                TacticIcon(completed = task.status == TaskStatus.Completed, color = task.priority.priorityColor())
             } else {
                 TaskIcon(
                     completed = task.status == TaskStatus.Completed,

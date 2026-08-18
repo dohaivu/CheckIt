@@ -22,7 +22,6 @@ import com.checkit.domain.usecase.DeleteJournalEntryUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
-import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.SprintManager
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
@@ -75,7 +74,6 @@ class MyDayViewModelTest {
         val observeDailyPlans = ObserveDailyPlansUseCase(repository)
         val observeJournalEntries = ObserveJournalEntriesUseCase(repository)
         val observePeriodReviews = ObservePeriodReviewsUseCase(repository)
-        val syncKeyResult = SyncKeyResultFromDailyPlanUseCase(repository)
         val addTaskToDailyPlan = AddTaskToDailyPlanUseCase(repository)
         val updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository)
 
@@ -97,13 +95,12 @@ class MyDayViewModelTest {
             ),
             carryOverDailyPlanItems = carryOver,
             observePeriodReviews = observePeriodReviews,
-            upsertDailyPlanItem = UpsertDailyPlanItemUseCase(repository, syncKeyResult),
+            upsertDailyPlanItem = UpsertDailyPlanItemUseCase(repository),
             addSuggestedTaskToMyDay = AddSuggestedTaskToMyDayUseCase(
                 repository = repository,
                 addTaskToDailyPlan = addTaskToDailyPlan,
                 updateDailyPlanItemTime = updateDailyPlanItemTime
             ),
-            syncKeyResultFromDailyPlan = syncKeyResult,
             updateDailyPlanItemTime = updateDailyPlanItemTime,
             smartSchedule = SmartScheduleDailyPlanUseCase(repository),
             sprintManager = SprintManager(NoOpSprintNotificationScheduler()),
@@ -114,8 +111,7 @@ class MyDayViewModelTest {
                     addTaskToDailyPlan = addTaskToDailyPlan,
                     addDailyPlanItem = AddDailyPlanItemUseCase(repository),
                     updateDailyPlanItemTime = updateDailyPlanItemTime,
-                    updateDailyPlanItemStatus = UpdateDailyPlanItemStatusUseCase(repository),
-                    syncKeyResultFromDailyPlan = syncKeyResult
+                    updateDailyPlanItemStatus = UpdateDailyPlanItemStatusUseCase(repository)
                 ),
                 observeTaskBoard = observeTaskBoard
             )
@@ -446,7 +442,6 @@ class MyDayViewModelTest {
         assertEquals("Biking", input.context)
         assertEquals("Covered 20 km", input.content)
         assertEquals(listOf("🔥"), input.moods)
-        assertEquals(listOf(tag.id), input.tagIds)
         assertEquals(today(), input.date)
 
         assertEquals(null, viewModel.uiState.value.journalEditor)

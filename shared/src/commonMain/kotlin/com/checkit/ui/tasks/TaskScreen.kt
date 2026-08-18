@@ -4,11 +4,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -24,60 +22,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import checkit.shared.generated.resources.Res
-import checkit.shared.generated.resources.plan_screen_title
-import com.checkit.domain.PlanFocus
-import com.checkit.domain.PlanPeriod
-import com.checkit.domain.TwelveWeekGoal
-import com.checkit.ui.components.HelpContent
-import com.checkit.ui.components.HelpTooltip
-import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TinyTopAppBar
-import com.checkit.ui.okr.GoalEditorSheet
-import com.checkit.ui.okr.GoalItemType
-import com.checkit.ui.okr.GoalScreen
-import com.checkit.ui.okr.GoalViewModel
-import com.checkit.ui.okr.KeyResultViewModel
-import com.checkit.ui.okr.ObjectiveEditorSheet
-import com.checkit.ui.okr.ObjectiveViewModel
-import com.checkit.ui.plan.PeriodPlanScreen
-import com.checkit.ui.plan.PeriodPlanViewModel
 import com.checkit.ui.tasks.list.ListEditorSheet
 import com.checkit.ui.tasks.list.ListViewModel
 import com.checkit.ui.tasks.views.ViewOptionsMenu
 import com.checkit.ui.theme.materialIcon
 import com.checkit.ui.theme.toColor
-import com.checkit.ui.today
-import com.checkit.ui.components.icons.AppIcons
-import com.checkit.ui.components.icons.Target
-import com.checkit.ui.twelveweek.TwelveWeekScreen
-import com.checkit.ui.twelveweek.TwelveWeekViewModel
-import com.checkit.ui.twelveweek.TwelveWeekViewOptionsMenu
-import checkit.shared.generated.resources.twelve_week_title
 import kotlinx.coroutines.launch
-import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun TaskScreen(
     state: TaskUiState,
     viewModel: TaskViewModel,
-    goalViewModel: GoalViewModel,
-    keyResultViewModel: KeyResultViewModel,
-    objectiveViewModel: ObjectiveViewModel,
     listViewModel: ListViewModel,
-    planViewModel: PeriodPlanViewModel,
-    twelveWeekViewModel: TwelveWeekViewModel,
-    twelveWeekGoals: List<TwelveWeekGoal>,
     onOpenTags: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    val goalState by goalViewModel.uiState.collectAsState()
-    val objectiveState by objectiveViewModel.uiState.collectAsState()
     val listState by listViewModel.uiState.collectAsState()
-    val planState by planViewModel.uiState.collectAsState()
-    val twelveWeekUiState by twelveWeekViewModel.uiState.collectAsState()
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -86,27 +49,12 @@ internal fun TaskScreen(
                 drawerContainerColor = MaterialTheme.colorScheme.surface
             ) {
                 TaskSidebar(
-                    goals = state.board.goals,
                     lists = state.board.lists,
-                    isBoardSelected = state.selectedGoalId == null &&
-                            state.selectedListId == null &&
-                            !state.isPlanSelected &&
-                            !state.isTwelveWeekSelected,
+                    isBoardSelected = state.selectedListId == null,
                     selectedListId = state.selectedListId,
-                    selectedGoalId = state.selectedGoalId,
                     isTagsSelected = false,
-                    isPlanSelected = state.isPlanSelected,
-                    isTwelveWeekSelected = state.isTwelveWeekSelected,
                     onBoardClick = {
                         viewModel.selectBoard()
-                        scope.launch { drawerState.close() }
-                    },
-                    onPlanClick = {
-                        viewModel.selectPlan()
-                        scope.launch { drawerState.close() }
-                    },
-                    onTwelveWeekClick = {
-                        viewModel.selectTwelveWeek()
                         scope.launch { drawerState.close() }
                     },
                     onListClick = { listId ->
@@ -117,12 +65,6 @@ internal fun TaskScreen(
                         scope.launch { drawerState.close() }
                         onOpenTags()
                     },
-                    onGoalClick = { goalId ->
-                        viewModel.selectGoal(goalId)
-                        scope.launch { drawerState.close() }
-                    },
-                    onAddGoalClick = { goalViewModel.openNewGoal() },
-                    onEditGoalClick = { goal -> goalViewModel.openEditGoal(goal) },
                     onAddListClick = { listViewModel.openNewList() },
                     onEditListClick = { list -> listViewModel.openEditList(list) }
                 )
@@ -133,43 +75,11 @@ internal fun TaskScreen(
             modifier = modifier.fillMaxSize(),
             containerColor = MaterialTheme.colorScheme.background,
             floatingActionButton = {
-                val goalSelection = goalState.selectedItemType
-                if (state.isPlanSelected) {
-                    if (planState.focus.period != PlanPeriod.Day) {
-                        FloatingActionButton(
-                            onClick = planViewModel::startAddPriority
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = "Add")
-                        }
-                    }
-                } else if (state.isTwelveWeekSelected) {
-                    // No action FAB on the 12-week hub.
-                } else if (goalSelection != null) {
-                    when (goalSelection) {
-                        is GoalItemType.Objective -> TaskActionFab(
-                            onKeyResultClick = { keyResultViewModel.openNewKeyResult(goalSelection.objectiveId) }
-                        )
-                        is GoalItemType.KeyResult -> {
-                            val keyResult = state.board.keyResults.find { it.id == goalSelection.keyResultId }
-                            if (keyResult != null) {
-                                TaskActionFab(
-                                    onTaskClick = { viewModel.openNewTaskOnKeyResult(keyResult) }
-                                )
-                            }
-                        }
-                        is GoalItemType.Task -> Unit
-                    }
-                } else if (state.selectedGoalId != null) {
-                    TaskActionFab(
-                        onObjectiveClick = { state.selectedGoalId?.let(objectiveViewModel::openNewObjective) }
-                    )
-                } else {
-                    TaskActionFab(
-                        onTaskClick = { viewModel.openNewTask() },
-                        onHabitClick = viewModel::openNewHabit,
-                        onNoteClick = viewModel::openNewNote,
-                    )
-                }
+                TaskActionFab(
+                    onTaskClick = { viewModel.openNewTask() },
+                    onHabitClick = viewModel::openNewHabit,
+                    onNoteClick = viewModel::openNewNote,
+                )
             },
             topBar = {
                 TinyTopAppBar(
@@ -183,21 +93,6 @@ internal fun TaskScreen(
                         val titleColor: Color
                         val titleText: String
                         when {
-                            state.isPlanSelected -> {
-                                titleIcon = materialIcon("Flag")
-                                titleColor = MaterialTheme.colorScheme.primary
-                                titleText = stringResource(Res.string.plan_screen_title)
-                            }
-                            state.isTwelveWeekSelected -> {
-                                titleIcon = AppIcons.Target
-                                titleColor = MaterialTheme.colorScheme.primary
-                                titleText = stringResource(Res.string.twelve_week_title)
-                            }
-                            state.selectedGoal != null -> {
-                                titleIcon = materialIcon(state.selectedGoal.icon)
-                                titleColor = state.selectedGoal.color.toColor()
-                                titleText = state.selectedGoal.title
-                            }
                             state.selectedList != null -> {
                                 titleIcon = materialIcon(state.selectedList.icon)
                                 titleColor = state.selectedList.color.toColor()
@@ -221,24 +116,6 @@ internal fun TaskScreen(
                         )
                     },
                     actions = {
-                        if (state.isPlanSelected) return@TinyTopAppBar
-                        if (state.isTwelveWeekSelected) {
-                            TwelveWeekViewOptionsMenu(
-                                showCompletedTactic = twelveWeekUiState.viewOptions.showCompletedTactic,
-                                showCompletedCycle = twelveWeekUiState.viewOptions.showCompletedCycle,
-                                onShowCompletedTacticChange = twelveWeekViewModel::setShowCompletedTactic,
-                                onShowCompletedCycleChange = twelveWeekViewModel::setShowCompletedCycle
-                            )
-                            return@TinyTopAppBar
-                        }
-                        if (state.selectedGoal != null) {
-                            HelpTooltip(markdownContent = HelpContent.okrTips)
-                        }
-                        TagOptionMenu(
-                            availableTags = state.board.tags,
-                            selectedTagIds = state.options.selectedTagIds,
-                            onTagToggle = viewModel::toggleTagFilter
-                        )
                         ViewOptionsMenu(
                             showCompleted = state.showCompleted,
                             onShowCompletedChange = viewModel::setShowCompleted,
@@ -262,54 +139,9 @@ internal fun TaskScreen(
                 Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
-            } else if (state.isPlanSelected) {
-                PeriodPlanScreen(
-                    state = planState,
-                    onFocusSelected = planViewModel::selectFocus,
-                    onPreviousPeriod = { planViewModel.shiftPeriod(-1) },
-                    onNextPeriod = { planViewModel.shiftPeriod(1) },
-                    onCurrentPeriod = {
-                        planViewModel.selectFocus(PlanFocus(planState.focus.period, today()))
-                    },
-                    onAddPriority = planViewModel::startAddPriority,
-                    onEditPriority = planViewModel::startEditPriority,
-                    onAddTaskClick = { priority ->
-                        val date = if (planState.focus.period == PlanPeriod.Day) {
-                            planState.focus.start
-                        } else {
-                            today()
-                        }
-                        viewModel.openNewTaskOnPlanPriority(priority, date)
-                    },
-                    onOpenTask = viewModel::openTask,
-                    onZoomIntoPriority = planViewModel::zoomIntoPriority,
-                    modifier = contentModifier
-                )
-            } else if (state.isTwelveWeekSelected) {
-                TwelveWeekScreen(
-                    state = twelveWeekUiState,
-                    viewModel = twelveWeekViewModel,
-                    onAddTactic = { goalId -> viewModel.openNewTactic(goalId) },
-                    onToggleTactic = viewModel::openTask,
-                    modifier = contentModifier
-                )
-            } else if (state.selectedView == TaskWorkspaceView.Goal && state.selectedGoal != null) {
-                GoalScreen(
-                    goal = state.selectedGoal,
-                    board = state.board,
-                    goalViewModel = goalViewModel,
-                    keyResultViewModel = keyResultViewModel,
-                    onTaskClick = viewModel::openTask,
-                    onNoteClick = viewModel::openNote,
-                    onEditObjective = objectiveViewModel::openEditObjective,
-                    visibleTasks = state.visibleItems.tasks,
-                    visibleNotes = state.visibleItems.notes,
-                    modifier = contentModifier
-                )
             } else {
                 TaskContent(
                     state = state,
-                    twelveWeekGoals = twelveWeekGoals,
                     onTaskClick = viewModel::openTask,
                     onNoteClick = viewModel::openNote,
                     onListDisplayTypeChange = viewModel::selectListDisplayType,
@@ -320,31 +152,6 @@ internal fun TaskScreen(
                 )
             }
         }
-    }
-
-    goalState.editor?.let { goalEditor ->
-        GoalEditorSheet(
-            editor = goalEditor,
-            onDismiss = goalViewModel::dismissEditor,
-            onSave = { goalViewModel.saveEditor() },
-            onDelete = { goalViewModel.deleteEditorGoal() },
-            onTitleChange = goalViewModel::updateTitle,
-            onColorChange = goalViewModel::updateColor,
-            onIconChange = goalViewModel::updateIcon
-        )
-    }
-
-    objectiveState.editor?.let { objectiveEditor ->
-        ObjectiveEditorSheet(
-            editor = objectiveEditor,
-            onDismiss = objectiveViewModel::dismissEditor,
-            onSave = { objectiveViewModel.saveEditor(onSaved = viewModel::selectGoal) },
-            onDelete = { objectiveViewModel.deleteEditorObjective() },
-            onTitleChange = objectiveViewModel::updateName,
-            onDateRangeChange = objectiveViewModel::updateDateRange,
-            onColorChange = objectiveViewModel::updateColor,
-            onIconChange = objectiveViewModel::updateIcon
-        )
     }
 
     listState.editor?.let { listEditor ->

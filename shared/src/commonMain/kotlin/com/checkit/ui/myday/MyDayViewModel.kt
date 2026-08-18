@@ -22,7 +22,6 @@ import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.SmartScheduleDailyPlanUseCase
 import com.checkit.domain.usecase.SprintTransitionUseCase
-import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.domain.usecase.UpdateJournalEntryUseCase
 import com.checkit.domain.usecase.UpsertDailyPlanItemUseCase
@@ -55,7 +54,6 @@ class MyDayViewModel(
     observePeriodReviews: ObservePeriodReviewsUseCase,
     upsertDailyPlanItem: UpsertDailyPlanItemUseCase,
     addSuggestedTaskToMyDay: AddSuggestedTaskToMyDayUseCase,
-    syncKeyResultFromDailyPlan: SyncKeyResultFromDailyPlanUseCase,
     updateDailyPlanItemTime: UpdateDailyPlanItemTimeUseCase,
     smartSchedule: SmartScheduleDailyPlanUseCase,
     val sprintManager: SprintManager,
@@ -76,7 +74,6 @@ class MyDayViewModel(
         observePeriodReviews = observePeriodReviews,
         upsertDailyPlanItem = upsertDailyPlanItem,
         addSuggestedTaskToMyDay = addSuggestedTaskToMyDay,
-        syncKeyResultFromDailyPlan = syncKeyResultFromDailyPlan,
         updateDailyPlanItemTime = updateDailyPlanItemTime,
         smartSchedule = smartSchedule,
         sprintManager = sprintManager,

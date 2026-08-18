@@ -8,9 +8,7 @@ import com.checkit.data.SubTaskWriteInput
 import com.checkit.data.TaskWriteInput
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
-import com.checkit.domain.KeyResult
 import com.checkit.domain.NoteItem
-import com.checkit.domain.PlanPriority
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskPriority
@@ -30,7 +28,6 @@ import com.checkit.domain.usecase.OpenTaskUseCase
 import com.checkit.domain.usecase.RestoreNoteUseCase
 import com.checkit.domain.usecase.RestoreTaskUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
-import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTagUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
@@ -72,7 +69,6 @@ class TaskViewModel(
     private val updateDailyPlanItemTime: UpdateDailyPlanItemTimeUseCase,
     private val updateDailyPlanItemStatus: UpdateDailyPlanItemStatusUseCase,
     private val updateDailyPlanItemTag: UpdateDailyPlanItemTagUseCase,
-    private val syncKeyResultFromDailyPlan: SyncKeyResultFromDailyPlanUseCase,
     private val settingsRepository: SettingsRepository
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(TaskUiState())
@@ -100,13 +96,8 @@ class TaskViewModel(
             settingsRepository.settings.collect { settings ->
                 _uiState.update { state ->
                     val persistedView = TaskWorkspaceView.fromCode(settings.taskWorkspaceViewCode)
-                    val effectiveView = if (state.selectedView == TaskWorkspaceView.Goal) {
-                        state.selectedView
-                    } else {
-                        persistedView
-                    }
                     val nextOptions = state.options.copy(
-                        selectedView = effectiveView,
+                        selectedView = persistedView,
                         listDisplayType = TaskListDisplayType.fromCode(settings.taskListDisplayTypeCode),
                         showCompleted = settings.taskShowCompleted,
                         sortOption = TaskSortOption.fromCode(settings.taskSortOptionCode)
@@ -133,29 +124,9 @@ class TaskViewModel(
         }
     }
 
-    fun selectPlan() {
-        _uiState.update {
-            it.copy(selection = TaskSelectionState(isPlanSelected = true))
-        }
-    }
-
-    fun selectTwelveWeek() {
-        _uiState.update {
-            it.copy(selection = TaskSelectionState(isTwelveWeekSelected = true))
-        }
-    }
-
     fun selectList(listId: Long) {
         _uiState.update {
             it.copy(selection = TaskSelectionState(selectedListId = listId))
-                .refreshVisibleItems()
-                .coerceViewToAvailable()
-        }
-    }
-
-    fun selectGoal(goalId: Long) {
-        _uiState.update {
-            it.copy(selection = TaskSelectionState(selectedGoalId = goalId), options = it.options.copy(selectedView = TaskWorkspaceView.Goal))
                 .refreshVisibleItems()
                 .coerceViewToAvailable()
         }
@@ -197,7 +168,7 @@ class TaskViewModel(
                     .refreshVisibleItems()
             }
         }
-        if (shouldPersist && view != TaskWorkspaceView.Goal) {
+        if (shouldPersist) {
             viewModelScope.launch {
                 settingsRepository.setTaskWorkspaceViewCode(view.name)
             }
@@ -283,35 +254,6 @@ class TaskViewModel(
         }
     }
 
-    fun openNewTactic(goalId: Long, date: LocalDate = today()) {
-        cancelPendingTaskTextSave()
-        _uiState.update {
-            it.copy(
-                editor = TaskEditorState.TaskForm(
-                    mode = EditorMode.Add,
-                    listId = null,
-                    twelveWeekGoalId = goalId,
-                    type = TaskType.Tactic,
-                    doDate = date
-                )
-            )
-        }
-    }
-
-    fun openNewTaskOnKeyResult(keyResult: KeyResult) {
-        cancelPendingTaskTextSave()
-        _uiState.update {
-            it.copy(
-                editor = TaskEditorState.TaskForm(
-                    mode = EditorMode.Add,
-                    listId = null,
-                    keyResultId = keyResult.id,
-                    doDate = null,
-                )
-            )
-        }
-    }
-
     fun openNewTaskOnDate(date: LocalDate, addToMyDayOnSave: Boolean = false) {
         val listId = editableListId()
         cancelPendingTaskTextSave()
@@ -322,20 +264,6 @@ class TaskViewModel(
                     listId = listId,
                     doDate = date,
                     addToMyDayOnSave = addToMyDayOnSave
-                )
-            )
-        }
-    }
-
-    fun openNewTaskOnPlanPriority(priority: PlanPriority, date: LocalDate = today()) {
-        cancelPendingTaskTextSave()
-        _uiState.update {
-            it.copy(
-                editor = TaskEditorState.TaskForm(
-                    mode = EditorMode.Add,
-                    listId = null,
-                    planPriorityId = priority.id,
-                    doDate = date
                 )
             )
         }
@@ -373,9 +301,6 @@ class TaskViewModel(
                     mode = EditorMode.Edit,
                     taskId = task.id,
                     listId = task.list?.id,
-                    keyResultId = task.keyResult?.id,
-                    planPriorityId = task.planPriority?.id,
-                    twelveWeekGoalId = task.twelveWeekGoalId,
                     name = task.name,
                     description = task.description,
                     doDate = task.doDate,
@@ -592,11 +517,6 @@ class TaskViewModel(
             state.copy(editor = form.copy(dailyPlanItem = updatedItem))
         }
         viewModelScope.launch {
-            syncKeyResultFromDailyPlan(
-                itemId = updatedItem.id,
-                proposedStartTime = updatedItem.startTimeMinutes,
-                proposedEndTime = updatedItem.endTimeMinutes
-            )
             updateDailyPlanItemTime(updatedItem.id, updatedItem.startTimeMinutes, updatedItem.endTimeMinutes)
         }
     }
@@ -615,7 +535,6 @@ class TaskViewModel(
             state.copy(editor = currentForm.copy(dailyPlanItem = updatedItem))
         }
         viewModelScope.launch {
-            syncKeyResultFromDailyPlan(itemId = item.id, proposedStatus = nextStatus)
             updateDailyPlanItemStatus(item.id, nextStatus)
         }
     }
@@ -713,9 +632,6 @@ class TaskViewModel(
         }
         return TaskWriteInput(
             listId = listId,
-            keyResultId = keyResultId,
-            planPriorityId = planPriorityId,
-            twelveWeekGoalId = twelveWeekGoalId,
             name = name.trim(),
             description = description.trim(),
             status = status,
@@ -745,8 +661,6 @@ class TaskViewModel(
     ): TaskWriteInput {
         return TaskWriteInput(
             listId = list?.id,
-            keyResultId = keyResult?.id,
-            planPriorityId = planPriority?.id,
             name = name,
             description = description,
             status = status,
@@ -840,16 +754,12 @@ class TaskViewModel(
         val nextListId = selectedListId?.takeIf { selectedId -> board.lists.any { it.id == selectedId } }
         val nextFilterId = options.selectedFilterId?.takeIf { selectedId -> board.filters.any { it.id == selectedId } }
         val nextTagId = selectedTagId?.takeIf { selectedId -> board.tags.any { it.id == selectedId } }
-        val nextGoalId = selectedGoalId?.takeIf { selectedId -> board.goals.any { it.id == selectedId } }
         val nextSelectedTagIds = options.selectedTagIds.filter { tagId -> board.tags.any { it.id == tagId } }.toSet()
         return copy(
             board = board,
             selection = TaskSelectionState(
                 selectedListId = nextListId,
-                selectedTagId = nextTagId,
-                selectedGoalId = nextGoalId,
-                isPlanSelected = selection.isPlanSelected,
-                isTwelveWeekSelected = selection.isTwelveWeekSelected
+                selectedTagId = nextTagId
             ),
             options = options.copy(
                 selectedFilterId = nextFilterId,

@@ -22,17 +22,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskType
-import com.checkit.domain.TwelveWeekGoal
 import com.checkit.ui.components.DateTimeRangeDetailChip
 import com.checkit.ui.components.DetailChip
 import com.checkit.ui.components.SupportingPills
@@ -41,7 +38,6 @@ import com.checkit.ui.duration
 import com.checkit.ui.tasks.HabitIcon
 import com.checkit.ui.tasks.NoteIcon
 import com.checkit.ui.tasks.SubtaskBriefList
-import com.checkit.ui.tasks.TacticIcon
 import com.checkit.ui.tasks.TaskIcon
 import com.checkit.ui.tasks.TaskListDisplayType
 import com.checkit.ui.tasks.cardColor
@@ -55,8 +51,7 @@ internal fun TaskRow(
     task: TaskItem,
     onClick: () -> Unit,
     showList: Boolean = true,
-    displayType: TaskListDisplayType = TaskListDisplayType.Standard,
-    twelveWeekGoal: TwelveWeekGoal? = null,
+    displayType: TaskListDisplayType = TaskListDisplayType.Standard
 ) {
     BaseTaskRow(
         color = task.cardColor(),
@@ -67,8 +62,8 @@ internal fun TaskRow(
         Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
             when (displayType) {
                 TaskListDisplayType.Brief -> BriefTaskRowContent(task)
-                TaskListDisplayType.Standard -> StandardTaskRowContent(task, showList, twelveWeekGoal = twelveWeekGoal)
-                TaskListDisplayType.Detail -> DetailTaskRowContent(task, showList, twelveWeekGoal = twelveWeekGoal)
+                TaskListDisplayType.Standard -> StandardTaskRowContent(task, showList)
+                TaskListDisplayType.Detail -> DetailTaskRowContent(task, showList)
             }
         }
     }
@@ -144,149 +139,6 @@ internal fun BaseTaskRow(
 }
 
 @Composable
-internal fun FlatBaseTaskRow(
-    color: Color,
-    isCompleted: Boolean,
-    onClick: () -> Unit,
-    elevation: androidx.compose.ui.unit.Dp,
-    content: @Composable RowScope.() -> Unit
-) {
-    Card(
-        onClick = onClick,
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = elevation,
-            pressedElevation = 8.dp,
-            focusedElevation = 4.dp
-        )
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Top
-            ) {
-                Box(Modifier.width(4.dp))
-                content()
-            }
-
-            Box(Modifier.matchParentSize()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .width(4.dp)
-                        .background(color)
-                )
-            }
-
-            if (isCompleted) {
-                CompletedOverlay()
-            }
-        }
-    }
-}
-
-@Composable
-internal fun OKRTaskContent(
-    task: TaskItem,
-    color: Color = MaterialTheme.colorScheme.primary
-) {
-    val isCompleted = task.status == TaskStatus.Completed
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(color.copy(alpha = 0.06f))
-            .padding(horizontal = 10.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        TaskIcon(
-            completed = isCompleted,
-            color = if (isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f) else task.priority.priorityColor()
-        )
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = task.name,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    textDecoration = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None
-                ),
-                color = if (isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurface,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            if (task.subtasks.isNotEmpty()) {
-                Text(
-                    text = "${task.subtasks.count { it.isCompleted }}/${task.subtasks.size} subtasks",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = color.copy(alpha = 0.7f)
-                )
-            }
-        }
-
-        task.doDate?.let {
-            DetailChip(
-                icon = Icons.Default.Event,
-                label = it.compact(),
-                isHighlighted = task.isOverdue(),
-                backgroundColor = Color.Transparent
-            )
-        }
-    }
-}
-
-@Composable
-internal fun OKRNoteContent(
-    note: NoteItem,
-    color: Color = MaterialTheme.colorScheme.primary
-) {
-    val isCompleted = note.status == TaskStatus.Completed
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(color.copy(alpha = 0.04f))
-            .padding(horizontal = 10.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        NoteIcon(note.status)
-        Column(modifier = Modifier.weight(1f)) {
-            if (note.title.isNotBlank()) {
-                Text(
-                    text = note.title,
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        textDecoration = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None
-                    ),
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            Text(
-                text = note.content,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (isCompleted) 0.5f else 0.7f),
-                maxLines = if (note.title.isBlank()) 2 else 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        note.date?.let {
-            DetailChip(
-                icon = Icons.Default.Event,
-                label = it.compact(),
-                isHighlighted = note.isOverdue(),
-                backgroundColor = Color.Transparent
-            )
-        }
-    }
-}
-
-@Composable
 internal fun BriefTaskRowContent(task: TaskItem) {
     Row(
         modifier = Modifier.fillMaxWidth().fillMaxHeight().padding(horizontal = 10.dp, vertical = 9.dp),
@@ -295,8 +147,6 @@ internal fun BriefTaskRowContent(task: TaskItem) {
     ) {
         if (task.type == TaskType.Habit) {
             HabitIcon(task.status == TaskStatus.Completed, color = task.priority.priorityColor())
-        } else if (task.type == TaskType.Tactic) {
-            TacticIcon(task.status == TaskStatus.Completed, color = task.priority.priorityColor())
         } else {
             TaskIcon(
                 completed = task.status == TaskStatus.Completed,
@@ -317,7 +167,7 @@ internal fun BriefTaskRowContent(task: TaskItem) {
 }
 
 @Composable
-internal fun StandardTaskRowContent(task: TaskItem, showList: Boolean, twelveWeekGoal: TwelveWeekGoal? = null) {
+internal fun StandardTaskRowContent(task: TaskItem, showList: Boolean) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -329,9 +179,6 @@ internal fun StandardTaskRowContent(task: TaskItem, showList: Boolean, twelveWee
         task.subtasks.takeIf { it.isNotEmpty() }?.let { SubtaskProgressText(task) }
         SupportingPills(
             list = if (showList) task.list else null,
-            planPriority = task.planPriority,
-            keyResult = task.keyResult,
-            twelveWeekGoal = twelveWeekGoal,
             tags = task.tags.take(2),
             overflowCount = (task.tags.size - 2).coerceAtLeast(0)
         )
@@ -339,21 +186,16 @@ internal fun StandardTaskRowContent(task: TaskItem, showList: Boolean, twelveWee
 }
 
 @Composable
-internal fun DetailTaskRowContent(task: TaskItem, showList: Boolean, twelveWeekGoal: TwelveWeekGoal? = null) {
+internal fun DetailTaskRowContent(task: TaskItem, showList: Boolean) {
     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         TaskTitleRow(task, descriptionMaxLines = 3)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes, isOverdue = task.isOverdue())
             duration(task.startTimeMinutes, task.endTimeMinutes)?.let { DetailChip(Icons.Default.Schedule, it.toDurationLabel()) }
-//            RepeatPill(task.repeatRRule)
-//            if (task.reminders.isNotEmpty()) DetailChip(Icons.Default.Notifications, "${task.reminders.size} reminders")
         }
         SubtaskBriefList(task.subtasks)
         SupportingPills(
             list = if (showList) task.list else null,
-            planPriority = task.planPriority,
-            keyResult = task.keyResult,
-            twelveWeekGoal = twelveWeekGoal,
             tags = task.tags
         )
     }
@@ -459,8 +301,6 @@ internal fun TaskTitleRow(
     ) {
         if (task.type == TaskType.Habit) {
             HabitIcon(task.status == TaskStatus.Completed, task.priority.priorityColor())
-        } else if (task.type == TaskType.Tactic) {
-            TacticIcon(task.status == TaskStatus.Completed, task.priority.priorityColor())
         } else {
             TaskIcon(
                 completed = task.status == TaskStatus.Completed,
