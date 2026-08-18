@@ -1,4 +1,4 @@
-package com.checkit.ui.plan
+package com.checkit.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -32,7 +32,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -58,7 +57,7 @@ import kotlinx.datetime.toLocalIsoWeekDate
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-fun PlanPeriodHeader(
+fun FocusPeriodHeader(
     focus: PlanFocus?,
     onFocusSelected: (PlanFocus) -> Unit,
     onPreviousPeriod: () -> Unit,
@@ -70,7 +69,7 @@ fun PlanPeriodHeader(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        PlanPeriodSwitcher(
+        FocusPeriodSwitcher(
             selectedPeriod = focus?.period,
             onPeriodSelected = { period ->
                 val anchor = if (focus?.contains(today()) == true) today() else focus?.anchorDate ?: today()
@@ -78,19 +77,19 @@ fun PlanPeriodHeader(
             }
         )
         if (focus != null) {
-            PlanPeriodNavHeader(
+            FocusPeriodNavHeader(
                 focus = focus,
                 onPrevious = onPreviousPeriod,
                 onNext = onNextPeriod,
                 onCurrentPeriod = onCurrentPeriod
             )
-            PlanBreadcrumbRow(focus = focus, onZoomOutTo = onFocusSelected)
+            FocusPeriodBreadcrumbRow(focus = focus, onZoomOutTo = onFocusSelected)
         }
     }
 }
 
 @Composable
-internal fun PlanPeriodSwitcher(
+internal fun FocusPeriodSwitcher(
     selectedPeriod: PlanPeriod?,
     onPeriodSelected: (PlanPeriod) -> Unit,
     modifier: Modifier = Modifier
@@ -135,7 +134,7 @@ internal fun PlanPeriodSwitcher(
 }
 
 @Composable
-private fun PlanPeriodNavHeader(
+private fun FocusPeriodNavHeader(
     focus: PlanFocus,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
@@ -189,7 +188,7 @@ private fun PlanPeriodNavHeader(
 }
 
 @Composable
-private fun PlanBreadcrumbRow(
+private fun FocusPeriodBreadcrumbRow(
     focus: PlanFocus,
     onZoomOutTo: (PlanFocus) -> Unit
 ) {
@@ -197,7 +196,7 @@ private fun PlanBreadcrumbRow(
         PlanPeriod.entries.forEach { period ->
             if (period.ordinal <= focus.period.ordinal) {
                 val crumbFocus = PlanFocus(period, focus.anchorDate)
-                add(PlanCrumb(period, crumbFocus, crumbFocus.crumbLabel()))
+                add(FocusPeriodCrumb(period, crumbFocus, crumbFocus.crumbLabel()))
             }
         }
     }
@@ -236,7 +235,7 @@ private fun PlanBreadcrumbRow(
     }
 }
 
-private data class PlanCrumb(
+private data class FocusPeriodCrumb(
     val period: PlanPeriod,
     val focus: PlanFocus,
     val label: String

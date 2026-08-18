@@ -117,7 +117,7 @@ import com.checkit.domain.TaskPriority
 import com.checkit.domain.filterNestedTree
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DateRangePill
-import com.checkit.ui.plan.PlanPeriodHeader
+import com.checkit.ui.components.FocusPeriodHeader
 import com.checkit.ui.components.PeriodPicker
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TagPlain
@@ -1244,7 +1244,7 @@ private fun NestedListFilterBar(
             }
         }
 
-        PlanPeriodHeader(
+        FocusPeriodHeader(
             focus = focus,
             onFocusSelected = onFocusChange,
             onPreviousPeriod = onPreviousPeriod,
