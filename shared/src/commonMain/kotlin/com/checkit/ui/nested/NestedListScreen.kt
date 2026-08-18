@@ -18,6 +18,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -152,6 +153,14 @@ internal fun NestedListScreen(
                         if (activeEditor?.selection?.isActive == true) {
                             TextButton(onClick = viewModel::selectAll) { Text("Select all") }
                             TextButton(onClick = viewModel::exitSelectionMode) { Text(stringResource(Res.string.cancel)) }
+                        } else if (activeEditor != null) {
+                            IconButton(onClick = viewModel::toggleFilterVisibility) {
+                                Icon(
+                                    imageVector = Icons.Default.FilterList,
+                                    contentDescription = "Toggle filter",
+                                    tint = if (activeEditor.filters.isVisible) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                )
+                            }
                         }
                     }
                 )

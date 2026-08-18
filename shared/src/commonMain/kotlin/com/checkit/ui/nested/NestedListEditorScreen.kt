@@ -112,8 +112,12 @@ import com.checkit.domain.NestedManualMetric
 import com.checkit.domain.NestedMetricSummary
 import com.checkit.domain.NestedMetricUnit
 import com.checkit.domain.NestedTextStyle
+import com.checkit.domain.PlanFocus
 import com.checkit.domain.TaskPriority
+import com.checkit.domain.filterNestedTree
+import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DateRangePill
+import com.checkit.ui.plan.PlanPeriodHeader
 import com.checkit.ui.components.PeriodPicker
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TagPlain
@@ -129,12 +133,38 @@ internal fun NestedListEditorScreen(
     var detailsItemId by remember { mutableStateOf<Long?>(null) }
     val tree = state.tree
     val focusedNode = state.focusedItem
-    val visibleRoots = focusedNode?.let { listOf(it) } ?: tree.rootNodes
+    val unfilteredRoots = focusedNode?.let { listOf(it) } ?: tree.rootNodes
+    val visibleRoots = if (state.filters.isVisible) {
+        filterNestedTree(
+            roots = unfilteredRoots,
+            start = state.filters.focus?.start,
+            end = state.filters.focus?.endInclusive,
+            query = state.filters.query,
+            hideChecked = state.filters.hideChecked
+        )
+    } else {
+        unfilteredRoots
+    }
     val visibleRows = flattenVisibleNodes(visibleRoots)
     val breadcrumbs = buildBreadcrumbs(state, tree.rootNodes)
 
     Column(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)) {
+            if (state.filters.isVisible) {
+                NestedListFilterBar(
+                    focus = state.filters.focus,
+                    query = state.filters.query,
+                    hideChecked = state.filters.hideChecked,
+                    isActive = state.filters.isActive,
+                    onFocusChange = viewModel::updateFilterFocus,
+                    onQueryChange = viewModel::updateFilterQuery,
+                    onHideCheckedChange = { viewModel.toggleHideChecked() },
+                    onReset = viewModel::resetFilters,
+                    onPreviousPeriod = viewModel::previousFilterPeriod,
+                    onNextPeriod = viewModel::nextFilterPeriod,
+                    onCurrentPeriod = viewModel::currentFilterPeriod
+                )
+            }
             BreadcrumbBar(
                 breadcrumbs = breadcrumbs,
                 onCrumbClick = { itemId -> viewModel.zoomToItem(itemId) },
@@ -1171,6 +1201,120 @@ private fun findAncestorChain(nodes: List<NestedItemNode>, id: Long): List<Neste
         findAncestorChain(node.children, id)?.let { return listOf(node) + it }
     }
     return null
+}
+
+@Composable
+private fun NestedListFilterBar(
+    focus: PlanFocus?,
+    query: String,
+    hideChecked: Boolean,
+    isActive: Boolean,
+    onFocusChange: (PlanFocus) -> Unit,
+    onQueryChange: (String) -> Unit,
+    onHideCheckedChange: (Boolean) -> Unit,
+    onReset: () -> Unit,
+    onPreviousPeriod: () -> Unit,
+    onNextPeriod: () -> Unit,
+    onCurrentPeriod: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "FILTERS",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
+            if (isActive) {
+                Text(
+                    text = "Reset",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.clip(RoundedCornerShape(4.dp)).clickable { onReset() }.padding(horizontal = 4.dp, vertical = 2.dp)
+                )
+            }
+        }
+
+        PlanPeriodHeader(
+            focus = focus,
+            onFocusSelected = onFocusChange,
+            onPreviousPeriod = onPreviousPeriod,
+            onNextPeriod = onNextPeriod,
+            onCurrentPeriod = onCurrentPeriod
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            AppOutlinedTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                placeholder = "Search items...",
+                clearEnabled = true,
+                maxLines = 1,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(40.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                    .border(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                        shape = RoundedCornerShape(10.dp)
+                    ),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+            )
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .height(40.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .clickable { onHideCheckedChange(!hideChecked) }
+                    .background(
+                        if (hideChecked) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                    )
+                    .border(
+                        width = 1.dp,
+                        color = if (hideChecked) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                        else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                        shape = RoundedCornerShape(10.dp)
+                    )
+                    .padding(horizontal = 12.dp)
+            ) {
+                Icon(
+                    imageVector = if (hideChecked) Icons.Default.Done else Icons.Default.Close,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = if (hideChecked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = "Hide checked",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (hideChecked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        HorizontalDivider(
+            modifier = Modifier.padding(top = 4.dp),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+        )
+    }
 }
 
 @Composable

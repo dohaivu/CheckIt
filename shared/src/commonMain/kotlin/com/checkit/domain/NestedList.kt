@@ -141,6 +141,73 @@ fun calculateNestedMetricSummaries(roots: List<NestedItemNode>): Map<Long, Neste
 }
 
 /**
+ * Prunes the tree, keeping only nodes that overlap with [start] to [end]
+ * (inclusive) OR have descendants that do. Supports text [query] and [hideChecked] status.
+ */
+fun filterNestedTree(
+    roots: List<NestedItemNode>,
+    start: LocalDate?,
+    end: LocalDate?,
+    query: String = "",
+    hideChecked: Boolean = false
+): List<NestedItemNode> {
+    return roots.mapNotNull { filterNestedNode(it, start, end, query, hideChecked) }
+}
+
+private fun filterNestedNode(
+    node: NestedItemNode,
+    start: LocalDate?,
+    end: LocalDate?,
+    query: String,
+    hideChecked: Boolean,
+    forceKeep: Boolean = false
+): NestedItemNode? {
+    val item = node.item
+
+    // 1. Hide Checked: if enabled and item is checked, prune it and its subtree entirely
+    if (hideChecked && item.checked) return null
+
+    // 2. Determine if this node matches the POSITIVE criteria (Search + Date)
+    
+    // Date match: overlap with start/end if filter is provided
+    val matchesDate = if (start != null && end != null) {
+        if (item.startDate != null && item.endDate != null) {
+            item.startDate <= end && item.endDate >= start
+        } else {
+            false
+        }
+    } else {
+        true // No date filter active
+    }
+    val matchesQuery = if (query.isNotBlank()) {
+        item.text.contains(query, ignoreCase = true) || item.note?.contains(query, ignoreCase = true) == true
+    } else {
+        true
+    }
+
+    // Direct match means it satisfies search and date constraints
+    val matchesSelf = matchesDate && matchesQuery
+
+    // If an ancestor matched OR this node matches, we "force keep" descendants
+    val shouldForceKeepDescendants = forceKeep || matchesSelf
+
+    // 3. Recurse children
+    val filteredChildren = node.children.mapNotNull {
+        filterNestedNode(it, start, end, query, hideChecked, shouldForceKeepDescendants)
+    }
+
+    // Keep node if:
+    // a) It's forced kept (because an ancestor matched positive filters)
+    // b) It matched positive filters directly
+    // c) It has descendants that matched (bottom-up context)
+    return if (shouldForceKeepDescendants || filteredChildren.isNotEmpty()) {
+        node.copy(children = filteredChildren)
+    } else {
+        null
+    }
+}
+
+/**
  * A single re-parent/reorder instruction produced by [planNestedMoves].
  * Sibling gaps in [position] are acceptable; relative order is what matters.
  */

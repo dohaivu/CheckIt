@@ -48,6 +48,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.LocalDate
+import com.checkit.domain.PlanFocus
+import com.checkit.domain.PlanPeriod
+import com.checkit.ui.today
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 
 // --- State Hierarchy ---
 
@@ -62,6 +68,15 @@ data class SelectionState(
     val isActive: Boolean = false,
     val selectedIds: Set<Long> = emptySet()
 )
+
+data class NestedFilterState(
+    val isVisible: Boolean = false,
+    val focus: PlanFocus? = null,
+    val query: String = "",
+    val hideChecked: Boolean = false
+) {
+    val isActive: Boolean get() = focus != null || query.isNotBlank() || hideChecked
+}
 
 sealed interface NestedEditorOverlay {
     data object None : NestedEditorOverlay
@@ -81,7 +96,8 @@ sealed interface NestedEditorState {
         val overlay: NestedEditorOverlay = NestedEditorOverlay.None,
         val selectedItemId: Long? = null,
         val editingTextItemId: Long? = null,
-        val availableTags: List<TagItem> = emptyList()
+        val availableTags: List<TagItem> = emptyList(),
+        val filters: NestedFilterState = NestedFilterState()
     ) : NestedEditorState {
         val focusedItem: NestedItemNode? get() = tree.nodeById[zoomPath.lastOrNull()]
     }
@@ -268,6 +284,49 @@ class NestedListsViewModel(
     }
 
     fun zoomToRoot() = updateActiveEditor { it.copy(zoomPath = emptyList()) }
+
+    // --- Filtering ---
+
+    fun toggleFilterVisibility() {
+        updateActiveEditor { it.copy(filters = it.filters.copy(isVisible = !it.filters.isVisible)) }
+    }
+
+    fun updateFilterFocus(focus: PlanFocus) {
+        updateActiveEditor { it.copy(filters = it.filters.copy(focus = focus)) }
+    }
+
+    fun updateFilterQuery(query: String) {
+        updateActiveEditor { it.copy(filters = it.filters.copy(query = query)) }
+    }
+
+    fun toggleHideChecked() {
+        updateActiveEditor { it.copy(filters = it.filters.copy(hideChecked = !it.filters.hideChecked)) }
+    }
+
+    fun resetFilters() {
+        updateActiveEditor { it.copy(filters = it.filters.copy(focus = null, query = "", hideChecked = false)) }
+    }
+
+    fun nextFilterPeriod() {
+        updateActiveEditor { current ->
+            val focus = current.filters.focus ?: return@updateActiveEditor current
+            current.copy(filters = current.filters.copy(focus = focus.shift(1)))
+        }
+    }
+
+    fun previousFilterPeriod() {
+        updateActiveEditor { current ->
+            val focus = current.filters.focus ?: return@updateActiveEditor current
+            current.copy(filters = current.filters.copy(focus = focus.shift(-1)))
+        }
+    }
+
+    fun currentFilterPeriod() {
+        updateActiveEditor { current ->
+            val period = current.filters.focus?.period ?: PlanPeriod.Week
+            current.copy(filters = current.filters.copy(focus = PlanFocus(period, today())))
+        }
+    }
 
     // --- Item Editing ---
 
