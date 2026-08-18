@@ -57,6 +57,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -102,7 +103,6 @@ import checkit.shared.generated.resources.nested_move_down
 import checkit.shared.generated.resources.nested_move_up
 import checkit.shared.generated.resources.nested_outdent
 import checkit.shared.generated.resources.nested_root
-import checkit.shared.generated.resources.nested_untitled_document
 import checkit.shared.generated.resources.nested_zoom_in
 import checkit.shared.generated.resources.nested_zoom_out
 import com.checkit.domain.MetricRollupPolicy
@@ -112,7 +112,6 @@ import com.checkit.domain.NestedManualMetric
 import com.checkit.domain.NestedMetricSummary
 import com.checkit.domain.NestedMetricUnit
 import com.checkit.domain.NestedTextStyle
-import com.checkit.domain.TagItem
 import com.checkit.domain.TaskPriority
 import com.checkit.ui.components.DateRangePill
 import com.checkit.ui.components.PeriodPicker
@@ -135,40 +134,45 @@ internal fun NestedListEditorScreen(
     val breadcrumbs = buildBreadcrumbs(state, tree.rootNodes)
 
     Column(modifier = modifier.fillMaxSize()) {
-        BreadcrumbBar(
-            breadcrumbs = breadcrumbs,
-            onCrumbClick = { itemId -> viewModel.zoomToItem(itemId) },
-            onRootClick = viewModel::zoomToRoot
-        )
-
-        if (state.selection.isActive) {
-            SelectionToolbar(
-                state = state,
-                onToggleDone = { viewModel.batchSetChecked(true) },
-                onDelete = viewModel::requestDeleteSelected,
-                onExit = viewModel::exitSelectionMode
+        Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)) {
+            BreadcrumbBar(
+                breadcrumbs = breadcrumbs,
+                onCrumbClick = { itemId -> viewModel.zoomToItem(itemId) },
+                onRootClick = viewModel::zoomToRoot
             )
-        } else {
-            EditorToolbar(
-                state = state,
-                onZoomIn = viewModel::zoomInSelected,
-                onZoomOut = viewModel::zoomOut,
-                onIndent = { state.selectedItemId?.let(viewModel::indent) },
-                onOutdent = { state.selectedItemId?.let(viewModel::outdent) },
-                onMoveUp = { state.selectedItemId?.let(viewModel::moveUp) },
-                onMoveDown = { state.selectedItemId?.let(viewModel::moveDown) },
-                onAddChild = { state.selectedItemId?.let(viewModel::startAddChild) },
-                onAddSibling = { state.selectedItemId?.let(viewModel::startAddSibling) },
-                onDelete = viewModel::requestDeleteSelected,
-                onAddRoot = viewModel::startAddRoot,
-                onManageDetails = { state.selectedItemId?.let { detailsItemId = it } },
-                onAddToDailyPlan = {
-                    state.selectedItemId?.let { id ->
-                        state.tree.nodeById[id]?.item?.let { item ->
-                            onAddToDailyPlan(item.text, item.tags.map { it.id }, item.id)
+
+            if (state.selection.isActive) {
+                SelectionToolbar(
+                    state = state,
+                    onToggleDone = { viewModel.batchSetChecked(true) },
+                    onDelete = viewModel::requestDeleteSelected,
+                    onExit = viewModel::exitSelectionMode
+                )
+            } else {
+                EditorToolbar(
+                    state = state,
+                    onZoomIn = viewModel::zoomInSelected,
+                    onZoomOut = viewModel::zoomOut,
+                    onIndent = { state.selectedItemId?.let(viewModel::indent) },
+                    onOutdent = { state.selectedItemId?.let(viewModel::outdent) },
+                    onMoveUp = { state.selectedItemId?.let(viewModel::moveUp) },
+                    onMoveDown = { state.selectedItemId?.let(viewModel::moveDown) },
+                    onAddChild = { state.selectedItemId?.let(viewModel::startAddChild) },
+                    onAddSibling = { state.selectedItemId?.let(viewModel::startAddSibling) },
+                    onDelete = viewModel::requestDeleteSelected,
+                    onAddRoot = viewModel::startAddRoot,
+                    onManageDetails = { state.selectedItemId?.let { detailsItemId = it } },
+                    onAddToDailyPlan = {
+                        state.selectedItemId?.let { id ->
+                            state.tree.nodeById[id]?.item?.let { item ->
+                                onAddToDailyPlan(item.text, item.tags.map { it.id }, item.id)
+                            }
                         }
                     }
-                }
+                )
+            }
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
             )
         }
 
@@ -1179,6 +1183,7 @@ private fun BreadcrumbBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface)
             .horizontalScroll(scrollState)
             .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
