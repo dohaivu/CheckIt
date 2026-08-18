@@ -158,6 +158,7 @@ data class DailyPlanItemEditorState(
     val mode: EditorMode = EditorMode.Add,
     val itemId: Long? = null,
     val taskId: Long? = null,
+    val nestedListItemId: Long? = null,
     val date: LocalDate = today(),
     val source: DailyPlanItemSource = DailyPlanItemSource.MyDayTask,
     val title: String = "",
@@ -200,12 +201,6 @@ fun DailyPlanItemSource.defaultStatus(): DailyPlanItemStatus = when (this) {
     DailyPlanItemSource.MyDayNote,
     DailyPlanItemSource.MyDayReminder -> DailyPlanItemStatus.Planned
     else -> DailyPlanItemStatus.Done
-}
-
-fun DailyPlanItem.workMinutes(): Int {
-    val start = startTimeMinutes ?: return 0
-    val end = endTimeMinutes ?: return 0
-    return (end - start).coerceAtLeast(0)
 }
 
 fun DailyPlan?.doneWorkMinutes(): Int =

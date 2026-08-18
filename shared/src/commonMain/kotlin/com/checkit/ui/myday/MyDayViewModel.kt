@@ -129,7 +129,8 @@ class MyDayViewModel(
     fun dismissSuggestions() = planAssist.dismissSuggestions()
     fun addTaskFromSuggestion(task: TaskItem) = planAssist.addTaskFromSuggestion(task)
     fun addTaskToMyDay(task: TaskItem) = planAssist.addTaskToMyDay(task)
-    fun quickAddDailyPlanItem(title: String, tagIds: List<Long>) = planAssist.quickAddDailyPlanItem(title, tagIds)
+    fun addDailyPlanItem(title: String, tagIds: List<Long>, nestedListItemId: Long? = null) = 
+        planAssist.addDailyPlanItem(title, tagIds, nestedListItemId)
 
     // Smart scheduler
     fun smartSchedule() = smartScheduler.scheduleAll()

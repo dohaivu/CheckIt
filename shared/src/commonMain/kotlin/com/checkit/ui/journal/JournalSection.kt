@@ -76,6 +76,7 @@ import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.EmojiPicker
 import com.checkit.ui.components.TagPlain
 import com.checkit.ui.components.getMoodColorFromEmoji
+import com.checkit.ui.components.asAnnotatedString
 import com.checkit.ui.tasks.TimelineItem
 import com.checkit.ui.tasks.TimelineItemType
 import com.checkit.ui.tasks.toClockLabel
@@ -525,7 +526,7 @@ private fun JournalAgendaReviewCard(
         )
         if (review.content.isNotBlank()) {
             Text(
-                text = review.annotatedContent,
+                text = review.content.asAnnotatedString(),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -571,7 +572,7 @@ internal fun JournalEntryCard(
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(
-                text = entry.annotatedContent,
+                text = entry.content.asAnnotatedString(),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface,
                 lineHeight = 20.sp
@@ -668,7 +669,7 @@ internal fun JournalHistoryEntryCard(
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Text(
-            text = entry.annotatedContent,
+            text = entry.content.asAnnotatedString(),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
             lineHeight = 24.sp
@@ -721,7 +722,7 @@ internal fun JournalThoughtCard(
             RichTooltip(
                 title = { Text(entry.context ?: "Check-In") }
             ) {
-                Text(entry.annotatedContent)
+                Text(entry.content.asAnnotatedString())
             }
         },
         state = tooltipState
@@ -742,8 +743,9 @@ internal fun JournalThoughtCard(
                 .clickable { scope.launch { tooltipState.show() } }
                 .padding(horizontal = 12.dp, vertical = 6.dp)
         ) {
-            Text(
-                text = if (entry.content.isNotBlank()) entry.annotatedContent else AnnotatedString(entry.context.orEmpty()),
+            val annotatedContent = entry.content.asAnnotatedString()
+        Text(
+                text = if (entry.content.isNotBlank()) annotatedContent else AnnotatedString(entry.context.orEmpty()),
                 style = MaterialTheme.typography.bodyMedium,
                 fontFamily = FontFamily.Cursive,
                 fontSize = 16.sp,

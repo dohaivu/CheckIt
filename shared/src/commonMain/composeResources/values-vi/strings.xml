@@ -212,4 +212,25 @@
     <string name="twelve_week_all_tactics">Tất cả thao tác</string>
     <string name="twelve_week_this_week">Tuần này</string>
     <string name="twelve_week_tactics_empty">Chưa có thao tác nào. Thêm một thao tác để tiến bộ.</string>
+
+    <string name="tab_lists">Danh sách</string>
+    <string name="nested_lists_title">Danh sách lồng nhau</string>
+    <string name="nested_documents_empty">Chưa có tài liệu nào. Nhấn + để tạo.</string>
+    <string name="nested_new_document">Tài liệu mới</string>
+    <string name="nested_delete_document">Xóa tài liệu</string>
+    <string name="nested_delete_confirm">Xóa “%1$s” và mọi thứ bên trong?</string>
+    <string name="nested_untitled_document">Chưa đặt tên</string>
+    <string name="nested_root">Tài liệu</string>
+    <string name="nested_confirm_delete">Xóa mục</string>
+    <string name="nested_batch_delete">Xóa</string>
+    <string name="nested_selection_mode">Chế độ chọn</string>
+    <string name="nested_indent">Thụt lề</string>
+    <string name="nested_outdent">Lùi lề</string>
+    <string name="nested_move_up">Lên trên</string>
+    <string name="nested_move_down">Xuống dưới</string>
+    <string name="nested_add_child">Thêm mục con</string>
+    <string name="nested_add_sibling">Thêm mục cùng cấp</string>
+    <string name="nested_zoom_in">Phóng to</string>
+    <string name="nested_zoom_out">Thu nhỏ</string>
+    <string name="nested_edit_note">Ghi chú</string>
 </resources>

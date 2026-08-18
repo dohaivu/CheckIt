@@ -212,4 +212,25 @@
     <string name="twelve_week_all_tactics">全部行动</string>
     <string name="twelve_week_this_week">本周</string>
     <string name="twelve_week_tactics_empty">还没有行动。添加一个行动来推进进度。</string>
+
+    <string name="tab_lists">清单</string>
+    <string name="nested_lists_title">嵌套清单</string>
+    <string name="nested_documents_empty">还没有文档。点击 + 创建。</string>
+    <string name="nested_new_document">新建文档</string>
+    <string name="nested_delete_document">删除文档</string>
+    <string name="nested_delete_confirm">删除“%1$s”及其中所有内容？</string>
+    <string name="nested_untitled_document">未命名</string>
+    <string name="nested_root">文档</string>
+    <string name="nested_confirm_delete">删除项目</string>
+    <string name="nested_batch_delete">删除</string>
+    <string name="nested_selection_mode">选择模式</string>
+    <string name="nested_indent">缩进</string>
+    <string name="nested_outdent">减少缩进</string>
+    <string name="nested_move_up">上移</string>
+    <string name="nested_move_down">下移</string>
+    <string name="nested_add_child">添加子项</string>
+    <string name="nested_add_sibling">添加同级</string>
+    <string name="nested_zoom_in">放大</string>
+    <string name="nested_zoom_out">缩小</string>
+    <string name="nested_edit_note">备注</string>
 </resources>

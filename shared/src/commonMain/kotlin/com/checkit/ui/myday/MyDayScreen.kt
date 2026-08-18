@@ -295,7 +295,7 @@ internal fun MyDayScreen(
                 onTaskClick.invoke(it, null)
             },
             onAddTask = viewModel::addTaskFromSuggestion,
-            onQuickAdd = viewModel::quickAddDailyPlanItem,
+            onQuickAdd = viewModel::addDailyPlanItem,
             onCarryLeftover = viewModel::carryYesterdayLeftover,
             onCarryAllLeftovers = viewModel::carryAllYesterdayLeftovers,
             onCreateTask = {

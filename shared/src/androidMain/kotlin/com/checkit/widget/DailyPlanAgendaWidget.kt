@@ -63,7 +63,10 @@ import com.checkit.ui.tasks.toClockLabel
 import com.checkit.ui.tasks.toDurationLabel
 import com.checkit.ui.today
 import kotlinx.coroutines.flow.first
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -76,8 +79,9 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
     private val observeDailyPlans: ObserveDailyPlansUseCase by inject()
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
+        val today = today()
         val board = observeTaskBoard().first()
-        val dailyPlans = observeDailyPlans().first()
+        val dailyPlans = observeDailyPlans(startDate = today, endDate = today).first()
         val todayPlan = dailyPlans.find { it.date == today }
         val items = todayPlan?.items ?: emptyList()
 

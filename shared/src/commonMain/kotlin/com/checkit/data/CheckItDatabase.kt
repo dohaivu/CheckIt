@@ -173,15 +173,22 @@ data class NoteEntity(
             parentColumns = ["id"],
             childColumns = ["taskId"],
             onDelete = ForeignKey.SET_NULL
+        ),
+        ForeignKey(
+            entity = NestedListItemEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["nestedListItemId"],
+            onDelete = ForeignKey.SET_NULL
         )
     ],
-    indices = [Index("dateEpochDays"), Index("taskId"), Index("status")]
+    indices = [Index("dateEpochDays"), Index("taskId"), Index("status"), Index("nestedListItemId")]
 )
 data class DailyPlanItemEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0L,
     val dateEpochDays: Int,
     val taskId: Long? = null,
+    val nestedListItemId: Long? = null,
     val title: String,
     val note: String? = null,
     val source: String,
@@ -656,6 +663,106 @@ data class TwelveWeekGoalTaskEntity(
     val sortOrder: Int
 )
 
+@Entity(tableName = "nested_documents")
+data class NestedDocumentEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0L,
+    val title: String,
+    val createdAtMillis: Long,
+    val updatedAtMillis: Long
+)
+
+@Entity(
+    tableName = "nested_list_items",
+    foreignKeys = [
+        ForeignKey(
+            entity = NestedDocumentEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["documentId"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = NestedListItemEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["parentId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("documentId"), Index("parentId"), Index("startDateEpochDays"), Index("endDateEpochDays"), Index("priority")]
+)
+data class NestedListItemEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0L,
+    val documentId: Long,
+    val parentId: Long? = null,
+    val position: Int,
+    val text: String,
+    val note: String? = null,
+    val checkboxEnabled: Boolean = false,
+    val checked: Boolean = false,
+    val collapsed: Boolean = false,
+    val textStyle: String = "Body",
+    val textColor: String = "Default",
+    val backgroundColor: String = "Default",
+    val startDateEpochDays: Int? = null,
+    val endDateEpochDays: Int? = null,
+    val priority: String = "None",
+    val actualMinutes: Int = 0,
+    val metricRollupPolicy: String = "IncludeChildren",
+    val showTrackedMinutes: Boolean = false,
+    val createdAtMillis: Long,
+    val updatedAtMillis: Long
+)
+
+@Entity(
+    tableName = "nested_manual_metrics",
+    foreignKeys = [
+        ForeignKey(
+            entity = NestedListItemEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["itemId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("itemId"), Index(value = ["itemId", "sortOrder"])]
+)
+data class NestedManualMetricEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0L,
+    val itemId: Long,
+    val name: String,
+    val value: String,
+    val targetValue: String? = null,
+    val unit: String = "None",
+    val customUnit: String? = null,
+    val sortOrder: Int = 0,
+    val enabled: Boolean = true
+)
+
+@Entity(
+    tableName = "nested_item_tags",
+    primaryKeys = ["itemId", "tagId"],
+    foreignKeys = [
+        ForeignKey(
+            entity = NestedListItemEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["itemId"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = TagEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["tagId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("itemId"), Index("tagId")]
+)
+data class NestedItemTagEntity(
+    val itemId: Long,
+    val tagId: Long
+)
+
 @Database(
     entities = [
         GoalEntity::class,
@@ -686,9 +793,13 @@ data class TwelveWeekGoalTaskEntity(
         TwelveWeekGoalEntity::class,
         TwelveWeekCheckInEntity::class,
         TwelveWeekGoalScoreEntity::class,
-        TwelveWeekGoalTaskEntity::class
+        TwelveWeekGoalTaskEntity::class,
+        NestedDocumentEntity::class,
+        NestedListItemEntity::class,
+        NestedItemTagEntity::class,
+        NestedManualMetricEntity::class
     ],
-    version = 1,
+    version = 4,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)

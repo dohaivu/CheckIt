@@ -13,10 +13,13 @@ import com.checkit.data.provideDatabaseBuilder
 import com.checkit.domain.CheckInReminderPolicy
 import com.checkit.domain.DailyPlanScheduleReminderPolicy
 import com.checkit.domain.SprintManager
+import com.checkit.domain.usecase.AbandonTwelveWeekCycleUseCase
 import com.checkit.domain.usecase.AddDailyPlanItemUseCase
 import com.checkit.domain.usecase.AddGoalUseCase
 import com.checkit.domain.usecase.AddJournalEntryUseCase
 import com.checkit.domain.usecase.AddListUseCase
+import com.checkit.domain.usecase.AddNestedDocumentUseCase
+import com.checkit.domain.usecase.AddNestedItemUseCase
 import com.checkit.domain.usecase.AddNoteUseCase
 import com.checkit.domain.usecase.AddObjectiveUseCase
 import com.checkit.domain.usecase.AddPlanPriorityUseCase
@@ -26,7 +29,6 @@ import com.checkit.domain.usecase.AddTagUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
 import com.checkit.domain.usecase.AddTwelveWeekGoalUseCase
-import com.checkit.domain.usecase.AbandonTwelveWeekCycleUseCase
 import com.checkit.domain.usecase.AutoAddTodayTasksToMyDayUseCase
 import com.checkit.domain.usecase.BuildDayCloseSummaryUseCase
 import com.checkit.domain.usecase.BuildPeriodReviewDraftUseCase
@@ -39,6 +41,8 @@ import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.DeleteGoalUseCase
 import com.checkit.domain.usecase.DeleteJournalEntryUseCase
 import com.checkit.domain.usecase.DeleteListUseCase
+import com.checkit.domain.usecase.DeleteNestedDocumentUseCase
+import com.checkit.domain.usecase.DeleteNestedItemsUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteObjectiveUseCase
 import com.checkit.domain.usecase.DeletePlanPriorityUseCase
@@ -48,25 +52,33 @@ import com.checkit.domain.usecase.DeleteTwelveWeekGoalUseCase
 import com.checkit.domain.usecase.IsTagNameTakenUseCase
 import com.checkit.domain.usecase.LinkDailyPlanItemToPlanPriorityUseCase
 import com.checkit.domain.usecase.LinkTaskToPlanPriorityUseCase
+import com.checkit.domain.usecase.MoveNestedItemsUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
+import com.checkit.domain.usecase.ObserveNestedDocumentTreeUseCase
+import com.checkit.domain.usecase.ObserveNestedDocumentsUseCase
+import com.checkit.domain.usecase.ObserveNestedTagsUseCase
 import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
 import com.checkit.domain.usecase.ObservePlanWorkspaceUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.ObserveTwelveWeekWorkspaceUseCase
 import com.checkit.domain.usecase.OpenNoteUseCase
 import com.checkit.domain.usecase.OpenTaskUseCase
+import com.checkit.domain.usecase.RenameNestedDocumentUseCase
 import com.checkit.domain.usecase.ReorderPlanPrioritiesUseCase
+import com.checkit.domain.usecase.ReplaceNestedManualMetricsUseCase
 import com.checkit.domain.usecase.RestoreNoteUseCase
 import com.checkit.domain.usecase.RestoreTaskUseCase
 import com.checkit.domain.usecase.SavePeriodReviewUseCase
 import com.checkit.domain.usecase.SaveSprintAsWinUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
+import com.checkit.domain.usecase.SetNestedItemCheckboxEnabledUseCase
+import com.checkit.domain.usecase.SetNestedItemsCheckedUseCase
 import com.checkit.domain.usecase.SmartScheduleDailyPlanUseCase
 import com.checkit.domain.usecase.SprintTransitionUseCase
 import com.checkit.domain.usecase.StartTwelveWeekCycleUseCase
-import com.checkit.domain.usecase.UpdateTwelveWeekCycleUseCase
 import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
+import com.checkit.domain.usecase.ToggleNestedItemCollapsedUseCase
 import com.checkit.domain.usecase.TogglePlanPriorityDoneUseCase
 import com.checkit.domain.usecase.UnlinkTacticFromGoalUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
@@ -75,18 +87,27 @@ import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.domain.usecase.UpdateGoalUseCase
 import com.checkit.domain.usecase.UpdateJournalEntryUseCase
 import com.checkit.domain.usecase.UpdateListUseCase
+import com.checkit.domain.usecase.UpdateNestedItemDateRangeUseCase
+import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
+import com.checkit.domain.usecase.UpdateNestedItemMetricSettingsUseCase
+import com.checkit.domain.usecase.UpdateNestedItemNoteUseCase
+import com.checkit.domain.usecase.UpdateNestedItemPriorityUseCase
+import com.checkit.domain.usecase.UpdateNestedItemTagsUseCase
+import com.checkit.domain.usecase.UpdateNestedItemTextUseCase
 import com.checkit.domain.usecase.UpdateNoteUseCase
 import com.checkit.domain.usecase.UpdateObjectiveUseCase
 import com.checkit.domain.usecase.UpdatePlanPriorityUseCase
 import com.checkit.domain.usecase.UpdateTagSortOrderUseCase
 import com.checkit.domain.usecase.UpdateTagUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
+import com.checkit.domain.usecase.UpdateTwelveWeekCycleUseCase
 import com.checkit.domain.usecase.UpdateTwelveWeekGoalUseCase
 import com.checkit.domain.usecase.UpsertDailyPlanItemUseCase
 import com.checkit.domain.usecase.UpsertTwelveWeekCheckInUseCase
 import com.checkit.notifications.AppReminderScheduler
 import com.checkit.ui.calendar.CalendarViewModel
 import com.checkit.ui.myday.MyDayViewModel
+import com.checkit.ui.nested.NestedListsViewModel
 import com.checkit.ui.okr.GoalViewModel
 import com.checkit.ui.okr.KeyResultViewModel
 import com.checkit.ui.okr.ObjectiveViewModel
@@ -206,6 +227,26 @@ val provideInteractorModule = module {
     single { AbandonTwelveWeekCycleUseCase(get()) }
     single { AddTacticToGoalUseCase(get(), get()) }
     single { UnlinkTacticFromGoalUseCase(get()) }
+    single { ObserveNestedDocumentsUseCase(get()) }
+    single { ObserveNestedTagsUseCase(get()) }
+    single { ObserveNestedDocumentTreeUseCase(get()) }
+    single { AddNestedDocumentUseCase(get()) }
+    single { RenameNestedDocumentUseCase(get()) }
+    single { DeleteNestedDocumentUseCase(get()) }
+    single { AddNestedItemUseCase(get()) }
+    single { UpdateNestedItemTextUseCase(get()) }
+    single { UpdateNestedItemNoteUseCase(get()) }
+    single { UpdateNestedItemFormattingUseCase(get()) }
+    single { UpdateNestedItemPriorityUseCase(get()) }
+    single { UpdateNestedItemDateRangeUseCase(get()) }
+    single { UpdateNestedItemTagsUseCase(get()) }
+    single { UpdateNestedItemMetricSettingsUseCase(get()) }
+    single { ReplaceNestedManualMetricsUseCase(get()) }
+    single { SetNestedItemCheckboxEnabledUseCase(get()) }
+    single { SetNestedItemsCheckedUseCase(get()) }
+    single { ToggleNestedItemCollapsedUseCase(get()) }
+    single { MoveNestedItemsUseCase(get()) }
+    single { DeleteNestedItemsUseCase(get()) }
 }
 
 val provideDatabaseModule = module {
@@ -292,6 +333,31 @@ val provideViewModelModule = module {
         )
     }
     viewModel { SettingsViewModel(get(), get(), get(), get<AppReminderScheduler>()) }
+    viewModel {
+        NestedListsViewModel(
+            observeDocumentsUseCase = get(),
+            observeTagsUseCase = get(),
+            observeTreeUseCase = get(),
+            addDocumentUseCase = get(),
+            renameDocumentUseCase = get(),
+            deleteDocumentUseCase = get(),
+            addItemUseCase = get(),
+            updateItemTextUseCase = get(),
+            updateItemNoteUseCase = get(),
+            updateItemFormattingUseCase = get(),
+            updateItemDateRangeUseCase = get(),
+            updateItemPriorityUseCase = get(),
+            updateItemTagsUseCase = get(),
+            updateItemMetricSettingsUseCase = get(),
+            replaceNestedManualMetricsUseCase = get(),
+            setCheckboxEnabledUseCase = get(),
+            setItemsCheckedUseCase = get(),
+            toggleCollapsedUseCase = get(),
+            moveItemsUseCase = get(),
+            deleteItemsUseCase = get(),
+            settingsRepository = get()
+        )
+    }
     viewModel {
         TwelveWeekViewModel(
             observeWorkspace = get(),

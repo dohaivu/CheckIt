@@ -163,6 +163,9 @@ interface CheckItDao {
     @Query("SELECT * FROM daily_plan_items ORDER BY sortOrder ASC, addedAtMillis ASC")
     fun observeDailyPlanItems(): Flow<List<DailyPlanItemEntity>>
 
+    @Query("SELECT * FROM daily_plan_items WHERE dateEpochDays BETWEEN :startEpochDays AND :endEpochDays ORDER BY sortOrder ASC, addedAtMillis ASC")
+    fun observeDailyPlanItemsInRange(startEpochDays: Int, endEpochDays: Int): Flow<List<DailyPlanItemEntity>>
+
     @Query("SELECT * FROM daily_plan_items WHERE id = :itemId LIMIT 1")
     suspend fun dailyPlanItemById(itemId: Long): DailyPlanItemEntity?
 
@@ -571,6 +574,19 @@ interface CheckItDao {
         targetDateEpochDays: Int,
         nowMillis: Long
     ): DayCloseCommitResult {
+        markDoneItemIds.forEach { itemId ->
+            val source = dailyPlanItemById(itemId) ?: return@forEach
+            if (source.nestedListItemId != null) {
+                val start = source.startTimeMinutes
+                val end = source.endTimeMinutes
+                if (start != null && end != null) {
+                    val minutes = (end - start).coerceAtLeast(0)
+                    if (minutes > 0) {
+                        updateNestedItemActualMinutesDelta(source.nestedListItemId, minutes, nowMillis)
+                    }
+                }
+            }
+        }
         updateDailyPlanItemsStatus(markDoneItemIds, DailyPlanItemStatus.Done.name, nowMillis)
         markDailyPlanItemsHandled(markDoneItemIds, nowMillis)
         markDailyPlanItemsHandled(dropItemIds, nowMillis)
@@ -585,6 +601,7 @@ interface CheckItDao {
                     DailyPlanItemEntity(
                         dateEpochDays = targetDateEpochDays,
                         taskId = source.taskId,
+                        nestedListItemId = source.nestedListItemId,
                         title = source.title,
                         note = source.note,
                         source = source.source,
@@ -628,6 +645,73 @@ interface CheckItDao {
         )
     }
 
+    @Transaction
+    suspend fun updateDailyPlanItemWithTags(
+        itemId: Long,
+        title: String,
+        note: String?,
+        source: String,
+        status: String,
+        startTimeMinutes: Int?,
+        endTimeMinutes: Int?,
+        completedAtMillis: Long?,
+        nestedListItemId: Long?,
+        tagIds: List<Long>,
+        nowMillis: Long
+    ) {
+        val oldEntity = dailyPlanItemById(itemId) ?: return
+        
+        updateDailyPlanItem(
+            itemId, title, note, source, status, 
+            startTimeMinutes, endTimeMinutes, completedAtMillis, nestedListItemId
+        )
+
+        if (oldEntity.nestedListItemId != null) {
+            val oldStatus = enumValueOf<DailyPlanItemStatus>(oldEntity.status)
+            val oldMinutes = if (oldStatus == DailyPlanItemStatus.Done) {
+                (oldEntity.endTimeMinutes ?: 0) - (oldEntity.startTimeMinutes ?: 0)
+            } else 0
+            val newMinutes = if (status == DailyPlanItemStatus.Done.name) {
+                (endTimeMinutes ?: 0) - (startTimeMinutes ?: 0)
+            } else 0
+            val delta = newMinutes.coerceAtLeast(0) - oldMinutes.coerceAtLeast(0)
+            if (delta != 0) {
+                updateNestedItemActualMinutesDelta(oldEntity.nestedListItemId, delta, nowMillis)
+            }
+        }
+
+        deleteDailyPlanItemTags(itemId)
+        tagIds.distinct().forEach { tagId ->
+            insertDailyPlanItemTagIfParentsExist(itemId, tagId)
+            updateTagLastUsedAtMillis(tagId, nowMillis)
+        }
+    }
+
+    @Transaction
+    suspend fun updateDailyPlanItemStatusWithMinutes(
+        itemId: Long,
+        status: String,
+        completedAtMillis: Long?,
+        nowMillis: Long
+    ) {
+        val oldEntity = dailyPlanItemById(itemId) ?: return
+        if (oldEntity.status == status) return
+
+        updateDailyPlanItemStatus(itemId, status, completedAtMillis)
+
+        if (oldEntity.nestedListItemId != null) {
+            val start = oldEntity.startTimeMinutes
+            val end = oldEntity.endTimeMinutes
+            if (start != null && end != null) {
+                val minutes = (end - start).coerceAtLeast(0)
+                if (minutes > 0) {
+                    val delta = if (status == DailyPlanItemStatus.Done.name) minutes else -minutes
+                    updateNestedItemActualMinutesDelta(oldEntity.nestedListItemId, delta, nowMillis)
+                }
+            }
+        }
+    }
+
     @Query(
         """
         UPDATE daily_plan_items
@@ -637,7 +721,8 @@ interface CheckItDao {
             status = :status,
             startTimeMinutes = :startTimeMinutes,
             endTimeMinutes = :endTimeMinutes,
-            completedAtMillis = :completedAtMillis
+            completedAtMillis = :completedAtMillis,
+            nestedListItemId = :nestedListItemId
         WHERE id = :itemId
         """
     )
@@ -649,7 +734,8 @@ interface CheckItDao {
         status: String,
         startTimeMinutes: Int?,
         endTimeMinutes: Int?,
-        completedAtMillis: Long?
+        completedAtMillis: Long?,
+        nestedListItemId: Long?
     )
 
     @Query("DELETE FROM daily_plan_items WHERE id = :itemId")
@@ -914,4 +1000,156 @@ interface CheckItDao {
 
     @Query("SELECT * FROM twelve_week_goal_tasks ORDER BY sortOrder ASC, taskId ASC")
     fun observeTwelveWeekGoalTasks(): Flow<List<TwelveWeekGoalTaskEntity>>
+
+    // ---------------- Nested Documents ----------------
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNestedDocument(document: NestedDocumentEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNestedListItem(item: NestedListItemEntity): Long
+
+    @Transaction
+    suspend fun insertNestedDocumentWithRoot(
+        document: NestedDocumentEntity,
+        rootItem: NestedListItemEntity
+    ): Long {
+        val documentId = insertNestedDocument(document)
+        insertNestedListItem(rootItem.copy(documentId = documentId))
+        return documentId
+    }
+
+    @Query("SELECT * FROM nested_documents ORDER BY updatedAtMillis DESC, id ASC")
+    fun observeNestedDocuments(): Flow<List<NestedDocumentEntity>>
+
+    @Query("SELECT * FROM nested_list_items WHERE documentId = :documentId ORDER BY position ASC, id ASC")
+    fun observeNestedItems(documentId: Long): Flow<List<NestedListItemEntity>>
+
+    @Query("SELECT * FROM nested_item_tags WHERE itemId IN (SELECT id FROM nested_list_items WHERE documentId = :documentId)")
+    fun observeNestedItemTags(documentId: Long): Flow<List<NestedItemTagEntity>>
+
+    @Query("SELECT * FROM nested_manual_metrics WHERE itemId IN (SELECT id FROM nested_list_items WHERE documentId = :documentId) ORDER BY itemId ASC, sortOrder ASC, id ASC")
+    fun observeNestedManualMetrics(documentId: Long): Flow<List<NestedManualMetricEntity>>
+
+    @Query("SELECT COALESCE(MAX(position), -1) + 1 FROM nested_list_items WHERE documentId = :documentId AND parentId IS :parentId")
+    suspend fun nextNestedItemPosition(documentId: Long, parentId: Long?): Int
+
+    @Query("UPDATE nested_documents SET title = :title, updatedAtMillis = :updatedAtMillis WHERE id = :documentId")
+    suspend fun updateNestedDocumentTitle(documentId: Long, title: String, updatedAtMillis: Long)
+
+    @Query("DELETE FROM nested_documents WHERE id = :documentId")
+    suspend fun deleteNestedDocument(documentId: Long)
+
+    @Query("UPDATE nested_list_items SET text = :text, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
+    suspend fun updateNestedItemText(itemId: Long, text: String, updatedAtMillis: Long)
+
+    @Query("UPDATE nested_list_items SET note = :note, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
+    suspend fun updateNestedItemNote(itemId: Long, note: String?, updatedAtMillis: Long)
+
+    @Query("UPDATE nested_list_items SET textStyle = :textStyle, textColor = :textColor, backgroundColor = :backgroundColor, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
+    suspend fun updateNestedItemFormatting(
+        itemId: Long,
+        textStyle: String,
+        textColor: String,
+        backgroundColor: String,
+        updatedAtMillis: Long
+    )
+
+    @Query("UPDATE nested_list_items SET priority = :priority, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
+    suspend fun updateNestedItemPriority(
+        itemId: Long,
+        priority: String,
+        updatedAtMillis: Long
+    )
+
+    @Query("UPDATE nested_list_items SET startDateEpochDays = :startDateEpochDays, endDateEpochDays = :endDateEpochDays, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
+    suspend fun updateNestedItemDateRange(
+        itemId: Long,
+        startDateEpochDays: Int?,
+        endDateEpochDays: Int?,
+        updatedAtMillis: Long
+    )
+
+    @Query("UPDATE nested_list_items SET actualMinutes = :actualMinutes, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
+    suspend fun updateNestedItemActualMinutes(itemId: Long, actualMinutes: Int, updatedAtMillis: Long)
+
+    @Query("UPDATE nested_list_items SET metricRollupPolicy = :policy, showTrackedMinutes = :showTrackedMinutes, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
+    suspend fun updateNestedItemMetricSettings(
+        itemId: Long,
+        policy: String,
+        showTrackedMinutes: Boolean,
+        updatedAtMillis: Long
+    )
+
+    @Query("UPDATE nested_list_items SET checkboxEnabled = :checkboxEnabled WHERE id = :itemId")
+    suspend fun setNestedItemCheckboxEnabled(itemId: Long, checkboxEnabled: Boolean)
+
+    @Query("UPDATE nested_list_items SET checked = :checked WHERE id IN (:itemIds)")
+    suspend fun setNestedItemsChecked(itemIds: List<Long>, checked: Boolean)
+
+    @Query("UPDATE nested_list_items SET collapsed = :collapsed WHERE id = :itemId")
+    suspend fun setNestedItemCollapsed(itemId: Long, collapsed: Boolean)
+
+    @Query("UPDATE nested_list_items SET collapsed = NOT collapsed WHERE id = :itemId")
+    suspend fun toggleNestedItemCollapsed(itemId: Long)
+
+    @Query("UPDATE nested_list_items SET parentId = :parentId, position = :position, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
+    suspend fun updateNestedItemPosition(
+        itemId: Long,
+        parentId: Long?,
+        position: Int,
+        updatedAtMillis: Long
+    )
+
+    @Query("DELETE FROM nested_list_items WHERE id IN (:itemIds)")
+    suspend fun deleteNestedItems(itemIds: List<Long>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNestedItemTag(link: NestedItemTagEntity)
+
+    @Query("DELETE FROM nested_item_tags WHERE itemId = :itemId")
+    suspend fun deleteNestedItemTags(itemId: Long)
+
+    @Transaction
+    suspend fun replaceNestedItemTags(itemId: Long, tagIds: List<Long>) {
+        deleteNestedItemTags(itemId)
+        tagIds.distinct().forEach { tagId -> insertNestedItemTag(NestedItemTagEntity(itemId, tagId)) }
+    }
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNestedManualMetric(metric: NestedManualMetricEntity): Long
+
+    @Query("DELETE FROM nested_manual_metrics WHERE id = :metricId")
+    suspend fun deleteNestedManualMetric(metricId: Long)
+
+    @Query("DELETE FROM nested_manual_metrics WHERE itemId = :itemId")
+    suspend fun deleteNestedManualMetrics(itemId: Long)
+
+    @Transaction
+    suspend fun replaceNestedManualMetrics(itemId: Long, metrics: List<NestedManualMetricEntity>) {
+        deleteNestedManualMetrics(itemId)
+        metrics.forEach { insertNestedManualMetric(it.copy(id = 0L, itemId = itemId)) }
+    }
+
+    @Query("UPDATE nested_list_items SET actualMinutes = actualMinutes + :delta, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
+    suspend fun updateNestedItemActualMinutesDelta(itemId: Long, delta: Int, updatedAtMillis: Long)
+
+    @Transaction
+    suspend fun applyNestedMoves(moves: List<NestedMoveRow>) {
+        moves.forEach { move ->
+            updateNestedItemPosition(
+                itemId = move.itemId,
+                parentId = move.parentId,
+                position = move.position,
+                updatedAtMillis = move.updatedAtMillis
+            )
+        }
+    }
 }
+
+data class NestedMoveRow(
+    val itemId: Long,
+    val parentId: Long?,
+    val position: Int,
+    val updatedAtMillis: Long
+)

@@ -58,8 +58,8 @@ import kotlinx.datetime.toLocalIsoWeekDate
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-internal fun PlanPeriodHeader(
-    focus: PlanFocus,
+fun PlanPeriodHeader(
+    focus: PlanFocus?,
     onFocusSelected: (PlanFocus) -> Unit,
     onPreviousPeriod: () -> Unit,
     onNextPeriod: () -> Unit,
@@ -71,25 +71,27 @@ internal fun PlanPeriodHeader(
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         PlanPeriodSwitcher(
-            selectedPeriod = focus.period,
+            selectedPeriod = focus?.period,
             onPeriodSelected = { period ->
-                val anchor = if (focus.contains(today())) today() else focus.anchorDate
+                val anchor = if (focus?.contains(today()) == true) today() else focus?.anchorDate ?: today()
                 onFocusSelected(PlanFocus(period, anchor))
             }
         )
-        PlanPeriodNavHeader(
-            focus = focus,
-            onPrevious = onPreviousPeriod,
-            onNext = onNextPeriod,
-            onCurrentPeriod = onCurrentPeriod
-        )
-        PlanBreadcrumbRow(focus = focus, onZoomOutTo = onFocusSelected)
+        if (focus != null) {
+            PlanPeriodNavHeader(
+                focus = focus,
+                onPrevious = onPreviousPeriod,
+                onNext = onNextPeriod,
+                onCurrentPeriod = onCurrentPeriod
+            )
+            PlanBreadcrumbRow(focus = focus, onZoomOutTo = onFocusSelected)
+        }
     }
 }
 
 @Composable
 internal fun PlanPeriodSwitcher(
-    selectedPeriod: PlanPeriod,
+    selectedPeriod: PlanPeriod?,
     onPeriodSelected: (PlanPeriod) -> Unit,
     modifier: Modifier = Modifier
 ) {

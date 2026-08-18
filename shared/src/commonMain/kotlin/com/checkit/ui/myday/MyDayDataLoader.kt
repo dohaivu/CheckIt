@@ -23,7 +23,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 
 /** Observes the underlying data sources and derives the My Day UI state. */
 internal class MyDayDataLoader(
@@ -34,10 +37,11 @@ internal class MyDayDataLoader(
     private val autoCarryMutex = Mutex()
 
     fun start() {
+        val today = today()
         scope.launch {
             combine(
                 deps.observeTaskBoard(),
-                deps.observeDailyPlans(),
+                deps.observeDailyPlans(startDate = today.minus(1, DateTimeUnit.DAY), endDate = today),
                 deps.settingsRepository.settings,
                 deps.observePeriodReviews(),
                 deps.observeJournalEntries()

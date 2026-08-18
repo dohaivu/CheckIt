@@ -12,7 +12,6 @@ import com.checkit.domain.PeriodReviewDraftTag
 import com.checkit.domain.ReviewPeriod
 import com.checkit.domain.ReviewSource
 import com.checkit.domain.ReviewStatus
-import com.checkit.ui.myday.workMinutes
 import kotlinx.serialization.json.Json
 import kotlin.time.Clock
 

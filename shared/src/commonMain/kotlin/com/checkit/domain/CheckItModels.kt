@@ -1,7 +1,5 @@
 package com.checkit.domain
 
-import com.checkit.ui.components.parseMarkdownToAnnotatedString
-import androidx.compose.ui.text.AnnotatedString
 import kotlinx.datetime.LocalDate
 
 data class AppConfig(val versionName: String)
@@ -128,9 +126,6 @@ data class TaskItem(
     val trashedAtMillis: Long? = null
 ) {
     val isTrashed: Boolean get() = trashedAtMillis != null
-    val annotatedContent: AnnotatedString by lazy {
-        parseMarkdownToAnnotatedString(description)
-    }
 }
 
 data class SubTaskItem(
@@ -156,9 +151,6 @@ data class NoteItem(
     val trashedAtMillis: Long? = null
 ) {
     val isTrashed: Boolean get() = trashedAtMillis != null
-    val annotatedContent: AnnotatedString by lazy {
-        parseMarkdownToAnnotatedString(content)
-    }
 }
 
 data class DailyPlan(
@@ -170,6 +162,7 @@ data class DailyPlanItem(
     val id: Long,
     val dateEpochDays: Int,
     val taskId: Long? = null,
+    val nestedListItemId: Long? = null,
     val title: String,
     val note: String? = null,
     val source: DailyPlanItemSource,
@@ -186,8 +179,31 @@ data class DailyPlanItem(
     /** Timestamp (epoch millis) when this item was resolved by a review or carry-over. */
     val handledAtMillis: Long? = null
 ) {
-    val annotatedContent: AnnotatedString by lazy {
-        parseMarkdownToAnnotatedString(note)
+    fun workMinutes(): Int {
+        val start = startTimeMinutes ?: return 0
+        val end = endTimeMinutes ?: return 0
+        return (end - start).coerceAtLeast(0)
+    }
+
+    /** Efficient check to see if this domain object matches a database entity and tag set. */
+    fun isSameAs(entity: com.checkit.data.DailyPlanItemEntity, resolvedTags: List<TagItem>): Boolean {
+        return id == entity.id &&
+            dateEpochDays == entity.dateEpochDays &&
+            taskId == entity.taskId &&
+            nestedListItemId == entity.nestedListItemId &&
+            title == entity.title &&
+            note == entity.note &&
+            source.name == entity.source &&
+            status.name == entity.status &&
+            sortOrder == entity.sortOrder &&
+            startTimeMinutes == entity.startTimeMinutes &&
+            endTimeMinutes == entity.endTimeMinutes &&
+            isHabit == entity.isHabit &&
+            addedAtMillis == entity.addedAtMillis &&
+            completedAtMillis == entity.completedAtMillis &&
+            carriedFromItemId == entity.carriedFromItemId &&
+            handledAtMillis == entity.handledAtMillis &&
+            tags == resolvedTags
     }
 }
 
@@ -217,11 +233,7 @@ data class JournalEntry(
     val tags: List<TagItem> = emptyList(),
     val createdTimeMinutes: Int,
     val attachments: List<String> = emptyList()
-) {
-    val annotatedContent: AnnotatedString by lazy {
-        parseMarkdownToAnnotatedString(content)
-    }
-}
+)
 
 data class TagItem(
     val id: Long,

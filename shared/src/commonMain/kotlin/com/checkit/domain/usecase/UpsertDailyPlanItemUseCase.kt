@@ -35,7 +35,8 @@ class UpsertDailyPlanItemUseCase(
                     endTimeMinutes = if (source.hasEndTime()) editor.endTimeMinutes else null,
                     source = source,
                     status = status,
-                    tagIds = editor.selectedTagIds.toList()
+                    tagIds = editor.selectedTagIds.toList(),
+                    nestedListItemId = editor.nestedListItemId
                 )
             } else {
                 syncKeyResultFromDailyPlan(
@@ -53,7 +54,8 @@ class UpsertDailyPlanItemUseCase(
                         status = status,
                         startTimeMinutes = editor.startTimeMinutes,
                         endTimeMinutes = if (source.hasEndTime()) editor.endTimeMinutes else null,
-                        tagIds = editor.selectedTagIds.toList()
+                        tagIds = editor.selectedTagIds.toList(),
+                        nestedListItemId = editor.nestedListItemId
                     )
                 )
                 editor.itemId

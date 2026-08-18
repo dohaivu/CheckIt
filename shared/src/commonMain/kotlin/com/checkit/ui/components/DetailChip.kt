@@ -35,37 +35,59 @@ internal fun DetailChip(
     backgroundColor: Color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
     borderColor: Color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
     isHighlighted: Boolean = false,
+    iconOnly: Boolean = false,
     onClick: (() -> Unit)? = null
 ) {
-    Row(
-        modifier = modifier
-            .clip(CircleShape)
-            .then(
-                if (onClick != null) {
-                    Modifier.clickable(onClick = onClick)
-                } else {
-                    Modifier
-                }
-            )
-            .background(if (isHighlighted) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f) else backgroundColor)
-            .border(1.dp, if (isHighlighted) MaterialTheme.colorScheme.error.copy(alpha = 0.5f) else borderColor, CircleShape)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+    if (iconOnly) {
         Icon(
             imageVector = icon,
             contentDescription = null,
             tint = if (isHighlighted) MaterialTheme.colorScheme.error else if (iconTint != Color.Unspecified) iconTint else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(14.dp)
+            modifier = Modifier
+                .size(24.dp)
+                .then(
+                    if (onClick != null) {
+                        Modifier.clickable(onClick = onClick)
+                    } else {
+                        Modifier
+                    }
+                )
         )
-        Text(
-            text = label,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            style = MaterialTheme.typography.labelMedium,
-            color = if (isHighlighted) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
-        )
+    } else {
+        Row(
+            modifier = modifier
+                .clip(CircleShape)
+                .then(
+                    if (onClick != null) {
+                        Modifier.clickable(onClick = onClick)
+                    } else {
+                        Modifier
+                    }
+                )
+                .background(if (isHighlighted) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f) else backgroundColor)
+                .border(
+                    1.dp,
+                    if (isHighlighted) MaterialTheme.colorScheme.error.copy(alpha = 0.5f) else borderColor,
+                    CircleShape
+                )
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (isHighlighted) MaterialTheme.colorScheme.error else if (iconTint != Color.Unspecified) iconTint else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(14.dp)
+            )
+            Text(
+                text = label,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.labelMedium,
+                color = if (isHighlighted) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 

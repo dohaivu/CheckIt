@@ -2,6 +2,7 @@ package com.checkit.ui
 
 import com.checkit.ui.calendar.CalendarViewModel
 import com.checkit.ui.myday.MyDayViewModel
+import com.checkit.ui.nested.NestedListsViewModel
 import com.checkit.ui.okr.GoalViewModel
 import com.checkit.ui.okr.KeyResultViewModel
 import com.checkit.ui.okr.ObjectiveViewModel
@@ -27,6 +28,7 @@ data class CheckItViewModels(
     val reflect: ReflectViewModel,
     val plan: PeriodPlanViewModel,
     val twelveWeek: TwelveWeekViewModel,
+    val nested: NestedListsViewModel,
     val settings: SettingsViewModel
 )
 
@@ -43,5 +45,6 @@ fun koinCheckItViewModels(): CheckItViewModels = CheckItViewModels(
     reflect = koinViewModel(),
     plan = koinViewModel(),
     twelveWeek = koinViewModel(),
+    nested = koinViewModel(),
     settings = koinViewModel()
 )

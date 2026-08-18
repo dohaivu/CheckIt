@@ -18,6 +18,16 @@ import com.checkit.domain.JournalEntry
 import com.checkit.domain.KeyResult
 import com.checkit.domain.ListItem
 import com.checkit.domain.NoteItem
+import com.checkit.domain.NestedDocument
+import com.checkit.domain.NestedDocumentTree
+import com.checkit.domain.NestedItemMove
+import com.checkit.domain.NestedListItem
+import com.checkit.domain.NestedTextStyle
+import com.checkit.domain.NestedColorToken
+import com.checkit.domain.MetricRollupPolicy
+import com.checkit.domain.NestedManualMetric
+import com.checkit.domain.NestedMetricUnit
+import com.checkit.domain.buildNestedTree
 import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskFilter
@@ -53,7 +63,7 @@ import kotlin.time.Clock
 
 interface CheckItRepository {
     fun observeTaskBoard(): Flow<TaskBoard>
-    fun observeDailyPlans(): Flow<List<DailyPlan>>
+    fun observeDailyPlans(startDate: LocalDate? = null, endDate: LocalDate? = null): Flow<List<DailyPlan>>
     fun observeJournalEntries(): Flow<List<JournalEntry>>
     suspend fun addJournalEntry(input: JournalEntryWriteInput): Long
     suspend fun updateJournalEntry(entryId: Long, input: JournalEntryWriteInput)
@@ -89,7 +99,8 @@ interface CheckItRepository {
         endTimeMinutes: Int?,
         source: DailyPlanItemSource = DailyPlanItemSource.MyDayTask,
         status: DailyPlanItemStatus = DailyPlanItemStatus.Done,
-        tagIds: List<Long> = emptyList()
+        tagIds: List<Long> = emptyList(),
+        nestedListItemId: Long? = null
     ): Long
     suspend fun updateDailyPlanItemTime(itemId: Long, startTimeMinutes: Int?, endTimeMinutes: Int?)
     suspend fun updateDailyPlanItemTimes(updates: List<DailyPlanItemTimeUpdate>) {
@@ -201,6 +212,39 @@ interface CheckItRepository {
     suspend fun linkTwelveWeekGoalTask(goalId: Long, taskId: Long, sortOrder: Int)
     suspend fun unlinkTwelveWeekGoalTask(goalId: Long, taskId: Long)
     suspend fun countActiveTwelveWeekCycles(): Int
+
+    // ---------------- Nested Documents ----------------
+
+    fun observeNestedDocuments(): Flow<List<NestedDocument>>
+    fun observeTags(): Flow<List<TagItem>>
+    fun observeNestedDocumentTree(documentId: Long): Flow<NestedDocumentTree>
+    suspend fun addNestedDocument(title: String): Long
+    suspend fun renameNestedDocument(documentId: Long, title: String)
+    suspend fun deleteNestedDocument(documentId: Long)
+suspend fun addNestedItem(documentId: Long, parentId: Long?, text: String, position: Int? = null): Long
+    suspend fun updateNestedItemText(itemId: Long, text: String)
+    suspend fun updateNestedItemNote(itemId: Long, note: String?)
+    suspend fun updateNestedItemFormatting(
+        itemId: Long,
+        textStyle: NestedTextStyle,
+        textColor: NestedColorToken,
+        backgroundColor: NestedColorToken
+    )
+    suspend fun updateNestedItemPriority(itemId: Long, priority: TaskPriority)
+    suspend fun updateNestedItemDateRange(itemId: Long, startDate: LocalDate?, endDate: LocalDate?)
+    suspend fun updateNestedItemTags(itemId: Long, tagIds: List<Long>)
+    suspend fun updateNestedItemMetricSettings(
+        itemId: Long,
+        actualMinutes: Int,
+        metricRollupPolicy: MetricRollupPolicy,
+        showTrackedMinutes: Boolean
+    )
+    suspend fun replaceNestedManualMetrics(itemId: Long, metrics: List<NestedManualMetric>)
+    suspend fun setNestedItemCheckboxEnabled(itemId: Long, checkboxEnabled: Boolean)
+    suspend fun setNestedItemsChecked(itemIds: List<Long>, checked: Boolean)
+    suspend fun toggleNestedItemCollapsed(itemId: Long)
+    suspend fun moveNestedItems(moves: List<NestedItemMove>)
+    suspend fun deleteNestedItems(itemIds: List<Long>)
 }
 
 data class DailyPlanItemTimeUpdate(
@@ -284,7 +328,8 @@ data class DailyPlanItemWriteInput(
     val status: DailyPlanItemStatus,
     val startTimeMinutes: Int?,
     val endTimeMinutes: Int?,
-    val tagIds: List<Long>
+    val tagIds: List<Long>,
+    val nestedListItemId: Long? = null
 )
 
 data class JournalEntryWriteInput(
@@ -350,6 +395,10 @@ class RoomCheckItRepository(
     private val dailyPlanScheduleReminderScheduler: DailyPlanScheduleReminderScheduler =
         NoOpDailyPlanScheduleReminderScheduler()
 ) : CheckItRepository {
+
+    private val dailyPlanItemCache = mutableMapOf<Long, DailyPlanItem>()
+    private val dailyPlanCache = mutableMapOf<LocalDate, DailyPlan>()
+
     override fun observeTaskBoard(): Flow<TaskBoard> {
         val rowsFlow = combine(
             dao.observeGoals(),
@@ -452,9 +501,14 @@ class RoomCheckItRepository(
         }
     }
 
-    override fun observeDailyPlans(): Flow<List<DailyPlan>> =
-        combine(
-            dao.observeDailyPlanItems(),
+    override fun observeDailyPlans(startDate: LocalDate?, endDate: LocalDate?): Flow<List<DailyPlan>> {
+        val itemsFlow = if (startDate != null && endDate != null) {
+            dao.observeDailyPlanItemsInRange(startDate.toEpochDays().toInt(), endDate.toEpochDays().toInt())
+        } else {
+            dao.observeDailyPlanItems()
+        }
+        return combine(
+            itemsFlow,
             dao.observeDailyPlanItemTags(),
             dao.observeTags()
         ) { items, itemTags, tags ->
@@ -464,17 +518,31 @@ class RoomCheckItRepository(
 
             items.groupBy { it.dateEpochDays }
                 .map { (dateEpochDays, itemEntities) ->
-                    DailyPlan(
-                        date = LocalDate.fromEpochDays(dateEpochDays),
-                        items = itemEntities.map { item ->
-                            item.toDomain(
-                                tags = itemTagIds[item.id].orEmpty().mapNotNull { tagsById[it] }
-                            )
-                        }.sortedWith(compareBy<DailyPlanItem> { it.startTimeMinutes }.thenBy { it.sortOrder })
-                    )
+                    val date = LocalDate.fromEpochDays(dateEpochDays)
+                    val domainItems = itemEntities.map { entity ->
+                        val itemTagsList = itemTagIds[entity.id].orEmpty().mapNotNull { tagsById[it] }
+                        val cached = dailyPlanItemCache[entity.id]
+                        if (cached != null && cached.isSameAs(entity, itemTagsList)) {
+                            cached
+                        } else {
+                            val newItem = entity.toDomain(itemTagsList)
+                            dailyPlanItemCache[entity.id] = newItem
+                            newItem
+                        }
+                    }.sortedWith(compareBy<DailyPlanItem> { it.startTimeMinutes }.thenBy { it.sortOrder })
+
+                    val cachedPlan = dailyPlanCache[date]
+                    if (cachedPlan != null && cachedPlan.items == domainItems) {
+                        cachedPlan
+                    } else {
+                        val newPlan = DailyPlan(date = date, items = domainItems)
+                        dailyPlanCache[date] = newPlan
+                        newPlan
+                    }
                 }
                 .sortedByDescending { it.date }
         }
+    }
 
     override fun observeJournalEntries(): Flow<List<JournalEntry>> =
         combine(
@@ -766,13 +834,15 @@ class RoomCheckItRepository(
         endTimeMinutes: Int?,
         source: DailyPlanItemSource,
         status: DailyPlanItemStatus,
-        tagIds: List<Long>
+        tagIds: List<Long>,
+        nestedListItemId: Long?
     ): Long {
         val dateEpochDays = date.toEpochDays().toInt()
         val now = Clock.System.now().toEpochMilliseconds()
         val itemId = dao.insertDailyPlanItem(
             DailyPlanItemEntity(
                 dateEpochDays = dateEpochDays,
+                nestedListItemId = nestedListItemId,
                 title = title.trim(),
                 note = note?.trim()?.takeIf { it.isNotBlank() },
                 source = source.name,
@@ -813,14 +883,12 @@ class RoomCheckItRepository(
     }
 
     override suspend fun updateDailyPlanItemStatus(itemId: Long, status: DailyPlanItemStatus) {
-        dao.updateDailyPlanItemStatus(
+        val now = Clock.System.now().toEpochMilliseconds()
+        dao.updateDailyPlanItemStatusWithMinutes(
             itemId = itemId,
             status = status.name,
-            completedAtMillis = if (status == DailyPlanItemStatus.Done) {
-                Clock.System.now().toEpochMilliseconds()
-            } else {
-                null
-            }
+            completedAtMillis = if (status == DailyPlanItemStatus.Done) now else null,
+            nowMillis = now
         )
         dailyPlanScheduleReminderScheduler.rescheduleNext()
     }
@@ -830,35 +898,35 @@ class RoomCheckItRepository(
         status: DailyPlanItemStatus
     ) {
         if (itemIds.isEmpty()) return
-        dao.updateDailyPlanItemsStatus(
-            itemIds = itemIds,
-            status = status.name,
-            completedAtMillis = if (status == DailyPlanItemStatus.Done) {
-                Clock.System.now().toEpochMilliseconds()
-            } else {
-                null
-            }
-        )
+        val now = Clock.System.now().toEpochMilliseconds()
+        
+        itemIds.forEach { itemId ->
+            dao.updateDailyPlanItemStatusWithMinutes(
+                itemId = itemId,
+                status = status.name,
+                completedAtMillis = if (status == DailyPlanItemStatus.Done) now else null,
+                nowMillis = now
+            )
+        }
+        
         dailyPlanScheduleReminderScheduler.rescheduleNext()
     }
 
     override suspend fun updateDailyPlanItem(itemId: Long, input: DailyPlanItemWriteInput) {
-        dao.updateDailyPlanItem(
+        val now = Clock.System.now().toEpochMilliseconds()
+        dao.updateDailyPlanItemWithTags(
             itemId = itemId,
-            title = input.title.trim(),
-            note = input.note?.trim()?.takeIf { it.isNotBlank() },
+            title = input.title,
+            note = input.note,
             source = input.source.name,
             status = input.status.name,
             startTimeMinutes = input.startTimeMinutes,
             endTimeMinutes = if (input.source.hasEndTime()) input.endTimeMinutes else null,
-            completedAtMillis = if (input.status == DailyPlanItemStatus.Done) {
-                Clock.System.now().toEpochMilliseconds()
-            } else {
-                null
-            }
+            completedAtMillis = if (input.status == DailyPlanItemStatus.Done) now else null,
+            nestedListItemId = input.nestedListItemId,
+            tagIds = input.tagIds,
+            nowMillis = now
         )
-        dao.deleteDailyPlanItemTags(itemId)
-        input.tagIds.forEach { tagId -> addDailyPlanItemTag(itemId, tagId) }
         dailyPlanScheduleReminderScheduler.rescheduleNext()
     }
 
@@ -868,6 +936,17 @@ class RoomCheckItRepository(
     }
 
     override suspend fun deleteDailyPlanItem(itemId: Long) {
+        val oldEntity = dao.dailyPlanItemById(itemId)
+        if (oldEntity?.nestedListItemId != null && oldEntity.status == DailyPlanItemStatus.Done.name) {
+            val minutes = oldEntity.toDomain().workMinutes()
+            if (minutes > 0) {
+                dao.updateNestedItemActualMinutesDelta(
+                    itemId = oldEntity.nestedListItemId,
+                    delta = -minutes,
+                    updatedAtMillis = Clock.System.now().toEpochMilliseconds()
+                )
+            }
+        }
         dao.deletePlanPriorityDailyPlanItemsForDailyPlanItem(itemId)
         dao.deleteDailyPlanItem(itemId)
         dailyPlanScheduleReminderScheduler.rescheduleNext()
@@ -948,6 +1027,7 @@ class RoomCheckItRepository(
             DailyPlanItemEntity(
                 dateEpochDays = targetEpochDays,
                 taskId = source.taskId,
+                nestedListItemId = source.nestedListItemId,
                 title = source.title.ifBlank { "Untitled" },
                 note = source.note,
                 source = source.source.name,
@@ -1365,6 +1445,172 @@ class RoomCheckItRepository(
 
     override suspend fun countActiveTwelveWeekCycles(): Int = dao.countActiveTwelveWeekCycles()
 
+    // ---------------- Nested Documents ----------------
+
+    override fun observeNestedDocuments(): Flow<List<NestedDocument>> =
+        dao.observeNestedDocuments().map { entities ->
+            entities.map { entity ->
+                NestedDocument(
+                    id = entity.id,
+                    title = entity.title,
+                    createdAtMillis = entity.createdAtMillis,
+                    updatedAtMillis = entity.updatedAtMillis
+                )
+            }
+        }
+
+    override fun observeTags(): Flow<List<TagItem>> = dao.observeTags().map { tags -> tags.map { it.toDomain() } }
+
+    override fun observeNestedDocumentTree(documentId: Long): Flow<NestedDocumentTree> =
+        combine(
+            dao.observeNestedDocuments(),
+            dao.observeNestedItems(documentId),
+            dao.observeNestedItemTags(documentId),
+            dao.observeNestedManualMetrics(documentId)
+        ) { documents, items, links, metricEntities ->
+            val tagsById = links.map { it.tagId }.distinct()
+                .takeIf { it.isNotEmpty() }
+                ?.let { dao.tagsByIds(it).associateBy(TagEntity::id) }
+                .orEmpty()
+            val tagsByItemId = links.groupBy(NestedItemTagEntity::itemId)
+            val metricsByItemId = metricEntities.groupBy(NestedManualMetricEntity::itemId)
+            NestedDocumentTree(
+                document = documents.firstOrNull { it.id == documentId }
+                    ?.let { NestedDocument(it.id, it.title, it.createdAtMillis, it.updatedAtMillis) }
+                    ?: NestedDocument(id = documentId, title = "", createdAtMillis = 0L, updatedAtMillis = 0L),
+                rootNodes = buildNestedTree(items.map { item ->
+                    item.toNestedListItem(
+                        tags = tagsByItemId[item.id].orEmpty().mapNotNull { tagsById[it.tagId]?.toDomain() },
+                        manualMetrics = metricsByItemId[item.id].orEmpty().map { it.toDomain() }
+                    )
+                })
+            )
+        }
+
+    override suspend fun addNestedDocument(title: String): Long {
+        val now = Clock.System.now().toEpochMilliseconds()
+        val trimmed = title.trim()
+        return dao.insertNestedDocument(
+            NestedDocumentEntity(
+                title = trimmed,
+                createdAtMillis = now,
+                updatedAtMillis = now
+            )
+        )
+    }
+
+    override suspend fun renameNestedDocument(documentId: Long, title: String) {
+        dao.updateNestedDocumentTitle(documentId, title.trim(), Clock.System.now().toEpochMilliseconds())
+    }
+
+    override suspend fun deleteNestedDocument(documentId: Long) {
+        dao.deleteNestedDocument(documentId)
+    }
+
+    override suspend fun addNestedItem(documentId: Long, parentId: Long?, text: String, position: Int?): Long {
+        val now = Clock.System.now().toEpochMilliseconds()
+        return dao.insertNestedListItem(
+            NestedListItemEntity(
+                documentId = documentId,
+                parentId = parentId,
+                position = position ?: dao.nextNestedItemPosition(documentId, parentId),
+                text = text.trim(),
+                createdAtMillis = now,
+                updatedAtMillis = now
+            )
+        )
+    }
+
+    override suspend fun updateNestedItemText(itemId: Long, text: String) {
+        dao.updateNestedItemText(itemId, text.trim(), Clock.System.now().toEpochMilliseconds())
+    }
+
+    override suspend fun updateNestedItemNote(itemId: Long, note: String?) {
+        dao.updateNestedItemNote(
+            itemId,
+            note?.trim()?.takeIf { it.isNotBlank() },
+            Clock.System.now().toEpochMilliseconds()
+        )
+    }
+
+    override suspend fun updateNestedItemFormatting(
+        itemId: Long,
+        textStyle: NestedTextStyle,
+        textColor: NestedColorToken,
+        backgroundColor: NestedColorToken
+    ) {
+        dao.updateNestedItemFormatting(itemId, textStyle.name, textColor.name, backgroundColor.name, Clock.System.now().toEpochMilliseconds())
+    }
+
+    override suspend fun updateNestedItemPriority(itemId: Long, priority: TaskPriority) {
+        dao.updateNestedItemPriority(itemId, priority.name, Clock.System.now().toEpochMilliseconds())
+    }
+
+    override suspend fun updateNestedItemDateRange(itemId: Long, startDate: LocalDate?, endDate: LocalDate?) {
+        dao.updateNestedItemDateRange(
+            itemId,
+            startDate?.toEpochDays()?.toInt(),
+            endDate?.toEpochDays()?.toInt(),
+            Clock.System.now().toEpochMilliseconds()
+        )
+    }
+
+    override suspend fun updateNestedItemMetricSettings(
+        itemId: Long,
+        actualMinutes: Int,
+        metricRollupPolicy: MetricRollupPolicy,
+        showTrackedMinutes: Boolean
+    ) {
+        dao.updateNestedItemActualMinutes(itemId, actualMinutes.coerceAtLeast(0), Clock.System.now().toEpochMilliseconds())
+        dao.updateNestedItemMetricSettings(
+            itemId,
+            metricRollupPolicy.name,
+            showTrackedMinutes,
+            Clock.System.now().toEpochMilliseconds()
+        )
+    }
+
+    override suspend fun replaceNestedManualMetrics(itemId: Long, metrics: List<NestedManualMetric>) {
+        dao.replaceNestedManualMetrics(itemId, metrics.map { it.toEntity(itemId) })
+    }
+
+    override suspend fun updateNestedItemTags(itemId: Long, tagIds: List<Long>) {
+        dao.replaceNestedItemTags(itemId, tagIds)
+        val now = Clock.System.now().toEpochMilliseconds()
+        tagIds.distinct().forEach { dao.updateTagLastUsedAtMillis(it, now) }
+    }
+
+    override suspend fun setNestedItemCheckboxEnabled(itemId: Long, checkboxEnabled: Boolean) {
+        dao.setNestedItemCheckboxEnabled(itemId, checkboxEnabled)
+    }
+
+    override suspend fun setNestedItemsChecked(itemIds: List<Long>, checked: Boolean) {
+        if (itemIds.isEmpty()) return
+        dao.setNestedItemsChecked(itemIds, checked)
+    }
+
+    override suspend fun toggleNestedItemCollapsed(itemId: Long) {
+        dao.toggleNestedItemCollapsed(itemId)
+    }
+
+    override suspend fun moveNestedItems(moves: List<NestedItemMove>) {
+        if (moves.isEmpty()) return
+        val now = Clock.System.now().toEpochMilliseconds()
+        dao.applyNestedMoves(moves.map { move ->
+            NestedMoveRow(
+                itemId = move.itemId,
+                parentId = move.parentId,
+                position = move.position,
+                updatedAtMillis = now
+            )
+        })
+    }
+
+    override suspend fun deleteNestedItems(itemIds: List<Long>) {
+        if (itemIds.isEmpty()) return
+        dao.deleteNestedItems(itemIds)
+    }
+
     private suspend fun addTaskTag(taskId: Long, tagId: Long) {
         dao.insertTaskTagIfParentsExist(taskId, tagId)
         dao.updateTagLastUsedAtMillis(tagId, Clock.System.now().toEpochMilliseconds())
@@ -1552,6 +1798,7 @@ private fun DailyPlanItemEntity.toDomain(tags: List<TagItem> = emptyList()) = Da
     id = id,
     dateEpochDays = dateEpochDays,
     taskId = taskId,
+    nestedListItemId = nestedListItemId,
     title = title,
     note = note,
     source = enumValueOf(source),
@@ -1642,4 +1889,57 @@ private fun PlanPriorityEntity.toDomain(periodPlan: PeriodPlan) = PlanPriority(
     createdAtMillis = createdAtMillis,
     updatedAtMillis = updatedAtMillis,
     completedAtMillis = completedAtMillis
+)
+
+private fun NestedListItemEntity.toNestedListItem(
+    tags: List<TagItem> = emptyList(),
+    manualMetrics: List<NestedManualMetric> = emptyList()
+) = NestedListItem(
+    id = id,
+    documentId = documentId,
+    parentId = parentId,
+    position = position,
+    text = text,
+    note = note,
+    checkboxEnabled = checkboxEnabled,
+    checked = checked,
+    collapsed = collapsed,
+    textStyle = runCatching { com.checkit.domain.NestedTextStyle.valueOf(textStyle) }.getOrDefault(com.checkit.domain.NestedTextStyle.Body),
+    textColor = runCatching { com.checkit.domain.NestedColorToken.valueOf(textColor) }.getOrDefault(com.checkit.domain.NestedColorToken.Default),
+    backgroundColor = runCatching { com.checkit.domain.NestedColorToken.valueOf(backgroundColor) }.getOrDefault(com.checkit.domain.NestedColorToken.Default),
+    startDate = startDateEpochDays?.let { LocalDate.fromEpochDays(it) },
+    endDate = endDateEpochDays?.let { LocalDate.fromEpochDays(it) },
+    priority = runCatching { TaskPriority.valueOf(priority) }.getOrDefault(TaskPriority.None),
+    tags = tags,
+    actualMinutes = actualMinutes,
+    metricRollupPolicy = runCatching { MetricRollupPolicy.valueOf(metricRollupPolicy) }
+        .getOrDefault(MetricRollupPolicy.IncludeChildren),
+    showTrackedMinutes = showTrackedMinutes,
+    manualMetrics = manualMetrics,
+    createdAtMillis = createdAtMillis,
+    updatedAtMillis = updatedAtMillis
+)
+
+private fun NestedManualMetricEntity.toDomain() = NestedManualMetric(
+    id = id,
+    itemId = itemId,
+    name = name,
+    value = value,
+    targetValue = targetValue,
+    unit = runCatching { NestedMetricUnit.valueOf(unit) }.getOrDefault(NestedMetricUnit.None),
+    customUnit = customUnit,
+    sortOrder = sortOrder,
+    enabled = enabled
+)
+
+private fun NestedManualMetric.toEntity(itemId: Long) = NestedManualMetricEntity(
+    id = id,
+    itemId = itemId,
+    name = name.trim(),
+    value = value.trim(),
+    targetValue = targetValue?.trim()?.takeIf { it.isNotEmpty() },
+    unit = unit.name,
+    customUnit = customUnit?.trim()?.takeIf { it.isNotEmpty() },
+    sortOrder = sortOrder,
+    enabled = enabled
 )

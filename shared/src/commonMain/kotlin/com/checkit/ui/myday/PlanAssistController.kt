@@ -77,7 +77,7 @@ internal class PlanAssistController(
         addTaskToMyDay(task, clearSuggestions = false)
     }
 
-    fun quickAddDailyPlanItem(title: String, tagIds: List<Long>) {
+    fun addDailyPlanItem(title: String, tagIds: List<Long>, nestedListItemId: Long? = null) {
         if (title.isBlank()) return
         val current = state.uiState.value
 
@@ -96,8 +96,12 @@ internal class PlanAssistController(
                 status = DailyPlanItemStatus.Planned,
                 startTimeMinutes = startTime,
                 endTimeMinutes = endTime,
-                selectedTagIds = tagIds.toSet()
+                selectedTagIds = tagIds.toSet(),
+                nestedListItemId = nestedListItemId
             )
+            // Note: UpsertDailyPlanItemUseCase might need update to handle nestedListItemId
+            // but we can also call addDailyPlanItem from repository directly or update use case.
+            // Let's check UpsertDailyPlanItemUseCase first.
             deps.upsertDailyPlanItem(editor).onSuccess {
                 state.sendEvent(UiEvent.ShowSnackbar("Added to My Day"))
             }.onFailure { error ->
