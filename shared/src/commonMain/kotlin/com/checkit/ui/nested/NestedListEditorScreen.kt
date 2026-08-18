@@ -76,8 +76,12 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -183,7 +187,8 @@ internal fun NestedListEditorScreen(
                             text = addingItem.draft.text,
                             onTextChange = viewModel::updateNewItemText,
                             onCommit = viewModel::commitNewItem,
-                            onCancel = viewModel::cancelAddItem
+                            onCancel = viewModel::cancelAddItem,
+                            continuingLevels = emptySet()
                         )
                     }
                 }
@@ -200,6 +205,7 @@ internal fun NestedListEditorScreen(
                             depth = row.depth,
                             isVisible = row.isVisible,
                             isInCheckedBranch = row.isInCheckedBranch,
+                            continuingLevels = row.continuingLevels,
                             state = state,
                             viewModel = viewModel
                         )
@@ -209,7 +215,8 @@ internal fun NestedListEditorScreen(
                                 text = addingItem.draft.text,
                                 onTextChange = viewModel::updateNewItemText,
                                 onCommit = viewModel::commitNewItem,
-                                onCancel = viewModel::cancelAddItem
+                                onCancel = viewModel::cancelAddItem,
+                                continuingLevels = row.continuingLevels
                             )
                         }
                     }
@@ -1373,6 +1380,7 @@ private fun NestedTree(
     depth: Int,
     isVisible: Boolean,
     isInCheckedBranch: Boolean,
+    continuingLevels: Set<Int>,
     state: NestedEditorState.Active,
     viewModel: NestedListsViewModel
 ) {
@@ -1399,21 +1407,56 @@ private fun NestedTree(
                 .drawBehind {
                     // Draw in the unpadded container so every depth shares the
                     // same x-coordinate across all rows.
-                    repeat(depth + if (node.hasChildren) 1 else 0) { level ->
-                            val x = level * 16.dp.toPx() + 8.dp.toPx()
-                            drawLine(
-                                color = guideColors[level % guideColors.size],
-                            start = androidx.compose.ui.geometry.Offset(
-                                x,
-                                if (level == depth) {
-                                    (12.dp + if (item.collapsed && node.hasChildren) 14.dp else 7.dp).toPx()
-                                } else {
-                                    0f
-                                }
-                            ),
-                                end = androidx.compose.ui.geometry.Offset(x, size.height),
-                                strokeWidth = 1.dp.toPx()
-                            )
+                    val dotSize = if (item.collapsed && node.hasChildren) 14.dp else 7.dp
+                    val dotTop = 12.dp.toPx()
+                    val dotSizePx = dotSize.toPx()
+                    val dotCenterY = dotTop + dotSizePx / 2
+                    val dotBottomY = dotTop + dotSizePx
+                    val strokeWidth = 1.dp.toPx()
+                    val curveRadius = 6.dp.toPx()
+                    val guideX: (Int) -> Float = { level -> level * 16.dp.toPx() + 8.dp.toPx() }
+
+                    continuingLevels.forEach { level ->
+                        val x = guideX(level)
+                        drawLine(
+                            color = guideColors[level % guideColors.size],
+                            start = Offset(x, 0f),
+                            end = Offset(x, size.height),
+                            strokeWidth = strokeWidth,
+                            cap = StrokeCap.Round
+                        )
+                    }
+
+                    if (depth > 0) {
+                        val x = guideX(depth - 1)
+                        val xDot = guideX(depth)
+                        val lineEnd = xDot - (dotSizePx / 2)
+                        val path = Path().apply {
+                            if (depth - 1 in continuingLevels) {
+                                moveTo(x, dotCenterY - curveRadius)
+                            } else {
+                                moveTo(x, 0f)
+                                lineTo(x, dotCenterY - curveRadius)
+                            }
+                            quadraticTo(x, dotCenterY, x + curveRadius, dotCenterY)
+                            lineTo(lineEnd, dotCenterY)
+                        }
+                        drawPath(
+                            path = path,
+                            color = guideColors[(depth - 1) % guideColors.size],
+                            style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                        )
+                    }
+
+                    if (node.hasChildren && !item.collapsed) {
+                        val x = guideX(depth)
+                        drawLine(
+                            color = guideColors[depth % guideColors.size],
+                            start = Offset(x, dotBottomY),
+                            end = Offset(x, size.height),
+                            strokeWidth = strokeWidth,
+                            cap = StrokeCap.Round
+                        )
                     }
                 }
         ) {
@@ -1600,14 +1643,16 @@ private data class VisibleNestedRow(
     val node: NestedItemNode,
     val depth: Int,
     val isVisible: Boolean,
-    val isInCheckedBranch: Boolean
+    val isInCheckedBranch: Boolean,
+    val continuingLevels: Set<Int> = emptySet()
 )
 
 private data class NestedTraversalEntry(
     val node: NestedItemNode,
     val depth: Int,
     val isVisible: Boolean,
-    val ancestorChecked: Boolean
+    val ancestorChecked: Boolean,
+    val continuingLevels: Set<Int>
 )
 
 /** Iterative traversal keeps stable rows available for expand/collapse animation. */
@@ -1615,20 +1660,50 @@ private fun flattenVisibleNodes(roots: List<NestedItemNode>): List<VisibleNested
     if (roots.isEmpty()) return emptyList()
     val result = ArrayList<VisibleNestedRow>()
     val stack = ArrayDeque<NestedTraversalEntry>()
-    roots.asReversed().forEach { stack.addLast(NestedTraversalEntry(it, 0, true, false)) }
+    
+    roots.asReversed().forEachIndexed { index, node ->
+        stack.addLast(
+            NestedTraversalEntry(
+                node = node,
+                depth = 0,
+                isVisible = true,
+                ancestorChecked = false,
+                continuingLevels = if (index > 0) setOf(0) else emptySet()
+            )
+        )
+    }
+    
     while (stack.isNotEmpty()) {
         val entry = stack.removeLast()
         val node = entry.node
         val isInCheckedBranch = entry.ancestorChecked || node.item.checked
-        result += VisibleNestedRow(node, entry.depth, entry.isVisible, isInCheckedBranch)
+        
+        result += VisibleNestedRow(
+            node = node,
+            depth = entry.depth,
+            isVisible = entry.isVisible,
+            isInCheckedBranch = isInCheckedBranch,
+            continuingLevels = entry.continuingLevels
+        )
+        
         val childrenVisible = entry.isVisible && !node.item.collapsed
-        node.children.asReversed().forEach { child ->
+        val children = node.children
+        children.asReversed().forEachIndexed { index, child ->
+            val isLast = (index == 0) // asReversed: index 0 is the last child
+            val nextContinuing = entry.continuingLevels.toMutableSet()
+            if (!isLast) {
+                nextContinuing.add(entry.depth)
+            } else {
+                nextContinuing.remove(entry.depth)
+            }
+            
             stack.addLast(
                 NestedTraversalEntry(
                     node = child,
                     depth = entry.depth + 1,
                     isVisible = childrenVisible,
-                    ancestorChecked = isInCheckedBranch
+                    ancestorChecked = isInCheckedBranch,
+                    continuingLevels = nextContinuing
                 )
             )
         }
@@ -1642,22 +1717,77 @@ private fun NewItemRow(
     text: String,
     onTextChange: (String) -> Unit,
     onCommit: () -> Unit,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
+    continuingLevels: Set<Int>
 ) {
+    val guideColors = listOf(
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.34f),
+        MaterialTheme.colorScheme.secondary.copy(alpha = 0.34f),
+        MaterialTheme.colorScheme.tertiary.copy(alpha = 0.34f),
+        MaterialTheme.colorScheme.outline.copy(alpha = 0.30f)
+    )
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = (depth * 16).dp, top = 0.dp, bottom = 0.dp),
+            .drawBehind {
+                val dotSizePx = 7.dp.toPx() // Draft items use small dot
+                val dotTop = 12.dp.toPx()
+                val dotCenterY = dotTop + dotSizePx / 2
+                val strokeWidth = 1.dp.toPx()
+                val curveRadius = 6.dp.toPx()
+                val guideX: (Int) -> Float = { level -> level * 16.dp.toPx() + 8.dp.toPx() }
+
+                continuingLevels.forEach { level ->
+                    val x = guideX(level)
+                    drawLine(
+                        color = guideColors[level % guideColors.size],
+                        start = Offset(x, 0f),
+                        end = Offset(x, size.height),
+                        strokeWidth = strokeWidth,
+                        cap = StrokeCap.Round
+                    )
+                }
+
+                if (depth > 0) {
+                    val x = guideX(depth - 1)
+                    val xDot = guideX(depth)
+                    val lineEnd = xDot - (dotSizePx / 2)
+                    val path = Path().apply {
+                        if (depth - 1 in continuingLevels) {
+                            moveTo(x, dotCenterY - curveRadius)
+                        } else {
+                            moveTo(x, 0f)
+                            lineTo(x, dotCenterY - curveRadius)
+                        }
+                        quadraticTo(x, dotCenterY, x + curveRadius, dotCenterY)
+                        lineTo(lineEnd, dotCenterY)
+                    }
+                    drawPath(
+                        path = path,
+                        color = guideColors[(depth - 1) % guideColors.size],
+                        style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                    )
+                }
+            },
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = (depth * 16).dp),
+            verticalAlignment = Alignment.Top
+        ) {
             val focusManager = LocalFocusManager.current
             val focusRequester = remember { FocusRequester() }
             LaunchedEffect(Unit) {
                 focusRequester.requestFocus()
             }
+            // Spacer to match NestedTree dot area
+            Spacer(Modifier.width(24.dp).height(36.dp))
+
             Box(
                 modifier = Modifier
                     .weight(1f)
+                    .offset(x = (-8).dp)
                     .height(36.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
