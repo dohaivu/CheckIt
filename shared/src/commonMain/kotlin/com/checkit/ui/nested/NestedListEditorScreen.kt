@@ -112,7 +112,7 @@ import com.checkit.domain.NestedManualMetric
 import com.checkit.domain.NestedMetricSummary
 import com.checkit.domain.NestedMetricUnit
 import com.checkit.domain.NestedTextStyle
-import com.checkit.domain.PlanFocus
+import com.checkit.domain.PeriodFocus
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.filterNestedTree
 import com.checkit.ui.components.AppOutlinedTextField
@@ -1205,11 +1205,11 @@ private fun findAncestorChain(nodes: List<NestedItemNode>, id: Long): List<Neste
 
 @Composable
 private fun NestedListFilterBar(
-    focus: PlanFocus?,
+    focus: PeriodFocus?,
     query: String,
     hideChecked: Boolean,
     isActive: Boolean,
-    onFocusChange: (PlanFocus) -> Unit,
+    onFocusChange: (PeriodFocus) -> Unit,
     onQueryChange: (String) -> Unit,
     onHideCheckedChange: (Boolean) -> Unit,
     onReset: () -> Unit,

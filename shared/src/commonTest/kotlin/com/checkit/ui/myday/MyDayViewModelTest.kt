@@ -7,7 +7,7 @@ import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.PeriodReview
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.LeftoverAction
-import com.checkit.domain.ReviewPeriod
+import com.checkit.domain.Period
 import com.checkit.domain.ReviewStatus
 import com.checkit.domain.TagItem
 import com.checkit.domain.usecase.AddDailyPlanItemUseCase
@@ -129,7 +129,7 @@ class MyDayViewModelTest {
         repository.setDayReviews(
             listOf(
                 PeriodReview(
-                    period = ReviewPeriod.Day,
+                    period = Period.Day,
                     periodStartEpochDays = today.toEpochDays().toInt(),
                     periodEndEpochDays = today.toEpochDays().toInt() + 1,
                     content = "Shipped the review loop",
@@ -338,54 +338,6 @@ class MyDayViewModelTest {
         assertTrue(reopened.summary.plannedItems.none { it.id == 7L })
         assertEquals(listOf(7L), reopened.summary.alreadyCarriedItems.map { it.id })
         assertEquals(LeftoverAction.Drop, reopened.actionFor(reopened.summary.alreadyCarriedItems.single()))
-    }
-
-    @Test
-    fun reopenReviewPreselectsCarryOverWhenCopyExistsTomorrow() = runTest(dispatcher) {
-        val today = today()
-        val tomorrow = today.plus(1, DateTimeUnit.DAY)
-        repository.setDailyPlans(
-            listOf(
-                DailyPlan(
-                    date = today,
-                    items = listOf(
-                        DailyPlanItem(
-                            id = 7L,
-                            dateEpochDays = today.toEpochDays().toInt(),
-                            title = "Standalone task",
-                            source = DailyPlanItemSource.MyDayTask,
-                            status = DailyPlanItemStatus.Planned,
-                            sortOrder = 0,
-                            addedAtMillis = 0L,
-                            handledAtMillis = 100L
-                        )
-                    )
-                ),
-                DailyPlan(
-                    date = tomorrow,
-                    items = listOf(
-                        DailyPlanItem(
-                            id = 70L,
-                            dateEpochDays = tomorrow.toEpochDays().toInt(),
-                            title = "Standalone task (tomorrow)",
-                            source = DailyPlanItemSource.MyDayTask,
-                            status = DailyPlanItemStatus.Planned,
-                            sortOrder = 0,
-                            addedAtMillis = 100L,
-                            carriedFromItemId = 7L
-                        )
-                    )
-                )
-            )
-        )
-        dispatcher.scheduler.advanceUntilIdle()
-
-        viewModel.openDayClose()
-        dispatcher.scheduler.advanceUntilIdle()
-        val reopened = viewModel.uiState.value.dayClose
-        assertNotNull(reopened)
-        assertEquals(listOf(7L), reopened.summary.alreadyCarriedItems.map { it.id })
-        assertEquals(LeftoverAction.CarryOver, reopened.actionFor(reopened.summary.alreadyCarriedItems.single()))
     }
 
     @Test

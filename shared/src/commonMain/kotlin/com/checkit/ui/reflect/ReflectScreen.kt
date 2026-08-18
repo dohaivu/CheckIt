@@ -56,7 +56,7 @@ import checkit.shared.generated.resources.reflect_reviews_title
 import checkit.shared.generated.resources.reflect_reviews_written
 import checkit.shared.generated.resources.tab_reflect
 import com.checkit.domain.PeriodReview
-import com.checkit.domain.ReviewPeriod
+import com.checkit.domain.Period
 import com.checkit.ui.components.ReportPeriod
 import com.checkit.ui.components.ReportPeriodHeader
 import com.checkit.ui.components.TinyTopAppBar
@@ -300,7 +300,7 @@ private fun ReviewsSection(
     selectedPeriod: ReportPeriod,
     onOpenReview: (PeriodReview) -> Unit
 ) {
-    val periodLabel = selectedPeriod.toReviewPeriod().label()
+    val periodLabel = selectedPeriod.toPeriod().label()
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -338,7 +338,7 @@ private fun ReviewsSection(
             }
         }
         if (reviews.isEmpty()) {
-            ReviewsEmptyState(periodLabel = selectedPeriod.childReviewPeriod().label())
+            ReviewsEmptyState(periodLabel = selectedPeriod.childPeriod().label())
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
                 reviews.forEach { review ->
@@ -459,25 +459,28 @@ private fun ReviewStatusPill(review: PeriodReview) {
 }
 
 @Composable
-internal fun ReviewPeriod.reviewIcon(): ImageVector = when (this) {
-    ReviewPeriod.Day -> Icons.Default.Star
-    ReviewPeriod.Week -> Icons.Default.DateRange
-    ReviewPeriod.Month -> Icons.Default.CalendarMonth
-    ReviewPeriod.Year -> Icons.Default.EmojiEvents
+internal fun Period.reviewIcon(): ImageVector = when (this) {
+    Period.Day -> Icons.Default.Star
+    Period.Week -> Icons.Default.DateRange
+    Period.Month -> Icons.Default.CalendarMonth
+    Period.Year -> Icons.Default.EmojiEvents
+    else -> Icons.Default.DateRange
 }
 
 @Composable
 internal fun PeriodReview.rangeLabel(): String = when (period) {
-    ReviewPeriod.Day -> periodStartDate.localizedCompactDateWithDayName()
-    ReviewPeriod.Week -> "${periodStartDate.localizedShortMonthName()} ${periodStartDate.day}"
-    ReviewPeriod.Month -> periodStartDate.localizedMonthTitle()
-    ReviewPeriod.Year -> periodStartDate.year.toString()
+    Period.Day -> periodStartDate.localizedCompactDateWithDayName()
+    Period.Week -> "${periodStartDate.localizedShortMonthName()} ${periodStartDate.day}"
+    Period.Month -> periodStartDate.localizedMonthTitle()
+    Period.Year -> periodStartDate.year.toString()
+    else -> periodStartDate.toString()
 }
 
 @Composable
-internal fun ReviewPeriod.label(): String = when (this) {
-    ReviewPeriod.Day -> stringResource(Res.string.reflect_period_day)
-    ReviewPeriod.Week -> stringResource(Res.string.reflect_period_week)
-    ReviewPeriod.Month -> stringResource(Res.string.reflect_period_month)
-    ReviewPeriod.Year -> stringResource(Res.string.reflect_period_year)
+internal fun Period.label(): String = when (this) {
+    Period.Day -> stringResource(Res.string.reflect_period_day)
+    Period.Week -> stringResource(Res.string.reflect_period_week)
+    Period.Month -> stringResource(Res.string.reflect_period_month)
+    Period.Year -> stringResource(Res.string.reflect_period_year)
+    else -> name
 }

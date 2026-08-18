@@ -6,7 +6,7 @@ import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.PeriodReview
-import com.checkit.domain.ReviewPeriod
+import com.checkit.domain.Period
 import com.checkit.domain.ReviewSource
 import com.checkit.domain.ReviewStatus
 import com.checkit.domain.TagItem
@@ -78,7 +78,7 @@ class ReflectViewModelTest {
     fun focusReviewMatchesSelectedPeriodAndDate() = runTest(dispatcher) {
         val weekStart = today().minus(today().dayOfWeek.ordinal, DateTimeUnit.DAY)
         repository.savePeriodReview(
-            review(period = ReviewPeriod.Week, start = weekStart, content = "Week recap")
+            review(period = Period.Week, start = weekStart, content = "Week recap")
         )
         advanceUntilIdle()
 
@@ -88,14 +88,14 @@ class ReflectViewModelTest {
     @Test
     fun selectingDailyMovesFocusToDay() {
         viewModel.selectPeriod(ReportPeriod.Daily)
-        assertEquals(ReviewPeriod.Day, viewModel.uiState.value.focus.period)
+        assertEquals(Period.Day, viewModel.uiState.value.focus.period)
         assertEquals(today(), viewModel.uiState.value.focus.start)
     }
 
     @Test
     fun selectingMonthClampsDateToMonthStart() {
         viewModel.selectPeriod(ReportPeriod.Month)
-        assertEquals(ReviewPeriod.Month, viewModel.uiState.value.focus.period)
+        assertEquals(Period.Month, viewModel.uiState.value.focus.period)
         assertEquals(LocalDate(today().year, today().month, 1), viewModel.uiState.value.focus.start)
     }
 
@@ -121,7 +121,7 @@ class ReflectViewModelTest {
         val weekStart = today().minus(today().dayOfWeek.ordinal, DateTimeUnit.DAY)
         repository.savePeriodReview(
             review(
-                period = ReviewPeriod.Week,
+                period = Period.Week,
                 start = weekStart,
                 content = "Existing content",
                 intentNext = "Existing intent"
@@ -215,7 +215,7 @@ class ReflectViewModelTest {
         val yearStart = LocalDate(today().year, 1, 1)
         repository.savePeriodReview(
             review(
-                period = ReviewPeriod.Year,
+                period = Period.Year,
                 start = yearStart,
                 content = "Annual context"
             )
@@ -299,7 +299,7 @@ class ReflectViewModelTest {
     fun openReviewMovesFocusAndOpensEditor() = runTest(dispatcher) {
         val monthStart = LocalDate(today().year, today().month, 1)
         repository.savePeriodReview(
-            review(period = ReviewPeriod.Month, start = monthStart, content = "Monthly recap")
+            review(period = Period.Month, start = monthStart, content = "Monthly recap")
         )
         advanceUntilIdle()
 
@@ -318,16 +318,16 @@ class ReflectViewModelTest {
     fun reviewsForSelectedPeriodShowChildPeriodWithinWindow() = runTest(dispatcher) {
         val weekStart = today().minus(today().dayOfWeek.ordinal, DateTimeUnit.DAY)
         repository.savePeriodReview(
-            review(period = ReviewPeriod.Day, start = weekStart, content = "Mon")
+            review(period = Period.Day, start = weekStart, content = "Mon")
         )
         repository.savePeriodReview(
-            review(period = ReviewPeriod.Day, start = weekStart.plus(1, DateTimeUnit.DAY), content = "Tue")
+            review(period = Period.Day, start = weekStart.plus(1, DateTimeUnit.DAY), content = "Tue")
         )
         repository.savePeriodReview(
-            review(period = ReviewPeriod.Day, start = weekStart.minus(1, DateTimeUnit.DAY), content = "Outside")
+            review(period = Period.Day, start = weekStart.minus(1, DateTimeUnit.DAY), content = "Outside")
         )
         repository.savePeriodReview(
-            review(period = ReviewPeriod.Week, start = weekStart, content = "Week excluded")
+            review(period = Period.Week, start = weekStart, content = "Week excluded")
         )
         advanceUntilIdle()
 
@@ -346,13 +346,13 @@ class ReflectViewModelTest {
         val inside = monthStart
         val outside = monthStart.minus(1, DateTimeUnit.DAY)
         repository.savePeriodReview(
-            review(period = ReviewPeriod.Week, start = inside, content = "Week inside")
+            review(period = Period.Week, start = inside, content = "Week inside")
         )
         repository.savePeriodReview(
-            review(period = ReviewPeriod.Week, start = outside, content = "Week outside")
+            review(period = Period.Week, start = outside, content = "Week outside")
         )
         repository.savePeriodReview(
-            review(period = ReviewPeriod.Month, start = monthStart, content = "Month excluded")
+            review(period = Period.Month, start = monthStart, content = "Month excluded")
         )
         advanceUntilIdle()
 
@@ -427,7 +427,7 @@ class ReflectViewModelTest {
     }
 
     private fun review(
-        period: ReviewPeriod,
+        period: Period,
         start: LocalDate,
         content: String,
         intentNext: String? = null

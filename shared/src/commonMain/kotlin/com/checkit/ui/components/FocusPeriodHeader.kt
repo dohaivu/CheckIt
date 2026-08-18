@@ -43,8 +43,8 @@ import checkit.shared.generated.resources.plan_period_quarter
 import checkit.shared.generated.resources.plan_period_week
 import checkit.shared.generated.resources.plan_period_year
 import checkit.shared.generated.resources.plan_previous_period
-import com.checkit.domain.PlanFocus
-import com.checkit.domain.PlanPeriod
+import com.checkit.domain.PeriodFocus
+import com.checkit.domain.Period
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.localizedName
 import com.checkit.ui.localizedMonthTitle
@@ -58,8 +58,8 @@ import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun FocusPeriodHeader(
-    focus: PlanFocus?,
-    onFocusSelected: (PlanFocus) -> Unit,
+    focus: PeriodFocus?,
+    onFocusSelected: (PeriodFocus) -> Unit,
     onPreviousPeriod: () -> Unit,
     onNextPeriod: () -> Unit,
     onCurrentPeriod: () -> Unit,
@@ -73,7 +73,7 @@ fun FocusPeriodHeader(
             selectedPeriod = focus?.period,
             onPeriodSelected = { period ->
                 val anchor = if (focus?.contains(today()) == true) today() else focus?.anchorDate ?: today()
-                onFocusSelected(PlanFocus(period, anchor))
+                onFocusSelected(PeriodFocus(period, anchor))
             }
         )
         if (focus != null) {
@@ -90,8 +90,8 @@ fun FocusPeriodHeader(
 
 @Composable
 internal fun FocusPeriodSwitcher(
-    selectedPeriod: PlanPeriod?,
-    onPeriodSelected: (PlanPeriod) -> Unit,
+    selectedPeriod: Period?,
+    onPeriodSelected: (Period) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -101,7 +101,7 @@ internal fun FocusPeriodSwitcher(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        PlanPeriod.entries.forEach { period ->
+        Period.entries.forEach { period ->
             val selected = selectedPeriod == period
             val tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f)
             Box(
@@ -135,7 +135,7 @@ internal fun FocusPeriodSwitcher(
 
 @Composable
 private fun FocusPeriodNavHeader(
-    focus: PlanFocus,
+    focus: PeriodFocus,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     onCurrentPeriod: () -> Unit
@@ -189,13 +189,13 @@ private fun FocusPeriodNavHeader(
 
 @Composable
 private fun FocusPeriodBreadcrumbRow(
-    focus: PlanFocus,
-    onZoomOutTo: (PlanFocus) -> Unit
+    focus: PeriodFocus,
+    onZoomOutTo: (PeriodFocus) -> Unit
 ) {
     val crumbs = buildList {
-        PlanPeriod.entries.forEach { period ->
+        Period.entries.forEach { period ->
             if (period.ordinal <= focus.period.ordinal) {
-                val crumbFocus = PlanFocus(period, focus.anchorDate)
+                val crumbFocus = PeriodFocus(period, focus.anchorDate)
                 add(FocusPeriodCrumb(period, crumbFocus, crumbFocus.crumbLabel()))
             }
         }
@@ -236,46 +236,46 @@ private fun FocusPeriodBreadcrumbRow(
 }
 
 private data class FocusPeriodCrumb(
-    val period: PlanPeriod,
-    val focus: PlanFocus,
+    val period: Period,
+    val focus: PeriodFocus,
     val label: String
 )
 
 @Composable
-private fun PlanPeriod.shortLabel(): String = when (this) {
-    PlanPeriod.Year -> stringResource(Res.string.plan_period_year)
-    PlanPeriod.Quarter -> stringResource(Res.string.plan_period_quarter)
-    PlanPeriod.Month -> stringResource(Res.string.plan_period_month)
-    PlanPeriod.Week -> stringResource(Res.string.plan_period_week)
-    PlanPeriod.Day -> stringResource(Res.string.plan_period_day)
+private fun Period.shortLabel(): String = when (this) {
+    Period.Year -> stringResource(Res.string.plan_period_year)
+    Period.Quarter -> stringResource(Res.string.plan_period_quarter)
+    Period.Month -> stringResource(Res.string.plan_period_month)
+    Period.Week -> stringResource(Res.string.plan_period_week)
+    Period.Day -> stringResource(Res.string.plan_period_day)
 }
 
 @Composable
-internal fun PlanFocus.title(): String = when (period) {
-    PlanPeriod.Year -> "${start.year}"
-    PlanPeriod.Quarter -> {
-        val quarter = ((start.monthNumber - 1) / 3) + 1
+internal fun PeriodFocus.title(): String = when (period) {
+    Period.Year -> "${start.year}"
+    Period.Quarter -> {
+        val quarter = ((start.month.number - 1) / 3) + 1
         "Q$quarter ${start.year}"
     }
-    PlanPeriod.Month -> start.localizedMonthTitle()
-    PlanPeriod.Week -> weekRangeTitle(start, endInclusive)
-    PlanPeriod.Day -> start.localizedCompactDateWithDayName()
+    Period.Month -> start.localizedMonthTitle()
+    Period.Week -> weekRangeTitle(start, endInclusive)
+    Period.Day -> start.localizedCompactDateWithDayName()
 }
 
 /** Compact per-level label for the breadcrumb; drops year/month info already shown by ancestor crumbs. */
 @Composable
-internal fun PlanFocus.crumbLabel(): String = when (period) {
-    PlanPeriod.Year -> "${start.year}"
-    PlanPeriod.Quarter -> {
+internal fun PeriodFocus.crumbLabel(): String = when (period) {
+    Period.Year -> "${start.year}"
+    Period.Quarter -> {
         val quarter = ((start.month.number - 1) / 3) + 1
         "Q$quarter"
     }
-    PlanPeriod.Month -> start.month.localizedName()
-    PlanPeriod.Week -> {
+    Period.Month -> start.month.localizedName()
+    Period.Week -> {
         val week = start.toLocalIsoWeekDate().isoWeekNumber
         "W$week ${start.day} - ${endInclusive.day}"
     }
-    PlanPeriod.Day -> "${start.day} ${start.dayOfWeek.localizedShortName()}"
+    Period.Day -> "${start.day} ${start.dayOfWeek.localizedShortName()}"
 }
 
 @Composable

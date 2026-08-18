@@ -48,12 +48,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.LocalDate
-import com.checkit.domain.PlanFocus
-import com.checkit.domain.PlanPeriod
+import com.checkit.domain.PeriodFocus
+import com.checkit.domain.Period
 import com.checkit.ui.today
-import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.minus
-import kotlinx.datetime.plus
 
 // --- State Hierarchy ---
 
@@ -71,7 +68,7 @@ data class SelectionState(
 
 data class NestedFilterState(
     val isVisible: Boolean = false,
-    val focus: PlanFocus? = null,
+    val focus: PeriodFocus? = null,
     val query: String = "",
     val hideChecked: Boolean = false
 ) {
@@ -291,7 +288,7 @@ class NestedListsViewModel(
         updateActiveEditor { it.copy(filters = it.filters.copy(isVisible = !it.filters.isVisible)) }
     }
 
-    fun updateFilterFocus(focus: PlanFocus) {
+    fun updateFilterFocus(focus: PeriodFocus) {
         updateActiveEditor { it.copy(filters = it.filters.copy(focus = focus)) }
     }
 
@@ -323,8 +320,8 @@ class NestedListsViewModel(
 
     fun currentFilterPeriod() {
         updateActiveEditor { current ->
-            val period = current.filters.focus?.period ?: PlanPeriod.Week
-            current.copy(filters = current.filters.copy(focus = PlanFocus(period, today())))
+            val period = current.filters.focus?.period ?: Period.Week
+            current.copy(filters = current.filters.copy(focus = PeriodFocus(period, today())))
         }
     }
 

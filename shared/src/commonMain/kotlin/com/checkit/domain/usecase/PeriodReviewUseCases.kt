@@ -4,12 +4,12 @@ import com.checkit.data.CheckItRepository
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.PeriodFocus
+import com.checkit.domain.Period
 import com.checkit.domain.PeriodReview
 import com.checkit.domain.PeriodReviewDraft
 import com.checkit.domain.PeriodReviewDraftHighlight
 import com.checkit.domain.PeriodReviewDraftStats
 import com.checkit.domain.PeriodReviewDraftTag
-import com.checkit.domain.ReviewPeriod
 import com.checkit.domain.ReviewSource
 import com.checkit.domain.ReviewStatus
 import kotlinx.serialization.json.Json
@@ -55,7 +55,7 @@ class BuildPeriodReviewDraftUseCase {
      * then Month, Week, Day), then appends an activity summary built only from
      * completed items inside the focus period (planned items are ignored).
      */
-    suspend operator fun invoke(
+    operator fun invoke(
         focus: PeriodFocus,
         dailyPlans: List<DailyPlan>,
         reviews: List<PeriodReview> = emptyList()
@@ -129,7 +129,7 @@ class BuildPeriodReviewDraftUseCase {
         val candidates = reviews.filter { review ->
             review.covers(focus)
         }
-        return candidates.maxByOrNull { it.period.ordinal }
+        return candidates.minByOrNull { it.period.ordinal }
     }
 
     private fun PeriodReview.covers(focus: PeriodFocus): Boolean {
@@ -140,7 +140,7 @@ class BuildPeriodReviewDraftUseCase {
 
     private fun buildNarrative(
         seed: PeriodReview?,
-        period: ReviewPeriod,
+        period: Period,
         stats: PeriodReviewDraftStats,
         highlights: List<PeriodReviewDraftHighlight>
     ): String = buildString {
@@ -171,11 +171,12 @@ class BuildPeriodReviewDraftUseCase {
         }
     }
 
-    private fun ReviewPeriod.periodWord(): String = when (this) {
-        ReviewPeriod.Day -> "day"
-        ReviewPeriod.Week -> "week"
-        ReviewPeriod.Month -> "month"
-        ReviewPeriod.Year -> "year"
+    private fun Period.periodWord(): String = when (this) {
+        Period.Day -> "day"
+        Period.Week -> "week"
+        Period.Month -> "month"
+        Period.Quarter -> "quarter"
+        Period.Year -> "year"
     }
 
     private companion object {

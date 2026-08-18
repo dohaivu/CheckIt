@@ -7,7 +7,7 @@ import androidx.room3.Query
 import androidx.room3.Transaction
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DayCloseCommitResult
-import com.checkit.domain.ReviewPeriod
+import com.checkit.domain.Period
 import com.checkit.domain.ReviewSource
 import com.checkit.domain.ReviewStatus
 import com.checkit.domain.TaskReminderWriteInput
@@ -528,7 +528,7 @@ interface CheckItDao {
 
         upsertPeriodReview(
             PeriodReviewEntity(
-                periodType = ReviewPeriod.Day.name,
+                periodType = Period.Day.name,
                 periodStartEpochDays = dateEpochDays,
                 periodEndEpochDays = dateEpochDays + 1,
                 content = winNote?.trim().orEmpty(),

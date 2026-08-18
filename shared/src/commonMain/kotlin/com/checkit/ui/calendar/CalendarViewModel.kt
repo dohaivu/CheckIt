@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.PeriodReview
-import com.checkit.domain.ReviewPeriod
+import com.checkit.domain.Period
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
@@ -64,7 +64,7 @@ class CalendarViewModel(
                         state.copy(
                             board = board,
                             dailyPlans = dailyPlans,
-                            dayReviews = periodReviews.filter { it.period == ReviewPeriod.Day },
+                            dayReviews = periodReviews.filter { it.period == Period.Day },
                             journalEntries = journalEntries,
                             selectedTagIds = state.selectedTagIds.intersect(availableTagIds)
                         )

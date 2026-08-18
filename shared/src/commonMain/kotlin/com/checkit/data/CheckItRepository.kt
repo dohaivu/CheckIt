@@ -6,7 +6,7 @@ import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DayCloseCommitResult
 import com.checkit.domain.PeriodReview
-import com.checkit.domain.ReviewPeriod
+import com.checkit.domain.Period
 import com.checkit.domain.ReviewSource
 import com.checkit.domain.ReviewStatus
 import com.checkit.domain.DueDatePreset
@@ -79,7 +79,9 @@ interface CheckItRepository {
         source: DailyPlanItemSource = DailyPlanItemSource.MyDayTask,
         status: DailyPlanItemStatus = DailyPlanItemStatus.Planned,
         tagIds: List<Long> = emptyList(),
-        nestedListItemId: Long? = null
+        taskId: Long? = null,
+        nestedListItemId: Long? = null,
+        carriedFromItemId: Long? = null
     ): Long
     suspend fun updateDailyPlanItemTime(itemId: Long, startTimeMinutes: Int?, endTimeMinutes: Int?)
     suspend fun updateDailyPlanItemTimes(updates: List<DailyPlanItemTimeUpdate>)
@@ -91,7 +93,7 @@ interface CheckItRepository {
     suspend fun getDailyPlanItem(itemId: Long): DailyPlanItem?
     suspend fun dailyPlanForDate(date: LocalDate): DailyPlan?
     fun observePeriodReviews(): Flow<List<PeriodReview>>
-    suspend fun periodReviewFor(period: ReviewPeriod, date: LocalDate): PeriodReview?
+    suspend fun periodReviewFor(period: Period, date: LocalDate): PeriodReview?
     suspend fun savePeriodReview(review: PeriodReview)
     suspend fun completeDayClose(
         date: LocalDate,
@@ -522,13 +524,16 @@ class RoomCheckItRepository(
         source: DailyPlanItemSource,
         status: DailyPlanItemStatus,
         tagIds: List<Long>,
-        nestedListItemId: Long?
+        taskId: Long?,
+        nestedListItemId: Long?,
+        carriedFromItemId: Long?
     ): Long {
         val dateEpochDays = date.toEpochDays().toInt()
         val now = Clock.System.now().toEpochMilliseconds()
         val itemId = dao.insertDailyPlanItem(
             DailyPlanItemEntity(
                 dateEpochDays = dateEpochDays,
+                taskId = taskId,
                 nestedListItemId = nestedListItemId,
                 title = title.trim(),
                 note = note?.trim()?.takeIf { it.isNotBlank() },
@@ -538,7 +543,8 @@ class RoomCheckItRepository(
                 startTimeMinutes = startTimeMinutes,
                 endTimeMinutes = if (source.hasEndTime()) endTimeMinutes else null,
                 addedAtMillis = now,
-                completedAtMillis = if (status == DailyPlanItemStatus.Done) now else null
+                completedAtMillis = if (status == DailyPlanItemStatus.Done) now else null,
+                carriedFromItemId = carriedFromItemId
             )
         )
         tagIds.forEach { tagId -> addDailyPlanItemTag(itemId, tagId) }
@@ -735,7 +741,7 @@ class RoomCheckItRepository(
     override fun observePeriodReviews(): Flow<List<PeriodReview>> =
         dao.observePeriodReviews().map { entities -> entities.map { it.toDomain() } }
 
-    override suspend fun periodReviewFor(period: ReviewPeriod, date: LocalDate): PeriodReview? =
+    override suspend fun periodReviewFor(period: Period, date: LocalDate): PeriodReview? =
         dao.periodReviewFor(period.name, date.toEpochDays().toInt())?.toDomain()
 
     override suspend fun savePeriodReview(review: PeriodReview) {
@@ -1160,7 +1166,7 @@ private fun DailyPlanItemEntity.toDomain(tags: List<TagItem> = emptyList()) = Da
 
 private fun PeriodReviewEntity.toDomain() = PeriodReview(
     id = id,
-    period = ReviewPeriod.valueOf(periodType),
+    period = Period.valueOf(periodType),
     periodStartEpochDays = periodStartEpochDays,
     periodEndEpochDays = periodEndEpochDays,
     content = content,
