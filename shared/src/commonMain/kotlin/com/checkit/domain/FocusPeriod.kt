@@ -19,7 +19,7 @@ enum class Period {
 /**
  * Identifies a single period by its zoom level plus any anchor date inside it.
  */
-data class PeriodFocus(
+data class FocusPeriod(
     val period: Period,
     val anchorDate: LocalDate
 ) {
@@ -33,22 +33,22 @@ data class PeriodFocus(
     val endInclusiveEpochDays: Int get() = endExclusive.toEpochDays().toInt() - 1
 
     /** Zoom out one level (Day -> Week -> Month -> Quarter -> Year); stays at Year. */
-    fun zoomOut(): PeriodFocus = when (period) {
-        Period.Day -> PeriodFocus(Period.Week, anchorDate)
-        Period.Week -> PeriodFocus(Period.Month, anchorDate)
-        Period.Month -> PeriodFocus(Period.Quarter, anchorDate)
-        Period.Quarter -> PeriodFocus(Period.Year, anchorDate)
+    fun zoomOut(): FocusPeriod = when (period) {
+        Period.Day -> FocusPeriod(Period.Week, anchorDate)
+        Period.Week -> FocusPeriod(Period.Month, anchorDate)
+        Period.Month -> FocusPeriod(Period.Quarter, anchorDate)
+        Period.Quarter -> FocusPeriod(Period.Year, anchorDate)
         Period.Year -> this
     }
 
     /** Zoom into [to] keeping an anchor; only allows finer periods than current. */
-    fun zoomIn(to: Period, anchor: LocalDate = anchorDate): PeriodFocus =
-        if (to.ordinal > period.ordinal) PeriodFocus(to, anchor) else this
+    fun zoomIn(to: Period, anchor: LocalDate = anchorDate): FocusPeriod =
+        if (to.ordinal > period.ordinal) FocusPeriod(to, anchor) else this
 
     fun contains(date: LocalDate): Boolean = date >= start && date < endExclusive
 
     /** Move to the previous (negative) / next (positive) period of the same type. */
-    fun shift(amount: Int): PeriodFocus = PeriodFocus(period, period.move(anchorDate, amount))
+    fun shift(amount: Int): FocusPeriod = FocusPeriod(period, period.move(anchorDate, amount))
 
     /** The coarser period that contains this one, or null for Year. */
     fun parentPeriod(): Period? = when (period) {
@@ -69,7 +69,7 @@ data class PeriodFocus(
     }
 
     /** Whether this focus completely covers [other]. */
-    fun covers(other: PeriodFocus): Boolean = start <= other.start && endExclusive >= other.endExclusive
+    fun covers(other: FocusPeriod): Boolean = start <= other.start && endExclusive >= other.endExclusive
 }
 
 /** Whether this period represents a longer duration than [other]. */

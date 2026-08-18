@@ -1,7 +1,7 @@
 package com.checkit.domain.usecase
 
 import com.checkit.domain.Period
-import com.checkit.domain.PeriodFocus
+import com.checkit.domain.FocusPeriod
 import com.checkit.domain.ReviewSource
 import com.checkit.domain.ReviewStatus
 import com.checkit.ui.tasks.FakeCheckItRepository
@@ -19,7 +19,7 @@ class SavePeriodReviewUseCaseTest {
     fun savesCompletedManualReviewWithPeriodBounds() = runTest {
         val repository = FakeCheckItRepository()
         val save = SavePeriodReviewUseCase(repository)
-        val focus = PeriodFocus(Period.Week, date)
+        val focus = FocusPeriod(Period.Week, date)
 
         save(focus, content = "  Solid week, shipped the PR.  ", intentNext = "  Start the refactor  ")
 
@@ -38,7 +38,7 @@ class SavePeriodReviewUseCaseTest {
     fun savesWithoutIntentNextWhenBlank() = runTest {
         val repository = FakeCheckItRepository()
         val save = SavePeriodReviewUseCase(repository)
-        val focus = PeriodFocus(Period.Month, date)
+        val focus = FocusPeriod(Period.Month, date)
 
         save(focus, content = "Good month", intentNext = "   ")
 
@@ -50,7 +50,7 @@ class SavePeriodReviewUseCaseTest {
     fun savingTwiceUpsertsTheSamePeriod() = runTest {
         val repository = FakeCheckItRepository()
         val save = SavePeriodReviewUseCase(repository)
-        val focus = PeriodFocus(Period.Day, date)
+        val focus = FocusPeriod(Period.Day, date)
 
         save(focus, content = "First pass", intentNext = "")
         save(focus, content = "Second pass", intentNext = "Keep going")

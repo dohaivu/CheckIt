@@ -7,7 +7,7 @@ import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.Period
 import com.checkit.domain.PeriodReview
-import com.checkit.domain.PeriodFocus
+import com.checkit.domain.FocusPeriod
 import com.checkit.domain.ReviewSource
 import com.checkit.domain.isGoodMood
 import com.checkit.ui.components.ReportPeriod
@@ -21,7 +21,7 @@ import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 
 data class ReflectReviewEditorState(
-    val focus: PeriodFocus,
+    val focus: FocusPeriod,
     val review: PeriodReview?,
     val content: String = "",
     val intentNext: String = "",
@@ -44,7 +44,7 @@ data class ReflectUiState(
     val reviews: List<PeriodReview> = emptyList(),
     val isLoading: Boolean = true
 ) {
-    val focus: PeriodFocus by lazy { PeriodFocus(selectedPeriod.toPeriod(), selectedDate) }
+    val focus: FocusPeriod by lazy { FocusPeriod(selectedPeriod.toPeriod(), selectedDate) }
     val focusStartEpochDays: Int get() = focus.start.toEpochDays().toInt()
     val focusReview: PeriodReview? by lazy {
         reviews.firstOrNull {

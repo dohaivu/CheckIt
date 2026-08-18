@@ -43,7 +43,7 @@ import checkit.shared.generated.resources.plan_period_quarter
 import checkit.shared.generated.resources.plan_period_week
 import checkit.shared.generated.resources.plan_period_year
 import checkit.shared.generated.resources.plan_previous_period
-import com.checkit.domain.PeriodFocus
+import com.checkit.domain.FocusPeriod
 import com.checkit.domain.Period
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.localizedName
@@ -58,8 +58,8 @@ import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun FocusPeriodHeader(
-    focus: PeriodFocus?,
-    onFocusSelected: (PeriodFocus) -> Unit,
+    focus: FocusPeriod?,
+    onFocusSelected: (FocusPeriod) -> Unit,
     onPreviousPeriod: () -> Unit,
     onNextPeriod: () -> Unit,
     onCurrentPeriod: () -> Unit,
@@ -73,7 +73,7 @@ fun FocusPeriodHeader(
             selectedPeriod = focus?.period,
             onPeriodSelected = { period ->
                 val anchor = if (focus?.contains(today()) == true) today() else focus?.anchorDate ?: today()
-                onFocusSelected(PeriodFocus(period, anchor))
+                onFocusSelected(FocusPeriod(period, anchor))
             }
         )
         if (focus != null) {
@@ -135,7 +135,7 @@ internal fun FocusPeriodSwitcher(
 
 @Composable
 private fun FocusPeriodNavHeader(
-    focus: PeriodFocus,
+    focus: FocusPeriod,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     onCurrentPeriod: () -> Unit
@@ -189,13 +189,13 @@ private fun FocusPeriodNavHeader(
 
 @Composable
 private fun FocusPeriodBreadcrumbRow(
-    focus: PeriodFocus,
-    onZoomOutTo: (PeriodFocus) -> Unit
+    focus: FocusPeriod,
+    onZoomOutTo: (FocusPeriod) -> Unit
 ) {
     val crumbs = buildList {
         Period.entries.forEach { period ->
             if (period.ordinal <= focus.period.ordinal) {
-                val crumbFocus = PeriodFocus(period, focus.anchorDate)
+                val crumbFocus = FocusPeriod(period, focus.anchorDate)
                 add(FocusPeriodCrumb(period, crumbFocus, crumbFocus.crumbLabel()))
             }
         }
@@ -237,7 +237,7 @@ private fun FocusPeriodBreadcrumbRow(
 
 private data class FocusPeriodCrumb(
     val period: Period,
-    val focus: PeriodFocus,
+    val focus: FocusPeriod,
     val label: String
 )
 
@@ -251,7 +251,7 @@ private fun Period.shortLabel(): String = when (this) {
 }
 
 @Composable
-internal fun PeriodFocus.title(): String = when (period) {
+internal fun FocusPeriod.title(): String = when (period) {
     Period.Year -> "${start.year}"
     Period.Quarter -> {
         val quarter = ((start.month.number - 1) / 3) + 1
@@ -264,7 +264,7 @@ internal fun PeriodFocus.title(): String = when (period) {
 
 /** Compact per-level label for the breadcrumb; drops year/month info already shown by ancestor crumbs. */
 @Composable
-internal fun PeriodFocus.crumbLabel(): String = when (period) {
+internal fun FocusPeriod.crumbLabel(): String = when (period) {
     Period.Year -> "${start.year}"
     Period.Quarter -> {
         val quarter = ((start.month.number - 1) / 3) + 1

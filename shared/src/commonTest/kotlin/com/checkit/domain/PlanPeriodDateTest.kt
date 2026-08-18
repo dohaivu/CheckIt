@@ -14,7 +14,7 @@ class PlanPeriodDateTest {
 
     @Test
     fun dayStartIsAnchor() {
-        val focus = PeriodFocus(Period.Day, day)
+        val focus = FocusPeriod(Period.Day, day)
         assertEquals(day, focus.start)
         assertEquals(day.plus(1, DateTimeUnit.DAY), focus.endExclusive)
         assertEquals(day.toEpochDays().toInt(), focus.startEpochDays)
@@ -23,7 +23,7 @@ class PlanPeriodDateTest {
 
     @Test
     fun weekStartIsMonday() {
-        val focus = PeriodFocus(Period.Week, day)
+        val focus = FocusPeriod(Period.Week, day)
         assertEquals(LocalDate(2026, 3, 9), focus.start) // Monday
         assertEquals(LocalDate(2026, 3, 16), focus.endExclusive)
         assertEquals(LocalDate(2026, 3, 15), focus.endInclusive)
@@ -32,89 +32,89 @@ class PlanPeriodDateTest {
     @Test
     fun sundayStillSnapsToSameMonday() {
         val sunday = LocalDate(2026, 3, 15)
-        val focus = PeriodFocus(Period.Week, sunday)
+        val focus = FocusPeriod(Period.Week, sunday)
         assertEquals(LocalDate(2026, 3, 9), focus.start)
         assertEquals(LocalDate(2026, 3, 16), focus.endExclusive)
     }
 
     @Test
     fun monthStartIsFirstOfMonth() {
-        val focus = PeriodFocus(Period.Month, LocalDate(2026, 2, 27))
+        val focus = FocusPeriod(Period.Month, LocalDate(2026, 2, 27))
         assertEquals(LocalDate(2026, 2, 1), focus.start)
         assertEquals(LocalDate(2026, 3, 1), focus.endExclusive)
     }
 
     @Test
     fun quarterBoundaries() {
-        val mar = PeriodFocus(Period.Quarter, LocalDate(2026, 3, 20))
+        val mar = FocusPeriod(Period.Quarter, LocalDate(2026, 3, 20))
         assertEquals(LocalDate(2026, 1, 1), mar.start)
         assertEquals(LocalDate(2026, 4, 1), mar.endExclusive)
 
-        val jun = PeriodFocus(Period.Quarter, LocalDate(2026, 6, 20))
+        val jun = FocusPeriod(Period.Quarter, LocalDate(2026, 6, 20))
         assertEquals(LocalDate(2026, 4, 1), jun.start)
         assertEquals(LocalDate(2026, 7, 1), jun.endExclusive)
 
-        val oct = PeriodFocus(Period.Quarter, LocalDate(2026, 10, 20))
+        val oct = FocusPeriod(Period.Quarter, LocalDate(2026, 10, 20))
         assertEquals(LocalDate(2026, 10, 1), oct.start)
         assertEquals(LocalDate(2027, 1, 1), oct.endExclusive)
     }
 
     @Test
     fun yearStartIsJanFirst() {
-        val focus = PeriodFocus(Period.Year, LocalDate(2026, 12, 31))
+        val focus = FocusPeriod(Period.Year, LocalDate(2026, 12, 31))
         assertEquals(LocalDate(2026, 1, 1), focus.start)
         assertEquals(LocalDate(2027, 1, 1), focus.endExclusive)
     }
 
     @Test
     fun shiftDayAndWeek() {
-        assertEquals(day.plus(2, DateTimeUnit.DAY), PeriodFocus(Period.Day, day).shift(2).start)
-        assertEquals(day.minus(1, DateTimeUnit.DAY), PeriodFocus(Period.Day, day).shift(-1).start)
+        assertEquals(day.plus(2, DateTimeUnit.DAY), FocusPeriod(Period.Day, day).shift(2).start)
+        assertEquals(day.minus(1, DateTimeUnit.DAY), FocusPeriod(Period.Day, day).shift(-1).start)
         assertEquals(
             LocalDate(2026, 3, 16),
-            PeriodFocus(Period.Week, day).shift(1).start
+            FocusPeriod(Period.Week, day).shift(1).start
         )
         assertEquals(
             LocalDate(2026, 3, 2),
-            PeriodFocus(Period.Week, day).shift(-1).start
+            FocusPeriod(Period.Week, day).shift(-1).start
         )
     }
 
     @Test
     fun shiftMonthSnapsToMonthStart() {
         val anchor = LocalDate(2026, 3, 10)
-        assertEquals(LocalDate(2026, 4, 1), PeriodFocus(Period.Month, anchor).shift(1).start)
-        assertEquals(LocalDate(2026, 2, 1), PeriodFocus(Period.Month, anchor).shift(-1).start)
-        assertEquals(LocalDate(2026, 6, 1), PeriodFocus(Period.Month, anchor).shift(3).start)
+        assertEquals(LocalDate(2026, 4, 1), FocusPeriod(Period.Month, anchor).shift(1).start)
+        assertEquals(LocalDate(2026, 2, 1), FocusPeriod(Period.Month, anchor).shift(-1).start)
+        assertEquals(LocalDate(2026, 6, 1), FocusPeriod(Period.Month, anchor).shift(3).start)
     }
 
     @Test
     fun shiftQuarterSnapsToQuarterStart() {
         val anchor = LocalDate(2026, 3, 10)
-        assertEquals(LocalDate(2026, 4, 1), PeriodFocus(Period.Quarter, anchor).shift(1).start)
-        assertEquals(LocalDate(2025, 10, 1), PeriodFocus(Period.Quarter, anchor).shift(-1).start)
-        assertEquals(LocalDate(2026, 10, 1), PeriodFocus(Period.Quarter, anchor).shift(3).start)
+        assertEquals(LocalDate(2026, 4, 1), FocusPeriod(Period.Quarter, anchor).shift(1).start)
+        assertEquals(LocalDate(2025, 10, 1), FocusPeriod(Period.Quarter, anchor).shift(-1).start)
+        assertEquals(LocalDate(2026, 10, 1), FocusPeriod(Period.Quarter, anchor).shift(3).start)
     }
 
     @Test
     fun shiftYear() {
         val anchor = LocalDate(2026, 3, 10)
-        assertEquals(LocalDate(2027, 1, 1), PeriodFocus(Period.Year, anchor).shift(1).start)
-        assertEquals(LocalDate(2025, 1, 1), PeriodFocus(Period.Year, anchor).shift(-1).start)
+        assertEquals(LocalDate(2027, 1, 1), FocusPeriod(Period.Year, anchor).shift(1).start)
+        assertEquals(LocalDate(2025, 1, 1), FocusPeriod(Period.Year, anchor).shift(-1).start)
     }
 
     @Test
     fun zoomOutChain() {
-        assertEquals(Period.Week, PeriodFocus(Period.Day, day).zoomOut().period)
-        assertEquals(Period.Month, PeriodFocus(Period.Week, day).zoomOut().period)
-        assertEquals(Period.Quarter, PeriodFocus(Period.Month, day).zoomOut().period)
-        assertEquals(Period.Year, PeriodFocus(Period.Quarter, day).zoomOut().period)
-        assertEquals(Period.Year, PeriodFocus(Period.Year, day).zoomOut().period)
+        assertEquals(Period.Week, FocusPeriod(Period.Day, day).zoomOut().period)
+        assertEquals(Period.Month, FocusPeriod(Period.Week, day).zoomOut().period)
+        assertEquals(Period.Quarter, FocusPeriod(Period.Month, day).zoomOut().period)
+        assertEquals(Period.Year, FocusPeriod(Period.Quarter, day).zoomOut().period)
+        assertEquals(Period.Year, FocusPeriod(Period.Year, day).zoomOut().period)
     }
 
     @Test
     fun zoomInOnlyAllowsFinerPeriods() {
-        val focus = PeriodFocus(Period.Week, day)
+        val focus = FocusPeriod(Period.Week, day)
         assertEquals(Period.Day, focus.zoomIn(Period.Day).period)
         // Coarser or equal periods are ignored.
         assertEquals(Period.Week, focus.zoomIn(Period.Week).period)
