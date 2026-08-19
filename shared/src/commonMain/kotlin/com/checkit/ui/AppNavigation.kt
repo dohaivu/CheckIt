@@ -38,6 +38,7 @@ sealed interface AppRoute : NavKey {
     @Serializable data object Reflect : AppRoute
     @Serializable data object Settings : AppRoute
     @Serializable data object NestedLists : AppRoute
+    @Serializable data class ListSections(val listId: Long) : AppRoute
 }
 
 enum class CheckItTab {

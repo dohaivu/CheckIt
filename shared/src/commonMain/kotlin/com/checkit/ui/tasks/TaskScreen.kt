@@ -5,19 +5,26 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -36,6 +43,7 @@ internal fun TaskScreen(
     viewModel: TaskViewModel,
     listViewModel: ListViewModel,
     onOpenTags: () -> Unit,
+    onOpenSections: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -130,6 +138,12 @@ internal fun TaskScreen(
                             sortOption = state.sortOption,
                             selectSortOption = viewModel::selectSortOption
                         )
+
+                        if (state.selectedListId != null) {
+                            ActionsMenu(
+                                onManageSections = { onOpenSections(state.selectedListId!!) }
+                            )
+                        }
                     }
                 )
             }
@@ -166,3 +180,29 @@ internal fun TaskScreen(
         )
     }
 }
+
+@Composable
+private fun ActionsMenu(
+    onManageSections: () -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Box {
+        IconButton(onClick = { expanded = true }) {
+            Icon(Icons.Default.MoreVert, contentDescription = "List actions")
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            DropdownMenuItem(
+                text = { Text("Manage sections") },
+                onClick = {
+                    expanded = false
+                    onManageSections()
+                }
+            )
+        }
+    }
+}
+

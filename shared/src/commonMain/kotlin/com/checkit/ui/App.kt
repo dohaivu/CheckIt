@@ -48,6 +48,7 @@ import com.checkit.ui.tasks.TaskEditorActions
 import com.checkit.ui.tasks.TaskEditorSheet
 import com.checkit.ui.tasks.TaskEditorState
 import com.checkit.ui.tasks.TaskScreen
+import com.checkit.ui.tasks.list.ListSectionScreen
 import com.checkit.ui.tasks.tag.TagEditorSheet
 import com.checkit.ui.tasks.tag.TagScreen
 import com.checkit.ui.theme.AppTheme
@@ -246,7 +247,8 @@ fun CheckItApp(
                                             state = taskUiState,
                                             viewModel = viewModels.task,
                                             listViewModel = viewModels.list,
-                                            onOpenTags = { navState.push(AppRoute.Tags) }
+                                            onOpenTags = { navState.push(AppRoute.Tags) },
+                                            onOpenSections = { listId -> navState.push(AppRoute.ListSections(listId)) }
                                         )
                                     }
                                     AppRoute.Tags -> {
@@ -309,6 +311,19 @@ fun CheckItApp(
                                             state = nestedUiState,
                                             viewModel = viewModels.nested,
                                             onAddToDailyPlan = viewModels.myDay::addDailyPlanItem
+                                        )
+                                    }
+                                    is AppRoute.ListSections -> {
+                                        val listId = (key as AppRoute.ListSections).listId
+                                        val list = taskUiState.board.lists.find { it.id == listId }
+                                        LaunchedEffect(list) {
+                                            if (list != null) {
+                                                viewModels.listSection.loadList(list.id, list.sections)
+                                            }
+                                        }
+                                        ListSectionScreen(
+                                            viewModel = viewModels.listSection,
+                                            onNavigateBack = { navState.pop() }
                                         )
                                     }
                                     AppRoute.Settings -> SettingsScreen(

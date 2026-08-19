@@ -195,6 +195,7 @@ class TaskViewModelViewsTest {
             when (entry) {
                 is TaskListEntry.Task -> "task:${entry.item.name}"
                 is TaskListEntry.Note -> "note:${entry.item.title}"
+                is TaskListEntry.SectionHeader -> "section:${entry.section?.title}"
             }
         }
         assertEquals(listOf("note:Alpha", "task:Bravo", "note:Charlie", "task:Delta"), labels)
@@ -224,6 +225,7 @@ class TaskViewModelViewsTest {
             when (entry) {
                 is TaskListEntry.Task -> "task:${entry.item.name}"
                 is TaskListEntry.Note -> "note:${entry.item.title}"
+                is TaskListEntry.SectionHeader -> "section:${entry.section?.title}"
             }
         }
         assertEquals(listOf("task:Budget", "note:Ideas"), labels)

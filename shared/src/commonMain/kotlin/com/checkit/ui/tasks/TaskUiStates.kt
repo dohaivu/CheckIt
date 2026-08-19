@@ -4,6 +4,7 @@ import com.checkit.domain.ActiveTagToken
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DueDatePreset
 import com.checkit.domain.ListItem
+import com.checkit.domain.ListSection
 import com.checkit.domain.NoteItem
 import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
@@ -74,6 +75,10 @@ sealed interface TaskListEntry {
 
     data class Note(val item: NoteItem) : TaskListEntry {
         override val key: String = "note-${item.id}"
+    }
+
+    data class SectionHeader(val section: ListSection?) : TaskListEntry {
+        override val key: String = "section-${section?.id ?: "none"}"
     }
 }
 

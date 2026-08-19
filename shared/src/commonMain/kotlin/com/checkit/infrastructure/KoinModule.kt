@@ -16,6 +16,7 @@ import com.checkit.domain.SprintManager
 import com.checkit.domain.usecase.AddDailyPlanItemUseCase
 import com.checkit.domain.usecase.AddJournalEntryUseCase
 import com.checkit.domain.usecase.AddListUseCase
+import com.checkit.domain.usecase.AddSectionUseCase
 import com.checkit.domain.usecase.AddNestedDocumentUseCase
 import com.checkit.domain.usecase.AddNestedItemUseCase
 import com.checkit.domain.usecase.AddNoteUseCase
@@ -33,6 +34,7 @@ import com.checkit.domain.usecase.CompleteTaskUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.DeleteJournalEntryUseCase
 import com.checkit.domain.usecase.DeleteListUseCase
+import com.checkit.domain.usecase.DeleteSectionUseCase
 import com.checkit.domain.usecase.DeleteNestedDocumentUseCase
 import com.checkit.domain.usecase.DeleteNestedItemsUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
@@ -66,6 +68,7 @@ import com.checkit.domain.usecase.UpdateDailyPlanItemTagUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.domain.usecase.UpdateJournalEntryUseCase
 import com.checkit.domain.usecase.UpdateListUseCase
+import com.checkit.domain.usecase.UpdateSectionUseCase
 import com.checkit.domain.usecase.UpdateNestedItemDateRangeUseCase
 import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
 import com.checkit.domain.usecase.UpdateNestedItemMetricSettingsUseCase
@@ -86,6 +89,7 @@ import com.checkit.ui.reflect.ReflectViewModel
 import com.checkit.ui.settings.SettingsViewModel
 import com.checkit.ui.tasks.TaskViewModel
 import com.checkit.ui.tasks.list.ListViewModel
+import com.checkit.ui.tasks.list.ListSectionViewModel
 import com.checkit.ui.tasks.tag.TagViewModel
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineDispatcher
@@ -137,6 +141,9 @@ val provideInteractorModule = module {
     single { AddListUseCase(get()) }
     single { UpdateListUseCase(get()) }
     single { DeleteListUseCase(get()) }
+    single { AddSectionUseCase(get()) }
+    single { UpdateSectionUseCase(get()) }
+    single { DeleteSectionUseCase(get()) }
     single { AddTagUseCase(get()) }
     single { UpdateTagUseCase(get()) }
     single { UpdateTagSortOrderUseCase(get()) }
@@ -228,6 +235,7 @@ val provideViewModelModule = module {
         )
     }
     viewModel { ListViewModel(get(), get(), get()) }
+    viewModel { ListSectionViewModel(get(), get(), get()) }
     viewModel { TagViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { CalendarViewModel(get(), get(), get(), get()) }
     viewModel {

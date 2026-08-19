@@ -85,18 +85,64 @@ internal class TaskVisibleItemsBuilder(
             }
         }
         val sortedVisibleItems = visibleEntries.sortedFor(options.sortOption)
+
+        val listItemsWithHeaders = if (selection.selectedListId != null && options.sortOption == TaskSortOption.Custom) {
+            val list = board.lists.find { it.id == selection.selectedListId }
+            val sections = list?.sections.orEmpty().sortedBy { it.sortOrder }
+            
+            val result = mutableListOf<TaskListEntry>()
+            
+            // Items without section
+            val unsectioned = sortedVisibleItems.filter { entry ->
+                when (entry) {
+                    is TaskListEntry.Task -> entry.item.sectionId == null
+                    is TaskListEntry.Note -> entry.item.sectionId == null
+                    else -> false
+                }
+            }
+            
+            if (sections.isNotEmpty() && unsectioned.isNotEmpty()) {
+                // Only show "Unsectioned" header if there are sections and some items are unsectioned
+                // result += TaskListEntry.SectionHeader(null) 
+                // Actually, maybe just put them at the top without header if it's the default
+                result += unsectioned
+            } else if (sections.isEmpty()) {
+                result += unsectioned
+            } else {
+                result += unsectioned
+            }
+
+            sections.forEach { section ->
+                val sectionItems = sortedVisibleItems.filter { entry ->
+                    when (entry) {
+                        is TaskListEntry.Task -> entry.item.sectionId == section.id
+                        is TaskListEntry.Note -> entry.item.sectionId == section.id
+                        else -> false
+                    }
+                }
+                if (sectionItems.isNotEmpty() || sections.size > 0) {
+                    result += TaskListEntry.SectionHeader(section)
+                    result += sectionItems
+                }
+            }
+            result
+        } else {
+            sortedVisibleItems
+        }
+
         val visibleTasks = mutableListOf<TaskItem>()
         val visibleNotes = mutableListOf<NoteItem>()
-        sortedVisibleItems.forEach { entry ->
+        listItemsWithHeaders.forEach { entry ->
             when (entry) {
                 is TaskListEntry.Task -> visibleTasks += entry.item
                 is TaskListEntry.Note -> visibleNotes += entry.item
+                else -> {}
             }
         }
         return TaskVisibleItemsState(
             tasks = visibleTasks,
             notes = visibleNotes,
-            listItems = sortedVisibleItems
+            listItems = listItemsWithHeaders
         )
     }
 }
@@ -162,42 +208,49 @@ private val TaskListEntry.id: Long
     get() = when (this) {
         is TaskListEntry.Task -> item.id
         is TaskListEntry.Note -> item.id
+        is TaskListEntry.SectionHeader -> section?.id ?: -1L
     }
 
 private val TaskListEntry.sortOrder: Int
     get() = when (this) {
         is TaskListEntry.Task -> item.sortOrder
         is TaskListEntry.Note -> item.sortOrder
+        is TaskListEntry.SectionHeader -> section?.sortOrder ?: -1
     }
 
 private val TaskListEntry.typeRank: Int
     get() = when (this) {
         is TaskListEntry.Task -> 0
         is TaskListEntry.Note -> 1
+        is TaskListEntry.SectionHeader -> -1
     }
 
 private val TaskListEntry.priorityRank: Int
     get() = when (this) {
         is TaskListEntry.Task -> item.priority.rankForSort()
         is TaskListEntry.Note -> TaskPriority.None.rankForSort()
+        is TaskListEntry.SectionHeader -> -1
     }
 
 private val TaskListEntry.dateForSort: LocalDate?
     get() = when (this) {
         is TaskListEntry.Task -> item.doDate
         is TaskListEntry.Note -> item.date
+        is TaskListEntry.SectionHeader -> null
     }
 
 private val TaskListEntry.startTimeForSort: Int?
     get() = when (this) {
         is TaskListEntry.Task -> item.startTimeMinutes
         is TaskListEntry.Note -> item.startTimeMinutes
+        is TaskListEntry.SectionHeader -> null
     }
 
 private val TaskListEntry.titleForSort: String
     get() = when (this) {
         is TaskListEntry.Task -> item.name
         is TaskListEntry.Note -> item.title.ifBlank { item.content }
+        is TaskListEntry.SectionHeader -> section?.title.orEmpty()
     }.lowercase()
 
 private fun TaskPriority.rankForSort(): Int =
