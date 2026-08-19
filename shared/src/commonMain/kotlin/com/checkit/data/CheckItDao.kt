@@ -121,14 +121,20 @@ interface CheckItDao {
     @Query("SELECT * FROM task_filters ORDER BY sortOrder ASC, name ASC")
     fun observeFilters(): Flow<List<TaskFilterEntity>>
 
+    @Query("SELECT * FROM tasks WHERE status = 'Open' ORDER BY createdAtMillis DESC")
+    fun observeTasksOpen(): Flow<List<TaskEntity>>
+
     @Query("SELECT * FROM tasks ORDER BY createdAtMillis DESC")
-    fun observeTasks(): Flow<List<TaskEntity>>
+    fun observeTasksAll(): Flow<List<TaskEntity>>
 
     @Query("SELECT * FROM tasks WHERE id = :taskId LIMIT 1")
     suspend fun taskById(taskId: Long): TaskEntity?
 
+    @Query("SELECT * FROM notes WHERE status = 'Open' ORDER BY editedAtMillis DESC")
+    fun observeNotesOpen(): Flow<List<NoteEntity>>
+
     @Query("SELECT * FROM notes ORDER BY editedAtMillis DESC")
-    fun observeNotes(): Flow<List<NoteEntity>>
+    fun observeNotesAll(): Flow<List<NoteEntity>>
 
     @Query("SELECT * FROM daily_plan_items ORDER BY sortOrder ASC, addedAtMillis ASC")
     fun observeDailyPlanItems(): Flow<List<DailyPlanItemEntity>>

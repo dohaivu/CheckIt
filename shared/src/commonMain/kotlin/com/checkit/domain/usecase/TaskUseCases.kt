@@ -29,7 +29,7 @@ import kotlin.time.Clock
 class ObserveTaskBoardUseCase(
     private val repository: CheckItRepository
 ) {
-    operator fun invoke(): Flow<TaskBoard> = repository.observeTaskBoard()
+    operator fun invoke(onlyOpen: Boolean = true): Flow<TaskBoard> = repository.observeTaskBoard(onlyOpen)
 }
 
 class AutoAddTodayTasksToMyDayUseCase(

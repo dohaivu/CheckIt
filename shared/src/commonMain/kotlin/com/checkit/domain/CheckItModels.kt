@@ -67,6 +67,53 @@ data class TaskItem(
     val trashedAtMillis: Long? = null
 ) {
     val isTrashed: Boolean get() = trashedAtMillis != null
+
+    fun isSameAs(
+        name: String,
+        description: String,
+        statusName: String,
+        priorityName: String,
+        typeName: String,
+        doDateEpochDays: Int?,
+        completedDateEpochDays: Int?,
+        startTimeMinutes: Int?,
+        endTimeMinutes: Int?,
+        repeatRRule: String?,
+        label: String?,
+        createdAtMillis: Long,
+        updatedAtMillis: Long,
+        trashedAtMillis: Long?,
+        resolvedListId: Long?,
+        resolvedSubtasks: List<SubTaskItem>,
+        resolvedReminders: List<TaskReminder>,
+        resolvedTags: List<TagItem>,
+        resolvedSortOrder: Int,
+        resolvedIsPinned: Boolean,
+        resolvedSection: String?
+    ): Boolean {
+        return this.id == id &&
+            this.name == name &&
+            this.description == description &&
+            this.status.name == statusName &&
+            this.priority.name == priorityName &&
+            this.type.name == typeName &&
+            this.doDate?.toEpochDays()?.toInt() == doDateEpochDays &&
+            this.completedDate?.toEpochDays()?.toInt() == completedDateEpochDays &&
+            this.startTimeMinutes == startTimeMinutes &&
+            this.endTimeMinutes == endTimeMinutes &&
+            this.repeatRRule == repeatRRule &&
+            this.label == label &&
+            this.createdAtMillis == createdAtMillis &&
+            this.updatedAtMillis == updatedAtMillis &&
+            this.trashedAtMillis == trashedAtMillis &&
+            this.list?.id == resolvedListId &&
+            this.subtasks == resolvedSubtasks &&
+            this.reminders == resolvedReminders &&
+            this.tags == resolvedTags &&
+            this.sortOrder == resolvedSortOrder &&
+            this.isPinned == resolvedIsPinned &&
+            this.section == resolvedSection
+    }
 }
 
 data class SubTaskItem(
@@ -95,6 +142,39 @@ data class NoteItem(
     val trashedAtMillis: Long? = null
 ) {
     val isTrashed: Boolean get() = trashedAtMillis != null
+
+    fun isSameAs(
+        title: String,
+        content: String,
+        statusName: String,
+        dateEpochDays: Int?,
+        startTimeMinutes: Int?,
+        createdAtMillis: Long,
+        editedAtMillis: Long,
+        label: String?,
+        trashedAtMillis: Long?,
+        resolvedListId: Long?,
+        resolvedTags: List<TagItem>,
+        resolvedSortOrder: Int,
+        resolvedIsPinned: Boolean,
+        resolvedSection: String?
+    ): Boolean {
+        return this.id == id &&
+            this.title == title &&
+            this.content == content &&
+            this.status.name == statusName &&
+            this.date?.toEpochDays()?.toInt() == dateEpochDays &&
+            this.startTimeMinutes == startTimeMinutes &&
+            this.createdAtMillis == createdAtMillis &&
+            this.editedAtMillis == editedAtMillis &&
+            this.label == label &&
+            this.trashedAtMillis == trashedAtMillis &&
+            this.list?.id == resolvedListId &&
+            this.tags == resolvedTags &&
+            this.sortOrder == resolvedSortOrder &&
+            this.isPinned == resolvedIsPinned &&
+            this.section == resolvedSection
+    }
 }
 
 data class DailyPlan(
@@ -119,9 +199,7 @@ data class DailyPlanItem(
     val endTimeMinutes: Int? = null,
     val addedAtMillis: Long,
     val completedAtMillis: Long? = null,
-    /** Id of the source item this was copied from via carry-over, if any. */
     val carriedFromItemId: Long? = null,
-    /** Timestamp (epoch millis) when this item was resolved by a review or carry-over. */
     val handledAtMillis: Long? = null
 ) {
     fun workMinutes(): Int {
@@ -130,26 +208,43 @@ data class DailyPlanItem(
         return (end - start).coerceAtLeast(0)
     }
 
-    /** Efficient check to see if this domain object matches a database entity and tag set. */
-    fun isSameAs(entity: com.checkit.data.DailyPlanItemEntity, resolvedTags: List<TagItem>): Boolean {
-        return id == entity.id &&
-            dateEpochDays == entity.dateEpochDays &&
-            taskId == entity.taskId &&
-            nestedListItemId == entity.nestedListItemId &&
-            title == entity.title &&
-            note == entity.note &&
-            source.name == entity.source &&
-            status.name == entity.status &&
-            label == entity.label &&
-            sortOrder == entity.sortOrder &&
-            startTimeMinutes == entity.startTimeMinutes &&
-            endTimeMinutes == entity.endTimeMinutes &&
-            isHabit == entity.isHabit &&
-            addedAtMillis == entity.addedAtMillis &&
-            completedAtMillis == entity.completedAtMillis &&
-            carriedFromItemId == entity.carriedFromItemId &&
-            handledAtMillis == entity.handledAtMillis &&
-            tags == resolvedTags
+    fun isSameAs(
+        dateEpochDays: Int,
+        taskId: Long?,
+        nestedListItemId: Long?,
+        title: String,
+        note: String?,
+        sourceName: String,
+        statusName: String,
+        label: String?,
+        sortOrder: Int,
+        startTimeMinutes: Int?,
+        endTimeMinutes: Int?,
+        isHabit: Boolean,
+        addedAtMillis: Long,
+        completedAtMillis: Long?,
+        carriedFromItemId: Long?,
+        handledAtMillis: Long?,
+        resolvedTags: List<TagItem>
+    ): Boolean {
+        return this.id == id &&
+            this.dateEpochDays == dateEpochDays &&
+            this.taskId == taskId &&
+            this.nestedListItemId == nestedListItemId &&
+            this.title == title &&
+            this.note == note &&
+            this.source.name == sourceName &&
+            this.status.name == statusName &&
+            this.label == label &&
+            this.sortOrder == sortOrder &&
+            this.startTimeMinutes == startTimeMinutes &&
+            this.endTimeMinutes == endTimeMinutes &&
+            this.isHabit == isHabit &&
+            this.addedAtMillis == addedAtMillis &&
+            this.completedAtMillis == completedAtMillis &&
+            this.carriedFromItemId == carriedFromItemId &&
+            this.handledAtMillis == handledAtMillis &&
+            this.tags == resolvedTags
     }
 }
 
@@ -171,9 +266,7 @@ enum class DailyPlanItemStatus {
 data class JournalEntry(
     val id: Long,
     val dateEpochDays: Int,
-    /** Activity, location, or any specific thing this entry is about, e.g. "Biking", "Cafe". */
     val context: String? = null,
-    /** Freeform status text. */
     val content: String,
     val moods: List<String> = emptyList(),
     val tags: List<TagItem> = emptyList(),

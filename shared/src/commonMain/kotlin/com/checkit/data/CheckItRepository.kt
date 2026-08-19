@@ -49,7 +49,7 @@ import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 
 interface CheckItRepository {
-    fun observeTaskBoard(): Flow<TaskBoard>
+    fun observeTaskBoard(onlyOpen: Boolean = true): Flow<TaskBoard>
     fun observeDailyPlans(startDate: LocalDate? = null, endDate: LocalDate? = null): Flow<List<DailyPlan>>
     fun observeJournalEntries(): Flow<List<JournalEntry>>
     suspend fun addJournalEntry(input: JournalEntryWriteInput): Long
@@ -219,12 +219,17 @@ class RoomCheckItRepository(
 
     private val dailyPlanItemCache = mutableMapOf<Long, DailyPlanItem>()
     private val dailyPlanCache = mutableMapOf<LocalDate, DailyPlan>()
+    private val taskItemCache = mutableMapOf<Long, TaskItem>()
+    private val noteItemCache = mutableMapOf<Long, NoteItem>()
 
-    override fun observeTaskBoard(): Flow<TaskBoard> {
+    override fun observeTaskBoard(onlyOpen: Boolean): Flow<TaskBoard> {
+        val tasksFlow = if (onlyOpen) dao.observeTasksOpen() else dao.observeTasksAll()
+        val notesFlow = if (onlyOpen) dao.observeNotesOpen() else dao.observeNotesAll()
+
         val rowsFlow = combine(
             dao.observeFilters(),
-            dao.observeTasks(),
-            dao.observeNotes()
+            tasksFlow,
+            notesFlow
         ) { filters, tasks, notes ->
             TaskBoardRows(filters, tasks, notes)
         }
@@ -269,27 +274,94 @@ class RoomCheckItRepository(
             TaskBoard(
                 lists = domainLists,
                 filters = rows.filters.map { it.toDomain() },
-                tasks = rows.tasks.map { task ->
-                    val listJoin = taskListMap[task.id]
-                    task.toDomain(
-                        list = listJoin?.listId?.let { listsById[it] },
-                        subtasks = subTasksByTask[task.id].orEmpty().map { it.toDomain() },
-                        reminders = remindersByTask[task.id].orEmpty().map { it.toDomain() },
-                        tags = taskTagIds[task.id].orEmpty().mapNotNull { tagsById[it] },
-                        listSortOrder = listJoin?.sortOrder ?: 0,
-                        isPinned = listJoin?.isPinned ?: false,
-                        section = listJoin?.section
-                    )
+                tasks = rows.tasks.map { entity ->
+                    val listJoin = taskListMap[entity.id]
+                    val list = listJoin?.listId?.let { listsById[it] }
+                    val subtasks = subTasksByTask[entity.id].orEmpty().map { it.toDomain() }
+                    val reminders = remindersByTask[entity.id].orEmpty().map { it.toDomain() }
+                    val itemTags = taskTagIds[entity.id].orEmpty().mapNotNull { tagsById[it] }
+                    val listSortOrder = listJoin?.sortOrder ?: 0
+                    val isPinned = listJoin?.isPinned ?: false
+                    val section = listJoin?.section
+
+                    val cached = taskItemCache[entity.id]
+                    if (cached != null && cached.isSameAs(
+                            name = entity.name,
+                            description = entity.description,
+                            statusName = entity.status,
+                            priorityName = entity.priority,
+                            typeName = entity.type,
+                            doDateEpochDays = entity.doDateEpochDays,
+                            completedDateEpochDays = entity.completedDateEpochDays,
+                            startTimeMinutes = entity.startTimeMinutes,
+                            endTimeMinutes = entity.endTimeMinutes,
+                            repeatRRule = entity.repeatRRule,
+                            label = entity.label,
+                            createdAtMillis = entity.createdAtMillis,
+                            updatedAtMillis = entity.updatedAtMillis,
+                            trashedAtMillis = entity.trashedAtMillis,
+                            resolvedListId = list?.id,
+                            resolvedSubtasks = subtasks,
+                            resolvedReminders = reminders,
+                            resolvedTags = itemTags,
+                            resolvedSortOrder = listSortOrder,
+                            resolvedIsPinned = isPinned,
+                            resolvedSection = section
+                        )
+                    ) {
+                        cached
+                    } else {
+                        val newItem = entity.toDomain(
+                            list = list,
+                            subtasks = subtasks,
+                            reminders = reminders,
+                            tags = itemTags,
+                            listSortOrder = listSortOrder,
+                            isPinned = isPinned,
+                            section = section
+                        )
+                        taskItemCache[entity.id] = newItem
+                        newItem
+                    }
                 },
-                notes = rows.notes.map { note ->
-                    val listJoin = noteListMap[note.id]
-                    note.toDomain(
-                        list = listJoin?.listId?.let { listsById[it] },
-                        tags = noteTagIds[note.id].orEmpty().mapNotNull { tagsById[it] },
-                        listSortOrder = listJoin?.sortOrder ?: 0,
-                        isPinned = listJoin?.isPinned ?: false,
-                        section = listJoin?.section
-                    )
+                notes = rows.notes.map { entity ->
+                    val listJoin = noteListMap[entity.id]
+                    val list = listJoin?.listId?.let { listsById[it] }
+                    val itemTags = noteTagIds[entity.id].orEmpty().mapNotNull { tagsById[it] }
+                    val listSortOrder = listJoin?.sortOrder ?: 0
+                    val isPinned = listJoin?.isPinned ?: false
+                    val section = listJoin?.section
+
+                    val cached = noteItemCache[entity.id]
+                    if (cached != null && cached.isSameAs(
+                            title = entity.title,
+                            content = entity.content,
+                            statusName = entity.status,
+                            dateEpochDays = entity.dateEpochDays,
+                            startTimeMinutes = entity.startTimeMinutes,
+                            createdAtMillis = entity.createdAtMillis,
+                            editedAtMillis = entity.editedAtMillis,
+                            label = entity.label,
+                            trashedAtMillis = entity.trashedAtMillis,
+                            resolvedListId = list?.id,
+                            resolvedTags = itemTags,
+                            resolvedSortOrder = listSortOrder,
+                            resolvedIsPinned = isPinned,
+                            resolvedSection = section
+                        )
+                    ) {
+                        cached
+                    } else {
+                        val newItem = entity.toDomain(
+                            list = list,
+                            tags = itemTags,
+                            listSortOrder = listSortOrder,
+                            isPinned = isPinned,
+                            section = section
+                        )
+                        noteItemCache[entity.id] = newItem
+                        newItem
+                    }
                 },
                 tags = domainTags
             )
@@ -317,7 +389,26 @@ class RoomCheckItRepository(
                     val domainItems = itemEntities.map { entity ->
                         val itemTagsList = itemTagIds[entity.id].orEmpty().mapNotNull { tagsById[it] }
                         val cached = dailyPlanItemCache[entity.id]
-                        if (cached != null && cached.isSameAs(entity, itemTagsList)) {
+                        if (cached != null && cached.isSameAs(
+                                dateEpochDays = entity.dateEpochDays,
+                                taskId = entity.taskId,
+                                nestedListItemId = entity.nestedListItemId,
+                                title = entity.title,
+                                note = entity.note,
+                                sourceName = entity.source,
+                                statusName = entity.status,
+                                label = entity.label,
+                                sortOrder = entity.sortOrder,
+                                startTimeMinutes = entity.startTimeMinutes,
+                                endTimeMinutes = entity.endTimeMinutes,
+                                isHabit = entity.isHabit,
+                                addedAtMillis = entity.addedAtMillis,
+                                completedAtMillis = entity.completedAtMillis,
+                                carriedFromItemId = entity.carriedFromItemId,
+                                handledAtMillis = entity.handledAtMillis,
+                                resolvedTags = itemTagsList
+                            )
+                        ) {
                             cached
                         } else {
                             val newItem = entity.toDomain(itemTagsList)

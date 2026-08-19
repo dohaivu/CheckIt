@@ -36,6 +36,7 @@ import com.checkit.domain.usecase.UpdateTaskUseCase
 import com.checkit.ui.MinutesPerDay
 import com.checkit.ui.UiEvent
 import com.checkit.ui.today
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -43,13 +44,17 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class TaskViewModel(
     private val observeTaskBoard: ObserveTaskBoardUseCase,
     private val selectTaskBoardItems: SelectTaskBoardItemsUseCase,
@@ -81,7 +86,12 @@ class TaskViewModel(
 
     init {
         viewModelScope.launch {
-            observeTaskBoard()
+            settingsRepository.settings
+                .map { it.taskShowCompleted }
+                .distinctUntilChanged()
+                .flatMapLatest { showCompleted ->
+                    observeTaskBoard(onlyOpen = !showCompleted)
+                }
                 .catch { error ->
                     _uiState.update {
                         it.copy(isLoading = false)
