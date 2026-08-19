@@ -118,6 +118,8 @@ interface CheckItRepository {
     suspend fun openNote(noteId: Long)
     suspend fun trashNote(noteId: Long)
     suspend fun restoreNote(noteId: Long)
+    suspend fun moveTask(taskId: Long, listId: Long, sectionId: Long?, sortOrder: Int, isPinned: Boolean)
+    suspend fun moveNote(noteId: Long, listId: Long, sectionId: Long?, sortOrder: Int, isPinned: Boolean)
     suspend fun addSection(listId: Long, title: String, color: String): Long
     suspend fun updateSection(sectionId: Long, title: String, color: String, sortOrder: Int)
     suspend fun deleteSection(sectionId: Long)
@@ -998,6 +1000,30 @@ class RoomCheckItRepository(
 
     override suspend fun restoreNote(noteId: Long) {
         dao.restoreNote(noteId, Clock.System.now().toEpochMilliseconds())
+    }
+
+    override suspend fun moveTask(taskId: Long, listId: Long, sectionId: Long?, sortOrder: Int, isPinned: Boolean) {
+        dao.insertTaskList(
+            TaskListEntity(
+                taskId = taskId,
+                listId = listId,
+                sectionId = sectionId,
+                sortOrder = sortOrder,
+                isPinned = isPinned
+            )
+        )
+    }
+
+    override suspend fun moveNote(noteId: Long, listId: Long, sectionId: Long?, sortOrder: Int, isPinned: Boolean) {
+        dao.insertNoteList(
+            NoteListEntity(
+                noteId = noteId,
+                listId = listId,
+                sectionId = sectionId,
+                sortOrder = sortOrder,
+                isPinned = isPinned
+            )
+        )
     }
 
     override suspend fun addSection(listId: Long, title: String, color: String): Long {

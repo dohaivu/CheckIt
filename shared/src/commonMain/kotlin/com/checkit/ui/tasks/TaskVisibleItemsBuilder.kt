@@ -100,6 +100,8 @@ internal class TaskVisibleItemsBuilder(
                 }
             }
             
+            // Always show Pinned header if we want to allow dragging into it, 
+            // or at least if it's not empty.
             if (pinned.isNotEmpty()) {
                 result += TaskListEntry.PinnedHeader
                 result += pinned
@@ -116,10 +118,12 @@ internal class TaskVisibleItemsBuilder(
                 }
             }
             
-            if (sections.isNotEmpty() && unsectioned.isNotEmpty()) {
-                result += unsectioned
-            } else if (sections.isEmpty()) {
-                result += unsectioned
+            if (sections.isNotEmpty()) {
+                // If there are sections, show unsectioned header if there are unsectioned items
+                if (unsectioned.isNotEmpty()) {
+                    result += TaskListEntry.SectionHeader(null)
+                    result += unsectioned
+                }
             } else {
                 result += unsectioned
             }
@@ -132,10 +136,8 @@ internal class TaskVisibleItemsBuilder(
                         else -> false
                     }
                 }
-                if (sectionItems.isNotEmpty() || sections.size > 0) {
-                    result += TaskListEntry.SectionHeader(section)
-                    result += sectionItems
-                }
+                result += TaskListEntry.SectionHeader(section)
+                result += sectionItems
             }
             result
         } else {

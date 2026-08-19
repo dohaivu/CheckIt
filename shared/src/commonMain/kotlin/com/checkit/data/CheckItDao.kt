@@ -175,6 +175,12 @@ interface CheckItDao {
     @Query("SELECT * FROM daily_plan_item_tags")
     fun observeDailyPlanItemTags(): Flow<List<DailyPlanItemTagEntity>>
 
+    @Query("SELECT isPinned FROM task_list WHERE taskId = :taskId AND listId = :listId LIMIT 1")
+    suspend fun taskIsPinnedInList(taskId: Long, listId: Long): Boolean
+
+    @Query("SELECT isPinned FROM note_list WHERE noteId = :noteId AND listId = :listId LIMIT 1")
+    suspend fun noteIsPinnedInList(noteId: Long, listId: Long): Boolean
+
     @Query("SELECT COALESCE(MAX(tl.sortOrder), -1) + 1 FROM task_list tl WHERE tl.listId = :listId")
     suspend fun nextTaskSortOrder(listId: Long): Int
 

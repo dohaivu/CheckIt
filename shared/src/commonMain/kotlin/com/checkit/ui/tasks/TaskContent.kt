@@ -39,6 +39,7 @@ internal fun TaskContent(
     onTimelineCreateTask: (Int, Int) -> Unit,
     onTimelineTaskTimeChange: (TaskItem, Int, Int) -> Unit,
     onTimelineNoteTimeChange: (NoteItem, Int) -> Unit,
+    onMoveItem: (Int, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val showListName = state.selectedList == null
@@ -67,6 +68,7 @@ internal fun TaskContent(
                 displayType = state.listDisplayType,
                 onTaskClick = onTaskClick,
                 onNoteClick = onNoteClick,
+                onMoveItem = onMoveItem,
                 modifier = Modifier.weight(1f)
             )
             TaskWorkspaceView.Agenda -> TaskAgendaView(

@@ -40,6 +40,8 @@ import com.checkit.domain.usecase.DeleteNestedItemsUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteTagUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
+import com.checkit.domain.usecase.MoveNoteUseCase
+import com.checkit.domain.usecase.MoveTaskUseCase
 import com.checkit.domain.usecase.IsTagNameTakenUseCase
 import com.checkit.domain.usecase.MoveNestedItemsUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
@@ -153,6 +155,8 @@ val provideInteractorModule = module {
     single { UpdateTaskUseCase(get()) }
     single { DeleteTaskUseCase(get()) }
     single { RestoreTaskUseCase(get()) }
+    single { MoveTaskUseCase(get()) }
+    single { MoveNoteUseCase(get()) }
     single { CompleteTaskUseCase(get()) }
     single { CompleteNoteUseCase(get()) }
     single { OpenTaskUseCase(get()) }
@@ -228,6 +232,8 @@ val provideViewModelModule = module {
             updateNote = get(),
             deleteNote = get(),
             restoreNote = get(),
+            moveTask = get(),
+            moveNote = get(),
             updateDailyPlanItemTime = get(),
             updateDailyPlanItemStatus = get(),
             updateDailyPlanItemTag = get(),

@@ -193,6 +193,21 @@ class RestoreNoteUseCase(
     suspend operator fun invoke(noteId: Long) = repository.restoreNote(noteId)
 }
 
+class MoveTaskUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(taskId: Long, listId: Long, sectionId: Long?, sortOrder: Int, isPinned: Boolean) =
+        repository.moveTask(taskId, listId, sectionId, sortOrder, isPinned)
+}
+
+class MoveNoteUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(noteId: Long, listId: Long, sectionId: Long?, sortOrder: Int, isPinned: Boolean) =
+        repository.moveNote(noteId, listId, sectionId, sortOrder, isPinned)
+}
+
+
 class SelectTaskBoardItemsUseCase {
     operator fun invoke(
         board: TaskBoard,

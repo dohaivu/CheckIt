@@ -20,6 +20,8 @@ import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
 import com.checkit.domain.usecase.CompleteNoteUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
+import com.checkit.domain.usecase.MoveNoteUseCase
+import com.checkit.domain.usecase.MoveTaskUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
@@ -71,6 +73,8 @@ class TaskViewModel(
     private val updateNote: UpdateNoteUseCase,
     private val deleteNote: DeleteNoteUseCase,
     private val restoreNote: RestoreNoteUseCase,
+    private val moveTask: MoveTaskUseCase,
+    private val moveNote: MoveNoteUseCase,
     private val updateDailyPlanItemTime: UpdateDailyPlanItemTimeUseCase,
     private val updateDailyPlanItemStatus: UpdateDailyPlanItemStatusUseCase,
     private val updateDailyPlanItemTag: UpdateDailyPlanItemTagUseCase,
@@ -245,6 +249,69 @@ class TaskViewModel(
             }
         }
     }
+
+    fun moveListItem(fromIndex: Int, toIndex: Int) {
+        if (fromIndex == toIndex) return
+        val currentState = _uiState.value
+        val listId = currentState.selectedListId ?: return
+        if (currentState.sortOption != TaskSortOption.Custom) return
+
+        val visibleEntries = currentState.visibleListItems
+        if (fromIndex !in visibleEntries.indices || toIndex !in visibleEntries.indices) return
+
+        val movedEntry = visibleEntries[fromIndex]
+        if (movedEntry !is TaskListEntry.Task && movedEntry !is TaskListEntry.Note) return
+
+        // Preview in UI immediately
+        val nextVisibleItems = visibleEntries.toMutableList().apply {
+            add(toIndex, removeAt(fromIndex))
+        }
+        _uiState.update { it.copy(visibleItems = it.visibleItems.copy(listItems = nextVisibleItems)) }
+
+        // Persist to DB
+        viewModelScope.launch {
+            // Update ALL items in the visible list with their new positions
+            // if they belong to the same list.
+            nextVisibleItems.forEachIndexed { index, entry ->
+                val newSectionId = findSectionIdForIndex(nextVisibleItems, index)
+                val isPinned = isIndexInPinnedArea(nextVisibleItems, index)
+                when (entry) {
+                    is TaskListEntry.Task -> {
+                        moveTask(entry.item.id, listId, newSectionId, index, isPinned)
+                    }
+                    is TaskListEntry.Note -> {
+                        moveNote(entry.item.id, listId, newSectionId, index, isPinned)
+                    }
+                    else -> {}
+                }
+            }
+        }
+    }
+
+    private fun isIndexInPinnedArea(entries: List<TaskListEntry>, index: Int): Boolean {
+        var inPinnedArea = false
+        for (i in 0..index) {
+            val entry = entries[i]
+            if (entry is TaskListEntry.PinnedHeader) {
+                inPinnedArea = true
+            } else if (entry is TaskListEntry.SectionHeader) {
+                inPinnedArea = false
+            }
+        }
+        return inPinnedArea
+    }
+
+    private fun findSectionIdForIndex(entries: List<TaskListEntry>, index: Int): Long? {
+        var lastSectionId: Long? = null
+        for (i in 0..index) {
+            val entry = entries[i]
+            if (entry is TaskListEntry.SectionHeader) {
+                lastSectionId = entry.section?.id
+            }
+        }
+        return lastSectionId
+    }
+
 
     fun openNewTask(addToMyDayOnSave: Boolean = false) {
         openNewTaskOnDate(today(), addToMyDayOnSave)

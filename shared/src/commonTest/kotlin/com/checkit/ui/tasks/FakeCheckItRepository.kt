@@ -622,6 +622,27 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         }
     }
 
+    override suspend fun moveTask(taskId: Long, listId: Long, sectionId: Long?, sortOrder: Int, isPinned: Boolean) {
+        boardFlow.update { board ->
+            board.copy(
+                tasks = board.tasks.map {
+                    if (it.id == taskId) it.copy(sectionId = sectionId, sortOrder = sortOrder, isPinned = isPinned) else it
+                }
+            )
+        }
+    }
+
+    override suspend fun moveNote(noteId: Long, listId: Long, sectionId: Long?, sortOrder: Int, isPinned: Boolean) {
+        boardFlow.update { board ->
+            board.copy(
+                notes = board.notes.map {
+                    if (it.id == noteId) it.copy(sectionId = sectionId, sortOrder = sortOrder, isPinned = isPinned) else it
+                }
+            )
+        }
+    }
+
+
     override suspend fun addSection(listId: Long, title: String, color: String): Long {
         val id = nextSectionId++
         addedSections.add(Triple(listId, title, color))
