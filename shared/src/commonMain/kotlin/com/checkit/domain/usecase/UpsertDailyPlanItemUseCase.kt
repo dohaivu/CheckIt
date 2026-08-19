@@ -35,6 +35,7 @@ class UpsertDailyPlanItemUseCase(
                     source = source,
                     status = status,
                     tagIds = editor.selectedTagIds.toList(),
+                    label = editor.label,
                     nestedListItemId = editor.nestedListItemId
                 )
             } else {
@@ -48,6 +49,7 @@ class UpsertDailyPlanItemUseCase(
                         startTimeMinutes = editor.startTimeMinutes,
                         endTimeMinutes = if (source.hasEndTime()) editor.endTimeMinutes else null,
                         tagIds = editor.selectedTagIds.toList(),
+                        label = editor.label,
                         nestedListItemId = editor.nestedListItemId
                     )
                 )

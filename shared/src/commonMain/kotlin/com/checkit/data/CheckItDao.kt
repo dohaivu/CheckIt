@@ -121,13 +121,13 @@ interface CheckItDao {
     @Query("SELECT * FROM task_filters ORDER BY sortOrder ASC, name ASC")
     fun observeFilters(): Flow<List<TaskFilterEntity>>
 
-    @Query("SELECT * FROM tasks ORDER BY sortOrder ASC, createdAtMillis DESC")
+    @Query("SELECT * FROM tasks ORDER BY createdAtMillis DESC")
     fun observeTasks(): Flow<List<TaskEntity>>
 
     @Query("SELECT * FROM tasks WHERE id = :taskId LIMIT 1")
     suspend fun taskById(taskId: Long): TaskEntity?
 
-    @Query("SELECT * FROM notes ORDER BY sortOrder ASC, editedAtMillis DESC")
+    @Query("SELECT * FROM notes ORDER BY editedAtMillis DESC")
     fun observeNotes(): Flow<List<NoteEntity>>
 
     @Query("SELECT * FROM daily_plan_items ORDER BY sortOrder ASC, addedAtMillis ASC")
@@ -160,10 +160,10 @@ interface CheckItDao {
     @Query("SELECT * FROM daily_plan_item_tags")
     fun observeDailyPlanItemTags(): Flow<List<DailyPlanItemTagEntity>>
 
-    @Query("SELECT COALESCE(MAX(t.sortOrder), -1) + 1 FROM tasks t JOIN task_list tl ON t.id = tl.taskId WHERE tl.listId = :listId")
+    @Query("SELECT COALESCE(MAX(tl.sortOrder), -1) + 1 FROM task_list tl WHERE tl.listId = :listId")
     suspend fun nextTaskSortOrder(listId: Long): Int
 
-    @Query("SELECT COALESCE(MAX(n.sortOrder), -1) + 1 FROM notes n JOIN note_list nl ON n.id = nl.noteId WHERE nl.listId = :listId")
+    @Query("SELECT COALESCE(MAX(nl.sortOrder), -1) + 1 FROM note_list nl WHERE nl.listId = :listId")
     suspend fun nextNoteSortOrder(listId: Long): Int
 
     @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM daily_plan_items WHERE dateEpochDays = :dateEpochDays")
@@ -272,6 +272,7 @@ interface CheckItDao {
             startTimeMinutes = :startTimeMinutes,
             endTimeMinutes = :endTimeMinutes,
             repeatRRule = :repeatRRule,
+            label = :label,
             updatedAtMillis = :updatedAtMillis
         WHERE id = :taskId
         """
@@ -287,6 +288,7 @@ interface CheckItDao {
         startTimeMinutes: Int?,
         endTimeMinutes: Int?,
         repeatRRule: String?,
+        label: String?,
         updatedAtMillis: Long
     )
 
@@ -508,6 +510,7 @@ interface CheckItDao {
                         source = source.source,
                         status = DailyPlanItemStatus.Planned.name,
                         sortOrder = nextDailyPlanItemSortOrder(targetDateEpochDays),
+                        label = source.label,
                         startTimeMinutes = null,
                         endTimeMinutes = null,
                         isHabit = source.isHabit,
@@ -556,6 +559,7 @@ interface CheckItDao {
         startTimeMinutes: Int?,
         endTimeMinutes: Int?,
         completedAtMillis: Long?,
+        label: String?,
         nestedListItemId: Long?,
         tagIds: List<Long>,
         nowMillis: Long
@@ -564,7 +568,7 @@ interface CheckItDao {
         
         updateDailyPlanItem(
             itemId, title, note, source, status, 
-            startTimeMinutes, endTimeMinutes, completedAtMillis, nestedListItemId
+            startTimeMinutes, endTimeMinutes, completedAtMillis, label, nestedListItemId
         )
 
         if (oldEntity.nestedListItemId != null) {
@@ -623,6 +627,7 @@ interface CheckItDao {
             startTimeMinutes = :startTimeMinutes,
             endTimeMinutes = :endTimeMinutes,
             completedAtMillis = :completedAtMillis,
+            label = :label,
             nestedListItemId = :nestedListItemId
         WHERE id = :itemId
         """
@@ -636,6 +641,7 @@ interface CheckItDao {
         startTimeMinutes: Int?,
         endTimeMinutes: Int?,
         completedAtMillis: Long?,
+        label: String?,
         nestedListItemId: Long?
     )
 
@@ -653,7 +659,7 @@ interface CheckItDao {
     )
     suspend fun clearTaskTime(taskId: Long, updatedAtMillis: Long)
 
-    @Query("UPDATE notes SET title = :title, content = :content, status = :status, dateEpochDays = :dateEpochDays, startTimeMinutes = :startTimeMinutes, editedAtMillis = :editedAtMillis WHERE id = :noteId")
+    @Query("UPDATE notes SET title = :title, content = :content, status = :status, dateEpochDays = :dateEpochDays, startTimeMinutes = :startTimeMinutes, label = :label, editedAtMillis = :editedAtMillis WHERE id = :noteId")
     suspend fun updateNote(
         noteId: Long,
         title: String,
@@ -661,6 +667,7 @@ interface CheckItDao {
         status: String,
         dateEpochDays: Int?,
         startTimeMinutes: Int?,
+        label: String?,
         editedAtMillis: Long
     )
 

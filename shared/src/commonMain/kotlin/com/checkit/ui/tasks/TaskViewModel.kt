@@ -312,6 +312,7 @@ class TaskViewModel(
                     status = task.status,
                     priority = task.priority,
                     type = task.type,
+                    label = task.label,
                     selectedTagIds = task.tags.map { it.id }.toSet(),
                     dailyPlanItem = dailyPlan,
                     trashedAtMillis = task.trashedAtMillis
@@ -333,6 +334,7 @@ class TaskViewModel(
                     status = note.status,
                     date = note.date,
                     startTimeMinutes = note.startTimeMinutes,
+                    label = note.label,
                     selectedTagIds = note.tags.map { it.id }.toSet(),
                     trashedAtMillis = note.trashedAtMillis
                 )
@@ -615,6 +617,7 @@ class TaskViewModel(
                 status = form.status,
                 date = form.date,
                 startTimeMinutes = form.startTimeMinutes,
+                label = form.label,
                 tagIds = form.selectedTagIds.toList()
             )
             if (form.mode == EditorMode.Add) {
@@ -641,6 +644,7 @@ class TaskViewModel(
             startTimeMinutes = startTimeMinutes,
             endTimeMinutes = endTimeMinutes,
             repeatRRule = repeatPreset.rrule,
+            label = label,
             subtasks = subtasks
                 .map { it.copy(name = it.name.trim()) }
                 .filter { it.name.isNotBlank() }

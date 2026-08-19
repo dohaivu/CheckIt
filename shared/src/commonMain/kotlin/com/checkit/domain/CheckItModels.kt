@@ -58,7 +58,10 @@ data class TaskItem(
     val endTimeMinutes: Int? = null,
     val reminders: List<TaskReminder> = emptyList(),
     val repeatRRule: String? = null,
-    val sortOrder: Int,
+    val label: String? = null,
+    val sortOrder: Int = 0,
+    val isPinned: Boolean = false,
+    val section: String? = null,
     val createdAtMillis: Long,
     val updatedAtMillis: Long,
     val trashedAtMillis: Long? = null
@@ -83,9 +86,12 @@ data class NoteItem(
     val status: TaskStatus = TaskStatus.Open,
     val date: LocalDate? = null,
     val startTimeMinutes: Int? = null,
+    val label: String? = null,
     val createdAtMillis: Long,
     val editedAtMillis: Long,
-    val sortOrder: Int,
+    val sortOrder: Int = 0,
+    val isPinned: Boolean = false,
+    val section: String? = null,
     val trashedAtMillis: Long? = null
 ) {
     val isTrashed: Boolean get() = trashedAtMillis != null
@@ -106,6 +112,7 @@ data class DailyPlanItem(
     val source: DailyPlanItemSource,
     val status: DailyPlanItemStatus,
     val tags: List<TagItem> = emptyList(),
+    val label: String? = null,
     val isHabit: Boolean = false,
     val sortOrder: Int,
     val startTimeMinutes: Int? = null,
@@ -133,6 +140,7 @@ data class DailyPlanItem(
             note == entity.note &&
             source.name == entity.source &&
             status.name == entity.status &&
+            label == entity.label &&
             sortOrder == entity.sortOrder &&
             startTimeMinutes == entity.startTimeMinutes &&
             endTimeMinutes == entity.endTimeMinutes &&

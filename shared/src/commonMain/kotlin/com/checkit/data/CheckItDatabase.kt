@@ -60,7 +60,7 @@ data class TaskEntity(
     val startTimeMinutes: Int? = null,
     val endTimeMinutes: Int? = null,
     val repeatRRule: String? = null,
-    val sortOrder: Int,
+    val label: String? = null,
     val createdAtMillis: Long,
     val updatedAtMillis: Long,
     val trashedAtMillis: Long? = null
@@ -101,7 +101,7 @@ data class NoteEntity(
     val startTimeMinutes: Int? = null,
     val createdAtMillis: Long,
     val editedAtMillis: Long,
-    val sortOrder: Int,
+    val label: String? = null,
     val trashedAtMillis: Long? = null
 )
 
@@ -134,6 +134,7 @@ data class DailyPlanItemEntity(
     val source: String,
     val status: String,
     val sortOrder: Int,
+    val label: String? = null,
     val startTimeMinutes: Int? = null,
     val endTimeMinutes: Int? = null,
     val isHabit: Boolean = false,
@@ -344,7 +345,10 @@ data class TaskFilterEntity(
 )
 data class TaskListEntity(
     val taskId: Long,
-    val listId: Long
+    val listId: Long,
+    val isPinned: Boolean = false,
+    val sortOrder: Int = 0,
+    val section: String? = null
 )
 
 @Entity(
@@ -368,7 +372,10 @@ data class TaskListEntity(
 )
 data class NoteListEntity(
     val noteId: Long,
-    val listId: Long
+    val listId: Long,
+    val isPinned: Boolean = false,
+    val sortOrder: Int = 0,
+    val section: String? = null
 )
 
 @Entity(tableName = "nested_documents")
@@ -494,7 +501,7 @@ data class NestedItemTagEntity(
         NestedItemTagEntity::class,
         NestedManualMetricEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)

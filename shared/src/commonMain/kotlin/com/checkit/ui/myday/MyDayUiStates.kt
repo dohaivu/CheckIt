@@ -164,6 +164,7 @@ data class DailyPlanItemEditorState(
     val title: String = "",
     val note: String = "",
     val status: DailyPlanItemStatus = DailyPlanItemStatus.Done,
+    val label: String? = null,
     val startTimeMinutes: Int? = null,
     val endTimeMinutes: Int? = null,
     val selectedTagIds: Set<Long> = emptySet()

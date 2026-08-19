@@ -79,6 +79,7 @@ interface CheckItRepository {
         source: DailyPlanItemSource = DailyPlanItemSource.MyDayTask,
         status: DailyPlanItemStatus = DailyPlanItemStatus.Planned,
         tagIds: List<Long> = emptyList(),
+        label: String? = null,
         taskId: Long? = null,
         nestedListItemId: Long? = null,
         carriedFromItemId: Long? = null
@@ -167,6 +168,7 @@ data class TaskWriteInput(
     val startTimeMinutes: Int?,
     val endTimeMinutes: Int?,
     val repeatRRule: String?,
+    val label: String? = null,
     val reminders: List<TaskReminderWriteInput>,
     val tagIds: List<Long>
 )
@@ -183,6 +185,7 @@ data class NoteWriteInput(
     val status: TaskStatus,
     val date: LocalDate?,
     val startTimeMinutes: Int?,
+    val label: String? = null,
     val tagIds: List<Long>
 )
 
@@ -194,6 +197,7 @@ data class DailyPlanItemWriteInput(
     val startTimeMinutes: Int?,
     val endTimeMinutes: Int?,
     val tagIds: List<Long>,
+    val label: String? = null,
     val nestedListItemId: Long? = null
 )
 
@@ -259,26 +263,32 @@ class RoomCheckItRepository(
             val subTasksByTask = joins.subTasks.groupBy { it.taskId }
             val remindersByTask = joins.reminders.groupBy { it.taskId }
 
-            val taskListMap = metadata.taskLists.associate { it.taskId to it.listId }
-            val noteListMap = metadata.noteLists.associate { it.noteId to it.listId }
+            val taskListMap = metadata.taskLists.associateBy { it.taskId }
+            val noteListMap = metadata.noteLists.associateBy { it.noteId }
 
             TaskBoard(
                 lists = domainLists,
                 filters = rows.filters.map { it.toDomain() },
                 tasks = rows.tasks.map { task ->
-                    val listId = taskListMap[task.id]
+                    val listJoin = taskListMap[task.id]
                     task.toDomain(
-                        list = listId?.let { listsById[it] },
+                        list = listJoin?.listId?.let { listsById[it] },
                         subtasks = subTasksByTask[task.id].orEmpty().map { it.toDomain() },
                         reminders = remindersByTask[task.id].orEmpty().map { it.toDomain() },
-                        tags = taskTagIds[task.id].orEmpty().mapNotNull { tagsById[it] }
+                        tags = taskTagIds[task.id].orEmpty().mapNotNull { tagsById[it] },
+                        listSortOrder = listJoin?.sortOrder ?: 0,
+                        isPinned = listJoin?.isPinned ?: false,
+                        section = listJoin?.section
                     )
                 },
                 notes = rows.notes.map { note ->
-                    val listId = noteListMap[note.id]
+                    val listJoin = noteListMap[note.id]
                     note.toDomain(
-                        list = listId?.let { listsById[it] },
-                        tags = noteTagIds[note.id].orEmpty().mapNotNull { tagsById[it] }
+                        list = listJoin?.listId?.let { listsById[it] },
+                        tags = noteTagIds[note.id].orEmpty().mapNotNull { tagsById[it] },
+                        listSortOrder = listJoin?.sortOrder ?: 0,
+                        isPinned = listJoin?.isPinned ?: false,
+                        section = listJoin?.section
                     )
                 },
                 tags = domainTags
@@ -407,12 +417,20 @@ class RoomCheckItRepository(
                 startTimeMinutes = if (isTask) input.startTimeMinutes else null,
                 endTimeMinutes = if (isTask) input.endTimeMinutes else null,
                 repeatRRule = if (isTask) input.repeatRRule else null,
-                sortOrder = input.listId?.let { dao.nextTaskSortOrder(it) } ?: 0,
+                label = input.label,
                 createdAtMillis = now,
                 updatedAtMillis = now
             )
         )
-        input.listId?.let { dao.insertTaskList(TaskListEntity(taskId, it)) }
+        input.listId?.let { listId ->
+            dao.insertTaskList(
+                TaskListEntity(
+                    taskId = taskId,
+                    listId = listId,
+                    sortOrder = dao.nextTaskSortOrder(listId)
+                )
+            )
+        }
         input.tagIds.forEach { tagId -> addTaskTag(taskId, tagId) }
         dao.replaceTaskSubTasks(taskId, input.subtasks)
         dao.replaceTaskReminders(taskId, input.reminders)
@@ -435,10 +453,19 @@ class RoomCheckItRepository(
             startTimeMinutes = if (isTask) input.startTimeMinutes else null,
             endTimeMinutes = if (isTask) input.endTimeMinutes else null,
             repeatRRule = if (isTask) input.repeatRRule else null,
+            label = input.label,
             updatedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
         dao.deleteTaskList(taskId)
-        input.listId?.let { dao.insertTaskList(TaskListEntity(taskId, it)) }
+        input.listId?.let { listId ->
+            dao.insertTaskList(
+                TaskListEntity(
+                    taskId = taskId,
+                    listId = listId,
+                    sortOrder = dao.nextTaskSortOrder(listId)
+                )
+            )
+        }
         dao.deleteTaskTags(taskId)
         input.tagIds.forEach { tagId -> addTaskTag(taskId, tagId) }
         dao.replaceTaskSubTasks(taskId, input.subtasks)
@@ -503,6 +530,7 @@ class RoomCheckItRepository(
                     DailyPlanItemStatus.Planned.name
                 },
                 sortOrder = dao.nextDailyPlanItemSortOrder(dateEpochDays),
+                label = task.label,
                 startTimeMinutes = task.startTimeMinutes,
                 endTimeMinutes = task.endTimeMinutes,
                 isHabit = task.type == TaskType.Habit,
@@ -524,6 +552,7 @@ class RoomCheckItRepository(
         source: DailyPlanItemSource,
         status: DailyPlanItemStatus,
         tagIds: List<Long>,
+        label: String?,
         taskId: Long?,
         nestedListItemId: Long?,
         carriedFromItemId: Long?
@@ -540,6 +569,7 @@ class RoomCheckItRepository(
                 source = source.name,
                 status = status.name,
                 sortOrder = dao.nextDailyPlanItemSortOrder(dateEpochDays),
+                label = label,
                 startTimeMinutes = startTimeMinutes,
                 endTimeMinutes = if (source.hasEndTime()) endTimeMinutes else null,
                 addedAtMillis = now,
@@ -613,6 +643,7 @@ class RoomCheckItRepository(
             note = input.note,
             source = input.source.name,
             status = input.status.name,
+            label = input.label,
             startTimeMinutes = input.startTimeMinutes,
             endTimeMinutes = if (input.source.hasEndTime()) input.endTimeMinutes else null,
             completedAtMillis = if (input.status == DailyPlanItemStatus.Done) now else null,
@@ -725,6 +756,7 @@ class RoomCheckItRepository(
                 source = source.source.name,
                 status = DailyPlanItemStatus.Planned.name,
                 sortOrder = dao.nextDailyPlanItemSortOrder(targetEpochDays),
+                label = source.label,
                 startTimeMinutes = startTime,
                 endTimeMinutes = endTime,
                 addedAtMillis = now,
@@ -808,10 +840,18 @@ class RoomCheckItRepository(
                 startTimeMinutes = input.startTimeMinutes,
                 createdAtMillis = now,
                 editedAtMillis = now,
-                sortOrder = dao.nextNoteSortOrder(input.listId ?: -1L)
+                label = input.label
             )
         )
-        input.listId?.let { dao.insertNoteList(NoteListEntity(noteId, it)) }
+        input.listId?.let { listId ->
+            dao.insertNoteList(
+                NoteListEntity(
+                    noteId = noteId,
+                    listId = listId,
+                    sortOrder = dao.nextNoteSortOrder(listId)
+                )
+            )
+        }
         input.tagIds.forEach { tagId -> addNoteTag(noteId, tagId) }
         return noteId
     }
@@ -824,10 +864,19 @@ class RoomCheckItRepository(
             status = input.status.name,
             dateEpochDays = input.date?.toEpochDays()?.toInt(),
             startTimeMinutes = input.startTimeMinutes,
+            label = input.label,
             editedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
         dao.deleteNoteList(noteId)
-        input.listId?.let { dao.insertNoteList(NoteListEntity(noteId, it)) }
+        input.listId?.let { listId ->
+            dao.insertNoteList(
+                NoteListEntity(
+                    noteId = noteId,
+                    listId = listId,
+                    sortOrder = dao.nextNoteSortOrder(listId)
+                )
+            )
+        }
         dao.deleteNoteTags(noteId)
         input.tagIds.forEach { tagId -> addNoteTag(noteId, tagId) }
     }
@@ -1121,7 +1170,10 @@ private fun TaskEntity.toDomain(
     list: ListItem?,
     subtasks: List<SubTaskItem>,
     reminders: List<TaskReminder>,
-    tags: List<TagItem>
+    tags: List<TagItem>,
+    listSortOrder: Int,
+    isPinned: Boolean,
+    section: String?
 ) = TaskItem(
     id = id,
     list = list,
@@ -1138,7 +1190,10 @@ private fun TaskEntity.toDomain(
     endTimeMinutes = endTimeMinutes,
     reminders = reminders,
     repeatRRule = repeatRRule,
-    sortOrder = sortOrder,
+    label = label,
+    sortOrder = listSortOrder,
+    isPinned = isPinned,
+    section = section,
     createdAtMillis = createdAtMillis,
     updatedAtMillis = updatedAtMillis,
     trashedAtMillis = trashedAtMillis
@@ -1154,6 +1209,7 @@ private fun DailyPlanItemEntity.toDomain(tags: List<TagItem> = emptyList()) = Da
     source = enumValueOf(source),
     status = enumValueOf(status),
     tags = tags,
+    label = label,
     isHabit = isHabit,
     sortOrder = sortOrder,
     startTimeMinutes = startTimeMinutes,
@@ -1206,7 +1262,13 @@ private fun TaskReminderEntity.toDomain() = TaskReminder(
     label = label
 )
 
-private fun NoteEntity.toDomain(list: ListItem?, tags: List<TagItem>) = NoteItem(
+private fun NoteEntity.toDomain(
+    list: ListItem?,
+    tags: List<TagItem>,
+    listSortOrder: Int,
+    isPinned: Boolean,
+    section: String?
+) = NoteItem(
     id = id,
     list = list,
     title = title,
@@ -1215,9 +1277,12 @@ private fun NoteEntity.toDomain(list: ListItem?, tags: List<TagItem>) = NoteItem
     tags = tags,
     date = dateEpochDays?.let { LocalDate.fromEpochDays(it) },
     startTimeMinutes = startTimeMinutes,
+    label = label,
     createdAtMillis = createdAtMillis,
     editedAtMillis = editedAtMillis,
-    sortOrder = sortOrder,
+    sortOrder = listSortOrder,
+    isPinned = isPinned,
+    section = section,
     trashedAtMillis = trashedAtMillis
 )
 

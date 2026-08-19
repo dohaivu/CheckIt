@@ -317,12 +317,13 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         source: DailyPlanItemSource,
         status: DailyPlanItemStatus,
         tagIds: List<Long>,
+        label: String?,
         taskId: Long?,
         nestedListItemId: Long?,
         carriedFromItemId: Long?
     ): Long {
         val id = nextDailyPlanItemId++
-        val input = DailyPlanItemWriteInput(title, note, source, status, startTimeMinutes, endTimeMinutes, tagIds, nestedListItemId)
+        val input = DailyPlanItemWriteInput(title, note, source, status, startTimeMinutes, endTimeMinutes, tagIds, label, nestedListItemId)
         addedManualDailyPlanItems.add(input)
         val newItem = DailyPlanItem(
             id = id,
@@ -334,6 +335,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
             source = source,
             status = status,
             sortOrder = 0,
+            label = label,
             startTimeMinutes = startTimeMinutes,
             endTimeMinutes = endTimeMinutes,
             addedAtMillis = 0L,
@@ -535,6 +537,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
             source = source.source,
             status = DailyPlanItemStatus.Planned,
             tagIds = source.tags.map { it.id },
+            label = source.label,
             taskId = source.taskId,
             nestedListItemId = source.nestedListItemId,
             carriedFromItemId = source.id
