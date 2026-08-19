@@ -53,12 +53,14 @@ import com.checkit.ui.tasks.toDurationLabel
 @Composable
 internal fun TaskRow(
     task: TaskItem,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
     showList: Boolean = true,
     displayType: TaskListDisplayType = TaskListDisplayType.Standard
 ) {
     BaseTaskRow(
         color = task.cardColor(),
+        modifier = modifier,
         isCompleted = task.status == TaskStatus.Completed,
         onClick = onClick,
     ) {
@@ -75,12 +77,14 @@ internal fun TaskRow(
 @Composable
 internal fun NoteRow(
     note: NoteItem,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
     showList: Boolean = true,
     displayType: TaskListDisplayType = TaskListDisplayType.Standard
 ) {
     BaseTaskRow(
         color = note.cardColor(),
+        modifier = modifier,
         isCompleted = note.status == TaskStatus.Completed,
         onClick = onClick,
     ) {
@@ -105,7 +109,7 @@ internal fun BaseTaskRow(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(6.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerLow)
             .clickable(onClick = onClick)
     ) {

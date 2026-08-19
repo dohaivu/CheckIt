@@ -143,7 +143,7 @@ internal fun TaskListView(
             ),
         state = listState,
         contentPadding = PaddingValues(vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         itemsIndexed(items, key = { _, it -> it.key }) { _, item ->
             val isDragging = item.key == dragDropState.draggingItemKey
@@ -384,41 +384,27 @@ private val TaskListEntry?.isDraggable: Boolean
 
 @Composable
 private fun SectionHeaderRow(section: ListSection?) {
-    Surface(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(horizontal = 16.dp)
             .padding(top = 12.dp, bottom = 4.dp),
-        color = section?.color?.toColor()?.copy(alpha = 0.15f) ?: Color.Transparent,
-        shape = RoundedCornerShape(8.dp)
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (section != null) {
-                Box(
-                    modifier = Modifier
-                        .size(4.dp, 16.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(section.color.toColor())
-                )
-                Spacer(Modifier.width(12.dp))
-                Text(
-                    text = section.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.Bold
-                )
-            } else {
-                Text(
-                    text = "Unsectioned",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                    fontWeight = FontWeight.Bold
-                )
-            }
+        if (section != null) {
+            Text(
+                text = section.title,
+                style = MaterialTheme.typography.titleMedium,
+                color = section.color.toColor(),
+                fontWeight = FontWeight.Bold
+            )
+        } else {
+            Text(
+                text = "Unsectioned",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
