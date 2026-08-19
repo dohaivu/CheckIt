@@ -174,6 +174,7 @@ data class TaskWriteInput(
     val endTimeMinutes: Int?,
     val repeatRRule: String?,
     val label: String? = null,
+    val isPinned: Boolean = false,
     val reminders: List<TaskReminderWriteInput>,
     val tagIds: List<Long>
 )
@@ -192,6 +193,7 @@ data class NoteWriteInput(
     val date: LocalDate?,
     val startTimeMinutes: Int?,
     val label: String? = null,
+    val isPinned: Boolean = false,
     val tagIds: List<Long>
 )
 
@@ -528,6 +530,7 @@ class RoomCheckItRepository(
                 TaskListEntity(
                     taskId = taskId,
                     listId = listId,
+                    isPinned = input.isPinned,
                     sortOrder = dao.nextTaskSortOrder(listId),
                     sectionId = input.sectionId
                 )
@@ -564,6 +567,7 @@ class RoomCheckItRepository(
                 TaskListEntity(
                     taskId = taskId,
                     listId = listId,
+                    isPinned = input.isPinned,
                     sortOrder = dao.nextTaskSortOrder(listId),
                     sectionId = input.sectionId
                 )
@@ -951,6 +955,7 @@ class RoomCheckItRepository(
                 NoteListEntity(
                     noteId = noteId,
                     listId = listId,
+                    isPinned = input.isPinned,
                     sortOrder = dao.nextNoteSortOrder(listId),
                     sectionId = input.sectionId
                 )
@@ -977,6 +982,7 @@ class RoomCheckItRepository(
                 NoteListEntity(
                     noteId = noteId,
                     listId = listId,
+                    isPinned = input.isPinned,
                     sortOrder = dao.nextNoteSortOrder(listId),
                     sectionId = input.sectionId
                 )

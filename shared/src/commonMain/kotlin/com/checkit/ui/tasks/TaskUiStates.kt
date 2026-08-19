@@ -144,6 +144,7 @@ sealed interface TaskEditorState {
         val priority: TaskPriority = TaskPriority.None,
         val type: TaskType = TaskType.Task,
         val label: String? = null,
+        val isPinned: Boolean = false,
         val selectedTagIds: Set<Long> = emptySet(),
         val addToMyDayOnSave: Boolean = false,
         val dailyPlanItem: DailyPlanItem? = null,
@@ -160,6 +161,7 @@ sealed interface TaskEditorState {
         val date: LocalDate? = null,
         val startTimeMinutes: Int? = null,
         val label: String? = null,
+        val isPinned: Boolean = false,
         val selectedTagIds: Set<Long> = emptySet(),
         val trashedAtMillis: Long? = null
     ) : TaskEditorState

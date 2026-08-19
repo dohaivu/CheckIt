@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,6 +25,7 @@ import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.RestoreFromTrash
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.WbSunny
@@ -102,6 +104,9 @@ internal fun TaskEditorSheet(
     val onNoteListChange = actions.onNoteListChange
     val onNoteDateChange = actions.onNoteDateChange
     val onNoteStartTimeChange = actions.onNoteStartTimeChange
+    val onPinToggle = actions.onPinToggle
+    val onTaskLabelChange = actions.onTaskLabelChange
+    val onNoteLabelChange = actions.onNoteLabelChange
 
     AppEditorBottomSheet(
         onDismiss = onDismiss,
@@ -157,6 +162,7 @@ internal fun TaskEditorSheet(
                             onSubTaskRemove = onSubTaskRemove,
                             onSubTaskMove = onSubTaskMove,
                             onTagToggle = onTaskTagToggle,
+                            onLabelChange = onTaskLabelChange,
                             onNewTagClick = onNewTagClick,
                             enabled = editor.isFormEditable()
                         )
@@ -175,6 +181,7 @@ internal fun TaskEditorSheet(
                             onDateChange = onNoteDateChange,
                             onStartTimeChange = onNoteStartTimeChange,
                             onTagToggle = onNoteTagToggle,
+                            onLabelChange = onNoteLabelChange,
                             onNewTagClick = onNewTagClick,
                             enabled = editor.isFormEditable()
                         )
@@ -185,6 +192,10 @@ internal fun TaskEditorSheet(
         SheetFooter(
             canDelete = editor.canDelete(),
             isTrashed = editor.isTrashed(),
+            isPinned = when(editor) {
+                is TaskEditorState.TaskForm -> editor.isPinned
+                is TaskEditorState.NoteForm -> editor.isPinned
+            },
             isAddMode = editor.isAddMode(),
             showAddToMyDay = editor.shouldShowAddToMyDay(),
             isCompletable = editor.isCompletableView(),
@@ -194,6 +205,7 @@ internal fun TaskEditorSheet(
             onDelete = onDelete,
             onComplete = onComplete,
             onOpen = onOpen,
+            onPinToggle = onPinToggle,
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
         )
     }
@@ -243,6 +255,7 @@ private fun TrashedStatusSection(
 private fun SheetFooter(
     canDelete: Boolean,
     isTrashed: Boolean,
+    isPinned: Boolean,
     isAddMode: Boolean,
     showAddToMyDay: Boolean,
     isCompletable: Boolean,
@@ -252,6 +265,7 @@ private fun SheetFooter(
     onDelete: () -> Unit,
     onComplete: () -> Unit,
     onOpen: () -> Unit,
+    onPinToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val showOptionsMenu = (canDelete || isCompletable || isOpenable) && !isTrashed
@@ -275,6 +289,22 @@ private fun SheetFooter(
 
         if (showOptionsMenu) {
             EditorOverflowMenu { onDismiss ->
+                if (!isTrashed && (isCompletable || isOpenable || !isAddMode)) {
+                    DropdownMenuItem(
+                        text = { Text(if (isPinned) "Unpin" else "Pin") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.PushPin,
+                                contentDescription = if (isPinned) "Unpin" else "Pin",
+                                tint = if (isPinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        onClick = {
+                            onDismiss()
+                            onPinToggle()
+                        }
+                    )
+                }
                 if (isCompletable) {
                     DropdownMenuItem(
                         text = { Text("Complete") },
@@ -327,6 +357,7 @@ private fun TaskFormContent(
     onSubTaskRemove: (Int) -> Unit,
     onSubTaskMove: (Int, Int) -> Unit,
     onTagToggle: (Long) -> Unit,
+    onLabelChange: (String) -> Unit,
     onNewTagClick: () -> Unit,
     enabled: Boolean = true
 ) {
@@ -336,6 +367,26 @@ private fun TaskFormContent(
         TaskType.Habit -> "What habit do you want to build?"
     }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            AppOutlinedTextField(
+                value = form.label.orEmpty(),
+                onValueChange = onLabelChange,
+                modifier = Modifier.widthIn(max = 120.dp),
+                textStyle = MaterialTheme.typography.labelSmall.copy(
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                ),
+                maxLines = 1,
+                placeholder = "Add label",
+                enabled = enabled,
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+            )
+            Spacer(Modifier.weight(1f))
+        }
+
         if (isHabit) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -571,10 +622,31 @@ private fun NoteFormContent(
     onDateChange: (LocalDate?) -> Unit,
     onStartTimeChange: (Int?) -> Unit,
     onTagToggle: (Long) -> Unit,
+    onLabelChange: (String) -> Unit,
     onNewTagClick: () -> Unit,
     enabled: Boolean = true
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            AppOutlinedTextField(
+                value = form.label.orEmpty(),
+                onValueChange = onLabelChange,
+                modifier = Modifier.widthIn(max = 120.dp),
+                textStyle = MaterialTheme.typography.labelSmall.copy(
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                ),
+                maxLines = 1,
+                placeholder = "Add label",
+                enabled = enabled,
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+            )
+            Spacer(Modifier.weight(1f))
+        }
+
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)

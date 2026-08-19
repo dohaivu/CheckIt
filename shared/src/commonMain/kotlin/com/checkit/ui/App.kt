@@ -387,6 +387,9 @@ fun CheckItApp(
                                 onNoteDateChange = viewModels.task::updateNoteDate,
                                 onNoteStartTimeChange = viewModels.task::updateNoteStartTime,
                                 onNoteTagToggle = viewModels.task::toggleNoteTag,
+                                onPinToggle = viewModels.task::togglePin,
+                                onTaskLabelChange = viewModels.task::updateTaskLabel,
+                                onNoteLabelChange = viewModels.task::updateNoteLabel,
                                 onNewTagClick = viewModels.tag::openNewTag,
                             )
                         )

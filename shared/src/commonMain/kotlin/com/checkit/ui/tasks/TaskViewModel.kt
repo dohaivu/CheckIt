@@ -323,6 +323,7 @@ class TaskViewModel(
                     priority = task.priority,
                     type = task.type,
                     label = task.label,
+                    isPinned = task.isPinned,
                     selectedTagIds = task.tags.map { it.id }.toSet(),
                     dailyPlanItem = dailyPlan,
                     trashedAtMillis = task.trashedAtMillis
@@ -345,6 +346,7 @@ class TaskViewModel(
                     date = note.date,
                     startTimeMinutes = note.startTimeMinutes,
                     label = note.label,
+                    isPinned = note.isPinned,
                     selectedTagIds = note.tags.map { it.id }.toSet(),
                     trashedAtMillis = note.trashedAtMillis
                 )
@@ -442,6 +444,26 @@ class TaskViewModel(
     fun toggleNoteTag(tagId: Long) = updateNoteForm { form ->
         form.copy(selectedTagIds = form.selectedTagIds.toggle(tagId))
     }
+
+    fun togglePin() {
+        _uiState.update { state ->
+            val nextEditor = when (val editor = state.editor) {
+                is TaskEditorState.TaskForm -> editor.copy(isPinned = !editor.isPinned)
+                is TaskEditorState.NoteForm -> editor.copy(isPinned = !editor.isPinned)
+                null -> null
+            }
+            if (nextEditor != null) {
+                when (nextEditor) {
+                    is TaskEditorState.TaskForm -> if (nextEditor.mode == EditorMode.Edit) persistTaskInPlace(nextEditor)
+                    is TaskEditorState.NoteForm -> if (nextEditor.mode == EditorMode.Edit) saveNote(nextEditor)
+                }
+            }
+            state.copy(editor = nextEditor)
+        }
+    }
+
+    fun updateTaskLabel(label: String) = updateTaskForm(saveImmediately = false) { it.copy(label = label) }
+    fun updateNoteLabel(label: String) = updateNoteForm { it.copy(label = label) }
 
     fun saveEditor() {
         flushPendingTaskTextSave()
@@ -628,6 +650,7 @@ class TaskViewModel(
                 date = form.date,
                 startTimeMinutes = form.startTimeMinutes,
                 label = form.label,
+                isPinned = form.isPinned,
                 tagIds = form.selectedTagIds.toList()
             )
             if (form.mode == EditorMode.Add) {
@@ -655,6 +678,7 @@ class TaskViewModel(
             endTimeMinutes = endTimeMinutes,
             repeatRRule = repeatPreset.rrule,
             label = label,
+            isPinned = isPinned,
             subtasks = subtasks
                 .map { it.copy(name = it.name.trim()) }
                 .filter { it.name.isNotBlank() }
