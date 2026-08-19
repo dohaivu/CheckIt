@@ -69,6 +69,7 @@ internal fun TaskContent(
                 onTaskClick = onTaskClick,
                 onNoteClick = onNoteClick,
                 onMoveItem = onMoveItem,
+                reorderEnabled = state.selectedListId != null && state.sortOption == TaskSortOption.Custom,
                 modifier = Modifier.weight(1f)
             )
             TaskWorkspaceView.Agenda -> TaskAgendaView(

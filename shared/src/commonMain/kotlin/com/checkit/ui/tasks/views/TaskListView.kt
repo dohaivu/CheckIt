@@ -87,6 +87,7 @@ internal fun TaskListView(
     onTaskClick: (TaskItem) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
     onMoveItem: (from: Int, to: Int) -> Unit = { _, _ -> },
+    reorderEnabled: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val rowBounds = remember { mutableStateMapOf<String, TaskRowBounds>() }
@@ -137,7 +138,7 @@ internal fun TaskListView(
                         cameraDistance = 8f * density.density
                     }
                     .zIndex(if (isDragging) 1f else 0f)
-                    .then(if (isDraggable) {
+                    .then(if (isDraggable && reorderEnabled) {
                         Modifier.pointerInput(item.key) {
                             detectDragGesturesAfterLongPress(
                                 onDragStart = { _ ->
