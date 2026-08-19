@@ -170,7 +170,7 @@ internal fun TaskCard(
 }
 
 @Composable
-private fun BaseTaskCard(
+internal fun BaseTaskCard(
     color: Color,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,

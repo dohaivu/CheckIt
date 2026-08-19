@@ -1,6 +1,7 @@
 package com.checkit.ui.tasks.views
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,12 +16,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -63,7 +61,6 @@ internal fun TaskRow(
         color = task.cardColor(),
         isCompleted = task.status == TaskStatus.Completed,
         onClick = onClick,
-        elevation = if (task.status == TaskStatus.Completed) 0.dp else 2.dp
     ) {
         Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
             when (displayType) {
@@ -86,7 +83,6 @@ internal fun NoteRow(
         color = note.cardColor(),
         isCompleted = note.status == TaskStatus.Completed,
         onClick = onClick,
-        elevation = if (note.status == TaskStatus.Completed) 0.dp else 2.dp
     ) {
         Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
             when (displayType) {
@@ -101,46 +97,37 @@ internal fun NoteRow(
 @Composable
 internal fun BaseTaskRow(
     color: Color,
+    modifier: Modifier = Modifier,
     isCompleted: Boolean,
     onClick: () -> Unit,
-    elevation: androidx.compose.ui.unit.Dp,
     content: @Composable RowScope.() -> Unit
 ) {
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = elevation,
-            pressedElevation = 8.dp,
-            focusedElevation = 4.dp
-        )
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .clickable(onClick = onClick)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Top
-            ) {
-                Box(Modifier.width(4.dp))
-                content()
-            }
+            Box(Modifier.width(4.dp))
+            content()
+        }
 
-            Box(Modifier.matchParentSize()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .width(4.dp)
-                        .background(color)
-                )
-            }
+        Box(Modifier.matchParentSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(4.dp)
+                    .background(color)
+            )
+        }
 
-            if (isCompleted) {
-                CompletedOverlay()
-            }
+        if (isCompleted) {
+            CompletedOverlay()
         }
     }
 }
@@ -148,7 +135,7 @@ internal fun BaseTaskRow(
 @Composable
 internal fun BriefTaskRowContent(task: TaskItem) {
     Row(
-        modifier = Modifier.fillMaxWidth().fillMaxHeight().padding(horizontal = 10.dp, vertical = 9.dp),
+        modifier = Modifier.fillMaxWidth().fillMaxHeight().padding(horizontal = 10.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -178,8 +165,8 @@ internal fun StandardTaskRowContent(task: TaskItem, showList: Boolean) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         TaskTitleRow(task, descriptionMaxLines = 0)
         DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes, isOverdue = task.isOverdue())
@@ -194,7 +181,10 @@ internal fun StandardTaskRowContent(task: TaskItem, showList: Boolean) {
 
 @Composable
 internal fun DetailTaskRowContent(task: TaskItem, showList: Boolean) {
-    Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
         TaskTitleRow(task, descriptionMaxLines = 3)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes, isOverdue = task.isOverdue())
@@ -211,7 +201,7 @@ internal fun DetailTaskRowContent(task: TaskItem, showList: Boolean) {
 @Composable
 internal fun BriefNoteRowContent(note: NoteItem) {
     Row(
-        modifier = Modifier.fillMaxWidth().fillMaxHeight().padding(horizontal = 10.dp, vertical = 9.dp),
+        modifier = Modifier.fillMaxWidth().fillMaxHeight().padding(horizontal = 10.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -247,8 +237,8 @@ internal fun BriefNoteRowContent(note: NoteItem) {
 @Composable
 internal fun StandardNoteRowContent(note: NoteItem, showList: Boolean) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
             NoteIcon(note.status)
@@ -328,8 +318,8 @@ internal fun StandardNoteRowContent(note: NoteItem, showList: Boolean) {
 @Composable
 internal fun DetailNoteRowContent(note: NoteItem, showList: Boolean) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
             NoteIcon(note.status)
@@ -431,14 +421,7 @@ internal fun TaskTitleRow(
                 )
             }
         }
-        if (task.isPinned) {
-            Icon(
-                imageVector = Icons.Default.PushPin,
-                contentDescription = null,
-                modifier = Modifier.size(12.dp),
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-            )
-        }
+
         if (!task.label.isNullOrEmpty()) {
             Text(text = task.label,
                 style = MaterialTheme.typography.labelSmall.copy(

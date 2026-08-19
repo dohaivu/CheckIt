@@ -40,6 +40,7 @@ internal fun TaskContent(
     onTimelineTaskTimeChange: (TaskItem, Int, Int) -> Unit,
     onTimelineNoteTimeChange: (NoteItem, Int) -> Unit,
     onMoveItem: (Int, Int) -> Unit,
+    onMoveComplete: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val showListName = state.selectedList == null
@@ -69,6 +70,7 @@ internal fun TaskContent(
                 onTaskClick = onTaskClick,
                 onNoteClick = onNoteClick,
                 onMoveItem = onMoveItem,
+                onMoveComplete = onMoveComplete,
                 reorderEnabled = state.selectedListId != null && state.sortOption == TaskSortOption.Custom,
                 modifier = Modifier.weight(1f)
             )

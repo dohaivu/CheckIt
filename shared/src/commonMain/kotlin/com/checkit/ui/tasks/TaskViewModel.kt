@@ -84,6 +84,9 @@ class TaskViewModel(
     val uiState: StateFlow<TaskUiState> = _uiState.asStateFlow()
     private val visibleItemsBuilder = TaskVisibleItemsBuilder(selectTaskBoardItems)
     private var pendingTaskTextSaveJob: Job? = null
+    private var persistListOrderJob: Job? = null
+    private var isReorderingList = false
+    private var reorderGeneration = 0
 
     private val _events = Channel<UiEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
@@ -253,7 +256,7 @@ class TaskViewModel(
     fun moveListItem(fromIndex: Int, toIndex: Int) {
         if (fromIndex == toIndex) return
         val currentState = _uiState.value
-        val listId = currentState.selectedListId ?: return
+        if (currentState.selectedListId == null) return
         if (currentState.sortOption != TaskSortOption.Custom) return
 
         val visibleEntries = currentState.visibleListItems
@@ -262,28 +265,43 @@ class TaskViewModel(
         val movedEntry = visibleEntries[fromIndex]
         if (movedEntry !is TaskListEntry.Task && movedEntry !is TaskListEntry.Note) return
 
-        // Preview in UI immediately
-        val nextVisibleItems = visibleEntries.toMutableList().apply {
-            add(toIndex, removeAt(fromIndex))
-        }
+        val nextVisibleItems = visibleEntries.move(fromIndex, toIndex)
+        isReorderingList = true
+        reorderGeneration++
         _uiState.update { it.copy(visibleItems = it.visibleItems.copy(listItems = nextVisibleItems)) }
+    }
 
-        // Persist to DB
-        viewModelScope.launch {
-            // Update ALL items in the visible list with their new positions
-            // if they belong to the same list.
-            nextVisibleItems.forEachIndexed { index, entry ->
-                val newSectionId = findSectionIdForIndex(nextVisibleItems, index)
-                val isPinned = isIndexInPinnedArea(nextVisibleItems, index)
-                when (entry) {
-                    is TaskListEntry.Task -> {
-                        moveTask(entry.item.id, listId, newSectionId, index, isPinned)
-                    }
-                    is TaskListEntry.Note -> {
-                        moveNote(entry.item.id, listId, newSectionId, index, isPinned)
-                    }
-                    else -> {}
+    fun commitMovedListItems() {
+        if (!isReorderingList) return
+        val currentState = _uiState.value
+        val listId = currentState.selectedListId ?: run {
+            isReorderingList = false
+            return
+        }
+        val nextVisibleItems = currentState.visibleListItems
+        val generation = reorderGeneration
+        persistListOrderJob?.cancel()
+        persistListOrderJob = viewModelScope.launch {
+            persistVisibleListOrder(listId, nextVisibleItems)
+            if (generation == reorderGeneration) {
+                isReorderingList = false
+                _uiState.update { it.refreshVisibleItems() }
+            }
+        }
+    }
+
+    private suspend fun persistVisibleListOrder(listId: Long, nextVisibleItems: List<TaskListEntry>) {
+        nextVisibleItems.forEachIndexed { index, entry ->
+            val newSectionId = findSectionIdForIndex(nextVisibleItems, index)
+            val isPinned = isIndexInPinnedArea(nextVisibleItems, index)
+            when (entry) {
+                is TaskListEntry.Task -> {
+                    moveTask(entry.item.id, listId, newSectionId, index, isPinned)
                 }
+                is TaskListEntry.Note -> {
+                    moveNote(entry.item.id, listId, newSectionId, index, isPinned)
+                }
+                else -> {}
             }
         }
     }
@@ -882,13 +900,18 @@ class TaskViewModel(
         }
 
     private fun TaskUiState.refreshVisibleItems(): TaskUiState {
+        val built = visibleItemsBuilder.build(
+            board = board,
+            selection = selection,
+            options = options,
+            today = today()
+        )
         return copy(
-            visibleItems = visibleItemsBuilder.build(
-                board = board,
-                selection = selection,
-                options = options,
-                today = today()
-            )
+            visibleItems = if (isReorderingList) {
+                built.copy(listItems = visibleItems.listItems)
+            } else {
+                built
+            }
         )
     }
 }

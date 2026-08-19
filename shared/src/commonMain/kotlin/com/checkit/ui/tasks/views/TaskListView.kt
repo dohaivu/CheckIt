@@ -4,8 +4,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -13,23 +13,26 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
+import androidx.compose.foundation.lazy.LazyListItemInfo
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Article
@@ -42,42 +45,42 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInParent
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.zIndex
-import androidx.compose.runtime.rememberUpdatedState
 import com.checkit.domain.ListSection
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
-import com.checkit.ui.tasks.TaskListEntry
 import com.checkit.ui.tasks.TaskListDisplayType
+import com.checkit.ui.tasks.TaskListEntry
 import com.checkit.ui.theme.toColor
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 
 @Composable
 internal fun TaskListView(
@@ -87,134 +90,297 @@ internal fun TaskListView(
     onTaskClick: (TaskItem) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
     onMoveItem: (from: Int, to: Int) -> Unit = { _, _ -> },
+    onMoveComplete: () -> Unit = {},
     reorderEnabled: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    val rowBounds = remember { mutableStateMapOf<String, TaskRowBounds>() }
-    var draggedKey by remember { mutableStateOf<String?>(null) }
-    val draggedCenterY = remember { mutableFloatStateOf(0f) }
-
-    val currentItems by rememberUpdatedState(items)
+    val listState = rememberLazyListState()
+    val haptic = LocalHapticFeedback.current
     val currentOnMoveItem by rememberUpdatedState(onMoveItem)
-    val density = LocalDensity.current
+    val currentOnMoveComplete by rememberUpdatedState(onMoveComplete)
+    val currentItems by rememberUpdatedState(items)
+
+    val dragDropState = rememberTaskListDragDropState(listState) { from, to ->
+        currentOnMoveItem(from, to)
+    }
+
+    DisposableEffect(dragDropState) {
+        onDispose { currentOnMoveComplete() }
+    }
 
     LazyColumn(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        item {
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-
-        itemsIndexed(items, key = { _, it -> it.key }) { index, item ->
-            val isDragging = draggedKey == item.key
-            val isDraggable = item is TaskListEntry.Task || item is TaskListEntry.Note
-            
-            val alphaState = animateFloatAsState(
-                targetValue = if (draggedKey != null && !isDragging) 0.5f else 1f,
-                label = "alpha"
-            )
-            val scaleState = animateFloatAsState(
-                targetValue = if (isDragging) 1.05f else 1f,
-                label = "scale"
-            )
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .animateTaskPlacement(item.key, isDragging) { baseTop, height ->
-                        rowBounds[item.key] = TaskRowBounds(
-                            top = baseTop,
-                            bottom = baseTop + height
+        modifier = modifier
+            .fillMaxWidth()
+            .then(
+                if (reorderEnabled) {
+                    Modifier.pointerInput(dragDropState) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = { offset ->
+                                dragDropState.onDragStart(offset) { index ->
+                                    currentItems.getOrNull(index).isDraggable
+                                }
+                                if (dragDropState.isDragging) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                }
+                            },
+                            onDragEnd = {
+                                dragDropState.onDragInterrupted()
+                                currentOnMoveComplete()
+                            },
+                            onDragCancel = {
+                                dragDropState.onDragInterrupted()
+                                currentOnMoveComplete()
+                            },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                dragDropState.onDrag(dragAmount)
+                            }
                         )
                     }
-                    .graphicsLayer {
-                        val center = rowBounds[item.key]?.center ?: 0f
-                        translationY = if (isDragging) draggedCenterY.floatValue - center else 0f
-                        scaleX = scaleState.value
-                        scaleY = scaleState.value
-                        shadowElevation = if (isDragging) 24f else 0f
-                        this.alpha = alphaState.value
-                        cameraDistance = 8f * density.density
-                    }
-                    .zIndex(if (isDragging) 1f else 0f)
-                    .then(if (isDraggable && reorderEnabled) {
-                        Modifier.pointerInput(item.key) {
-                            detectDragGesturesAfterLongPress(
-                                onDragStart = { _ ->
-                                    rowBounds[item.key]?.let { bounds ->
-                                        draggedKey = item.key
-                                        draggedCenterY.floatValue = bounds.center
+                } else {
+                    Modifier
+                }
+            ),
+        state = listState,
+        contentPadding = PaddingValues(vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        itemsIndexed(items, key = { _, it -> it.key }) { _, item ->
+            val isDragging = item.key == dragDropState.draggingItemKey
+            val isSettling = item.key == dragDropState.previousKeyOfDraggedItem
+            val lift by animateFloatAsState(
+                targetValue = if (isDragging) 1.03f else 1f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMedium
+                ),
+                label = "task-drag-lift"
+            )
+            val elevation by animateFloatAsState(
+                targetValue = if (isDragging || isSettling) 16f else 0f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMedium
+                ),
+                label = "task-drag-elevation"
+            )
+
+            DraggableTaskRow(
+                dragDropState = dragDropState,
+                key = item.key
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .graphicsLayer {
+                            scaleX = lift
+                            scaleY = lift
+                            shadowElevation = elevation
+                        }
+                ) {
+                    when (item) {
+                        is TaskListEntry.Task -> {
+                            val task = item.item
+                            TaskRow(
+                                task = task,
+                                onClick = {
+                                    if (!dragDropState.shouldIgnoreClick()) {
+                                        onTaskClick(task)
                                     }
                                 },
-                                onDragEnd = {
-                                    draggedKey = null
-                                    draggedCenterY.floatValue = 0f
-                                },
-                                onDragCancel = {
-                                    draggedKey = null
-                                    draggedCenterY.floatValue = 0f
-                                },
-                                onDrag = { change, dragAmount ->
-                                    change.consume()
-                                    val latestItems = currentItems
-                                    val currentDraggedIndex = latestItems.indexOfFirst { entry -> entry.key == draggedKey }
-                                    if (currentDraggedIndex == -1) return@detectDragGesturesAfterLongPress
-                                    
-                                    draggedCenterY.floatValue += dragAmount.y
-                                    
-                                    val targetIndex = latestItems.indices.firstOrNull { i ->
-                                        if (i == currentDraggedIndex) return@firstOrNull false
-                                        val targetKey = latestItems[i].key
-                                        val bounds = rowBounds[targetKey] ?: return@firstOrNull false
-                                        
-                                        // Improved threshold: crossing the midpoint of the target item
-                                        if (i < currentDraggedIndex) {
-                                            draggedCenterY.floatValue < bounds.center
-                                        } else {
-                                            draggedCenterY.floatValue > bounds.center
-                                        }
-                                    } ?: return@detectDragGesturesAfterLongPress
-                                    
-                                    currentOnMoveItem(currentDraggedIndex, targetIndex)
-                                }
+                                showList = showListName,
+                                displayType = displayType
                             )
                         }
-                    } else Modifier)
-            ) {
-                when (item) {
-                    is TaskListEntry.Task -> {
-                        val task = item.item
-                        TaskRow(
-                            task = task,
-                            onClick = { onTaskClick(task) },
-                            showList = showListName,
-                            displayType = displayType
-                        )
-                    }
-                    is TaskListEntry.Note -> {
-                        val note = item.item
-                        NoteRow(
-                            note = note,
-                            onClick = { onNoteClick(note) },
-                            showList = showListName,
-                            displayType = displayType
-                        )
-                    }
-                    is TaskListEntry.SectionHeader -> {
-                        SectionHeaderRow(item.section)
-                    }
-                    is TaskListEntry.PinnedHeader -> {
-                        PinnedHeaderRow()
+                        is TaskListEntry.Note -> {
+                            val note = item.item
+                            NoteRow(
+                                note = note,
+                                onClick = {
+                                    if (!dragDropState.shouldIgnoreClick()) {
+                                        onNoteClick(note)
+                                    }
+                                },
+                                showList = showListName,
+                                displayType = displayType
+                            )
+                        }
+                        is TaskListEntry.SectionHeader -> {
+                            SectionHeaderRow(item.section)
+                        }
+                        is TaskListEntry.PinnedHeader -> {
+                            PinnedHeaderRow()
+                        }
                     }
                 }
             }
         }
-        item {
-            Spacer(modifier = Modifier.height(8.dp))
-        }
     }
 }
+
+@Composable
+private fun rememberTaskListDragDropState(
+    lazyListState: LazyListState,
+    onMove: (Int, Int) -> Unit
+): TaskListDragDropState {
+    val scope = rememberCoroutineScope()
+    val onMoveState = rememberUpdatedState(onMove)
+    val state = remember(lazyListState) {
+        TaskListDragDropState(
+            listState = lazyListState,
+            scope = scope,
+            onMove = { from, to -> onMoveState.value(from, to) }
+        )
+    }
+    LaunchedEffect(state) {
+        while (true) {
+            val diff = state.scrollChannel.receive()
+            lazyListState.scrollBy(diff)
+        }
+    }
+    return state
+}
+
+private class TaskListDragDropState(
+    private val listState: LazyListState,
+    private val scope: CoroutineScope,
+    private val onMove: (Int, Int) -> Unit
+) {
+    var draggingItemKey by mutableStateOf<String?>(null)
+        private set
+    var previousKeyOfDraggedItem by mutableStateOf<String?>(null)
+        private set
+
+    val isDragging: Boolean get() = draggingItemKey != null
+
+    internal val scrollChannel = Channel<Float>(Channel.CONFLATED)
+    internal val previousItemOffset = Animatable(0f)
+
+    private var draggingItemDraggedDelta by mutableFloatStateOf(0f)
+    private var draggingItemInitialOffset by mutableIntStateOf(0)
+    private var consumeNextClick by mutableStateOf(false)
+
+    val draggingItemOffset: Float
+        get() = draggingItemLayoutInfo?.let { item ->
+            draggingItemInitialOffset + draggingItemDraggedDelta - item.offset
+        } ?: 0f
+
+    private val draggingItemLayoutInfo: LazyListItemInfo?
+        get() = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == draggingItemKey }
+
+    fun shouldIgnoreClick(): Boolean {
+        if (isDragging || consumeNextClick) {
+            consumeNextClick = false
+            return true
+        }
+        return false
+    }
+
+    fun onDragStart(offset: Offset, canDrag: (Int) -> Boolean) {
+        val item = listState.layoutInfo.visibleItemsInfo.firstOrNull { info ->
+            offset.y.toInt() in info.offset until (info.offset + info.size)
+        } ?: return
+        val key = item.key as? String ?: return
+        if (!canDrag(item.index)) return
+
+        draggingItemKey = key
+        draggingItemInitialOffset = item.offset
+        draggingItemDraggedDelta = 0f
+        consumeNextClick = true
+        previousKeyOfDraggedItem = null
+        scope.launch { previousItemOffset.snapTo(0f) }
+    }
+
+    fun onDrag(offset: Offset) {
+        if (draggingItemKey == null) return
+        draggingItemDraggedDelta += offset.y
+
+        val draggingItem = draggingItemLayoutInfo ?: return
+        val startOffset = draggingItem.offset + draggingItemOffset
+        val endOffset = startOffset + draggingItem.size
+        val middleOffset = (startOffset + endOffset) / 2f
+
+        val targetItem = listState.layoutInfo.visibleItemsInfo.firstOrNull { item ->
+            middleOffset.toInt() in item.offset until item.offsetEnd &&
+                item.index != draggingItem.index
+        }
+        if (targetItem != null) {
+            if (
+                draggingItem.index == listState.firstVisibleItemIndex ||
+                targetItem.index == listState.firstVisibleItemIndex
+            ) {
+                listState.requestScrollToItem(
+                    listState.firstVisibleItemIndex,
+                    listState.firstVisibleItemScrollOffset
+                )
+            }
+            onMove(draggingItem.index, targetItem.index)
+        } else {
+            val overscroll = when {
+                draggingItemDraggedDelta > 0 ->
+                    (endOffset - listState.layoutInfo.viewportEndOffset).coerceAtLeast(0f)
+                draggingItemDraggedDelta < 0 ->
+                    (startOffset - listState.layoutInfo.viewportStartOffset).coerceAtMost(0f)
+                else -> 0f
+            }
+            if (overscroll != 0f) {
+                scrollChannel.trySend(overscroll)
+            }
+        }
+    }
+
+    fun onDragInterrupted() {
+        val key = draggingItemKey
+        if (key != null) {
+            previousKeyOfDraggedItem = key
+            val startOffset = draggingItemOffset
+            scope.launch {
+                previousItemOffset.snapTo(startOffset)
+                previousItemOffset.animateTo(
+                    targetValue = 0f,
+                    animationSpec = spring(
+                        stiffness = Spring.StiffnessMediumLow,
+                        visibilityThreshold = 1f
+                    )
+                )
+                if (previousKeyOfDraggedItem == key) {
+                    previousKeyOfDraggedItem = null
+                }
+            }
+        }
+        draggingItemDraggedDelta = 0f
+        draggingItemKey = null
+        draggingItemInitialOffset = 0
+    }
+
+    private val LazyListItemInfo.offsetEnd: Int
+        get() = offset + size
+}
+
+@Composable
+private fun LazyItemScope.DraggableTaskRow(
+    dragDropState: TaskListDragDropState,
+    key: String,
+    content: @Composable () -> Unit
+) {
+    val dragging = key == dragDropState.draggingItemKey
+    val settling = key == dragDropState.previousKeyOfDraggedItem
+    val dragModifier = when {
+        dragging -> Modifier
+            .zIndex(1f)
+            .graphicsLayer { translationY = dragDropState.draggingItemOffset }
+        settling -> Modifier
+            .zIndex(1f)
+            .graphicsLayer { translationY = dragDropState.previousItemOffset.value }
+        else -> Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)
+    }
+    Box(modifier = dragModifier) {
+        content()
+    }
+}
+
+private val TaskListEntry?.isDraggable: Boolean
+    get() = this is TaskListEntry.Task || this is TaskListEntry.Note
 
 @Composable
 private fun SectionHeaderRow(section: ListSection?) {
@@ -280,49 +446,6 @@ private fun PinnedHeaderRow() {
             fontWeight = FontWeight.Bold
         )
     }
-}
-
-private data class TaskRowBounds(
-    val top: Float,
-    val bottom: Float
-) {
-    val center: Float get() = (top + bottom) / 2f
-}
-
-private fun Modifier.animateTaskPlacement(
-    key: String,
-    isDragging: Boolean,
-    onPositioned: (Float, Int) -> Unit
-): Modifier = composed {
-    val scope = rememberCoroutineScope()
-    val offsetY = remember(key) { Animatable(0f) }
-    var previousTop by remember(key) { mutableStateOf<Float?>(null) }
-
-    onGloballyPositioned { coordinates ->
-        val nextTop = coordinates.positionInParent().y
-        onPositioned(nextTop - offsetY.value, coordinates.size.height)
-        
-        if (isDragging) {
-            previousTop = nextTop
-            scope.launch { offsetY.snapTo(0f) }
-            return@onGloballyPositioned
-        }
-
-        val lastTop = previousTop
-        if (lastTop != null && lastTop != nextTop) {
-            scope.launch {
-                offsetY.snapTo(lastTop - nextTop)
-                offsetY.animateTo(
-                    targetValue = 0f,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = Spring.StiffnessMedium
-                    )
-                )
-            }
-        }
-        previousTop = nextTop
-    }.offset { IntOffset(x = 0, y = offsetY.value.roundToInt()) }
 }
 
 @Composable

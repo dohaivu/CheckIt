@@ -163,6 +163,7 @@ internal fun TaskScreen(
                     onTimelineTaskTimeChange = viewModel::updateTaskTime,
                     onTimelineNoteTimeChange = viewModel::updateNoteTime,
                     onMoveItem = viewModel::moveListItem,
+                    onMoveComplete = viewModel::commitMovedListItems,
                     modifier = contentModifier
                 )
             }

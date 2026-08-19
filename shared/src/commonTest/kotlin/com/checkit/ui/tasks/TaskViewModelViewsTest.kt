@@ -238,6 +238,38 @@ class TaskViewModelViewsTest {
     }
 
     @Test
+    fun moveListItemPreviewsOrderWithoutPersistingUntilCommit() = runTest(dispatcher) {
+        val inbox = ListItem(id = 1L, title = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
+        viewModel = createViewModel(
+            TaskBoard(
+                lists = listOf(inbox),
+                tasks = listOf(
+                    task(id = 1L, list = inbox, name = "First", sortOrder = 0),
+                    task(id = 2L, list = inbox, name = "Second", sortOrder = 1)
+                )
+            )
+        )
+        dispatcher.scheduler.advanceUntilIdle()
+        viewModel.selectList(1L)
+
+        viewModel.moveListItem(0, 1)
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val previewIds = viewModel.uiState.value.visibleListItems.mapNotNull { entry ->
+            (entry as? TaskListEntry.Task)?.item?.id
+        }
+        assertEquals(listOf(2L, 1L), previewIds)
+        assertEquals(0, repository.currentBoard.tasks.first { it.id == 1L }.sortOrder)
+        assertEquals(1, repository.currentBoard.tasks.first { it.id == 2L }.sortOrder)
+
+        viewModel.commitMovedListItems()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, repository.currentBoard.tasks.first { it.id == 1L }.sortOrder)
+        assertEquals(0, repository.currentBoard.tasks.first { it.id == 2L }.sortOrder)
+    }
+
+    @Test
     fun habitsViewShowsOnlyHabitTasks() = runTest(dispatcher) {
         val inbox = ListItem(id = 1L, title = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
         viewModel = createViewModel(
@@ -336,7 +368,8 @@ class TaskViewModelViewsTest {
         name: String,
         description: String = "",
         type: TaskType = TaskType.Task,
-        tags: List<TagItem> = emptyList()
+        tags: List<TagItem> = emptyList(),
+        sortOrder: Int = id.toInt()
     ) = TaskItem(
         id = id,
         list = list,
@@ -344,7 +377,7 @@ class TaskViewModelViewsTest {
         description = description,
         type = type,
         tags = tags,
-        sortOrder = id.toInt(),
+        sortOrder = sortOrder,
         createdAtMillis = 0L,
         updatedAtMillis = 0L
     )

@@ -327,7 +327,7 @@ private fun AgendaAllDayRow(
         showBottomLine = showBottomLine,
         isHighlighted = false
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             items.forEach { item ->
                 Box(Modifier.clickable { onItemClick(item) }) {
                     itemContent(item)
