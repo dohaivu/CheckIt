@@ -296,7 +296,7 @@ internal fun TaskTitleRow(
     descriptionMaxLines: Int,
 ) {
     Row(
-        verticalAlignment = Alignment.Top,
+        verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         if (task.type == TaskType.Habit) {
@@ -319,6 +319,14 @@ internal fun TaskTitleRow(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
+        }
+        if (!task.label.isNullOrEmpty()) {
+            Text(text = task.label,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            )
         }
     }
 }
