@@ -59,12 +59,17 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
     val updatedDailyPlanItemTimes = mutableListOf<Triple<Long, Int?, Int?>>()
     val deletedDailyPlanItemIds = mutableListOf<Long>()
     
+    val addedSections = mutableListOf<Triple<Long, String, String>>()
+    val updatedSections = mutableListOf<com.checkit.domain.ListSection>()
+    val deletedSections = mutableListOf<Long>()
+    
     val currentBoard: TaskBoard get() = boardFlow.value
     
     private var nextListId: Long = 100L
     private var nextTagId: Long = 200L
     private var nextTaskId: Long = 300L
     private var nextDailyPlanItemId: Long = 400L
+    private var nextSectionId: Long = 600L
 
     val lastAssignedTagId: Long get() = nextTagId - 1
     val lastAssignedTaskId: Long get() = nextTaskId - 1
@@ -82,7 +87,17 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
     val deletedJournalEntryIds = mutableListOf<Long>()
     private var nextJournalEntryId: Long = 500L
 
-    override fun observeTaskBoard(): Flow<TaskBoard> = boardFlow
+    override fun observeTaskBoard(onlyOpen: Boolean): Flow<TaskBoard> = boardFlow.map { board ->
+        if (onlyOpen) {
+            board.copy(
+                tasks = board.tasks.filter { it.status == TaskStatus.Open && !it.isTrashed },
+                notes = board.notes.filter { it.status == TaskStatus.Open && !it.isTrashed }
+            )
+        } else {
+            board
+        }
+    }
+
     override fun observeDailyPlans(startDate: LocalDate?, endDate: LocalDate?): Flow<List<DailyPlan>> =
         dailyPlansFlow.map { plans ->
             if (startDate != null && endDate != null) {
@@ -604,6 +619,56 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
     override suspend fun restoreNote(noteId: Long) {
         boardFlow.update { board ->
             board.copy(notes = board.notes.map { if (it.id == noteId) it.copy(trashedAtMillis = null) else it })
+        }
+    }
+
+    override suspend fun addSection(listId: Long, title: String, color: String): Long {
+        val id = nextSectionId++
+        addedSections.add(Triple(listId, title, color))
+        boardFlow.update { board ->
+            board.copy(
+                lists = board.lists.map { list ->
+                    if (list.id == listId) {
+                        list.copy(
+                            sections = list.sections + com.checkit.domain.ListSection(
+                                id = id,
+                                listId = listId,
+                                title = title,
+                                color = color,
+                                sortOrder = list.sections.size
+                            )
+                        )
+                    } else list
+                }
+            )
+        }
+        return id
+    }
+
+    override suspend fun updateSection(sectionId: Long, title: String, color: String, sortOrder: Int) {
+        val section = com.checkit.domain.ListSection(sectionId, 0L, title, color, sortOrder)
+        updatedSections.add(section)
+        boardFlow.update { board ->
+            board.copy(
+                lists = board.lists.map { list ->
+                    list.copy(
+                        sections = list.sections.map { s ->
+                            if (s.id == sectionId) section.copy(listId = s.listId) else s
+                        }
+                    )
+                }
+            )
+        }
+    }
+
+    override suspend fun deleteSection(sectionId: Long) {
+        deletedSections.add(sectionId)
+        boardFlow.update { board ->
+            board.copy(
+                lists = board.lists.map { list ->
+                    list.copy(sections = list.sections.filter { it.id != sectionId })
+                }
+            )
         }
     }
 
