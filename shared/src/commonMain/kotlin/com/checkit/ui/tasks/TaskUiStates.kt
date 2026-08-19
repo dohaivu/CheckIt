@@ -80,6 +80,10 @@ sealed interface TaskListEntry {
     data class SectionHeader(val section: ListSection?) : TaskListEntry {
         override val key: String = "section-${section?.id ?: "none"}"
     }
+
+    data object PinnedHeader : TaskListEntry {
+        override val key: String = "pinned-header"
+    }
 }
 
 enum class TaskWorkspaceView {

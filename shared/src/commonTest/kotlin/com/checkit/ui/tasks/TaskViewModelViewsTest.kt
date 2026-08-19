@@ -196,6 +196,7 @@ class TaskViewModelViewsTest {
                 is TaskListEntry.Task -> "task:${entry.item.name}"
                 is TaskListEntry.Note -> "note:${entry.item.title}"
                 is TaskListEntry.SectionHeader -> "section:${entry.section?.title}"
+                is TaskListEntry.PinnedHeader -> "pinned"
             }
         }
         assertEquals(listOf("note:Alpha", "task:Bravo", "note:Charlie", "task:Delta"), labels)
@@ -226,6 +227,7 @@ class TaskViewModelViewsTest {
                 is TaskListEntry.Task -> "task:${entry.item.name}"
                 is TaskListEntry.Note -> "note:${entry.item.title}"
                 is TaskListEntry.SectionHeader -> "section:${entry.section?.title}"
+                is TaskListEntry.PinnedHeader -> "pinned"
             }
         }
         assertEquals(listOf("task:Budget", "note:Ideas"), labels)

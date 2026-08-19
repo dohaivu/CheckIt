@@ -92,8 +92,23 @@ internal class TaskVisibleItemsBuilder(
             
             val result = mutableListOf<TaskListEntry>()
             
+            val pinned = sortedVisibleItems.filter { entry ->
+                when (entry) {
+                    is TaskListEntry.Task -> entry.item.isPinned
+                    is TaskListEntry.Note -> entry.item.isPinned
+                    else -> false
+                }
+            }
+            
+            if (pinned.isNotEmpty()) {
+                result += TaskListEntry.PinnedHeader
+                result += pinned
+            }
+
+            val unpinned = sortedVisibleItems.filter { it !in pinned }
+
             // Items without section
-            val unsectioned = sortedVisibleItems.filter { entry ->
+            val unsectioned = unpinned.filter { entry ->
                 when (entry) {
                     is TaskListEntry.Task -> entry.item.sectionId == null
                     is TaskListEntry.Note -> entry.item.sectionId == null
@@ -102,9 +117,6 @@ internal class TaskVisibleItemsBuilder(
             }
             
             if (sections.isNotEmpty() && unsectioned.isNotEmpty()) {
-                // Only show "Unsectioned" header if there are sections and some items are unsectioned
-                // result += TaskListEntry.SectionHeader(null) 
-                // Actually, maybe just put them at the top without header if it's the default
                 result += unsectioned
             } else if (sections.isEmpty()) {
                 result += unsectioned
@@ -113,7 +125,7 @@ internal class TaskVisibleItemsBuilder(
             }
 
             sections.forEach { section ->
-                val sectionItems = sortedVisibleItems.filter { entry ->
+                val sectionItems = unpinned.filter { entry ->
                     when (entry) {
                         is TaskListEntry.Task -> entry.item.sectionId == section.id
                         is TaskListEntry.Note -> entry.item.sectionId == section.id
@@ -209,6 +221,7 @@ private val TaskListEntry.id: Long
         is TaskListEntry.Task -> item.id
         is TaskListEntry.Note -> item.id
         is TaskListEntry.SectionHeader -> section?.id ?: -1L
+        is TaskListEntry.PinnedHeader -> -2L
     }
 
 private val TaskListEntry.sortOrder: Int
@@ -216,6 +229,7 @@ private val TaskListEntry.sortOrder: Int
         is TaskListEntry.Task -> item.sortOrder
         is TaskListEntry.Note -> item.sortOrder
         is TaskListEntry.SectionHeader -> section?.sortOrder ?: -1
+        is TaskListEntry.PinnedHeader -> -2
     }
 
 private val TaskListEntry.typeRank: Int
@@ -223,6 +237,7 @@ private val TaskListEntry.typeRank: Int
         is TaskListEntry.Task -> 0
         is TaskListEntry.Note -> 1
         is TaskListEntry.SectionHeader -> -1
+        is TaskListEntry.PinnedHeader -> -2
     }
 
 private val TaskListEntry.priorityRank: Int
@@ -230,6 +245,7 @@ private val TaskListEntry.priorityRank: Int
         is TaskListEntry.Task -> item.priority.rankForSort()
         is TaskListEntry.Note -> TaskPriority.None.rankForSort()
         is TaskListEntry.SectionHeader -> -1
+        is TaskListEntry.PinnedHeader -> -2
     }
 
 private val TaskListEntry.dateForSort: LocalDate?
@@ -237,6 +253,7 @@ private val TaskListEntry.dateForSort: LocalDate?
         is TaskListEntry.Task -> item.doDate
         is TaskListEntry.Note -> item.date
         is TaskListEntry.SectionHeader -> null
+        is TaskListEntry.PinnedHeader -> null
     }
 
 private val TaskListEntry.startTimeForSort: Int?
@@ -244,6 +261,7 @@ private val TaskListEntry.startTimeForSort: Int?
         is TaskListEntry.Task -> item.startTimeMinutes
         is TaskListEntry.Note -> item.startTimeMinutes
         is TaskListEntry.SectionHeader -> null
+        is TaskListEntry.PinnedHeader -> null
     }
 
 private val TaskListEntry.titleForSort: String
@@ -251,6 +269,7 @@ private val TaskListEntry.titleForSort: String
         is TaskListEntry.Task -> item.name
         is TaskListEntry.Note -> item.title.ifBlank { item.content }
         is TaskListEntry.SectionHeader -> section?.title.orEmpty()
+        is TaskListEntry.PinnedHeader -> ""
     }.lowercase()
 
 private fun TaskPriority.rankForSort(): Int =
