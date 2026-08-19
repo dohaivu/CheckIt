@@ -325,6 +325,27 @@ data class TaskFilterEntity(
 )
 
 @Entity(
+    tableName = "list_sections",
+    foreignKeys = [
+        ForeignKey(
+            entity = ListEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["listId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("listId")]
+)
+data class ListSectionEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0L,
+    val listId: Long,
+    val title: String,
+    val color: String,
+    val sortOrder: Int
+)
+
+@Entity(
     tableName = "task_list",
     primaryKeys = ["taskId", "listId"],
     foreignKeys = [
@@ -339,16 +360,22 @@ data class TaskFilterEntity(
             parentColumns = ["id"],
             childColumns = ["listId"],
             onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = ListSectionEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["sectionId"],
+            onDelete = ForeignKey.SET_NULL
         )
     ],
-    indices = [Index("taskId"), Index("listId")]
+    indices = [Index("taskId"), Index("listId"), Index("sectionId")]
 )
 data class TaskListEntity(
     val taskId: Long,
     val listId: Long,
     val isPinned: Boolean = false,
     val sortOrder: Int = 0,
-    val section: String? = null
+    val sectionId: Long? = null
 )
 
 @Entity(
@@ -366,16 +393,22 @@ data class TaskListEntity(
             parentColumns = ["id"],
             childColumns = ["listId"],
             onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = ListSectionEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["sectionId"],
+            onDelete = ForeignKey.SET_NULL
         )
     ],
-    indices = [Index("noteId"), Index("listId")]
+    indices = [Index("noteId"), Index("listId"), Index("sectionId")]
 )
 data class NoteListEntity(
     val noteId: Long,
     val listId: Long,
     val isPinned: Boolean = false,
     val sortOrder: Int = 0,
-    val section: String? = null
+    val sectionId: Long? = null
 )
 
 @Entity(tableName = "nested_documents")
@@ -494,6 +527,7 @@ data class NestedItemTagEntity(
         TaskReminderEntity::class,
         TaskFilterEntity::class,
         ListEntity::class,
+        ListSectionEntity::class,
         TaskListEntity::class,
         NoteListEntity::class,
         NestedDocumentEntity::class,
@@ -501,7 +535,7 @@ data class NestedItemTagEntity(
         NestedItemTagEntity::class,
         NestedManualMetricEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)

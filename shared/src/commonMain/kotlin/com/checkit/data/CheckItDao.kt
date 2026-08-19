@@ -37,6 +37,9 @@ interface CheckItDao {
     suspend fun insertList(list: ListEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertListSection(section: ListSectionEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTaskList(taskList: TaskListEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -56,6 +59,12 @@ interface CheckItDao {
 
     @Query("SELECT * FROM lists ORDER BY sortOrder ASC, title ASC")
     fun observeLists(): Flow<List<ListEntity>>
+
+    @Query("SELECT * FROM list_sections ORDER BY listId ASC, sortOrder ASC, title ASC")
+    fun observeListSections(): Flow<List<ListSectionEntity>>
+
+    @Query("SELECT * FROM list_sections WHERE listId = :listId ORDER BY sortOrder ASC, title ASC")
+    fun observeSectionsForList(listId: Long): Flow<List<ListSectionEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertJournalEntry(entry: JournalEntryEntity): Long
@@ -181,6 +190,9 @@ interface CheckItDao {
     @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM tags")
     suspend fun nextTagSortOrder(): Int
 
+    @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM list_sections WHERE listId = :listId")
+    suspend fun nextSectionSortOrder(listId: Long): Int
+
     @Query("UPDATE tags SET sortOrder = :sortOrder WHERE id = :tagId")
     suspend fun updateTagSortOrder(tagId: Long, sortOrder: Int)
 
@@ -213,6 +225,12 @@ interface CheckItDao {
 
     @Query("DELETE FROM lists WHERE id = :listId")
     suspend fun deleteList(listId: Long)
+
+    @Query("DELETE FROM list_sections WHERE id = :sectionId")
+    suspend fun deleteSection(sectionId: Long)
+
+    @Query("UPDATE list_sections SET title = :title, color = :color, sortOrder = :sortOrder WHERE id = :sectionId")
+    suspend fun updateSection(sectionId: Long, title: String, color: String, sortOrder: Int)
 
     @Query("UPDATE task_list SET listId = :toListId WHERE listId = :fromListId")
     suspend fun moveTasksToList(fromListId: Long, toListId: Long)

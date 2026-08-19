@@ -12,6 +12,7 @@ import com.checkit.domain.ReviewStatus
 import com.checkit.domain.DueDatePreset
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.ListItem
+import com.checkit.domain.ListSection
 import com.checkit.domain.NoteItem
 import com.checkit.domain.NestedDocument
 import com.checkit.domain.NestedDocumentTree
@@ -117,6 +118,9 @@ interface CheckItRepository {
     suspend fun openNote(noteId: Long)
     suspend fun trashNote(noteId: Long)
     suspend fun restoreNote(noteId: Long)
+    suspend fun addSection(listId: Long, title: String, color: String): Long
+    suspend fun updateSection(sectionId: Long, title: String, color: String, sortOrder: Int)
+    suspend fun deleteSection(sectionId: Long)
     fun observeNestedDocuments(): Flow<List<NestedDocument>>
     fun observeTags(): Flow<List<TagItem>>
     fun observeNestedDocumentTree(documentId: Long): Flow<NestedDocumentTree>
@@ -158,6 +162,7 @@ data class TagWriteInput(
 
 data class TaskWriteInput(
     val listId: Long? = null,
+    val sectionId: Long? = null,
     val name: String,
     val description: String,
     val subtasks: List<SubTaskWriteInput>,
@@ -180,6 +185,7 @@ data class SubTaskWriteInput(
 
 data class NoteWriteInput(
     val listId: Long? = null,
+    val sectionId: Long? = null,
     val title: String,
     val content: String,
     val status: TaskStatus,
@@ -246,6 +252,7 @@ class RoomCheckItRepository(
         val metadataFlow = combine(
             dao.observeTags(),
             dao.observeLists(),
+            dao.observeListSections(),
             dao.observeTaskLists(),
             dao.observeNoteLists()
         ) { array ->
@@ -253,14 +260,17 @@ class RoomCheckItRepository(
             TaskBoardMetadata(
                 tags = array[0] as List<TagEntity>,
                 lists = array[1] as List<ListEntity>,
-                taskLists = array[2] as List<TaskListEntity>,
-                noteLists = array[3] as List<NoteListEntity>
+                sections = array[2] as List<ListSectionEntity>,
+                taskLists = array[3] as List<TaskListEntity>,
+                noteLists = array[4] as List<NoteListEntity>
             )
         }
 
         return combine(rowsFlow, joinsFlow, metadataFlow) { rows, joins, metadata ->
             val domainTags = metadata.tags.map { it.toDomain() }
-            val domainLists = metadata.lists.map { it.toDomain() }
+            val domainSections = metadata.sections.map { it.toDomain() }
+            val sectionsByList = domainSections.groupBy { it.listId }
+            val domainLists = metadata.lists.map { it.toDomain(sectionsByList[it.id].orEmpty()) }
             val tagsById = domainTags.associateBy { it.id }
             val listsById = domainLists.associateBy { it.id }
             val taskTagIds = joins.taskTags.groupBy { it.taskId }.mapValues { entry -> entry.value.map { it.tagId } }
@@ -282,7 +292,7 @@ class RoomCheckItRepository(
                     val itemTags = taskTagIds[entity.id].orEmpty().mapNotNull { tagsById[it] }
                     val listSortOrder = listJoin?.sortOrder ?: 0
                     val isPinned = listJoin?.isPinned ?: false
-                    val section = listJoin?.section
+                    val sectionId = listJoin?.sectionId
 
                     val cached = taskItemCache[entity.id]
                     if (cached != null && cached.isSameAs(
@@ -306,7 +316,7 @@ class RoomCheckItRepository(
                             resolvedTags = itemTags,
                             resolvedSortOrder = listSortOrder,
                             resolvedIsPinned = isPinned,
-                            resolvedSection = section
+                            resolvedSectionId = sectionId
                         )
                     ) {
                         cached
@@ -318,7 +328,7 @@ class RoomCheckItRepository(
                             tags = itemTags,
                             listSortOrder = listSortOrder,
                             isPinned = isPinned,
-                            section = section
+                            sectionId = sectionId
                         )
                         taskItemCache[entity.id] = newItem
                         newItem
@@ -330,7 +340,7 @@ class RoomCheckItRepository(
                     val itemTags = noteTagIds[entity.id].orEmpty().mapNotNull { tagsById[it] }
                     val listSortOrder = listJoin?.sortOrder ?: 0
                     val isPinned = listJoin?.isPinned ?: false
-                    val section = listJoin?.section
+                    val sectionId = listJoin?.sectionId
 
                     val cached = noteItemCache[entity.id]
                     if (cached != null && cached.isSameAs(
@@ -347,7 +357,7 @@ class RoomCheckItRepository(
                             resolvedTags = itemTags,
                             resolvedSortOrder = listSortOrder,
                             resolvedIsPinned = isPinned,
-                            resolvedSection = section
+                            resolvedSectionId = sectionId
                         )
                     ) {
                         cached
@@ -357,7 +367,7 @@ class RoomCheckItRepository(
                             tags = itemTags,
                             listSortOrder = listSortOrder,
                             isPinned = isPinned,
-                            section = section
+                            sectionId = sectionId
                         )
                         noteItemCache[entity.id] = newItem
                         newItem
@@ -518,7 +528,8 @@ class RoomCheckItRepository(
                 TaskListEntity(
                     taskId = taskId,
                     listId = listId,
-                    sortOrder = dao.nextTaskSortOrder(listId)
+                    sortOrder = dao.nextTaskSortOrder(listId),
+                    sectionId = input.sectionId
                 )
             )
         }
@@ -553,7 +564,8 @@ class RoomCheckItRepository(
                 TaskListEntity(
                     taskId = taskId,
                     listId = listId,
-                    sortOrder = dao.nextTaskSortOrder(listId)
+                    sortOrder = dao.nextTaskSortOrder(listId),
+                    sectionId = input.sectionId
                 )
             )
         }
@@ -939,7 +951,8 @@ class RoomCheckItRepository(
                 NoteListEntity(
                     noteId = noteId,
                     listId = listId,
-                    sortOrder = dao.nextNoteSortOrder(listId)
+                    sortOrder = dao.nextNoteSortOrder(listId),
+                    sectionId = input.sectionId
                 )
             )
         }
@@ -964,7 +977,8 @@ class RoomCheckItRepository(
                 NoteListEntity(
                     noteId = noteId,
                     listId = listId,
-                    sortOrder = dao.nextNoteSortOrder(listId)
+                    sortOrder = dao.nextNoteSortOrder(listId),
+                    sectionId = input.sectionId
                 )
             )
         }
@@ -978,6 +992,25 @@ class RoomCheckItRepository(
 
     override suspend fun restoreNote(noteId: Long) {
         dao.restoreNote(noteId, Clock.System.now().toEpochMilliseconds())
+    }
+
+    override suspend fun addSection(listId: Long, title: String, color: String): Long {
+        return dao.insertListSection(
+            ListSectionEntity(
+                listId = listId,
+                title = title.trim(),
+                color = color,
+                sortOrder = dao.nextSectionSortOrder(listId)
+            )
+        )
+    }
+
+    override suspend fun updateSection(sectionId: Long, title: String, color: String, sortOrder: Int) {
+        dao.updateSection(sectionId, title.trim(), color, sortOrder)
+    }
+
+    override suspend fun deleteSection(sectionId: Long) {
+        dao.deleteSection(sectionId)
     }
 
     // ---------------- Nested Documents ----------------
@@ -1217,17 +1250,27 @@ private data class TaskBoardJoins(
 private data class TaskBoardMetadata(
     val tags: List<TagEntity>,
     val lists: List<ListEntity>,
+    val sections: List<ListSectionEntity>,
     val taskLists: List<TaskListEntity>,
     val noteLists: List<NoteListEntity>
 )
 
-private fun ListEntity.toDomain() = ListItem(
+private fun ListEntity.toDomain(sections: List<ListSection> = emptyList()) = ListItem(
     id = id,
     title = title,
     icon = icon,
     color = color,
     sortOrder = sortOrder,
-    isArchived = isArchived
+    isArchived = isArchived,
+    sections = sections
+)
+
+private fun ListSectionEntity.toDomain() = ListSection(
+    id = id,
+    listId = listId,
+    title = title,
+    color = color,
+    sortOrder = sortOrder
 )
 
 private fun TagEntity.toDomain() = TagItem(
@@ -1264,7 +1307,7 @@ private fun TaskEntity.toDomain(
     tags: List<TagItem>,
     listSortOrder: Int,
     isPinned: Boolean,
-    section: String?
+    sectionId: Long?
 ) = TaskItem(
     id = id,
     list = list,
@@ -1284,7 +1327,7 @@ private fun TaskEntity.toDomain(
     label = label,
     sortOrder = listSortOrder,
     isPinned = isPinned,
-    section = section,
+    sectionId = sectionId,
     createdAtMillis = createdAtMillis,
     updatedAtMillis = updatedAtMillis,
     trashedAtMillis = trashedAtMillis
@@ -1358,7 +1401,7 @@ private fun NoteEntity.toDomain(
     tags: List<TagItem>,
     listSortOrder: Int,
     isPinned: Boolean,
-    section: String?
+    sectionId: Long?
 ) = NoteItem(
     id = id,
     list = list,
@@ -1373,7 +1416,7 @@ private fun NoteEntity.toDomain(
     editedAtMillis = editedAtMillis,
     sortOrder = listSortOrder,
     isPinned = isPinned,
-    section = section,
+    sectionId = sectionId,
     trashedAtMillis = trashedAtMillis
 )
 

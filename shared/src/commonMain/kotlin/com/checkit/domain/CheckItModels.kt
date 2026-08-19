@@ -39,7 +39,16 @@ data class ListItem(
     val icon: String,
     val color: String,
     val sortOrder: Int,
-    val isArchived: Boolean = false
+    val isArchived: Boolean = false,
+    val sections: List<ListSection> = emptyList()
+)
+
+data class ListSection(
+    val id: Long,
+    val listId: Long,
+    val title: String,
+    val color: String,
+    val sortOrder: Int
 )
 
 data class TaskItem(
@@ -61,7 +70,7 @@ data class TaskItem(
     val label: String? = null,
     val sortOrder: Int = 0,
     val isPinned: Boolean = false,
-    val section: String? = null,
+    val sectionId: Long? = null,
     val createdAtMillis: Long,
     val updatedAtMillis: Long,
     val trashedAtMillis: Long? = null
@@ -89,7 +98,7 @@ data class TaskItem(
         resolvedTags: List<TagItem>,
         resolvedSortOrder: Int,
         resolvedIsPinned: Boolean,
-        resolvedSection: String?
+        resolvedSectionId: Long?
     ): Boolean {
         return this.id == id &&
             this.name == name &&
@@ -112,7 +121,7 @@ data class TaskItem(
             this.tags == resolvedTags &&
             this.sortOrder == resolvedSortOrder &&
             this.isPinned == resolvedIsPinned &&
-            this.section == resolvedSection
+            this.sectionId == resolvedSectionId
     }
 }
 
@@ -138,7 +147,7 @@ data class NoteItem(
     val editedAtMillis: Long,
     val sortOrder: Int = 0,
     val isPinned: Boolean = false,
-    val section: String? = null,
+    val sectionId: Long? = null,
     val trashedAtMillis: Long? = null
 ) {
     val isTrashed: Boolean get() = trashedAtMillis != null
@@ -157,7 +166,7 @@ data class NoteItem(
         resolvedTags: List<TagItem>,
         resolvedSortOrder: Int,
         resolvedIsPinned: Boolean,
-        resolvedSection: String?
+        resolvedSectionId: Long?
     ): Boolean {
         return this.id == id &&
             this.title == title &&
@@ -173,7 +182,7 @@ data class NoteItem(
             this.tags == resolvedTags &&
             this.sortOrder == resolvedSortOrder &&
             this.isPinned == resolvedIsPinned &&
-            this.section == resolvedSection
+            this.sectionId == resolvedSectionId
     }
 }
 
