@@ -84,10 +84,14 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import checkit.shared.generated.resources.Res
@@ -341,9 +345,9 @@ internal fun NestedListEditorScreen(
                 node = node,
                 summary = state.tree.metricSummaryById[itemId] ?: NestedMetricSummary(),
                 onDismiss = { detailsItemId = null },
-                onSave = { actualMinutes, policy, showTrackedMinutes, manualMetrics ->
-                    viewModel.updateItemMetricSettings(itemId, actualMinutes, policy, showTrackedMinutes)
-                    viewModel.replaceManualMetrics(itemId, manualMetrics)
+                onSave = { mins, pol, show, metrics ->
+                    viewModel.updateItemMetricSettings(itemId, mins, pol, show)
+                    viewModel.replaceManualMetrics(itemId, metrics)
                     detailsItemId = null
                 }
             )
@@ -627,15 +631,45 @@ private fun NestedItemMetadataPreview(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (summary.doneItemCount > 0) MetricChip("${summary.doneItemCount} done")
-            if (showTracked && summary.trackedMinutes > 0) MetricChip("${summary.trackedMinutes} min")
+            if (summary.doneItemCount > 0) {
+                MetricChip(buildAnnotatedString {
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)) {
+                        append("${summary.doneItemCount}")
+                    }
+                    append(" done")
+                })
+            }
+            if (showTracked && summary.trackedMinutes > 0) {
+                MetricChip(buildAnnotatedString {
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)) {
+                        append("${summary.trackedMinutes}")
+                    }
+                    append(" min")
+                })
+            }
             item.manualMetrics.filter { it.enabled }.forEach { metric ->
                 if (metric.value.isNotBlank()) {
-                    val target = metric.targetValue?.takeIf { it.isNotBlank() }?.let { " / $it" }.orEmpty()
-                    val unit = metric.displayUnit()
                     MetricChip(
-                        listOfNotNull(metric.name.takeIf { it.isNotBlank() }, "${metric.value}$target", unit)
-                            .joinToString(" "),
+                        content = buildAnnotatedString {
+                            if (metric.name.isNotBlank()) {
+                                append(metric.name)
+                                append(" ")
+                            }
+                            withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)) {
+                                append(metric.value)
+                            }
+                            if (!metric.targetValue.isNullOrBlank()) {
+                                append("/")
+                                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                                    append(metric.targetValue)
+                                }
+                            }
+                            val unit = metric.displayUnit()
+                            if (unit != null) {
+                                append(" ")
+                                append(unit)
+                            }
+                        },
                         manual = true
                     )
                 }
@@ -671,20 +705,20 @@ private fun NestedItemMetadataPreview(
 }
 
 @Composable
-private fun MetricChip(text: String, manual: Boolean = false) {
-    androidx.compose.material3.Surface(
-        shape = RoundedCornerShape(6.dp),
-        color = if (manual) {
-            MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.88f)
-        } else {
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f)
-        }
+private fun MetricChip(content: AnnotatedString, manual: Boolean = false) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(
+                if (manual) MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.85f)
+                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+            )
+            .padding(horizontal = 6.dp, vertical = 2.dp)
     ) {
         Text(
-            text = text,
+            text = content,
             style = MaterialTheme.typography.labelSmall,
             color = if (manual) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
             maxLines = 1
         )
     }
@@ -1333,7 +1367,7 @@ private fun BreadcrumbBar(
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface)
             .horizontalScroll(scrollState)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .padding(horizontal = 12.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
@@ -1482,7 +1516,7 @@ private fun SelectionToolbar(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.primaryContainer)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+            .padding(horizontal = 8.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
