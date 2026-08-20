@@ -865,7 +865,7 @@ private fun SprintTrailingContent(
             else -> MaterialTheme.colorScheme.tertiary
         }
         Box(
-            modifier = Modifier.size(32.dp),
+            modifier = Modifier.size(20.dp),
             contentAlignment = Alignment.Center
         ) {
             PulsingDot(color = dotColor)

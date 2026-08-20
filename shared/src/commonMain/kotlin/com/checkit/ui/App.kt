@@ -221,7 +221,7 @@ fun CheckItApp(
                                     icon = { Icon(tab.icon(), contentDescription = tab.label()) },
                                     label = { Text(tab.label()) },
                                     colors = NavigationBarItemDefaults.colors(
-                                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        selectedIconColor = MaterialTheme.colorScheme.primary,
                                         selectedTextColor = MaterialTheme.colorScheme.primary,
                                         indicatorColor = MaterialTheme.colorScheme.primaryContainer,
                                         unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,

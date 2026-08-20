@@ -19,8 +19,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -64,9 +62,9 @@ internal fun TaskCard(
     onClick: (() -> Unit)? = null,
     timeLabel: String? = null,
     supportingText: String? = null,
+    label: String? = null,
     leadingContent: (@Composable () -> Unit)? = null,
     trailingContent: (@Composable () -> Unit)? = null,
-    titleBadge: (@Composable () -> Unit)? = null,
     minHeight: Dp = 64.dp,
     contentPadding: PaddingValues = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
     titleMaxLines: Int = 2,
@@ -140,7 +138,7 @@ internal fun TaskCard(
                 verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalAlignment = Alignment.Top,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
@@ -151,8 +149,14 @@ internal fun TaskCard(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
                     )
-                    if (titleBadge != null) {
-                        titleBadge()
+                    if (!label.isNullOrEmpty()) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
                     }
                 }
                 if (showSupportingText) {
@@ -234,8 +238,9 @@ internal fun TaskTimelineCard(
     val highlighted = isOverdue ?: task.isOverdue()
     TaskCard(
         title = task.name.ifBlank { "Untitled task" },
-        timeLabel = timeLabel,
         color = task.cardColor(),
+        timeLabel = timeLabel,
+        label = task.label,
         leadingContent = {
             if (task.type == TaskType.Habit) {
                 HabitIcon(completed, task.priority.priorityColor())
@@ -247,23 +252,13 @@ internal fun TaskTimelineCard(
             }
         },
         trailingContent = trailingContent,
-        titleBadge = if (task.label.isNullOrEmpty()) null else {
-            {
-                Text(text = task.label,
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
-                )
-            }
-        },
         completedOverlay = completedOverlay,
         onClick = onClick,
         modifier = modifier,
         containerAlpha = if (selected) SelectedTaskCardAlpha else DefaultTaskCardAlpha,
         minHeight = if (ultraCompact) 0.dp else 36.dp,
         contentPadding = if (ultraCompact) {
-            PaddingValues(horizontal = 9.dp, vertical = 1.dp)
+            PaddingValues(horizontal = 8.dp, vertical = 1.dp)
         } else {
             PaddingValues(horizontal = 10.dp, vertical = 8.dp)
         },
@@ -303,21 +298,12 @@ internal fun NoteTimelineCard(
     TaskCard(
         title = title,
         timeLabel = subtitle,
+        label = note.label,
         color = note.cardColor(),
         leadingContent = {
             NoteIcon(status = note.status)
         },
         trailingContent = trailingContent,
-        titleBadge = if (note.label.isNullOrEmpty()) null else {
-            {
-                Text(text = note.label,
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
-                )
-            }
-        },
         completedOverlay = completedOverlay,
         onClick = onClick,
         modifier = modifier,
@@ -345,21 +331,12 @@ internal fun DailyPlanTimelineCard(
     TaskCard(
         title = title,
         timeLabel = timeLabel,
+        label = item.label,
         color =  item.cardColor(),
         leadingContent = {
             DailyPlanIcon(item.source, item.status == DailyPlanItemStatus.Done, item.isHabit)
         },
         trailingContent = trailingContent,
-        titleBadge = if (item.label.isNullOrEmpty()) null else {
-            {
-                Text(text = item.label,
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
-                )
-            }
-        },
         completedOverlay = completedOverlay,
         onClick = onClick,
         modifier = modifier,
@@ -408,16 +385,7 @@ internal fun TaskAllDayCard(
             }
         },
         trailingContent = trailingContent,
-        titleBadge = if (task.label.isNullOrEmpty()) null else {
-            {
-                Text(text = task.label,
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
-                )
-            }
-        },
+        label = task.label,
         modifier = modifier,
         completedOverlay = completedOverlay
     )
@@ -435,16 +403,7 @@ internal fun NoteAllDayCard(
         color = note.cardColor(),
         icon = { NoteIcon(note.status) },
         trailingContent = trailingContent,
-        titleBadge = if (note.label.isNullOrEmpty()) null else {
-            {
-                Text(text = note.label,
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
-                )
-            }
-        },
+        label = note.label,
         modifier = modifier,
         completedOverlay = completedOverlay
     )
@@ -463,16 +422,7 @@ internal fun DailyPlanAllDayCard(
         color = item.cardColor(),
         icon = { DailyPlanIcon(item.source, item.status == DailyPlanItemStatus.Done, item.isHabit) },
         trailingContent = trailingContent,
-        titleBadge = if (item.label.isNullOrEmpty()) null else {
-            {
-                Text(text = item.label,
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
-                )
-            }
-        },
+        label = item.label,
         modifier = modifier,
         completedOverlay = completedOverlay
     )
@@ -482,9 +432,9 @@ internal fun DailyPlanAllDayCard(
 private fun AllDayTypeCard(
     title: String,
     color: Color,
+    label: String? = null,
     icon: @Composable () -> Unit,
     trailingContent: (@Composable () -> Unit)? = null,
-    titleBadge: (@Composable () -> Unit)? = null,
     modifier: Modifier = Modifier,
     completedOverlay: Boolean = false
 ) {
@@ -493,22 +443,13 @@ private fun AllDayTypeCard(
         modifier = modifier.height(32.dp),
         containerAlpha = DefaultTaskCardAlpha,
         completedOverlay = completedOverlay,
-        trailingOverlay = if (trailingContent != null) {
-            {
-                Box(
-                    modifier = Modifier.align(Alignment.CenterEnd).padding(end = 4.dp)
-                ) {
-                    trailingContent()
-                }
-            }
-        } else null
     ) {
         Row(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
-                .padding(horizontal = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(start = 10.dp, end = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             icon()
@@ -520,9 +461,15 @@ private fun AllDayTypeCard(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            if (titleBadge != null) {
-                titleBadge()
+            if (!label.isNullOrEmpty()) {
+                Text(text = label,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                )
             }
+            if (trailingContent != null) trailingContent()
         }
     }
 }
@@ -534,7 +481,7 @@ internal fun SprintButton(
 ) {
     IconButton(
         onClick = onClick,
-        modifier = modifier.size(32.dp)
+        modifier = modifier.size(20.dp)
     ) {
         Icon(
             imageVector = Icons.Default.Bolt,
