@@ -378,39 +378,35 @@ private fun TaskFormContent(
     var labelFocused by remember { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                AppOutlinedTextField(
-                    value = form.label.orEmpty(),
-                    onValueChange = onLabelChange,
-                    modifier = Modifier
-                        .padding(start = 4.dp)
-                        .widthIn(max = 80.dp)
-                        .onFocusChanged { labelFocused = it.isFocused },
-                    textStyle = MaterialTheme.typography.labelSmall.copy(
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    ),
-                    maxLines = 1,
-                    placeholder = "Add label",
-                    enabled = enabled,
-                    contentPadding = PaddingValues(horizontal = 0.dp, vertical = 2.dp)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            AppOutlinedTextField(
+                value = form.label.orEmpty(),
+                onValueChange = onLabelChange,
+                modifier = Modifier
+                    .padding(start = 4.dp)
+                    .widthIn(max = 80.dp)
+                    .onFocusChanged { labelFocused = it.isFocused },
+                textStyle = MaterialTheme.typography.labelSmall.copy(
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                ),
+                maxLines = 1,
+                placeholder = "Add label",
+                enabled = enabled,
+                contentPadding = PaddingValues(horizontal = 0.dp, vertical = 2.dp)
+            )
+
+            if (labelFocused) {
+                LabelSuggestions(
+                    currentLabel = form.label.orEmpty(),
+                    recentLabels = recentLabels,
+                    onLabelSelect = onLabelChange,
+                    modifier = Modifier.padding(horizontal = 4.dp)
                 )
-
-                if (labelFocused) {
-                    LabelSuggestions(
-                        currentLabel = form.label.orEmpty(),
-                        recentLabels = recentLabels,
-                        onLabelSelect = onLabelChange,
-                        modifier = Modifier.padding(horizontal = 4.dp)
-                    )
-                }
             }
-
-
         }
 
         if (isHabit) {

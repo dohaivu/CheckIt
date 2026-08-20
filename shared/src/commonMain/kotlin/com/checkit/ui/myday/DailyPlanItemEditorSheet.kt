@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -21,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.Button
@@ -273,28 +275,26 @@ private fun DailyPlanItemFormContent(
     var labelFocused by remember { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                AppOutlinedTextField(
-                    value = state.label.orEmpty(),
-                    onValueChange = onLabelChange,
-                    modifier = Modifier.weight(1f).onFocusChanged { labelFocused = it.isFocused },
-                    textStyle = MaterialTheme.typography.labelSmall.copy(
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    ),
-                    maxLines = 1,
-                    placeholder = "Add label",
-                    enabled = enabled,
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
-                )
-                Spacer(Modifier.weight(1f))
-            }
-
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(0.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            AppOutlinedTextField(
+                value = state.label.orEmpty(),
+                onValueChange = onLabelChange,
+                modifier = Modifier
+                    .widthIn(max = 80.dp)
+                    .onFocusChanged { labelFocused = it.isFocused },
+                textStyle = MaterialTheme.typography.labelSmall.copy(
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                ),
+                maxLines = 1,
+                placeholder = "Add label",
+                enabled = enabled,
+                contentPadding = PaddingValues(horizontal = 0.dp, vertical = 2.dp)
+            )
             if (labelFocused) {
                 LabelSuggestions(
                     currentLabel = state.label.orEmpty(),
@@ -302,6 +302,10 @@ private fun DailyPlanItemFormContent(
                     onLabelSelect = onLabelChange,
                     modifier = Modifier.padding(horizontal = 4.dp)
                 )
+            }
+            state.nestedListItemId?.let {
+                Spacer(Modifier.weight(1f))
+                Icon(Icons.Default.Link, contentDescription = "item link", modifier = Modifier.size(20.dp))
             }
         }
 
