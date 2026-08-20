@@ -62,6 +62,7 @@ internal fun DailyPlanItemEditorSheet(
     onDismiss: () -> Unit,
     onTitleChange: (String) -> Unit,
     onNoteChange: (String) -> Unit,
+    onLabelChange: (String) -> Unit,
     onStatusChange: (Boolean) -> Unit,
     onSourceChange: (DailyPlanItemSource) -> Unit,
     onTimeChange: (Int?, Int?) -> Unit,
@@ -100,6 +101,7 @@ internal fun DailyPlanItemEditorSheet(
                     availableTags = availableTags,
                     onTitleChange = onTitleChange,
                     onNoteChange = onNoteChange,
+                    onLabelChange = onLabelChange,
                     onStatusChange = onStatusChange,
                     onSourceChange = onSourceChange,
                     onTimeChange = onTimeChange,
@@ -246,6 +248,7 @@ private fun DailyPlanItemFormContent(
     availableTags: List<TagItem>,
     onTitleChange: (String) -> Unit,
     onNoteChange: (String) -> Unit,
+    onLabelChange: (String) -> Unit,
     onStatusChange: (Boolean) -> Unit,
     onSourceChange: (DailyPlanItemSource) -> Unit,
     onTimeChange: (Int?, Int?) -> Unit,
@@ -260,6 +263,27 @@ private fun DailyPlanItemFormContent(
     val reminderChecked = state.source == DailyPlanItemSource.MyDayReminder
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            AppOutlinedTextField(
+                value = state.label.orEmpty(),
+                onValueChange = onLabelChange,
+                modifier = Modifier.weight(1f),
+                textStyle = MaterialTheme.typography.labelSmall.copy(
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                ),
+                maxLines = 1,
+                placeholder = "Add label",
+                enabled = enabled,
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+            )
+            Spacer(Modifier.weight(1f))
+        }
+
         AppOutlinedTextField(
             value = state.title,
             onValueChange = onTitleChange,

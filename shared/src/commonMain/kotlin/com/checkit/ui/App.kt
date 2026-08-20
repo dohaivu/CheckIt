@@ -401,6 +401,7 @@ fun CheckItApp(
                             onDismiss = viewModels.myDay::dismissDailyPlanEditor,
                             onTitleChange = viewModels.myDay::updateTitle,
                             onNoteChange = viewModels.myDay::updateNote,
+                            onLabelChange = viewModels.myDay::updateLabel,
                             onStatusChange = viewModels.myDay::updateStatus,
                             onSourceChange = viewModels.myDay::updateEditorSource,
                             onTimeChange = viewModels.myDay::updateTime,

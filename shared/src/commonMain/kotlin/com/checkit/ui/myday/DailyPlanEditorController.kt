@@ -86,6 +86,7 @@ internal class DailyPlanEditorController(
                     title = item.title,
                     note = item.note.orEmpty(),
                     status = item.status,
+                    label = item.label,
                     startTimeMinutes = item.startTimeMinutes,
                     endTimeMinutes = item.endTimeMinutes,
                     selectedTagIds = item.tags.map { it.id }.toSet()
@@ -95,6 +96,7 @@ internal class DailyPlanEditorController(
     }
     fun updateTitle(title: String) = updateItemEditor(saveImmediately = false) { it.copy(title = title) }
     fun updateNote(note: String) = updateItemEditor(saveImmediately = false) { it.copy(note = note) }
+    fun updateLabel(label: String) = updateItemEditor(saveImmediately = false) { it.copy(label = label) }
 
     fun duplicateDailyPlanItem() {
         val current = state.uiState.value
@@ -116,6 +118,7 @@ internal class DailyPlanEditorController(
                     source = editor.source,
                     title = editor.title,
                     note = editor.note,
+                    label = editor.label,
                     status = if (editor.source == DailyPlanItemSource.MyDayNote) {
                         DailyPlanItemStatus.Done
                     } else {

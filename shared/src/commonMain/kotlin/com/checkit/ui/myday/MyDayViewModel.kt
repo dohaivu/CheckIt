@@ -160,6 +160,7 @@ class MyDayViewModel(
     fun openItemEditor(item: DailyPlanItem, date: LocalDate) = dailyPlanEditor.openItemEditor(item, date)
     fun updateTitle(title: String) = dailyPlanEditor.updateTitle(title)
     fun updateNote(note: String) = dailyPlanEditor.updateNote(note)
+    fun updateLabel(label: String) = dailyPlanEditor.updateLabel(label)
     fun updateStatus(isDone: Boolean) = dailyPlanEditor.updateStatus(isDone)
     fun updateEditorSource(source: DailyPlanItemSource) = dailyPlanEditor.updateEditorSource(source)
     fun updateTime(startTimeMinutes: Int?, endTimeMinutes: Int?) = dailyPlanEditor.updateTime(startTimeMinutes, endTimeMinutes)
