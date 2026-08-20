@@ -125,6 +125,7 @@ import com.checkit.ui.components.FocusPeriodHeader
 import com.checkit.ui.components.PeriodPicker
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TagPlain
+import com.checkit.ui.tasks.noRippleClickable
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -1657,7 +1658,7 @@ private fun NestedTree(
                     modifier = Modifier
                         .width(24.dp)
                         .height(36.dp)
-                        .clickable(
+                        .noRippleClickable(
                             enabled = node.hasChildren,
                             onClick = { viewModel.toggleCollapsed(item.id) }
                         ),
