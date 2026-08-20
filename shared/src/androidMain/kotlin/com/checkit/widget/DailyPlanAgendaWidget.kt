@@ -63,10 +63,7 @@ import com.checkit.ui.tasks.toClockLabel
 import com.checkit.ui.tasks.toDurationLabel
 import com.checkit.ui.today
 import kotlinx.coroutines.flow.first
-import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.minus
-import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -391,6 +388,7 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
     private fun GlanceAgendaCard(item: GlanceAgendaItem, allDay: Boolean) {
         GlanceTypeCard(
             title = item.title,
+            label = item.label,
             supportingText = if (allDay) null else item.timeLabel,
             baseColor = item.color,
             allDay = allDay,
@@ -409,6 +407,7 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
     @Composable
     private fun GlanceTypeCard(
         title: String,
+        label: String?,
         supportingText: String?,
         baseColor: Color,
         allDay: Boolean,
@@ -442,15 +441,33 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                 icon()
                 Spacer(GlanceModifier.width(8.dp))
                 Column(modifier = GlanceModifier.defaultWeight()) {
-                    Text(
-                        text = title,
-                        style = TextStyle(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp,
-                            color = GlanceTheme.colors.onSurface
-                        ),
-                        maxLines = 1
-                    )
+                    Row(
+                        modifier = GlanceModifier
+                            .fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = title,
+                            modifier = GlanceModifier
+                                .defaultWeight(),
+                            style = TextStyle(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                color = GlanceTheme.colors.onSurface
+                            ),
+                            maxLines = 1
+                        )
+                        if (!label.isNullOrEmpty()) {
+                            Text(
+                                text = label,
+                                style = TextStyle(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    color = GlanceTheme.colors.primary
+                                )
+                            )
+                        }
+                    }
                     if (supportingText != null) {
                         Text(
                             text = supportingText,
@@ -523,6 +540,7 @@ private sealed class GlanceAgendaItem {
     abstract val endTimeMinutes: Int?
     abstract val sortOrder: Int
     abstract val title: String
+    abstract val label: String?
     abstract val color: Color
     abstract val completed: Boolean
     abstract val overdue: Boolean
@@ -568,6 +586,7 @@ private sealed class GlanceAgendaItem {
         override val endTimeMinutes: Int? = item.endTimeMinutes
         override val sortOrder: Int = item.sortOrder
         override val title: String = task.name.ifBlank { "Untitled task" }
+        override val label: String? = task.label
         override val color: Color = task.cardColor()
         override val completed: Boolean = item.status == DailyPlanItemStatus.Done
         override val overdue: Boolean = item.isOverdue(today)
@@ -583,6 +602,7 @@ private sealed class GlanceAgendaItem {
         override val endTimeMinutes: Int? = note.startTimeMinutes?.let { it + DefaultNoteDurationMinutes }
         override val sortOrder: Int = note.sortOrder
         override val title: String = note.title.ifBlank { note.content.ifBlank { "Empty note" } }
+        override val label: String? = note.label
         override val color: Color = note.cardColor()
         override val completed: Boolean = note.status == TaskStatus.Completed
         override val overdue: Boolean = false
@@ -598,6 +618,7 @@ private sealed class GlanceAgendaItem {
         override val endTimeMinutes: Int? = item.endTimeMinutes
         override val sortOrder: Int = item.sortOrder
         override val title: String = item.widgetTitle()
+        override val label: String? = item.label
         override val color: Color = item.cardColor()
         override val completed: Boolean = item.status == DailyPlanItemStatus.Done
         override val overdue: Boolean = item.isOverdue(today)
