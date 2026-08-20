@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Event
@@ -30,10 +31,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskType
+import com.checkit.ui.components.CompactDetailChip
 import com.checkit.ui.components.DateTimeRangeDetailChip
 import com.checkit.ui.components.DetailChip
 import com.checkit.ui.components.SupportingPills
@@ -140,7 +143,7 @@ internal fun BaseTaskRow(
 internal fun BriefTaskRowContent(task: TaskItem) {
     Row(
         modifier = Modifier.fillMaxWidth().fillMaxHeight().padding(horizontal = 10.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (task.type == TaskType.Habit) {
@@ -159,8 +162,15 @@ internal fun BriefTaskRowContent(task: TaskItem) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
-
-        task.doDate?.let { DetailChip(Icons.Default.Event, it.compact(), isHighlighted = task.isOverdue()) }
+        if (!task.label.isNullOrEmpty()) {
+            Text(text = task.label,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            )
+        }
+        task.doDate?.let { CompactDetailChip(Icons.Default.Event, it.compact(), isHighlighted = task.isOverdue()) }
     }
 }
 
@@ -187,12 +197,12 @@ internal fun StandardTaskRowContent(task: TaskItem, showList: Boolean) {
 internal fun DetailTaskRowContent(task: TaskItem, showList: Boolean) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         TaskTitleRow(task, descriptionMaxLines = 3)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes, isOverdue = task.isOverdue())
-            duration(task.startTimeMinutes, task.endTimeMinutes)?.let { DetailChip(Icons.Default.Schedule, it.toDurationLabel()) }
+            duration(task.startTimeMinutes, task.endTimeMinutes)?.let { CompactDetailChip(Icons.Default.Schedule, it.toDurationLabel()) }
         }
         SubtaskBriefList(task.subtasks)
         SupportingPills(
@@ -206,7 +216,7 @@ internal fun DetailTaskRowContent(task: TaskItem, showList: Boolean) {
 internal fun BriefNoteRowContent(note: NoteItem) {
     Row(
         modifier = Modifier.fillMaxWidth().fillMaxHeight().padding(horizontal = 10.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         NoteIcon(note.status)
@@ -218,14 +228,7 @@ internal fun BriefNoteRowContent(note: NoteItem) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
-        if (note.isPinned) {
-            Icon(
-                imageVector = Icons.Default.PushPin,
-                contentDescription = null,
-                modifier = Modifier.size(12.dp),
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-            )
-        }
+
         if (!note.label.isNullOrEmpty()) {
             Text(text = note.label,
                 style = MaterialTheme.typography.labelSmall.copy(
@@ -234,7 +237,7 @@ internal fun BriefNoteRowContent(note: NoteItem) {
                 )
             )
         }
-        note.date?.let { DetailChip(Icons.Default.Event, it.compact(), isHighlighted = note.isOverdue()) }
+        note.date?.let { CompactDetailChip(Icons.Default.Event, it.compact(), isHighlighted = note.isOverdue()) }
     }
 }
 
@@ -247,53 +250,22 @@ internal fun StandardNoteRowContent(note: NoteItem, showList: Boolean) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
             NoteIcon(note.status)
             Column(Modifier.weight(1f)) {
-                if (note.title.isNotBlank()) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(note.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                        if (note.isPinned) {
-                            Icon(
-                                imageVector = Icons.Default.PushPin,
-                                contentDescription = null,
-                                modifier = Modifier.size(12.dp),
-                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(note.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+
+                    if (!note.label.isNullOrEmpty()) {
+                        Text(text = note.label,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
                             )
-                        }
-                        if (!note.label.isNullOrEmpty()) {
-                            Text(text = note.label,
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-                        }
-                    }
-                } else if (!note.label.isNullOrEmpty() || note.isPinned) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Spacer(Modifier.weight(1f))
-                        if (note.isPinned) {
-                            Icon(
-                                imageVector = Icons.Default.PushPin,
-                                contentDescription = null,
-                                modifier = Modifier.size(12.dp),
-                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-                            )
-                        }
-                        if (!note.label.isNullOrEmpty()) {
-                            Text(text = note.label,
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-                        }
+                        )
                     }
                 }
+
                 if (note.content.isNotBlank()) {
                     Text(
                         text = note.content.asAnnotatedString(),
@@ -309,7 +281,7 @@ internal fun StandardNoteRowContent(note: NoteItem, showList: Boolean) {
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            note.date?.let { DetailChip(Icons.Default.Event, it.compact(), isHighlighted = note.isOverdue()) }
+            note.date?.let { CompactDetailChip(Icons.Default.Event, it.compact(), isHighlighted = note.isOverdue()) }
             SupportingPills(
                 list = if (showList) note.list else null,
                 tags = note.tags,
@@ -325,56 +297,25 @@ internal fun DetailNoteRowContent(note: NoteItem, showList: Boolean) {
         modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
             NoteIcon(note.status)
             Column(Modifier.weight(1f)) {
-                if (note.title.isNotBlank()) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(note.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                        if (note.isPinned) {
-                            Icon(
-                                imageVector = Icons.Default.PushPin,
-                                contentDescription = null,
-                                modifier = Modifier.size(12.dp),
-                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(note.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+
+                    if (!note.label.isNullOrEmpty()) {
+                        Text(text = note.label,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
                             )
-                        }
-                        if (!note.label.isNullOrEmpty()) {
-                            Text(text = note.label,
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-                        }
-                    }
-                } else if (!note.label.isNullOrEmpty() || note.isPinned) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Spacer(Modifier.weight(1f))
-                        if (note.isPinned) {
-                            Icon(
-                                imageVector = Icons.Default.PushPin,
-                                contentDescription = null,
-                                modifier = Modifier.size(12.dp),
-                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-                            )
-                        }
-                        if (!note.label.isNullOrEmpty()) {
-                            Text(text = note.label,
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-                        }
+                        )
                     }
                 }
+
                 if (note.content.isNotBlank()) {
                     Text(
                         text = note.content.asAnnotatedString(),
@@ -385,7 +326,7 @@ internal fun DetailNoteRowContent(note: NoteItem, showList: Boolean) {
                 }
             }
         }
-        note.date?.let { DetailChip(Icons.Default.Event, it.compact(), isHighlighted = note.isOverdue()) }
+        note.date?.let { CompactDetailChip(Icons.Default.Event, it.compact(), isHighlighted = note.isOverdue()) }
 
         SupportingPills(
             list = if (showList) note.list else null,
@@ -401,8 +342,8 @@ internal fun TaskTitleRow(
     descriptionMaxLines: Int,
 ) {
     Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         if (task.type == TaskType.Habit) {
             HabitIcon(task.status == TaskStatus.Completed, task.priority.priorityColor())
@@ -413,7 +354,7 @@ internal fun TaskTitleRow(
             )
         }
         Column(Modifier.weight(1f)) {
-            Text(task.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text(task.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, lineHeight = 20.sp)
             if (descriptionMaxLines > 0 && task.description.isNotBlank()) {
                 Text(
                     task.description,

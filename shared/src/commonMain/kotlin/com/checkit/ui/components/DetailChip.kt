@@ -92,6 +92,45 @@ internal fun DetailChip(
 }
 
 @Composable
+internal fun CompactDetailChip(
+    icon: ImageVector,
+    label: String,
+    modifier: Modifier = Modifier,
+    iconTint: Color = Color.Unspecified,
+    isHighlighted: Boolean = false,
+    onClick: (() -> Unit)? = null
+) {
+    Row(
+        modifier = modifier
+            .clip(CircleShape)
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable(onClick = onClick)
+                } else {
+                    Modifier
+                }
+            )
+            .padding(horizontal = 0.dp, vertical = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = if (isHighlighted) MaterialTheme.colorScheme.error else if (iconTint != Color.Unspecified) iconTint else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(14.dp)
+        )
+        Text(
+            text = label,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (isHighlighted) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
 internal fun TimeRangeDetailChip(
     startTimeMinutes: Int?,
     endTimeMinutes: Int?
@@ -111,7 +150,7 @@ internal fun DateTimeRangeDetailChip(
     isOverdue: Boolean = false
 ) {
     if (date == null && startTimeMinutes == null && endTimeMinutes == null) return
-    DetailChip(
+    CompactDetailChip(
         icon = if (date == null) Icons.Default.Schedule else Icons.Default.Event,
         label = dateTimeRangeDetailLabel(date, startTimeMinutes, endTimeMinutes),
         isHighlighted = isOverdue

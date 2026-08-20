@@ -176,19 +176,34 @@ internal fun NewTagPill(
 internal fun TagPill(
     tag: TagItem,
     selected: Boolean = false,
+    isCompact: Boolean = false,
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val tagColor = tag.color.toColor()
-    DetailChip(
-        icon = Icons.AutoMirrored.Filled.Label,
-        label = tag.name,
-        modifier = modifier,
-        iconTint = tagColor,
-        backgroundColor = if (selected) tagColor.copy(alpha = 0.14f) else MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
-        borderColor = if (selected) tagColor.copy(alpha = ContentAlpha) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-        onClick = onClick
-    )
+    if (isCompact) {
+        CompactDetailChip(
+            icon = Icons.AutoMirrored.Filled.Label,
+            label = tag.name,
+            modifier = modifier,
+            iconTint = tagColor,
+            onClick = onClick
+        )
+    } else {
+        DetailChip(
+            icon = Icons.AutoMirrored.Filled.Label,
+            label = tag.name,
+            modifier = modifier,
+            iconTint = tagColor,
+            backgroundColor = if (selected) tagColor.copy(alpha = 0.14f) else MaterialTheme.colorScheme.surface.copy(
+                alpha = 0.5f
+            ),
+            borderColor = if (selected) tagColor.copy(alpha = ContentAlpha) else MaterialTheme.colorScheme.outlineVariant.copy(
+                alpha = 0.5f
+            ),
+            onClick = onClick
+        )
+    }
 }
 
 

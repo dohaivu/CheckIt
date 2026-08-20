@@ -386,7 +386,10 @@ private fun TaskFormContent(
                 AppOutlinedTextField(
                     value = form.label.orEmpty(),
                     onValueChange = onLabelChange,
-                    modifier = Modifier.widthIn(max = 120.dp).onFocusChanged { labelFocused = it.isFocused },
+                    modifier = Modifier
+                        .padding(start = 4.dp)
+                        .widthIn(max = 80.dp)
+                        .onFocusChanged { labelFocused = it.isFocused },
                     textStyle = MaterialTheme.typography.labelSmall.copy(
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
@@ -394,19 +397,20 @@ private fun TaskFormContent(
                     maxLines = 1,
                     placeholder = "Add label",
                     enabled = enabled,
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                    contentPadding = PaddingValues(horizontal = 0.dp, vertical = 2.dp)
                 )
-                Spacer(Modifier.weight(1f))
+
+                if (labelFocused) {
+                    LabelSuggestions(
+                        currentLabel = form.label.orEmpty(),
+                        recentLabels = recentLabels,
+                        onLabelSelect = onLabelChange,
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
+                }
             }
 
-            if (labelFocused) {
-                LabelSuggestions(
-                    currentLabel = form.label.orEmpty(),
-                    recentLabels = recentLabels,
-                    onLabelSelect = onLabelChange,
-                    modifier = Modifier.padding(horizontal = 4.dp)
-                )
-            }
+
         }
 
         if (isHabit) {

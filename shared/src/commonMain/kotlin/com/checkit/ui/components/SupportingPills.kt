@@ -30,14 +30,14 @@ internal fun SupportingPills(
         itemVerticalAlignment = Alignment.CenterVertically
     ) {
         list?.let {
-            DetailChip(
+            CompactDetailChip(
                 icon = materialIcon(it.icon),
                 label = it.title,
                 iconTint = it.color.toColor()
             )
         }
 
-        tags.forEach { tag -> TagPill(tag = tag) }
+        tags.forEach { tag -> TagPill(tag = tag, isCompact = true) }
         if (overflowCount > 0) {
             Text(
                 text = "+$overflowCount",
