@@ -1243,7 +1243,7 @@ private fun NestedListFilterBar(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.clip(RoundedCornerShape(4.dp)).clickable { onReset() }.padding(horizontal = 4.dp, vertical = 2.dp)
+                    modifier = Modifier.clip(RoundedCornerShape(4.dp)).clickable { onReset() }
                 )
             }
         }
@@ -1259,7 +1259,7 @@ private fun NestedListFilterBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 6.dp),
+                .padding(horizontal = 12.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -1271,7 +1271,7 @@ private fun NestedListFilterBar(
                 maxLines = 1,
                 modifier = Modifier
                     .weight(1f)
-                    .height(40.dp)
+                    .height(36.dp)
                     .clip(RoundedCornerShape(10.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
                     .border(
@@ -1279,13 +1279,13 @@ private fun NestedListFilterBar(
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
                         shape = RoundedCornerShape(10.dp)
                     ),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
             )
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .height(40.dp)
+                    .height(36.dp)
                     .clip(RoundedCornerShape(10.dp))
                     .clickable { onHideCheckedChange(!hideChecked) }
                     .background(
