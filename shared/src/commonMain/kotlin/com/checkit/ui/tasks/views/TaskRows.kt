@@ -183,13 +183,20 @@ internal fun StandardTaskRowContent(task: TaskItem, showList: Boolean) {
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         TaskTitleRow(task, descriptionMaxLines = 0)
-        DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes, isOverdue = task.isOverdue())
         task.subtasks.takeIf { it.isNotEmpty() }?.let { SubtaskProgressText(task) }
-        SupportingPills(
-            list = if (showList) task.list else null,
-            tags = task.tags.take(2),
-            overflowCount = (task.tags.size - 2).coerceAtLeast(0)
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+
+            SupportingPills(
+                date = { DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes, isOverdue = task.isOverdue()) },
+                list = if (showList) task.list else null,
+                tags = task.tags.take(2),
+                overflowCount = (task.tags.size - 2).coerceAtLeast(0)
+            )
+        }
     }
 }
 
@@ -197,18 +204,21 @@ internal fun StandardTaskRowContent(task: TaskItem, showList: Boolean) {
 internal fun DetailTaskRowContent(task: TaskItem, showList: Boolean) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         TaskTitleRow(task, descriptionMaxLines = 3)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes, isOverdue = task.isOverdue())
-            duration(task.startTimeMinutes, task.endTimeMinutes)?.let { CompactDetailChip(Icons.Default.Schedule, it.toDurationLabel()) }
-        }
         SubtaskBriefList(task.subtasks)
-        SupportingPills(
-            list = if (showList) task.list else null,
-            tags = task.tags
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            SupportingPills(
+                date = { DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes, isOverdue = task.isOverdue()) },
+                list = if (showList) task.list else null,
+                tags = task.tags
+            )
+        }
     }
 }
 
@@ -278,7 +288,7 @@ internal fun StandardNoteRowContent(note: NoteItem, showList: Boolean) {
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             note.date?.let { CompactDetailChip(Icons.Default.Event, it.compact(), isHighlighted = note.isOverdue()) }
@@ -326,13 +336,25 @@ internal fun DetailNoteRowContent(note: NoteItem, showList: Boolean) {
                 }
             }
         }
-        note.date?.let { CompactDetailChip(Icons.Default.Event, it.compact(), isHighlighted = note.isOverdue()) }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            note.date?.let {
+                CompactDetailChip(
+                    Icons.Default.Event,
+                    it.compact(),
+                    isHighlighted = note.isOverdue()
+                )
+            }
 
-        SupportingPills(
-            list = if (showList) note.list else null,
-            tags = note.tags,
-            overflowCount = 0
-        )
+            SupportingPills(
+                list = if (showList) note.list else null,
+                tags = note.tags,
+                overflowCount = 0
+            )
+        }
     }
 }
 

@@ -254,6 +254,10 @@ internal fun NestedListEditorScreen(
                             )
                         }
                     }
+
+                    item {
+                        Spacer(modifier = Modifier.height(40.dp))
+                    }
                 }
             }
             if (!state.selection.isActive) {
@@ -371,10 +375,10 @@ private fun NestedFormattingBottomBar(
         modifier = Modifier
             .horizontalScroll(rememberScrollState())
             .background(
-                MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.90f),
+                MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.95f),
                 RoundedCornerShape(18.dp)
             )
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+            .padding(horizontal = 8.dp, vertical = 0.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)
     ) {

@@ -110,7 +110,8 @@ internal fun CompactDetailChip(
                     Modifier
                 }
             )
-            .padding(horizontal = 0.dp, vertical = 2.dp),
+            .background(if (isHighlighted) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f) else if (iconTint != Color.Unspecified) iconTint.copy(alpha = 0.1f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f))
+            .padding(horizontal = 6.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

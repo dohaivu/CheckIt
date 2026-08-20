@@ -17,6 +17,7 @@ import com.checkit.ui.theme.toColor
 
 @Composable
 internal fun SupportingPills(
+    date: (@Composable () -> Unit)? = null,
     list: ListItem? = null,
     tags: List<TagItem> = emptyList(),
     overflowCount: Int = 0,
@@ -29,6 +30,7 @@ internal fun SupportingPills(
         verticalArrangement = Arrangement.spacedBy(6.dp),
         itemVerticalAlignment = Alignment.CenterVertically
     ) {
+        date?.let { it() }
         list?.let {
             CompactDetailChip(
                 icon = materialIcon(it.icon),
