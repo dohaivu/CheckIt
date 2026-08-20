@@ -41,7 +41,7 @@ internal class JournalController(
                 journalEditor = JournalEntryEditorState(
                     entryId = entry.id,
                     date = LocalDate.fromEpochDays(entry.dateEpochDays),
-                    context = entry.context.orEmpty(),
+                    label = entry.label.orEmpty(),
                     content = entry.content,
                     moods = entry.moods,
                     selectedTagIds = entry.tags.map { it.id }.toSet()
@@ -52,10 +52,10 @@ internal class JournalController(
 
     fun dismissJournalEditor() = state.update { it.copy(journalEditor = null) }
 
-    fun updateJournalEditorContext(value: String) = updateEditor { it.copy(context = value) }
+    fun updateJournalEditorLabel(value: String) = updateEditor { it.copy(label = value) }
     fun updateJournalEditorContent(value: String) = updateEditor { it.copy(content = value) }
-    fun applyJournalContextPreset(preset: JournalContextPreset) = updateEditor {
-        it.copy(context = preset.type, content = preset.template, prompt = preset.prompt)
+    fun applyJournalLabelPreset(preset: JournalLabelPreset) = updateEditor {
+        it.copy(label = preset.type, content = preset.template, prompt = preset.prompt)
     }
     fun toggleJournalEditorMood(mood: String) = updateEditor {
         val next = if (mood in it.moods) it.moods - mood else it.moods + mood
@@ -68,15 +68,15 @@ internal class JournalController(
 
     fun saveJournalEditor() {
         val editor = state.uiState.value.journalEditor ?: return
-        val context = editor.context.trim().takeIf { it.isNotBlank() }
+        val label = editor.label.trim().takeIf { it.isNotBlank() }
         val content = editor.content.trim()
-        if (content.isBlank() && context.isNullOrBlank()) {
+        if (content.isBlank() && label.isNullOrBlank()) {
             state.sendEvent(UiEvent.ShowSnackbar("Add a note"))
             return
         }
         val input = JournalEntryWriteInput(
             date = editor.date,
-            context = context,
+            label = label,
             content = content,
             moods = editor.moods,
             tagIds = editor.selectedTagIds.toList()

@@ -145,7 +145,7 @@ enum class MyDayView {
 data class JournalEntryEditorState(
     val entryId: Long? = null,
     val date: LocalDate = today(),
-    val context: String = "",
+    val label: String = "",
     val content: String = "",
     val prompt: String = "",
     val moods: List<String> = emptyList(),

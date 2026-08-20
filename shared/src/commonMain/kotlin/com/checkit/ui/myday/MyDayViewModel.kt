@@ -27,7 +27,7 @@ import com.checkit.domain.usecase.UpdateJournalEntryUseCase
 import com.checkit.domain.usecase.UpsertDailyPlanItemUseCase
 import com.checkit.ui.UiEvent
 import com.checkit.ui.currentMyDayTimeMinutes
-import com.checkit.ui.journal.JournalContextPreset
+import com.checkit.ui.journal.JournalLabelPreset
 import com.checkit.ui.journal.JournalController
 import com.checkit.ui.today
 import kotlinx.coroutines.flow.Flow
@@ -138,9 +138,9 @@ class MyDayViewModel(
     fun openNewJournalEntry() = journal.openNewJournalEntry()
     fun openJournalEditor(entry: JournalEntry) = journal.openJournalEditor(entry)
     fun dismissJournalEditor() = journal.dismissJournalEditor()
-    fun updateJournalEditorContext(value: String) = journal.updateJournalEditorContext(value)
+    fun updateJournalEditorLabel(value: String) = journal.updateJournalEditorLabel(value)
     fun updateJournalEditorContent(value: String) = journal.updateJournalEditorContent(value)
-    fun applyJournalContextPreset(preset: JournalContextPreset) = journal.applyJournalContextPreset(preset)
+    fun applyJournalLabelPreset(preset: JournalLabelPreset) = journal.applyJournalLabelPreset(preset)
     fun toggleJournalEditorMood(mood: String) = journal.toggleJournalEditorMood(mood)
     fun toggleJournalEditorTag(tagId: Long) = journal.toggleJournalEditorTag(tagId)
     fun saveJournalEditor() = journal.saveJournalEditor()

@@ -311,7 +311,7 @@ internal fun NestedListEditorScreen(
                         value = note,
                         onValueChange = { note = it.take(2_000) },
                         label = { Text("Note") },
-                        placeholder = { Text("Add context or details") },
+                        placeholder = { Text("Add label or details") },
                         minLines = 4,
                         maxLines = 8,
                         supportingText = { Text("${note.length}/2,000") },

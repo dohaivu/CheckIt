@@ -275,7 +275,7 @@ enum class DailyPlanItemStatus {
 data class JournalEntry(
     val id: Long,
     val dateEpochDays: Int,
-    val context: String? = null,
+    val label: String? = null,
     val content: String,
     val moods: List<String> = emptyList(),
     val tags: List<TagItem> = emptyList(),

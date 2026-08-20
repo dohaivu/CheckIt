@@ -85,15 +85,15 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.stringResource
 
-/** Quick context presets shown as tappable chips in the entry editor. */
-data class JournalContextPreset(
+/** Quick label presets shown as tappable chips in the entry editor. */
+data class JournalLabelPreset(
     val type: String,
     val prompt: String,
     val template: String
 )
 
-internal val JournalContextPresets = listOf(
-    JournalContextPreset(
+internal val JournalLabelPresets = listOf(
+    JournalLabelPreset(
         type = "gratitude",
         prompt = "What are you thankful for today?",
         template =
@@ -103,7 +103,7 @@ internal val JournalContextPresets = listOf(
 3. 
 """.trimMargin()
     ),
-    JournalContextPreset(
+    JournalLabelPreset(
         type = "growth log",
         prompt = "How did today go? Any wins or lessons?",
         template =
@@ -113,52 +113,52 @@ internal val JournalContextPresets = listOf(
 - **Insight**: 
 """.trimMargin()
     ),
-    JournalContextPreset(
+    JournalLabelPreset(
         type = "deep thoughts",
         prompt = "What's on your mind right now?",
         template = "**<Tôi đắn đo suy nghĩ về>**\n- "
     ),
-    JournalContextPreset(
+    JournalLabelPreset(
         type = "idea",
         prompt = "Got a new idea? Jot it down.",
         template = "## Idea\n\n"
     ),
-    JournalContextPreset(
+    JournalLabelPreset(
         type = "random",
         prompt = "Anything else you want to record?",
         template = ""
     ),
-    JournalContextPreset(
+    JournalLabelPreset(
         type = "lazying",
         prompt = "How's your rest going?",
         template = "Resting and recharging. "
     ),
-    JournalContextPreset(
+    JournalLabelPreset(
         type = "biking",
         prompt = "How was the ride?",
         template = "Out on a bike ride. "
     ),
-    JournalContextPreset(
+    JournalLabelPreset(
         type = "coding",
         prompt = "What are you working on?",
         template = "Coding: "
     ),
-    JournalContextPreset(
+    JournalLabelPreset(
         type = "reading",
         prompt = "What are you reading about?",
         template = "Reading: "
     ),
-    JournalContextPreset(
+    JournalLabelPreset(
         type = "learning",
         prompt = "What's something new you learned?",
         template = "Learning: "
     ),
-    JournalContextPreset(
+    JournalLabelPreset(
         type = "event",
         prompt = "How was the event?",
         template = "At an event: "
     ),
-    JournalContextPreset(
+    JournalLabelPreset(
         type = "at home",
         prompt = "How's the vibe at home?",
         template = "Relaxing at home. "
@@ -591,9 +591,9 @@ internal fun JournalEntryCard(
                     textAlign = TextAlign.Start
                 )
 
-                if (!entry.context.isNullOrBlank()) {
+                if (!entry.label.isNullOrBlank()) {
                     Text(
-                        text = entry.context,
+                        text = entry.label,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
@@ -679,9 +679,9 @@ internal fun JournalHistoryEntryCard(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (!entry.context.isNullOrBlank()) {
+            if (!entry.label.isNullOrBlank()) {
                 Text(
-                    text = entry.context,
+                    text = entry.label,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
@@ -720,7 +720,7 @@ internal fun JournalThoughtCard(
         ),
         tooltip = {
             RichTooltip(
-                title = { Text(entry.context ?: "Check-In") }
+                title = { Text(entry.label ?: "Check-In") }
             ) {
                 Text(entry.content.asAnnotatedString())
             }
@@ -745,7 +745,7 @@ internal fun JournalThoughtCard(
         ) {
             val annotatedContent = entry.content.asAnnotatedString()
         Text(
-                text = if (entry.content.isNotBlank()) annotatedContent else AnnotatedString(entry.context.orEmpty()),
+                text = if (entry.content.isNotBlank()) annotatedContent else AnnotatedString(entry.label.orEmpty()),
                 style = MaterialTheme.typography.bodyMedium,
                 fontFamily = FontFamily.Cursive,
                 fontSize = 16.sp,

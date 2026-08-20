@@ -361,8 +361,8 @@ private class DailyPlanReportIndex(
                         DigestHighlight(
                             date = LocalDate.fromEpochDays(entry.dateEpochDays),
                             journalEntry = entry,
-                            title = entry.content.ifBlank { entry.context.orEmpty() },
-                            note = entry.context,
+                            title = entry.content.ifBlank { entry.label.orEmpty() },
+                            note = entry.label,
                             totalMinutes = 0
                         )
                     }

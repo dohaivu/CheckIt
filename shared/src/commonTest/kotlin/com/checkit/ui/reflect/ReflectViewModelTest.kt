@@ -412,7 +412,7 @@ class ReflectViewModelTest {
                 JournalEntry(
                     id = 1L,
                     dateEpochDays = weekStart.toEpochDays().toInt(),
-                    context = "Cafe",
+                    label = "Cafe",
                     content = "Coffee",
                     createdTimeMinutes = 1
                 )

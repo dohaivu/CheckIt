@@ -213,7 +213,7 @@ data class DailyPlanItemWriteInput(
 
 data class JournalEntryWriteInput(
     val date: LocalDate,
-    val context: String?,
+    val label: String?,
     val content: String,
     val moods: List<String> = emptyList(),
     val tagIds: List<Long> = emptyList(),
@@ -788,7 +788,7 @@ class RoomCheckItRepository(
         val entryId = dao.insertJournalEntry(
             JournalEntryEntity(
                 dateEpochDays = input.date.toEpochDays().toInt(),
-                context = input.context?.trim()?.takeIf { it.isNotBlank() },
+                label = input.label?.trim()?.takeIf { it.isNotBlank() },
                 content = input.content.trim(),
                 moods = input.moods.joinToString(","),
                 createdTimeMinutes = currentTimeMinutes(),
@@ -802,7 +802,7 @@ class RoomCheckItRepository(
     override suspend fun updateJournalEntry(entryId: Long, input: JournalEntryWriteInput) {
         dao.updateJournalEntry(
             entryId = entryId,
-            context = input.context?.trim()?.takeIf { it.isNotBlank() },
+            label = input.label?.trim()?.takeIf { it.isNotBlank() },
             content = input.content.trim(),
             moods = input.moods.joinToString(","),
             attachments = input.attachments.joinToString(",")
@@ -1405,7 +1405,7 @@ private fun PeriodReviewEntity.toDomain() = PeriodReview(
 private fun JournalEntryEntity.toDomain(tags: List<TagItem> = emptyList()) = JournalEntry(
     id = id,
     dateEpochDays = dateEpochDays,
-    context = context,
+    label = label,
     content = content,
     moods = moods.split(",").map { it.trim() }.filter { it.isNotEmpty() },
     tags = tags,

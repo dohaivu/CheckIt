@@ -119,7 +119,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         val entry = JournalEntry(
             id = id,
             dateEpochDays = input.date.toEpochDays().toInt(),
-            context = input.context,
+            label = input.label,
             content = input.content,
             moods = input.moods,
             tags = input.tagIds.mapNotNull { tagId -> currentBoard.tags.find { it.id == tagId } },
@@ -137,7 +137,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
             list.map { entry ->
                 if (entry.id == entryId) {
                     entry.copy(
-                        context = input.context,
+                        label = input.label,
                         content = input.content,
                         moods = input.moods,
                         tags = input.tagIds.mapNotNull { tagId -> currentBoard.tags.find { it.id == tagId } }

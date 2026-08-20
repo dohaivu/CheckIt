@@ -247,7 +247,7 @@ data class JournalEntryEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0L,
     val dateEpochDays: Int,
-    val context: String? = null,
+    val label: String? = null,
     val content: String,
     val moods: String = "",
     val createdTimeMinutes: Int,
@@ -535,7 +535,7 @@ data class NestedItemTagEntity(
         NestedItemTagEntity::class,
         NestedManualMetricEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)

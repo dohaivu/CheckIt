@@ -97,14 +97,14 @@ interface CheckItDao {
     @Query(
         """
         UPDATE journal_entries
-        SET context = :context,
+        SET label = :label,
             content = :content,
             moods = :moods,
             attachments = :attachments
         WHERE id = :entryId
         """
     )
-    suspend fun updateJournalEntry(entryId: Long, context: String?, content: String, moods: String, attachments: String)
+    suspend fun updateJournalEntry(entryId: Long, label: String?, content: String, moods: String, attachments: String)
 
     @Query("DELETE FROM journal_entries WHERE id = :entryId")
     suspend fun deleteJournalEntry(entryId: Long)
