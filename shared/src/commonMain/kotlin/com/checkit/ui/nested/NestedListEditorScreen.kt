@@ -1848,14 +1848,14 @@ private fun flattenVisibleNodes(roots: List<NestedItemNode>): List<VisibleNested
     val result = ArrayList<VisibleNestedRow>()
     val stack = ArrayDeque<NestedTraversalEntry>()
     
-    roots.asReversed().forEachIndexed { index, node ->
+    roots.asReversed().forEach { node ->
         stack.addLast(
             NestedTraversalEntry(
                 node = node,
                 depth = 0,
                 isVisible = true,
                 ancestorChecked = false,
-                continuingLevels = if (index > 0) setOf(0) else emptySet()
+                continuingLevels = emptySet()
             )
         )
     }
