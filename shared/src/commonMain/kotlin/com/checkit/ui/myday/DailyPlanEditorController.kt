@@ -58,6 +58,7 @@ internal class DailyPlanEditorController(
 
     fun saveDailyPlan(editor: DailyPlanItemEditorState): Boolean {
         scope.launch {
+            if (editor.itemId == null) editor.label?.let { deps.settingsRepository.addRecentLabel(it) }
             deps.upsertDailyPlanItem(editor).onFailure { error ->
                 state.sendEvent(UiEvent.ShowSnackbar(error.message ?: "Unable to save"))
             }

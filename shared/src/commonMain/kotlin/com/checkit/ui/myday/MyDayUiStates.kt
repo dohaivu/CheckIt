@@ -62,6 +62,7 @@ data class MyDayUiState(
     val journalEditor: JournalEntryEditorState? = null,
     val showJournalList: Boolean = false,
     val journalListDate: LocalDate? = null,
+    val recentLabels: List<String> = emptyList(),
     val isLoading: Boolean = true
 ) {
     val today: LocalDate = today()

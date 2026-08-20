@@ -44,7 +44,8 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
                 lastDayPlanDismissedEpochDay = prefs[KEY_LAST_DAY_PLAN_DISMISSED_EPOCH_DAY],
                 lastFabActionType = prefs[KEY_LAST_FAB_ACTION_TYPE] ?: UserSettings().lastFabActionType,
                 lastFabActionId = prefs[KEY_LAST_FAB_ACTION_ID],
-                lastNestedDocumentId = prefs[KEY_LAST_NESTED_DOCUMENT_ID]
+                lastNestedDocumentId = prefs[KEY_LAST_NESTED_DOCUMENT_ID],
+                recentLabels = prefs[KEY_RECENT_LABELS]?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
             )
         }
 
@@ -149,6 +150,16 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
         }
     }
 
+    suspend fun addRecentLabel(label: String) {
+        if (label.isBlank()) return
+        dataStore.edit { prefs ->
+            val current = prefs[KEY_RECENT_LABELS]?.split(",")?.filter { it.isNotBlank() }?.toMutableList() ?: mutableListOf()
+            current.remove(label)
+            current.add(0, label)
+            prefs[KEY_RECENT_LABELS] = current.take(15).joinToString(",")
+        }
+    }
+
     private companion object {
         val KEY_LANGUAGE = stringPreferencesKey("language")
         val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
@@ -173,6 +184,7 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
         val KEY_LAST_FAB_ACTION_TYPE = stringPreferencesKey("last_fab_action_type")
         val KEY_LAST_FAB_ACTION_ID = longPreferencesKey("last_fab_action_id")
         val KEY_LAST_NESTED_DOCUMENT_ID = longPreferencesKey("last_nested_document_id")
+        val KEY_RECENT_LABELS = stringPreferencesKey("recent_labels")
     }
 }
 

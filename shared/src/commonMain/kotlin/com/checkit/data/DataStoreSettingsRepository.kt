@@ -95,4 +95,8 @@ class DataStoreSettingsRepository(
     override suspend fun setLastNestedDocumentId(id: Long?) {
         dataStore.setLastNestedDocumentId(id)
     }
+
+    override suspend fun addRecentLabel(label: String) {
+        dataStore.addRecentLabel(label)
+    }
 }

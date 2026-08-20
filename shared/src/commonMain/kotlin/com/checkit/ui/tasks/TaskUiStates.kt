@@ -24,6 +24,7 @@ data class TaskUiState(
     val options: TaskViewOptionsState = TaskViewOptionsState(),
     val visibleItems: TaskVisibleItemsState = TaskVisibleItemsState(),
     val editor: TaskEditorState? = null,
+    val recentLabels: List<String> = emptyList(),
     val isLoading: Boolean = true
 ) {
     val selectedListId: Long? get() = selection.selectedListId

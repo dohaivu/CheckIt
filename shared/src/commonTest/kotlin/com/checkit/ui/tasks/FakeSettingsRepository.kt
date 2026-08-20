@@ -100,4 +100,8 @@ class FakeSettingsRepository(initialSettings: UserSettings = UserSettings()) : S
     override suspend fun setLastNestedDocumentId(id: Long?) {
         settingsFlow.update { it.copy(lastNestedDocumentId = id) }
     }
+
+    override suspend fun addRecentLabel(label: String) {
+        settingsFlow.update { it.copy(recentLabels = (listOf(label) + it.recentLabels).distinct().take(15)) }
+    }
 }

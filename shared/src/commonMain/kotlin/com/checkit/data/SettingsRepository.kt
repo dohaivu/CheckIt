@@ -29,7 +29,8 @@ data class UserSettings(
     val lastDayPlanDismissedEpochDay: Int? = null,
     val lastFabActionType: String = "QuickSprint",
     val lastFabActionId: Long? = null,
-    val lastNestedDocumentId: Long? = null
+    val lastNestedDocumentId: Long? = null,
+    val recentLabels: List<String> = emptyList()
 )
 
 interface SettingsRepository {
@@ -56,4 +57,5 @@ interface SettingsRepository {
     suspend fun setLastDayPlanDismissedEpochDay(epochDay: Int)
     suspend fun setLastFabAction(type: String, id: Long?)
     suspend fun setLastNestedDocumentId(id: Long?)
+    suspend fun addRecentLabel(label: String)
 }

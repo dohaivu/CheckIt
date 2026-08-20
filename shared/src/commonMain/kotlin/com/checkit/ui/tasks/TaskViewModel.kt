@@ -119,7 +119,7 @@ class TaskViewModel(
                         showCompleted = settings.taskShowCompleted,
                         sortOption = TaskSortOption.fromCode(settings.taskSortOptionCode)
                     )
-                    if (nextOptions == state.options) {
+                    val nextState = if (nextOptions == state.options) {
                         state
                     } else if (nextOptions.hasSameVisibleItemsAs(state.options)) {
                         state.copy(options = nextOptions).coerceViewToAvailable()
@@ -128,6 +128,7 @@ class TaskViewModel(
                             .refreshVisibleItems()
                             .coerceViewToAvailable()
                     }
+                    nextState.copy(recentLabels = settings.recentLabels)
                 }
             }
         }
@@ -706,6 +707,7 @@ class TaskViewModel(
     private fun saveTask(form: TaskEditorState.TaskForm) {
         val input = form.toWriteInput() ?: return
         viewModelScope.launch {
+            if (form.taskId == null) form.label?.let { settingsRepository.addRecentLabel(it) }
             if (form.mode == EditorMode.Add) {
                 val taskId = addTask(input)
                 if (form.addToMyDayOnSave) {
@@ -727,6 +729,7 @@ class TaskViewModel(
             return
         }
         viewModelScope.launch {
+            if (form.noteId == null) form.label?.let { settingsRepository.addRecentLabel(it) }
             val input = NoteWriteInput(
                 listId = form.listId,
                 title = form.title.trim(),

@@ -124,6 +124,7 @@ internal class MyDayDataLoader(
                             lastFabAction = lastFabAction,
                             dayReviews = dayReviews,
                             reviewStreak = reviewStreak,
+                            recentLabels = settings.recentLabels,
                             showLeftoversBanner = showLeftoversBanner &&
                                 updatedReview == null &&
                                 !current.showLeftoversSheet,

@@ -338,6 +338,7 @@ fun CheckItApp(
                             editor = editor,
                             availableLists = taskUiState.board.lists,
                             availableTags = taskUiState.board.tags,
+                            recentLabels = taskUiState.recentLabels,
                             actions = TaskEditorActions(
                                 onDismiss = viewModels.task::dismissEditor,
                                 onSave = viewModels.task::saveEditor,
@@ -398,6 +399,7 @@ fun CheckItApp(
                         DailyPlanItemEditorSheet(
                             state = editor,
                             availableTags = myDayUiState.board.tags,
+                            recentLabels = myDayUiState.recentLabels,
                             onDismiss = viewModels.myDay::dismissDailyPlanEditor,
                             onTitleChange = viewModels.myDay::updateTitle,
                             onNoteChange = viewModels.myDay::updateNote,

@@ -38,10 +38,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -57,6 +61,7 @@ import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DatePicker
 import com.checkit.ui.components.EditorOverflowMenu
+import com.checkit.ui.components.LabelSuggestions
 import com.checkit.ui.components.ListPicker
 import com.checkit.ui.components.MarkdownVisualTransformation
 import com.checkit.ui.components.PriorityPicker
@@ -71,7 +76,8 @@ internal fun TaskEditorSheet(
     editor: TaskEditorState,
     availableLists: List<ListItem>,
     availableTags: List<TagItem>,
-    actions: TaskEditorActions
+    actions: TaskEditorActions,
+    recentLabels: List<String> = emptyList()
 ) {
     val onDismiss = actions.onDismiss
     val onSave = actions.onSave
@@ -150,6 +156,7 @@ internal fun TaskEditorSheet(
                             form = editor,
                             availableLists = availableLists,
                             availableTags = availableTags,
+                            recentLabels = recentLabels,
                             onNameChange = onTaskNameChange,
                             onListChange = onTaskListChange,
                             onDescriptionChange = onTaskDescriptionChange,
@@ -175,6 +182,7 @@ internal fun TaskEditorSheet(
                             form = editor,
                             availableLists = availableLists,
                             availableTags = availableTags,
+                            recentLabels = recentLabels,
                             onTitleChange = onNoteTitleChange,
                             onContentChange = onNoteContentChange,
                             onListChange = onNoteListChange,
@@ -359,6 +367,7 @@ private fun TaskFormContent(
     onTagToggle: (Long) -> Unit,
     onLabelChange: (String) -> Unit,
     onNewTagClick: () -> Unit,
+    recentLabels: List<String>,
     enabled: Boolean = true
 ) {
     val isHabit = form.type == TaskType.Habit
@@ -366,25 +375,38 @@ private fun TaskFormContent(
         TaskType.Task -> "What would you like to do?"
         TaskType.Habit -> "What habit do you want to build?"
     }
+    var labelFocused by remember { mutableStateOf(false) }
+
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            AppOutlinedTextField(
-                value = form.label.orEmpty(),
-                onValueChange = onLabelChange,
-                modifier = Modifier.widthIn(max = 120.dp),
-                textStyle = MaterialTheme.typography.labelSmall.copy(
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                ),
-                maxLines = 1,
-                placeholder = "Add label",
-                enabled = enabled,
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
-            )
-            Spacer(Modifier.weight(1f))
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                AppOutlinedTextField(
+                    value = form.label.orEmpty(),
+                    onValueChange = onLabelChange,
+                    modifier = Modifier.widthIn(max = 120.dp).onFocusChanged { labelFocused = it.isFocused },
+                    textStyle = MaterialTheme.typography.labelSmall.copy(
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    maxLines = 1,
+                    placeholder = "Add label",
+                    enabled = enabled,
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                )
+                Spacer(Modifier.weight(1f))
+            }
+
+            if (labelFocused) {
+                LabelSuggestions(
+                    currentLabel = form.label.orEmpty(),
+                    recentLabels = recentLabels,
+                    onLabelSelect = onLabelChange,
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                )
+            }
         }
 
         if (isHabit) {
@@ -624,27 +646,41 @@ private fun NoteFormContent(
     onTagToggle: (Long) -> Unit,
     onLabelChange: (String) -> Unit,
     onNewTagClick: () -> Unit,
+    recentLabels: List<String>,
     enabled: Boolean = true
 ) {
+    var labelFocused by remember { mutableStateOf(false) }
+
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            AppOutlinedTextField(
-                value = form.label.orEmpty(),
-                onValueChange = onLabelChange,
-                modifier = Modifier.widthIn(max = 120.dp),
-                textStyle = MaterialTheme.typography.labelSmall.copy(
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                ),
-                maxLines = 1,
-                placeholder = "Add label",
-                enabled = enabled,
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
-            )
-            Spacer(Modifier.weight(1f))
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                AppOutlinedTextField(
+                    value = form.label.orEmpty(),
+                    onValueChange = onLabelChange,
+                    modifier = Modifier.widthIn(max = 120.dp).onFocusChanged { labelFocused = it.isFocused },
+                    textStyle = MaterialTheme.typography.labelSmall.copy(
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    maxLines = 1,
+                    placeholder = "Add label",
+                    enabled = enabled,
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                )
+                Spacer(Modifier.weight(1f))
+            }
+
+            if (labelFocused) {
+                LabelSuggestions(
+                    currentLabel = form.label.orEmpty(),
+                    recentLabels = recentLabels,
+                    onLabelSelect = onLabelChange,
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                )
+            }
         }
 
         Row(
