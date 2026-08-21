@@ -259,7 +259,7 @@ internal fun DateRangePill(
         period.label.uppercase()
     }
 
-    DetailChip(
+    CompactDetailChip(
         icon = Icons.Default.DateRange,
         label = label,
         modifier = modifier

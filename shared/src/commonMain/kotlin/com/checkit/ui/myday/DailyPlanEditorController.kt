@@ -43,6 +43,33 @@ internal class DailyPlanEditorController(
             )
         }
     }
+    fun openDailyPlan(title: String, tagIds: List<Long>, nestedListItemId: Long? = null) {
+        if (title.isBlank()) return
+        cancelPendingEditorTextSave()
+        val current = state.uiState.value
+
+        val (startTimeMinutes, endTimeMinutes) = if (current.suggestionStartTimeMinutes == null) {
+            nextAvailableTimeRange(currentMyDayTimeMinutes(), DefaultTaskDurationMinutes, current.items)
+        } else {
+            current.suggestionStartTimeMinutes to current.suggestionEndTimeMinutes
+        }
+
+        state.update {
+            it.copy(
+                itemEditor = DailyPlanItemEditorState(
+                    mode = EditorMode.Add,
+                    date = today(),
+                    title = title,
+                    nestedListItemId = nestedListItemId,
+                    source = DailyPlanItemSource.MyDayTask,
+                    status = DailyPlanItemStatus.Planned,
+                    startTimeMinutes = startTimeMinutes,
+                    endTimeMinutes = endTimeMinutes,
+                    selectedTagIds = tagIds.toSet()
+                )
+            )
+        }
+    }
 
     fun dismissDailyPlanEditor() {
         flushPendingEditorTextSave()

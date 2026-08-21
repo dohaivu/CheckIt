@@ -310,7 +310,10 @@ fun CheckItApp(
                                         NestedListScreen(
                                             state = nestedUiState,
                                             viewModel = viewModels.nested,
-                                            onAddToDailyPlan = viewModels.myDay::addDailyPlanItem
+                                            onAddToDailyPlan = { title, tagIds, nestedListItemId ->
+                                                navState.resetTo(AppRoute.MyDay)
+                                                viewModels.myDay.openDailyPlan(title, tagIds, nestedListItemId)
+                                            }
                                         )
                                     }
                                     is AppRoute.ListSections -> {

@@ -124,6 +124,7 @@ import com.checkit.ui.components.DateRangePill
 import com.checkit.ui.components.FocusPeriodHeader
 import com.checkit.ui.components.PeriodPicker
 import com.checkit.ui.components.TagOptionMenu
+import com.checkit.ui.components.TagPill
 import com.checkit.ui.components.TagPlain
 import com.checkit.ui.tasks.noRippleClickable
 import org.jetbrains.compose.resources.stringResource
@@ -200,7 +201,9 @@ internal fun NestedListEditorScreen(
                     onAddToDailyPlan = {
                         state.selectedItemId?.let { id ->
                             state.tree.nodeById[id]?.item?.let { item ->
-                                onAddToDailyPlan(item.text, item.tags.map { it.id }, item.id)
+                                val parentTitle = state.tree.nodeById[item.parentId]?.item?.text
+                                val title = parentTitle?.let { "$it - ${item.text}" } ?: item.text
+                                onAddToDailyPlan(title, item.tags.map { it.id }, item.id)
                             }
                         }
                     }
@@ -693,7 +696,7 @@ private fun NestedItemMetadataPreview(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                item.tags.forEach { tag -> TagPlain(tag) }
+                item.tags.forEach { tag -> TagPill(tag, isCompact = true) }
                 if (hasDateRange) {
                     DateRangePill(
                         startDate = item.startDate,

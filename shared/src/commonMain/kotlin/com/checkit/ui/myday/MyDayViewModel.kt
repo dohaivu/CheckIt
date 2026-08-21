@@ -119,15 +119,11 @@ class MyDayViewModel(
     // Plan assist / suggestions
     fun openPlanAssist() = planAssist.openPlanAssist()
     fun dismissPlanAssist() = planAssist.dismissPlanAssist()
-    fun openSuggestions(
-        startTimeMinutes: Int? = null,
-        endTimeMinutes: Int? = null
-    ) = planAssist.openSuggestions(startTimeMinutes, endTimeMinutes)
+    fun openSuggestions(startTimeMinutes: Int? = null, endTimeMinutes: Int? = null) = planAssist.openSuggestions(startTimeMinutes, endTimeMinutes)
     fun dismissSuggestions() = planAssist.dismissSuggestions()
     fun addTaskFromSuggestion(task: TaskItem) = planAssist.addTaskFromSuggestion(task)
     fun addTaskToMyDay(task: TaskItem) = planAssist.addTaskToMyDay(task)
-    fun addDailyPlanItem(title: String, tagIds: List<Long>, nestedListItemId: Long? = null) = 
-        planAssist.addDailyPlanItem(title, tagIds, nestedListItemId)
+    fun addDailyPlanItem(title: String, tagIds: List<Long>, nestedListItemId: Long? = null) = planAssist.addDailyPlanItem(title, tagIds, nestedListItemId)
 
     // Smart scheduler
     fun smartSchedule() = smartScheduler.scheduleAll()
@@ -147,13 +143,9 @@ class MyDayViewModel(
     fun deleteJournalEntry(entryId: Long) = journal.deleteJournalEntry(entryId)
 
     // Daily plan item editor
-    fun updateItemTime(item: DailyPlanItem, startTimeMinutes: Int, endTimeMinutes: Int) =
-        dailyPlanEditor.updateItemTime(item, startTimeMinutes, endTimeMinutes)
-    fun openDailyPlan(
-        startTimeMinutes: Int? = null,
-        endTimeMinutes: Int? = null,
-        date: LocalDate = today()
-    ) = dailyPlanEditor.openDailyPlan(startTimeMinutes, endTimeMinutes, date)
+    fun updateItemTime(item: DailyPlanItem, startTimeMinutes: Int, endTimeMinutes: Int) = dailyPlanEditor.updateItemTime(item, startTimeMinutes, endTimeMinutes)
+    fun openDailyPlan(title: String, tagIds: List<Long>, nestedListItemId: Long? = null) = dailyPlanEditor.openDailyPlan(title, tagIds, nestedListItemId)
+    fun openDailyPlan(startTimeMinutes: Int? = null, endTimeMinutes: Int? = null, date: LocalDate = today()) = dailyPlanEditor.openDailyPlan(startTimeMinutes, endTimeMinutes, date)
     fun dismissDailyPlanEditor() = dailyPlanEditor.dismissDailyPlanEditor()
     fun addDailyPlan() = dailyPlanEditor.addDailyPlan()
     fun saveDailyPlan(editor: DailyPlanItemEditorState): Boolean = dailyPlanEditor.saveDailyPlan(editor)
@@ -171,8 +163,7 @@ class MyDayViewModel(
 
     // Sprints
     fun executeFabAction(action: FabAction) = sprints.executeFabAction(action)
-    fun startSprint(taskId: Long? = null, dailyPlanItemId: Long? = null, description: String = "", tagIds: List<Long> = emptyList()) =
-        sprints.startSprint(taskId, dailyPlanItemId, description, tagIds)
+    fun startSprint(taskId: Long? = null, dailyPlanItemId: Long? = null, description: String = "", tagIds: List<Long> = emptyList()) = sprints.startSprint(taskId, dailyPlanItemId, description, tagIds)
     fun startSprintByItemId(itemId: Long) = sprints.startSprintByItemId(itemId)
     fun startSprintWithTask(task: TaskItem) = sprints.startSprintWithTask(task)
     fun startSprintWithChoice(choice: SprintChoice) = sprints.startSprintWithChoice(choice)
