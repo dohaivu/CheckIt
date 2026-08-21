@@ -53,9 +53,9 @@ import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveNotesForDateUseCase
 import com.checkit.domain.usecase.ObserveTasksForDateUseCase
 import com.checkit.shared.R
-import com.checkit.ui.myday.MyDayTaskViewProjection
+import com.checkit.ui.myday.DayViewProjection
 import com.checkit.ui.myday.doneWorkMinutes
-import com.checkit.ui.myday.toTaskViewProjection
+import com.checkit.ui.myday.toDayViewProjection
 import com.checkit.ui.tasks.cardColor
 import com.checkit.ui.tasks.isOverdue
 import com.checkit.ui.tasks.priorityColor
@@ -89,7 +89,7 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
         val nowMinutes = now.hour * 60 + now.minute
 
         provideContent {
-            val projection = remember(items, notes) { items.toTaskViewProjection(notes, emptyList()) }
+            val projection = remember(items, notes) { items.toDayViewProjection(notes, emptyList()) }
             val allDayItems = remember(projection, tasks) {
                 projection.toWidgetItems(timed = false, tasks = tasks)
             }
@@ -628,7 +628,7 @@ private sealed class GlanceAgendaItem {
     }
 }
 
-private fun MyDayTaskViewProjection.toWidgetItems(timed: Boolean, tasks: List<TaskItem>): List<GlanceAgendaItem> {
+private fun DayViewProjection.toWidgetItems(timed: Boolean, tasks: List<TaskItem>): List<GlanceAgendaItem> {
     val dailyPlanTaskIds = items.mapNotNull { it.taskId }.toSet()
     val standaloneTasks = tasks.filter { it.id !in dailyPlanTaskIds }
     

@@ -76,7 +76,6 @@ import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.tasks.TimelineItem
 import com.checkit.ui.tasks.TimelineItemType
 import com.checkit.ui.tasks.isOverdue
-import com.checkit.ui.tasks.toClockLabel
 import com.checkit.ui.tasks.views.AgendaView
 import com.checkit.ui.tasks.views.DailyPlanAllDayCard
 import com.checkit.ui.tasks.views.DailyPlanTimelineCard
@@ -569,7 +568,7 @@ internal fun MyDayAgenda(
     onSprintClick: ((Long?, Long?, String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    val projection = remember(items, notes, journalEntries) { items.toTaskViewProjection(notes = notes, journalEntries = journalEntries) }
+    val projection = remember(items, notes, journalEntries) { items.toDayViewProjection(notes = notes, journalEntries = journalEntries) }
     val timelineItems = remember(projection, date) {
         projection.toTimelineItems(date = date)
     }
@@ -632,7 +631,7 @@ private fun MyDayTimeline(
     modifier: Modifier = Modifier
 ) {
     val projection = remember(items, notes, date) {
-        items.toTaskViewProjection(notes = notes, journalEntries = emptyList())
+        items.toDayViewProjection(notes = notes, journalEntries = emptyList())
     }
     val timelineItems = remember(projection) {
         projection.toTimelineItems(resizable = true)
@@ -787,7 +786,7 @@ private fun SprintTrailingContent(
 
 private fun DailyPlanItem.isDone(): Boolean = status == DailyPlanItemStatus.Done
 
-private fun MyDayTaskViewProjection.toTimelineItems(
+private fun DayViewProjection.toTimelineItems(
     date: LocalDate? = null,
     resizable: Boolean = false
 ): List<TimelineItem> {

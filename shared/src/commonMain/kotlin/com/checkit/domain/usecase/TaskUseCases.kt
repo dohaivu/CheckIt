@@ -5,6 +5,7 @@ import com.checkit.data.NoteWriteInput
 import com.checkit.data.SettingsRepository
 import com.checkit.data.TagWriteInput
 import com.checkit.data.TaskWriteInput
+import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DueDatePreset
 import com.checkit.domain.NoteItem
@@ -79,6 +80,12 @@ class ObserveTagsUseCase(
     private val repository: CheckItRepository
 ) {
     operator fun invoke(): Flow<List<TagItem>> = repository.observeTags()
+}
+
+class GetDailyPlanItemUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(itemId: Long): DailyPlanItem? = repository.getDailyPlanItem(itemId)
 }
 
 class AutoAddTodayTasksToMyDayUseCase(
