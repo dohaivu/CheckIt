@@ -89,6 +89,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
@@ -317,22 +318,22 @@ internal fun NestedListEditorScreen(
             var note by remember(overlay.itemId) { mutableStateOf(overlay.initialText) }
             AlertDialog(
                 onDismissRequest = viewModel::stopEditNote,
+                properties = DialogProperties(usePlatformDefaultWidth = false),
                 title = { Text(stringResource(Res.string.nested_edit_note)) },
                 text = {
                     OutlinedTextField(
                         value = note,
                         onValueChange = { note = it.take(2_000) },
-                        label = { Text("Note") },
                         placeholder = { Text("Add label or details") },
                         minLines = 4,
                         maxLines = 8,
-                        supportingText = { Text("${note.length}/2,000") },
+                        supportingText = { Text("${note.length}/2,000", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.End) },
                         modifier = Modifier.fillMaxWidth()
                     )
                 },
                 confirmButton = {
                     TextButton(onClick = { viewModel.saveItemNote(overlay.itemId, note) }) {
-                        Text(stringResource(Res.string.nested_edit_note))
+                        Text("Save")
                     }
                 },
                 dismissButton = {
@@ -505,27 +506,36 @@ private fun NestedFormattingBottomBar(
     }
 
     if (showPeriodPicker) {
+        var startDate by remember { mutableStateOf(item.startDate) }
+        var endDate by remember { mutableStateOf(item.endDate) }
         AlertDialog(
             onDismissRequest = { showPeriodPicker = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false),
             title = {
                 Text(
-                    text = "Timeframe",
+                    text = "Date Period",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
             },
             text = {
                 PeriodPicker(
-                    startDate = item.startDate,
-                    endDate = item.endDate,
+                    startDate = startDate,
+                    endDate = endDate,
                     onRangeChange = { start, end ->
-                        onDateRangeChange(start, end)
+                        startDate = start
+                        endDate = end
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
             },
             confirmButton = {
-                TextButton(onClick = { showPeriodPicker = false }) {
+                TextButton(
+                    onClick = {
+                        onDateRangeChange(startDate, endDate)
+                        showPeriodPicker = false
+                    }
+                ) {
                     Text("Done")
                 }
             },
