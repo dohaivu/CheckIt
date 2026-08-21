@@ -696,13 +696,13 @@ private fun NestedItemMetadataPreview(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                item.tags.forEach { tag -> TagPill(tag, isCompact = true) }
                 if (hasDateRange) {
                     DateRangePill(
                         startDate = item.startDate,
                         endDate = item.endDate
                     )
                 }
+                item.tags.forEach { tag -> TagPill(tag, isCompact = true) }
             }
         }
     }
@@ -1788,7 +1788,7 @@ private fun NestedTree(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = priorityColor(item.priority),
-                        modifier = Modifier.padding(horizontal = 6.dp)
+                        modifier = Modifier.padding(end = 4.dp).align(Alignment.Top)
                     )
                 }
 

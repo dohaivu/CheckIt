@@ -548,7 +548,7 @@ internal fun JournalEntryCard(
         modifier = modifier
             .fillMaxWidth()
             .height(IntrinsicSize.Max)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(8.dp))
             .background(moodColor.copy(alpha = 0.15f))
             .drawBehind {
                 drawLine(
@@ -650,7 +650,7 @@ internal fun JournalHistoryEntryCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(8.dp))
             .background(moodColor.copy(alpha = 0.08f))
             .drawBehind {
                 drawLine(
