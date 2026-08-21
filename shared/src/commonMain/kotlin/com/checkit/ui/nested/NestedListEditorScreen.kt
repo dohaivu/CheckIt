@@ -117,6 +117,7 @@ import com.checkit.domain.NestedManualMetric
 import com.checkit.domain.NestedMetricSummary
 import com.checkit.domain.NestedMetricUnit
 import com.checkit.domain.NestedTextStyle
+import com.checkit.domain.TagItem
 import com.checkit.domain.FocusPeriod
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.filterNestedTree
@@ -147,7 +148,8 @@ internal fun NestedListEditorScreen(
             start = state.filters.focus?.start,
             end = state.filters.focus?.endInclusive,
             query = state.filters.query,
-            hideChecked = state.filters.hideChecked
+            hideChecked = state.filters.hideChecked,
+            selectedTagIds = state.filters.selectedTagIds
         )
     } else {
         unfilteredRoots
@@ -163,9 +165,12 @@ internal fun NestedListEditorScreen(
                     query = state.filters.query,
                     hideChecked = state.filters.hideChecked,
                     isActive = state.filters.isActive,
+                    availableTags = state.availableTags,
+                    selectedTagIds = state.filters.selectedTagIds,
                     onFocusChange = viewModel::updateFilterFocus,
                     onQueryChange = viewModel::updateFilterQuery,
                     onHideCheckedChange = { viewModel.toggleHideChecked() },
+                    onTagToggle = viewModel::updateFilterTags,
                     onReset = viewModel::resetFilters,
                     onPreviousPeriod = viewModel::previousFilterPeriod,
                     onNextPeriod = viewModel::nextFilterPeriod,
@@ -1261,9 +1266,12 @@ private fun NestedListFilterBar(
     query: String,
     hideChecked: Boolean,
     isActive: Boolean,
+    availableTags: List<TagItem>,
+    selectedTagIds: Set<Long>,
     onFocusChange: (FocusPeriod) -> Unit,
     onQueryChange: (String) -> Unit,
     onHideCheckedChange: (Boolean) -> Unit,
+    onTagToggle: (Long) -> Unit,
     onReset: () -> Unit,
     onPreviousPeriod: () -> Unit,
     onNextPeriod: () -> Unit,
@@ -1309,7 +1317,7 @@ private fun NestedListFilterBar(
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(0.dp)
         ) {
             AppOutlinedTextField(
                 value = query,
@@ -1328,6 +1336,12 @@ private fun NestedListFilterBar(
                         shape = RoundedCornerShape(10.dp)
                     ),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+            )
+
+            TagOptionMenu(
+                availableTags = availableTags,
+                selectedTagIds = selectedTagIds,
+                onTagToggle = onTagToggle
             )
 
             Row(

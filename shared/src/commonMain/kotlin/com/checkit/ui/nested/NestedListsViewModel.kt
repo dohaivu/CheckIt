@@ -70,9 +70,10 @@ data class NestedFilterState(
     val isVisible: Boolean = false,
     val focus: FocusPeriod? = null,
     val query: String = "",
-    val hideChecked: Boolean = false
+    val hideChecked: Boolean = false,
+    val selectedTagIds: Set<Long> = emptySet()
 ) {
-    val isActive: Boolean get() = focus != null || query.isNotBlank() || hideChecked
+    val isActive: Boolean get() = focus != null || query.isNotBlank() || hideChecked || selectedTagIds.isNotEmpty()
 }
 
 sealed interface NestedEditorOverlay {
@@ -300,8 +301,16 @@ class NestedListsViewModel(
         updateActiveEditor { it.copy(filters = it.filters.copy(hideChecked = !it.filters.hideChecked)) }
     }
 
+    fun updateFilterTags(tagId: Long) {
+        updateActiveEditor { current ->
+            val selected = current.filters.selectedTagIds
+            val next = if (tagId in selected) selected - tagId else selected + tagId
+            current.copy(filters = current.filters.copy(selectedTagIds = next))
+        }
+    }
+
     fun resetFilters() {
-        updateActiveEditor { it.copy(filters = it.filters.copy(focus = null, query = "", hideChecked = false)) }
+        updateActiveEditor { it.copy(filters = it.filters.copy(focus = null, query = "", hideChecked = false, selectedTagIds = emptySet())) }
     }
 
     fun nextFilterPeriod() {
