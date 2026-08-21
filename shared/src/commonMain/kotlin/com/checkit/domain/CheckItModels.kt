@@ -1,6 +1,7 @@
 package com.checkit.domain
 
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.Serializable
 
 data class AppConfig(val versionName: String)
 
@@ -339,3 +340,12 @@ enum class DueDatePreset {
     NoDate,
     Someday
 }
+
+@Serializable
+data class DayStats(
+    val doneCount: Int,
+    val plannedCount: Int,
+    val doneMinutes: Int,
+    val journalEntryCount: Int,
+    val workMinutesByTag: Map<Long, Int> = emptyMap()
+)

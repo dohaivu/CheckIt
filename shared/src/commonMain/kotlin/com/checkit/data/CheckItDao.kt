@@ -7,11 +7,14 @@ import androidx.room3.Query
 import androidx.room3.Transaction
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DayCloseCommitResult
+import com.checkit.domain.DayStats
 import com.checkit.domain.Period
 import com.checkit.domain.ReviewSource
 import com.checkit.domain.ReviewStatus
 import com.checkit.domain.TaskReminderWriteInput
 import kotlinx.coroutines.flow.Flow
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 @Dao
 interface CheckItDao {
@@ -94,6 +97,9 @@ interface CheckItDao {
     @Query("DELETE FROM journal_entry_tags WHERE entryId = :entryId")
     suspend fun deleteJournalEntryTags(entryId: Long)
 
+    @Query("SELECT COUNT(*) FROM journal_entries WHERE dateEpochDays = :dateEpochDays")
+    suspend fun journalEntryCountForDate(dateEpochDays: Int): Int
+
     @Query("SELECT * FROM journal_entries ORDER BY createdTimeMinutes ASC")
     fun observeJournalEntries(): Flow<List<JournalEntryEntity>>
 
@@ -174,6 +180,26 @@ interface CheckItDao {
 
     @Query("SELECT COUNT(*) FROM daily_plan_items WHERE dateEpochDays = :dateEpochDays AND carriedFromItemId = :sourceItemId")
     suspend fun carriedFromCountOnDate(dateEpochDays: Int, sourceItemId: Long): Int
+
+    @Query("SELECT * FROM tasks WHERE doDateEpochDays = :dateEpochDays AND trashedAtMillis IS NULL AND status != 'Completed' ORDER BY createdAtMillis DESC")
+    suspend fun tasksForDate(dateEpochDays: Int): List<TaskEntity>
+
+    @Query("SELECT * FROM notes WHERE dateEpochDays = :dateEpochDays AND trashedAtMillis IS NULL AND status != 'Completed' ORDER BY editedAtMillis DESC")
+    suspend fun notesForDate(dateEpochDays: Int): List<NoteEntity>
+
+    @Query("SELECT * FROM tasks WHERE doDateEpochDays = :dateEpochDays AND trashedAtMillis IS NULL AND status != 'Completed' ORDER BY createdAtMillis DESC")
+    fun observeTasksForDate(dateEpochDays: Int): Flow<List<TaskEntity>>
+
+    @Query("""
+        SELECT * FROM tasks 
+        WHERE trashedAtMillis IS NULL 
+          AND (doDateEpochDays = :dateEpochDays OR status = 'Open' OR completedDateEpochDays = :dateEpochDays)
+        ORDER BY createdAtMillis DESC
+    """)
+    fun observeWorkingTasks(dateEpochDays: Int): Flow<List<TaskEntity>>
+
+    @Query("SELECT * FROM notes WHERE dateEpochDays = :dateEpochDays AND trashedAtMillis IS NULL AND status != 'Completed' ORDER BY editedAtMillis DESC")
+    fun observeNotesForDate(dateEpochDays: Int): Flow<List<NoteEntity>>
 
     @Query("SELECT * FROM sub_tasks ORDER BY sortOrder ASC, id ASC")
     fun observeSubTasks(): Flow<List<SubTaskEntity>>
@@ -577,6 +603,32 @@ interface CheckItDao {
             markDailyPlanItemsHandled(listOf(source.id), nowMillis)
         }
 
+        val journalCount = journalEntryCountForDate(dateEpochDays)
+        val allDailyPlanItems = dailyPlanItemsForDate(dateEpochDays)
+        val workMinutesByTag = mutableMapOf<Long, Int>()
+        allDailyPlanItems.forEach { item ->
+            val isDone = item.status == DailyPlanItemStatus.Done.name || markDoneItemIds.contains(item.id)
+            if (isDone) {
+                val start = item.startTimeMinutes
+                val end = item.endTimeMinutes
+                if (start != null && end != null) {
+                    val minutes = (end - start).coerceAtLeast(0)
+                    if (minutes > 0) {
+                        tagIdsForItem(item.id).forEach { tagId ->
+                            workMinutesByTag[tagId] = (workMinutesByTag[tagId] ?: 0) + minutes
+                        }
+                    }
+                }
+            }
+        }
+        val dayStats = DayStats(
+            doneCount = doneCount,
+            plannedCount = plannedCount,
+            doneMinutes = doneMinutes,
+            journalEntryCount = journalCount,
+            workMinutesByTag = workMinutesByTag
+        )
+
         upsertPeriodReview(
             PeriodReviewEntity(
                 periodType = Period.Day.name,
@@ -587,7 +639,8 @@ interface CheckItDao {
                 source = ReviewSource.Manual.name,
                 status = ReviewStatus.Complete.name,
                 completedAtMillis = nowMillis,
-                editedAtMillis = nowMillis
+                editedAtMillis = nowMillis,
+                statsJson = Json.encodeToString(dayStats)
             )
         )
 

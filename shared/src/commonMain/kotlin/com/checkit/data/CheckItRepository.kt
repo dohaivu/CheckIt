@@ -52,6 +52,9 @@ import kotlin.time.Clock
 
 interface CheckItRepository {
     fun observeTaskBoard(onlyOpen: Boolean = true): Flow<TaskBoard>
+    fun observeTasksForDate(date: LocalDate): Flow<List<TaskItem>>
+    fun observeWorkingTasks(date: LocalDate): Flow<List<TaskItem>>
+    fun observeNotesForDate(date: LocalDate): Flow<List<NoteItem>>
     fun observeDailyPlans(startDate: LocalDate? = null, endDate: LocalDate? = null): Flow<List<DailyPlan>>
     fun observeJournalEntries(): Flow<List<JournalEntry>>
     suspend fun addJournalEntry(input: JournalEntryWriteInput): Long
@@ -97,6 +100,8 @@ interface CheckItRepository {
     suspend fun dailyPlanForDate(date: LocalDate): DailyPlan?
     suspend fun getTask(taskId: Long): TaskItem?
     suspend fun getNote(noteId: Long): NoteItem?
+    suspend fun getTasksForDate(date: LocalDate): List<TaskItem>
+    suspend fun getNotesForDate(date: LocalDate): List<NoteItem>
     fun observePeriodReviews(): Flow<List<PeriodReview>>
     suspend fun periodReviewFor(period: Period, date: LocalDate): PeriodReview?
     suspend fun savePeriodReview(review: PeriodReview)
@@ -238,7 +243,31 @@ class RoomCheckItRepository(
     override fun observeTaskBoard(onlyOpen: Boolean): Flow<TaskBoard> {
         val tasksFlow = if (onlyOpen) dao.observeTasksOpen() else dao.observeTasksAll()
         val notesFlow = if (onlyOpen) dao.observeNotesOpen() else dao.observeNotesAll()
+        return observeTaskBoardInternal(tasksFlow, notesFlow)
+    }
 
+    override fun observeTasksForDate(date: LocalDate): Flow<List<TaskItem>> =
+        observeTaskBoardInternal(
+            tasksFlow = dao.observeTasksForDate(date.toEpochDays().toInt()),
+            notesFlow = kotlinx.coroutines.flow.flowOf(emptyList())
+        ).map { it.tasks }
+
+    override fun observeWorkingTasks(date: LocalDate): Flow<List<TaskItem>> =
+        observeTaskBoardInternal(
+            tasksFlow = dao.observeWorkingTasks(date.toEpochDays().toInt()),
+            notesFlow = kotlinx.coroutines.flow.flowOf(emptyList())
+        ).map { it.tasks }
+
+    override fun observeNotesForDate(date: LocalDate): Flow<List<NoteItem>> =
+        observeTaskBoardInternal(
+            tasksFlow = kotlinx.coroutines.flow.flowOf(emptyList()),
+            notesFlow = dao.observeNotesForDate(date.toEpochDays().toInt())
+        ).map { it.notes }
+
+    private fun observeTaskBoardInternal(
+        tasksFlow: Flow<List<TaskEntity>>,
+        notesFlow: Flow<List<NoteEntity>>
+    ): Flow<TaskBoard> {
         val rowsFlow = combine(
             dao.observeFilters(),
             tasksFlow,
@@ -867,6 +896,16 @@ class RoomCheckItRepository(
             isPinned = listJoin?.isPinned ?: false,
             sectionId = listJoin?.sectionId
         )
+    }
+
+    override suspend fun getTasksForDate(date: LocalDate): List<TaskItem> {
+        val entities = dao.tasksForDate(date.toEpochDays().toInt())
+        return entities.mapNotNull { getTask(it.id) }
+    }
+
+    override suspend fun getNotesForDate(date: LocalDate): List<NoteItem> {
+        val entities = dao.notesForDate(date.toEpochDays().toInt())
+        return entities.mapNotNull { getNote(it.id) }
     }
 
     override suspend fun dailyPlanForDate(date: LocalDate): DailyPlan? {

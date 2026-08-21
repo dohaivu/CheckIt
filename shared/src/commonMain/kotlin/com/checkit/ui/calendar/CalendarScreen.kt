@@ -110,7 +110,7 @@ internal fun CalendarScreen(
     onJournalEntryClick: (JournalEntry) -> Unit,
     onJournalListClick: (LocalDate) -> Unit,
     onAddDailyPlanItem: (LocalDate) -> Unit,
-    onTaskClick: (TaskItem, DailyPlanItem?) -> Unit,
+    onTaskClick: (Long, DailyPlanItem?) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
     onNewTagClick: () -> Unit = {},
     onOpenReflect: (LocalDate) -> Unit = {},
@@ -272,7 +272,7 @@ private fun SelectedDateContent(
     content: SelectedCalendarDateContent,
     showDailyPlanSummary: Boolean,
     onDailyPlanItemClick: (DailyPlanItem, LocalDate) -> Unit,
-    onTaskClick: (TaskItem, DailyPlanItem?) -> Unit,
+    onTaskClick: (Long, DailyPlanItem?) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -293,7 +293,7 @@ private fun SelectedDateContent(
         if (content.showDailyPlan) {
             MyDayAgenda(
                 items = content.dailyPlanItems,
-                board = content.board,
+                notes = content.notes,
                 date = content.date,
                 activeSprint = null,
                 journalEntries = content.journalEntries,
@@ -307,7 +307,7 @@ private fun SelectedDateContent(
             TaskAgendaView(
                 tasks = content.tasks,
                 notes = content.notes,
-                onTaskClick = { onTaskClick(it, null) },
+                onTaskClick = { onTaskClick(it.id, null) },
                 onNoteClick = onNoteClick,
                 dayLimit = 1,
                 focusedDate = content.date,

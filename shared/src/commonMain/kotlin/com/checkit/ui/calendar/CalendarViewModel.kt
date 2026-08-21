@@ -4,9 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.JournalEntry
+import com.checkit.domain.NoteItem
 import com.checkit.domain.PeriodReview
 import com.checkit.domain.Period
 import com.checkit.domain.TaskBoard
+import com.checkit.domain.TaskItem
+import com.checkit.domain.usecase.GetNotesForDateUseCase
+import com.checkit.domain.usecase.GetTasksForDateUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
 import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
@@ -35,6 +39,8 @@ class CalendarViewModel(
     private val observeDailyPlans: ObserveDailyPlansUseCase,
     private val observePeriodReviews: ObservePeriodReviewsUseCase,
     private val observeJournalEntries: ObserveJournalEntriesUseCase,
+    private val getTasksForDate: GetTasksForDateUseCase,
+    private val getNotesForDate: GetNotesForDateUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(CalendarUiState())
     val uiState: StateFlow<CalendarUiState> = _uiState.asStateFlow()
@@ -47,28 +53,36 @@ class CalendarViewModel(
                     val start = month.minus(1, DateTimeUnit.MONTH)
                     val end = month.plus(2, DateTimeUnit.MONTH)
                     combine(
-                        observeTaskBoard(onlyOpen = false),
+                        // Heavy board observation removed from monthly sync
                         observeDailyPlans(startDate = start, endDate = end),
                         observePeriodReviews(),
                         observeJournalEntries()
-                    ) { board, dailyPlans, periodReviews, journalEntries ->
-                        CalendarCombined(board, dailyPlans, periodReviews, journalEntries)
+                    ) { dailyPlans, periodReviews, journalEntries ->
+                        CalendarCombined(dailyPlans, periodReviews, journalEntries)
                     }
                 }
                 .catch { _ ->
                     _uiState.update { it.copy() }
                 }
-                .collect { (board, dailyPlans, periodReviews, journalEntries) ->
+                .collect { combined ->
                     _uiState.update { state ->
-                        val availableTagIds = board.tags.map { it.id }.toSet()
                         state.copy(
-                            board = board,
-                            dailyPlans = dailyPlans,
-                            dayReviews = periodReviews.filter { it.period == Period.Day },
-                            journalEntries = journalEntries,
-                            selectedTagIds = state.selectedTagIds.intersect(availableTagIds)
+                            dailyPlans = combined.dailyPlans,
+                            dayReviews = combined.dayReviews.filter { it.period == Period.Day },
+                            journalEntries = combined.journalEntries
                         )
                     }
+                }
+        }
+
+        // Dedicated flow for selected date details (minimal data fetch)
+        viewModelScope.launch {
+            _uiState.map { it.selectedDate }
+                .distinctUntilChanged()
+                .collect { date ->
+                    val tasks = getTasksForDate(date)
+                    val notes = getNotesForDate(date)
+                    _uiState.update { it.copy(selectedDateTasks = tasks, selectedDateNotes = notes) }
                 }
         }
     }
@@ -156,7 +170,6 @@ class CalendarViewModel(
 }
 
 private data class CalendarCombined(
-    val board: TaskBoard,
     val dailyPlans: List<DailyPlan>,
     val dayReviews: List<PeriodReview>,
     val journalEntries: List<JournalEntry>

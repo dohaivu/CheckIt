@@ -7,8 +7,8 @@ import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DayCloseSummary
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.LeftoverAction
+import com.checkit.domain.NoteItem
 import com.checkit.domain.PeriodReview
-import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TagItem
@@ -30,7 +30,9 @@ sealed interface FabAction {
 }
 
 data class MyDayUiState(
-    val board: TaskBoard = TaskBoard(),
+    val tasks: List<TaskItem> = emptyList(),
+    val notes: List<NoteItem> = emptyList(),
+    val tags: List<TagItem> = emptyList(),
     val dailyPlans: List<DailyPlan> = emptyList(),
     val selectedView: MyDayView = MyDayView.Timeline,
     val itemEditor: DailyPlanItemEditorState? = null,
@@ -81,7 +83,7 @@ data class MyDayUiState(
             it.dateEpochDays == (journalListDate ?: today).toEpochDays().toInt()
         }
 
-    val suggestedTasks: List<TaskItem> = board.tasks
+    val suggestedTasks: List<TaskItem> = tasks
         .filter { task ->
             !task.isTrashed &&
                 task.status != TaskStatus.Completed
@@ -100,11 +102,11 @@ data class MyDayUiState(
 
     val sprintSuggestedToday: List<SprintChoice> = plannedItems
         .take(5)
-        .map { item -> SprintChoice.PlanItem(item, board.tasksById[item.taskId]) }
+        .map { item -> SprintChoice.PlanItem(item, tasks.find { it.id == item.taskId }) }
 
     val sprintSuggestedYesterday: List<SprintChoice> = pendingYesterdayLeftovers
         .take(3)
-        .map { item -> SprintChoice.PlanItem(item, board.tasksById[item.taskId]) }
+        .map { item -> SprintChoice.PlanItem(item, tasks.find { it.id == item.taskId }) }
 
     val sprintSuggestedTasks: List<TaskItem> = suggestedTasks
         .filter { task ->
@@ -118,7 +120,7 @@ data class MyDayUiState(
         }
         .take(5)
 
-    val continueSprintItem: SprintChoice? = doneItems.lastOrNull()?.let { SprintChoice.PlanItem(it, board.tasksById[it.taskId]) }
+    val continueSprintItem: SprintChoice? = doneItems.lastOrNull()?.let { item -> SprintChoice.PlanItem(item, tasks.find { it.id == item.taskId }) }
         ?: sprintSuggestedToday.firstOrNull()
         ?: sprintSuggestedYesterday.firstOrNull()
         ?: sprintSuggestedTasks.firstOrNull()?.let { SprintChoice.Task(it) }

@@ -401,7 +401,7 @@ fun CheckItApp(
                     myDayUiState.itemEditor?.let { editor ->
                         DailyPlanItemEditorSheet(
                             state = editor,
-                            availableTags = myDayUiState.board.tags,
+                            availableTags = myDayUiState.tags,
                             recentLabels = myDayUiState.recentLabels,
                             onDismiss = viewModels.myDay::dismissDailyPlanEditor,
                             onTitleChange = viewModels.myDay::updateTitle,
@@ -422,7 +422,7 @@ fun CheckItApp(
                     myDayUiState.journalEditor?.let { editor ->
                         JournalEntryEditorSheet(
                             state = editor,
-                            availableTags = myDayUiState.board.tags,
+                            availableTags = myDayUiState.tags,
                             onDismiss = viewModels.myDay::dismissJournalEditor,
                             onLabelChange = viewModels.myDay::updateJournalEditorLabel,
                             onContentChange = viewModels.myDay::updateJournalEditorContent,

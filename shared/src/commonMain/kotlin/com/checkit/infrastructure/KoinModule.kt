@@ -41,7 +41,9 @@ import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteTagUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
 import com.checkit.domain.usecase.GetNoteUseCase
+import com.checkit.domain.usecase.GetNotesForDateUseCase
 import com.checkit.domain.usecase.GetTaskUseCase
+import com.checkit.domain.usecase.GetTasksForDateUseCase
 import com.checkit.domain.usecase.MoveNoteUseCase
 import com.checkit.domain.usecase.MoveTaskUseCase
 import com.checkit.domain.usecase.IsTagNameTakenUseCase
@@ -51,8 +53,12 @@ import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
 import com.checkit.domain.usecase.ObserveNestedDocumentTreeUseCase
 import com.checkit.domain.usecase.ObserveNestedDocumentsUseCase
 import com.checkit.domain.usecase.ObserveNestedTagsUseCase
+import com.checkit.domain.usecase.ObserveNotesForDateUseCase
 import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
+import com.checkit.domain.usecase.ObserveTasksForDateUseCase
+import com.checkit.domain.usecase.ObserveTagsUseCase
+import com.checkit.domain.usecase.ObserveWorkingTasksUseCase
 import com.checkit.domain.usecase.OpenNoteUseCase
 import com.checkit.domain.usecase.OpenTaskUseCase
 import com.checkit.domain.usecase.RenameNestedDocumentUseCase
@@ -138,6 +144,12 @@ val provideInteractorModule = module {
     single { ObserveTaskBoardUseCase(get()) }
     single { GetTaskUseCase(get()) }
     single { GetNoteUseCase(get()) }
+    single { GetTasksForDateUseCase(get()) }
+    single { GetNotesForDateUseCase(get()) }
+    single { ObserveTasksForDateUseCase(get()) }
+    single { ObserveNotesForDateUseCase(get()) }
+    single { ObserveWorkingTasksUseCase(get()) }
+    single { ObserveTagsUseCase(get()) }
     single { ObserveDailyPlansUseCase(get()) }
     single { ObserveJournalEntriesUseCase(get()) }
     single { AddJournalEntryUseCase(get()) }
@@ -249,12 +261,15 @@ val provideViewModelModule = module {
     viewModel { ListViewModel(get(), get(), get()) }
     viewModel { ListSectionViewModel(get(), get(), get()) }
     viewModel { TagViewModel(get(), get(), get(), get(), get(), get()) }
-    viewModel { CalendarViewModel(get(), get(), get(), get()) }
+    viewModel { CalendarViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel {
         MyDayViewModel(
-            observeTaskBoard = get(),
             observeDailyPlans = get(),
             observeJournalEntries = get(),
+            observePeriodReviews = get(),
+            observeTags = get(),
+            observeWorkingTasks = get(),
+            observeNotesForDate = get(),
             addJournalEntry = get(),
             updateJournalEntry = get(),
             deleteJournalEntry = get(),
@@ -263,7 +278,6 @@ val provideViewModelModule = module {
             buildDayCloseSummary = get(),
             completeDayClose = get(),
             carryOverDailyPlanItems = get(),
-            observePeriodReviews = get(),
             upsertDailyPlanItem = get(),
             addSuggestedTaskToMyDay = get(),
             updateDailyPlanItemTime = get(),

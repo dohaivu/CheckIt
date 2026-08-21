@@ -1,6 +1,7 @@
 package com.checkit.domain
 
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.json.Json
 
 enum class ReviewSource {
     Auto,
@@ -33,4 +34,14 @@ data class PeriodReview(
 ) {
     val periodStartDate: LocalDate get() = LocalDate.fromEpochDays(periodStartEpochDays)
     val isComplete: Boolean get() = status == ReviewStatus.Complete
+
+    val dayStats: DayStats? by lazy {
+        statsJson?.let {
+            try {
+                Json.decodeFromString<DayStats>(it)
+            } catch (e: Exception) {
+                null
+            }
+        }
+    }
 }

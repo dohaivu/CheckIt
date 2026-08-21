@@ -8,6 +8,7 @@ import com.checkit.data.TaskWriteInput
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DueDatePreset
 import com.checkit.domain.NoteItem
+import com.checkit.domain.TagItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskFilter
 import com.checkit.domain.TaskItem
@@ -42,6 +43,42 @@ class GetNoteUseCase(
     private val repository: CheckItRepository
 ) {
     suspend operator fun invoke(noteId: Long): NoteItem? = repository.getNote(noteId)
+}
+
+class GetTasksForDateUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(date: LocalDate): List<TaskItem> = repository.getTasksForDate(date)
+}
+
+class GetNotesForDateUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(date: LocalDate): List<NoteItem> = repository.getNotesForDate(date)
+}
+
+class ObserveTasksForDateUseCase(
+    private val repository: CheckItRepository
+) {
+    operator fun invoke(date: LocalDate): Flow<List<TaskItem>> = repository.observeTasksForDate(date)
+}
+
+class ObserveNotesForDateUseCase(
+    private val repository: CheckItRepository
+) {
+    operator fun invoke(date: LocalDate): Flow<List<NoteItem>> = repository.observeNotesForDate(date)
+}
+
+class ObserveWorkingTasksUseCase(
+    private val repository: CheckItRepository
+) {
+    operator fun invoke(date: LocalDate): Flow<List<TaskItem>> = repository.observeWorkingTasks(date)
+}
+
+class ObserveTagsUseCase(
+    private val repository: CheckItRepository
+) {
+    operator fun invoke(): Flow<List<TagItem>> = repository.observeTags()
 }
 
 class AutoAddTodayTasksToMyDayUseCase(

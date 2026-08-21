@@ -24,6 +24,8 @@ data class CalendarUiState(
     val dailyPlans: List<DailyPlan> = emptyList(),
     val dayReviews: List<PeriodReview> = emptyList(),
     val journalEntries: List<JournalEntry> = emptyList(),
+    val selectedDateTasks: List<TaskItem> = emptyList(),
+    val selectedDateNotes: List<NoteItem> = emptyList(),
     val showDailyPlanSummary: Boolean = false,
     val calendarDisplayMode: CalendarDisplayMode = CalendarDisplayMode.Week,
     val selectedTagIds: Set<Long> = emptySet(),
@@ -58,11 +60,46 @@ data class CalendarUiState(
     val dailyPlanByDate: Map<LocalDate, DailyPlan> = filteredDailyPlans.associateBy { it.date }
 
     private val dailyPlanMarkersByDate: Map<LocalDate, CalendarDateMarkers> by lazy {
-        filteredDailyPlans.associate { plan -> plan.date to CalendarDateMarkers(totalCount = plan.items.size) }
+        val markers = mutableMapOf<LocalDate, CalendarDateMarkers>()
+        
+        // 1. Start with PeriodReview stats (fast, reliable snapshots)
+        dayReviews.forEach { review ->
+            review.dayStats?.let { stats ->
+                if (selectedTagIds.isEmpty()) {
+                    markers[review.periodStartDate] = CalendarDateMarkers(totalCount = stats.doneCount)
+                } else {
+                    // Hybrid: if filtered, calculate from daily plan instead
+                }
+            }
+        }
+
+        // 2. Override with live daily plans for accuracy (especially when filtered)
+        filteredDailyPlans.forEach { plan ->
+            markers[plan.date] = CalendarDateMarkers(totalCount = plan.items.size)
+        }
+        markers
     }
 
     private val dailyPlanWorkMinutesByDate: Map<LocalDate, Int> by lazy {
-        filteredDailyPlans.associate { plan -> plan.date to plan.doneWorkMinutes()}
+        val minutes = mutableMapOf<LocalDate, Int>()
+        
+        // 1. Use PeriodReview stats
+        dayReviews.forEach { review ->
+            review.dayStats?.let { stats ->
+                if (selectedTagIds.isEmpty()) {
+                    minutes[review.periodStartDate] = stats.doneMinutes
+                } else if (selectedTagIds.size == 1) {
+                    val tagId = selectedTagIds.first()
+                    minutes[review.periodStartDate] = stats.workMinutesByTag[tagId] ?: 0
+                }
+            }
+        }
+
+        // 2. Override with live daily plans (handles complex filters)
+        filteredDailyPlans.forEach { plan ->
+            minutes[plan.date] = plan.doneWorkMinutes()
+        }
+        minutes
     }
 
     private val futureMarkersByDate: Map<LocalDate, CalendarDateMarkers> by lazy {
@@ -75,10 +112,10 @@ data class CalendarUiState(
     }
 
     fun tasksForDate(date: LocalDate): List<TaskItem> =
-        board.tasksByDate[date].orEmpty()
+        if (date == selectedDate) selectedDateTasks else board.tasksByDate[date].orEmpty()
 
     fun notesForDate(date: LocalDate): List<NoteItem> =
-        board.notesByDate[date].orEmpty()
+        if (date == selectedDate) selectedDateNotes else board.notesByDate[date].orEmpty()
 
     fun markersForDate(date: LocalDate): CalendarDateMarkers =
         if (date <= today()) {
