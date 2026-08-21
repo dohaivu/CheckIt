@@ -98,6 +98,32 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         }
     }
 
+    override fun observeTasksForDate(date: LocalDate): Flow<List<TaskItem>> = boardFlow.map { board ->
+        board.tasks.filter { it.doDate == date && !it.isTrashed && it.status != TaskStatus.Completed }
+    }
+
+    override fun observeWorkingTasks(date: LocalDate): Flow<List<TaskItem>> = boardFlow.map { board ->
+        board.tasks.filter { 
+            !it.isTrashed && (it.doDate == date || it.status == TaskStatus.Open || it.completedDate == date)
+        }
+    }
+
+    override fun observeNotesForDate(date: LocalDate): Flow<List<NoteItem>> = boardFlow.map { board ->
+        board.notes.filter { it.date == date && !it.isTrashed && it.status != TaskStatus.Completed }
+    }
+
+    override suspend fun getTask(taskId: Long): TaskItem? = 
+        boardFlow.value.tasks.find { it.id == taskId }
+
+    override suspend fun getNote(noteId: Long): NoteItem? = 
+        boardFlow.value.notes.find { it.id == noteId }
+
+    override suspend fun getTasksForDate(date: LocalDate): List<TaskItem> = 
+        boardFlow.value.tasks.filter { it.doDate == date && !it.isTrashed && it.status != TaskStatus.Completed }
+
+    override suspend fun getNotesForDate(date: LocalDate): List<NoteItem> = 
+        boardFlow.value.notes.filter { it.date == date && !it.isTrashed && it.status != TaskStatus.Completed }
+
     override fun observeDailyPlans(startDate: LocalDate?, endDate: LocalDate?): Flow<List<DailyPlan>> =
         dailyPlansFlow.map { plans ->
             if (startDate != null && endDate != null) {

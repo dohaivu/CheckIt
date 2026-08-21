@@ -14,6 +14,8 @@ import com.checkit.domain.usecase.RestoreNoteUseCase
 import com.checkit.domain.usecase.RestoreTaskUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
+import com.checkit.domain.usecase.GetNoteUseCase
+import com.checkit.domain.usecase.GetTaskUseCase
 import com.checkit.domain.usecase.MoveNoteUseCase
 import com.checkit.domain.usecase.MoveTaskUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
@@ -72,6 +74,8 @@ class TaskSubtaskViewModelTest {
         viewModel = TaskViewModel(
             observeTaskBoard = ObserveTaskBoardUseCase(repository),
             selectTaskBoardItems = SelectTaskBoardItemsUseCase(),
+            getTask = GetTaskUseCase(repository),
+            getNote = GetNoteUseCase(repository),
             addTask = AddTaskUseCase(repository),
             addTaskToDailyPlan = AddTaskToDailyPlanUseCase(repository),
             updateTask = UpdateTaskUseCase(repository),

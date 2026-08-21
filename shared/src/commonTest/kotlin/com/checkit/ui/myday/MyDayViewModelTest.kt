@@ -16,7 +16,10 @@ import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.BuildDayCloseSummaryUseCase
 import com.checkit.domain.usecase.CarryOverDailyPlanItemsUseCase
 import com.checkit.domain.usecase.CompleteDayCloseUseCase
+import com.checkit.domain.usecase.ObserveNotesForDateUseCase
 import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
+import com.checkit.domain.usecase.ObserveTagsUseCase
+import com.checkit.domain.usecase.ObserveWorkingTasksUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.DeleteJournalEntryUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
@@ -70,7 +73,6 @@ class MyDayViewModelTest {
     private fun createViewModel(): MyDayViewModel {
         val buildSummary = BuildDayCloseSummaryUseCase(dispatcher)
         val carryOver = CarryOverDailyPlanItemsUseCase(repository, dispatcher)
-        val observeTaskBoard = ObserveTaskBoardUseCase(repository)
         val observeDailyPlans = ObserveDailyPlansUseCase(repository)
         val observeJournalEntries = ObserveJournalEntriesUseCase(repository)
         val observePeriodReviews = ObservePeriodReviewsUseCase(repository)
@@ -78,9 +80,12 @@ class MyDayViewModelTest {
         val updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository)
 
         return MyDayViewModel(
-            observeTaskBoard = observeTaskBoard,
             observeDailyPlans = observeDailyPlans,
             observeJournalEntries = observeJournalEntries,
+            observePeriodReviews = observePeriodReviews,
+            observeTags = ObserveTagsUseCase(repository),
+            observeWorkingTasks = ObserveWorkingTasksUseCase(repository),
+            observeNotesForDate = ObserveNotesForDateUseCase(repository),
             addJournalEntry = AddJournalEntryUseCase(repository),
             updateJournalEntry = UpdateJournalEntryUseCase(repository),
             deleteJournalEntry = DeleteJournalEntryUseCase(repository),
@@ -94,7 +99,6 @@ class MyDayViewModelTest {
                 dispatcher = dispatcher
             ),
             carryOverDailyPlanItems = carryOver,
-            observePeriodReviews = observePeriodReviews,
             upsertDailyPlanItem = UpsertDailyPlanItemUseCase(repository),
             addSuggestedTaskToMyDay = AddSuggestedTaskToMyDayUseCase(
                 repository = repository,
@@ -113,7 +117,7 @@ class MyDayViewModelTest {
                     updateDailyPlanItemTime = updateDailyPlanItemTime,
                     updateDailyPlanItemStatus = UpdateDailyPlanItemStatusUseCase(repository)
                 ),
-                observeTaskBoard = observeTaskBoard
+                observeTaskBoard = ObserveTaskBoardUseCase(repository)
             )
         )
     }

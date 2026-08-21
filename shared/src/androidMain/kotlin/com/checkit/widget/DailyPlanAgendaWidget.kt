@@ -51,14 +51,12 @@ import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveNotesForDateUseCase
-import com.checkit.domain.usecase.ObserveTasksForDateUseCase
 import com.checkit.shared.R
 import com.checkit.ui.myday.DayViewProjection
 import com.checkit.ui.myday.doneWorkMinutes
 import com.checkit.ui.myday.toDayViewProjection
 import com.checkit.ui.tasks.cardColor
 import com.checkit.ui.tasks.isOverdue
-import com.checkit.ui.tasks.priorityColor
 import com.checkit.ui.tasks.toClockLabel
 import com.checkit.ui.tasks.toDurationLabel
 import com.checkit.ui.today
@@ -72,13 +70,11 @@ import androidx.glance.color.ColorProvider as DayNightColorProvider
 val today = today()
 class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
 
-    private val observeTasksForDate: ObserveTasksForDateUseCase by inject()
     private val observeNotesForDate: ObserveNotesForDateUseCase by inject()
     private val observeDailyPlans: ObserveDailyPlansUseCase by inject()
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val today = today()
-        val tasks = observeTasksForDate(today).first()
         val notes = observeNotesForDate(today).first()
         val dailyPlans = observeDailyPlans(startDate = today, endDate = today).first()
         val todayPlan = dailyPlans.find { it.date == today }
@@ -90,11 +86,11 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
 
         provideContent {
             val projection = remember(items, notes) { items.toDayViewProjection(notes, emptyList()) }
-            val allDayItems = remember(projection, tasks) {
-                projection.toWidgetItems(timed = false, tasks = tasks)
+            val allDayItems = remember(projection) {
+                projection.toWidgetItems(timed = false)
             }
-            val timedItems = remember(projection, tasks) {
-                projection.toWidgetItems(timed = true, tasks = tasks)
+            val timedItems = remember(projection) {
+                projection.toWidgetItems(timed = true)
             }
 
             val totalCount = remember(allDayItems, timedItems) { allDayItems.size + timedItems.size }
@@ -398,7 +394,6 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
             clickAction = item.clickAction(),
             icon = {
                 when (item) {
-                    is GlanceAgendaItem.Task -> TaskIcon(completed = item.completed, tintColor = item.task.priority.priorityColor())
                     is GlanceAgendaItem.Note -> NoteIcon(item.color)
                     is GlanceAgendaItem.DailyPlan -> DailyPlanIcon(source = item.item.source, completed = item.completed, item.color)
                 }
@@ -486,18 +481,6 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
     }
 
     @Composable
-    private fun TaskIcon(completed: Boolean, tintColor: Color) {
-        Image(
-            provider = ImageProvider( if (completed) R.drawable.check_box_24px else R.drawable.check_box_outline_blank_24px),
-            contentDescription = "check icon",
-            modifier = GlanceModifier.size(22.dp),
-            colorFilter = ColorFilter.tint(
-                ColorProvider(tintColor)
-            )
-        )
-    }
-
-    @Composable
     private fun NoteIcon(tintColor: Color) {
         Image(
             provider = ImageProvider(R.drawable.notes_24px),
@@ -579,22 +562,6 @@ private sealed class GlanceAgendaItem {
         }
     }
 
-    data class Task(
-        val task: TaskItem
-    ) : GlanceAgendaItem() {
-        override val startTimeMinutes: Int? = task.startTimeMinutes
-        override val endTimeMinutes: Int? = task.endTimeMinutes
-        override val sortOrder: Int = 0
-        override val title: String = task.name.ifBlank { "Untitled task" }
-        override val label: String? = task.label
-        override val color: Color = task.cardColor()
-        override val completed: Boolean = task.status == TaskStatus.Completed
-        override val overdue: Boolean = task.isOverdue()
-        override val dailyPlanItemId: Long? = null
-        override val taskId: Long = task.id
-        override val noteId: Long? = null
-    }
-
     data class Note(
         val note: NoteItem
     ) : GlanceAgendaItem() {
@@ -628,13 +595,8 @@ private sealed class GlanceAgendaItem {
     }
 }
 
-private fun DayViewProjection.toWidgetItems(timed: Boolean, tasks: List<TaskItem>): List<GlanceAgendaItem> {
-    val dailyPlanTaskIds = items.mapNotNull { it.taskId }.toSet()
-    val standaloneTasks = tasks.filter { it.id !in dailyPlanTaskIds }
-    
-    val widgetItems = items.map { GlanceAgendaItem.DailyPlan(it) } + 
-                      standaloneTasks.map { GlanceAgendaItem.Task(it) } + 
-                      notes.map { GlanceAgendaItem.Note(it) }
+private fun DayViewProjection.toWidgetItems(timed: Boolean): List<GlanceAgendaItem> {
+    val widgetItems = items.map { GlanceAgendaItem.DailyPlan(it) } + notes.map { GlanceAgendaItem.Note(it) }
     
     return widgetItems
         .asSequence()
