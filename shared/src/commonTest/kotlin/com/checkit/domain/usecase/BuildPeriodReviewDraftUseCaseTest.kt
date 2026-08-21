@@ -6,9 +6,9 @@ import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DailyPlanItemStatus.Done
 import com.checkit.domain.DailyPlanItemStatus.Planned
-import com.checkit.domain.PeriodFocus
+import com.checkit.domain.Period
 import com.checkit.domain.PeriodReview
-import com.checkit.domain.ReviewPeriod
+import com.checkit.domain.FocusPeriod
 import com.checkit.domain.TagItem
 import com.checkit.domain.ReviewSource
 import com.checkit.ui.tasks.FakeCheckItRepository
@@ -30,7 +30,7 @@ class BuildPeriodReviewDraftUseCaseTest {
 
     @Test
     fun buildsWeeklyDraftWithStatsTagsAndHighlights() = runTest {
-        val focus = PeriodFocus(ReviewPeriod.Week, date)
+        val focus = FocusPeriod(Period.Week, date)
         val work = TagItem(id = 1L, name = "Work", color = "#2563EB")
         val home = TagItem(id = 2L, name = "Home", color = "#059669")
         val plans = listOf(
@@ -58,7 +58,7 @@ class BuildPeriodReviewDraftUseCaseTest {
 
     @Test
     fun sortsTopTagsByMinutesDescending() = runTest {
-        val focus = PeriodFocus(ReviewPeriod.Week, date)
+        val focus = FocusPeriod(Period.Week, date)
         val small = TagItem(id = 1L, name = "Small", color = "#111111")
         val big = TagItem(id = 2L, name = "Big", color = "#222222")
         val plans = listOf(
@@ -79,7 +79,7 @@ class BuildPeriodReviewDraftUseCaseTest {
 
     @Test
     fun returnsNullWhenNoDoneActivityInRange() = runTest {
-        val focus = PeriodFocus(ReviewPeriod.Week, date)
+        val focus = FocusPeriod(Period.Week, date)
         val plans = listOf(
             DailyPlan(
                 date = date,
@@ -94,19 +94,19 @@ class BuildPeriodReviewDraftUseCaseTest {
 
     @Test
     fun seedsDraftFromHighestLevelReviewCoveringFocus() = runTest {
-        val focus = PeriodFocus(ReviewPeriod.Day, date)
+        val focus = FocusPeriod(Period.Day, date)
         val yearStart = LocalDate(date.year, 1, 1)
         val yearEnd = yearStart.plus(1, kotlinx.datetime.DateTimeUnit.YEAR)
         val weekStart = date.minus(date.dayOfWeek.ordinal, kotlinx.datetime.DateTimeUnit.DAY)
         val weekEnd = weekStart.plus(7, kotlinx.datetime.DateTimeUnit.DAY)
         val yearReview = review(
-            period = ReviewPeriod.Year,
+            period = Period.Year,
             startEpochDays = yearStart.toEpochDays().toInt(),
             endEpochDays = yearEnd.toEpochDays().toInt(),
             content = "Annual context"
         )
         val weekReview = review(
-            period = ReviewPeriod.Week,
+            period = Period.Week,
             startEpochDays = weekStart.toEpochDays().toInt(),
             endEpochDays = weekEnd.toEpochDays().toInt(),
             content = "Weekly context"
@@ -125,19 +125,19 @@ class BuildPeriodReviewDraftUseCaseTest {
 
     @Test
     fun seedPicksHighestPeriodWhenMultipleCover() = runTest {
-        val focus = PeriodFocus(ReviewPeriod.Week, date)
+        val focus = FocusPeriod(Period.Week, date)
         val yearStart = LocalDate(date.year, 1, 1)
         val yearEnd = yearStart.plus(1, kotlinx.datetime.DateTimeUnit.YEAR)
         val monthStart = LocalDate(date.year, date.month, 1)
         val monthEnd = monthStart.plus(1, kotlinx.datetime.DateTimeUnit.MONTH)
         val yearReview = review(
-            period = ReviewPeriod.Year,
+            period = Period.Year,
             startEpochDays = yearStart.toEpochDays().toInt(),
             endEpochDays = yearEnd.toEpochDays().toInt(),
             content = "Annual context"
         )
         val monthReview = review(
-            period = ReviewPeriod.Month,
+            period = Period.Month,
             startEpochDays = monthStart.toEpochDays().toInt(),
             endEpochDays = monthEnd.toEpochDays().toInt(),
             content = "Monthly context"
@@ -155,10 +155,10 @@ class BuildPeriodReviewDraftUseCaseTest {
 
     @Test
     fun ignoresReviewsOutsideFocusAndPlannedItemsInAnalysis() = runTest {
-        val focus = PeriodFocus(ReviewPeriod.Week, date)
+        val focus = FocusPeriod(Period.Week, date)
         val outside = date.minus(10, kotlinx.datetime.DateTimeUnit.DAY)
         val outsideReview = review(
-            period = ReviewPeriod.Day,
+            period = Period.Day,
             startEpochDays = outside.toEpochDays().toInt(),
             endEpochDays = outside.plus(1, kotlinx.datetime.DateTimeUnit.DAY).toEpochDays().toInt(),
             content = "Unrelated daily review"
@@ -181,7 +181,7 @@ class BuildPeriodReviewDraftUseCaseTest {
 
     @Test
     fun ignoresPlansOutsideFocusRange() = runTest {
-        val focus = PeriodFocus(ReviewPeriod.Week, date)
+        val focus = FocusPeriod(Period.Week, date)
         val outside = date.minus(10, kotlinx.datetime.DateTimeUnit.DAY)
         val plans = listOf(
             DailyPlan(
@@ -195,7 +195,7 @@ class BuildPeriodReviewDraftUseCaseTest {
 
     @Test
     fun dayDraftUsesDayWord() = runTest {
-        val focus = PeriodFocus(ReviewPeriod.Day, date)
+        val focus = FocusPeriod(Period.Day, date)
         val plans = listOf(
             DailyPlan(
                 date = date,
@@ -210,7 +210,7 @@ class BuildPeriodReviewDraftUseCaseTest {
     @Test
     fun autoReviewRoundTripsStatsThroughSave() = runTest {
         val repository = FakeCheckItRepository()
-        val focus = PeriodFocus(ReviewPeriod.Week, date)
+        val focus = FocusPeriod(Period.Week, date)
         val plans = listOf(
             DailyPlan(
                 date = date,
@@ -257,7 +257,7 @@ class BuildPeriodReviewDraftUseCaseTest {
     )
 
     private fun review(
-        period: ReviewPeriod,
+        period: Period,
         startEpochDays: Int,
         endEpochDays: Int,
         content: String

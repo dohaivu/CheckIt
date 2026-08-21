@@ -610,27 +610,24 @@ internal fun MyDayAgenda(
                 }
                 is NoteItem -> if (item.startTimeMinutes == null) NoteAllDayCard(tag) else NoteTimelineCard(tag)
                 is PlannedTaskProjection -> {
-                    val task = tag.task
                     if (item.startTimeMinutes == null) {
-                        TaskAllDayCard(
-                            task = task,
+                        DailyPlanAllDayCard(
+                            item = tag.dailyPlanItem,
                             trailingContent = onSprintClick?.let {
                                 {
                                     SprintTrailingContent(
                                         item = tag.dailyPlanItem,
                                         activeSprint = activeSprint,
                                         onSprintClick = it,
-                                        taskId = task.id,
-                                        title = task.name
+                                        taskId = tag.dailyPlanItem.taskId,
+                                        title = tag.dailyPlanItem.title
                                     )
                                 }
                             }
                         )
                     } else {
-                        TaskTimelineCard(
-                            task = task,
-                            timeLabel = tag.dailyPlanItem.dailyPlanTimeLabel(),
-                            completed = tag.dailyPlanItem.isDone(),
+                        DailyPlanTimelineCard(
+                            item = tag.dailyPlanItem,
                             isOverdue = tag.dailyPlanItem.isOverdue(date),
                             trailingContent = onSprintClick?.let {
                                 {
@@ -638,8 +635,8 @@ internal fun MyDayAgenda(
                                         item = tag.dailyPlanItem,
                                         activeSprint = activeSprint,
                                         onSprintClick = it,
-                                        taskId = task.id,
-                                        title = task.name
+                                        taskId = tag.dailyPlanItem.taskId,
+                                        title = tag.dailyPlanItem.title
                                     )
                                 }
                             }
@@ -865,7 +862,7 @@ private fun SprintTrailingContent(
             else -> MaterialTheme.colorScheme.tertiary
         }
         Box(
-            modifier = Modifier.size(32.dp),
+            modifier = Modifier.size(20.dp),
             contentAlignment = Alignment.Center
         ) {
             PulsingDot(color = dotColor)

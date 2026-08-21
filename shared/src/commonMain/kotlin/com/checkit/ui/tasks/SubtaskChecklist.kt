@@ -2,6 +2,7 @@ package com.checkit.ui.tasks
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -11,8 +12,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -49,19 +50,22 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.checkit.domain.SubTaskItem
 import com.checkit.ui.tasks.views.ContentAlpha
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
+import kotlin.math.abs
 
 @Composable
 internal fun SubtaskBriefList(subtasks: List<SubTaskItem>) {
@@ -117,10 +121,12 @@ internal fun SubtaskChecklist(
     enabled: Boolean = true
 ) {
     if (subtasks.isEmpty() && !enabled) return
-    val rowBounds = remember { mutableStateMapOf<Any, SubtaskRowBounds>() }
-    val draggedIndex = remember { mutableIntStateOf(-1) }
-    val draggedCenterY = remember { mutableFloatStateOf(0f) }
-    
+    val haptic = LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
+    val dragState = remember { SubtaskDragState(scope) }
+    val currentSubtasks by rememberUpdatedState(subtasks)
+    val currentOnMove by rememberUpdatedState(onMove)
+
     var previousSize by remember { mutableIntStateOf(subtasks.size) }
     var subtaskIdToFocus by remember { mutableStateOf<Any?>(null) }
 
@@ -131,87 +137,65 @@ internal fun SubtaskChecklist(
         previousSize = subtasks.size
     }
 
-    val draggedKey = remember(draggedIndex.intValue, subtasks) {
-        subtasks.getOrNull(draggedIndex.intValue)?.stableKey()
-    }
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.4f))
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-                shape = RoundedCornerShape(16.dp)
-            )
-    ) {
+    Box(modifier = modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.4f))
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                    shape = RoundedCornerShape(16.dp)
+                )
+        )
         Column(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             subtasks.forEachIndexed { index, subtask ->
                 val rowKey = subtask.stableKey()
-                val isDragging = draggedKey == rowKey
+                val isDragging = dragState.draggingKey == rowKey
+                val isSettling = dragState.previousKey == rowKey
                 key(rowKey) {
                     val focusRequester = remember { FocusRequester() }
-                    
+
                     if (subtaskIdToFocus == rowKey) {
                         LaunchedEffect(Unit) {
                             focusRequester.requestFocus()
                             subtaskIdToFocus = null
                         }
                     }
-                    
+
                     SubtaskRow(
                         subtask = subtask,
-                        isDragging = isDragging,
+                        isDragging = isDragging || isSettling,
                         onToggle = { onToggle(index) },
                         onNameChange = { onNameChange(index, it) },
                         onRemove = { onRemove(index) },
                         onAdd = onAdd,
                         focusRequester = focusRequester,
                         onMove = { dragAmountY ->
-                            val currentDraggedIndex = subtasks.indexOfFirst { it.stableKey() == draggedKey }
-                            if (currentDraggedIndex == -1) return@SubtaskRow
-                            
-                            draggedCenterY.floatValue += dragAmountY
-                            
-                            val targetIndex = subtasks.indices.firstOrNull { i ->
-                                if (i == currentDraggedIndex) return@firstOrNull false
-                                val key = subtasks[i].stableKey()
-                                val bounds = rowBounds[key] ?: return@firstOrNull false
-                                draggedCenterY.floatValue in bounds.top..bounds.bottom
-                            } ?: return@SubtaskRow
-                            
-                            onMove(currentDraggedIndex, targetIndex)
-                            draggedIndex.intValue = targetIndex
+                            dragState.onDrag(dragAmountY)
+                            val latest = currentSubtasks
+                            val fromIndex = latest.indexOfFirst { it.stableKey() == dragState.draggingKey }
+                            val targetIndex = findSubtaskReorderTarget(
+                                draggedKey = dragState.draggingKey,
+                                visualMiddleY = dragState.visualMiddleY(),
+                                items = latest.map { entry ->
+                                    entry.stableKey() to dragState.bounds[entry.stableKey()]
+                                }
+                            )
+                            if (fromIndex >= 0 && targetIndex != null && targetIndex != fromIndex) {
+                                currentOnMove(fromIndex, targetIndex)
+                            }
                         },
                         onDragStart = {
-                            rowBounds[rowKey]?.let { bounds ->
-                                draggedIndex.intValue = index
-                                draggedCenterY.floatValue = bounds.center
-                            }
+                            dragState.onDragStart(rowKey)
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         },
-                        onDragEnd = {
-                            draggedIndex.intValue = -1
-                            draggedCenterY.floatValue = 0f
-                        },
-                        modifier = Modifier
-                            .animateSubtaskPlacement(rowKey, isDragging) { baseTop, height ->
-                                rowBounds[rowKey] = SubtaskRowBounds(
-                                    top = baseTop,
-                                    bottom = baseTop + height
-                                )
-                            }
-                            .graphicsLayer {
-                                val center = rowBounds[rowKey]?.center ?: 0f
-                                translationY = if (isDragging) draggedCenterY.floatValue - center else 0f
-                                scaleX = if (isDragging) 1.02f else 1f
-                                scaleY = if (isDragging) 1.02f else 1f
-                                shadowElevation = if (isDragging) 8f else 0f
-                                shape = RoundedCornerShape(12.dp)
-                            },
+                        onDragEnd = dragState::onDragEnd,
+                        modifier = Modifier.subtaskReorderGraphics(rowKey, dragState),
                         enabled = enabled
                     )
                 }
@@ -260,7 +244,7 @@ private fun SubtaskRow(
     enabled: Boolean = true
 ) {
     val rowAlpha = if (subtask.isCompleted) ContentAlpha else 1f
-    
+
     val currentOnDragStart by rememberUpdatedState(onDragStart)
     val currentOnDragEnd by rememberUpdatedState(onDragEnd)
     val currentOnMove by rememberUpdatedState(onMove)
@@ -290,7 +274,7 @@ private fun SubtaskRow(
                 .size(20.dp)
                 .then(if (enabled) Modifier.clickable { onToggle() } else Modifier)
         )
-        
+
         val textStyle = MaterialTheme.typography.bodyMedium.copy(
             color = MaterialTheme.colorScheme.onSurface,
             textDecoration = if (subtask.isCompleted) TextDecoration.LineThrough else TextDecoration.None
@@ -361,43 +345,136 @@ private fun SubtaskRow(
     }
 }
 
-private data class SubtaskRowBounds(
-    val top: Float,
-    val bottom: Float
+private class SubtaskDragState(
+    private val scope: CoroutineScope
 ) {
-    val center: Float get() = (top + bottom) / 2f
+    var draggingKey by mutableStateOf<Any?>(null)
+        private set
+    var previousKey by mutableStateOf<Any?>(null)
+        private set
+
+    val previousOffset = Animatable(0f)
+    val bounds = mutableStateMapOf<Any, SubtaskRowBounds>()
+
+    private var dragDelta by mutableFloatStateOf(0f)
+    private var initialTop by mutableFloatStateOf(0f)
+
+    val draggingOffset: Float
+        get() {
+            val top = bounds[draggingKey]?.top ?: return dragDelta
+            return initialTop + dragDelta - top
+        }
+
+    fun visualMiddleY(): Float {
+        val row = bounds[draggingKey] ?: return 0f
+        return row.top + draggingOffset + row.height / 2f
+    }
+
+    fun onDragStart(key: Any) {
+        val top = bounds[key]?.top ?: return
+        draggingKey = key
+        previousKey = null
+        dragDelta = 0f
+        initialTop = top
+        scope.launch { previousOffset.snapTo(0f) }
+    }
+
+    fun onDrag(delta: Float) {
+        if (draggingKey == null) return
+        dragDelta += delta
+    }
+
+    fun onDragEnd() {
+        val key = draggingKey
+        if (key != null) {
+            previousKey = key
+            val startOffset = draggingOffset
+            scope.launch {
+                previousOffset.snapTo(startOffset)
+                previousOffset.animateTo(
+                    targetValue = 0f,
+                    animationSpec = spring(
+                        stiffness = Spring.StiffnessMediumLow,
+                        visibilityThreshold = 1f
+                    )
+                )
+                if (previousKey == key) {
+                    previousKey = null
+                }
+            }
+        }
+        draggingKey = null
+        dragDelta = 0f
+    }
+}
+
+internal data class SubtaskRowBounds(
+    val top: Float,
+    val heightPx: Int
+) {
+    val bottom: Float get() = top + heightPx
+    val height: Float get() = heightPx.toFloat()
+}
+
+internal fun findSubtaskReorderTarget(
+    draggedKey: Any?,
+    visualMiddleY: Float,
+    items: List<Pair<Any, SubtaskRowBounds?>>
+): Int? {
+    if (draggedKey == null) return null
+    return items.indices.firstOrNull { index ->
+        val (key, bounds) = items[index]
+        bounds != null && key != draggedKey && visualMiddleY in bounds.top..bounds.bottom
+    }
 }
 
 private fun SubTaskEditorState.stableKey(): Any =
     id ?: editorKey
 
-private fun Modifier.animateSubtaskPlacement(
+private fun Modifier.subtaskReorderGraphics(
     key: Any,
-    isDragging: Boolean,
-    onPositioned: (Float, Int) -> Unit
+    dragState: SubtaskDragState
 ): Modifier = composed {
+    val isDragging = dragState.draggingKey == key
+    val isSettling = dragState.previousKey == key
     val scope = rememberCoroutineScope()
-    val offsetY = remember(key) { Animatable(0f) }
+    val placementOffset = remember(key) { Animatable(0f) }
     var previousTop by remember(key) { mutableStateOf<Float?>(null) }
+    val lift by animateFloatAsState(
+        targetValue = if (isDragging) 1.03f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "subtask-drag-lift"
+    )
+    val elevation by animateFloatAsState(
+        targetValue = if (isDragging || isSettling) 12f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "subtask-drag-elevation"
+    )
 
     onGloballyPositioned { coordinates ->
-        val nextTop = coordinates.positionInParent().y
-        
-        // Report the base position (excluding current animation offset) to SubtaskChecklist
-        // This ensures reordering logic uses the stable layout positions.
-        onPositioned(nextTop - offsetY.value, coordinates.size.height)
-        
-        if (isDragging) {
-            previousTop = nextTop
-            scope.launch { offsetY.snapTo(0f) }
+        val layoutTop = coordinates.positionInParent().y
+        dragState.bounds[key] = SubtaskRowBounds(
+            top = layoutTop,
+            heightPx = coordinates.size.height
+        )
+
+        if (isDragging || isSettling) {
+            previousTop = layoutTop
+            scope.launch { placementOffset.snapTo(0f) }
             return@onGloballyPositioned
         }
 
         val lastTop = previousTop
-        if (lastTop != null && lastTop != nextTop) {
+        if (lastTop != null && abs(lastTop - layoutTop) > 0.5f) {
             scope.launch {
-                offsetY.snapTo(lastTop - nextTop)
-                offsetY.animateTo(
+                placementOffset.snapTo(lastTop - layoutTop)
+                placementOffset.animateTo(
                     targetValue = 0f,
                     animationSpec = spring(
                         dampingRatio = Spring.DampingRatioNoBouncy,
@@ -406,6 +483,19 @@ private fun Modifier.animateSubtaskPlacement(
                 )
             }
         }
-        previousTop = nextTop
-    }.offset { IntOffset(x = 0, y = offsetY.value.roundToInt()) }
+        previousTop = layoutTop
+    }
+        .zIndex(if (isDragging || isSettling) 1f else 0f)
+        .graphicsLayer {
+            translationY = when {
+                isDragging -> dragState.draggingOffset
+                isSettling -> dragState.previousOffset.value
+                else -> placementOffset.value
+            }
+            scaleX = lift
+            scaleY = lift
+            shadowElevation = elevation
+            shape = RoundedCornerShape(12.dp)
+            clip = false
+        }
 }

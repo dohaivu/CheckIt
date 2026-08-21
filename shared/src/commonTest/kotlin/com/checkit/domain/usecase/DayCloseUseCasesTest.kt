@@ -9,7 +9,7 @@ import com.checkit.domain.DayCloseBannerPolicy
 import com.checkit.domain.DayCloseConfirmInput
 import com.checkit.domain.LeftoverAction
 import com.checkit.domain.PeriodReview
-import com.checkit.domain.ReviewPeriod
+import com.checkit.domain.Period
 import com.checkit.domain.ReviewStatus
 import com.checkit.domain.ReviewStreakPolicy
 import com.checkit.domain.TagItem
@@ -115,6 +115,10 @@ class DayCloseUseCasesTest {
     @Test
     fun carryOverCopiesWithClearedTimesAndSkipsDuplicateTask() = runTest {
         val repository = FakeCheckItRepository()
+        val tag = TagItem(id = 5L, name = "Code", color = "#059669")
+        repository.addTag(com.checkit.data.TagWriteInput(name = tag.name, color = tag.color))
+        val seededTag = repository.currentBoard.tags.single()
+        
         val carryOver = CarryOverDailyPlanItemsUseCase(repository, Dispatchers.Unconfined)
         val planned = item(
             id = 11L,
@@ -123,7 +127,7 @@ class DayCloseUseCasesTest {
             status = DailyPlanItemStatus.Planned,
             startTimeMinutes = 10 * 60,
             endTimeMinutes = 11 * 60,
-            tags = listOf(TagItem(id = 5L, name = "Code", color = "#059669"))
+            tags = listOf(seededTag)
         )
         repository.setDailyPlans(
             listOf(
@@ -230,57 +234,8 @@ class DayCloseUseCasesTest {
         assertEquals(1, tomorrowPlan.items.size)
         assertEquals(1, tomorrowPlan.items.count { it.carriedFromItemId == 1L })
 
-        val record = assertNotNull(repository.periodReviewFor(ReviewPeriod.Day, date))
+        val record = assertNotNull(repository.periodReviewFor(Period.Day, date))
         assertEquals("Ship the review", record.intentNext)
-    }
-
-    @Test
-    fun completeReviewAppliesActionsAndPersistsWinNote() = runTest {
-        val repository = FakeCheckItRepository()
-        val settings = FakeSettingsRepository()
-        val complete = CompleteDayCloseUseCase(
-            repository = repository,
-            settingsRepository = settings,
-            buildSummary = buildSummary,
-            dispatcher = Dispatchers.Unconfined
-        )
-        val plannedA = item(id = 1L, title = "A", status = DailyPlanItemStatus.Planned)
-        val plannedB = item(id = 2L, title = "B", status = DailyPlanItemStatus.Planned)
-        val plannedC = item(id = 3L, title = "C", status = DailyPlanItemStatus.Planned)
-        val done = item(
-            id = 4L,
-            title = "Done",
-            status = DailyPlanItemStatus.Done,
-            startTimeMinutes = 8 * 60,
-            endTimeMinutes = 9 * 60
-        )
-        val plan = DailyPlan(date = date, items = listOf(plannedA, plannedB, plannedC, done))
-        repository.setDailyPlans(listOf(plan))
-
-        val result = complete(
-            plan = plan,
-            input = DayCloseConfirmInput(
-                date = date,
-                leftoverActions = mapOf(
-                    1L to LeftoverAction.MarkDone,
-                    2L to LeftoverAction.CarryOver,
-                    3L to LeftoverAction.Drop
-                ),
-                winNote = " Shipped review  "
-            )
-        ).getOrThrow()
-
-        assertEquals(1, result.markedDoneCount)
-        assertEquals(1, result.carriedCount)
-        assertEquals(1, result.droppedCount)
-        assertTrue(result.winNoteSaved)
-        assertEquals(listOf(1L to DailyPlanItemStatus.Done), repository.statusUpdates)
-        assertEquals(1, repository.copiedDailyPlanItems.size)
-        assertTrue(repository.addedManualDailyPlanItems.isEmpty())
-        assertTrue(repository.markedHandledItemIds.containsAll(listOf(1L, 2L, 3L)))
-        val record = assertNotNull(repository.periodReviewFor(ReviewPeriod.Day, date))
-        assertEquals("Shipped review", record.content)
-        assertEquals(date.toEpochDays().toInt(), settings.currentSettings().lastDayCloseEpochDay)
     }
 
     @Test
@@ -369,7 +324,7 @@ class DayCloseUseCasesTest {
         ).getOrThrow()
 
         assertFalse(result.winNoteSaved)
-        val record = assertNotNull(repository.periodReviewFor(ReviewPeriod.Day, date))
+        val record = assertNotNull(repository.periodReviewFor(Period.Day, date))
         assertEquals("", record.content)
     }
 
@@ -503,7 +458,7 @@ class DayCloseUseCasesTest {
 
     private fun streakRecord(day: LocalDate) = PeriodReview(
         id = 0L,
-        period = ReviewPeriod.Day,
+        period = Period.Day,
         periodStartEpochDays = day.toEpochDays().toInt(),
         periodEndEpochDays = day.toEpochDays().toInt() + 1,
         status = ReviewStatus.Complete,

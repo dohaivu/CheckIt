@@ -16,7 +16,6 @@ import com.checkit.domain.TaskType
 import com.checkit.domain.usecase.AddNoteUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
-import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
 import com.checkit.domain.usecase.CompleteNoteUseCase
 import com.checkit.domain.usecase.OpenTaskUseCase
@@ -25,6 +24,8 @@ import com.checkit.domain.usecase.RestoreNoteUseCase
 import com.checkit.domain.usecase.RestoreTaskUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
+import com.checkit.domain.usecase.MoveNoteUseCase
+import com.checkit.domain.usecase.MoveTaskUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
@@ -83,10 +84,11 @@ class TaskViewModelViewsTest {
             updateNote = UpdateNoteUseCase(repository),
             deleteNote = DeleteNoteUseCase(repository),
             restoreNote = RestoreNoteUseCase(repository),
+            moveTask = MoveTaskUseCase(repository),
+            moveNote = MoveNoteUseCase(repository),
             updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository),
             updateDailyPlanItemStatus = UpdateDailyPlanItemStatusUseCase(repository),
             updateDailyPlanItemTag = UpdateDailyPlanItemTagUseCase(repository),
-            syncKeyResultFromDailyPlan = SyncKeyResultFromDailyPlanUseCase(repository),
             settingsRepository = FakeSettingsRepository()
         )
         dispatcher.scheduler.advanceUntilIdle()
@@ -197,6 +199,8 @@ class TaskViewModelViewsTest {
             when (entry) {
                 is TaskListEntry.Task -> "task:${entry.item.name}"
                 is TaskListEntry.Note -> "note:${entry.item.title}"
+                is TaskListEntry.SectionHeader -> "section:${entry.section?.title}"
+                is TaskListEntry.PinnedHeader -> "pinned"
             }
         }
         assertEquals(listOf("note:Alpha", "task:Bravo", "note:Charlie", "task:Delta"), labels)
@@ -226,9 +230,43 @@ class TaskViewModelViewsTest {
             when (entry) {
                 is TaskListEntry.Task -> "task:${entry.item.name}"
                 is TaskListEntry.Note -> "note:${entry.item.title}"
+                is TaskListEntry.SectionHeader -> "section:${entry.section?.title}"
+                is TaskListEntry.PinnedHeader -> "pinned"
             }
         }
         assertEquals(listOf("task:Budget", "note:Ideas"), labels)
+    }
+
+    @Test
+    fun moveListItemPreviewsOrderWithoutPersistingUntilCommit() = runTest(dispatcher) {
+        val inbox = ListItem(id = 1L, title = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
+        viewModel = createViewModel(
+            TaskBoard(
+                lists = listOf(inbox),
+                tasks = listOf(
+                    task(id = 1L, list = inbox, name = "First", sortOrder = 0),
+                    task(id = 2L, list = inbox, name = "Second", sortOrder = 1)
+                )
+            )
+        )
+        dispatcher.scheduler.advanceUntilIdle()
+        viewModel.selectList(1L)
+
+        viewModel.moveListItem(0, 1)
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val previewIds = viewModel.uiState.value.visibleListItems.mapNotNull { entry ->
+            (entry as? TaskListEntry.Task)?.item?.id
+        }
+        assertEquals(listOf(2L, 1L), previewIds)
+        assertEquals(0, repository.currentBoard.tasks.first { it.id == 1L }.sortOrder)
+        assertEquals(1, repository.currentBoard.tasks.first { it.id == 2L }.sortOrder)
+
+        viewModel.commitMovedListItems()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, repository.currentBoard.tasks.first { it.id == 1L }.sortOrder)
+        assertEquals(0, repository.currentBoard.tasks.first { it.id == 2L }.sortOrder)
     }
 
     @Test
@@ -297,30 +335,6 @@ class TaskViewModelViewsTest {
         assertEquals(setOf(workTag.id, homeTag.id), updatedItem?.tags?.map { it.id }?.toSet())
     }
 
-
-    @Test
-    fun openTaskPreservesTwelveWeekGoalId() = runTest(dispatcher) {
-        val goalId = 7L
-        val tacticTask = TaskItem(
-            id = 42L,
-            name = "Tactic task",
-            type = TaskType.Tactic,
-            twelveWeekGoalId = goalId,
-            sortOrder = 0,
-            createdAtMillis = 0L,
-            updatedAtMillis = 0L
-        )
-        viewModel = createViewModel(TaskBoard(tasks = listOf(tacticTask)))
-        dispatcher.scheduler.advanceUntilIdle()
-
-        viewModel.openTask(tacticTask)
-        dispatcher.scheduler.advanceUntilIdle()
-
-        val editor = viewModel.uiState.value.editor as TaskEditorState.TaskForm
-        assertEquals(goalId, editor.twelveWeekGoalId)
-    }
-
-
     private fun createViewModel(board: TaskBoard): TaskViewModel {
         repository = FakeCheckItRepository(initialBoard = board)
         return TaskViewModel(
@@ -339,10 +353,11 @@ class TaskViewModelViewsTest {
             updateNote = UpdateNoteUseCase(repository),
             deleteNote = DeleteNoteUseCase(repository),
             restoreNote = RestoreNoteUseCase(repository),
+            moveTask = MoveTaskUseCase(repository),
+            moveNote = MoveNoteUseCase(repository),
             updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository),
             updateDailyPlanItemStatus = UpdateDailyPlanItemStatusUseCase(repository),
             updateDailyPlanItemTag = UpdateDailyPlanItemTagUseCase(repository),
-            syncKeyResultFromDailyPlan = SyncKeyResultFromDailyPlanUseCase(repository),
             settingsRepository = FakeSettingsRepository()
         )
     }
@@ -353,7 +368,8 @@ class TaskViewModelViewsTest {
         name: String,
         description: String = "",
         type: TaskType = TaskType.Task,
-        tags: List<TagItem> = emptyList()
+        tags: List<TagItem> = emptyList(),
+        sortOrder: Int = id.toInt()
     ) = TaskItem(
         id = id,
         list = list,
@@ -361,7 +377,7 @@ class TaskViewModelViewsTest {
         description = description,
         type = type,
         tags = tags,
-        sortOrder = id.toInt(),
+        sortOrder = sortOrder,
         createdAtMillis = 0L,
         updatedAtMillis = 0L
     )

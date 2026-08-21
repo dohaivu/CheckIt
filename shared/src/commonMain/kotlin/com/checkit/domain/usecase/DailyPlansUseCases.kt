@@ -80,9 +80,10 @@ class AddDailyPlanItemUseCase(
         endTimeMinutes: Int?,
         source: DailyPlanItemSource = DailyPlanItemSource.MyDayTask,
         status: DailyPlanItemStatus = DailyPlanItemStatus.Done,
-        tagIds: List<Long> = emptyList()
+        tagIds: List<Long> = emptyList(),
+        label: String? = null
     ): Long =
-        repository.addDailyPlanItem(date, title, note, startTimeMinutes, endTimeMinutes, source, status, tagIds)
+        repository.addDailyPlanItem(date, title, note, startTimeMinutes, endTimeMinutes, source, status, tagIds, label)
 }
 
 class UpdateDailyPlanItemTimeUseCase(

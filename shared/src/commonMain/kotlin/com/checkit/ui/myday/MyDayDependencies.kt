@@ -10,12 +10,11 @@ import com.checkit.domain.usecase.CompleteDayCloseUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.DeleteJournalEntryUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
-import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
 import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
+import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
-import com.checkit.domain.usecase.SprintTransitionUseCase
 import com.checkit.domain.usecase.SmartScheduleDailyPlanUseCase
-import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
+import com.checkit.domain.usecase.SprintTransitionUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.domain.usecase.UpdateJournalEntryUseCase
 import com.checkit.domain.usecase.UpsertDailyPlanItemUseCase
@@ -36,7 +35,6 @@ internal class MyDayDependencies(
     val observePeriodReviews: ObservePeriodReviewsUseCase,
     val upsertDailyPlanItem: UpsertDailyPlanItemUseCase,
     val addSuggestedTaskToMyDay: AddSuggestedTaskToMyDayUseCase,
-    val syncKeyResultFromDailyPlan: SyncKeyResultFromDailyPlanUseCase,
     val updateDailyPlanItemTime: UpdateDailyPlanItemTimeUseCase,
     val smartSchedule: SmartScheduleDailyPlanUseCase,
     val sprintManager: SprintManager,

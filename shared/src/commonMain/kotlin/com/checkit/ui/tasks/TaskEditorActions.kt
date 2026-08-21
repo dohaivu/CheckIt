@@ -23,7 +23,6 @@ data class TaskEditorActions(
     val onDailyPlanStartSprint: (DailyPlanItem) -> Unit,
     val onDailyPlanStartOngoingSprint: (DailyPlanItem) -> Unit,
     val onTaskRepeatChange: (RepeatPreset) -> Unit,
-    val onTaskTwelveWeekGoalChange: (Long?) -> Unit = { },
     val onTaskPriorityChange: (TaskPriority) -> Unit,
     val onTaskReminderToggle: (Int) -> Unit,
     val onSubTaskToggle: (Int) -> Unit,
@@ -38,5 +37,8 @@ data class TaskEditorActions(
     val onNoteDateChange: (LocalDate?) -> Unit,
     val onNoteStartTimeChange: (Int?) -> Unit,
     val onNoteTagToggle: (Long) -> Unit,
-    val onNewTagClick: () -> Unit
+    val onNewTagClick: () -> Unit,
+    val onPinToggle: () -> Unit,
+    val onTaskLabelChange: (String) -> Unit,
+    val onNoteLabelChange: (String) -> Unit
 )

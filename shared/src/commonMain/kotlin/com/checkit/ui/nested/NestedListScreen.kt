@@ -135,7 +135,8 @@ internal fun NestedListScreen(
                     title = {
                         Text(
                             text = documentTitle,
-                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -169,7 +170,7 @@ internal fun NestedListScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding)
+                    .padding(top = padding.calculateTopPadding())
                     .consumeWindowInsets(padding)
             ) {
                 when (val editor = state.editor) {

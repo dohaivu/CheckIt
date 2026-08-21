@@ -7,7 +7,7 @@ import androidx.room3.Query
 import androidx.room3.Transaction
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DayCloseCommitResult
-import com.checkit.domain.ReviewPeriod
+import com.checkit.domain.Period
 import com.checkit.domain.ReviewSource
 import com.checkit.domain.ReviewStatus
 import com.checkit.domain.TaskReminderWriteInput
@@ -16,19 +16,10 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface CheckItDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertGoal(goal: GoalEntity): Long
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertObjective(objective: ObjectiveEntity): Long
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTag(tag: TagEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTask(task: TaskEntity): Long
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertKeyResult(keyResult: KeyResultEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertNote(note: NoteEntity): Long
@@ -44,6 +35,9 @@ interface CheckItDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertList(list: ListEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertListSection(section: ListSectionEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTaskList(taskList: TaskListEntity)
@@ -66,14 +60,11 @@ interface CheckItDao {
     @Query("SELECT * FROM lists ORDER BY sortOrder ASC, title ASC")
     fun observeLists(): Flow<List<ListEntity>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertTaskKeyResult(taskKeyResult: TaskKeyResultEntity)
+    @Query("SELECT * FROM list_sections ORDER BY listId ASC, sortOrder ASC, title ASC")
+    fun observeListSections(): Flow<List<ListSectionEntity>>
 
-    @Query("DELETE FROM task_key_result WHERE taskId = :taskId")
-    suspend fun deleteTaskKeyResult(taskId: Long)
-
-    @Query("SELECT * FROM task_key_result")
-    fun observeTaskKeyResults(): Flow<List<TaskKeyResultEntity>>
+    @Query("SELECT * FROM list_sections WHERE listId = :listId ORDER BY sortOrder ASC, title ASC")
+    fun observeSectionsForList(listId: Long): Flow<List<ListSectionEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertJournalEntry(entry: JournalEntryEntity): Long
@@ -106,14 +97,14 @@ interface CheckItDao {
     @Query(
         """
         UPDATE journal_entries
-        SET context = :context,
+        SET label = :label,
             content = :content,
             moods = :moods,
             attachments = :attachments
         WHERE id = :entryId
         """
     )
-    suspend fun updateJournalEntry(entryId: Long, context: String?, content: String, moods: String, attachments: String)
+    suspend fun updateJournalEntry(entryId: Long, label: String?, content: String, moods: String, attachments: String)
 
     @Query("DELETE FROM journal_entries WHERE id = :entryId")
     suspend fun deleteJournalEntry(entryId: Long)
@@ -133,32 +124,26 @@ interface CheckItDao {
     @Query("DELETE FROM daily_plan_item_tags WHERE itemId = :itemId")
     suspend fun deleteDailyPlanItemTags(itemId: Long)
 
-    @Query("SELECT * FROM goals ORDER BY sortOrder ASC, title ASC")
-    fun observeGoals(): Flow<List<GoalEntity>>
-
-    @Query("SELECT * FROM objectives ORDER BY sortOrder ASC, title ASC")
-    fun observeObjectives(): Flow<List<ObjectiveEntity>>
-
     @Query("SELECT * FROM tags ORDER BY sortOrder ASC, lastUsedAtMillis DESC, name ASC")
     fun observeTags(): Flow<List<TagEntity>>
 
     @Query("SELECT * FROM task_filters ORDER BY sortOrder ASC, name ASC")
     fun observeFilters(): Flow<List<TaskFilterEntity>>
 
-    @Query("SELECT * FROM tasks ORDER BY sortOrder ASC, createdAtMillis DESC")
-    fun observeTasks(): Flow<List<TaskEntity>>
+    @Query("SELECT * FROM tasks WHERE status = 'Open' ORDER BY createdAtMillis DESC")
+    fun observeTasksOpen(): Flow<List<TaskEntity>>
 
-    @Query("SELECT * FROM key_results ORDER BY sortOrder ASC, id ASC")
-    fun observeKeyResults(): Flow<List<KeyResultEntity>>
-
-    @Query("SELECT * FROM key_results WHERE id = :keyResultId LIMIT 1")
-    suspend fun keyResultById(keyResultId: Long): KeyResultEntity?
+    @Query("SELECT * FROM tasks ORDER BY createdAtMillis DESC")
+    fun observeTasksAll(): Flow<List<TaskEntity>>
 
     @Query("SELECT * FROM tasks WHERE id = :taskId LIMIT 1")
     suspend fun taskById(taskId: Long): TaskEntity?
 
-    @Query("SELECT * FROM notes ORDER BY sortOrder ASC, editedAtMillis DESC")
-    fun observeNotes(): Flow<List<NoteEntity>>
+    @Query("SELECT * FROM notes WHERE status = 'Open' ORDER BY editedAtMillis DESC")
+    fun observeNotesOpen(): Flow<List<NoteEntity>>
+
+    @Query("SELECT * FROM notes ORDER BY editedAtMillis DESC")
+    fun observeNotesAll(): Flow<List<NoteEntity>>
 
     @Query("SELECT * FROM daily_plan_items ORDER BY sortOrder ASC, addedAtMillis ASC")
     fun observeDailyPlanItems(): Flow<List<DailyPlanItemEntity>>
@@ -190,35 +175,35 @@ interface CheckItDao {
     @Query("SELECT * FROM daily_plan_item_tags")
     fun observeDailyPlanItemTags(): Flow<List<DailyPlanItemTagEntity>>
 
-    @Query("SELECT COALESCE(MAX(t.sortOrder), -1) + 1 FROM tasks t JOIN task_list tl ON t.id = tl.taskId WHERE tl.listId = :listId")
+    @Query("SELECT isPinned FROM task_list WHERE taskId = :taskId AND listId = :listId LIMIT 1")
+    suspend fun taskIsPinnedInList(taskId: Long, listId: Long): Boolean
+
+    @Query("SELECT isPinned FROM note_list WHERE noteId = :noteId AND listId = :listId LIMIT 1")
+    suspend fun noteIsPinnedInList(noteId: Long, listId: Long): Boolean
+
+    @Query("SELECT COALESCE(MAX(tl.sortOrder), -1) + 1 FROM task_list tl WHERE tl.listId = :listId")
     suspend fun nextTaskSortOrder(listId: Long): Int
 
-    @Query("SELECT COALESCE(MAX(n.sortOrder), -1) + 1 FROM notes n JOIN note_list nl ON n.id = nl.noteId WHERE nl.listId = :listId")
+    @Query("SELECT COALESCE(MAX(nl.sortOrder), -1) + 1 FROM note_list nl WHERE nl.listId = :listId")
     suspend fun nextNoteSortOrder(listId: Long): Int
 
     @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM daily_plan_items WHERE dateEpochDays = :dateEpochDays")
     suspend fun nextDailyPlanItemSortOrder(dateEpochDays: Int): Int
 
-    @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM goals")
-    suspend fun nextGoalSortOrder(): Int
-
     @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM lists")
     suspend fun nextListSortOrder(): Int
 
-    @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM key_results WHERE objectiveId = :objectiveId")
-    suspend fun nextKeyResultSortOrder(objectiveId: Long): Int
-
     @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM tags")
     suspend fun nextTagSortOrder(): Int
+
+    @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM list_sections WHERE listId = :listId")
+    suspend fun nextSectionSortOrder(listId: Long): Int
 
     @Query("UPDATE tags SET sortOrder = :sortOrder WHERE id = :tagId")
     suspend fun updateTagSortOrder(tagId: Long, sortOrder: Int)
 
     @Query("UPDATE tags SET lastUsedAtMillis = :lastUsedAtMillis WHERE id = :tagId")
     suspend fun updateTagLastUsedAtMillis(tagId: Long, lastUsedAtMillis: Long)
-
-    @Query("UPDATE key_results SET currentValue = currentValue + :delta WHERE id = :keyResultId")
-    suspend fun adjustKeyResultValue(keyResultId: Long, delta: Double)
 
     @Query("SELECT COUNT(*) FROM daily_plan_items WHERE taskId = :taskId AND dateEpochDays = :dateEpochDays AND status = 'Done' AND id != :excludeItemId")
     suspend fun countDoneDailyPlanItemsForTaskOnDate(taskId: Long, dateEpochDays: Int, excludeItemId: Long): Int
@@ -238,12 +223,6 @@ interface CheckItDao {
     @Query("SELECT * FROM task_reminders WHERE taskId = :taskId ORDER BY remindAtMillis ASC")
     suspend fun remindersForTask(taskId: Long): List<TaskReminderEntity>
 
-    @Query("SELECT * FROM objectives WHERE id = :id LIMIT 1")
-    suspend fun objectiveById(id: Long): ObjectiveEntity?
-
-    @Query("SELECT kr.* FROM key_results kr JOIN task_key_result tkr ON kr.id = tkr.keyResultId WHERE tkr.taskId = :taskId LIMIT 1")
-    suspend fun keyResultByTaskId(taskId: Long): KeyResultEntity?
-
     @Query("SELECT id FROM lists WHERE title = 'Inbox' ORDER BY sortOrder ASC, id ASC LIMIT 1")
     suspend fun inboxListId(): Long?
 
@@ -252,6 +231,12 @@ interface CheckItDao {
 
     @Query("DELETE FROM lists WHERE id = :listId")
     suspend fun deleteList(listId: Long)
+
+    @Query("DELETE FROM list_sections WHERE id = :sectionId")
+    suspend fun deleteSection(sectionId: Long)
+
+    @Query("UPDATE list_sections SET title = :title, color = :color, sortOrder = :sortOrder WHERE id = :sectionId")
+    suspend fun updateSection(sectionId: Long, title: String, color: String, sortOrder: Int)
 
     @Query("UPDATE task_list SET listId = :toListId WHERE listId = :fromListId")
     suspend fun moveTasksToList(fromListId: Long, toListId: Long)
@@ -265,60 +250,6 @@ interface CheckItDao {
         moveNotesToList(fromListId = listId, toListId = targetListId)
         deleteList(listId)
     }
-
-    @Query("UPDATE goals SET title = :title, color = :color, icon = :icon WHERE id = :goalId")
-    suspend fun updateGoal(goalId: Long, title: String, color: String, icon: String)
-
-    @Query("DELETE FROM goals WHERE id = :goalId")
-    suspend fun deleteGoal(goalId: Long)
-
-    @Query(
-        """
-        UPDATE objectives
-        SET title = :title,
-            goalId = :goalId,
-            startDateEpochDays = :startDateEpochDays,
-            endDateEpochDays = :endDateEpochDays,
-            color = :color,
-            icon = :icon
-        WHERE id = :objectiveId
-        """
-    )
-    suspend fun updateObjective(
-        objectiveId: Long,
-        title: String,
-        goalId: Long,
-        startDateEpochDays: Int?,
-        endDateEpochDays: Int?,
-        color: String,
-        icon: String
-    )
-
-    @Query("DELETE FROM objectives WHERE id = :objectiveId")
-    suspend fun deleteObjective(objectiveId: Long)
-
-    @Query(
-        """
-        UPDATE key_results
-        SET objectiveId = :objectiveId,
-            title = :title,
-            targetValue = :targetValue,
-            currentValue = :currentValue,
-            unit = :unit
-        WHERE id = :keyResultId
-        """
-    )
-    suspend fun updateKeyResult(
-        keyResultId: Long,
-        objectiveId: Long,
-        title: String,
-        targetValue: Double,
-        currentValue: Double,
-        unit: String
-    )
-
-    @Query("DELETE FROM key_results WHERE id = :keyResultId")
-    suspend fun deleteKeyResult(keyResultId: Long)
 
     @Query(
         """
@@ -371,6 +302,7 @@ interface CheckItDao {
             startTimeMinutes = :startTimeMinutes,
             endTimeMinutes = :endTimeMinutes,
             repeatRRule = :repeatRRule,
+            label = :label,
             updatedAtMillis = :updatedAtMillis
         WHERE id = :taskId
         """
@@ -386,6 +318,7 @@ interface CheckItDao {
         startTimeMinutes: Int?,
         endTimeMinutes: Int?,
         repeatRRule: String?,
+        label: String?,
         updatedAtMillis: Long
     )
 
@@ -607,6 +540,7 @@ interface CheckItDao {
                         source = source.source,
                         status = DailyPlanItemStatus.Planned.name,
                         sortOrder = nextDailyPlanItemSortOrder(targetDateEpochDays),
+                        label = source.label,
                         startTimeMinutes = null,
                         endTimeMinutes = null,
                         isHabit = source.isHabit,
@@ -627,7 +561,7 @@ interface CheckItDao {
 
         upsertPeriodReview(
             PeriodReviewEntity(
-                periodType = ReviewPeriod.Day.name,
+                periodType = Period.Day.name,
                 periodStartEpochDays = dateEpochDays,
                 periodEndEpochDays = dateEpochDays + 1,
                 content = winNote?.trim().orEmpty(),
@@ -655,6 +589,7 @@ interface CheckItDao {
         startTimeMinutes: Int?,
         endTimeMinutes: Int?,
         completedAtMillis: Long?,
+        label: String?,
         nestedListItemId: Long?,
         tagIds: List<Long>,
         nowMillis: Long
@@ -663,7 +598,7 @@ interface CheckItDao {
         
         updateDailyPlanItem(
             itemId, title, note, source, status, 
-            startTimeMinutes, endTimeMinutes, completedAtMillis, nestedListItemId
+            startTimeMinutes, endTimeMinutes, completedAtMillis, label, nestedListItemId
         )
 
         if (oldEntity.nestedListItemId != null) {
@@ -722,6 +657,7 @@ interface CheckItDao {
             startTimeMinutes = :startTimeMinutes,
             endTimeMinutes = :endTimeMinutes,
             completedAtMillis = :completedAtMillis,
+            label = :label,
             nestedListItemId = :nestedListItemId
         WHERE id = :itemId
         """
@@ -735,6 +671,7 @@ interface CheckItDao {
         startTimeMinutes: Int?,
         endTimeMinutes: Int?,
         completedAtMillis: Long?,
+        label: String?,
         nestedListItemId: Long?
     )
 
@@ -752,7 +689,7 @@ interface CheckItDao {
     )
     suspend fun clearTaskTime(taskId: Long, updatedAtMillis: Long)
 
-    @Query("UPDATE notes SET title = :title, content = :content, status = :status, dateEpochDays = :dateEpochDays, startTimeMinutes = :startTimeMinutes, editedAtMillis = :editedAtMillis WHERE id = :noteId")
+    @Query("UPDATE notes SET title = :title, content = :content, status = :status, dateEpochDays = :dateEpochDays, startTimeMinutes = :startTimeMinutes, label = :label, editedAtMillis = :editedAtMillis WHERE id = :noteId")
     suspend fun updateNote(
         noteId: Long,
         title: String,
@@ -760,6 +697,7 @@ interface CheckItDao {
         status: String,
         dateEpochDays: Int?,
         startTimeMinutes: Int?,
+        label: String?,
         editedAtMillis: Long
     )
 
@@ -771,235 +709,6 @@ interface CheckItDao {
 
     @Query("UPDATE notes SET trashedAtMillis = NULL, editedAtMillis = :editedAtMillis WHERE id = :noteId")
     suspend fun restoreNote(noteId: Long, editedAtMillis: Long)
-
-    // ---------------- Period Plan ----------------
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertPeriodPlan(plan: PeriodPlanEntity): Long
-
-    @Query("SELECT * FROM period_plans ORDER BY startEpochDays ASC, id ASC")
-    fun observePeriodPlans(): Flow<List<PeriodPlanEntity>>
-
-    @Query(
-        "SELECT * FROM period_plans WHERE periodType = :periodType AND startEpochDays = :startEpochDays LIMIT 1"
-    )
-    suspend fun periodPlanFor(periodType: String, startEpochDays: Int): PeriodPlanEntity?
-
-    @Transaction
-    suspend fun getOrCreatePeriodPlan(
-        periodType: String,
-        startEpochDays: Int,
-        endEpochDays: Int
-    ): Long {
-        val existing = periodPlanFor(periodType, startEpochDays)
-        if (existing != null) return existing.id
-        return insertPeriodPlan(
-            PeriodPlanEntity(
-                periodType = periodType,
-                startEpochDays = startEpochDays,
-                endEpochDays = endEpochDays
-            )
-        )
-    }
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertPlanPriority(priority: PlanPriorityEntity): Long
-
-    @Query(
-        """
-        UPDATE plan_priorities
-        SET title = :title,
-            note = :note,
-            parentId = :parentId,
-            sortOrder = :sortOrder,
-            isDone = :isDone,
-            completedAtMillis = :completedAtMillis,
-            updatedAtMillis = :updatedAtMillis
-        WHERE id = :priorityId
-        """
-    )
-    suspend fun updatePlanPriority(
-        priorityId: Long,
-        title: String,
-        note: String,
-        parentId: Long?,
-        sortOrder: Int,
-        isDone: Boolean,
-        completedAtMillis: Long?,
-        updatedAtMillis: Long
-    )
-
-    @Query("DELETE FROM plan_priorities WHERE id = :priorityId")
-    suspend fun deletePlanPriority(priorityId: Long)
-
-    @Transaction
-    suspend fun deletePlanPriorityWithJoins(priorityId: Long) {
-        deletePlanPriorityTasksForPriority(priorityId)
-        deletePlanPriorityDailyPlanItemsForPriority(priorityId)
-        deletePlanPriority(priorityId)
-    }
-
-    @Query("SELECT * FROM plan_priorities ORDER BY sortOrder ASC, id ASC")
-    fun observePlanPriorities(): Flow<List<PlanPriorityEntity>>
-
-    @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM plan_priorities WHERE periodPlanId = :periodPlanId")
-    suspend fun nextPlanPrioritySortOrder(periodPlanId: Long): Int
-
-    @Query("UPDATE plan_priorities SET sortOrder = :sortOrder, updatedAtMillis = :updatedAtMillis WHERE id = :priorityId")
-    suspend fun updatePlanPrioritySortOrder(priorityId: Long, sortOrder: Int, updatedAtMillis: Long)
-
-    @Query(
-        """
-        UPDATE plan_priorities
-        SET isDone = :isDone,
-            completedAtMillis = :completedAtMillis,
-            updatedAtMillis = :updatedAtMillis
-        WHERE id = :priorityId
-        """
-    )
-    suspend fun setPlanPriorityDone(
-        priorityId: Long,
-        isDone: Boolean,
-        completedAtMillis: Long?,
-        updatedAtMillis: Long
-    )
-
-    @Query(
-        "UPDATE plan_priorities SET parentId = :parentId, updatedAtMillis = :updatedAtMillis WHERE id = :priorityId"
-    )
-    suspend fun setPlanPriorityParent(priorityId: Long, parentId: Long?, updatedAtMillis: Long)
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertPlanPriorityTask(link: PlanPriorityTaskEntity)
-
-    @Query("DELETE FROM plan_priority_tasks WHERE priorityId = :priorityId")
-    suspend fun deletePlanPriorityTasksForPriority(priorityId: Long)
-
-    @Query("DELETE FROM plan_priority_tasks WHERE taskId = :taskId")
-    suspend fun deletePlanPriorityTasksForTask(taskId: Long)
-
-    @Query("SELECT * FROM plan_priority_tasks")
-    fun observePlanPriorityTasks(): Flow<List<PlanPriorityTaskEntity>>
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertPlanPriorityDailyPlanItem(link: PlanPriorityDailyPlanItemEntity)
-
-    @Query("DELETE FROM plan_priority_daily_plan_items WHERE priorityId = :priorityId")
-    suspend fun deletePlanPriorityDailyPlanItemsForPriority(priorityId: Long)
-
-    @Query("DELETE FROM plan_priority_daily_plan_items WHERE dailyPlanItemId = :dailyPlanItemId")
-    suspend fun deletePlanPriorityDailyPlanItemsForDailyPlanItem(dailyPlanItemId: Long)
-
-    @Query("SELECT * FROM plan_priority_daily_plan_items")
-    fun observePlanPriorityDailyPlanItems(): Flow<List<PlanPriorityDailyPlanItemEntity>>
-
-    // ---------------- 12-Week Goals ----------------
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertTwelveWeekCycle(cycle: TwelveWeekCycleEntity): Long
-
-    @Query(
-        """
-        UPDATE twelve_week_cycles
-        SET title = :title,
-            status = :status,
-            reviewNote = :reviewNote,
-            completedAtMillis = :completedAtMillis
-        WHERE id = :cycleId
-        """
-    )
-    suspend fun updateTwelveWeekCycle(
-        cycleId: Long,
-        title: String,
-        status: String,
-        reviewNote: String,
-        completedAtMillis: Long?
-    )
-
-    @Query("SELECT * FROM twelve_week_cycles ORDER BY startEpochDays ASC")
-    fun observeTwelveWeekCycles(): Flow<List<TwelveWeekCycleEntity>>
-
-    @Query("SELECT COUNT(*) FROM twelve_week_cycles WHERE status = 'Active'")
-    suspend fun countActiveTwelveWeekCycles(): Int
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertTwelveWeekGoal(goal: TwelveWeekGoalEntity): Long
-
-    @Query(
-        """
-        UPDATE twelve_week_goals
-        SET title = :title,
-            note = :note,
-            finalStatus = :finalStatus,
-            updatedAtMillis = :updatedAtMillis
-        WHERE id = :goalId
-        """
-    )
-    suspend fun updateTwelveWeekGoal(
-        goalId: Long,
-        title: String,
-        note: String,
-        finalStatus: String?,
-        updatedAtMillis: Long
-    )
-
-    @Query("DELETE FROM twelve_week_goals WHERE id = :goalId")
-    suspend fun deleteTwelveWeekGoal(goalId: Long)
-
-    @Query("SELECT * FROM twelve_week_goals ORDER BY sortOrder ASC, id ASC")
-    fun observeTwelveWeekGoals(): Flow<List<TwelveWeekGoalEntity>>
-
-    @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM twelve_week_goals WHERE cycleId = :cycleId")
-    suspend fun nextTwelveWeekGoalSortOrder(cycleId: Long): Int
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertTwelveWeekCheckIn(checkIn: TwelveWeekCheckInEntity): Long
-
-    @Query(
-        """
-        UPDATE twelve_week_check_ins
-        SET note = :note,
-            updatedAtMillis = :updatedAtMillis
-        WHERE id = :checkInId
-        """
-    )
-    suspend fun updateTwelveWeekCheckIn(checkInId: Long, note: String, updatedAtMillis: Long)
-
-    @Query("SELECT * FROM twelve_week_check_ins ORDER BY weekIndex ASC")
-    fun observeTwelveWeekCheckIns(): Flow<List<TwelveWeekCheckInEntity>>
-
-    @Query("SELECT * FROM twelve_week_check_ins WHERE cycleId = :cycleId AND weekIndex = :weekIndex LIMIT 1")
-    suspend fun twelveWeekCheckInFor(cycleId: Long, weekIndex: Int): TwelveWeekCheckInEntity?
-
-    @Query("DELETE FROM twelve_week_goal_scores WHERE checkInId = :checkInId")
-    suspend fun deleteTwelveWeekGoalScoresForCheckIn(checkInId: Long)
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertTwelveWeekGoalScore(score: TwelveWeekGoalScoreEntity)
-
-    @Query("SELECT * FROM twelve_week_goal_scores")
-    fun observeTwelveWeekGoalScores(): Flow<List<TwelveWeekGoalScoreEntity>>
-
-    @Transaction
-    suspend fun replaceTwelveWeekScores(checkInId: Long, scores: List<TwelveWeekGoalScoreEntity>) {
-        deleteTwelveWeekGoalScoresForCheckIn(checkInId)
-        scores.forEach { insertTwelveWeekGoalScore(it) }
-    }
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertTwelveWeekGoalTask(link: TwelveWeekGoalTaskEntity)
-
-    @Query("DELETE FROM twelve_week_goal_tasks WHERE goalId = :goalId AND taskId = :taskId")
-    suspend fun deleteTwelveWeekGoalTask(goalId: Long, taskId: Long)
-
-    @Query("DELETE FROM twelve_week_goal_tasks WHERE taskId = :taskId")
-    suspend fun deleteTwelveWeekGoalTasksForTask(taskId: Long)
-
-    @Query("DELETE FROM twelve_week_goal_tasks WHERE goalId = :goalId")
-    suspend fun deleteTwelveWeekGoalTasksForGoal(goalId: Long)
-
-    @Query("SELECT * FROM twelve_week_goal_tasks ORDER BY sortOrder ASC, taskId ASC")
-    fun observeTwelveWeekGoalTasks(): Flow<List<TwelveWeekGoalTaskEntity>>
 
     // ---------------- Nested Documents ----------------
 

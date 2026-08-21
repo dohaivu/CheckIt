@@ -149,9 +149,10 @@ fun filterNestedTree(
     start: LocalDate?,
     end: LocalDate?,
     query: String = "",
-    hideChecked: Boolean = false
+    hideChecked: Boolean = false,
+    selectedTagIds: Set<Long> = emptySet()
 ): List<NestedItemNode> {
-    return roots.mapNotNull { filterNestedNode(it, start, end, query, hideChecked) }
+    return roots.mapNotNull { filterNestedNode(it, start, end, query, hideChecked, selectedTagIds) }
 }
 
 private fun filterNestedNode(
@@ -160,6 +161,7 @@ private fun filterNestedNode(
     end: LocalDate?,
     query: String,
     hideChecked: Boolean,
+    selectedTagIds: Set<Long> = emptySet(),
     forceKeep: Boolean = false
 ): NestedItemNode? {
     val item = node.item
@@ -167,7 +169,7 @@ private fun filterNestedNode(
     // 1. Hide Checked: if enabled and item is checked, prune it and its subtree entirely
     if (hideChecked && item.checked) return null
 
-    // 2. Determine if this node matches the POSITIVE criteria (Search + Date)
+    // 2. Determine if this node matches the POSITIVE criteria (Search + Date + Tags)
     
     // Date match: overlap with start/end if filter is provided
     val matchesDate = if (start != null && end != null) {
@@ -184,16 +186,21 @@ private fun filterNestedNode(
     } else {
         true
     }
+    val matchesTags = if (selectedTagIds.isNotEmpty()) {
+        item.tags.any { it.id in selectedTagIds }
+    } else {
+        true
+    }
 
-    // Direct match means it satisfies search and date constraints
-    val matchesSelf = matchesDate && matchesQuery
+    // Direct match means it satisfies search, date and tag constraints
+    val matchesSelf = matchesDate && matchesQuery && matchesTags
 
     // If an ancestor matched OR this node matches, we "force keep" descendants
     val shouldForceKeepDescendants = forceKeep || matchesSelf
 
     // 3. Recurse children
     val filteredChildren = node.children.mapNotNull {
-        filterNestedNode(it, start, end, query, hideChecked, shouldForceKeepDescendants)
+        filterNestedNode(it, start, end, query, hideChecked, selectedTagIds, shouldForceKeepDescendants)
     }
 
     // Keep node if:

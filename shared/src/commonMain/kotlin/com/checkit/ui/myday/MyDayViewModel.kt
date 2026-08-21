@@ -22,13 +22,12 @@ import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.SmartScheduleDailyPlanUseCase
 import com.checkit.domain.usecase.SprintTransitionUseCase
-import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.domain.usecase.UpdateJournalEntryUseCase
 import com.checkit.domain.usecase.UpsertDailyPlanItemUseCase
 import com.checkit.ui.UiEvent
 import com.checkit.ui.currentMyDayTimeMinutes
-import com.checkit.ui.journal.JournalContextPreset
+import com.checkit.ui.journal.JournalLabelPreset
 import com.checkit.ui.journal.JournalController
 import com.checkit.ui.today
 import kotlinx.coroutines.flow.Flow
@@ -55,7 +54,6 @@ class MyDayViewModel(
     observePeriodReviews: ObservePeriodReviewsUseCase,
     upsertDailyPlanItem: UpsertDailyPlanItemUseCase,
     addSuggestedTaskToMyDay: AddSuggestedTaskToMyDayUseCase,
-    syncKeyResultFromDailyPlan: SyncKeyResultFromDailyPlanUseCase,
     updateDailyPlanItemTime: UpdateDailyPlanItemTimeUseCase,
     smartSchedule: SmartScheduleDailyPlanUseCase,
     val sprintManager: SprintManager,
@@ -76,7 +74,6 @@ class MyDayViewModel(
         observePeriodReviews = observePeriodReviews,
         upsertDailyPlanItem = upsertDailyPlanItem,
         addSuggestedTaskToMyDay = addSuggestedTaskToMyDay,
-        syncKeyResultFromDailyPlan = syncKeyResultFromDailyPlan,
         updateDailyPlanItemTime = updateDailyPlanItemTime,
         smartSchedule = smartSchedule,
         sprintManager = sprintManager,
@@ -122,15 +119,11 @@ class MyDayViewModel(
     // Plan assist / suggestions
     fun openPlanAssist() = planAssist.openPlanAssist()
     fun dismissPlanAssist() = planAssist.dismissPlanAssist()
-    fun openSuggestions(
-        startTimeMinutes: Int? = null,
-        endTimeMinutes: Int? = null
-    ) = planAssist.openSuggestions(startTimeMinutes, endTimeMinutes)
+    fun openSuggestions(startTimeMinutes: Int? = null, endTimeMinutes: Int? = null) = planAssist.openSuggestions(startTimeMinutes, endTimeMinutes)
     fun dismissSuggestions() = planAssist.dismissSuggestions()
     fun addTaskFromSuggestion(task: TaskItem) = planAssist.addTaskFromSuggestion(task)
     fun addTaskToMyDay(task: TaskItem) = planAssist.addTaskToMyDay(task)
-    fun addDailyPlanItem(title: String, tagIds: List<Long>, nestedListItemId: Long? = null) = 
-        planAssist.addDailyPlanItem(title, tagIds, nestedListItemId)
+    fun addDailyPlanItem(title: String, tagIds: List<Long>, nestedListItemId: Long? = null) = planAssist.addDailyPlanItem(title, tagIds, nestedListItemId)
 
     // Smart scheduler
     fun smartSchedule() = smartScheduler.scheduleAll()
@@ -141,28 +134,25 @@ class MyDayViewModel(
     fun openNewJournalEntry() = journal.openNewJournalEntry()
     fun openJournalEditor(entry: JournalEntry) = journal.openJournalEditor(entry)
     fun dismissJournalEditor() = journal.dismissJournalEditor()
-    fun updateJournalEditorContext(value: String) = journal.updateJournalEditorContext(value)
+    fun updateJournalEditorLabel(value: String) = journal.updateJournalEditorLabel(value)
     fun updateJournalEditorContent(value: String) = journal.updateJournalEditorContent(value)
-    fun applyJournalContextPreset(preset: JournalContextPreset) = journal.applyJournalContextPreset(preset)
+    fun applyJournalLabelPreset(preset: JournalLabelPreset) = journal.applyJournalLabelPreset(preset)
     fun toggleJournalEditorMood(mood: String) = journal.toggleJournalEditorMood(mood)
     fun toggleJournalEditorTag(tagId: Long) = journal.toggleJournalEditorTag(tagId)
     fun saveJournalEditor() = journal.saveJournalEditor()
     fun deleteJournalEntry(entryId: Long) = journal.deleteJournalEntry(entryId)
 
     // Daily plan item editor
-    fun updateItemTime(item: DailyPlanItem, startTimeMinutes: Int, endTimeMinutes: Int) =
-        dailyPlanEditor.updateItemTime(item, startTimeMinutes, endTimeMinutes)
-    fun openDailyPlan(
-        startTimeMinutes: Int? = null,
-        endTimeMinutes: Int? = null,
-        date: LocalDate = today()
-    ) = dailyPlanEditor.openDailyPlan(startTimeMinutes, endTimeMinutes, date)
+    fun updateItemTime(item: DailyPlanItem, startTimeMinutes: Int, endTimeMinutes: Int) = dailyPlanEditor.updateItemTime(item, startTimeMinutes, endTimeMinutes)
+    fun openDailyPlan(title: String, tagIds: List<Long>, nestedListItemId: Long? = null) = dailyPlanEditor.openDailyPlan(title, tagIds, nestedListItemId)
+    fun openDailyPlan(startTimeMinutes: Int? = null, endTimeMinutes: Int? = null, date: LocalDate = today()) = dailyPlanEditor.openDailyPlan(startTimeMinutes, endTimeMinutes, date)
     fun dismissDailyPlanEditor() = dailyPlanEditor.dismissDailyPlanEditor()
     fun addDailyPlan() = dailyPlanEditor.addDailyPlan()
     fun saveDailyPlan(editor: DailyPlanItemEditorState): Boolean = dailyPlanEditor.saveDailyPlan(editor)
     fun openItemEditor(item: DailyPlanItem, date: LocalDate) = dailyPlanEditor.openItemEditor(item, date)
     fun updateTitle(title: String) = dailyPlanEditor.updateTitle(title)
     fun updateNote(note: String) = dailyPlanEditor.updateNote(note)
+    fun updateLabel(label: String) = dailyPlanEditor.updateLabel(label)
     fun updateStatus(isDone: Boolean) = dailyPlanEditor.updateStatus(isDone)
     fun updateEditorSource(source: DailyPlanItemSource) = dailyPlanEditor.updateEditorSource(source)
     fun updateTime(startTimeMinutes: Int?, endTimeMinutes: Int?) = dailyPlanEditor.updateTime(startTimeMinutes, endTimeMinutes)
@@ -173,8 +163,7 @@ class MyDayViewModel(
 
     // Sprints
     fun executeFabAction(action: FabAction) = sprints.executeFabAction(action)
-    fun startSprint(taskId: Long? = null, dailyPlanItemId: Long? = null, description: String = "", tagIds: List<Long> = emptyList()) =
-        sprints.startSprint(taskId, dailyPlanItemId, description, tagIds)
+    fun startSprint(taskId: Long? = null, dailyPlanItemId: Long? = null, description: String = "", tagIds: List<Long> = emptyList()) = sprints.startSprint(taskId, dailyPlanItemId, description, tagIds)
     fun startSprintByItemId(itemId: Long) = sprints.startSprintByItemId(itemId)
     fun startSprintWithTask(task: TaskItem) = sprints.startSprintWithTask(task)
     fun startSprintWithChoice(choice: SprintChoice) = sprints.startSprintWithChoice(choice)

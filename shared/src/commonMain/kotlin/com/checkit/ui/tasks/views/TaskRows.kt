@@ -1,22 +1,27 @@
 package com.checkit.ui.tasks.views
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,14 +30,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskType
-import com.checkit.domain.TwelveWeekGoal
+import com.checkit.ui.components.CompactDetailChip
 import com.checkit.ui.components.DateTimeRangeDetailChip
 import com.checkit.ui.components.DetailChip
 import com.checkit.ui.components.SupportingPills
@@ -41,7 +46,6 @@ import com.checkit.ui.duration
 import com.checkit.ui.tasks.HabitIcon
 import com.checkit.ui.tasks.NoteIcon
 import com.checkit.ui.tasks.SubtaskBriefList
-import com.checkit.ui.tasks.TacticIcon
 import com.checkit.ui.tasks.TaskIcon
 import com.checkit.ui.tasks.TaskListDisplayType
 import com.checkit.ui.tasks.cardColor
@@ -53,22 +57,22 @@ import com.checkit.ui.tasks.toDurationLabel
 @Composable
 internal fun TaskRow(
     task: TaskItem,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
     showList: Boolean = true,
-    displayType: TaskListDisplayType = TaskListDisplayType.Standard,
-    twelveWeekGoal: TwelveWeekGoal? = null,
+    displayType: TaskListDisplayType = TaskListDisplayType.Standard
 ) {
     BaseTaskRow(
         color = task.cardColor(),
+        modifier = modifier,
         isCompleted = task.status == TaskStatus.Completed,
         onClick = onClick,
-        elevation = if (task.status == TaskStatus.Completed) 0.dp else 2.dp
     ) {
         Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
             when (displayType) {
                 TaskListDisplayType.Brief -> BriefTaskRowContent(task)
-                TaskListDisplayType.Standard -> StandardTaskRowContent(task, showList, twelveWeekGoal = twelveWeekGoal)
-                TaskListDisplayType.Detail -> DetailTaskRowContent(task, showList, twelveWeekGoal = twelveWeekGoal)
+                TaskListDisplayType.Standard -> StandardTaskRowContent(task, showList)
+                TaskListDisplayType.Detail -> DetailTaskRowContent(task, showList)
             }
         }
     }
@@ -77,15 +81,16 @@ internal fun TaskRow(
 @Composable
 internal fun NoteRow(
     note: NoteItem,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
     showList: Boolean = true,
     displayType: TaskListDisplayType = TaskListDisplayType.Standard
 ) {
     BaseTaskRow(
         color = note.cardColor(),
+        modifier = modifier,
         isCompleted = note.status == TaskStatus.Completed,
         onClick = onClick,
-        elevation = if (note.status == TaskStatus.Completed) 0.dp else 2.dp
     ) {
         Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
             when (displayType) {
@@ -100,188 +105,42 @@ internal fun NoteRow(
 @Composable
 internal fun BaseTaskRow(
     color: Color,
+    modifier: Modifier = Modifier,
     isCompleted: Boolean,
     onClick: () -> Unit,
-    elevation: androidx.compose.ui.unit.Dp,
     content: @Composable RowScope.() -> Unit
 ) {
-    Card(
-        onClick = onClick,
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = elevation,
-            pressedElevation = 8.dp,
-            focusedElevation = 4.dp
-        )
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Top
-            ) {
-                Box(Modifier.width(4.dp))
-                content()
-            }
-
-            Box(Modifier.matchParentSize()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .width(4.dp)
-                        .background(color)
-                )
-            }
-
-            if (isCompleted) {
-                CompletedOverlay()
-            }
-        }
-    }
-}
-
-@Composable
-internal fun FlatBaseTaskRow(
-    color: Color,
-    isCompleted: Boolean,
-    onClick: () -> Unit,
-    elevation: androidx.compose.ui.unit.Dp,
-    content: @Composable RowScope.() -> Unit
-) {
-    Card(
-        onClick = onClick,
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = elevation,
-            pressedElevation = 8.dp,
-            focusedElevation = 4.dp
-        )
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Top
-            ) {
-                Box(Modifier.width(4.dp))
-                content()
-            }
-
-            Box(Modifier.matchParentSize()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .width(4.dp)
-                        .background(color)
-                )
-            }
-
-            if (isCompleted) {
-                CompletedOverlay()
-            }
-        }
-    }
-}
-
-@Composable
-internal fun OKRTaskContent(
-    task: TaskItem,
-    color: Color = MaterialTheme.colorScheme.primary
-) {
-    val isCompleted = task.status == TaskStatus.Completed
-    Row(
-        modifier = Modifier
+    Box(
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
-            .background(color.copy(alpha = 0.06f))
-            .padding(horizontal = 10.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        TaskIcon(
-            completed = isCompleted,
-            color = if (isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f) else task.priority.priorityColor()
-        )
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = task.name,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    textDecoration = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None
-                ),
-                color = if (isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurface,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(8.dp)
             )
-            if (task.subtasks.isNotEmpty()) {
-                Text(
-                    text = "${task.subtasks.count { it.isCompleted }}/${task.subtasks.size} subtasks",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = color.copy(alpha = 0.7f)
-                )
-            }
+            .clickable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top
+        ) {
+            Box(Modifier.width(4.dp))
+            content()
         }
 
-        task.doDate?.let {
-            DetailChip(
-                icon = Icons.Default.Event,
-                label = it.compact(),
-                isHighlighted = task.isOverdue(),
-                backgroundColor = Color.Transparent
+        Box(Modifier.matchParentSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(4.dp)
+                    .background(color)
             )
         }
-    }
-}
 
-@Composable
-internal fun OKRNoteContent(
-    note: NoteItem,
-    color: Color = MaterialTheme.colorScheme.primary
-) {
-    val isCompleted = note.status == TaskStatus.Completed
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(color.copy(alpha = 0.04f))
-            .padding(horizontal = 10.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        NoteIcon(note.status)
-        Column(modifier = Modifier.weight(1f)) {
-            if (note.title.isNotBlank()) {
-                Text(
-                    text = note.title,
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        textDecoration = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None
-                    ),
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            Text(
-                text = note.content,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (isCompleted) 0.5f else 0.7f),
-                maxLines = if (note.title.isBlank()) 2 else 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        note.date?.let {
-            DetailChip(
-                icon = Icons.Default.Event,
-                label = it.compact(),
-                isHighlighted = note.isOverdue(),
-                backgroundColor = Color.Transparent
-            )
+        if (isCompleted) {
+            CompletedOverlay()
         }
     }
 }
@@ -289,14 +148,12 @@ internal fun OKRNoteContent(
 @Composable
 internal fun BriefTaskRowContent(task: TaskItem) {
     Row(
-        modifier = Modifier.fillMaxWidth().fillMaxHeight().padding(horizontal = 10.dp, vertical = 9.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.fillMaxWidth().fillMaxHeight().padding(horizontal = 8.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (task.type == TaskType.Habit) {
             HabitIcon(task.status == TaskStatus.Completed, color = task.priority.priorityColor())
-        } else if (task.type == TaskType.Tactic) {
-            TacticIcon(task.status == TaskStatus.Completed, color = task.priority.priorityColor())
         } else {
             TaskIcon(
                 completed = task.status == TaskStatus.Completed,
@@ -311,59 +168,71 @@ internal fun BriefTaskRowContent(task: TaskItem) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
-
-        task.doDate?.let { DetailChip(Icons.Default.Event, it.compact(), isHighlighted = task.isOverdue()) }
+        if (!task.label.isNullOrEmpty()) {
+            Text(text = task.label,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            )
+        }
+        task.doDate?.let { CompactDetailChip(Icons.Default.Event, it.compact(), isHighlighted = task.isOverdue()) }
     }
 }
 
 @Composable
-internal fun StandardTaskRowContent(task: TaskItem, showList: Boolean, twelveWeekGoal: TwelveWeekGoal? = null) {
+internal fun StandardTaskRowContent(task: TaskItem, showList: Boolean) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         TaskTitleRow(task, descriptionMaxLines = 0)
-        DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes, isOverdue = task.isOverdue())
         task.subtasks.takeIf { it.isNotEmpty() }?.let { SubtaskProgressText(task) }
-        SupportingPills(
-            list = if (showList) task.list else null,
-            planPriority = task.planPriority,
-            keyResult = task.keyResult,
-            twelveWeekGoal = twelveWeekGoal,
-            tags = task.tags.take(2),
-            overflowCount = (task.tags.size - 2).coerceAtLeast(0)
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+
+            SupportingPills(
+                date = { DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes, isOverdue = task.isOverdue()) },
+                list = if (showList) task.list else null,
+                tags = task.tags.take(2),
+                overflowCount = (task.tags.size - 2).coerceAtLeast(0)
+            )
+        }
     }
 }
 
 @Composable
-internal fun DetailTaskRowContent(task: TaskItem, showList: Boolean, twelveWeekGoal: TwelveWeekGoal? = null) {
-    Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+internal fun DetailTaskRowContent(task: TaskItem, showList: Boolean) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
         TaskTitleRow(task, descriptionMaxLines = 3)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes, isOverdue = task.isOverdue())
-            duration(task.startTimeMinutes, task.endTimeMinutes)?.let { DetailChip(Icons.Default.Schedule, it.toDurationLabel()) }
-//            RepeatPill(task.repeatRRule)
-//            if (task.reminders.isNotEmpty()) DetailChip(Icons.Default.Notifications, "${task.reminders.size} reminders")
-        }
         SubtaskBriefList(task.subtasks)
-        SupportingPills(
-            list = if (showList) task.list else null,
-            planPriority = task.planPriority,
-            keyResult = task.keyResult,
-            twelveWeekGoal = twelveWeekGoal,
-            tags = task.tags
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            SupportingPills(
+                date = { DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes, isOverdue = task.isOverdue()) },
+                list = if (showList) task.list else null,
+                tags = task.tags
+            )
+        }
     }
 }
 
 @Composable
 internal fun BriefNoteRowContent(note: NoteItem) {
     Row(
-        modifier = Modifier.fillMaxWidth().fillMaxHeight().padding(horizontal = 10.dp, vertical = 9.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.fillMaxWidth().fillMaxHeight().padding(horizontal = 10.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         NoteIcon(note.status)
@@ -375,22 +244,44 @@ internal fun BriefNoteRowContent(note: NoteItem) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
-        note.date?.let { DetailChip(Icons.Default.Event, it.compact(), isHighlighted = note.isOverdue()) }
+
+        if (!note.label.isNullOrEmpty()) {
+            Text(text = note.label,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            )
+        }
+        note.date?.let { CompactDetailChip(Icons.Default.Event, it.compact(), isHighlighted = note.isOverdue()) }
     }
 }
 
 @Composable
 internal fun StandardNoteRowContent(note: NoteItem, showList: Boolean) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
             NoteIcon(note.status)
             Column(Modifier.weight(1f)) {
-                if (note.title.isNotBlank()) {
-                    Text(note.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(note.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+
+                    if (!note.label.isNullOrEmpty()) {
+                        Text(text = note.label,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
                 }
+
                 if (note.content.isNotBlank()) {
                     Text(
                         text = note.content.asAnnotatedString(),
@@ -403,10 +294,10 @@ internal fun StandardNoteRowContent(note: NoteItem, showList: Boolean) {
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            note.date?.let { DetailChip(Icons.Default.Event, it.compact(), isHighlighted = note.isOverdue()) }
+            note.date?.let { CompactDetailChip(Icons.Default.Event, it.compact(), isHighlighted = note.isOverdue()) }
             SupportingPills(
                 list = if (showList) note.list else null,
                 tags = note.tags,
@@ -419,15 +310,28 @@ internal fun StandardNoteRowContent(note: NoteItem, showList: Boolean) {
 @Composable
 internal fun DetailNoteRowContent(note: NoteItem, showList: Boolean) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
             NoteIcon(note.status)
             Column(Modifier.weight(1f)) {
-                if (note.title.isNotBlank()) {
-                    Text(note.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(note.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+
+                    if (!note.label.isNullOrEmpty()) {
+                        Text(text = note.label,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
                 }
+
                 if (note.content.isNotBlank()) {
                     Text(
                         text = note.content.asAnnotatedString(),
@@ -438,13 +342,25 @@ internal fun DetailNoteRowContent(note: NoteItem, showList: Boolean) {
                 }
             }
         }
-        note.date?.let { DetailChip(Icons.Default.Event, it.compact(), isHighlighted = note.isOverdue()) }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            note.date?.let {
+                CompactDetailChip(
+                    Icons.Default.Event,
+                    it.compact(),
+                    isHighlighted = note.isOverdue()
+                )
+            }
 
-        SupportingPills(
-            list = if (showList) note.list else null,
-            tags = note.tags,
-            overflowCount = 0
-        )
+            SupportingPills(
+                list = if (showList) note.list else null,
+                tags = note.tags,
+                overflowCount = 0
+            )
+        }
     }
 }
 
@@ -455,12 +371,10 @@ internal fun TaskTitleRow(
 ) {
     Row(
         verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         if (task.type == TaskType.Habit) {
             HabitIcon(task.status == TaskStatus.Completed, task.priority.priorityColor())
-        } else if (task.type == TaskType.Tactic) {
-            TacticIcon(task.status == TaskStatus.Completed, task.priority.priorityColor())
         } else {
             TaskIcon(
                 completed = task.status == TaskStatus.Completed,
@@ -468,7 +382,7 @@ internal fun TaskTitleRow(
             )
         }
         Column(Modifier.weight(1f)) {
-            Text(task.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text(task.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, lineHeight = 20.sp)
             if (descriptionMaxLines > 0 && task.description.isNotBlank()) {
                 Text(
                     task.description,
@@ -479,6 +393,15 @@ internal fun TaskTitleRow(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
+        }
+
+        if (!task.label.isNullOrEmpty()) {
+            Text(text = task.label,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            )
         }
     }
 }

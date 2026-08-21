@@ -84,10 +84,15 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import checkit.shared.generated.resources.Res
@@ -112,15 +117,18 @@ import com.checkit.domain.NestedManualMetric
 import com.checkit.domain.NestedMetricSummary
 import com.checkit.domain.NestedMetricUnit
 import com.checkit.domain.NestedTextStyle
-import com.checkit.domain.PlanFocus
+import com.checkit.domain.TagItem
+import com.checkit.domain.FocusPeriod
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.filterNestedTree
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DateRangePill
-import com.checkit.ui.plan.PlanPeriodHeader
+import com.checkit.ui.components.FocusPeriodHeader
 import com.checkit.ui.components.PeriodPicker
 import com.checkit.ui.components.TagOptionMenu
+import com.checkit.ui.components.TagPill
 import com.checkit.ui.components.TagPlain
+import com.checkit.ui.tasks.noRippleClickable
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -140,7 +148,8 @@ internal fun NestedListEditorScreen(
             start = state.filters.focus?.start,
             end = state.filters.focus?.endInclusive,
             query = state.filters.query,
-            hideChecked = state.filters.hideChecked
+            hideChecked = state.filters.hideChecked,
+            selectedTagIds = state.filters.selectedTagIds
         )
     } else {
         unfilteredRoots
@@ -156,9 +165,12 @@ internal fun NestedListEditorScreen(
                     query = state.filters.query,
                     hideChecked = state.filters.hideChecked,
                     isActive = state.filters.isActive,
+                    availableTags = state.availableTags,
+                    selectedTagIds = state.filters.selectedTagIds,
                     onFocusChange = viewModel::updateFilterFocus,
                     onQueryChange = viewModel::updateFilterQuery,
                     onHideCheckedChange = { viewModel.toggleHideChecked() },
+                    onTagToggle = viewModel::updateFilterTags,
                     onReset = viewModel::resetFilters,
                     onPreviousPeriod = viewModel::previousFilterPeriod,
                     onNextPeriod = viewModel::nextFilterPeriod,
@@ -195,7 +207,9 @@ internal fun NestedListEditorScreen(
                     onAddToDailyPlan = {
                         state.selectedItemId?.let { id ->
                             state.tree.nodeById[id]?.item?.let { item ->
-                                onAddToDailyPlan(item.text, item.tags.map { it.id }, item.id)
+                                val parentTitle = state.tree.nodeById[item.parentId]?.item?.text
+                                val title = parentTitle?.let { "$it - ${item.text}" } ?: item.text
+                                onAddToDailyPlan(title, item.tags.map { it.id }, item.id)
                             }
                         }
                     }
@@ -254,6 +268,10 @@ internal fun NestedListEditorScreen(
                             )
                         }
                     }
+
+                    item {
+                        Spacer(modifier = Modifier.height(40.dp))
+                    }
                 }
             }
             if (!state.selection.isActive) {
@@ -305,22 +323,22 @@ internal fun NestedListEditorScreen(
             var note by remember(overlay.itemId) { mutableStateOf(overlay.initialText) }
             AlertDialog(
                 onDismissRequest = viewModel::stopEditNote,
+                properties = DialogProperties(usePlatformDefaultWidth = false),
                 title = { Text(stringResource(Res.string.nested_edit_note)) },
                 text = {
                     OutlinedTextField(
                         value = note,
                         onValueChange = { note = it.take(2_000) },
-                        label = { Text("Note") },
-                        placeholder = { Text("Add context or details") },
+                        placeholder = { Text("Add label or details") },
                         minLines = 4,
                         maxLines = 8,
-                        supportingText = { Text("${note.length}/2,000") },
+                        supportingText = { Text("${note.length}/2,000", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.End) },
                         modifier = Modifier.fillMaxWidth()
                     )
                 },
                 confirmButton = {
                     TextButton(onClick = { viewModel.saveItemNote(overlay.itemId, note) }) {
-                        Text(stringResource(Res.string.nested_edit_note))
+                        Text("Save")
                     }
                 },
                 dismissButton = {
@@ -337,9 +355,9 @@ internal fun NestedListEditorScreen(
                 node = node,
                 summary = state.tree.metricSummaryById[itemId] ?: NestedMetricSummary(),
                 onDismiss = { detailsItemId = null },
-                onSave = { actualMinutes, policy, showTrackedMinutes, manualMetrics ->
-                    viewModel.updateItemMetricSettings(itemId, actualMinutes, policy, showTrackedMinutes)
-                    viewModel.replaceManualMetrics(itemId, manualMetrics)
+                onSave = { mins, pol, show, metrics ->
+                    viewModel.updateItemMetricSettings(itemId, mins, pol, show)
+                    viewModel.replaceManualMetrics(itemId, metrics)
                     detailsItemId = null
                 }
             )
@@ -371,10 +389,10 @@ private fun NestedFormattingBottomBar(
         modifier = Modifier
             .horizontalScroll(rememberScrollState())
             .background(
-                MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.90f),
+                MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.95f),
                 RoundedCornerShape(18.dp)
             )
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+            .padding(horizontal = 8.dp, vertical = 0.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)
     ) {
@@ -493,27 +511,36 @@ private fun NestedFormattingBottomBar(
     }
 
     if (showPeriodPicker) {
+        var startDate by remember { mutableStateOf(item.startDate) }
+        var endDate by remember { mutableStateOf(item.endDate) }
         AlertDialog(
             onDismissRequest = { showPeriodPicker = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false),
             title = {
                 Text(
-                    text = "Timeframe",
+                    text = "Date Period",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
             },
             text = {
                 PeriodPicker(
-                    startDate = item.startDate,
-                    endDate = item.endDate,
+                    startDate = startDate,
+                    endDate = endDate,
                     onRangeChange = { start, end ->
-                        onDateRangeChange(start, end)
+                        startDate = start
+                        endDate = end
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
             },
             confirmButton = {
-                TextButton(onClick = { showPeriodPicker = false }) {
+                TextButton(
+                    onClick = {
+                        onDateRangeChange(startDate, endDate)
+                        showPeriodPicker = false
+                    }
+                ) {
                     Text("Done")
                 }
             },
@@ -623,15 +650,45 @@ private fun NestedItemMetadataPreview(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (summary.doneItemCount > 0) MetricChip("${summary.doneItemCount} done")
-            if (showTracked && summary.trackedMinutes > 0) MetricChip("${summary.trackedMinutes} min")
+            if (summary.doneItemCount > 0) {
+                MetricChip(buildAnnotatedString {
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)) {
+                        append("${summary.doneItemCount}")
+                    }
+                    append(" done")
+                })
+            }
+            if (showTracked && summary.trackedMinutes > 0) {
+                MetricChip(buildAnnotatedString {
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)) {
+                        append("${summary.trackedMinutes}")
+                    }
+                    append(" min")
+                })
+            }
             item.manualMetrics.filter { it.enabled }.forEach { metric ->
                 if (metric.value.isNotBlank()) {
-                    val target = metric.targetValue?.takeIf { it.isNotBlank() }?.let { " / $it" }.orEmpty()
-                    val unit = metric.displayUnit()
                     MetricChip(
-                        listOfNotNull(metric.name.takeIf { it.isNotBlank() }, "${metric.value}$target", unit)
-                            .joinToString(" "),
+                        content = buildAnnotatedString {
+                            if (metric.name.isNotBlank()) {
+                                append(metric.name)
+                                append(" ")
+                            }
+                            withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)) {
+                                append(metric.value)
+                            }
+                            if (!metric.targetValue.isNullOrBlank()) {
+                                append("/")
+                                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                                    append(metric.targetValue)
+                                }
+                            }
+                            val unit = metric.displayUnit()
+                            if (unit != null) {
+                                append(" ")
+                                append(unit)
+                            }
+                        },
                         manual = true
                     )
                 }
@@ -654,33 +711,33 @@ private fun NestedItemMetadataPreview(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                item.tags.forEach { tag -> TagPlain(tag) }
                 if (hasDateRange) {
                     DateRangePill(
                         startDate = item.startDate,
                         endDate = item.endDate
                     )
                 }
+                item.tags.forEach { tag -> TagPill(tag, isCompact = true) }
             }
         }
     }
 }
 
 @Composable
-private fun MetricChip(text: String, manual: Boolean = false) {
-    androidx.compose.material3.Surface(
-        shape = RoundedCornerShape(6.dp),
-        color = if (manual) {
-            MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.88f)
-        } else {
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f)
-        }
+private fun MetricChip(content: AnnotatedString, manual: Boolean = false) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(
+                if (manual) MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.85f)
+                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+            )
+            .padding(horizontal = 6.dp, vertical = 2.dp)
     ) {
         Text(
-            text = text,
+            text = content,
             style = MaterialTheme.typography.labelSmall,
             color = if (manual) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
             maxLines = 1
         )
     }
@@ -1205,13 +1262,16 @@ private fun findAncestorChain(nodes: List<NestedItemNode>, id: Long): List<Neste
 
 @Composable
 private fun NestedListFilterBar(
-    focus: PlanFocus?,
+    focus: FocusPeriod?,
     query: String,
     hideChecked: Boolean,
     isActive: Boolean,
-    onFocusChange: (PlanFocus) -> Unit,
+    availableTags: List<TagItem>,
+    selectedTagIds: Set<Long>,
+    onFocusChange: (FocusPeriod) -> Unit,
     onQueryChange: (String) -> Unit,
     onHideCheckedChange: (Boolean) -> Unit,
+    onTagToggle: (Long) -> Unit,
     onReset: () -> Unit,
     onPreviousPeriod: () -> Unit,
     onNextPeriod: () -> Unit,
@@ -1239,12 +1299,12 @@ private fun NestedListFilterBar(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.clip(RoundedCornerShape(4.dp)).clickable { onReset() }.padding(horizontal = 4.dp, vertical = 2.dp)
+                    modifier = Modifier.clip(RoundedCornerShape(4.dp)).clickable { onReset() }
                 )
             }
         }
 
-        PlanPeriodHeader(
+        FocusPeriodHeader(
             focus = focus,
             onFocusSelected = onFocusChange,
             onPreviousPeriod = onPreviousPeriod,
@@ -1255,9 +1315,9 @@ private fun NestedListFilterBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 6.dp),
+                .padding(horizontal = 12.dp, vertical = 0.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(0.dp)
         ) {
             AppOutlinedTextField(
                 value = query,
@@ -1267,7 +1327,7 @@ private fun NestedListFilterBar(
                 maxLines = 1,
                 modifier = Modifier
                     .weight(1f)
-                    .height(40.dp)
+                    .height(36.dp)
                     .clip(RoundedCornerShape(10.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
                     .border(
@@ -1275,13 +1335,19 @@ private fun NestedListFilterBar(
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
                         shape = RoundedCornerShape(10.dp)
                     ),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+            )
+
+            TagOptionMenu(
+                availableTags = availableTags,
+                selectedTagIds = selectedTagIds,
+                onTagToggle = onTagToggle
             )
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .height(40.dp)
+                    .height(36.dp)
                     .clip(RoundedCornerShape(10.dp))
                     .clickable { onHideCheckedChange(!hideChecked) }
                     .background(
@@ -1311,7 +1377,7 @@ private fun NestedListFilterBar(
             }
         }
         HorizontalDivider(
-            modifier = Modifier.padding(top = 4.dp),
+            modifier = Modifier.padding(top = 2.dp),
             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
         )
     }
@@ -1329,7 +1395,7 @@ private fun BreadcrumbBar(
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface)
             .horizontalScroll(scrollState)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .padding(horizontal = 12.dp, vertical = 0.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
@@ -1478,7 +1544,7 @@ private fun SelectionToolbar(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.primaryContainer)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+            .padding(horizontal = 8.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
@@ -1619,7 +1685,7 @@ private fun NestedTree(
                     modifier = Modifier
                         .width(24.dp)
                         .height(36.dp)
-                        .clickable(
+                        .noRippleClickable(
                             enabled = node.hasChildren,
                             onClick = { viewModel.toggleCollapsed(item.id) }
                         ),
@@ -1746,7 +1812,7 @@ private fun NestedTree(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = priorityColor(item.priority),
-                        modifier = Modifier.padding(horizontal = 6.dp)
+                        modifier = Modifier.padding(end = 4.dp).align(Alignment.Top)
                     )
                 }
 
@@ -1810,14 +1876,14 @@ private fun flattenVisibleNodes(roots: List<NestedItemNode>): List<VisibleNested
     val result = ArrayList<VisibleNestedRow>()
     val stack = ArrayDeque<NestedTraversalEntry>()
     
-    roots.asReversed().forEachIndexed { index, node ->
+    roots.asReversed().forEach { node ->
         stack.addLast(
             NestedTraversalEntry(
                 node = node,
                 depth = 0,
                 isVisible = true,
                 ancestorChecked = false,
-                continuingLevels = if (index > 0) setOf(0) else emptySet()
+                continuingLevels = emptySet()
             )
         )
     }

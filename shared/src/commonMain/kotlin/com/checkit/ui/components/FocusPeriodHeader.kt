@@ -1,7 +1,6 @@
-package com.checkit.ui.plan
+package com.checkit.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -16,14 +15,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -32,7 +28,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -44,8 +39,8 @@ import checkit.shared.generated.resources.plan_period_quarter
 import checkit.shared.generated.resources.plan_period_week
 import checkit.shared.generated.resources.plan_period_year
 import checkit.shared.generated.resources.plan_previous_period
-import com.checkit.domain.PlanFocus
-import com.checkit.domain.PlanPeriod
+import com.checkit.domain.FocusPeriod
+import com.checkit.domain.Period
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.localizedName
 import com.checkit.ui.localizedMonthTitle
@@ -58,9 +53,9 @@ import kotlinx.datetime.toLocalIsoWeekDate
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-fun PlanPeriodHeader(
-    focus: PlanFocus?,
-    onFocusSelected: (PlanFocus) -> Unit,
+fun FocusPeriodHeader(
+    focus: FocusPeriod?,
+    onFocusSelected: (FocusPeriod) -> Unit,
     onPreviousPeriod: () -> Unit,
     onNextPeriod: () -> Unit,
     onCurrentPeriod: () -> Unit,
@@ -68,136 +63,144 @@ fun PlanPeriodHeader(
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
-        PlanPeriodSwitcher(
+        FocusPeriodSwitcher(
             selectedPeriod = focus?.period,
             onPeriodSelected = { period ->
                 val anchor = if (focus?.contains(today()) == true) today() else focus?.anchorDate ?: today()
-                onFocusSelected(PlanFocus(period, anchor))
+                onFocusSelected(FocusPeriod(period, anchor))
             }
         )
         if (focus != null) {
-            PlanPeriodNavHeader(
+            FocusPeriodNavHeader(
                 focus = focus,
                 onPrevious = onPreviousPeriod,
                 onNext = onNextPeriod,
                 onCurrentPeriod = onCurrentPeriod
             )
-            PlanBreadcrumbRow(focus = focus, onZoomOutTo = onFocusSelected)
+            FocusPeriodBreadcrumbRow(focus = focus, onZoomOutTo = onFocusSelected)
         }
     }
 }
 
 @Composable
-internal fun PlanPeriodSwitcher(
-    selectedPeriod: PlanPeriod?,
-    onPeriodSelected: (PlanPeriod) -> Unit,
+internal fun FocusPeriodSwitcher(
+    selectedPeriod: Period?,
+    onPeriodSelected: (Period) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(44.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+            .padding(4.dp)
     ) {
-        PlanPeriod.entries.forEach { period ->
-            val selected = selectedPeriod == period
-            val tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f)
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(42.dp)
-                    .clip(CircleShape)
-                    .background(
-                        if (selected) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.surface
-                        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Period.entries.forEach { period ->
+                val selected = selectedPeriod == period
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(30.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(
+                            if (selected) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                androidx.compose.ui.graphics.Color.Transparent
+                            }
+                        )
+                        .clickable { onPeriodSelected(period) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = period.shortLabel(),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                        color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
                     )
-                    .border(1.dp, tint, CircleShape)
-                    .clickable { onPeriodSelected(period) }
-                    .padding(horizontal = 4.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = period.shortLabel(),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
-                )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun PlanPeriodNavHeader(
-    focus: PlanFocus,
+private fun FocusPeriodNavHeader(
+    focus: FocusPeriod,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     onCurrentPeriod: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(40.dp)
+            .background(
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
+                RoundedCornerShape(12.dp)
+            )
+            .padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
+        IconButton(onClick = onPrevious) {
+            Icon(
+                Icons.Default.ChevronLeft,
+                contentDescription = stringResource(Res.string.plan_previous_period),
+                modifier = Modifier.size(20.dp)
+            )
+        }
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(62.dp)
-                .padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .weight(1f)
+                .fillMaxHeight()
+                .clickable(onClick = onCurrentPeriod),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
         ) {
-            IconButton(onClick = onPrevious) {
-                Icon(Icons.Default.ChevronLeft, contentDescription = stringResource(Res.string.plan_previous_period))
-            }
-            Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .clickable(onClick = onCurrentPeriod),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.CalendarMonth,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.width(12.dp))
-                Text(
-                    text = focus.title(),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-            IconButton(onClick = onNext) {
-                Icon(Icons.Default.ChevronRight, contentDescription = stringResource(Res.string.plan_next_period))
-            }
+            Icon(
+                imageVector = Icons.Default.CalendarMonth,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = focus.title(),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+        IconButton(onClick = onNext) {
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = stringResource(Res.string.plan_next_period),
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }
 
 @Composable
-private fun PlanBreadcrumbRow(
-    focus: PlanFocus,
-    onZoomOutTo: (PlanFocus) -> Unit
+private fun FocusPeriodBreadcrumbRow(
+    focus: FocusPeriod,
+    onZoomOutTo: (FocusPeriod) -> Unit
 ) {
     val crumbs = buildList {
-        PlanPeriod.entries.forEach { period ->
+        Period.entries.forEach { period ->
             if (period.ordinal <= focus.period.ordinal) {
-                val crumbFocus = PlanFocus(period, focus.anchorDate)
-                add(PlanCrumb(period, crumbFocus, crumbFocus.crumbLabel()))
+                val crumbFocus = FocusPeriod(period, focus.anchorDate)
+                add(FocusPeriodCrumb(period, crumbFocus, crumbFocus.crumbLabel()))
             }
         }
     }
@@ -236,47 +239,47 @@ private fun PlanBreadcrumbRow(
     }
 }
 
-private data class PlanCrumb(
-    val period: PlanPeriod,
-    val focus: PlanFocus,
+private data class FocusPeriodCrumb(
+    val period: Period,
+    val focus: FocusPeriod,
     val label: String
 )
 
 @Composable
-private fun PlanPeriod.shortLabel(): String = when (this) {
-    PlanPeriod.Year -> stringResource(Res.string.plan_period_year)
-    PlanPeriod.Quarter -> stringResource(Res.string.plan_period_quarter)
-    PlanPeriod.Month -> stringResource(Res.string.plan_period_month)
-    PlanPeriod.Week -> stringResource(Res.string.plan_period_week)
-    PlanPeriod.Day -> stringResource(Res.string.plan_period_day)
+private fun Period.shortLabel(): String = when (this) {
+    Period.Year -> stringResource(Res.string.plan_period_year)
+    Period.Quarter -> stringResource(Res.string.plan_period_quarter)
+    Period.Month -> stringResource(Res.string.plan_period_month)
+    Period.Week -> stringResource(Res.string.plan_period_week)
+    Period.Day -> stringResource(Res.string.plan_period_day)
 }
 
 @Composable
-internal fun PlanFocus.title(): String = when (period) {
-    PlanPeriod.Year -> "${start.year}"
-    PlanPeriod.Quarter -> {
-        val quarter = ((start.monthNumber - 1) / 3) + 1
+internal fun FocusPeriod.title(): String = when (period) {
+    Period.Year -> "${start.year}"
+    Period.Quarter -> {
+        val quarter = ((start.month.number - 1) / 3) + 1
         "Q$quarter ${start.year}"
     }
-    PlanPeriod.Month -> start.localizedMonthTitle()
-    PlanPeriod.Week -> weekRangeTitle(start, endInclusive)
-    PlanPeriod.Day -> start.localizedCompactDateWithDayName()
+    Period.Month -> start.localizedMonthTitle()
+    Period.Week -> weekRangeTitle(start, endInclusive)
+    Period.Day -> start.localizedCompactDateWithDayName()
 }
 
 /** Compact per-level label for the breadcrumb; drops year/month info already shown by ancestor crumbs. */
 @Composable
-internal fun PlanFocus.crumbLabel(): String = when (period) {
-    PlanPeriod.Year -> "${start.year}"
-    PlanPeriod.Quarter -> {
+internal fun FocusPeriod.crumbLabel(): String = when (period) {
+    Period.Year -> "${start.year}"
+    Period.Quarter -> {
         val quarter = ((start.month.number - 1) / 3) + 1
         "Q$quarter"
     }
-    PlanPeriod.Month -> start.month.localizedName()
-    PlanPeriod.Week -> {
+    Period.Month -> start.month.localizedName()
+    Period.Week -> {
         val week = start.toLocalIsoWeekDate().isoWeekNumber
         "W$week ${start.day} - ${endInclusive.day}"
     }
-    PlanPeriod.Day -> "${start.day} ${start.dayOfWeek.localizedShortName()}"
+    Period.Day -> "${start.day} ${start.dayOfWeek.localizedShortName()}"
 }
 
 @Composable

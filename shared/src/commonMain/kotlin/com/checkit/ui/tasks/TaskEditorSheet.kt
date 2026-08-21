@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,6 +25,7 @@ import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.RestoreFromTrash
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.WbSunny
@@ -36,36 +38,35 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
-import com.checkit.domain.KeyResult
 import com.checkit.domain.ListItem
-import com.checkit.domain.PlanPriority
 import com.checkit.domain.TagItem
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskType
-import com.checkit.domain.TwelveWeekGoal
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DatePicker
 import com.checkit.ui.components.EditorOverflowMenu
-import com.checkit.ui.components.KeyResultPill
+import com.checkit.ui.components.LabelSuggestions
 import com.checkit.ui.components.ListPicker
 import com.checkit.ui.components.MarkdownVisualTransformation
 import com.checkit.ui.components.PriorityPicker
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.components.TimeRangePicker
-import com.checkit.ui.components.TwelveWeekGoalPill
-import com.checkit.ui.plan.PlanPriorityPill
 import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
 
@@ -75,10 +76,8 @@ internal fun TaskEditorSheet(
     editor: TaskEditorState,
     availableLists: List<ListItem>,
     availableTags: List<TagItem>,
-    availableKeyResults: List<KeyResult>,
-    availablePlanPriorities: List<PlanPriority>,
-    availableTwelveWeekGoals: List<TwelveWeekGoal>,
-    actions: TaskEditorActions
+    actions: TaskEditorActions,
+    recentLabels: List<String> = emptyList()
 ) {
     val onDismiss = actions.onDismiss
     val onSave = actions.onSave
@@ -97,9 +96,7 @@ internal fun TaskEditorSheet(
     val onDailyPlanDelete = actions.onDailyPlanDelete
     val onDailyPlanStartSprint = actions.onDailyPlanStartSprint
     val onDailyPlanStartOngoingSprint = actions.onDailyPlanStartOngoingSprint
-    val onTaskRepeatChange = actions.onTaskRepeatChange
     val onTaskPriorityChange = actions.onTaskPriorityChange
-    val onTaskReminderToggle = actions.onTaskReminderToggle
     val onSubTaskToggle = actions.onSubTaskToggle
     val onSubTaskAdd = actions.onSubTaskAdd
     val onSubTaskNameChange = actions.onSubTaskNameChange
@@ -113,6 +110,9 @@ internal fun TaskEditorSheet(
     val onNoteListChange = actions.onNoteListChange
     val onNoteDateChange = actions.onNoteDateChange
     val onNoteStartTimeChange = actions.onNoteStartTimeChange
+    val onPinToggle = actions.onPinToggle
+    val onTaskLabelChange = actions.onTaskLabelChange
+    val onNoteLabelChange = actions.onNoteLabelChange
 
     AppEditorBottomSheet(
         onDismiss = onDismiss,
@@ -156,23 +156,20 @@ internal fun TaskEditorSheet(
                             form = editor,
                             availableLists = availableLists,
                             availableTags = availableTags,
-                            availableKeyResults = availableKeyResults,
-                            availablePlanPriorities = availablePlanPriorities,
-                            availableTwelveWeekGoals = availableTwelveWeekGoals,
+                            recentLabels = recentLabels,
                             onNameChange = onTaskNameChange,
                             onListChange = onTaskListChange,
                             onDescriptionChange = onTaskDescriptionChange,
                             onDoDateChange = onTaskDoDateChange,
                             onTimeChange = onTaskTimeChange,
-                            onRepeatChange = onTaskRepeatChange,
                             onPriorityChange = onTaskPriorityChange,
-                            onReminderToggle = onTaskReminderToggle,
                             onSubTaskToggle = onSubTaskToggle,
                             onSubTaskAdd = onSubTaskAdd,
                             onSubTaskNameChange = onSubTaskNameChange,
                             onSubTaskRemove = onSubTaskRemove,
                             onSubTaskMove = onSubTaskMove,
                             onTagToggle = onTaskTagToggle,
+                            onLabelChange = onTaskLabelChange,
                             onNewTagClick = onNewTagClick,
                             enabled = editor.isFormEditable()
                         )
@@ -185,12 +182,14 @@ internal fun TaskEditorSheet(
                             form = editor,
                             availableLists = availableLists,
                             availableTags = availableTags,
+                            recentLabels = recentLabels,
                             onTitleChange = onNoteTitleChange,
                             onContentChange = onNoteContentChange,
                             onListChange = onNoteListChange,
                             onDateChange = onNoteDateChange,
                             onStartTimeChange = onNoteStartTimeChange,
                             onTagToggle = onNoteTagToggle,
+                            onLabelChange = onNoteLabelChange,
                             onNewTagClick = onNewTagClick,
                             enabled = editor.isFormEditable()
                         )
@@ -201,6 +200,10 @@ internal fun TaskEditorSheet(
         SheetFooter(
             canDelete = editor.canDelete(),
             isTrashed = editor.isTrashed(),
+            isPinned = when(editor) {
+                is TaskEditorState.TaskForm -> editor.isPinned
+                is TaskEditorState.NoteForm -> editor.isPinned
+            },
             isAddMode = editor.isAddMode(),
             showAddToMyDay = editor.shouldShowAddToMyDay(),
             isCompletable = editor.isCompletableView(),
@@ -210,6 +213,7 @@ internal fun TaskEditorSheet(
             onDelete = onDelete,
             onComplete = onComplete,
             onOpen = onOpen,
+            onPinToggle = onPinToggle,
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
         )
     }
@@ -259,6 +263,7 @@ private fun TrashedStatusSection(
 private fun SheetFooter(
     canDelete: Boolean,
     isTrashed: Boolean,
+    isPinned: Boolean,
     isAddMode: Boolean,
     showAddToMyDay: Boolean,
     isCompletable: Boolean,
@@ -268,6 +273,7 @@ private fun SheetFooter(
     onDelete: () -> Unit,
     onComplete: () -> Unit,
     onOpen: () -> Unit,
+    onPinToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val showOptionsMenu = (canDelete || isCompletable || isOpenable) && !isTrashed
@@ -291,6 +297,22 @@ private fun SheetFooter(
 
         if (showOptionsMenu) {
             EditorOverflowMenu { onDismiss ->
+                if (!isTrashed && (isCompletable || isOpenable || !isAddMode)) {
+                    DropdownMenuItem(
+                        text = { Text(if (isPinned) "Unpin" else "Pin") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.PushPin,
+                                contentDescription = if (isPinned) "Unpin" else "Pin",
+                                tint = if (isPinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        onClick = {
+                            onDismiss()
+                            onPinToggle()
+                        }
+                    )
+                }
                 if (isCompletable) {
                     DropdownMenuItem(
                         text = { Text("Complete") },
@@ -331,34 +353,62 @@ private fun TaskFormContent(
     form: TaskEditorState.TaskForm,
     availableLists: List<ListItem>,
     availableTags: List<TagItem>,
-    availableKeyResults: List<KeyResult>,
-    availablePlanPriorities: List<PlanPriority>,
-    availableTwelveWeekGoals: List<TwelveWeekGoal>,
     onNameChange: (String) -> Unit,
     onListChange: (Long) -> Unit,
     onDescriptionChange: (String) -> Unit,
     onDoDateChange: (LocalDate?) -> Unit,
     onTimeChange: (Int?, Int?) -> Unit,
-    onRepeatChange: (RepeatPreset) -> Unit,
     onPriorityChange: (TaskPriority) -> Unit,
-    onReminderToggle: (Int) -> Unit,
     onSubTaskToggle: (Int) -> Unit,
     onSubTaskAdd: () -> Unit,
     onSubTaskNameChange: (Int, String) -> Unit,
     onSubTaskRemove: (Int) -> Unit,
     onSubTaskMove: (Int, Int) -> Unit,
     onTagToggle: (Long) -> Unit,
+    onLabelChange: (String) -> Unit,
     onNewTagClick: () -> Unit,
+    recentLabels: List<String>,
     enabled: Boolean = true
 ) {
     val isHabit = form.type == TaskType.Habit
-    val isTactic = form.type == TaskType.Tactic
     val namePlaceholder = when (form.type) {
         TaskType.Task -> "What would you like to do?"
         TaskType.Habit -> "What habit do you want to build?"
-        TaskType.Tactic -> "What tactic will move your goal forward?"
     }
+    var labelFocused by remember { mutableStateOf(false) }
+
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            AppOutlinedTextField(
+                value = form.label.orEmpty(),
+                onValueChange = onLabelChange,
+                modifier = Modifier
+                    .padding(start = 4.dp)
+                    .widthIn(max = 80.dp)
+                    .onFocusChanged { labelFocused = it.isFocused },
+                textStyle = MaterialTheme.typography.labelSmall.copy(
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                ),
+                maxLines = 1,
+                placeholder = "Add label",
+                enabled = enabled,
+                contentPadding = PaddingValues(horizontal = 0.dp, vertical = 2.dp)
+            )
+
+            if (labelFocused) {
+                LabelSuggestions(
+                    currentLabel = form.label.orEmpty(),
+                    recentLabels = recentLabels,
+                    onLabelSelect = onLabelChange,
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                )
+            }
+        }
+
         if (isHabit) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -370,23 +420,6 @@ private fun TaskFormContent(
                 )
                 Text(
                     text = "Every day · auto-added to My Day",
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                PriorityPicker(selected = form.priority, onSelect = onPriorityChange, enabled = enabled)
-            }
-        } else if (isTactic) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                TacticIcon(
-                    completed = form.status == TaskStatus.Completed,
-                    color = form.priority.priorityColor()
-                )
-                Text(
-                    text = "12-Week Tactic",
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -450,20 +483,6 @@ private fun TaskFormContent(
             enabled = enabled
         )
 
-//        Row(
-//            verticalAlignment = Alignment.CenterVertically,
-//            horizontalArrangement = Arrangement.spacedBy(6.dp),
-//        ) {
-//            RepeatPicker(selected = form.repeatPreset, onSelect = onRepeatChange, enabled = enabled)
-//            ReminderPicker(
-//                reminderOffsets = form.reminderOffsets,
-//                hasDate = form.doDate != null,
-//                startTimeMinutes = form.startTimeMinutes,
-//                onReminderToggle = onReminderToggle,
-//                enabled = enabled
-//            )
-//        }
-
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -476,21 +495,6 @@ private fun TaskFormContent(
                     onListChange = onListChange,
                     enabled = enabled
                 )
-            }
-            form.planPriorityId?.let { priorityId ->
-                availablePlanPriorities.find { it.id == priorityId }?.let { priority ->
-                    PlanPriorityPill(priority)
-                }
-            }
-            form.keyResultId?.let { krId ->
-                availableKeyResults.find { it.id == krId }?.let { kr ->
-                    KeyResultPill(kr)
-                }
-            }
-            form.twelveWeekGoalId?.let { goalId ->
-                availableTwelveWeekGoals.find { it.id == goalId }?.let { goal ->
-                    TwelveWeekGoalPill(goal)
-                }
             }
             TagPicker(
                 availableTags = availableTags,
@@ -640,10 +644,45 @@ private fun NoteFormContent(
     onDateChange: (LocalDate?) -> Unit,
     onStartTimeChange: (Int?) -> Unit,
     onTagToggle: (Long) -> Unit,
+    onLabelChange: (String) -> Unit,
     onNewTagClick: () -> Unit,
+    recentLabels: List<String>,
     enabled: Boolean = true
 ) {
+    var labelFocused by remember { mutableStateOf(false) }
+
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                AppOutlinedTextField(
+                    value = form.label.orEmpty(),
+                    onValueChange = onLabelChange,
+                    modifier = Modifier.widthIn(max = 120.dp).onFocusChanged { labelFocused = it.isFocused },
+                    textStyle = MaterialTheme.typography.labelSmall.copy(
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    maxLines = 1,
+                    placeholder = "Add label",
+                    enabled = enabled,
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                )
+                Spacer(Modifier.weight(1f))
+            }
+
+            if (labelFocused) {
+                LabelSuggestions(
+                    currentLabel = form.label.orEmpty(),
+                    recentLabels = recentLabels,
+                    onLabelSelect = onLabelChange,
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                )
+            }
+        }
+
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)

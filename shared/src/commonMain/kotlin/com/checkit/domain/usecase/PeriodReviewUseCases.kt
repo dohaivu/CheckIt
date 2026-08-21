@@ -3,13 +3,13 @@ package com.checkit.domain.usecase
 import com.checkit.data.CheckItRepository
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItemStatus
-import com.checkit.domain.PeriodFocus
+import com.checkit.domain.FocusPeriod
+import com.checkit.domain.Period
 import com.checkit.domain.PeriodReview
 import com.checkit.domain.PeriodReviewDraft
 import com.checkit.domain.PeriodReviewDraftHighlight
 import com.checkit.domain.PeriodReviewDraftStats
 import com.checkit.domain.PeriodReviewDraftTag
-import com.checkit.domain.ReviewPeriod
 import com.checkit.domain.ReviewSource
 import com.checkit.domain.ReviewStatus
 import kotlinx.serialization.json.Json
@@ -20,7 +20,7 @@ class SavePeriodReviewUseCase(
     private val repository: CheckItRepository
 ) {
     suspend operator fun invoke(
-        focus: PeriodFocus,
+        focus: FocusPeriod,
         content: String,
         intentNext: String,
         source: ReviewSource = ReviewSource.Manual,
@@ -55,8 +55,8 @@ class BuildPeriodReviewDraftUseCase {
      * then Month, Week, Day), then appends an activity summary built only from
      * completed items inside the focus period (planned items are ignored).
      */
-    suspend operator fun invoke(
-        focus: PeriodFocus,
+    operator fun invoke(
+        focus: FocusPeriod,
         dailyPlans: List<DailyPlan>,
         reviews: List<PeriodReview> = emptyList()
     ): PeriodReviewDraft? {
@@ -123,16 +123,16 @@ class BuildPeriodReviewDraftUseCase {
      * (e.g. Day) is never chosen over a broader one (e.g. Annual).
      */
     private fun highestLevelSeedReview(
-        focus: PeriodFocus,
+        focus: FocusPeriod,
         reviews: List<PeriodReview>
     ): PeriodReview? {
         val candidates = reviews.filter { review ->
             review.covers(focus)
         }
-        return candidates.maxByOrNull { it.period.ordinal }
+        return candidates.minByOrNull { it.period.ordinal }
     }
 
-    private fun PeriodReview.covers(focus: PeriodFocus): Boolean {
+    private fun PeriodReview.covers(focus: FocusPeriod): Boolean {
         val focusStart = focus.start.toEpochDays().toInt()
         val focusEnd = focus.endExclusive.toEpochDays().toInt()
         return periodStartEpochDays <= focusStart && periodEndEpochDays >= focusEnd
@@ -140,7 +140,7 @@ class BuildPeriodReviewDraftUseCase {
 
     private fun buildNarrative(
         seed: PeriodReview?,
-        period: ReviewPeriod,
+        period: Period,
         stats: PeriodReviewDraftStats,
         highlights: List<PeriodReviewDraftHighlight>
     ): String = buildString {
@@ -171,11 +171,12 @@ class BuildPeriodReviewDraftUseCase {
         }
     }
 
-    private fun ReviewPeriod.periodWord(): String = when (this) {
-        ReviewPeriod.Day -> "day"
-        ReviewPeriod.Week -> "week"
-        ReviewPeriod.Month -> "month"
-        ReviewPeriod.Year -> "year"
+    private fun Period.periodWord(): String = when (this) {
+        Period.Day -> "day"
+        Period.Week -> "week"
+        Period.Month -> "month"
+        Period.Quarter -> "quarter"
+        Period.Year -> "year"
     }
 
     private companion object {

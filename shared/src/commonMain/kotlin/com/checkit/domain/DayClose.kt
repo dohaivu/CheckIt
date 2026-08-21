@@ -4,6 +4,7 @@ import com.checkit.ui.MinutesPerDay
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 
 /**
  * Actions for unfinished (Planned) items during evening review.
@@ -35,13 +36,11 @@ fun DailyPlanItem.defaultLeftoverAction(): LeftoverAction = LeftoverAction.None
 fun DailyPlanItem.defaultReviewAction(dailyPlans: List<DailyPlan>): LeftoverAction {
     if (handledAtMillis == null) return LeftoverAction.None
     val tomorrowEpochDay = dateEpochDays + 1
-    val carriedFromIds = dailyPlans
-        .asSequence()
-        .filter { it.date.toEpochDays().toInt() == tomorrowEpochDay }
-        .flatMap { it.items.asSequence() }
-        .mapNotNull { it.carriedFromItemId }
-        .toSet()
-    return if (id in carriedFromIds) LeftoverAction.CarryOver else LeftoverAction.Drop
+    val isCarried = dailyPlans.any { plan ->
+        plan.date.toEpochDays().toInt() == tomorrowEpochDay &&
+            plan.items.any { it.carriedFromItemId == id }
+    }
+    return if (isCarried) LeftoverAction.CarryOver else LeftoverAction.Drop
 }
 
 enum class CarryOverTimePolicy {
@@ -98,7 +97,7 @@ object ReviewStreakPolicy {
      */
     fun currentStreak(records: List<PeriodReview>, fromDate: LocalDate): Int {
         val dates = records
-            .filter { it.period == ReviewPeriod.Day }
+            .filter { it.period == Period.Day }
             .map { it.periodStartDate }
             .toSet()
         val start = if (fromDate in dates) fromDate else fromDate.minus(1, DateTimeUnit.DAY)

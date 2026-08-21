@@ -21,7 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.ListItem
-import com.checkit.ui.components.icons.Target
 import com.checkit.ui.theme.materialIcon
 import com.checkit.ui.theme.toColor
 

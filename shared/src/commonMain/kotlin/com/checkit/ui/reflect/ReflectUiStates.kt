@@ -5,9 +5,9 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.JournalEntry
-import com.checkit.domain.PeriodFocus
+import com.checkit.domain.Period
 import com.checkit.domain.PeriodReview
-import com.checkit.domain.ReviewPeriod
+import com.checkit.domain.FocusPeriod
 import com.checkit.domain.ReviewSource
 import com.checkit.domain.isGoodMood
 import com.checkit.ui.components.ReportPeriod
@@ -21,7 +21,7 @@ import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 
 data class ReflectReviewEditorState(
-    val focus: PeriodFocus,
+    val focus: FocusPeriod,
     val review: PeriodReview?,
     val content: String = "",
     val intentNext: String = "",
@@ -34,7 +34,7 @@ data class ReflectReviewEditorState(
 /**
  * State for the Reflect tab: the unified review hub with day → week → month →
  * year zoom. The zoom level is a [ReportPeriod] (Daily/Week/Month/Annual);
- * [focus] maps it onto the canonical [ReviewPeriod] domain model.
+ * [focus] maps it onto the canonical [Period] domain model.
  */
 data class ReflectUiState(
     val selectedPeriod: ReportPeriod = ReportPeriod.Week,
@@ -44,7 +44,7 @@ data class ReflectUiState(
     val reviews: List<PeriodReview> = emptyList(),
     val isLoading: Boolean = true
 ) {
-    val focus: PeriodFocus by lazy { PeriodFocus(selectedPeriod.toReviewPeriod(), selectedDate) }
+    val focus: FocusPeriod by lazy { FocusPeriod(selectedPeriod.toPeriod(), selectedDate) }
     val focusStartEpochDays: Int get() = focus.start.toEpochDays().toInt()
     val focusReview: PeriodReview? by lazy {
         reviews.firstOrNull {
@@ -63,7 +63,7 @@ data class ReflectUiState(
         val endEpoch = rangeFocus.endExclusive.toEpochDays().toInt()
         reviews
             .filter {
-                it.period == selectedPeriod.childReviewPeriod() &&
+                it.period == selectedPeriod.childPeriod() &&
                     it.periodStartEpochDays in startEpoch until endEpoch
             }
             .sortedWith(
@@ -81,28 +81,29 @@ data class ReflectUiState(
     val habitCheckins: List<HabitCheckin> by lazy { buildHabitCheckins(dailyPlans, today()) }
 }
 
-internal fun ReportPeriod.toReviewPeriod(): ReviewPeriod = when (this) {
-    ReportPeriod.Daily -> ReviewPeriod.Day
-    ReportPeriod.Week -> ReviewPeriod.Week
-    ReportPeriod.Month -> ReviewPeriod.Month
-    ReportPeriod.Annual -> ReviewPeriod.Year
-    ReportPeriod.Habit -> ReviewPeriod.Week
+internal fun ReportPeriod.toPeriod(): Period = when (this) {
+    ReportPeriod.Daily -> Period.Day
+    ReportPeriod.Week -> Period.Week
+    ReportPeriod.Month -> Period.Month
+    ReportPeriod.Annual -> Period.Year
+    ReportPeriod.Habit -> Period.Week
 }
 
 /** The child zoom level shown in the Reviews section for the selected period. */
-internal fun ReportPeriod.childReviewPeriod(): ReviewPeriod = when (this) {
-    ReportPeriod.Daily -> ReviewPeriod.Day
-    ReportPeriod.Week -> ReviewPeriod.Day
-    ReportPeriod.Month -> ReviewPeriod.Week
-    ReportPeriod.Annual -> ReviewPeriod.Month
-    ReportPeriod.Habit -> ReviewPeriod.Day
+internal fun ReportPeriod.childPeriod(): Period = when (this) {
+    ReportPeriod.Daily -> Period.Day
+    ReportPeriod.Week -> Period.Day
+    ReportPeriod.Month -> Period.Week
+    ReportPeriod.Annual -> Period.Month
+    ReportPeriod.Habit -> Period.Day
 }
 
-internal fun ReviewPeriod.toReportPeriod(): ReportPeriod = when (this) {
-    ReviewPeriod.Day -> ReportPeriod.Daily
-    ReviewPeriod.Week -> ReportPeriod.Week
-    ReviewPeriod.Month -> ReportPeriod.Month
-    ReviewPeriod.Year -> ReportPeriod.Annual
+internal fun Period.toReportPeriod(): ReportPeriod = when (this) {
+    Period.Day -> ReportPeriod.Daily
+    Period.Week -> ReportPeriod.Week
+    Period.Month -> ReportPeriod.Month
+    Period.Year -> ReportPeriod.Annual
+    else -> ReportPeriod.Daily
 }
 
 internal fun ReportPeriod.zoomInPeriod(): ReportPeriod = when (this) {
@@ -360,8 +361,8 @@ private class DailyPlanReportIndex(
                         DigestHighlight(
                             date = LocalDate.fromEpochDays(entry.dateEpochDays),
                             journalEntry = entry,
-                            title = entry.content.ifBlank { entry.context.orEmpty() },
-                            note = entry.context,
+                            title = entry.content.ifBlank { entry.label.orEmpty() },
+                            note = entry.label,
                             totalMinutes = 0
                         )
                     }

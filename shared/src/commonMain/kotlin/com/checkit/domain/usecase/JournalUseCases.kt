@@ -15,7 +15,7 @@ class AddJournalEntryUseCase(
     private val repository: CheckItRepository
 ) {
     suspend operator fun invoke(input: JournalEntryWriteInput): Result<Long> {
-        if (input.content.trim().isBlank() && input.context.isNullOrBlank()) {
+        if (input.content.trim().isBlank() && input.label.isNullOrBlank()) {
             return Result.failure(Exception("Add a note"))
         }
         return runCatching { repository.addJournalEntry(input) }

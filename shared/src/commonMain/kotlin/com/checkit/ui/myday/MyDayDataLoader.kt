@@ -9,7 +9,7 @@ import com.checkit.domain.JournalEntry
 import com.checkit.domain.LeftoversBannerPolicy
 import com.checkit.domain.PeriodReview
 import com.checkit.domain.PlanAssistBannerPolicy
-import com.checkit.domain.ReviewPeriod
+import com.checkit.domain.Period
 import com.checkit.domain.ReviewStreakPolicy
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.YesterdayLeftovers
@@ -40,7 +40,7 @@ internal class MyDayDataLoader(
         val today = today()
         scope.launch {
             combine(
-                deps.observeTaskBoard(),
+                deps.observeTaskBoard(onlyOpen = false),
                 deps.observeDailyPlans(startDate = today.minus(1, DateTimeUnit.DAY), endDate = today),
                 deps.settingsRepository.settings,
                 deps.observePeriodReviews(),
@@ -57,7 +57,7 @@ internal class MyDayDataLoader(
                     val todayEpoch = date.toEpochDays().toInt()
                     val nowMinutes = currentMyDayTimeMinutes()
                     val plan = dailyPlans.firstOrNull { it.date == date }
-                    val dayReviews = periodReviews.filter { it.period == ReviewPeriod.Day }
+                    val dayReviews = periodReviews.filter { it.period == Period.Day }
                     val leftovers = YesterdayLeftovers.items(dailyPlans, date)
                     val pendingLeftovers = YesterdayLeftovers.pendingForToday(leftovers, plan)
                     val reviewStreak = ReviewStreakPolicy.currentStreak(dayReviews, date)
@@ -124,6 +124,7 @@ internal class MyDayDataLoader(
                             lastFabAction = lastFabAction,
                             dayReviews = dayReviews,
                             reviewStreak = reviewStreak,
+                            recentLabels = settings.recentLabels,
                             showLeftoversBanner = showLeftoversBanner &&
                                 updatedReview == null &&
                                 !current.showLeftoversSheet,

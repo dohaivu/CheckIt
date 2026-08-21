@@ -1,84 +1,47 @@
 package com.checkit.ui.tasks
 
 import com.checkit.data.CheckItRepository
+import com.checkit.data.DailyPlanItemTimeUpdate
 import com.checkit.data.DailyPlanItemWriteInput
-import com.checkit.data.GoalWriteInput
 import com.checkit.data.JournalEntryWriteInput
-import com.checkit.data.KeyResultWriteInput
-import com.checkit.data.NoteWriteInput
-import com.checkit.data.SettingsRepository
 import com.checkit.data.ListWriteInput
-import com.checkit.data.ObjectiveWriteInput
-import com.checkit.data.PlanPriorityWriteInput
-import com.checkit.data.PlanPriorityTaskLink
-import com.checkit.data.PlanPriorityDailyPlanItemLink
+import com.checkit.data.NoteWriteInput
 import com.checkit.data.TagWriteInput
 import com.checkit.data.TaskWriteInput
-import com.checkit.data.TwelveWeekCheckInWriteInput
-import com.checkit.data.TwelveWeekCycleWriteInput
-import com.checkit.data.TwelveWeekGoalScoreWriteInput
-import com.checkit.data.TwelveWeekGoalWriteInput
-import com.checkit.data.UserSettings
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DayCloseCommitResult
-import com.checkit.domain.Goal
 import com.checkit.domain.JournalEntry
-import com.checkit.domain.KeyResult
 import com.checkit.domain.ListItem
+import com.checkit.domain.MetricRollupPolicy
+import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedDocument
 import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemMove
-import com.checkit.domain.NestedListItem
-import com.checkit.domain.NestedTextStyle
-import com.checkit.domain.NestedColorToken
-import com.checkit.domain.MetricRollupPolicy
 import com.checkit.domain.NestedManualMetric
-import com.checkit.domain.TaskPriority
-import com.checkit.domain.buildNestedTree
-import com.checkit.domain.planNestedMoves
-import com.checkit.domain.PeriodPlan
+import com.checkit.domain.NestedTextStyle
+import com.checkit.domain.NoteItem
 import com.checkit.domain.PeriodReview
-import com.checkit.domain.PlanPeriod
-import com.checkit.domain.PlanPriority
-import com.checkit.domain.ReviewPeriod
+import com.checkit.domain.Period
 import com.checkit.domain.ReviewSource
 import com.checkit.domain.ReviewStatus
 import com.checkit.domain.SubTaskItem
+import com.checkit.domain.TagItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
-import com.checkit.domain.Objective
-import com.checkit.domain.TaskReminder
-import com.checkit.domain.TagItem
-import com.checkit.domain.TwelveWeekCheckIn
-import com.checkit.domain.TwelveWeekCycle
-import com.checkit.domain.TwelveWeekCycleStatus
-import com.checkit.domain.TwelveWeekGoal
-import com.checkit.domain.TwelveWeekGoalFinalStatus
-import com.checkit.domain.TwelveWeekGoalScore
-import com.checkit.domain.TwelveWeekGoalTaskLink
-import com.checkit.domain.hasEndTime
+import com.checkit.domain.TaskPriority
+import com.checkit.domain.TaskStatus
+import com.checkit.domain.TaskType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
-import kotlinx.datetime.LocalDate
 import kotlinx.coroutines.flow.update
+import kotlinx.datetime.LocalDate
 
-internal class FakeCheckItRepository(
-    initialBoard: TaskBoard = TaskBoard()
-) : CheckItRepository {
+class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepository {
     private val boardFlow = MutableStateFlow(initialBoard)
-    val addedObjectives = mutableListOf<ObjectiveWriteInput>()
-    val addedGoals = mutableListOf<GoalWriteInput>()
-    val updatedGoals = mutableListOf<Pair<Long, GoalWriteInput>>()
-    val deletedGoals = mutableListOf<Long>()
-    val addedKeyResults = mutableListOf<KeyResultWriteInput>()
-    val updatedKeyResults = mutableListOf<Pair<Long, KeyResultWriteInput>>()
-    val deletedKeyResults = mutableListOf<Long>()
-    val updatedObjectives = mutableListOf<Pair<Long, ObjectiveWriteInput>>()
-    val deletedObjectives = mutableListOf<Long>()
     val addedLists = mutableListOf<ListWriteInput>()
     val updatedLists = mutableListOf<Pair<Long, ListWriteInput>>()
     val deletedLists = mutableListOf<Long>()
@@ -94,21 +57,23 @@ internal class FakeCheckItRepository(
     val addedManualDailyPlanItems = mutableListOf<DailyPlanItemWriteInput>()
     val updatedDailyPlanItems = mutableListOf<Pair<Long, DailyPlanItemWriteInput>>()
     val updatedDailyPlanItemTimes = mutableListOf<Triple<Long, Int?, Int?>>()
-    val adjustedKeyResults = mutableListOf<Pair<Long, Double>>()
+    val deletedDailyPlanItemIds = mutableListOf<Long>()
+    
+    val addedSections = mutableListOf<Triple<Long, String, String>>()
+    val updatedSections = mutableListOf<com.checkit.domain.ListSection>()
+    val deletedSections = mutableListOf<Long>()
+    
     val currentBoard: TaskBoard get() = boardFlow.value
+    
+    private var nextListId: Long = 100L
+    private var nextTagId: Long = 200L
+    private var nextTaskId: Long = 300L
+    private var nextDailyPlanItemId: Long = 400L
+    private var nextSectionId: Long = 600L
 
-    var lastAssignedObjectiveId: Long = 0L
-        private set
-    var lastAssignedTagId: Long = 0L
-        private set
-
-    private var nextGoalId: Long = 50L
-    private var nextObjectiveId: Long = 100L
-    private var nextListId: Long = 200L
-    private var nextKeyResultId: Long = 300L
-    private var nextTagId: Long = 500L
-    private var nextTaskId: Long = 1_000L
-    private var nextDailyPlanItemId: Long = 10_000L
+    val lastAssignedTagId: Long get() = nextTagId - 1
+    val lastAssignedTaskId: Long get() = nextTaskId - 1
+    val lastAssignedDailyPlanItemId: Long get() = nextDailyPlanItemId - 1
 
     private val dailyPlansFlow = MutableStateFlow<List<DailyPlan>>(emptyList())
     val copiedDailyPlanItems = mutableListOf<DailyPlanItem>()
@@ -120,38 +85,27 @@ internal class FakeCheckItRepository(
     val addedJournalEntries = mutableListOf<JournalEntryWriteInput>()
     val updatedJournalEntries = mutableListOf<Pair<Long, JournalEntryWriteInput>>()
     val deletedJournalEntryIds = mutableListOf<Long>()
-    private var nextJournalEntryId: Long = 20_000L
+    private var nextJournalEntryId: Long = 500L
 
-    private val periodPlansFlow = MutableStateFlow<List<PeriodPlan>>(emptyList())
-    private val planPrioritiesFlow = MutableStateFlow<List<PlanPriority>>(emptyList())
-    private val planTaskLinksFlow = MutableStateFlow<List<PlanPriorityTaskLink>>(emptyList())
-    private val planDailyLinksFlow = MutableStateFlow<List<PlanPriorityDailyPlanItemLink>>(emptyList())
-    private var nextPeriodPlanId: Long = 30_000L
-    private var nextPlanPriorityId: Long = 31_000L
-    val addedPlanPriorities = mutableListOf<PlanPriorityWriteInput>()
-    val updatedPlanPriorities = mutableListOf<Pair<Long, PlanPriorityWriteInput>>()
-    val deletedPlanPriorityIds = mutableListOf<Long>()
-    val linkedTasks = mutableListOf<Pair<Long, Long>>()
-    val linkedDailyPlanItems = mutableListOf<Pair<Long, Long>>()
+    override fun observeTaskBoard(onlyOpen: Boolean): Flow<TaskBoard> = boardFlow.map { board ->
+        if (onlyOpen) {
+            board.copy(
+                tasks = board.tasks.filter { it.status == TaskStatus.Open && !it.isTrashed },
+                notes = board.notes.filter { it.status == TaskStatus.Open && !it.isTrashed }
+            )
+        } else {
+            board
+        }
+    }
 
-    private val twelveWeekCyclesFlow = MutableStateFlow<List<TwelveWeekCycle>>(emptyList())
-    private val twelveWeekGoalsFlow = MutableStateFlow<List<TwelveWeekGoal>>(emptyList())
-    private val twelveWeekCheckInsFlow = MutableStateFlow<List<TwelveWeekCheckIn>>(emptyList())
-    private val twelveWeekScoresFlow = MutableStateFlow<List<TwelveWeekGoalScore>>(emptyList())
-    private val twelveWeekGoalTaskLinksFlow = MutableStateFlow<List<TwelveWeekGoalTaskLink>>(emptyList())
-    private var nextTwelveWeekCycleId: Long = 40_000L
-    private var nextTwelveWeekGoalId: Long = 41_000L
-    private var nextTwelveWeekCheckInId: Long = 42_000L
-    private var nextTwelveWeekScoreId: Long = 43_000L
-    val addedTwelveWeekCycles = mutableListOf<TwelveWeekCycleWriteInput>()
-    val addedTwelveWeekGoals = mutableListOf<TwelveWeekGoalWriteInput>()
-    val savedTwelveWeekCheckIns = mutableListOf<TwelveWeekCheckInWriteInput>()
-    val updatedTwelveWeekCycles = mutableListOf<Pair<Long, Triple<String, TwelveWeekCycleStatus, String>>>()
-    val linkedTwelveWeekGoalTasks = mutableListOf<Pair<Long, Long>>()
-    val unlinkedTwelveWeekGoalTasks = mutableListOf<Pair<Long, Long>>()
-
-    override fun observeTaskBoard(): Flow<TaskBoard> = boardFlow
-    override fun observeDailyPlans(): Flow<List<DailyPlan>> = dailyPlansFlow
+    override fun observeDailyPlans(startDate: LocalDate?, endDate: LocalDate?): Flow<List<DailyPlan>> =
+        dailyPlansFlow.map { plans ->
+            if (startDate != null && endDate != null) {
+                plans.filter { it.date in startDate..endDate }
+            } else {
+                plans
+            }
+        }
 
     override fun observeJournalEntries(): Flow<List<JournalEntry>> = journalEntriesFlow
 
@@ -160,281 +114,98 @@ internal class FakeCheckItRepository(
     }
 
     override suspend fun addJournalEntry(input: JournalEntryWriteInput): Long {
-        addedJournalEntries.add(input)
         val id = nextJournalEntryId++
+        addedJournalEntries.add(input)
         val entry = JournalEntry(
             id = id,
             dateEpochDays = input.date.toEpochDays().toInt(),
-            context = input.context,
+            label = input.label,
             content = input.content,
             moods = input.moods,
-            tags = boardFlow.value.tags.filter { it.id in input.tagIds },
-            createdTimeMinutes = 1,
-            attachments = input.attachments
+            tags = input.tagIds.mapNotNull { tagId -> currentBoard.tags.find { it.id == tagId } },
+            createdTimeMinutes = 0
         )
         journalEntriesFlow.update { it + entry }
         return id
     }
 
-    fun currentJournalEntry(entryId: Long): JournalEntry? =
-        journalEntriesFlow.value.firstOrNull { it.id == entryId }
+    fun currentJournalEntry(id: Long) = journalEntriesFlow.value.find { it.id == id }
 
     override suspend fun updateJournalEntry(entryId: Long, input: JournalEntryWriteInput) {
         updatedJournalEntries.add(entryId to input)
-        journalEntriesFlow.update { entries ->
-            entries.map { entry ->
+        journalEntriesFlow.update { list ->
+            list.map { entry ->
                 if (entry.id == entryId) {
                     entry.copy(
-                        dateEpochDays = input.date.toEpochDays().toInt(),
-                        context = input.context,
+                        label = input.label,
                         content = input.content,
                         moods = input.moods,
-                        tags = boardFlow.value.tags.filter { tag -> tag.id in input.tagIds },
-                        attachments = input.attachments
+                        tags = input.tagIds.mapNotNull { tagId -> currentBoard.tags.find { it.id == tagId } }
                     )
-                } else {
-                    entry
-                }
+                } else entry
             }
         }
     }
 
     override suspend fun deleteJournalEntry(entryId: Long) {
         deletedJournalEntryIds.add(entryId)
-        journalEntriesFlow.update { entries -> entries.filterNot { it.id == entryId } }
+        journalEntriesFlow.update { it.filter { entry -> entry.id != entryId } }
     }
 
     fun setDailyPlans(plans: List<DailyPlan>) {
         dailyPlansFlow.value = plans
     }
 
-    fun setDayReviews(records: List<PeriodReview>) {
-        periodReviewsFlow.value = records
-    }
-
-    override suspend fun addGoal(input: GoalWriteInput): Long {
-        addedGoals.add(input)
-        val id = nextGoalId++
-        boardFlow.update { board ->
-            board.copy(
-                goals = board.goals + Goal(
-                    id = id,
-                    title = input.title,
-                    color = input.color,
-                    icon = input.icon,
-                    sortOrder = board.goals.size
-                )
-            )
-        }
-        return id
-    }
-
-    override suspend fun updateGoal(goalId: Long, input: GoalWriteInput) {
-        updatedGoals.add(goalId to input)
-        boardFlow.update { board ->
-            board.copy(
-                goals = board.goals.map { goal ->
-                    if (goal.id == goalId) {
-                        goal.copy(title = input.title, color = input.color, icon = input.icon)
-                    } else {
-                        goal
-                    }
-                }
-            )
-        }
-    }
-
-    override suspend fun deleteGoal(goalId: Long) {
-        deletedGoals.add(goalId)
-        boardFlow.update { board ->
-            board.copy(
-                goals = board.goals.filterNot { it.id == goalId },
-                objectives = board.objectives.filterNot { it.goalId == goalId }
-            )
-        }
-    }
-
-    override suspend fun addObjective(input: ObjectiveWriteInput): Long {
-        addedObjectives.add(input)
-        val id = nextObjectiveId++
-        lastAssignedObjectiveId = id
-        boardFlow.update { board ->
-            board.copy(
-                objectives = board.objectives + Objective(
-                    id = id,
-                    goalId = input.goalId,
-                    name = input.name,
-                    color = input.color,
-                    icon = input.icon,
-                    sortOrder = board.objectives.size
-                )
-            )
-        }
-        return id
-    }
-
-    override suspend fun updateObjective(objectiveId: Long, input: ObjectiveWriteInput) {
-        updatedObjectives.add(objectiveId to input)
-        boardFlow.update { board ->
-            board.copy(
-                objectives = board.objectives.map { list ->
-                    if (list.id == objectiveId) {
-                        list.copy(goalId = input.goalId, name = input.name, color = input.color, icon = input.icon)
-                    } else {
-                        list
-                    }
-                }
-            )
-        }
-    }
-
-    override suspend fun deleteObjective(objectiveId: Long) {
-        deletedObjectives.add(objectiveId)
-        boardFlow.update { board ->
-            board.copy(
-                objectives = board.objectives.filterNot { it.id == objectiveId },
-                keyResults = board.keyResults.filterNot { it.objectiveId == objectiveId }
-            )
-        }
+    fun setDayReviews(reviews: List<PeriodReview>) {
+        periodReviewsFlow.value = reviews
     }
 
     override suspend fun addList(input: ListWriteInput): Long {
-        addedLists.add(input)
         val id = nextListId++
-        boardFlow.update { board ->
-            board.copy(
-                lists = board.lists + ListItem(
-                    id = id,
-                    title = input.title,
-                    color = input.color,
-                    icon = input.icon,
-                    sortOrder = board.lists.size
-                )
-            )
-        }
+        addedLists.add(input)
+        val newList = ListItem(id, input.title, input.icon, input.color, 0)
+        boardFlow.update { it.copy(lists = it.lists + newList) }
         return id
     }
 
     override suspend fun updateList(listId: Long, input: ListWriteInput) {
         updatedLists.add(listId to input)
         boardFlow.update { board ->
-            board.copy(
-                lists = board.lists.map { list ->
-                    if (list.id == listId) {
-                        list.copy(title = input.title, color = input.color, icon = input.icon)
-                    } else {
-                        list
-                    }
-                }
-            )
+            board.copy(lists = board.lists.map { if (it.id == listId) it.copy(title = input.title, icon = input.icon, color = input.color) else it })
         }
     }
 
     override suspend fun deleteList(listId: Long) {
         deletedLists.add(listId)
-        boardFlow.update { board ->
-            val inbox = board.lists.firstOrNull { it.title == "Inbox" }
-            board.copy(
-                lists = board.lists.filterNot { it.id == listId },
-                tasks = board.tasks.map { task ->
-                    if (task.list?.id == listId) task.copy(list = inbox) else task
-                },
-                notes = board.notes.map { note ->
-                    if (note.list?.id == listId) note.copy(list = inbox) else note
-                }
-            )
-        }
-    }
-
-    override suspend fun addKeyResult(input: KeyResultWriteInput): Long {
-        addedKeyResults.add(input)
-        val id = nextKeyResultId++
+        val inbox = currentBoard.lists.find { it.title == "Inbox" } ?: currentBoard.lists.firstOrNull { it.id != listId }
         boardFlow.update { board ->
             board.copy(
-                keyResults = board.keyResults + KeyResult(
-                    id = id,
-                    objectiveId = input.objectiveId,
-                    title = input.title,
-                    targetValue = input.targetValue,
-                    currentValue = input.currentValue,
-                    unit = input.unit,
-                    sortOrder = board.keyResults.count { it.objectiveId == input.objectiveId }
-                )
-            )
-        }
-        return id
-    }
-
-    override suspend fun updateKeyResult(keyResultId: Long, input: KeyResultWriteInput) {
-        updatedKeyResults.add(keyResultId to input)
-        boardFlow.update { board ->
-            board.copy(
-                keyResults = board.keyResults.map { keyResult ->
-                    if (keyResult.id == keyResultId) {
-                        keyResult.copy(
-                            objectiveId = input.objectiveId,
-                            title = input.title,
-                            targetValue = input.targetValue,
-                            currentValue = input.currentValue,
-                            unit = input.unit
-                        )
-                    } else {
-                        keyResult
-                    }
-                }
-            )
-        }
-    }
-
-    override suspend fun deleteKeyResult(keyResultId: Long) {
-        deletedKeyResults.add(keyResultId)
-        boardFlow.update { board ->
-            board.copy(
-                keyResults = board.keyResults.filterNot { it.id == keyResultId },
-                tasks = board.tasks.map { task ->
-                    if (task.keyResult?.id == keyResultId) task.copy(keyResult = null) else task
-                }
+                lists = board.lists.filter { it.id != listId },
+                tasks = board.tasks.map { if (it.list?.id == listId) it.copy(list = inbox) else it },
+                notes = board.notes.map { if (it.list?.id == listId) it.copy(list = inbox) else it }
             )
         }
     }
 
     override suspend fun addTag(input: TagWriteInput): Long {
-        addedTags.add(input)
         val id = nextTagId++
-        lastAssignedTagId = id
-        boardFlow.update { board ->
-            board.copy(
-                tags = board.tags + TagItem(
-                    id = id,
-                    name = input.name,
-                    color = input.color
-                )
-            )
-        }
+        addedTags.add(input)
+        val newTag = TagItem(id, input.name, input.color, 0)
+        boardFlow.update { it.copy(tags = it.tags + newTag) }
         return id
     }
 
     override suspend fun updateTag(tagId: Long, input: TagWriteInput) {
         updatedTags.add(tagId to input)
         boardFlow.update { board ->
-            board.copy(
-                tags = board.tags.map { tag ->
-                    if (tag.id == tagId) {
-                        tag.copy(name = input.name, color = input.color)
-                    } else {
-                        tag
-                    }
-                }
-            )
+            board.copy(tags = board.tags.map { if (it.id == tagId) it.copy(name = input.name, color = input.color) else it })
         }
     }
 
     override suspend fun updateTagSortOrder(tagId: Long, sortOrder: Int) {
         updatedTagSortOrders.add(tagId to sortOrder)
         boardFlow.update { board ->
-            board.copy(tags = board.tags.map { tag ->
-                if (tag.id == tagId) tag.copy(sortOrder = sortOrder) else tag
-            })
+            board.copy(tags = board.tags.map { if (it.id == tagId) it.copy(sortOrder = sortOrder) else it })
         }
     }
 
@@ -442,156 +213,116 @@ internal class FakeCheckItRepository(
         deletedTags.add(tagId)
         boardFlow.update { board ->
             board.copy(
-                tags = board.tags.filterNot { it.id == tagId },
-                tasks = board.tasks.map { task ->
-                    task.copy(tags = task.tags.filterNot { it.id == tagId })
-                },
-                notes = board.notes.map { note ->
-                    note.copy(tags = note.tags.filterNot { it.id == tagId })
-                }
+                tags = board.tags.filter { it.id != tagId },
+                tasks = board.tasks.map { it.copy(tags = it.tags.filter { t -> t.id != tagId }) },
+                notes = board.notes.map { it.copy(tags = it.tags.filter { t -> t.id != tagId }) }
             )
         }
     }
 
     override suspend fun isTagNameTaken(name: String, excludeTagId: Long?): Boolean =
-        boardFlow.value.tags.any { tag ->
-            tag.name.equals(name, ignoreCase = false) && tag.id != excludeTagId
-        }
+        currentBoard.tags.any { it.name == name && it.id != excludeTagId }
 
     override suspend fun addTask(input: TaskWriteInput): Long {
-        addedTasks.add(input)
         val id = nextTaskId++
-        val priority = input.planPriorityId?.let { priorityId ->
-            planPrioritiesFlow.value.firstOrNull { it.id == priorityId }
-        }
-        val keyResult = input.keyResultId?.let { keyResultId ->
-            boardFlow.value.keyResults.firstOrNull { it.id == keyResultId }
-        }
-        boardFlow.update { board ->
-            board.copy(
-                tasks = board.tasks + input.toTaskItem(
-                    taskId = id,
-                    sortOrder = board.tasks.size,
-                    planPriority = priority,
-                    keyResult = keyResult
-                )
-            )
-        }
-        if (priority != null) {
-            planTaskLinksFlow.update { links ->
-                links.filterNot { it.taskId == id } +
-                    PlanPriorityTaskLink(priority.id, id, 0)
-            }
-        }
-        input.twelveWeekGoalId?.let { goalId ->
-            twelveWeekGoalTaskLinksFlow.update { links ->
-                links.filterNot { it.taskId == id } +
-                    TwelveWeekGoalTaskLink(goalId = goalId, taskId = id, sortOrder = 0)
-            }
-        }
+        addedTasks.add(input)
+        val newTask = TaskItem(
+            id = id,
+            list = input.listId?.let { lid -> currentBoard.lists.find { it.id == lid } },
+            name = input.name,
+            description = input.description,
+            subtasks = input.subtasks.mapIndexed { i, s -> SubTaskItem(i.toLong(), id, s.name, s.isCompleted, i) },
+            status = input.status,
+            priority = input.priority,
+            type = input.type,
+            tags = input.tagIds.mapNotNull { tid -> currentBoard.tags.find { it.id == tid } },
+            doDate = input.doDate,
+            startTimeMinutes = input.startTimeMinutes,
+            endTimeMinutes = input.endTimeMinutes,
+            repeatRRule = input.repeatRRule,
+            sortOrder = 0,
+            createdAtMillis = 0L,
+            updatedAtMillis = 0L
+        )
+        boardFlow.update { it.copy(tasks = it.tasks + newTask) }
         return id
     }
 
     override suspend fun updateTask(taskId: Long, input: TaskWriteInput) {
         updatedTasks.add(taskId to input)
-        val priority = input.planPriorityId?.let { priorityId ->
-            planPrioritiesFlow.value.firstOrNull { it.id == priorityId }
-        }
-        val keyResult = input.keyResultId?.let { keyResultId ->
-            boardFlow.value.keyResults.firstOrNull { it.id == keyResultId }
-        }
         boardFlow.update { board ->
-            board.copy(
-                tasks = board.tasks.map { task ->
-                    if (task.id == taskId) {
-                        input.toTaskItem(
-                            taskId = taskId,
-                            sortOrder = task.sortOrder,
-                            planPriority = priority,
-                            keyResult = keyResult,
-                            createdAtMillis = task.createdAtMillis,
-                            updatedAtMillis = task.updatedAtMillis + 1
-                        )
-                    } else {
-                        task
-                    }
-                }
-            )
-        }
-        if (priority != null) {
-            planTaskLinksFlow.update { links ->
-                links.filterNot { it.taskId == taskId } +
-                    PlanPriorityTaskLink(priority.id, taskId, 0)
-            }
-        } else {
-            planTaskLinksFlow.update { links ->
-                links.filterNot { it.taskId == taskId }
-            }
-        }
-        when {
-            input.type == com.checkit.domain.TaskType.Tactic && input.twelveWeekGoalId != null -> {
-                twelveWeekGoalTaskLinksFlow.update { links ->
-                    links.filterNot { it.taskId == taskId } +
-                        TwelveWeekGoalTaskLink(goalId = input.twelveWeekGoalId, taskId = taskId, sortOrder = 0)
-                }
-            }
-            input.type != com.checkit.domain.TaskType.Tactic -> {
-                twelveWeekGoalTaskLinksFlow.update { links -> links.filterNot { it.taskId == taskId } }
-            }
+            board.copy(tasks = board.tasks.map {
+                if (it.id == taskId) {
+                    it.copy(
+                        list = input.listId?.let { lid -> board.lists.find { it.id == lid } },
+                        name = input.name,
+                        description = input.description,
+                        subtasks = input.subtasks.mapIndexed { i, s -> SubTaskItem(i.toLong(), taskId, s.name, s.isCompleted, i) },
+                        status = input.status,
+                        priority = input.priority,
+                        type = input.type,
+                        tags = input.tagIds.mapNotNull { tid -> board.tags.find { it.id == tid } },
+                        doDate = input.doDate,
+                        startTimeMinutes = input.startTimeMinutes,
+                        endTimeMinutes = input.endTimeMinutes,
+                        repeatRRule = input.repeatRRule
+                    )
+                } else it
+            })
         }
     }
+
     override suspend fun trashTask(taskId: Long) {
         trashedTasks.add(taskId)
-        planTaskLinksFlow.update { links -> links.filterNot { it.taskId == taskId } }
-        twelveWeekGoalTaskLinksFlow.update { links -> links.filterNot { it.taskId == taskId } }
         boardFlow.update { board ->
-            board.copy(
-                tasks = board.tasks.map { task ->
-                    if (task.id == taskId) task.copy(keyResult = null) else task
-                }
-            )
+            board.copy(tasks = board.tasks.map { if (it.id == taskId) it.copy(trashedAtMillis = 1L) else it })
         }
     }
-    override suspend fun restoreTask(taskId: Long) = Unit
-    override suspend fun completeTask(taskId: Long) = Unit
-    override suspend fun openTask(taskId: Long) = Unit
-    override suspend fun completeNote(noteId: Long) = Unit
-    override suspend fun openNote(noteId: Long) = Unit
-    override suspend fun addTaskToDailyPlan(date: LocalDate, task: TaskItem): Long {
-        addedDailyPlanTasks.add(date to task)
-        val itemId = nextDailyPlanItemId++
-        val status = if (task.status == com.checkit.domain.TaskStatus.Completed) {
-            DailyPlanItemStatus.Done
-        } else {
-            DailyPlanItemStatus.Planned
+
+    override suspend fun restoreTask(taskId: Long) {
+        boardFlow.update { board ->
+            board.copy(tasks = board.tasks.map { if (it.id == taskId) it.copy(trashedAtMillis = null) else it })
         }
-        val item = DailyPlanItem(
-            id = itemId,
+    }
+
+    override suspend fun completeTask(taskId: Long) {
+        boardFlow.update { board ->
+            board.copy(tasks = board.tasks.map { if (it.id == taskId) it.copy(status = TaskStatus.Completed) else it })
+        }
+    }
+
+    override suspend fun openTask(taskId: Long) {
+        boardFlow.update { board ->
+            board.copy(tasks = board.tasks.map { if (it.id == taskId) it.copy(status = TaskStatus.Open) else it })
+        }
+    }
+
+    override suspend fun addTaskToDailyPlan(date: LocalDate, task: TaskItem): Long {
+        val id = nextDailyPlanItemId++
+        addedDailyPlanTasks.add(date to task)
+        val newItem = DailyPlanItem(
+            id = id,
             dateEpochDays = date.toEpochDays().toInt(),
             taskId = task.id,
             title = task.name,
             source = DailyPlanItemSource.ExistingTask,
-            status = status,
-            tags = task.tags,
-            isHabit = task.type == com.checkit.domain.TaskType.Habit,
-            sortOrder = task.sortOrder,
-            startTimeMinutes = task.startTimeMinutes,
-            endTimeMinutes = task.endTimeMinutes,
+            status = DailyPlanItemStatus.Planned,
+            sortOrder = 0,
             addedAtMillis = 0L,
-            completedAtMillis = if (status == DailyPlanItemStatus.Done) 1L else null
+            tags = task.tags,
+            isHabit = task.type == TaskType.Habit
         )
-        dailyPlansFlow.update { plans ->
-            val existing = plans.firstOrNull { it.date == date }
-            if (existing == null) {
-                plans + DailyPlan(date = date, items = listOf(item))
+        dailyPlansFlow.update { list ->
+            val existing = list.find { it.date == date }
+            if (existing != null) {
+                list.map { if (it.date == date) it.copy(items = it.items + newItem) else it }
             } else {
-                plans.map { plan ->
-                    if (plan.date == date) plan.copy(items = plan.items + item) else plan
-                }
+                list + DailyPlan(date, listOf(newItem))
             }
         }
-        return itemId
+        return id
     }
+
     override suspend fun addDailyPlanItem(
         date: LocalDate,
         title: String,
@@ -600,204 +331,129 @@ internal class FakeCheckItRepository(
         endTimeMinutes: Int?,
         source: DailyPlanItemSource,
         status: DailyPlanItemStatus,
-        tagIds: List<Long>
+        tagIds: List<Long>,
+        label: String?,
+        taskId: Long?,
+        nestedListItemId: Long?,
+        carriedFromItemId: Long?
     ): Long {
-        val newId = nextDailyPlanItemId++
-        val item = DailyPlanItem(
-            id = newId,
+        val id = nextDailyPlanItemId++
+        val input = DailyPlanItemWriteInput(title, note, source, status, startTimeMinutes, endTimeMinutes, tagIds, label, nestedListItemId)
+        addedManualDailyPlanItems.add(input)
+        val newItem = DailyPlanItem(
+            id = id,
             dateEpochDays = date.toEpochDays().toInt(),
+            taskId = taskId,
+            nestedListItemId = nestedListItemId,
             title = title,
             note = note,
             source = source,
             status = status,
             sortOrder = 0,
+            label = label,
             startTimeMinutes = startTimeMinutes,
-            endTimeMinutes = if (source.hasEndTime()) endTimeMinutes else null,
+            endTimeMinutes = endTimeMinutes,
             addedAtMillis = 0L,
-            completedAtMillis = if (status == DailyPlanItemStatus.Done) 1L else null
+            tags = tagIds.mapNotNull { tid -> currentBoard.tags.find { it.id == tid } },
+            carriedFromItemId = carriedFromItemId
         )
-        addedManualDailyPlanItems.add(
-            DailyPlanItemWriteInput(
-                title = title,
-                note = note,
-                source = source,
-                status = status,
-                startTimeMinutes = startTimeMinutes,
-                endTimeMinutes = endTimeMinutes,
-                tagIds = tagIds
-            )
-        )
-        dailyPlansFlow.update { plans ->
-            val existing = plans.firstOrNull { it.date == date }
-            if (existing == null) {
-                plans + DailyPlan(date = date, items = listOf(item))
+        dailyPlansFlow.update { list ->
+            val existingPlan = list.find { it.date == date }
+            if (existingPlan != null) {
+                list.map { if (it.date == date) it.copy(items = it.items + newItem) else it }
             } else {
-                plans.map { plan ->
-                    if (plan.date == date) plan.copy(items = plan.items + item) else plan
-                }
+                list + DailyPlan(date, listOf(newItem))
             }
         }
-        return newId
+        return id
     }
+
     override suspend fun updateDailyPlanItemTime(itemId: Long, startTimeMinutes: Int?, endTimeMinutes: Int?) {
         updatedDailyPlanItemTimes.add(Triple(itemId, startTimeMinutes, endTimeMinutes))
-        dailyPlansFlow.update { plans ->
-            plans.map { plan ->
-                plan.copy(
-                    items = plan.items.map { item ->
-                        if (item.id == itemId) {
-                            item.copy(
-                                startTimeMinutes = startTimeMinutes,
-                                endTimeMinutes = endTimeMinutes
-                            )
-                        } else {
-                            item
-                        }
-                    }
-                )
+        dailyPlansFlow.update { list ->
+            list.map { plan ->
+                plan.copy(items = plan.items.map { if (it.id == itemId) it.copy(startTimeMinutes = startTimeMinutes, endTimeMinutes = endTimeMinutes) else it })
             }
         }
     }
+
+    override suspend fun updateDailyPlanItemTimes(updates: List<DailyPlanItemTimeUpdate>) {
+        updates.forEach { update -> updateDailyPlanItemTime(update.itemId, update.startTimeMinutes, update.endTimeMinutes) }
+    }
+
     override suspend fun updateDailyPlanItemStatus(itemId: Long, status: DailyPlanItemStatus) {
         statusUpdates.add(itemId to status)
-        dailyPlansFlow.update { plans ->
-            plans.map { plan ->
-                plan.copy(
-                    items = plan.items.map { item ->
-                        if (item.id == itemId) item.copy(status = status) else item
-                    }
-                )
+        dailyPlansFlow.update { list ->
+            list.map { plan ->
+                plan.copy(items = plan.items.map { if (it.id == itemId) it.copy(status = status, completedAtMillis = if (status == DailyPlanItemStatus.Done) 1L else null) else it })
             }
         }
     }
+
     override suspend fun updateDailyPlanItemsStatus(itemIds: List<Long>, status: DailyPlanItemStatus) {
-        itemIds.forEach { itemId ->
-            statusUpdates.add(itemId to status)
-        }
-        dailyPlansFlow.update { plans ->
-            plans.map { plan ->
-                plan.copy(
-                    items = plan.items.map { item ->
-                        if (item.id in itemIds) item.copy(status = status) else item
-                    }
-                )
-            }
-        }
+        itemIds.forEach { updateDailyPlanItemStatus(it, status) }
     }
+
     override suspend fun updateDailyPlanItem(itemId: Long, input: DailyPlanItemWriteInput) {
         updatedDailyPlanItems.add(itemId to input)
-        dailyPlansFlow.update { plans ->
-            plans.map { plan ->
-                plan.copy(
-                    items = plan.items.map { item ->
-                        if (item.id == itemId) {
-                            item.copy(
-                                title = input.title,
-                                note = input.note,
-                                source = input.source,
-                                status = input.status,
-                                startTimeMinutes = input.startTimeMinutes,
-                                endTimeMinutes = input.endTimeMinutes
-                            )
-                        } else {
-                            item
-                        }
-                    }
-                )
+        dailyPlansFlow.update { list ->
+            list.map { plan ->
+                plan.copy(items = plan.items.map { if (it.id == itemId) it.copy(
+                    title = input.title,
+                    note = input.note,
+                    source = input.source,
+                    status = input.status,
+                    startTimeMinutes = input.startTimeMinutes,
+                    endTimeMinutes = input.endTimeMinutes,
+                    tags = input.tagIds.mapNotNull { tid -> boardFlow.value.tags.find { it.id == tid } }
+                ) else it })
             }
         }
     }
+
     override suspend fun updateDailyPlanItemTags(itemId: Long, tagIds: List<Long>) {
-        val tagById = boardFlow.value.tags.associateBy { it.id }
-        dailyPlansFlow.update { plans ->
-            plans.map { plan ->
-                plan.copy(
-                    items = plan.items.map { item ->
-                        if (item.id == itemId) {
-                            item.copy(tags = tagIds.mapNotNull { tagById[it] })
-                        } else {
-                            item
-                        }
-                    }
-                )
+        dailyPlansFlow.update { list ->
+            list.map { plan ->
+                plan.copy(items = plan.items.map { if (it.id == itemId) it.copy(
+                    tags = tagIds.mapNotNull { tid -> boardFlow.value.tags.find { it.id == tid } }
+                ) else it })
             }
         }
     }
-    val deletedDailyPlanItemIds = mutableListOf<Long>()
+
     override suspend fun deleteDailyPlanItem(itemId: Long) {
         deletedDailyPlanItemIds.add(itemId)
-        planDailyLinksFlow.update { links ->
-            links.filterNot { it.dailyPlanItemId == itemId }
-        }
-        dailyPlansFlow.update { plans ->
-            plans.map { plan ->
-                plan.copy(items = plan.items.filterNot { it.id == itemId })
-            }
+        dailyPlansFlow.update { list ->
+            list.map { plan -> plan.copy(items = plan.items.filter { it.id != itemId }) }
         }
     }
-
-    val addedDailyPlanItems = mutableListOf<DailyPlanItem>()
 
     override suspend fun getDailyPlanItem(itemId: Long): DailyPlanItem? =
-        addedDailyPlanItems.find { it.id == itemId }
-            ?: dailyPlansFlow.value.flatMap { it.items }.find { it.id == itemId }
+        dailyPlansFlow.value.asSequence().flatMap { it.items.asSequence() }.find { it.id == itemId }
 
     override suspend fun dailyPlanForDate(date: LocalDate): DailyPlan? =
-        dailyPlansFlow.value.firstOrNull { it.date == date }
-
-    override suspend fun copyDailyPlanItemToDate(
-        source: DailyPlanItem,
-        targetDate: LocalDate,
-        clearTimes: Boolean
-    ): Long? {
-        val targetEpoch = targetDate.toEpochDays().toInt()
-        val targetItems = dailyPlansFlow.value
-            .firstOrNull { it.date == targetDate }
-            ?.items
-            .orEmpty()
-        val alreadyPresent = targetItems.any { item ->
-            (source.taskId != null && item.taskId == source.taskId) ||
-                (item.carriedFromItemId != null && item.carriedFromItemId == source.id)
-        }
-        if (alreadyPresent) {
-            markHandled(listOf(source.id))
-            return null
-        }
-        val newId = nextDailyPlanItemId++
-        val copy = source.copy(
-            id = newId,
-            dateEpochDays = targetEpoch,
-            status = DailyPlanItemStatus.Planned,
-            startTimeMinutes = if (clearTimes) null else source.startTimeMinutes,
-            endTimeMinutes = if (clearTimes) null else source.endTimeMinutes,
-            completedAtMillis = null,
-            carriedFromItemId = source.id
-        )
-        copiedDailyPlanItems.add(copy)
-        dailyPlansFlow.update { plans ->
-            val existing = plans.firstOrNull { it.date == targetDate }
-            if (existing == null) {
-                plans + DailyPlan(date = targetDate, items = listOf(copy))
-            } else {
-                plans.map { plan ->
-                    if (plan.date == targetDate) plan.copy(items = plan.items + copy) else plan
-                }
-            }
-        }
-        markHandled(listOf(source.id))
-        return newId
-    }
+        dailyPlansFlow.value.find { it.date == date }
 
     override fun observePeriodReviews(): Flow<List<PeriodReview>> = periodReviewsFlow
 
-    override suspend fun periodReviewFor(period: ReviewPeriod, date: LocalDate): PeriodReview? =
-        periodReviewsFlow.value.firstOrNull { it.period == period && it.periodStartDate == date }
+    override suspend fun periodReviewFor(period: Period, date: LocalDate): PeriodReview? =
+        periodReviewsFlow.value.find { it.period == period && it.periodStartEpochDays == date.toEpochDays().toInt() }
 
     override suspend fun savePeriodReview(review: PeriodReview) {
-        periodReviewsFlow.update { reviews ->
-            reviews.filterNot {
-                it.period == review.period && it.periodStartEpochDays == review.periodStartEpochDays
-            } + review
+        periodReviewsFlow.update { list ->
+            val existingIndex = list.indexOfFirst { 
+                (it.id != 0L && it.id == review.id) || 
+                (it.period == review.period && it.periodStartEpochDays == review.periodStartEpochDays)
+            }
+            if (existingIndex >= 0) {
+                list.toMutableList().apply { 
+                    val old = get(existingIndex)
+                    set(existingIndex, review.copy(id = if (review.id == 0L) old.id else review.id)) 
+                }
+            } else {
+                val newId = if (review.id == 0L) (list.maxOfOrNull { it.id } ?: 0L) + 1 else review.id
+                list + review.copy(id = newId)
+            }
         }
     }
 
@@ -814,56 +470,36 @@ internal class FakeCheckItRepository(
         targetDate: LocalDate,
         nowMillis: Long
     ): DayCloseCommitResult {
-        updateDailyPlanItemsStatus(markDoneItemIds, DailyPlanItemStatus.Done)
-        markHandled(markDoneItemIds)
-        markHandled(dropItemIds)
-        val allItems = dailyPlansFlow.value.flatMap { it.items }
-        var carried = 0
-        var skipped = 0
-        carryItemIds.forEach { itemId ->
-            val source = allItems.find { it.id == itemId } ?: return@forEach
-            val targetItems = dailyPlansFlow.value
-                .firstOrNull { it.date == targetDate }
-                ?.items
-                .orEmpty()
-            val alreadyPresent = targetItems.any { item ->
-                (source.taskId != null && item.taskId == source.taskId) ||
-                    (item.carriedFromItemId != null && item.carriedFromItemId == source.id)
+        val handledIds = markDoneItemIds + carryItemIds + dropItemIds
+        
+        dailyPlansFlow.update { plans ->
+            plans.map { plan ->
+                plan.copy(items = plan.items.map { item ->
+                    if (item.id in handledIds) {
+                        item.copy(
+                            handledAtMillis = nowMillis,
+                            status = if (item.id in markDoneItemIds) DailyPlanItemStatus.Done else item.status,
+                            completedAtMillis = if (item.id in markDoneItemIds) nowMillis else item.completedAtMillis
+                        )
+                    } else item
+                })
             }
-            if (alreadyPresent) {
-                skipped += 1
-            } else {
-                val newId = nextDailyPlanItemId++
-                val copy = source.copy(
-                    id = newId,
-                    dateEpochDays = targetDate.toEpochDays().toInt(),
-                    status = DailyPlanItemStatus.Planned,
-                    startTimeMinutes = null,
-                    endTimeMinutes = null,
-                    completedAtMillis = null,
-                    carriedFromItemId = source.id
-                )
-                copiedDailyPlanItems.add(copy)
-                dailyPlansFlow.update { plans ->
-                    val existing = plans.firstOrNull { it.date == targetDate }
-                    if (existing == null) {
-                        plans + DailyPlan(date = targetDate, items = listOf(copy))
-                    } else {
-                        plans.map { plan ->
-                            if (plan.date == targetDate) plan.copy(items = plan.items + copy) else plan
-                        }
-                    }
-                }
-                carried += 1
-            }
-            markHandled(listOf(source.id))
         }
-        periodReviewsFlow.update { reviews ->
-            reviews.filterNot {
-                it.period == ReviewPeriod.Day && it.periodStartDate == date
-            } + PeriodReview(
-                id = 0L,
-                period = ReviewPeriod.Day,
+
+        markDoneItemIds.forEach { statusUpdates.add(it to DailyPlanItemStatus.Done) }
+        markedHandledItemIds.addAll(handledIds)
+        
+        var carriedCount = 0
+        var skippedCount = 0
+        carryItemIds.forEach { itemId ->
+            val source = getDailyPlanItem(itemId) ?: return@forEach
+            val newId = copyDailyPlanItemToDate(source, targetDate, true)
+            if (newId != null) carriedCount++ else skippedCount++
+        }
+
+        savePeriodReview(
+            PeriodReview(
+                period = Period.Day,
                 periodStartEpochDays = date.toEpochDays().toInt(),
                 periodEndEpochDays = date.toEpochDays().toInt() + 1,
                 content = winNote?.trim().orEmpty(),
@@ -873,671 +509,208 @@ internal class FakeCheckItRepository(
                 completedAtMillis = nowMillis,
                 editedAtMillis = nowMillis
             )
-        }
-        return DayCloseCommitResult(
-            carriedCount = carried,
-            skippedCount = skipped
         )
+        
+        return DayCloseCommitResult(carriedCount = carriedCount, skippedCount = skippedCount)
     }
 
-    private suspend fun markHandled(itemIds: List<Long>) {
-        if (itemIds.isEmpty()) return
-        markedHandledItemIds.addAll(itemIds)
+    private fun markDailyPlanItemsHandled(ids: List<Long>) {
+        ids.forEach { id ->
+            if (!markedHandledItemIds.contains(id)) {
+                markedHandledItemIds.add(id)
+            }
+        }
+        val now = 1L
         dailyPlansFlow.update { plans ->
             plans.map { plan ->
-                plan.copy(
-                    items = plan.items.map { item ->
-                        if (item.id in itemIds) item.copy(handledAtMillis = 1L) else item
-                    }
-                )
+                plan.copy(items = plan.items.map { item ->
+                    if (item.id in ids) {
+                        item.copy(handledAtMillis = item.handledAtMillis ?: now)
+                    } else item
+                })
             }
         }
     }
 
-    override suspend fun countDoneDailyPlanItemsForTaskOnDate(
-        taskId: Long,
-        dateEpochDays: Int,
-        excludeItemId: Long
-    ): Int = addedDailyPlanItems.count { it.taskId == taskId && it.dateEpochDays == dateEpochDays && it.status == DailyPlanItemStatus.Done && it.id != excludeItemId }
+    override suspend fun copyDailyPlanItemToDate(
+        source: DailyPlanItem,
+        targetDate: LocalDate,
+        clearTimes: Boolean
+    ): Long? {
+        val alreadyPresent = dailyPlansFlow.value.find { it.date == targetDate }?.items?.any { item ->
+            (source.taskId != null && item.taskId == source.taskId) ||
+                (item.carriedFromItemId != null && item.carriedFromItemId == source.id)
+        } ?: false
+        if (alreadyPresent) return null
 
-    override suspend fun adjustKeyResultValue(keyResultId: Long, delta: Double) {
-        adjustedKeyResults.add(keyResultId to delta)
-    }
-
-    override suspend fun getKeyResultForTask(taskId: Long): KeyResult? {
-        return currentBoard.tasksById[taskId]?.keyResult
-    }
-
-    override suspend fun addNote(input: NoteWriteInput): Long = 0L
-    override suspend fun updateNote(noteId: Long, input: NoteWriteInput) = Unit
-    override suspend fun trashNote(noteId: Long) = Unit
-    override suspend fun restoreNote(noteId: Long) = Unit
-
-    override fun observePeriodPlans(): Flow<List<PeriodPlan>> = periodPlansFlow
-
-    fun setPeriodPlans(plans: List<PeriodPlan>) {
-        periodPlansFlow.value = plans
-    }
-
-    override fun observePlanPriorities(): Flow<List<PlanPriority>> = planPrioritiesFlow
-
-    fun setPlanPriorities(priorities: List<PlanPriority>) {
-        planPrioritiesFlow.value = priorities
-    }
-
-    override fun observePlanPriorityTaskIds(): Flow<List<PlanPriorityTaskLink>> = planTaskLinksFlow
-
-    fun setPlanPriorityTaskLinks(links: List<PlanPriorityTaskLink>) {
-        planTaskLinksFlow.value = links
-    }
-
-    override fun observePlanPriorityDailyPlanItemIds(): Flow<List<PlanPriorityDailyPlanItemLink>> =
-        planDailyLinksFlow
-
-    fun setPlanPriorityDailyPlanItemLinks(links: List<PlanPriorityDailyPlanItemLink>) {
-        planDailyLinksFlow.value = links
-    }
-
-    override suspend fun getOrCreatePeriodPlan(
-        period: PlanPeriod,
-        start: LocalDate,
-        endInclusive: LocalDate
-    ): PeriodPlan {
-        val startEpochDays = start.toEpochDays().toInt()
-        val existing = periodPlansFlow.value.firstOrNull {
-            it.period == period && it.startEpochDays == startEpochDays
-        }
-        if (existing != null) return existing
-        val plan = PeriodPlan(
-            id = nextPeriodPlanId++,
-            period = period,
-            startEpochDays = startEpochDays,
-            endEpochDays = endInclusive.toEpochDays().toInt()
+        val newItemId = addDailyPlanItem(
+            date = targetDate,
+            title = source.title,
+            note = source.note,
+            startTimeMinutes = if (clearTimes) null else source.startTimeMinutes,
+            endTimeMinutes = if (clearTimes) null else source.endTimeMinutes,
+            source = source.source,
+            status = DailyPlanItemStatus.Planned,
+            tagIds = source.tags.map { it.id },
+            label = source.label,
+            taskId = source.taskId,
+            nestedListItemId = source.nestedListItemId,
+            carriedFromItemId = source.id
         )
-        periodPlansFlow.update { it + plan }
-        return plan
+        val newItem = getDailyPlanItem(newItemId)!!
+        copiedDailyPlanItems.add(newItem)
+        markDailyPlanItemsHandled(listOf(source.id))
+        return newItemId
     }
 
-    override suspend fun addPlanPriority(input: PlanPriorityWriteInput): Long {
-        addedPlanPriorities.add(input)
-        val id = nextPlanPriorityId++
-        val plan = periodPlansFlow.value.firstOrNull { it.id == input.periodPlanId }
-            ?: error("Missing period plan ${input.periodPlanId}")
-        val priority = PlanPriority(
+    override suspend fun countDoneDailyPlanItemsForTaskOnDate(taskId: Long, dateEpochDays: Int, excludeItemId: Long): Int = 0
+
+    override suspend fun addNote(input: NoteWriteInput): Long {
+        val id = nextTaskId++ // sharing ID space
+        val newNote = NoteItem(
             id = id,
-            periodPlan = plan,
-            parentId = input.parentId,
-            title = input.title.trim(),
-            note = input.note,
-            sortOrder = input.sortOrder ?: planPrioritiesFlow.value.size,
-            isDone = input.isDone,
-            createdAtMillis = 0L,
-            updatedAtMillis = 0L,
-            completedAtMillis = if (input.isDone) 1L else null
-        )
-        planPrioritiesFlow.update { it + priority }
-        return id
-    }
-
-    override suspend fun updatePlanPriority(id: Long, input: PlanPriorityWriteInput) {
-        updatedPlanPriorities.add(id to input)
-        planPrioritiesFlow.update { priorities ->
-            priorities.map { priority ->
-                if (priority.id == id) {
-                    priority.copy(
-                        parentId = input.parentId,
-                        title = input.title.trim(),
-                        note = input.note,
-                        sortOrder = input.sortOrder ?: priority.sortOrder,
-                        isDone = input.isDone,
-                        updatedAtMillis = priority.updatedAtMillis + 1,
-                        completedAtMillis = if (input.isDone) 1L else null
-                    )
-                } else {
-                    priority
-                }
-            }
-        }
-    }
-
-    override suspend fun deletePlanPriority(id: Long) {
-        deletedPlanPriorityIds.add(id)
-        planPrioritiesFlow.update { priorities ->
-            priorities.filterNot { it.id == id }.map { priority ->
-                if (priority.parentId == id) priority.copy(parentId = null) else priority
-            }
-        }
-        planTaskLinksFlow.update { it.filterNot { link -> link.priorityId == id } }
-        planDailyLinksFlow.update { it.filterNot { link -> link.priorityId == id } }
-    }
-
-    override suspend fun setPlanPriorityDone(id: Long, isDone: Boolean) {
-        planPrioritiesFlow.update { priorities ->
-            priorities.map { priority ->
-                if (priority.id == id) {
-                    priority.copy(isDone = isDone, completedAtMillis = if (isDone) 1L else null)
-                } else {
-                    priority
-                }
-            }
-        }
-    }
-
-    override suspend fun setPlanPriorityParent(id: Long, parentId: Long?) {
-        planPrioritiesFlow.update { priorities ->
-            priorities.map { priority ->
-                if (priority.id == id) priority.copy(parentId = parentId) else priority
-            }
-        }
-    }
-
-    override suspend fun reorderPlanPriorities(periodPlanId: Long, orderedIds: List<Long>) {
-        planPrioritiesFlow.update { priorities ->
-            priorities.map { priority ->
-                val index = orderedIds.indexOf(priority.id)
-                if (index >= 0) priority.copy(sortOrder = index) else priority
-            }
-        }
-    }
-
-    override suspend fun linkTaskToPriority(priorityId: Long, taskId: Long) {
-        linkedTasks.add(priorityId to taskId)
-        planTaskLinksFlow.update { links ->
-            links.filterNot { it.priorityId == priorityId && it.taskId == taskId } +
-                PlanPriorityTaskLink(priorityId, taskId, 0)
-        }
-    }
-
-    override suspend fun linkDailyPlanItemToPriority(priorityId: Long, dailyPlanItemId: Long) {
-        linkedDailyPlanItems.add(priorityId to dailyPlanItemId)
-        planDailyLinksFlow.update { links ->
-            links.filterNot { it.priorityId == priorityId && it.dailyPlanItemId == dailyPlanItemId } +
-                PlanPriorityDailyPlanItemLink(priorityId, dailyPlanItemId, 0)
-        }
-    }
-
-    override fun observeTwelveWeekCycles(): Flow<List<TwelveWeekCycle>> = twelveWeekCyclesFlow
-
-    override fun observeTwelveWeekGoals(): Flow<List<TwelveWeekGoal>> = twelveWeekGoalsFlow
-
-    override fun observeTwelveWeekCheckIns(): Flow<List<TwelveWeekCheckIn>> = twelveWeekCheckInsFlow
-
-    override fun observeTwelveWeekGoalScores(): Flow<List<TwelveWeekGoalScore>> = twelveWeekScoresFlow
-
-    override fun observeTwelveWeekGoalTaskLinks(): Flow<List<TwelveWeekGoalTaskLink>> =
-        twelveWeekGoalTaskLinksFlow
-
-    override suspend fun addTwelveWeekCycle(input: TwelveWeekCycleWriteInput): Long {
-        addedTwelveWeekCycles.add(input)
-        val id = nextTwelveWeekCycleId++
-        twelveWeekCyclesFlow.update { it + TwelveWeekCycle(
-            id = id,
+            list = input.listId?.let { lid -> currentBoard.lists.find { it.id == lid } },
             title = input.title,
-            startEpochDays = input.startEpochDays,
-            endEpochDays = input.endEpochDays,
+            content = input.content,
             status = input.status,
-            createdAtMillis = 0L
-        ) }
+            tags = input.tagIds.mapNotNull { tid -> currentBoard.tags.find { it.id == tid } },
+            date = input.date,
+            startTimeMinutes = input.startTimeMinutes,
+            createdAtMillis = 0L,
+            editedAtMillis = 0L,
+            sortOrder = 0
+        )
+        boardFlow.update { it.copy(notes = it.notes + newNote) }
         return id
     }
 
-    override suspend fun updateTwelveWeekCycle(
-        cycleId: Long,
-        title: String,
-        status: TwelveWeekCycleStatus,
-        reviewNote: String,
-        completedAtMillis: Long?
-    ) {
-        updatedTwelveWeekCycles.add(cycleId to Triple(title, status, reviewNote))
-        twelveWeekCyclesFlow.update { cycles ->
-            cycles.map { cycle ->
-                if (cycle.id == cycleId) {
-                    cycle.copy(
-                        title = title,
-                        status = status,
-                        reviewNote = reviewNote,
-                        completedAtMillis = completedAtMillis ?: cycle.completedAtMillis
-                    )
-                } else {
-                    cycle
-                }
-            }
-        }
-    }
-
-    override suspend fun addTwelveWeekGoal(input: TwelveWeekGoalWriteInput): Long {
-        addedTwelveWeekGoals.add(input)
-        val id = nextTwelveWeekGoalId++
-        twelveWeekGoalsFlow.update { goals ->
-            goals + TwelveWeekGoal(
-                id = id,
-                cycleId = input.cycleId,
+    override suspend fun updateNote(noteId: Long, input: NoteWriteInput) {
+        boardFlow.update { board ->
+            board.copy(notes = board.notes.map { if (it.id == noteId) it.copy(
+                list = input.listId?.let { lid -> board.lists.find { it.id == lid } },
                 title = input.title,
-                note = input.note,
-                sortOrder = goals.count { it.cycleId == input.cycleId },
-                createdAtMillis = 0L,
-                updatedAtMillis = 0L
+                content = input.content,
+                status = input.status,
+                tags = input.tagIds.mapNotNull { tid -> board.tags.find { it.id == tid } },
+                date = input.date,
+                startTimeMinutes = input.startTimeMinutes
+            ) else it })
+        }
+    }
+
+    override suspend fun completeNote(noteId: Long) {
+        boardFlow.update { board ->
+            board.copy(notes = board.notes.map { if (it.id == noteId) it.copy(status = TaskStatus.Completed) else it })
+        }
+    }
+
+    override suspend fun openNote(noteId: Long) {
+        boardFlow.update { board ->
+            board.copy(notes = board.notes.map { if (it.id == noteId) it.copy(status = TaskStatus.Open) else it })
+        }
+    }
+
+    override suspend fun trashNote(noteId: Long) {
+        boardFlow.update { board ->
+            board.copy(notes = board.notes.map { if (it.id == noteId) it.copy(trashedAtMillis = 1L) else it })
+        }
+    }
+
+    override suspend fun restoreNote(noteId: Long) {
+        boardFlow.update { board ->
+            board.copy(notes = board.notes.map { if (it.id == noteId) it.copy(trashedAtMillis = null) else it })
+        }
+    }
+
+    override suspend fun moveTask(taskId: Long, listId: Long, sectionId: Long?, sortOrder: Int, isPinned: Boolean) {
+        boardFlow.update { board ->
+            board.copy(
+                tasks = board.tasks.map {
+                    if (it.id == taskId) it.copy(sectionId = sectionId, sortOrder = sortOrder, isPinned = isPinned) else it
+                }
+            )
+        }
+    }
+
+    override suspend fun moveNote(noteId: Long, listId: Long, sectionId: Long?, sortOrder: Int, isPinned: Boolean) {
+        boardFlow.update { board ->
+            board.copy(
+                notes = board.notes.map {
+                    if (it.id == noteId) it.copy(sectionId = sectionId, sortOrder = sortOrder, isPinned = isPinned) else it
+                }
+            )
+        }
+    }
+
+
+    override suspend fun addSection(listId: Long, title: String, color: String): Long {
+        val id = nextSectionId++
+        addedSections.add(Triple(listId, title, color))
+        boardFlow.update { board ->
+            board.copy(
+                lists = board.lists.map { list ->
+                    if (list.id == listId) {
+                        list.copy(
+                            sections = list.sections + com.checkit.domain.ListSection(
+                                id = id,
+                                listId = listId,
+                                title = title,
+                                color = color,
+                                sortOrder = list.sections.size
+                            )
+                        )
+                    } else list
+                }
             )
         }
         return id
     }
 
-    override suspend fun updateTwelveWeekGoal(
-        goalId: Long,
-        title: String,
-        note: String,
-        finalStatus: TwelveWeekGoalFinalStatus?,
-        updatedAtMillis: Long
-    ) {
-        twelveWeekGoalsFlow.update { goals ->
-            goals.map { goal ->
-                if (goal.id == goalId) {
-                    goal.copy(title = title, note = note, finalStatus = finalStatus, updatedAtMillis = updatedAtMillis)
-                } else {
-                    goal
+    override suspend fun updateSection(sectionId: Long, title: String, color: String, sortOrder: Int) {
+        val section = com.checkit.domain.ListSection(sectionId, 0L, title, color, sortOrder)
+        updatedSections.add(section)
+        boardFlow.update { board ->
+            board.copy(
+                lists = board.lists.map { list ->
+                    list.copy(
+                        sections = list.sections.map { s ->
+                            if (s.id == sectionId) section.copy(listId = s.listId) else s
+                        }
+                    )
                 }
-            }
+            )
         }
     }
 
-    override suspend fun deleteTwelveWeekGoal(goalId: Long) {
-        twelveWeekGoalsFlow.update { goals -> goals.filterNot { it.id == goalId } }
-        twelveWeekGoalTaskLinksFlow.update { links -> links.filterNot { it.goalId == goalId } }
-        twelveWeekScoresFlow.update { scores -> scores.filterNot { it.goalId == goalId } }
-    }
-
-    override suspend fun upsertTwelveWeekCheckIn(
-        cycleId: Long,
-        weekIndex: Int,
-        note: String,
-        scores: List<TwelveWeekGoalScoreWriteInput>
-    ): Long {
-        savedTwelveWeekCheckIns.add(TwelveWeekCheckInWriteInput(cycleId, weekIndex, note, scores))
-        val existing = twelveWeekCheckInsFlow.value.firstOrNull { it.cycleId == cycleId && it.weekIndex == weekIndex }
-        val checkInId: Long
-        if (existing != null) {
-            checkInId = existing.id
-            twelveWeekCheckInsFlow.update { checkIns ->
-                checkIns.map { checkIn ->
-                    if (checkIn.id == checkInId) checkIn.copy(note = note, updatedAtMillis = checkIn.updatedAtMillis + 1) else checkIn
+    override suspend fun deleteSection(sectionId: Long) {
+        deletedSections.add(sectionId)
+        boardFlow.update { board ->
+            board.copy(
+                lists = board.lists.map { list ->
+                    list.copy(sections = list.sections.filter { it.id != sectionId })
                 }
-            }
-        } else {
-            checkInId = nextTwelveWeekCheckInId++
-            twelveWeekCheckInsFlow.update { checkIns ->
-                checkIns + TwelveWeekCheckIn(
-                    id = checkInId,
-                    cycleId = cycleId,
-                    weekIndex = weekIndex,
-                    note = note,
-                    createdAtMillis = 0L,
-                    updatedAtMillis = 0L
-                )
-            }
-        }
-        twelveWeekScoresFlow.update { existingScores ->
-            existingScores.filterNot { it.checkInId == checkInId } +
-                scores.map { TwelveWeekGoalScore(
-                    id = nextTwelveWeekScoreId++,
-                    checkInId = checkInId,
-                    goalId = it.goalId,
-                    score = it.score,
-                    note = it.note
-                ) }
-        }
-        return checkInId
-    }
-
-    override suspend fun linkTwelveWeekGoalTask(goalId: Long, taskId: Long, sortOrder: Int) {
-        linkedTwelveWeekGoalTasks.add(goalId to taskId)
-        twelveWeekGoalTaskLinksFlow.update { links ->
-            links.filterNot { it.taskId == taskId } +
-                TwelveWeekGoalTaskLink(goalId = goalId, taskId = taskId, sortOrder = sortOrder)
+            )
         }
     }
 
-    override suspend fun unlinkTwelveWeekGoalTask(goalId: Long, taskId: Long) {
-        unlinkedTwelveWeekGoalTasks.add(goalId to taskId)
-        twelveWeekGoalTaskLinksFlow.update { links ->
-            links.filterNot { it.goalId == goalId && it.taskId == taskId }
-        }
-    }
-
-    override suspend fun countActiveTwelveWeekCycles(): Int =
-        twelveWeekCyclesFlow.value.count { it.status == TwelveWeekCycleStatus.Active }
-
-    // ---------------- Nested Documents ----------------
-
-    private val nestedDocumentsFlow = MutableStateFlow<List<NestedDocument>>(emptyList())
-    private val nestedItemsFlow = MutableStateFlow<List<NestedListItem>>(emptyList())
-    val addedNestedDocuments = mutableListOf<String>()
-    val deletedNestedDocuments = mutableListOf<Long>()
-    val addedNestedItems = mutableListOf<Triple<Long, Long?, String>>()
-    val deletedNestedItems = mutableListOf<Long>()
-    val nestedMoves = mutableListOf<List<NestedItemMove>>()
-    private var nextNestedDocumentId: Long = 50_000L
-    private var nextNestedItemId: Long = 51_000L
-
-    override fun observeNestedDocuments(): Flow<List<NestedDocument>> = nestedDocumentsFlow
-
+    override fun observeNestedDocuments(): Flow<List<NestedDocument>> = MutableStateFlow(emptyList())
     override fun observeTags(): Flow<List<TagItem>> = boardFlow.map { it.tags }
-
-    override fun observeNestedDocumentTree(documentId: Long): Flow<NestedDocumentTree> {
-        return kotlinx.coroutines.flow.combine(nestedDocumentsFlow, nestedItemsFlow) { documents, items ->
-            val document = documents.firstOrNull { it.id == documentId }
-                ?: NestedDocument(id = documentId, title = "", createdAtMillis = 0L, updatedAtMillis = 0L)
-            NestedDocumentTree(
-                document = document,
-                rootNodes = buildNestedTree(items.filter { it.documentId == documentId })
-            )
-        }
-    }
-
-    override suspend fun addNestedDocument(title: String): Long {
-        addedNestedDocuments.add(title)
-        val id = nextNestedDocumentId++
-        nestedDocumentsFlow.update {
-            it + NestedDocument(id = id, title = title, createdAtMillis = 0L, updatedAtMillis = 0L)
-        }
-        val rootId = nextNestedItemId++
-        nestedItemsFlow.update {
-            it + NestedListItem(
-                id = rootId,
-                documentId = id,
-                parentId = null,
-                position = 0,
-                text = title,
-                note = null,
-                checkboxEnabled = false,
-                checked = false,
-                collapsed = false,
-                createdAtMillis = 0L,
-                updatedAtMillis = 0L
-            )
-        }
-        return id
-    }
-
-    override suspend fun renameNestedDocument(documentId: Long, title: String) {
-        nestedDocumentsFlow.update { documents ->
-            documents.map { if (it.id == documentId) it.copy(title = title) else it }
-        }
-    }
-
-    override suspend fun deleteNestedDocument(documentId: Long) {
-        deletedNestedDocuments.add(documentId)
-        nestedDocumentsFlow.update { documents -> documents.filterNot { it.id == documentId } }
-        nestedItemsFlow.update { items -> items.filterNot { it.documentId == documentId } }
-    }
-
-    override suspend fun addNestedItem(
-        documentId: Long,
-        parentId: Long?,
-        text: String,
-        position: Int?
-    ): Long {
-        addedNestedItems.add(Triple(documentId, parentId, text))
-        val id = nextNestedItemId++
-        val items = nestedItemsFlow.value
-        val newPosition = position ?: items.count { it.documentId == documentId && it.parentId == parentId }
-        nestedItemsFlow.update {
-            it + NestedListItem(
-                id = id,
-                documentId = documentId,
-                parentId = parentId,
-                text = text,
-                note = null,
-                checkboxEnabled = false,
-                checked = false,
-                collapsed = false,
-                position = newPosition,
-                createdAtMillis = 0L,
-                updatedAtMillis = 0L
-            )
-        }
-        return id
-    }
-
-    override suspend fun updateNestedItemText(itemId: Long, text: String) {
-        nestedItemsFlow.update { items ->
-            items.map { if (it.id == itemId) it.copy(text = text) else it }
-        }
-    }
-
-    override suspend fun updateNestedItemNote(itemId: Long, note: String?) {
-        nestedItemsFlow.update { items ->
-            items.map { if (it.id == itemId) it.copy(note = note) else it }
-        }
-    }
-
-    override suspend fun updateNestedItemFormatting(
-        itemId: Long,
-        textStyle: NestedTextStyle,
-        textColor: NestedColorToken,
-        backgroundColor: NestedColorToken
-    ) {
-        nestedItemsFlow.update { items ->
-            items.map { if (it.id == itemId) it.copy(textStyle = textStyle, textColor = textColor, backgroundColor = backgroundColor) else it }
-        }
-    }
-
-    override suspend fun updateNestedItemMetadata(itemId: Long, startDate: LocalDate?, endDate: LocalDate?, priority: TaskPriority) {
-        nestedItemsFlow.update { items ->
-            items.map { if (it.id == itemId) it.copy(startDate = startDate, endDate = endDate, priority = priority) else it }
-        }
-    }
-
-    override suspend fun updateNestedItemTags(itemId: Long, tagIds: List<Long>) {
-        val tags = boardFlow.value.tags.filter { it.id in tagIds }
-        nestedItemsFlow.update { items ->
-            items.map { if (it.id == itemId) it.copy(tags = tags) else it }
-        }
-    }
-
-    override suspend fun updateNestedItemMetricSettings(
-        itemId: Long,
-        actualMinutes: Int,
-        metricRollupPolicy: MetricRollupPolicy,
-        showTrackedMinutes: Boolean
-    ) {
-        nestedItemsFlow.update { items ->
-            items.map {
-                if (it.id == itemId) it.copy(
-                    actualMinutes = actualMinutes,
-                    metricRollupPolicy = metricRollupPolicy,
-                    showTrackedMinutes = showTrackedMinutes
-                ) else it
-            }
-        }
-    }
-
-    override suspend fun replaceNestedManualMetrics(itemId: Long, metrics: List<NestedManualMetric>) {
-        nestedItemsFlow.update { items ->
-            items.map { if (it.id == itemId) it.copy(manualMetrics = metrics) else it }
-        }
-    }
-
-    override suspend fun setNestedItemCheckboxEnabled(itemId: Long, checkboxEnabled: Boolean) {
-        nestedItemsFlow.update { items ->
-            items.map { if (it.id == itemId) it.copy(checkboxEnabled = checkboxEnabled) else it }
-        }
-    }
-
-    override suspend fun setNestedItemsChecked(itemIds: List<Long>, checked: Boolean) {
-        nestedItemsFlow.update { items ->
-            items.map { if (it.id in itemIds) it.copy(checked = checked) else it }
-        }
-    }
-
-    override suspend fun toggleNestedItemCollapsed(itemId: Long) {
-        nestedItemsFlow.update { items ->
-            items.map { if (it.id == itemId) it.copy(collapsed = !it.collapsed) else it }
-        }
-    }
-
-    override suspend fun moveNestedItems(moves: List<NestedItemMove>) {
-        nestedMoves.add(moves)
-        val items = nestedItemsFlow.value.toMutableList()
-        val moveById = moves.associateBy { it.itemId }
-        items.forEachIndexed { index, item ->
-            val move = moveById[item.id] ?: return@forEachIndexed
-            items[index] = item.copy(
-                parentId = move.parentId,
-                position = move.position
-            )
-        }
-        nestedItemsFlow.value = items
-    }
-
-    override suspend fun deleteNestedItems(itemIds: List<Long>) {
-        deletedNestedItems.addAll(itemIds)
-        val idsToDelete = mutableSetOf<Long>()
-        fun collect(itemId: Long) {
-            idsToDelete.add(itemId)
-            nestedItemsFlow.value.filter { it.parentId == itemId }.forEach { collect(it.id) }
-        }
-        itemIds.forEach { collect(it) }
-        nestedItemsFlow.update { items -> items.filterNot { it.id in idsToDelete } }
-    }
-
-    fun currentNestedItems(): List<NestedListItem> = nestedItemsFlow.value
-
-    fun currentNestedDocuments(): List<NestedDocument> = nestedDocumentsFlow.value
+    override fun observeNestedDocumentTree(documentId: Long): Flow<NestedDocumentTree> = MutableStateFlow(NestedDocumentTree(NestedDocument(0, "", 0, 0), emptyList()))
+    override suspend fun addNestedDocument(title: String): Long = 0
+    override suspend fun renameNestedDocument(documentId: Long, title: String) {}
+    override suspend fun deleteNestedDocument(documentId: Long) {}
+    override suspend fun addNestedItem(documentId: Long, parentId: Long?, text: String, position: Int?): Long = 0
+    override suspend fun updateNestedItemText(itemId: Long, text: String) {}
+    override suspend fun updateNestedItemNote(itemId: Long, note: String?) {}
+    override suspend fun updateNestedItemFormatting(itemId: Long, textStyle: NestedTextStyle, textColor: NestedColorToken, backgroundColor: NestedColorToken) {}
+    override suspend fun updateNestedItemPriority(itemId: Long, priority: TaskPriority) {}
+    override suspend fun updateNestedItemDateRange(itemId: Long, startDate: LocalDate?, endDate: LocalDate?) {}
+    override suspend fun updateNestedItemTags(itemId: Long, tagIds: List<Long>) {}
+    override suspend fun updateNestedItemMetricSettings(itemId: Long, actualMinutes: Int, metricRollupPolicy: MetricRollupPolicy, showTrackedMinutes: Boolean) {}
+    override suspend fun replaceNestedManualMetrics(itemId: Long, metrics: List<NestedManualMetric>) {}
+    override suspend fun setNestedItemCheckboxEnabled(itemId: Long, checkboxEnabled: Boolean) {}
+    override suspend fun setNestedItemsChecked(itemIds: List<Long>, checked: Boolean) {}
+    override suspend fun toggleNestedItemCollapsed(itemId: Long) {}
+    override suspend fun moveNestedItems(moves: List<NestedItemMove>) {}
+    override suspend fun deleteNestedItems(itemIds: List<Long>) {}
 }
-
-internal class FakeSettingsRepository(
-    initialSettings: UserSettings = UserSettings()
-) : SettingsRepository {
-    private val settingsFlow = MutableStateFlow(initialSettings)
-    override val settings: Flow<UserSettings> = settingsFlow
-
-    override suspend fun setLanguageCode(code: String) {
-        settingsFlow.update { it.copy(languageCode = code) }
-    }
-
-    override suspend fun setThemeModeCode(code: String) {
-        settingsFlow.update { it.copy(themeModeCode = code) }
-    }
-
-    override suspend fun setColorSchemeModeCode(code: String) {
-        settingsFlow.update { it.copy(colorSchemeModeCode = code) }
-    }
-
-    override suspend fun setTaskWorkspaceViewCode(code: String) {
-        settingsFlow.update { it.copy(taskWorkspaceViewCode = code) }
-    }
-
-    override suspend fun setTaskListDisplayTypeCode(code: String) {
-        settingsFlow.update { it.copy(taskListDisplayTypeCode = code) }
-    }
-
-    override suspend fun setTaskShowCompleted(showCompleted: Boolean) {
-        settingsFlow.update { it.copy(taskShowCompleted = showCompleted) }
-    }
-
-    override suspend fun setTaskSortOptionCode(code: String) {
-        settingsFlow.update { it.copy(taskSortOptionCode = code) }
-    }
-
-    override suspend fun setPlanReminderEnabled(enabled: Boolean) {
-        settingsFlow.update { it.copy(planReminderEnabled = enabled) }
-    }
-
-    override suspend fun setPlanReminderTimeMinutes(minutes: Int) {
-        settingsFlow.update { it.copy(planReminderTimeMinutes = minutes) }
-    }
-
-    override suspend fun setReviewReminderEnabled(enabled: Boolean) {
-        settingsFlow.update { it.copy(reviewReminderEnabled = enabled) }
-    }
-
-    override suspend fun setReviewReminderTimeMinutes(minutes: Int) {
-        settingsFlow.update { it.copy(reviewReminderTimeMinutes = minutes) }
-    }
-
-    override suspend fun setCheckInReminderEnabled(enabled: Boolean) {
-        settingsFlow.update { it.copy(checkInReminderEnabled = enabled) }
-    }
-
-    override suspend fun setScheduleReminderEnabled(enabled: Boolean) {
-        settingsFlow.update { it.copy(scheduleReminderEnabled = enabled) }
-    }
-
-    override suspend fun setCheckInReminderLastShownAtMillis(millis: Long) {
-        settingsFlow.update { it.copy(checkInReminderLastShownAtMillis = millis) }
-    }
-
-    override suspend fun setAutoMyDayLastRunEpochDay(epochDay: Int) {
-        settingsFlow.update { it.copy(autoMyDayLastRunEpochDay = epochDay) }
-    }
-
-    override suspend fun setLastDayCloseEpochDay(epochDay: Int) {
-        settingsFlow.update { it.copy(lastDayCloseEpochDay = epochDay) }
-    }
-
-    override suspend fun setAutoCarryOverLeftovers(enabled: Boolean) {
-        settingsFlow.update { it.copy(autoCarryOverLeftovers = enabled) }
-    }
-
-    override suspend fun setAutoCarryOverLastRunEpochDay(epochDay: Int) {
-        settingsFlow.update { it.copy(autoCarryOverLastRunEpochDay = epochDay) }
-    }
-
-    override suspend fun setLeftoversBannerDismissedEpochDay(epochDay: Int) {
-        settingsFlow.update { it.copy(leftoversBannerDismissedEpochDay = epochDay) }
-    }
-
-    override suspend fun setLastDayPlanDismissedEpochDay(epochDay: Int) {
-        settingsFlow.update { it.copy(lastDayPlanDismissedEpochDay = epochDay) }
-    }
-
-    override suspend fun setLastFabAction(type: String, id: Long?) {
-        settingsFlow.update { it.copy(lastFabActionType = type, lastFabActionId = id) }
-    }
-
-    fun currentSettings(): UserSettings = settingsFlow.value
-}
-
-private fun TaskWriteInput.toTaskItem(
-    taskId: Long,
-    sortOrder: Int,
-    planPriority: PlanPriority? = null,
-    keyResult: KeyResult? = null,
-    createdAtMillis: Long = 0L,
-    updatedAtMillis: Long = 0L
-) = TaskItem(
-    id = taskId,
-    list = null, // Needs proper resolution if testing specific list assignment
-    planPriority = planPriority,
-    keyResult = keyResult,
-    twelveWeekGoalId = twelveWeekGoalId,
-    name = name,
-    description = description,
-    subtasks = subtasks.mapIndexed { index, subtask ->
-        SubTaskItem(
-            id = index + 1L,
-            taskId = taskId,
-            name = subtask.name,
-            isCompleted = subtask.isCompleted,
-            sortOrder = index
-        )
-    },
-    status = status,
-    priority = priority,
-    type = type,
-    doDate = doDate,
-    startTimeMinutes = startTimeMinutes,
-    endTimeMinutes = endTimeMinutes,
-    reminders = reminders.mapIndexed { index, reminder ->
-        TaskReminder(
-            id = index + 1L,
-            taskId = taskId,
-            remindAtMillis = reminder.remindAtMillis,
-            label = reminder.label
-        )
-    },
-    repeatRRule = repeatRRule,
-    sortOrder = sortOrder,
-    createdAtMillis = createdAtMillis,
-    updatedAtMillis = updatedAtMillis
-)

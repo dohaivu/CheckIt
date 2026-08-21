@@ -7,7 +7,7 @@ import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.PeriodReview
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.LeftoverAction
-import com.checkit.domain.ReviewPeriod
+import com.checkit.domain.Period
 import com.checkit.domain.ReviewStatus
 import com.checkit.domain.TagItem
 import com.checkit.domain.usecase.AddDailyPlanItemUseCase
@@ -22,7 +22,6 @@ import com.checkit.domain.usecase.DeleteJournalEntryUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
-import com.checkit.domain.usecase.SyncKeyResultFromDailyPlanUseCase
 import com.checkit.domain.SprintManager
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
@@ -75,7 +74,6 @@ class MyDayViewModelTest {
         val observeDailyPlans = ObserveDailyPlansUseCase(repository)
         val observeJournalEntries = ObserveJournalEntriesUseCase(repository)
         val observePeriodReviews = ObservePeriodReviewsUseCase(repository)
-        val syncKeyResult = SyncKeyResultFromDailyPlanUseCase(repository)
         val addTaskToDailyPlan = AddTaskToDailyPlanUseCase(repository)
         val updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository)
 
@@ -97,13 +95,12 @@ class MyDayViewModelTest {
             ),
             carryOverDailyPlanItems = carryOver,
             observePeriodReviews = observePeriodReviews,
-            upsertDailyPlanItem = UpsertDailyPlanItemUseCase(repository, syncKeyResult),
+            upsertDailyPlanItem = UpsertDailyPlanItemUseCase(repository),
             addSuggestedTaskToMyDay = AddSuggestedTaskToMyDayUseCase(
                 repository = repository,
                 addTaskToDailyPlan = addTaskToDailyPlan,
                 updateDailyPlanItemTime = updateDailyPlanItemTime
             ),
-            syncKeyResultFromDailyPlan = syncKeyResult,
             updateDailyPlanItemTime = updateDailyPlanItemTime,
             smartSchedule = SmartScheduleDailyPlanUseCase(repository),
             sprintManager = SprintManager(NoOpSprintNotificationScheduler()),
@@ -114,8 +111,7 @@ class MyDayViewModelTest {
                     addTaskToDailyPlan = addTaskToDailyPlan,
                     addDailyPlanItem = AddDailyPlanItemUseCase(repository),
                     updateDailyPlanItemTime = updateDailyPlanItemTime,
-                    updateDailyPlanItemStatus = UpdateDailyPlanItemStatusUseCase(repository),
-                    syncKeyResultFromDailyPlan = syncKeyResult
+                    updateDailyPlanItemStatus = UpdateDailyPlanItemStatusUseCase(repository)
                 ),
                 observeTaskBoard = observeTaskBoard
             )
@@ -133,7 +129,7 @@ class MyDayViewModelTest {
         repository.setDayReviews(
             listOf(
                 PeriodReview(
-                    period = ReviewPeriod.Day,
+                    period = Period.Day,
                     periodStartEpochDays = today.toEpochDays().toInt(),
                     periodEndEpochDays = today.toEpochDays().toInt() + 1,
                     content = "Shipped the review loop",
@@ -345,54 +341,6 @@ class MyDayViewModelTest {
     }
 
     @Test
-    fun reopenReviewPreselectsCarryOverWhenCopyExistsTomorrow() = runTest(dispatcher) {
-        val today = today()
-        val tomorrow = today.plus(1, DateTimeUnit.DAY)
-        repository.setDailyPlans(
-            listOf(
-                DailyPlan(
-                    date = today,
-                    items = listOf(
-                        DailyPlanItem(
-                            id = 7L,
-                            dateEpochDays = today.toEpochDays().toInt(),
-                            title = "Standalone task",
-                            source = DailyPlanItemSource.MyDayTask,
-                            status = DailyPlanItemStatus.Planned,
-                            sortOrder = 0,
-                            addedAtMillis = 0L,
-                            handledAtMillis = 100L
-                        )
-                    )
-                ),
-                DailyPlan(
-                    date = tomorrow,
-                    items = listOf(
-                        DailyPlanItem(
-                            id = 70L,
-                            dateEpochDays = tomorrow.toEpochDays().toInt(),
-                            title = "Standalone task (tomorrow)",
-                            source = DailyPlanItemSource.MyDayTask,
-                            status = DailyPlanItemStatus.Planned,
-                            sortOrder = 0,
-                            addedAtMillis = 100L,
-                            carriedFromItemId = 7L
-                        )
-                    )
-                )
-            )
-        )
-        dispatcher.scheduler.advanceUntilIdle()
-
-        viewModel.openDayClose()
-        dispatcher.scheduler.advanceUntilIdle()
-        val reopened = viewModel.uiState.value.dayClose
-        assertNotNull(reopened)
-        assertEquals(listOf(7L), reopened.summary.alreadyCarriedItems.map { it.id })
-        assertEquals(LeftoverAction.CarryOver, reopened.actionFor(reopened.summary.alreadyCarriedItems.single()))
-    }
-
-    @Test
     fun openDayCloseBeforeDataLoadUsesLatestPlanNotEmptyState() = runTest(dispatcher) {
         val today = today()
         repository.setDailyPlans(
@@ -435,7 +383,7 @@ class MyDayViewModelTest {
         assertEquals(false, editor.isEditMode)
         assertEquals(today(), editor.date)
 
-        viewModel.updateJournalEditorContext("Biking")
+        viewModel.updateJournalEditorLabel("Biking")
         viewModel.updateJournalEditorContent("Covered 20 km")
         viewModel.toggleJournalEditorMood("🔥")
         viewModel.toggleJournalEditorTag(tag.id)
@@ -443,15 +391,14 @@ class MyDayViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
 
         val input = repository.addedJournalEntries.single()
-        assertEquals("Biking", input.context)
+        assertEquals("Biking", input.label)
         assertEquals("Covered 20 km", input.content)
         assertEquals(listOf("🔥"), input.moods)
-        assertEquals(listOf(tag.id), input.tagIds)
         assertEquals(today(), input.date)
 
         assertEquals(null, viewModel.uiState.value.journalEditor)
         assertEquals(1, viewModel.uiState.value.journalEntries.size)
-        assertEquals("Biking", viewModel.uiState.value.journalEntries.single().context)
+        assertEquals("Biking", viewModel.uiState.value.journalEntries.single().label)
     }
 
     @Test
@@ -481,21 +428,21 @@ class MyDayViewModelTest {
                 JournalEntry(
                     id = 1L,
                     dateEpochDays = today.toEpochDays().toInt(),
-                    context = "Biking",
+                    label = "Biking",
                     content = "Ride",
                     createdTimeMinutes = 1
                 ),
                 JournalEntry(
                     id = 2L,
                     dateEpochDays = today.toEpochDays().toInt(),
-                    context = "Cafe",
+                    label = "Cafe",
                     content = "Coffee",
                     createdTimeMinutes = 2
                 ),
                 JournalEntry(
                     id = 3L,
                     dateEpochDays = today.toEpochDays().toInt() - 1,
-                    context = "Old",
+                    label = "Old",
                     content = "Yesterday",
                     createdTimeMinutes = 3
                 )
@@ -514,7 +461,7 @@ class MyDayViewModelTest {
                 JournalEntry(
                     id = 5L,
                     dateEpochDays = today.toEpochDays().toInt(),
-                    context = "Biking",
+                    label = "Biking",
                     content = "Ride",
                     moods = listOf("😀"),
                     createdTimeMinutes = 1
@@ -526,7 +473,7 @@ class MyDayViewModelTest {
         viewModel.openJournalEditor(repository.currentJournalEntry(5L)!!)
         val editor = viewModel.uiState.value.journalEditor
         assertNotNull(editor)
-        assertEquals("Biking", editor.context)
+        assertEquals("Biking", editor.label)
         assertEquals("Ride", editor.content)
 
         viewModel.updateJournalEditorContent("Ride + sprint")

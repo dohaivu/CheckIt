@@ -29,7 +29,7 @@ import kotlin.time.Clock
 class ObserveTaskBoardUseCase(
     private val repository: CheckItRepository
 ) {
-    operator fun invoke(): Flow<TaskBoard> = repository.observeTaskBoard()
+    operator fun invoke(onlyOpen: Boolean = true): Flow<TaskBoard> = repository.observeTaskBoard(onlyOpen)
 }
 
 class AutoAddTodayTasksToMyDayUseCase(
@@ -86,7 +86,6 @@ private fun TaskItem.qualifiesForAddToMyDay(today: LocalDate): Boolean =
     when (type) {
         TaskType.Task -> doDate == today
         TaskType.Habit -> completedDate == null
-        TaskType.Tactic -> false
     }
 
 class AddTagUseCase(
@@ -193,6 +192,21 @@ class RestoreNoteUseCase(
 ) {
     suspend operator fun invoke(noteId: Long) = repository.restoreNote(noteId)
 }
+
+class MoveTaskUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(taskId: Long, listId: Long, sectionId: Long?, sortOrder: Int, isPinned: Boolean) =
+        repository.moveTask(taskId, listId, sectionId, sortOrder, isPinned)
+}
+
+class MoveNoteUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(noteId: Long, listId: Long, sectionId: Long?, sortOrder: Int, isPinned: Boolean) =
+        repository.moveNote(noteId, listId, sectionId, sortOrder, isPinned)
+}
+
 
 class SelectTaskBoardItemsUseCase {
     operator fun invoke(

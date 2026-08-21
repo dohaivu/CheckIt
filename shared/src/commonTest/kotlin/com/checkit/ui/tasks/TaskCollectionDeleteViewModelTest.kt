@@ -6,16 +6,12 @@ import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TagItem
 import com.checkit.domain.usecase.AddListUseCase
-import com.checkit.domain.usecase.AddObjectiveUseCase
 import com.checkit.domain.usecase.AddTagUseCase
 import com.checkit.domain.usecase.DeleteListUseCase
-import com.checkit.domain.usecase.DeleteObjectiveUseCase
 import com.checkit.domain.usecase.DeleteTagUseCase
 import com.checkit.domain.usecase.IsTagNameTakenUseCase
 import com.checkit.domain.usecase.UpdateListUseCase
-import com.checkit.domain.usecase.UpdateObjectiveUseCase
 import com.checkit.domain.usecase.UpdateTagUseCase
-import com.checkit.ui.okr.ObjectiveViewModel
 import com.checkit.ui.tasks.list.ListViewModel
 import com.checkit.ui.tasks.tag.TagViewModel
 import kotlinx.coroutines.Dispatchers

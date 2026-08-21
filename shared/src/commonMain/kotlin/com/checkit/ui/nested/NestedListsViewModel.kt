@@ -48,12 +48,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.LocalDate
-import com.checkit.domain.PlanFocus
-import com.checkit.domain.PlanPeriod
+import com.checkit.domain.FocusPeriod
+import com.checkit.domain.Period
 import com.checkit.ui.today
-import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.minus
-import kotlinx.datetime.plus
 
 // --- State Hierarchy ---
 
@@ -71,11 +68,12 @@ data class SelectionState(
 
 data class NestedFilterState(
     val isVisible: Boolean = false,
-    val focus: PlanFocus? = null,
+    val focus: FocusPeriod? = null,
     val query: String = "",
-    val hideChecked: Boolean = false
+    val hideChecked: Boolean = false,
+    val selectedTagIds: Set<Long> = emptySet()
 ) {
-    val isActive: Boolean get() = focus != null || query.isNotBlank() || hideChecked
+    val isActive: Boolean get() = focus != null || query.isNotBlank() || hideChecked || selectedTagIds.isNotEmpty()
 }
 
 sealed interface NestedEditorOverlay {
@@ -291,7 +289,7 @@ class NestedListsViewModel(
         updateActiveEditor { it.copy(filters = it.filters.copy(isVisible = !it.filters.isVisible)) }
     }
 
-    fun updateFilterFocus(focus: PlanFocus) {
+    fun updateFilterFocus(focus: FocusPeriod) {
         updateActiveEditor { it.copy(filters = it.filters.copy(focus = focus)) }
     }
 
@@ -303,8 +301,16 @@ class NestedListsViewModel(
         updateActiveEditor { it.copy(filters = it.filters.copy(hideChecked = !it.filters.hideChecked)) }
     }
 
+    fun updateFilterTags(tagId: Long) {
+        updateActiveEditor { current ->
+            val selected = current.filters.selectedTagIds
+            val next = if (tagId in selected) selected - tagId else selected + tagId
+            current.copy(filters = current.filters.copy(selectedTagIds = next))
+        }
+    }
+
     fun resetFilters() {
-        updateActiveEditor { it.copy(filters = it.filters.copy(focus = null, query = "", hideChecked = false)) }
+        updateActiveEditor { it.copy(filters = it.filters.copy(focus = null, query = "", hideChecked = false, selectedTagIds = emptySet())) }
     }
 
     fun nextFilterPeriod() {
@@ -323,8 +329,8 @@ class NestedListsViewModel(
 
     fun currentFilterPeriod() {
         updateActiveEditor { current ->
-            val period = current.filters.focus?.period ?: PlanPeriod.Week
-            current.copy(filters = current.filters.copy(focus = PlanFocus(period, today())))
+            val period = current.filters.focus?.period ?: Period.Week
+            current.copy(filters = current.filters.copy(focus = FocusPeriod(period, today())))
         }
     }
 

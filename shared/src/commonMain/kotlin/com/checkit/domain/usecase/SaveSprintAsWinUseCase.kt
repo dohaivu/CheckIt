@@ -16,8 +16,7 @@ class SaveSprintAsWinUseCase(
     private val addTaskToDailyPlan: AddTaskToDailyPlanUseCase,
     private val addDailyPlanItem: AddDailyPlanItemUseCase,
     private val updateDailyPlanItemTime: UpdateDailyPlanItemTimeUseCase,
-    private val updateDailyPlanItemStatus: UpdateDailyPlanItemStatusUseCase,
-    private val syncKeyResultFromDailyPlan: SyncKeyResultFromDailyPlanUseCase
+    private val updateDailyPlanItemStatus: UpdateDailyPlanItemStatusUseCase
 ) {
     suspend operator fun invoke(finished: SprintState.Finished): Long? {
         if (finished.isBreak) return null
@@ -33,14 +32,6 @@ class SaveSprintAsWinUseCase(
         val dailyPlanItemId = finished.dailyPlanItemId
 
         return if (dailyPlanItemId != null) {
-            val item = repository.getDailyPlanItem(dailyPlanItemId) ?: return null
-
-            syncKeyResultFromDailyPlan(
-                itemId = dailyPlanItemId,
-                proposedStatus = DailyPlanItemStatus.Done,
-                proposedStartTime = startMinutes,
-                proposedEndTime = endMinutes
-            )
             updateDailyPlanItemTime(dailyPlanItemId, startMinutes, endMinutes)
             updateDailyPlanItemStatus(dailyPlanItemId, DailyPlanItemStatus.Done)
             dailyPlanItemId
@@ -50,12 +41,6 @@ class SaveSprintAsWinUseCase(
 
             val itemId = addTaskToDailyPlan(todayDate, task)
 
-            syncKeyResultFromDailyPlan(
-                itemId = itemId,
-                proposedStatus = DailyPlanItemStatus.Done,
-                proposedStartTime = startMinutes,
-                proposedEndTime = endMinutes
-            )
             updateDailyPlanItemTime(itemId, startMinutes, endMinutes)
             updateDailyPlanItemStatus(itemId, DailyPlanItemStatus.Done)
             itemId

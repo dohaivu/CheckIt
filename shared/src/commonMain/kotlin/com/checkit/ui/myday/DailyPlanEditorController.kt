@@ -43,6 +43,33 @@ internal class DailyPlanEditorController(
             )
         }
     }
+    fun openDailyPlan(title: String, tagIds: List<Long>, nestedListItemId: Long? = null) {
+        if (title.isBlank()) return
+        cancelPendingEditorTextSave()
+        val current = state.uiState.value
+
+        val (startTimeMinutes, endTimeMinutes) = if (current.suggestionStartTimeMinutes == null) {
+            nextAvailableTimeRange(currentMyDayTimeMinutes(), DefaultTaskDurationMinutes, current.items)
+        } else {
+            current.suggestionStartTimeMinutes to current.suggestionEndTimeMinutes
+        }
+
+        state.update {
+            it.copy(
+                itemEditor = DailyPlanItemEditorState(
+                    mode = EditorMode.Add,
+                    date = today(),
+                    title = title,
+                    nestedListItemId = nestedListItemId,
+                    source = DailyPlanItemSource.MyDayTask,
+                    status = DailyPlanItemStatus.Planned,
+                    startTimeMinutes = startTimeMinutes,
+                    endTimeMinutes = endTimeMinutes,
+                    selectedTagIds = tagIds.toSet()
+                )
+            )
+        }
+    }
 
     fun dismissDailyPlanEditor() {
         flushPendingEditorTextSave()
@@ -58,6 +85,7 @@ internal class DailyPlanEditorController(
 
     fun saveDailyPlan(editor: DailyPlanItemEditorState): Boolean {
         scope.launch {
+            if (editor.itemId == null) editor.label?.let { deps.settingsRepository.addRecentLabel(it) }
             deps.upsertDailyPlanItem(editor).onFailure { error ->
                 state.sendEvent(UiEvent.ShowSnackbar(error.message ?: "Unable to save"))
             }
@@ -68,7 +96,6 @@ internal class DailyPlanEditorController(
     fun updateItemTime(item: DailyPlanItem, startTimeMinutes: Int, endTimeMinutes: Int) {
         val nextEndTime = if (item.source.hasEndTime()) endTimeMinutes else null
         scope.launch {
-            deps.syncKeyResultFromDailyPlan(itemId = item.id, proposedStartTime = startTimeMinutes, proposedEndTime = nextEndTime)
             deps.updateDailyPlanItemTime(item.id, startTimeMinutes, nextEndTime)
         }
     }
@@ -87,6 +114,7 @@ internal class DailyPlanEditorController(
                     title = item.title,
                     note = item.note.orEmpty(),
                     status = item.status,
+                    label = item.label,
                     startTimeMinutes = item.startTimeMinutes,
                     endTimeMinutes = item.endTimeMinutes,
                     selectedTagIds = item.tags.map { it.id }.toSet()
@@ -96,6 +124,7 @@ internal class DailyPlanEditorController(
     }
     fun updateTitle(title: String) = updateItemEditor(saveImmediately = false) { it.copy(title = title) }
     fun updateNote(note: String) = updateItemEditor(saveImmediately = false) { it.copy(note = note) }
+    fun updateLabel(label: String) = updateItemEditor(saveImmediately = false) { it.copy(label = label) }
 
     fun duplicateDailyPlanItem() {
         val current = state.uiState.value
@@ -117,6 +146,7 @@ internal class DailyPlanEditorController(
                     source = editor.source,
                     title = editor.title,
                     note = editor.note,
+                    label = editor.label,
                     status = if (editor.source == DailyPlanItemSource.MyDayNote) {
                         DailyPlanItemStatus.Done
                     } else {

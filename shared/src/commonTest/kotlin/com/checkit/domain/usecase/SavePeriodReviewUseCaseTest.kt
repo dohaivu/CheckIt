@@ -1,7 +1,7 @@
 package com.checkit.domain.usecase
 
-import com.checkit.domain.PeriodFocus
-import com.checkit.domain.ReviewPeriod
+import com.checkit.domain.Period
+import com.checkit.domain.FocusPeriod
 import com.checkit.domain.ReviewSource
 import com.checkit.domain.ReviewStatus
 import com.checkit.ui.tasks.FakeCheckItRepository
@@ -19,12 +19,12 @@ class SavePeriodReviewUseCaseTest {
     fun savesCompletedManualReviewWithPeriodBounds() = runTest {
         val repository = FakeCheckItRepository()
         val save = SavePeriodReviewUseCase(repository)
-        val focus = PeriodFocus(ReviewPeriod.Week, date)
+        val focus = FocusPeriod(Period.Week, date)
 
         save(focus, content = "  Solid week, shipped the PR.  ", intentNext = "  Start the refactor  ")
 
         val review = repository.observePeriodReviews().first().single()
-        assertEquals(ReviewPeriod.Week, review.period)
+        assertEquals(Period.Week, review.period)
         assertEquals(focus.start.toEpochDays().toInt(), review.periodStartEpochDays)
         assertEquals(focus.endExclusive.toEpochDays().toInt(), review.periodEndEpochDays)
         assertEquals("Solid week, shipped the PR.", review.content)
@@ -38,7 +38,7 @@ class SavePeriodReviewUseCaseTest {
     fun savesWithoutIntentNextWhenBlank() = runTest {
         val repository = FakeCheckItRepository()
         val save = SavePeriodReviewUseCase(repository)
-        val focus = PeriodFocus(ReviewPeriod.Month, date)
+        val focus = FocusPeriod(Period.Month, date)
 
         save(focus, content = "Good month", intentNext = "   ")
 
@@ -50,7 +50,7 @@ class SavePeriodReviewUseCaseTest {
     fun savingTwiceUpsertsTheSamePeriod() = runTest {
         val repository = FakeCheckItRepository()
         val save = SavePeriodReviewUseCase(repository)
-        val focus = PeriodFocus(ReviewPeriod.Day, date)
+        val focus = FocusPeriod(Period.Day, date)
 
         save(focus, content = "First pass", intentNext = "")
         save(focus, content = "Second pass", intentNext = "Keep going")

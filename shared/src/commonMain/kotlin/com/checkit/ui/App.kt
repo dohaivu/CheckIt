@@ -41,7 +41,6 @@ import com.checkit.ui.journal.JournalEntryEditorSheet
 import com.checkit.ui.journal.JournalListSheet
 import com.checkit.ui.myday.MyDayScreen
 import com.checkit.ui.nested.NestedListScreen
-import com.checkit.ui.plan.PlanPriorityEditorSheet
 import com.checkit.ui.reflect.PeriodReviewEditorSheet
 import com.checkit.ui.reflect.ReflectScreen
 import com.checkit.ui.settings.SettingsScreen
@@ -49,6 +48,7 @@ import com.checkit.ui.tasks.TaskEditorActions
 import com.checkit.ui.tasks.TaskEditorSheet
 import com.checkit.ui.tasks.TaskEditorState
 import com.checkit.ui.tasks.TaskScreen
+import com.checkit.ui.tasks.list.ListSectionScreen
 import com.checkit.ui.tasks.tag.TagEditorSheet
 import com.checkit.ui.tasks.tag.TagScreen
 import com.checkit.ui.theme.AppTheme
@@ -89,15 +89,10 @@ fun CheckItApp(
     LaunchedEffect(Unit) {
         merge(
             viewModels.task.events,
-            viewModels.goal.events,
-            viewModels.keyResult.events,
-            viewModels.objective.events,
             viewModels.tag.events,
             viewModels.myDay.events,
             viewModels.settings.events,
             viewModels.reflect.events,
-            viewModels.plan.events,
-            viewModels.twelveWeek.events,
             viewModels.nested.events
         ).collect { event ->
             when (event) {
@@ -114,8 +109,6 @@ fun CheckItApp(
     val tagUiState by viewModels.tag.uiState.collectAsState()
     val myDayUiState by viewModels.myDay.uiState.collectAsState()
     val calendarUiState by viewModels.calendar.uiState.collectAsState()
-    val planUiState by viewModels.plan.uiState.collectAsState()
-    val twelveWeekUiState by viewModels.twelveWeek.uiState.collectAsState()
     val nestedUiState by viewModels.nested.uiState.collectAsState()
     val reflectEditorState by viewModels.reflect.editor.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -228,7 +221,7 @@ fun CheckItApp(
                                     icon = { Icon(tab.icon(), contentDescription = tab.label()) },
                                     label = { Text(tab.label()) },
                                     colors = NavigationBarItemDefaults.colors(
-                                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        selectedIconColor = MaterialTheme.colorScheme.primary,
                                         selectedTextColor = MaterialTheme.colorScheme.primary,
                                         indicatorColor = MaterialTheme.colorScheme.primaryContainer,
                                         unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -253,16 +246,9 @@ fun CheckItApp(
                                         TaskScreen(
                                             state = taskUiState,
                                             viewModel = viewModels.task,
-                                            goalViewModel = viewModels.goal,
-                                            keyResultViewModel = viewModels.keyResult,
-                                            objectiveViewModel = viewModels.objective,
                                             listViewModel = viewModels.list,
-                                            planViewModel = viewModels.plan,
-                                            twelveWeekViewModel = viewModels.twelveWeek,
-                                            twelveWeekGoals = twelveWeekUiState.workspace.cycleCards
-                                                .flatMap { it.goals }
-                                                .map { it.goal },
-                                            onOpenTags = { navState.push(AppRoute.Tags) }
+                                            onOpenTags = { navState.push(AppRoute.Tags) },
+                                            onOpenSections = { listId -> navState.push(AppRoute.ListSections(listId)) }
                                         )
                                     }
                                     AppRoute.Tags -> {
@@ -324,7 +310,23 @@ fun CheckItApp(
                                         NestedListScreen(
                                             state = nestedUiState,
                                             viewModel = viewModels.nested,
-                                            onAddToDailyPlan = viewModels.myDay::addDailyPlanItem
+                                            onAddToDailyPlan = { title, tagIds, nestedListItemId ->
+                                                navState.resetTo(AppRoute.MyDay)
+                                                viewModels.myDay.openDailyPlan(title, tagIds, nestedListItemId)
+                                            }
+                                        )
+                                    }
+                                    is AppRoute.ListSections -> {
+                                        val listId = (key as AppRoute.ListSections).listId
+                                        val list = taskUiState.board.lists.find { it.id == listId }
+                                        LaunchedEffect(list) {
+                                            if (list != null) {
+                                                viewModels.listSection.loadList(list.id, list.sections)
+                                            }
+                                        }
+                                        ListSectionScreen(
+                                            viewModel = viewModels.listSection,
+                                            onNavigateBack = { navState.pop() }
                                         )
                                     }
                                     AppRoute.Settings -> SettingsScreen(
@@ -339,11 +341,7 @@ fun CheckItApp(
                             editor = editor,
                             availableLists = taskUiState.board.lists,
                             availableTags = taskUiState.board.tags,
-                            availableKeyResults = taskUiState.board.keyResults,
-                            availablePlanPriorities = taskUiState.board.planPriorities,
-                            availableTwelveWeekGoals = twelveWeekUiState.workspace.cycleCards
-                                .flatMap { it.goals }
-                                .map { it.goal },
+                            recentLabels = taskUiState.recentLabels,
                             actions = TaskEditorActions(
                                 onDismiss = viewModels.task::dismissEditor,
                                 onSave = viewModels.task::saveEditor,
@@ -393,6 +391,9 @@ fun CheckItApp(
                                 onNoteDateChange = viewModels.task::updateNoteDate,
                                 onNoteStartTimeChange = viewModels.task::updateNoteStartTime,
                                 onNoteTagToggle = viewModels.task::toggleNoteTag,
+                                onPinToggle = viewModels.task::togglePin,
+                                onTaskLabelChange = viewModels.task::updateTaskLabel,
+                                onNoteLabelChange = viewModels.task::updateNoteLabel,
                                 onNewTagClick = viewModels.tag::openNewTag,
                             )
                         )
@@ -401,9 +402,11 @@ fun CheckItApp(
                         DailyPlanItemEditorSheet(
                             state = editor,
                             availableTags = myDayUiState.board.tags,
+                            recentLabels = myDayUiState.recentLabels,
                             onDismiss = viewModels.myDay::dismissDailyPlanEditor,
                             onTitleChange = viewModels.myDay::updateTitle,
                             onNoteChange = viewModels.myDay::updateNote,
+                            onLabelChange = viewModels.myDay::updateLabel,
                             onStatusChange = viewModels.myDay::updateStatus,
                             onSourceChange = viewModels.myDay::updateEditorSource,
                             onTimeChange = viewModels.myDay::updateTime,
@@ -421,9 +424,9 @@ fun CheckItApp(
                             state = editor,
                             availableTags = myDayUiState.board.tags,
                             onDismiss = viewModels.myDay::dismissJournalEditor,
-                            onContextChange = viewModels.myDay::updateJournalEditorContext,
+                            onLabelChange = viewModels.myDay::updateJournalEditorLabel,
                             onContentChange = viewModels.myDay::updateJournalEditorContent,
-                            onPresetSelected = viewModels.myDay::applyJournalContextPreset,
+                            onPresetSelected = viewModels.myDay::applyJournalLabelPreset,
                             onMoodToggle = viewModels.myDay::toggleJournalEditorMood,
                             onTagToggle = viewModels.myDay::toggleJournalEditorTag,
                             onNewTagClick = viewModels.tag::openNewTag,
@@ -459,19 +462,6 @@ fun CheckItApp(
                             onGenerateDraft = viewModels.reflect::generateDraft,
                             onSave = viewModels.reflect::saveEditor,
                             onDismiss = viewModels.reflect::dismissEditor
-                        )
-                    }
-                    planUiState.editor?.let { planEditor ->
-                        PlanPriorityEditorSheet(
-                            editor = planEditor,
-                            parentCandidates = planUiState.parentCandidates,
-                            onDismiss = viewModels.plan::dismissEditor,
-                            onSave = viewModels.plan::savePriority,
-                            onDelete = { planEditor.priorityId?.let(viewModels.plan::deletePriority) },
-                            onToggleDone = viewModels.plan::toggleDone,
-                            onTitleChange = viewModels.plan::updateEditorTitle,
-                            onNoteChange = viewModels.plan::updateEditorNote,
-                            onParentChange = viewModels.plan::updateEditorParent
                         )
                     }
                 }

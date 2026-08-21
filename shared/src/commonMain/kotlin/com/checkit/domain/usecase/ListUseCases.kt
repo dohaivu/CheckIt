@@ -20,3 +20,24 @@ class DeleteListUseCase(
 ) {
     suspend operator fun invoke(listId: Long) = repository.deleteList(listId)
 }
+
+class AddSectionUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(listId: Long, title: String, color: String): Long =
+        repository.addSection(listId, title, color)
+}
+
+class UpdateSectionUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(sectionId: Long, title: String, color: String, sortOrder: Int) =
+        repository.updateSection(sectionId, title, color, sortOrder)
+}
+
+class DeleteSectionUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(sectionId: Long) = repository.deleteSection(sectionId)
+}
+

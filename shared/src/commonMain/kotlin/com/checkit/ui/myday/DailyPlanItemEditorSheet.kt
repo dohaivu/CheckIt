@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -21,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.Button
@@ -31,10 +33,14 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -45,6 +51,7 @@ import com.checkit.domain.TagItem
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DeleteOverflowMenu
+import com.checkit.ui.components.LabelSuggestions
 import com.checkit.ui.components.MarkdownVisualTransformation
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.components.TimePicker
@@ -62,6 +69,7 @@ internal fun DailyPlanItemEditorSheet(
     onDismiss: () -> Unit,
     onTitleChange: (String) -> Unit,
     onNoteChange: (String) -> Unit,
+    onLabelChange: (String) -> Unit,
     onStatusChange: (Boolean) -> Unit,
     onSourceChange: (DailyPlanItemSource) -> Unit,
     onTimeChange: (Int?, Int?) -> Unit,
@@ -71,7 +79,8 @@ internal fun DailyPlanItemEditorSheet(
     onDelete: () -> Unit,
     onDuplicate: () -> Unit,
     onStartSprint: () -> Unit,
-    onStartOngoingSprint: () -> Unit
+    onStartOngoingSprint: () -> Unit,
+    recentLabels: List<String> = emptyList()
 ) {
     val enabled = state.isEditableByDate()
 
@@ -98,8 +107,10 @@ internal fun DailyPlanItemEditorSheet(
                 DailyPlanItemFormContent(
                     state = state,
                     availableTags = availableTags,
+                    recentLabels = recentLabels,
                     onTitleChange = onTitleChange,
                     onNoteChange = onNoteChange,
+                    onLabelChange = onLabelChange,
                     onStatusChange = onStatusChange,
                     onSourceChange = onSourceChange,
                     onTimeChange = onTimeChange,
@@ -244,8 +255,10 @@ private fun SourceIconBadge(source: DailyPlanItemSource) {
 private fun DailyPlanItemFormContent(
     state: DailyPlanItemEditorState,
     availableTags: List<TagItem>,
+    recentLabels: List<String>,
     onTitleChange: (String) -> Unit,
     onNoteChange: (String) -> Unit,
+    onLabelChange: (String) -> Unit,
     onStatusChange: (Boolean) -> Unit,
     onSourceChange: (DailyPlanItemSource) -> Unit,
     onTimeChange: (Int?, Int?) -> Unit,
@@ -259,7 +272,43 @@ private fun DailyPlanItemFormContent(
     val doneTypeChecked = state.source == DailyPlanItemSource.MyDayTask
     val reminderChecked = state.source == DailyPlanItemSource.MyDayReminder
 
+    var labelFocused by remember { mutableStateOf(false) }
+
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(0.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            AppOutlinedTextField(
+                value = state.label.orEmpty(),
+                onValueChange = onLabelChange,
+                modifier = Modifier
+                    .widthIn(max = 80.dp)
+                    .onFocusChanged { labelFocused = it.isFocused },
+                textStyle = MaterialTheme.typography.labelSmall.copy(
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                ),
+                maxLines = 1,
+                placeholder = "Add label",
+                enabled = enabled,
+                contentPadding = PaddingValues(horizontal = 0.dp, vertical = 2.dp)
+            )
+            if (labelFocused) {
+                LabelSuggestions(
+                    currentLabel = state.label.orEmpty(),
+                    recentLabels = recentLabels,
+                    onLabelSelect = onLabelChange,
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                )
+            }
+            state.nestedListItemId?.let {
+                Spacer(Modifier.weight(1f))
+                Icon(Icons.Default.Link, contentDescription = "item link", modifier = Modifier.size(20.dp))
+            }
+        }
+
         AppOutlinedTextField(
             value = state.title,
             onValueChange = onTitleChange,

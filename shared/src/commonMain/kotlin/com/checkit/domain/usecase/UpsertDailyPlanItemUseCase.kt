@@ -11,8 +11,7 @@ import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 
 class UpsertDailyPlanItemUseCase(
-    private val repository: CheckItRepository,
-    private val syncKeyResultFromDailyPlan: SyncKeyResultFromDailyPlanUseCase
+    private val repository: CheckItRepository
 ) {
     suspend operator fun invoke(editor: DailyPlanItemEditorState): Result<Long> {
         val title = editor.title.trim()
@@ -36,15 +35,10 @@ class UpsertDailyPlanItemUseCase(
                     source = source,
                     status = status,
                     tagIds = editor.selectedTagIds.toList(),
+                    label = editor.label,
                     nestedListItemId = editor.nestedListItemId
                 )
             } else {
-                syncKeyResultFromDailyPlan(
-                    itemId = editor.itemId,
-                    proposedStatus = status,
-                    proposedStartTime = editor.startTimeMinutes,
-                    proposedEndTime = if (source.hasEndTime()) editor.endTimeMinutes else null
-                )
                 repository.updateDailyPlanItem(
                     editor.itemId,
                     DailyPlanItemWriteInput(
@@ -55,6 +49,7 @@ class UpsertDailyPlanItemUseCase(
                         startTimeMinutes = editor.startTimeMinutes,
                         endTimeMinutes = if (source.hasEndTime()) editor.endTimeMinutes else null,
                         tagIds = editor.selectedTagIds.toList(),
+                        label = editor.label,
                         nestedListItemId = editor.nestedListItemId
                     )
                 )

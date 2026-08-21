@@ -51,9 +51,9 @@ internal fun JournalEntryEditorSheet(
     state: JournalEntryEditorState,
     availableTags: List<TagItem>,
     onDismiss: () -> Unit,
-    onContextChange: (String) -> Unit,
+    onLabelChange: (String) -> Unit,
     onContentChange: (String) -> Unit,
-    onPresetSelected: (JournalContextPreset) -> Unit,
+    onPresetSelected: (JournalLabelPreset) -> Unit,
     onMoodToggle: (String) -> Unit,
     onTagToggle: (Long) -> Unit,
     onNewTagClick: () -> Unit,
@@ -67,7 +67,7 @@ internal fun JournalEntryEditorSheet(
             .windowInsetsPadding(WindowInsets.ime),
         sheetGesturesEnabled = false
     ) {
-        var contextFocused by remember { mutableStateOf(false) }
+        var labelFocused by remember { mutableStateOf(false) }
 
         Row(
             modifier = Modifier
@@ -103,30 +103,30 @@ internal fun JournalEntryEditorSheet(
                         .padding(horizontal = 16.dp, vertical = 12.dp)
                 ) {
                     AppOutlinedTextField(
-                        value = state.context,
-                        onValueChange = onContextChange,
+                        value = state.label,
+                        onValueChange = onLabelChange,
                         textStyle = MaterialTheme.typography.bodyLarge.copy(
                             color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.SemiBold
                         ),
-                        placeholder = "Where are you? What's the context?",
+                        placeholder = "Add label",
                         maxLines = 1,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .onFocusChanged { contextFocused = it.isFocused }
+                            .onFocusChanged { labelFocused = it.isFocused }
                     )
-                    if (contextFocused) {
+                    if (labelFocused) {
                         Spacer(Modifier.height(8.dp))
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            JournalContextPresets.forEach { preset ->
+                            JournalLabelPresets.forEach { preset ->
                                 PresetChip(
                                     label = preset.type,
                                     onClick = {
                                         onPresetSelected(preset)
-                                        contextFocused = false
+                                        labelFocused = false
                                     }
                                 )
                             }

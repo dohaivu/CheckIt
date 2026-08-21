@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.PeriodReview
-import com.checkit.domain.ReviewPeriod
+import com.checkit.domain.Period
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
@@ -47,7 +47,7 @@ class CalendarViewModel(
                     val start = month.minus(1, DateTimeUnit.MONTH)
                     val end = month.plus(2, DateTimeUnit.MONTH)
                     combine(
-                        observeTaskBoard(),
+                        observeTaskBoard(onlyOpen = false),
                         observeDailyPlans(startDate = start, endDate = end),
                         observePeriodReviews(),
                         observeJournalEntries()
@@ -64,7 +64,7 @@ class CalendarViewModel(
                         state.copy(
                             board = board,
                             dailyPlans = dailyPlans,
-                            dayReviews = periodReviews.filter { it.period == ReviewPeriod.Day },
+                            dayReviews = periodReviews.filter { it.period == Period.Day },
                             journalEntries = journalEntries,
                             selectedTagIds = state.selectedTagIds.intersect(availableTagIds)
                         )

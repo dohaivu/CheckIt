@@ -1,6 +1,8 @@
 package com.checkit.ui.tasks
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
@@ -21,8 +23,10 @@ import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
@@ -40,8 +44,6 @@ import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskType
-import com.checkit.ui.components.icons.AppIcons
-import com.checkit.ui.components.icons.Target
 import com.checkit.ui.shortMonthName
 import com.checkit.ui.shortName
 import com.checkit.ui.tasks.views.currentTimeMinutes
@@ -53,10 +55,21 @@ import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.plus
 
+fun Modifier.noRippleClickable(
+    enabled: Boolean = true,
+    onClick: () -> Unit
+): Modifier = composed {
+    this.clickable(
+        interactionSource = remember { MutableInteractionSource() },
+        indication = null,
+        enabled = enabled,
+        onClick = onClick
+    )
+}
+
 internal fun TaskWorkspaceView.icon(): ImageVector = when (this) {
     TaskWorkspaceView.List -> Icons.AutoMirrored.Filled.ViewList
     TaskWorkspaceView.Agenda -> Icons.Default.ViewAgenda
-    TaskWorkspaceView.Goal -> AppIcons.Target
     TaskWorkspaceView.Timeline -> Icons.Default.Schedule
     TaskWorkspaceView.Habits -> Icons.Default.Repeat
 }
@@ -97,24 +110,9 @@ internal fun HabitIcon(completed: Boolean, color: Color) {
 }
 
 @Composable
-internal fun TacticIcon(completed: Boolean, color: Color) {
-    if (completed) {
-        BadgedActionIcon(baseIcon = AppIcons.Target, isDone = true, baseIconTint = color)
-    } else {
-        Icon(
-            imageVector = AppIcons.Target,
-            contentDescription = null,
-            tint = color,
-            modifier = Modifier.size(20.dp)
-        )
-    }
-}
-
-@Composable
 internal fun TaskTypeIcon(task: TaskItem, completed: Boolean, color: Color) {
     when (task.type) {
         TaskType.Habit -> HabitIcon(completed, color)
-        TaskType.Tactic -> TacticIcon(completed, color)
         TaskType.Task -> TaskIcon(completed, color)
     }
 }

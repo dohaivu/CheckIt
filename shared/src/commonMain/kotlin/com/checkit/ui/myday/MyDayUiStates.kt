@@ -62,6 +62,7 @@ data class MyDayUiState(
     val journalEditor: JournalEntryEditorState? = null,
     val showJournalList: Boolean = false,
     val journalListDate: LocalDate? = null,
+    val recentLabels: List<String> = emptyList(),
     val isLoading: Boolean = true
 ) {
     val today: LocalDate = today()
@@ -145,7 +146,7 @@ enum class MyDayView {
 data class JournalEntryEditorState(
     val entryId: Long? = null,
     val date: LocalDate = today(),
-    val context: String = "",
+    val label: String = "",
     val content: String = "",
     val prompt: String = "",
     val moods: List<String> = emptyList(),
@@ -164,6 +165,7 @@ data class DailyPlanItemEditorState(
     val title: String = "",
     val note: String = "",
     val status: DailyPlanItemStatus = DailyPlanItemStatus.Done,
+    val label: String? = null,
     val startTimeMinutes: Int? = null,
     val endTimeMinutes: Int? = null,
     val selectedTagIds: Set<Long> = emptySet()
