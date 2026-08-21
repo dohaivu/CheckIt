@@ -40,7 +40,7 @@ internal class MyDayDataLoader(
         val today = today()
         scope.launch {
             combine(
-                deps.observeTaskBoard(),
+                deps.observeTaskBoard(onlyOpen = false),
                 deps.observeDailyPlans(startDate = today.minus(1, DateTimeUnit.DAY), endDate = today),
                 deps.settingsRepository.settings,
                 deps.observePeriodReviews(),

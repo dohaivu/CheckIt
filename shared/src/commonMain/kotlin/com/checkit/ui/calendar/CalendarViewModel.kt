@@ -47,7 +47,7 @@ class CalendarViewModel(
                     val start = month.minus(1, DateTimeUnit.MONTH)
                     val end = month.plus(2, DateTimeUnit.MONTH)
                     combine(
-                        observeTaskBoard(),
+                        observeTaskBoard(onlyOpen = false),
                         observeDailyPlans(startDate = start, endDate = end),
                         observePeriodReviews(),
                         observeJournalEntries()
