@@ -1315,7 +1315,7 @@ private fun NestedListFilterBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 4.dp),
+                .padding(horizontal = 12.dp, vertical = 0.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(0.dp)
         ) {
@@ -1377,7 +1377,7 @@ private fun NestedListFilterBar(
             }
         }
         HorizontalDivider(
-            modifier = Modifier.padding(top = 4.dp),
+            modifier = Modifier.padding(top = 2.dp),
             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
         )
     }
@@ -1395,7 +1395,7 @@ private fun BreadcrumbBar(
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface)
             .horizontalScroll(scrollState)
-            .padding(horizontal = 12.dp, vertical = 4.dp),
+            .padding(horizontal = 12.dp, vertical = 0.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
