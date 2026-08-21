@@ -40,6 +40,8 @@ import com.checkit.domain.usecase.DeleteNestedItemsUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteTagUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
+import com.checkit.domain.usecase.GetNoteUseCase
+import com.checkit.domain.usecase.GetTaskUseCase
 import com.checkit.domain.usecase.MoveNoteUseCase
 import com.checkit.domain.usecase.MoveTaskUseCase
 import com.checkit.domain.usecase.IsTagNameTakenUseCase
@@ -132,8 +134,10 @@ val provideInteractorModule = module {
     single { SprintTransitionUseCase(get(), get(), get()) }
     single { UpsertDailyPlanItemUseCase(get()) }
     single { AddSuggestedTaskToMyDayUseCase(get(), get(), get()) }
-    single<CheckItRepository> { RoomCheckItRepository(get(), get(), get()) }
+    single { RoomCheckItRepository(get(), get(), get()) as CheckItRepository }
     single { ObserveTaskBoardUseCase(get()) }
+    single { GetTaskUseCase(get()) }
+    single { GetNoteUseCase(get()) }
     single { ObserveDailyPlansUseCase(get()) }
     single { ObserveJournalEntriesUseCase(get()) }
     single { AddJournalEntryUseCase(get()) }
@@ -219,6 +223,8 @@ val provideViewModelModule = module {
         TaskViewModel(
             observeTaskBoard = get(),
             selectTaskBoardItems = get(),
+            getTask = get(),
+            getNote = get(),
             addTask = get(),
             addTaskToDailyPlan = get(),
             updateTask = get(),

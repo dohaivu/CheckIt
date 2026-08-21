@@ -57,6 +57,18 @@ interface CheckItDao {
     @Query("SELECT * FROM note_list")
     fun observeNoteLists(): Flow<List<NoteListEntity>>
 
+    @Query("SELECT * FROM task_list WHERE taskId = :taskId LIMIT 1")
+    suspend fun taskListByTaskId(taskId: Long): TaskListEntity?
+
+    @Query("SELECT * FROM note_list WHERE noteId = :noteId LIMIT 1")
+    suspend fun noteListByNoteId(noteId: Long): NoteListEntity?
+
+    @Query("SELECT * FROM lists WHERE id = :listId LIMIT 1")
+    suspend fun listById(listId: Long): ListEntity?
+
+    @Query("SELECT * FROM list_sections WHERE id = :sectionId LIMIT 1")
+    suspend fun sectionById(sectionId: Long): ListSectionEntity?
+
     @Query("SELECT * FROM lists ORDER BY sortOrder ASC, title ASC")
     fun observeLists(): Flow<List<ListEntity>>
 
@@ -139,6 +151,9 @@ interface CheckItDao {
     @Query("SELECT * FROM tasks WHERE id = :taskId LIMIT 1")
     suspend fun taskById(taskId: Long): TaskEntity?
 
+    @Query("SELECT * FROM notes WHERE id = :noteId LIMIT 1")
+    suspend fun noteById(noteId: Long): NoteEntity?
+
     @Query("SELECT * FROM notes WHERE status = 'Open' ORDER BY editedAtMillis DESC")
     fun observeNotesOpen(): Flow<List<NoteEntity>>
 
@@ -213,6 +228,9 @@ interface CheckItDao {
 
     @Query("SELECT tagId FROM task_tags WHERE taskId = :taskId")
     suspend fun tagIdsForTask(taskId: Long): List<Long>
+
+    @Query("SELECT tagId FROM note_tags WHERE noteId = :noteId")
+    suspend fun tagIdsForNote(noteId: Long): List<Long>
 
     @Query("SELECT * FROM tags WHERE id IN (:tagIds)")
     suspend fun tagsByIds(tagIds: List<Long>): List<TagEntity>

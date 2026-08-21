@@ -20,6 +20,8 @@ import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
 import com.checkit.domain.usecase.CompleteNoteUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
+import com.checkit.domain.usecase.GetNoteUseCase
+import com.checkit.domain.usecase.GetTaskUseCase
 import com.checkit.domain.usecase.MoveNoteUseCase
 import com.checkit.domain.usecase.MoveTaskUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
@@ -60,6 +62,8 @@ import kotlinx.datetime.LocalDate
 class TaskViewModel(
     private val observeTaskBoard: ObserveTaskBoardUseCase,
     private val selectTaskBoardItems: SelectTaskBoardItemsUseCase,
+    private val getTask: GetTaskUseCase,
+    private val getNote: GetNoteUseCase,
     private val addTask: AddTaskUseCase,
     private val addTaskToDailyPlan: AddTaskToDailyPlanUseCase,
     private val updateTask: UpdateTaskUseCase,
@@ -389,6 +393,13 @@ class TaskViewModel(
         }
     }
 
+    fun openTask(taskId: Long, dailyPlan: DailyPlanItem? = null) {
+        viewModelScope.launch {
+            val task = getTask(taskId) ?: return@launch
+            openTask(task, dailyPlan)
+        }
+    }
+
     fun openTask(task: TaskItem, dailyPlan: DailyPlanItem? = null) {
         cancelPendingTaskTextSave()
         _uiState.update {
@@ -418,6 +429,12 @@ class TaskViewModel(
         }
     }
 
+    fun openNote(noteId: Long) {
+        viewModelScope.launch {
+            val note = getNote(noteId) ?: return@launch
+            openNote(note)
+        }
+    }
     fun openNote(note: NoteItem) {
         cancelPendingTaskTextSave()
         _uiState.update {

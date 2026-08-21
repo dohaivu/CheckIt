@@ -32,6 +32,18 @@ class ObserveTaskBoardUseCase(
     operator fun invoke(onlyOpen: Boolean = true): Flow<TaskBoard> = repository.observeTaskBoard(onlyOpen)
 }
 
+class GetTaskUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(taskId: Long): TaskItem? = repository.getTask(taskId)
+}
+
+class GetNoteUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(noteId: Long): NoteItem? = repository.getNote(noteId)
+}
+
 class AutoAddTodayTasksToMyDayUseCase(
     private val repository: CheckItRepository,
     private val settingsRepository: SettingsRepository,

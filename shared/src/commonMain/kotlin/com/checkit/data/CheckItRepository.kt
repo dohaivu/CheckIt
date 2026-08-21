@@ -43,6 +43,7 @@ import com.checkit.notifications.TaskReminderNotificationScheduler
 import com.checkit.ui.tasks.views.currentTimeMinutes
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -94,6 +95,8 @@ interface CheckItRepository {
     suspend fun deleteDailyPlanItem(itemId: Long)
     suspend fun getDailyPlanItem(itemId: Long): DailyPlanItem?
     suspend fun dailyPlanForDate(date: LocalDate): DailyPlan?
+    suspend fun getTask(taskId: Long): TaskItem?
+    suspend fun getNote(noteId: Long): NoteItem?
     fun observePeriodReviews(): Flow<List<PeriodReview>>
     suspend fun periodReviewFor(period: Period, date: LocalDate): PeriodReview?
     suspend fun savePeriodReview(review: PeriodReview)
@@ -820,6 +823,50 @@ class RoomCheckItRepository(
         val tagIds = dao.tagIdsForItem(itemId)
         val tags = if (tagIds.isNotEmpty()) dao.tagsByIds(tagIds).map { it.toDomain() } else emptyList()
         return item.toDomain(tags)
+    }
+
+    override suspend fun getTask(taskId: Long): TaskItem? {
+        val entity = dao.taskById(taskId) ?: return null
+        val listJoin = dao.taskListByTaskId(taskId)
+        val list = listJoin?.listId?.let { listId ->
+            val listEntity = dao.listById(listId) ?: return@let null
+            val sections = dao.observeSectionsForList(listId).first()
+            listEntity.toDomain(sections.map { it.toDomain() })
+        }
+        val subtasks = dao.subTasksForTask(taskId).map { it.toDomain() }
+        val reminders = dao.remindersForTask(taskId).map { it.toDomain() }
+        val tagIds = dao.tagIdsForTask(taskId)
+        val tags = if (tagIds.isNotEmpty()) dao.tagsByIds(tagIds).map { it.toDomain() } else emptyList()
+
+        return entity.toDomain(
+            list = list,
+            subtasks = subtasks,
+            reminders = reminders,
+            tags = tags,
+            listSortOrder = listJoin?.sortOrder ?: 0,
+            isPinned = listJoin?.isPinned ?: false,
+            sectionId = listJoin?.sectionId
+        )
+    }
+
+    override suspend fun getNote(noteId: Long): NoteItem? {
+        val entity = dao.noteById(noteId) ?: return null
+        val listJoin = dao.noteListByNoteId(noteId)
+        val list = listJoin?.listId?.let { listId ->
+            val listEntity = dao.listById(listId) ?: return@let null
+            val sections = dao.observeSectionsForList(listId).first()
+            listEntity.toDomain(sections.map { it.toDomain() })
+        }
+        val tagIds = dao.tagIdsForNote(noteId)
+        val tags = if (tagIds.isNotEmpty()) dao.tagsByIds(tagIds).map { it.toDomain() } else emptyList()
+
+        return entity.toDomain(
+            list = list,
+            tags = tags,
+            listSortOrder = listJoin?.sortOrder ?: 0,
+            isPinned = listJoin?.isPinned ?: false,
+            sectionId = listJoin?.sectionId
+        )
     }
 
     override suspend fun dailyPlanForDate(date: LocalDate): DailyPlan? {
