@@ -1,6 +1,5 @@
 package com.checkit.domain.usecase
 
-import com.checkit.data.UserSettings
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
@@ -11,8 +10,6 @@ import com.checkit.domain.TaskStatus
 import com.checkit.domain.TagItem
 import com.checkit.domain.TaskType
 import com.checkit.ui.tasks.FakeCheckItRepository
-import com.checkit.ui.tasks.FakeSettingsRepository
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
@@ -25,35 +22,8 @@ import kotlin.time.Clock
 
 class AutoAddTodayTasksToMyDayUseCaseTest {
     @Test
-    fun skipsWhenAlreadyRunToday() = runTest {
+    fun addsOpenTodayTasks() = runTest {
         val today = today()
-        val repository = FakeCheckItRepository(
-            initialBoard = TaskBoard(tasks = listOf(task(id = 1L, doDate = today)))
-        )
-        val settingsRepository = FakeSettingsRepository(
-            UserSettings(autoMyDayLastRunEpochDay = today.toEpochDays().toInt())
-        )
-        val useCase = AutoAddTodayTasksToMyDayUseCase(
-            repository,
-            settingsRepository,
-            DeleteDailyPlanItemUseCase(repository),
-            SmartScheduleDailyPlanUseCase(
-                repository = repository,
-                todayDate = { today },
-                nowMinutes = { 0 }
-            )
-        )
-
-        val addedCount = useCase()
-
-        assertEquals(0, addedCount)
-        assertEquals(emptyList(), repository.addedDailyPlanTasks)
-    }
-
-    @Test
-    fun addsOpenTodayTasksAndUpdatesLastRunDate() = runTest {
-        val today = today()
-        val yesterday = today.minus(1, DateTimeUnit.DAY)
         val repository = FakeCheckItRepository(
             initialBoard = TaskBoard(
                 tasks = listOf(
@@ -62,12 +32,8 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
                 )
             )
         )
-        val settingsRepository = FakeSettingsRepository(
-            UserSettings(autoMyDayLastRunEpochDay = yesterday.toEpochDays().toInt())
-        )
         val useCase = AutoAddTodayTasksToMyDayUseCase(
             repository,
-            settingsRepository,
             DeleteDailyPlanItemUseCase(repository),
             SmartScheduleDailyPlanUseCase(
                 repository = repository,
@@ -80,10 +46,6 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
 
         assertEquals(2, addedCount)
         assertEquals(listOf(1L, 2L), repository.addedDailyPlanTasks.map { it.second.id })
-        assertEquals(
-            today.toEpochDays().toInt(),
-            settingsRepository.settings.first().autoMyDayLastRunEpochDay
-        )
     }
 
     @Test
@@ -106,10 +68,8 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
                 )
             )
         )
-        val settingsRepository = FakeSettingsRepository()
         val useCase = AutoAddTodayTasksToMyDayUseCase(
             repository,
-            settingsRepository,
             DeleteDailyPlanItemUseCase(repository),
             SmartScheduleDailyPlanUseCase(
                 repository = repository,
@@ -139,10 +99,8 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
                 )
             )
         )
-        val settingsRepository = FakeSettingsRepository()
         val useCase = AutoAddTodayTasksToMyDayUseCase(
             repository,
-            settingsRepository,
             DeleteDailyPlanItemUseCase(repository),
             SmartScheduleDailyPlanUseCase(repository)
         )
@@ -164,10 +122,8 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
                 )
             )
         )
-        val settingsRepository = FakeSettingsRepository()
         val useCase = AutoAddTodayTasksToMyDayUseCase(
             repository,
-            settingsRepository,
             DeleteDailyPlanItemUseCase(repository),
             SmartScheduleDailyPlanUseCase(repository)
         )
@@ -190,10 +146,8 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
                 )
             )
         )
-        val settingsRepository = FakeSettingsRepository()
         val useCase = AutoAddTodayTasksToMyDayUseCase(
             repository,
-            settingsRepository,
             DeleteDailyPlanItemUseCase(repository),
             SmartScheduleDailyPlanUseCase(repository)
         )
@@ -229,10 +183,8 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
                 )
             )
         )
-        val settingsRepository = FakeSettingsRepository()
         val useCase = AutoAddTodayTasksToMyDayUseCase(
             repository,
-            settingsRepository,
             DeleteDailyPlanItemUseCase(repository),
             SmartScheduleDailyPlanUseCase(repository)
         )
@@ -262,10 +214,8 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
                 )
             )
         )
-        val settingsRepository = FakeSettingsRepository()
         val useCase = AutoAddTodayTasksToMyDayUseCase(
             repository,
-            settingsRepository,
             DeleteDailyPlanItemUseCase(repository),
             SmartScheduleDailyPlanUseCase(repository)
         )

@@ -107,6 +107,7 @@ interface CheckItRepository {
     suspend fun getTasksForDate(date: LocalDate): List<TaskItem>
     suspend fun getNotesForDate(date: LocalDate): List<NoteItem>
     fun observePeriodReviews(): Flow<List<PeriodReview>>
+    fun observePeriodReviewsInRange(startDate: LocalDate?, endDateInclusive: LocalDate?): Flow<List<PeriodReview>>
     suspend fun periodReviewFor(period: Period, date: LocalDate): PeriodReview?
     suspend fun savePeriodReview(review: PeriodReview)
     fun observeDailyReflectStats(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<DailyReflectStat>>
@@ -977,6 +978,15 @@ class RoomCheckItRepository(
 
     override fun observePeriodReviews(): Flow<List<PeriodReview>> =
         dao.observePeriodReviews().map { entities -> entities.map { it.toDomain() } }
+
+    override fun observePeriodReviewsInRange(
+        startDate: LocalDate?,
+        endDateInclusive: LocalDate?
+    ): Flow<List<PeriodReview>> =
+        dao.observePeriodReviewsBetween(
+            startDate?.toEpochDays()?.toInt(),
+            endDateInclusive?.toEpochDays()?.toInt()
+        ).map { entities -> entities.map { it.toDomain() } }
 
     override suspend fun periodReviewFor(period: Period, date: LocalDate): PeriodReview? =
         dao.periodReviewFor(period.name, date.toEpochDays().toInt())?.toDomain()

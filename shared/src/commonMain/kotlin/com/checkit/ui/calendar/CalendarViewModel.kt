@@ -3,6 +3,7 @@ package com.checkit.ui.calendar
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.checkit.domain.DailyPlan
+import com.checkit.domain.DailyReflectStat
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.NoteItem
 import com.checkit.domain.PeriodReview
@@ -12,6 +13,7 @@ import com.checkit.domain.TaskItem
 import com.checkit.domain.usecase.GetNotesForDateUseCase
 import com.checkit.domain.usecase.GetTasksForDateUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
+import com.checkit.domain.usecase.ObserveDailyReflectStatsUseCase
 import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
 import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
@@ -39,6 +41,7 @@ class CalendarViewModel(
     private val observeDailyPlans: ObserveDailyPlansUseCase,
     private val observePeriodReviews: ObservePeriodReviewsUseCase,
     private val observeJournalEntries: ObserveJournalEntriesUseCase,
+    private val observeDailyReflectStats: ObserveDailyReflectStatsUseCase,
     private val getTasksForDate: GetTasksForDateUseCase,
     private val getNotesForDate: GetNotesForDateUseCase,
 ) : ViewModel() {
@@ -51,14 +54,15 @@ class CalendarViewModel(
                 .distinctUntilChanged()
                 .flatMapLatest { month ->
                     val start = month.minus(1, DateTimeUnit.MONTH)
-                    val end = month.plus(2, DateTimeUnit.MONTH)
+                    val end = month.plus(2, DateTimeUnit.MONTH).minus(1, DateTimeUnit.DAY)
                     combine(
                         // Heavy board observation removed from monthly sync
                         observeDailyPlans(startDate = start, endDate = end),
-                        observePeriodReviews(),
-                        observeJournalEntries()
-                    ) { dailyPlans, periodReviews, journalEntries ->
-                        CalendarCombined(dailyPlans, periodReviews, journalEntries)
+                        observePeriodReviews(start, end),
+                        observeJournalEntries(start, end),
+                        observeDailyReflectStats(start, end)
+                    ) { dailyPlans, periodReviews, journalEntries, dailyStats ->
+                        CalendarCombined(dailyPlans, periodReviews, journalEntries, dailyStats)
                     }
                 }
                 .catch { _ ->
@@ -69,7 +73,8 @@ class CalendarViewModel(
                         state.copy(
                             dailyPlans = combined.dailyPlans,
                             dayReviews = combined.dayReviews.filter { it.period == Period.Day },
-                            journalEntries = combined.journalEntries
+                            journalEntries = combined.journalEntries,
+                            dailyStatsByDate = combined.dailyStats.associateBy { it.date }
                         )
                     }
                 }
@@ -172,5 +177,6 @@ class CalendarViewModel(
 private data class CalendarCombined(
     val dailyPlans: List<DailyPlan>,
     val dayReviews: List<PeriodReview>,
-    val journalEntries: List<JournalEntry>
+    val journalEntries: List<JournalEntry>,
+    val dailyStats: List<DailyReflectStat>
 )

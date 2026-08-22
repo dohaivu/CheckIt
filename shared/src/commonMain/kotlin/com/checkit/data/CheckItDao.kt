@@ -511,6 +511,16 @@ interface CheckItDao {
     @Query("SELECT * FROM period_reviews ORDER BY periodStartEpochDays ASC")
     fun observePeriodReviews(): Flow<List<PeriodReviewEntity>>
 
+    @Query(
+        """
+        SELECT * FROM period_reviews
+        WHERE (:startEpochDays IS NULL OR periodStartEpochDays >= :startEpochDays)
+          AND (:endEpochDays IS NULL OR periodStartEpochDays <= :endEpochDays)
+        ORDER BY periodStartEpochDays ASC
+        """
+    )
+    fun observePeriodReviewsBetween(startEpochDays: Int?, endEpochDays: Int?): Flow<List<PeriodReviewEntity>>
+
     // ---------------- Reflect rollups (precomputed daily aggregates) ----------------
 
     @Query(

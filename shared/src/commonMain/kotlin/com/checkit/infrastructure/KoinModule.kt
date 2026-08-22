@@ -26,8 +26,8 @@ import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
 import com.checkit.domain.usecase.AutoAddTodayTasksToMyDayUseCase
 import com.checkit.domain.usecase.BuildDayCloseSummaryUseCase
-import com.checkit.domain.usecase.BuildPeriodReviewDraftUseCase
 import com.checkit.domain.usecase.RebuildReflectStatsUseCase
+import com.checkit.domain.usecase.ObserveDailyReflectStatsUseCase
 import com.checkit.domain.usecase.CarryOverDailyPlanItemsUseCase
 import com.checkit.domain.usecase.CompleteDayCloseUseCase
 import com.checkit.domain.usecase.CompleteNoteUseCase
@@ -156,7 +156,8 @@ val provideInteractorModule = module {
     single { AddJournalEntryUseCase(get()) }
     single { UpdateJournalEntryUseCase(get()) }
     single { DeleteJournalEntryUseCase(get()) }
-    single { AutoAddTodayTasksToMyDayUseCase(get(), get(), get(), get()) }
+    single { AutoAddTodayTasksToMyDayUseCase(get(), get(), get()) }
+    single { ObserveDailyReflectStatsUseCase(get()) }
     single { AddListUseCase(get()) }
     single { UpdateListUseCase(get()) }
     single { DeleteListUseCase(get()) }
@@ -189,7 +190,6 @@ val provideInteractorModule = module {
     single { CarryOverDailyPlanItemsUseCase(get(), get()) }
     single { ObservePeriodReviewsUseCase(get()) }
     single { SavePeriodReviewUseCase(get()) }
-    single { BuildPeriodReviewDraftUseCase() }
     single { RebuildReflectStatsUseCase(get()) }
     single { CompleteDayCloseUseCase(get(), get(), get(), get()) }
     single { AddNoteUseCase(get()) }
@@ -263,7 +263,7 @@ val provideViewModelModule = module {
     viewModel { ListViewModel(get(), get(), get()) }
     viewModel { ListSectionViewModel(get(), get(), get()) }
     viewModel { TagViewModel(get(), get(), get(), get(), get(), get()) }
-    viewModel { CalendarViewModel(get(), get(), get(), get(), get(), get()) }
+    viewModel { CalendarViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel {
         MyDayViewModel(
             observeDailyPlans = get(),
@@ -292,8 +292,7 @@ val provideViewModelModule = module {
         ReflectViewModel(
             repository = get(),
             observePeriodReviews = get(),
-            savePeriodReview = get(),
-            buildDraft = get()
+            savePeriodReview = get()
         )
     }
     viewModel { SettingsViewModel(get(), get(), get(), get<AppReminderScheduler>()) }

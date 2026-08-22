@@ -467,6 +467,19 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
 
     override fun observePeriodReviews(): Flow<List<PeriodReview>> = periodReviewsFlow
 
+    override fun observePeriodReviewsInRange(
+        startDate: LocalDate?,
+        endDateInclusive: LocalDate?
+    ): Flow<List<PeriodReview>> =
+        periodReviewsFlow.map { reviews ->
+            reviews.filter { review ->
+                val start = startDate?.toEpochDays()?.toInt()
+                val end = endDateInclusive?.toEpochDays()?.toInt()
+                (start == null || review.periodStartEpochDays >= start) &&
+                    (end == null || review.periodStartEpochDays <= end)
+            }
+        }
+
     override suspend fun periodReviewFor(period: Period, date: LocalDate): PeriodReview? =
         periodReviewsFlow.value.find { it.period == period && it.periodStartEpochDays == date.toEpochDays().toInt() }
 

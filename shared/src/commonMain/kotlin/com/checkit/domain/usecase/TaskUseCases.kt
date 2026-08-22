@@ -2,7 +2,6 @@ package com.checkit.domain.usecase
 
 import com.checkit.data.CheckItRepository
 import com.checkit.data.NoteWriteInput
-import com.checkit.data.SettingsRepository
 import com.checkit.data.TagWriteInput
 import com.checkit.data.TaskWriteInput
 import com.checkit.domain.DailyPlanItem
@@ -88,9 +87,12 @@ class GetDailyPlanItemUseCase(
     suspend operator fun invoke(itemId: Long): DailyPlanItem? = repository.getDailyPlanItem(itemId)
 }
 
+/**
+ * Adds open tasks due today to My Day. Idempotent: tasks already on the plan
+ * are skipped, so repeated invocations within a day are safe.
+ */
 class AutoAddTodayTasksToMyDayUseCase(
     private val repository: CheckItRepository,
-    private val settingsRepository: SettingsRepository,
     private val deleteDailyPlanItem: DeleteDailyPlanItemUseCase,
     private val smartScheduleDailyPlan: SmartScheduleDailyPlanUseCase
 ) {
@@ -98,11 +100,6 @@ class AutoAddTodayTasksToMyDayUseCase(
 
     suspend operator fun invoke(): Int = mutex.withLock {
         val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
-        val todayEpochDay = today.toEpochDays().toInt()
-        if (settingsRepository.settings.first().autoMyDayLastRunEpochDay == todayEpochDay) {
-            return@withLock 0
-        }
-
         removeIncompleteHabitsFromYesterday(today)
         val alreadyPlannedTaskIds = repository.dailyPlanForDate(today)
             ?.items
@@ -125,7 +122,6 @@ class AutoAddTodayTasksToMyDayUseCase(
         if (tasksToAdd.isNotEmpty()) {
             smartScheduleDailyPlan().getOrThrow()
         }
-        settingsRepository.setAutoMyDayLastRunEpochDay(todayEpochDay)
         tasksToAdd.size
     }
 

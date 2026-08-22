@@ -11,7 +11,6 @@ import com.checkit.domain.HabitDailyRollup
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.PeriodReview
 import com.checkit.domain.ReviewSource
-import com.checkit.domain.usecase.BuildPeriodReviewDraftUseCase
 import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
 import com.checkit.domain.usecase.SavePeriodReviewUseCase
 import com.checkit.ui.UiEvent
@@ -28,7 +27,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -37,7 +35,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -45,7 +42,6 @@ class ReflectViewModel(
     private val repository: CheckItRepository,
     private val observePeriodReviews: ObservePeriodReviewsUseCase,
     private val savePeriodReview: SavePeriodReviewUseCase,
-    private val buildDraft: BuildPeriodReviewDraftUseCase,
     private val dataDispatcher: CoroutineDispatcher = Dispatchers.Default
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ReflectUiState())
@@ -193,28 +189,6 @@ class ReflectViewModel(
             intentNext = state.focusReview?.intentNext.orEmpty(),
             source = state.focusReview?.source ?: ReviewSource.Manual
         )
-    }
-
-    fun generateDraft() {
-        val current = _uiState.value
-        val focus = current.focus
-
-        // If editor not open, open it first.
-        if (_editor.value == null) {
-            openEditor()
-        }
-
-        viewModelScope.launch {
-            // Draft building needs item-level detail; fetch just the focused period on demand.
-            val focusEnd = focus.endExclusive.minus(1, DateTimeUnit.DAY)
-            val plans = repository.observeDailyPlans(focus.start, focusEnd).first()
-            val draft = buildDraft(focus, plans, current.reviews)
-            if (draft != null) {
-                _editor.update { editor -> editor?.copy(content = draft) }
-            } else {
-                sendEvent(UiEvent.ShowSnackbar("No activity in this period to draft from"))
-            }
-        }
     }
 
     fun updateEditorContent(value: String) {

@@ -32,6 +32,7 @@ import androidx.navigation3.ui.NavDisplay
 import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
+import com.checkit.data.SettingsRepository
 import com.checkit.domain.usecase.AutoAddTodayTasksToMyDayUseCase
 import com.checkit.domain.usecase.RebuildReflectStatsUseCase
 import com.checkit.ui.calendar.CalendarScreen
@@ -54,6 +55,7 @@ import com.checkit.ui.tasks.tag.TagEditorSheet
 import com.checkit.ui.tasks.tag.TagScreen
 import com.checkit.ui.theme.AppTheme
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
@@ -64,6 +66,7 @@ fun CheckItApp(
     viewModels: CheckItViewModels = koinCheckItViewModels(),
     autoAddTodayTasksToMyDayUseCase: AutoAddTodayTasksToMyDayUseCase = koinInject(),
     rebuildReflectStatsUseCase: RebuildReflectStatsUseCase = koinInject(),
+    settingsRepository: SettingsRepository = koinInject(),
     dailyPlanItemLaunchId: Long? = null,
     taskLaunchId: Long? = null,
     noteLaunchId: Long? = null,
@@ -118,10 +121,16 @@ fun CheckItApp(
 
     fun runAutoTodayTasks() {
         appScope.launch {
-            runCatching { autoAddTodayTasksToMyDayUseCase() }
-        }
-        appScope.launch {
-            runCatching { rebuildReflectStatsUseCase() }
+            runCatching {
+                // Once-a-day gate shared by both maintenance tasks.
+                val todayEpochDay = today().toEpochDays().toInt()
+                if (settingsRepository.settings.first().autoMyDayLastRunEpochDay == todayEpochDay) {
+                    return@runCatching
+                }
+                autoAddTodayTasksToMyDayUseCase()
+                rebuildReflectStatsUseCase()
+                settingsRepository.setAutoMyDayLastRunEpochDay(todayEpochDay)
+            }
         }
     }
 
@@ -464,7 +473,6 @@ fun CheckItApp(
                             editor = editor,
                             onContentChange = viewModels.reflect::updateEditorContent,
                             onIntentNextChange = viewModels.reflect::updateEditorIntentNext,
-                            onGenerateDraft = viewModels.reflect::generateDraft,
                             onSave = viewModels.reflect::saveEditor,
                             onDismiss = viewModels.reflect::dismissEditor
                         )

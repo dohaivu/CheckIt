@@ -1,30 +1,28 @@
 package com.checkit.domain.usecase
 
 import com.checkit.data.CheckItRepository
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.todayIn
-import kotlin.time.Clock
+import com.checkit.domain.DailyReflectStat
+import kotlinx.coroutines.flow.Flow
+import kotlinx.datetime.LocalDate
 
 /**
  * Rebuilds the precomputed Reflect rollup tables (daily stats, tag rollups,
  * habit check-ins) from source data. Reflect is a read-only view of finished
- * work, so rebuilding once per day is sufficient; an in-memory guard keeps it
- * to at most one rebuild per process per day.
+ * work, so rebuilding once a day is sufficient; callers are responsible for the
+ * once-per-day gating (see CheckItApp.runAutoTodayTasks).
  */
 class RebuildReflectStatsUseCase(
     private val repository: CheckItRepository
 ) {
-    private val mutex = Mutex()
-    private var lastRebuiltEpochDay: Int? = null
-
     suspend operator fun invoke() {
-        val todayEpochDay = Clock.System.todayIn(TimeZone.currentSystemDefault()).toEpochDays().toInt()
-        mutex.withLock {
-            if (lastRebuiltEpochDay == todayEpochDay) return@withLock
-            runCatching { repository.rebuildReflectStats() }
-                .onSuccess { lastRebuiltEpochDay = todayEpochDay }
-        }
+        repository.rebuildReflectStats()
     }
+}
+
+/** Observes precomputed daily aggregates for an inclusive date window. */
+class ObserveDailyReflectStatsUseCase(
+    private val repository: CheckItRepository
+) {
+    operator fun invoke(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<DailyReflectStat>> =
+        repository.observeDailyReflectStats(startDate, endDateInclusive)
 }

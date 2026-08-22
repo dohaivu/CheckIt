@@ -23,7 +23,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -35,11 +34,8 @@ import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.cancel
 import checkit.shared.generated.resources.reflect_review_card_title
 import checkit.shared.generated.resources.reflect_review_content_placeholder
-import checkit.shared.generated.resources.reflect_review_draft_note
-import checkit.shared.generated.resources.reflect_review_generate_draft
 import checkit.shared.generated.resources.reflect_review_intent_placeholder
 import checkit.shared.generated.resources.reflect_review_save
-import com.checkit.domain.ReviewSource
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.MarkdownVisualTransformation
@@ -51,7 +47,6 @@ internal fun PeriodReviewEditorSheet(
     editor: ReflectReviewEditorState,
     onContentChange: (String) -> Unit,
     onIntentNextChange: (String) -> Unit,
-    onGenerateDraft: () -> Unit,
     onSave: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -72,7 +67,6 @@ internal fun PeriodReviewEditorSheet(
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -91,16 +85,6 @@ internal fun PeriodReviewEditorSheet(
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
-                TextButton(onClick = onGenerateDraft, enabled = !editor.isSaving) {
-                    Text(stringResource(Res.string.reflect_review_generate_draft))
-                }
-            }
-            if (editor.source == ReviewSource.Auto) {
-                Text(
-                    text = stringResource(Res.string.reflect_review_draft_note, periodLabel),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
             }
             AppOutlinedTextField(
                 value = editor.content,
