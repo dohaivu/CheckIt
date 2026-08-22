@@ -1,5 +1,6 @@
 package com.checkit.data
 
+import androidx.room3.RoomRawQuery
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
@@ -115,6 +116,11 @@ interface CheckItRepository {
     fun observeHabitDailyRollups(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<HabitDailyRollup>>
     fun observeDoneItemSummaries(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<DoneItemSummary>>
     fun observeJournalEntriesInRange(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<JournalEntry>>
+    fun observeJournalEntriesFiltered(
+        moodEmojis: List<String>,
+        searchText: String?,
+        tagId: Long?
+    ): Flow<List<JournalEntry>>
     suspend fun rebuildReflectStats()
     suspend fun completeDayClose(
         date: LocalDate,
@@ -1086,6 +1092,65 @@ class RoomCheckItRepository(
                 entry.toDomain(entryTagIds[entry.id].orEmpty().mapNotNull { tagsById[it] })
             }
         }
+
+    override fun observeJournalEntriesFiltered(
+        moodEmojis: List<String>,
+        searchText: String?,
+        tagId: Long?
+    ): Flow<List<JournalEntry>> {
+        val conditions = mutableListOf<String>()
+        val args = mutableListOf<Any>()
+
+        if (moodEmojis.isNotEmpty()) {
+            conditions.add(
+                moodEmojis.joinToString(separator = " OR ", prefix = "(", postfix = ")") {
+                    args.add("%$it%")
+                    "moods LIKE ?"
+                }
+            )
+        }
+        if (!searchText.isNullOrBlank()) {
+            args.add("%$searchText%")
+            args.add("%$searchText%")
+            conditions.add("(content LIKE ? OR label LIKE ?)")
+        }
+        if (tagId != null) {
+            args.add(tagId)
+            conditions.add(
+                "EXISTS(SELECT 1 FROM journal_entry_tags AS jt WHERE jt.entryId = journal_entries.id AND jt.tagId = ?)"
+            )
+        }
+
+        val sql = buildString {
+            append("SELECT * FROM journal_entries")
+            if (conditions.isNotEmpty()) {
+                append(" WHERE ")
+                append(conditions.joinToString(separator = " AND "))
+            }
+            append(" ORDER BY dateEpochDays DESC, createdTimeMinutes ASC")
+        }
+        val query = RoomRawQuery(sql) { statement ->
+            args.forEachIndexed { index, arg ->
+                when (arg) {
+                    is String -> statement.bindText(index + 1, arg)
+                    is Long -> statement.bindLong(index + 1, arg)
+                }
+            }
+        }
+
+        return combine(
+            dao.observeJournalEntriesFiltered(query),
+            dao.observeJournalEntryTags(),
+            dao.observeTags()
+        ) { entries, entryTags, tags ->
+            val domainTags = tags.map { it.toDomain() }
+            val tagsById = domainTags.associateBy { it.id }
+            val entryTagIds = entryTags.groupBy { it.entryId }.mapValues { it.value.map { t -> t.tagId } }
+            entries.map { entry ->
+                entry.toDomain(entryTagIds[entry.id].orEmpty().mapNotNull { tagsById[it] })
+            }
+        }
+    }
 
     override suspend fun rebuildReflectStats() {
         dao.rebuildReflectStats(computedAtMillis = Clock.System.now().toEpochMilliseconds())

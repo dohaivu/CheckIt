@@ -78,6 +78,8 @@ import com.checkit.ui.components.parseMarkdownToAnnotatedString
 import com.checkit.ui.firstDayOfMonth
 import com.checkit.ui.isSameMonth
 import com.checkit.ui.journal.JournalHistorySheet
+import com.checkit.ui.journal.JournalHistoryUiState
+import com.checkit.ui.journal.JournalHistoryViewModel
 import com.checkit.ui.localizedMonthTitle
 import com.checkit.ui.localizedShortMonthName
 import com.checkit.ui.localizedWeekdayName
@@ -101,6 +103,8 @@ internal fun CalendarScreen(
     state: CalendarUiState,
     board: TaskBoard,
     calendarViewModel: CalendarViewModel,
+    journalHistoryUiState: JournalHistoryUiState,
+    journalHistoryViewModel: JournalHistoryViewModel,
     onDateDoubleClick: (LocalDate) -> Unit,
     onDailyPlanItemClick: (DailyPlanItem, LocalDate) -> Unit,
     onJournalEntryClick: (JournalEntry) -> Unit,
@@ -245,8 +249,11 @@ internal fun CalendarScreen(
 
         if (showJournalHistory) {
             JournalHistorySheet(
-                entries = state.journalEntries,
+                state = journalHistoryUiState,
                 dayReviews = state.dayReviews,
+                onMoodToggle = journalHistoryViewModel::toggleMood,
+                onSearchTextChange = journalHistoryViewModel::updateSearchText,
+                onTagToggle = journalHistoryViewModel::toggleTag,
                 onEntryClick = { entry ->
                     showJournalHistory = false
                     onJournalEntryClick(entry)

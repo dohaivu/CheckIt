@@ -4,6 +4,8 @@ import androidx.room3.Dao
 import androidx.room3.Insert
 import androidx.room3.OnConflictStrategy
 import androidx.room3.Query
+import androidx.room3.RawQuery
+import androidx.room3.RoomRawQuery
 import androidx.room3.Transaction
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DayCloseCommitResult
@@ -672,6 +674,9 @@ interface CheckItDao {
         "SELECT * FROM journal_entries WHERE dateEpochDays BETWEEN :startEpochDays AND :endEpochDays ORDER BY createdTimeMinutes ASC"
     )
     fun observeJournalEntriesInRange(startEpochDays: Int, endEpochDays: Int): Flow<List<JournalEntryEntity>>
+
+    @RawQuery(observedEntities = [JournalEntryEntity::class, JournalEntryTagEntity::class])
+    fun observeJournalEntriesFiltered(query: RoomRawQuery): Flow<List<JournalEntryEntity>>
 
 
     @Query(

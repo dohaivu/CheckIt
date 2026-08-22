@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,8 +30,11 @@ import androidx.compose.ui.unit.sp
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.journal_agenda_review_card_title
 import com.checkit.domain.JournalEntry
+import com.checkit.domain.MoodFilter
 import com.checkit.domain.PeriodReview
 import com.checkit.ui.components.AppEditorBottomSheet
+import com.checkit.ui.components.AppOutlinedTextField
+import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TagPlain
 import com.checkit.ui.components.asAnnotatedString
 import com.checkit.ui.components.getMoodColorFromEmoji
@@ -43,8 +47,11 @@ import org.jetbrains.compose.resources.stringResource
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun JournalHistorySheet(
-    entries: List<JournalEntry>,
+    state: JournalHistoryUiState,
     dayReviews: List<PeriodReview> = emptyList(),
+    onMoodToggle: (MoodFilter) -> Unit,
+    onSearchTextChange: (String) -> Unit,
+    onTagToggle: (Long) -> Unit,
     onEntryClick: (JournalEntry) -> Unit,
     onReviewClick: (PeriodReview) -> Unit = {},
     onDismiss: () -> Unit
@@ -53,12 +60,57 @@ internal fun JournalHistorySheet(
         onDismiss = onDismiss,
         modifier = Modifier.fillMaxHeight(0.9f)
     ) {
-        JournalAgendaView(
-            journalEntries = entries,
-            dayReviews = dayReviews,
-            onEntryClick = onEntryClick,
-            onReviewClick = onReviewClick,
-            modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp)
+        Column(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            JournalFilterBar(
+                state = state,
+                onMoodToggle = onMoodToggle,
+                onSearchTextChange = onSearchTextChange,
+                onTagToggle = onTagToggle
+            )
+            JournalAgendaView(
+                journalEntries = state.entries,
+                dayReviews = dayReviews,
+                onEntryClick = onEntryClick,
+                onReviewClick = onReviewClick,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+    }
+}
+
+@Composable
+private fun JournalFilterBar(
+    state: JournalHistoryUiState,
+    onMoodToggle: (MoodFilter) -> Unit,
+    onSearchTextChange: (String) -> Unit,
+    onTagToggle: (Long) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        MoodFilter.entries.forEach { mood ->
+            FilterChip(
+                selected = state.filters.mood == mood,
+                onClick = { onMoodToggle(mood) },
+                label = { Text(mood.label) }
+            )
+        }
+        AppOutlinedTextField(
+            value = state.filters.searchText,
+            onValueChange = onSearchTextChange,
+            placeholder = "Search",
+            modifier = Modifier.weight(1f)
+        )
+        TagOptionMenu(
+            availableTags = state.tags,
+            selectedTagIds = state.filters.tagId?.let(::setOf) ?: emptySet(),
+            onTagToggle = onTagToggle
         )
     }
 }

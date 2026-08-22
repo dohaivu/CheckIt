@@ -606,6 +606,24 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
             entries.filter { LocalDate.fromEpochDays(it.dateEpochDays) in startDate..endDateInclusive }
         }
 
+    override fun observeJournalEntriesFiltered(
+        moodEmojis: List<String>,
+        searchText: String?,
+        tagId: Long?
+    ): Flow<List<JournalEntry>> =
+        journalEntriesFlow.map { entries ->
+            entries.filter { entry ->
+                val moodMatches = moodEmojis.isEmpty() || entry.moods.any { it in moodEmojis }
+                val searchMatches = searchText == null ||
+                    entry.content.contains(searchText, ignoreCase = true) ||
+                    (entry.label?.contains(searchText, ignoreCase = true) == true)
+                val tagMatches = tagId == null || entry.tags.any { it.id == tagId }
+                moodMatches && searchMatches && tagMatches
+            }.sortedWith(
+                compareByDescending<JournalEntry> { it.dateEpochDays }.thenBy { it.createdTimeMinutes }
+            )
+        }
+
     override suspend fun rebuildReflectStats() = Unit
 
     override suspend fun completeDayClose(

@@ -97,6 +97,7 @@ import com.checkit.ui.calendar.CalendarViewModel
 import com.checkit.ui.myday.MyDayViewModel
 import com.checkit.ui.nested.NestedListsViewModel
 import com.checkit.ui.reflect.ReflectViewModel
+import com.checkit.ui.journal.JournalHistoryViewModel
 import com.checkit.ui.settings.SettingsViewModel
 import com.checkit.ui.tasks.TaskViewModel
 import com.checkit.ui.tasks.list.ListViewModel
@@ -264,6 +265,7 @@ val provideViewModelModule = module {
     viewModel { ListSectionViewModel(get(), get(), get()) }
     viewModel { TagViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { CalendarViewModel(get(), get(), get(), get(), get(), get()) }
+    viewModel { JournalHistoryViewModel(get(), get()) }
     viewModel {
         MyDayViewModel(
             observeDailyPlans = get(),

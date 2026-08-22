@@ -288,10 +288,13 @@ fun CheckItApp(
                                         )
                                     }
                                     AppRoute.Calendar -> {
+                                        val journalHistoryUiState by viewModels.journalHistory.uiState.collectAsState()
                                         CalendarScreen(
                                             state = calendarUiState,
                                             board = taskUiState.board,
                                             calendarViewModel = viewModels.calendar,
+                                            journalHistoryUiState = journalHistoryUiState,
+                                            journalHistoryViewModel = viewModels.journalHistory,
                                             onDateDoubleClick = { date -> viewModels.task.openNewTaskOnDate(date) },
                                             onDailyPlanItemClick = viewModels.myDay::openItemEditor,
                                             onJournalEntryClick = viewModels.myDay::openJournalEditor,
