@@ -21,7 +21,6 @@ data class CalendarUiState(
     val selectedPeriod: ReportPeriod = ReportPeriod.Month,
     val selectedMonth: LocalDate = today().firstDayOfMonth(),
     val selectedDate: LocalDate = today(),
-    val board: TaskBoard = TaskBoard(),
     val dailyPlans: List<DailyPlan> = emptyList(),
     /** Precomputed daily aggregates (past-day markers/minutes when unfiltered). */
     val dailyStatsByDate: Map<LocalDate, DailyReflectStat> = emptyMap(),
@@ -103,32 +102,32 @@ data class CalendarUiState(
         minutes
     }
 
-    private val futureMarkersByDate: Map<LocalDate, CalendarDateMarkers> by lazy {
-        val dates = board.tasksByDate.keys + board.notesByDate.keys
-        dates.associateWith { date ->
-            CalendarDateMarkers(
-                totalCount = board.tasksByDate[date].orEmpty().size + board.notesByDate[date].orEmpty().size
-            )
-        }
-    }
-
-    fun tasksForDate(date: LocalDate): List<TaskItem> =
+    fun tasksForDate(board: TaskBoard, date: LocalDate): List<TaskItem> =
         if (date == selectedDate) selectedDateTasks else board.tasksByDate[date].orEmpty()
 
-    fun notesForDate(date: LocalDate): List<NoteItem> =
+    fun notesForDate(board: TaskBoard, date: LocalDate): List<NoteItem> =
         if (date == selectedDate) selectedDateNotes else board.notesByDate[date].orEmpty()
 
-    fun markersForDate(date: LocalDate): CalendarDateMarkers =
+    fun markersForDate(board: TaskBoard, date: LocalDate): CalendarDateMarkers =
         if (date <= today()) {
             dailyPlanMarkersByDate[date] ?: CalendarDateMarkers.Empty
         } else {
-            futureMarkersByDate[date] ?: CalendarDateMarkers.Empty
+            futureMarkersFor(board)[date] ?: CalendarDateMarkers.Empty
         }
 
     fun dailyPlanWorkMinutesForDate(date: LocalDate): Int =
         dailyPlanWorkMinutesByDate[date] ?: 0
 
     fun dailyPlanForDate(date: LocalDate): DailyPlan? = dailyPlanByDate[date]
+
+    private fun futureMarkersFor(board: TaskBoard): Map<LocalDate, CalendarDateMarkers> {
+        val dates = board.tasksByDate.keys + board.notesByDate.keys
+        return dates.associateWith { date ->
+            CalendarDateMarkers(
+                totalCount = board.tasksByDate[date].orEmpty().size + board.notesByDate[date].orEmpty().size
+            )
+        }
+    }
 }
 
 private fun DailyPlanItem.hasAnyTag(tagIds: Set<Long>): Boolean =

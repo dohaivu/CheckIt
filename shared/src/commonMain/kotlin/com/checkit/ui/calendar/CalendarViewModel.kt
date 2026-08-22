@@ -16,7 +16,6 @@ import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveDailyReflectStatsUseCase
 import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
 import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
-import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.ui.firstDayOfMonth
 import com.checkit.ui.today
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,7 +36,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CalendarViewModel(
-    private val observeTaskBoard: ObserveTaskBoardUseCase,
     private val observeDailyPlans: ObserveDailyPlansUseCase,
     private val observePeriodReviews: ObservePeriodReviewsUseCase,
     private val observeJournalEntries: ObserveJournalEntriesUseCase,
@@ -56,7 +54,6 @@ class CalendarViewModel(
                     val start = month.minus(1, DateTimeUnit.MONTH)
                     val end = month.plus(2, DateTimeUnit.MONTH).minus(1, DateTimeUnit.DAY)
                     combine(
-                        // Heavy board observation removed from monthly sync
                         observeDailyPlans(startDate = start, endDate = end),
                         observePeriodReviews(start, end),
                         observeJournalEntries(start, end),

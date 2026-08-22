@@ -35,7 +35,7 @@ class CalendarUiStateMarkersTest {
             )
         )
 
-        val markers = state.markersForDate(date)
+        val markers = state.markersForDate(TaskBoard(), date)
 
         assertEquals(CalendarDateMarkers(totalCount = 4), markers)
         assertEquals(4, markers.totalCount)
@@ -44,14 +44,13 @@ class CalendarUiStateMarkersTest {
     @Test
     fun futureDateMarkersCountTaskAndNoteItems() {
         val date = today().plus(1, DateTimeUnit.DAY)
-        val state = CalendarUiState(
-            board = TaskBoard(
-                tasks = listOf(task(id = 1L, date = date), task(id = 2L, date = date)),
-                notes = listOf(note(id = 3L, date = date))
-            )
+        val board = TaskBoard(
+            tasks = listOf(task(id = 1L, date = date), task(id = 2L, date = date)),
+            notes = listOf(note(id = 3L, date = date))
         )
+        val state = CalendarUiState()
 
-        val markers = state.markersForDate(date)
+        val markers = state.markersForDate(board, date)
 
         assertEquals(CalendarDateMarkers(totalCount = 3), markers)
         assertEquals(3, markers.totalCount)
@@ -109,8 +108,8 @@ class CalendarUiStateMarkersTest {
             selectedTagIds = setOf(selectedTag.id)
         )
 
-        assertEquals(CalendarDateMarkers(totalCount = 1), state.markersForDate(date))
-        assertEquals(CalendarDateMarkers(totalCount = 1), state.markersForDate(otherDate))
+        assertEquals(CalendarDateMarkers(totalCount = 1), state.markersForDate(TaskBoard(), date))
+        assertEquals(CalendarDateMarkers(totalCount = 1), state.markersForDate(TaskBoard(), otherDate))
     }
 
     private fun dailyPlan(

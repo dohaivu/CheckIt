@@ -104,6 +104,7 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 internal fun CalendarScreen(
     state: CalendarUiState,
+    board: TaskBoard,
     calendarViewModel: CalendarViewModel,
     onDateDoubleClick: (LocalDate) -> Unit,
     onDailyPlanItemClick: (DailyPlanItem, LocalDate) -> Unit,
@@ -117,7 +118,7 @@ internal fun CalendarScreen(
     modifier: Modifier = Modifier
 ) {
     val today = today()
-    val selectedContent = remember(state, today) { state.selectedDateContent(today) }
+    val selectedContent = remember(state, board, today) { state.selectedDateContent(board, today) }
     var showJournalHistory by remember { mutableStateOf(false) }
 
     val handleDateDoubleClick: (LocalDate) -> Unit = { date ->
@@ -142,7 +143,7 @@ internal fun CalendarScreen(
                         Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = "Journal history")
                     }
                     TagOptionMenu(
-                        availableTags = state.board.tags,
+                        availableTags = board.tags,
                         selectedTagIds = state.selectedTagIds,
                         onTagToggle = calendarViewModel::toggleTagFilter,
                         onNewTagClick = onNewTagClick
@@ -190,14 +191,16 @@ internal fun CalendarScreen(
                                         selectedDate = state.selectedDate,
                                         onDateSelected = calendarViewModel::selectDate,
                                         onDateDoubleClick = handleDateDoubleClick,
+                                        board = board,
                                         state = state
-                                                    )
+                                    )
                                     CalendarDisplayMode.Week -> WeekCalendar(
                                         selectedDate = state.selectedDate,
                                         onDateSelected = calendarViewModel::selectDate,
                                         onDateDoubleClick = handleDateDoubleClick,
+                                        board = board,
                                         state = state
-                                                    )
+                                    )
                                 }
                             }
                             SelectedDateHeader(
@@ -631,7 +634,10 @@ private data class SelectedCalendarDateContent(
     val hasItems: Boolean get() = if (showDailyPlan) dailyPlanItems.isNotEmpty() else tasks.isNotEmpty() || notes.isNotEmpty()
 }
 
-private fun CalendarUiState.selectedDateContent(today: LocalDate): SelectedCalendarDateContent {
+private fun CalendarUiState.selectedDateContent(
+    board: TaskBoard,
+    today: LocalDate
+): SelectedCalendarDateContent {
     val showDailyPlan = selectedDate <= today
     val dailyPlan = dailyPlanForDate(selectedDate)
     val dateEpochDays = selectedDate.toEpochDays()
@@ -642,8 +648,8 @@ private fun CalendarUiState.selectedDateContent(today: LocalDate): SelectedCalen
         dailyPlan = dailyPlan,
         dailyPlanItems = dailyPlan?.items.orEmpty(),
         journalEntries = journalEntries.filter { it.dateEpochDays == dateEpochDays.toInt() },
-        tasks = tasksForDate(selectedDate),
-        notes = notesForDate(selectedDate)
+        tasks = tasksForDate(board, selectedDate),
+        notes = notesForDate(board, selectedDate)
     )
 }
 
@@ -686,6 +692,7 @@ private fun MonthCalendar(
     selectedDate: LocalDate,
     onDateSelected: (LocalDate) -> Unit,
     onDateDoubleClick: (LocalDate) -> Unit,
+    board: TaskBoard,
     state: CalendarUiState
 ) {
     val colors = rememberCalendarCellColors()
@@ -700,6 +707,7 @@ private fun MonthCalendar(
                 colors = colors,
                 onDateSelected = onDateSelected,
                 onDateDoubleClick = onDateDoubleClick,
+                board = board,
                 state = state,
                 isDateEnabled = { it.isSameMonth(month) }
             )
@@ -712,6 +720,7 @@ private fun WeekCalendar(
     selectedDate: LocalDate,
     onDateSelected: (LocalDate) -> Unit,
     onDateDoubleClick: (LocalDate) -> Unit,
+    board: TaskBoard,
     state: CalendarUiState
 ) {
     val colors = rememberCalendarCellColors()
@@ -724,6 +733,7 @@ private fun WeekCalendar(
             colors = colors,
             onDateSelected = onDateSelected,
             onDateDoubleClick = onDateDoubleClick,
+            board = board,
             state = state,
             isDateEnabled = { true }
         )
@@ -763,6 +773,7 @@ private fun CalendarWeekRow(
     colors: CalendarCellColors,
     onDateSelected: (LocalDate) -> Unit,
     onDateDoubleClick: (LocalDate) -> Unit,
+    board: TaskBoard,
     state: CalendarUiState,
     isDateEnabled: (LocalDate) -> Boolean
 ) {
@@ -776,7 +787,7 @@ private fun CalendarWeekRow(
                 colors = colors,
                 onDateSelected = onDateSelected,
                 onDateDoubleClick = onDateDoubleClick,
-                markers = if (isEnabled) state.markersForDate(date) else CalendarDateMarkers.Empty,
+                markers = if (isEnabled) state.markersForDate(board, date) else CalendarDateMarkers.Empty,
                 workMinutes = if (isEnabled) state.dailyPlanWorkMinutesForDate(date) else 0,
                 modifier = Modifier.weight(1f)
             )

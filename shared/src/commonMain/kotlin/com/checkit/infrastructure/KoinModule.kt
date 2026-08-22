@@ -263,7 +263,7 @@ val provideViewModelModule = module {
     viewModel { ListViewModel(get(), get(), get()) }
     viewModel { ListSectionViewModel(get(), get(), get()) }
     viewModel { TagViewModel(get(), get(), get(), get(), get(), get()) }
-    viewModel { CalendarViewModel(get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { CalendarViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel {
         MyDayViewModel(
             observeDailyPlans = get(),

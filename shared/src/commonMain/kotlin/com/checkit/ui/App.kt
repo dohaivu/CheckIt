@@ -290,6 +290,7 @@ fun CheckItApp(
                                     AppRoute.Calendar -> {
                                         CalendarScreen(
                                             state = calendarUiState,
+                                            board = taskUiState.board,
                                             calendarViewModel = viewModels.calendar,
                                             onDateDoubleClick = { date -> viewModels.task.openNewTaskOnDate(date) },
                                             onDailyPlanItemClick = viewModels.myDay::openItemEditor,
