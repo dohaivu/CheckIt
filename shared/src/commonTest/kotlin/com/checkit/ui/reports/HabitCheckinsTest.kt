@@ -1,9 +1,6 @@
 package com.checkit.ui.reports
 
-import com.checkit.domain.DailyPlan
-import com.checkit.domain.DailyPlanItem
-import com.checkit.domain.DailyPlanItemSource
-import com.checkit.domain.DailyPlanItemStatus
+import com.checkit.domain.HabitDailyRollup
 import com.checkit.ui.reflect.buildHabitCheckins
 import com.checkit.ui.reflect.buildHeatmapMonths
 import com.checkit.ui.reflect.calculateStreak
@@ -15,21 +12,16 @@ import kotlin.test.assertEquals
 
 class HabitCheckinsTest {
 
-    private fun doneHabitItem(
-        id: Long,
+    private fun rollup(
+        date: LocalDate,
         taskId: Long,
-        title: String
-    ) = DailyPlanItem(
-        id = id,
-        dateEpochDays = 0,
-        taskId = taskId,
+        title: String,
+        doneMinutes: Int = 0
+    ) = HabitDailyRollup(
+        dateEpochDays = date.toEpochDays().toInt(),
+        habitKey = "task:$taskId",
         title = title,
-        source = DailyPlanItemSource.ExistingTask,
-        status = DailyPlanItemStatus.Done,
-        isHabit = true,
-        sortOrder = 0,
-        addedAtMillis = 0L,
-        completedAtMillis = 1L
+        doneMinutes = doneMinutes
     )
 
     @Test
@@ -69,33 +61,23 @@ class HabitCheckinsTest {
     }
 
     @Test
-    fun buildCheckinsGroupsByTaskAndCountsDistinctDoneDates() {
+    fun buildCheckinsGroupsByHabitAndCountsDistinctDoneDates() {
         val today = LocalDate(2026, 8, 2)
-        val plans = listOf(
-            DailyPlan(
-                date = today,
-                items = listOf(
-                    doneHabitItem(id = 1L, taskId = 10L, title = "Meditate"),
-                    doneHabitItem(id = 2L, taskId = 11L, title = "Run")
-                )
-            ),
-            DailyPlan(
-                date = today.minus(1, DateTimeUnit.DAY),
-                items = listOf(
-                    doneHabitItem(id = 3L, taskId = 10L, title = "Meditate")
-                )
-            )
+        val rollups = listOf(
+            rollup(today, taskId = 10L, title = "Meditate"),
+            rollup(today, taskId = 11L, title = "Run"),
+            rollup(today.minus(1, DateTimeUnit.DAY), taskId = 10L, title = "Meditate")
         )
 
-        val checkins = buildHabitCheckins(plans, today)
+        val checkins = buildHabitCheckins(rollups, today)
 
         assertEquals(2, checkins.size)
-        val meditate = checkins.first { it.taskId == 10L }
+        val meditate = checkins.first { it.habitKey == "task:10" }
         assertEquals("Meditate", meditate.title)
         assertEquals(2, meditate.totalDone)
         assertEquals(2, meditate.streak)
         assertEquals(setOf(today, today.minus(1, DateTimeUnit.DAY)), meditate.doneDates)
-        val run = checkins.first { it.taskId == 11L }
+        val run = checkins.first { it.habitKey == "task:11" }
         assertEquals(1, run.totalDone)
         assertEquals(1, run.streak)
     }
@@ -103,70 +85,35 @@ class HabitCheckinsTest {
     @Test
     fun buildCheckinsSumsMinutesPerDate() {
         val today = LocalDate(2026, 8, 2)
-        val plans = listOf(
-            DailyPlan(
-                date = today,
-                items = listOf(
-                    doneHabitItem(id = 1L, taskId = 10L, title = "Meditate")
-                        .copy(startTimeMinutes = 480, endTimeMinutes = 540)
-                )
-            ),
-            DailyPlan(
-                date = today.minus(1, DateTimeUnit.DAY),
-                items = listOf(
-                    doneHabitItem(id = 2L, taskId = 10L, title = "Meditate")
-                        .copy(startTimeMinutes = 540, endTimeMinutes = 600)
-                )
-            )
+        val rollups = listOf(
+            rollup(today, taskId = 10L, title = "Meditate", doneMinutes = 60),
+            rollup(today.minus(1, DateTimeUnit.DAY), taskId = 10L, title = "Meditate", doneMinutes = 60)
         )
 
-        val checkins = buildHabitCheckins(plans, today)
+        val checkins = buildHabitCheckins(rollups, today)
 
-        val meditate = checkins.first { it.taskId == 10L }
+        val meditate = checkins.single { it.habitKey == "task:10" }
         assertEquals(60, meditate.doneMinutesByDate[today])
         assertEquals(60, meditate.doneMinutesByDate[today.minus(1, DateTimeUnit.DAY)])
     }
 
     @Test
-    fun buildCheckinsIgnoresPlannedAndNonHabitItems() {
+    fun buildCheckinsEmptyWithoutRollups() {
         val today = LocalDate(2026, 8, 2)
-        val plannedHabit = doneHabitItem(id = 1L, taskId = 10L, title = "Meditate").copy(
-            status = DailyPlanItemStatus.Planned,
-            completedAtMillis = null
-        )
-        val regularTask = doneHabitItem(id = 2L, taskId = 11L, title = "Read").copy(isHabit = false)
-        val plans = listOf(
-            DailyPlan(
-                date = today,
-                items = listOf(plannedHabit, regularTask)
-            )
-        )
 
-        val checkins = buildHabitCheckins(plans, today)
-
-        assertEquals(emptyList(), checkins)
+        assertEquals(emptyList(), buildHabitCheckins(emptyList(), today))
     }
 
     @Test
     fun buildCheckinsSortsByStreakDescending() {
         val today = LocalDate(2026, 8, 2)
-        val plans = listOf(
-            DailyPlan(
-                date = today,
-                items = listOf(
-                    doneHabitItem(id = 1L, taskId = 10L, title = "Meditate"),
-                    doneHabitItem(id = 2L, taskId = 11L, title = "Run")
-                )
-            ),
-            DailyPlan(
-                date = today.minus(1, DateTimeUnit.DAY),
-                items = listOf(
-                    doneHabitItem(id = 3L, taskId = 10L, title = "Meditate")
-                )
-            )
+        val rollups = listOf(
+            rollup(today, taskId = 10L, title = "Meditate"),
+            rollup(today, taskId = 11L, title = "Run"),
+            rollup(today.minus(1, DateTimeUnit.DAY), taskId = 10L, title = "Meditate")
         )
 
-        val checkins = buildHabitCheckins(plans, today)
+        val checkins = buildHabitCheckins(rollups, today)
 
         assertEquals(listOf("Meditate", "Run"), checkins.map { it.title })
     }

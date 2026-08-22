@@ -7,14 +7,11 @@ import androidx.room3.Query
 import androidx.room3.Transaction
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DayCloseCommitResult
-import com.checkit.domain.DayStats
 import com.checkit.domain.Period
 import com.checkit.domain.ReviewSource
 import com.checkit.domain.ReviewStatus
 import com.checkit.domain.TaskReminderWriteInput
 import kotlinx.coroutines.flow.Flow
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 
 @Dao
 interface CheckItDao {
@@ -514,6 +511,159 @@ interface CheckItDao {
     @Query("SELECT * FROM period_reviews ORDER BY periodStartEpochDays ASC")
     fun observePeriodReviews(): Flow<List<PeriodReviewEntity>>
 
+    // ---------------- Reflect rollups (precomputed daily aggregates) ----------------
+
+    @Query(
+        "SELECT * FROM daily_reflect_stats WHERE dateEpochDays BETWEEN :startEpochDays AND :endEpochDays ORDER BY dateEpochDays ASC"
+    )
+    fun observeDailyReflectStats(startEpochDays: Int, endEpochDays: Int): Flow<List<DailyReflectStatsEntity>>
+
+    @Query(
+        """
+        SELECT r.dateEpochDays AS dateEpochDays,
+               r.tagId AS tagId,
+               t.name AS tagName,
+               t.color AS tagColor,
+               r.doneCount AS doneCount,
+               r.doneMinutes AS doneMinutes
+        FROM daily_tag_rollups AS r
+        JOIN tags AS t ON t.id = r.tagId
+        WHERE r.dateEpochDays BETWEEN :startEpochDays AND :endEpochDays
+        ORDER BY r.dateEpochDays ASC
+        """
+    )
+    fun observeDailyTagRollups(startEpochDays: Int, endEpochDays: Int): Flow<List<DailyTagRollupWithMeta>>
+
+    @Query(
+        "SELECT * FROM habit_daily_rollups WHERE dateEpochDays BETWEEN :startEpochDays AND :endEpochDays ORDER BY dateEpochDays ASC"
+    )
+    fun observeHabitDailyRollups(startEpochDays: Int, endEpochDays: Int): Flow<List<HabitDailyRollupEntity>>
+
+    @Query("DELETE FROM daily_reflect_stats")
+    suspend fun clearDailyReflectStats()
+
+    @Query("DELETE FROM daily_tag_rollups")
+    suspend fun clearDailyTagRollups()
+
+    @Query("DELETE FROM habit_daily_rollups")
+    suspend fun clearHabitDailyRollups()
+
+    @Query(
+        """
+        INSERT OR REPLACE INTO daily_reflect_stats(dateEpochDays, plannedItemCount, doneItemCount, doneMinutes, journalCount, computedAtMillis)
+        SELECT i.dateEpochDays,
+               SUM(CASE WHEN i.status = 'Planned' AND i.source IN ('MyDayTask', 'MyDayReminder', 'ExistingTask') THEN 1 ELSE 0 END),
+               SUM(CASE WHEN i.status = 'Done' AND i.source IN ('MyDayTask', 'MyDayReminder', 'ExistingTask') THEN 1 ELSE 0 END),
+               SUM(
+                   CASE
+                       WHEN i.status = 'Done' AND i.startTimeMinutes IS NOT NULL AND i.endTimeMinutes IS NOT NULL
+                       THEN MAX(i.endTimeMinutes - i.startTimeMinutes, 0)
+                       ELSE 0
+                   END
+               ),
+               0,
+               :computedAtMillis
+        FROM daily_plan_items AS i
+        GROUP BY i.dateEpochDays
+        """
+    )
+    suspend fun insertDailyReflectStatsFromItems(computedAtMillis: Long)
+
+    @Query(
+        """
+        INSERT OR IGNORE INTO daily_reflect_stats(dateEpochDays, plannedItemCount, doneItemCount, doneMinutes, journalCount, computedAtMillis)
+        SELECT j.dateEpochDays, 0, 0, 0, 0, :computedAtMillis
+        FROM journal_entries AS j
+        GROUP BY j.dateEpochDays
+        """
+    )
+    suspend fun insertDailyReflectStatsForJournalOnlyDays(computedAtMillis: Long)
+
+    @Query(
+        """
+        UPDATE daily_reflect_stats
+        SET journalCount = (
+            SELECT COUNT(*) FROM journal_entries AS j WHERE j.dateEpochDays = daily_reflect_stats.dateEpochDays
+        )
+        """
+    )
+    suspend fun updateDailyReflectStatsJournalCounts()
+
+    @Query(
+        """
+        INSERT OR REPLACE INTO daily_tag_rollups(dateEpochDays, tagId, doneCount, doneMinutes)
+        SELECT i.dateEpochDays,
+               it.tagId,
+               COUNT(*),
+               SUM(
+                   CASE
+                       WHEN i.startTimeMinutes IS NOT NULL AND i.endTimeMinutes IS NOT NULL
+                       THEN MAX(i.endTimeMinutes - i.startTimeMinutes, 0)
+                       ELSE 0
+                   END
+               )
+        FROM daily_plan_items AS i
+        JOIN daily_plan_item_tags AS it ON it.itemId = i.id
+        WHERE i.status = 'Done'
+        GROUP BY i.dateEpochDays, it.tagId
+        """
+    )
+    suspend fun insertDailyTagRollups()
+
+    @Query(
+        """
+        INSERT OR REPLACE INTO habit_daily_rollups(dateEpochDays, habitKey, title, doneMinutes)
+        SELECT i.dateEpochDays,
+               CASE WHEN i.taskId IS NOT NULL THEN 'task:' || i.taskId ELSE 'title:' || LOWER(TRIM(i.title)) END,
+               MAX(TRIM(i.title)),
+               SUM(
+                   CASE
+                       WHEN i.startTimeMinutes IS NOT NULL AND i.endTimeMinutes IS NOT NULL
+                       THEN MAX(i.endTimeMinutes - i.startTimeMinutes, 0)
+                       ELSE 0
+                   END
+               )
+        FROM daily_plan_items AS i
+        WHERE i.isHabit = 1 AND i.status = 'Done'
+        GROUP BY i.dateEpochDays,
+                 CASE WHEN i.taskId IS NOT NULL THEN 'task:' || i.taskId ELSE 'title:' || LOWER(TRIM(i.title)) END
+        """
+    )
+    suspend fun insertHabitDailyRollups()
+
+    /**
+     * Rebuilds all Reflect rollups from source tables in one set-based pass.
+     * Cheap enough to run as a whole; called once a day by [com.checkit.domain.usecase.RebuildReflectStatsUseCase].
+     */
+    @Transaction
+    suspend fun rebuildReflectStats(computedAtMillis: Long) {
+        clearDailyReflectStats()
+        clearDailyTagRollups()
+        clearHabitDailyRollups()
+        insertDailyReflectStatsFromItems(computedAtMillis)
+        insertDailyReflectStatsForJournalOnlyDays(computedAtMillis)
+        updateDailyReflectStatsJournalCounts()
+        insertDailyTagRollups()
+        insertHabitDailyRollups()
+    }
+
+    /** Slim projection of done items for highlights; avoids hydrating tags/labels. */
+    @Query(
+        """
+        SELECT id, dateEpochDays, title, note, source, startTimeMinutes, endTimeMinutes, completedAtMillis
+        FROM daily_plan_items
+        WHERE status = 'Done' AND dateEpochDays BETWEEN :startEpochDays AND :endEpochDays
+        ORDER BY completedAtMillis DESC
+        """
+    )
+    fun observeDoneItemSummaries(startEpochDays: Int, endEpochDays: Int): Flow<List<DoneItemSummaryEntity>>
+
+    @Query(
+        "SELECT * FROM journal_entries WHERE dateEpochDays BETWEEN :startEpochDays AND :endEpochDays ORDER BY createdTimeMinutes ASC"
+    )
+    fun observeJournalEntriesInRange(startEpochDays: Int, endEpochDays: Int): Flow<List<JournalEntryEntity>>
+
+
     @Query(
         "SELECT * FROM period_reviews WHERE periodType = :periodType AND periodStartEpochDays = :periodStartEpochDays LIMIT 1"
     )
@@ -603,32 +753,6 @@ interface CheckItDao {
             markDailyPlanItemsHandled(listOf(source.id), nowMillis)
         }
 
-        val journalCount = journalEntryCountForDate(dateEpochDays)
-        val allDailyPlanItems = dailyPlanItemsForDate(dateEpochDays)
-        val workMinutesByTag = mutableMapOf<Long, Int>()
-        allDailyPlanItems.forEach { item ->
-            val isDone = item.status == DailyPlanItemStatus.Done.name || markDoneItemIds.contains(item.id)
-            if (isDone) {
-                val start = item.startTimeMinutes
-                val end = item.endTimeMinutes
-                if (start != null && end != null) {
-                    val minutes = (end - start).coerceAtLeast(0)
-                    if (minutes > 0) {
-                        tagIdsForItem(item.id).forEach { tagId ->
-                            workMinutesByTag[tagId] = (workMinutesByTag[tagId] ?: 0) + minutes
-                        }
-                    }
-                }
-            }
-        }
-        val dayStats = DayStats(
-            doneCount = doneCount,
-            plannedCount = plannedCount,
-            doneMinutes = doneMinutes,
-            journalEntryCount = journalCount,
-            workMinutesByTag = workMinutesByTag
-        )
-
         upsertPeriodReview(
             PeriodReviewEntity(
                 periodType = Period.Day.name,
@@ -639,8 +763,7 @@ interface CheckItDao {
                 source = ReviewSource.Manual.name,
                 status = ReviewStatus.Complete.name,
                 completedAtMillis = nowMillis,
-                editedAtMillis = nowMillis,
-                statsJson = Json.encodeToString(dayStats)
+                editedAtMillis = nowMillis
             )
         )
 

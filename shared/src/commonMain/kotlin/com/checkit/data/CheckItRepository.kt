@@ -9,6 +9,10 @@ import com.checkit.domain.PeriodReview
 import com.checkit.domain.Period
 import com.checkit.domain.ReviewSource
 import com.checkit.domain.ReviewStatus
+import com.checkit.domain.DailyReflectStat
+import com.checkit.domain.DailyTagRollup
+import com.checkit.domain.DoneItemSummary
+import com.checkit.domain.HabitDailyRollup
 import com.checkit.domain.DueDatePreset
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.ListItem
@@ -105,6 +109,12 @@ interface CheckItRepository {
     fun observePeriodReviews(): Flow<List<PeriodReview>>
     suspend fun periodReviewFor(period: Period, date: LocalDate): PeriodReview?
     suspend fun savePeriodReview(review: PeriodReview)
+    fun observeDailyReflectStats(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<DailyReflectStat>>
+    fun observeDailyTagRollups(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<DailyTagRollup>>
+    fun observeHabitDailyRollups(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<HabitDailyRollup>>
+    fun observeDoneItemSummaries(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<DoneItemSummary>>
+    fun observeJournalEntriesInRange(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<JournalEntry>>
+    suspend fun rebuildReflectStats()
     suspend fun completeDayClose(
         date: LocalDate,
         markDoneItemIds: List<Long>,
@@ -979,16 +989,96 @@ class RoomCheckItRepository(
                 periodStartEpochDays = review.periodStartEpochDays,
                 periodEndEpochDays = review.periodEndEpochDays,
                 content = review.content,
-                highlightsJson = review.highlightsJson,
                 intentNext = review.intentNext,
                 source = review.source.name,
                 status = review.status.name,
                 completedAtMillis = review.completedAtMillis,
                 generatedAtMillis = review.generatedAtMillis,
-                editedAtMillis = review.editedAtMillis,
-                statsJson = review.statsJson
+                editedAtMillis = review.editedAtMillis
             )
         )
+    }
+
+    override fun observeDailyReflectStats(
+        startDate: LocalDate,
+        endDateInclusive: LocalDate
+    ): Flow<List<DailyReflectStat>> =
+        dao.observeDailyReflectStats(startDate.toEpochDays().toInt(), endDateInclusive.toEpochDays().toInt())
+            .map { entities -> entities.map { it.toDomain() } }
+
+    override fun observeDailyTagRollups(
+        startDate: LocalDate,
+        endDateInclusive: LocalDate
+    ): Flow<List<DailyTagRollup>> =
+        dao.observeDailyTagRollups(startDate.toEpochDays().toInt(), endDateInclusive.toEpochDays().toInt())
+            .map { rows ->
+                rows.map {
+                    DailyTagRollup(
+                        dateEpochDays = it.dateEpochDays,
+                        tagId = it.tagId,
+                        tagName = it.tagName,
+                        tagColor = it.tagColor,
+                        doneCount = it.doneCount,
+                        doneMinutes = it.doneMinutes
+                    )
+                }
+            }
+
+    override fun observeHabitDailyRollups(
+        startDate: LocalDate,
+        endDateInclusive: LocalDate
+    ): Flow<List<HabitDailyRollup>> =
+        dao.observeHabitDailyRollups(startDate.toEpochDays().toInt(), endDateInclusive.toEpochDays().toInt())
+            .map { entities ->
+                entities.map {
+                    HabitDailyRollup(
+                        dateEpochDays = it.dateEpochDays,
+                        habitKey = it.habitKey,
+                        title = it.title,
+                        doneMinutes = it.doneMinutes
+                    )
+                }
+            }
+
+    override fun observeDoneItemSummaries(
+        startDate: LocalDate,
+        endDateInclusive: LocalDate
+    ): Flow<List<DoneItemSummary>> =
+        dao.observeDoneItemSummaries(startDate.toEpochDays().toInt(), endDateInclusive.toEpochDays().toInt())
+            .map { entities ->
+                entities.map {
+                    DoneItemSummary(
+                        id = it.id,
+                        dateEpochDays = it.dateEpochDays,
+                        title = it.title,
+                        note = it.note,
+                        sourceName = it.source,
+                        startTimeMinutes = it.startTimeMinutes,
+                        endTimeMinutes = it.endTimeMinutes,
+                        completedAtMillis = it.completedAtMillis
+                    )
+                }
+            }
+
+    override fun observeJournalEntriesInRange(
+        startDate: LocalDate,
+        endDateInclusive: LocalDate
+    ): Flow<List<JournalEntry>> =
+        combine(
+            dao.observeJournalEntriesInRange(startDate.toEpochDays().toInt(), endDateInclusive.toEpochDays().toInt()),
+            dao.observeJournalEntryTags(),
+            dao.observeTags()
+        ) { entries, entryTags, tags ->
+            val domainTags = tags.map { it.toDomain() }
+            val tagsById = domainTags.associateBy { it.id }
+            val entryTagIds = entryTags.groupBy { it.entryId }.mapValues { it.value.map { t -> t.tagId } }
+            entries.map { entry ->
+                entry.toDomain(entryTagIds[entry.id].orEmpty().mapNotNull { tagsById[it] })
+            }
+        }
+
+    override suspend fun rebuildReflectStats() {
+        dao.rebuildReflectStats(computedAtMillis = Clock.System.now().toEpochMilliseconds())
     }
 
     override suspend fun completeDayClose(
@@ -1478,14 +1568,20 @@ private fun PeriodReviewEntity.toDomain() = PeriodReview(
     periodStartEpochDays = periodStartEpochDays,
     periodEndEpochDays = periodEndEpochDays,
     content = content,
-    highlightsJson = highlightsJson,
     intentNext = intentNext,
     source = ReviewSource.valueOf(source),
     status = ReviewStatus.valueOf(status),
     completedAtMillis = completedAtMillis,
     generatedAtMillis = generatedAtMillis,
-    editedAtMillis = editedAtMillis,
-    statsJson = statsJson
+    editedAtMillis = editedAtMillis
+)
+
+private fun DailyReflectStatsEntity.toDomain() = DailyReflectStat(
+    dateEpochDays = dateEpochDays,
+    plannedItemCount = plannedItemCount,
+    doneItemCount = doneItemCount,
+    doneMinutes = doneMinutes,
+    journalCount = journalCount
 )
 
 private fun JournalEntryEntity.toDomain(tags: List<TagItem> = emptyList()) = JournalEntry(

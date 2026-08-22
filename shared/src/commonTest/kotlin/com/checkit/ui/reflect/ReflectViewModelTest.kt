@@ -63,7 +63,8 @@ class ReflectViewModelTest {
             repository = repository,
             observePeriodReviews = ObservePeriodReviewsUseCase(repository),
             savePeriodReview = SavePeriodReviewUseCase(repository),
-            buildDraft = BuildPeriodReviewDraftUseCase()
+            buildDraft = BuildPeriodReviewDraftUseCase(),
+            dataDispatcher = dispatcher
         )
 
     @Test
@@ -196,8 +197,6 @@ class ReflectViewModelTest {
         assertEquals(ReviewSource.Manual, editor.source)
         assertTrue(editor.content.contains("2 items"))
         assertTrue(editor.content.contains("Work"))
-        assertNotNull(editor.statsJson)
-        assertNotNull(editor.highlightsJson)
     }
 
     @Test
@@ -277,8 +276,6 @@ class ReflectViewModelTest {
         val saved = repository.observePeriodReviews().first().single()
         assertEquals(ReviewSource.Manual, saved.source)
         assertEquals("Keep shipping", saved.intentNext)
-        assertNotNull(saved.statsJson)
-        assertNotNull(saved.highlightsJson)
         assertNull(saved.generatedAtMillis)
     }
 

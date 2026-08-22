@@ -60,46 +60,15 @@ data class CalendarUiState(
     val dailyPlanByDate: Map<LocalDate, DailyPlan> = filteredDailyPlans.associateBy { it.date }
 
     private val dailyPlanMarkersByDate: Map<LocalDate, CalendarDateMarkers> by lazy {
-        val markers = mutableMapOf<LocalDate, CalendarDateMarkers>()
-        
-        // 1. Start with PeriodReview stats (fast, reliable snapshots)
-        dayReviews.forEach { review ->
-            review.dayStats?.let { stats ->
-                if (selectedTagIds.isEmpty()) {
-                    markers[review.periodStartDate] = CalendarDateMarkers(totalCount = stats.doneCount)
-                } else {
-                    // Hybrid: if filtered, calculate from daily plan instead
-                }
-            }
+        filteredDailyPlans.associate { plan ->
+            plan.date to CalendarDateMarkers(totalCount = plan.items.size)
         }
-
-        // 2. Override with live daily plans for accuracy (especially when filtered)
-        filteredDailyPlans.forEach { plan ->
-            markers[plan.date] = CalendarDateMarkers(totalCount = plan.items.size)
-        }
-        markers
     }
 
     private val dailyPlanWorkMinutesByDate: Map<LocalDate, Int> by lazy {
-        val minutes = mutableMapOf<LocalDate, Int>()
-        
-        // 1. Use PeriodReview stats
-        dayReviews.forEach { review ->
-            review.dayStats?.let { stats ->
-                if (selectedTagIds.isEmpty()) {
-                    minutes[review.periodStartDate] = stats.doneMinutes
-                } else if (selectedTagIds.size == 1) {
-                    val tagId = selectedTagIds.first()
-                    minutes[review.periodStartDate] = stats.workMinutesByTag[tagId] ?: 0
-                }
-            }
+        filteredDailyPlans.associate { plan ->
+            plan.date to plan.doneWorkMinutes()
         }
-
-        // 2. Override with live daily plans (handles complex filters)
-        filteredDailyPlans.forEach { plan ->
-            minutes[plan.date] = plan.doneWorkMinutes()
-        }
-        minutes
     }
 
     private val futureMarkersByDate: Map<LocalDate, CalendarDateMarkers> by lazy {

@@ -33,6 +33,7 @@ import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import com.checkit.domain.usecase.AutoAddTodayTasksToMyDayUseCase
+import com.checkit.domain.usecase.RebuildReflectStatsUseCase
 import com.checkit.ui.calendar.CalendarScreen
 import com.checkit.ui.components.LocalSnackbarHostState
 import com.checkit.ui.localization.AppLocaleProvider
@@ -62,6 +63,7 @@ import org.koin.compose.koinInject
 fun CheckItApp(
     viewModels: CheckItViewModels = koinCheckItViewModels(),
     autoAddTodayTasksToMyDayUseCase: AutoAddTodayTasksToMyDayUseCase = koinInject(),
+    rebuildReflectStatsUseCase: RebuildReflectStatsUseCase = koinInject(),
     dailyPlanItemLaunchId: Long? = null,
     taskLaunchId: Long? = null,
     noteLaunchId: Long? = null,
@@ -114,20 +116,23 @@ fun CheckItApp(
     val lifecycleOwner = LocalLifecycleOwner.current
     val appScope = rememberCoroutineScope()
 
-    fun runAutoAddTodayTasksToMyDay() {
+    fun runAutoTodayTasks() {
         appScope.launch {
             runCatching { autoAddTodayTasksToMyDayUseCase() }
+        }
+        appScope.launch {
+            runCatching { rebuildReflectStatsUseCase() }
         }
     }
 
     LaunchedEffect(Unit) {
-        runAutoAddTodayTasksToMyDay()
+        runAutoTodayTasks()
     }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                runAutoAddTodayTasksToMyDay()
+                runAutoTodayTasks()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)

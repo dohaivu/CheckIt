@@ -1,7 +1,6 @@
 package com.checkit.domain
 
 import kotlinx.datetime.LocalDate
-import kotlinx.serialization.json.Json
 
 enum class ReviewSource {
     Auto,
@@ -16,6 +15,7 @@ enum class ReviewStatus {
 /**
  * A single narrative document for one period (day | week | month | quarter | year).
  * At most one record per [period] + [periodStartEpochDays] (unique index).
+ * Numeric stats are not stored here; they are derived from the daily rollup tables.
  */
 data class PeriodReview(
     val id: Long = 0L,
@@ -23,25 +23,13 @@ data class PeriodReview(
     val periodStartEpochDays: Int,
     val periodEndEpochDays: Int,
     val content: String = "",
-    val highlightsJson: String? = null,
     val intentNext: String? = null,
     val source: ReviewSource = ReviewSource.Manual,
     val status: ReviewStatus = ReviewStatus.Draft,
     val completedAtMillis: Long? = null,
     val generatedAtMillis: Long? = null,
-    val editedAtMillis: Long? = null,
-    val statsJson: String? = null
+    val editedAtMillis: Long? = null
 ) {
     val periodStartDate: LocalDate get() = LocalDate.fromEpochDays(periodStartEpochDays)
     val isComplete: Boolean get() = status == ReviewStatus.Complete
-
-    val dayStats: DayStats? by lazy {
-        statsJson?.let {
-            try {
-                Json.decodeFromString<DayStats>(it)
-            } catch (e: Exception) {
-                null
-            }
-        }
-    }
 }

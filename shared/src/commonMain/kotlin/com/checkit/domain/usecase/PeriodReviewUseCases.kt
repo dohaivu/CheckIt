@@ -2,17 +2,13 @@ package com.checkit.domain.usecase
 
 import com.checkit.data.CheckItRepository
 import com.checkit.domain.DailyPlan
+import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.FocusPeriod
 import com.checkit.domain.Period
 import com.checkit.domain.PeriodReview
-import com.checkit.domain.PeriodReviewDraft
-import com.checkit.domain.PeriodReviewDraftHighlight
-import com.checkit.domain.PeriodReviewDraftStats
-import com.checkit.domain.PeriodReviewDraftTag
 import com.checkit.domain.ReviewSource
 import com.checkit.domain.ReviewStatus
-import kotlinx.serialization.json.Json
 import kotlin.time.Clock
 
 /** Persists a period review (upsert) for the given focus. */
@@ -23,9 +19,7 @@ class SavePeriodReviewUseCase(
         focus: FocusPeriod,
         content: String,
         intentNext: String,
-        source: ReviewSource = ReviewSource.Manual,
-        statsJson: String? = null,
-        highlightsJson: String? = null
+        source: ReviewSource = ReviewSource.Manual
     ) {
         val now = Clock.System.now().toEpochMilliseconds()
         repository.savePeriodReview(
@@ -39,27 +33,25 @@ class SavePeriodReviewUseCase(
                 status = ReviewStatus.Complete,
                 completedAtMillis = if (content.isNotBlank()) now else null,
                 generatedAtMillis = if (source == ReviewSource.Manual) null else now,
-                editedAtMillis = now,
-                statsJson = statsJson,
-                highlightsJson = highlightsJson
+                editedAtMillis = now
             )
         )
     }
 }
 
-/** Builds a narrative + structured draft for a period focus from daily-plan activity. */
+/**
+ * Builds a narrative draft for a period focus from daily-plan activity. The
+ * narrative is seeded with the content of the highest-level saved review covering
+ * the focus (breadcrumb order: Year top, then Month, Week, Day), then appends an
+ * activity summary built only from completed items inside the focus period.
+ * Numeric stats are not embedded; they are read live from the rollup tables.
+ */
 class BuildPeriodReviewDraftUseCase {
-    /**
-     * Builds a draft for [focus]. The narrative is seeded with the content of the
-     * highest-level saved review covering the focus (breadcrumb order: Year top,
-     * then Month, Week, Day), then appends an activity summary built only from
-     * completed items inside the focus period (planned items are ignored).
-     */
     operator fun invoke(
         focus: FocusPeriod,
         dailyPlans: List<DailyPlan>,
         reviews: List<PeriodReview> = emptyList()
-    ): PeriodReviewDraft? {
+    ): String? {
         val plansInRange = dailyPlans.filter { plan ->
             plan.date >= focus.start && plan.date < focus.endExclusive
         }
@@ -68,67 +60,39 @@ class BuildPeriodReviewDraftUseCase {
         if (doneItems.isEmpty()) return null
 
         val doneMinutes = doneItems.sumOf { it.workMinutes() }
-        val plannedCount = items.count { it.status == DailyPlanItemStatus.Planned }
         val topTags = doneItems.asSequence()
             .flatMap { item ->
                 val minutes = item.workMinutes()
                 if (minutes <= 0) emptySequence() else item.tags.asSequence().map { tag -> tag to minutes }
             }
             .groupBy({ (tag, _) -> tag }, { (_, minutes) -> minutes })
-            .map { (tag, minutes) ->
-                PeriodReviewDraftTag(
-                    name = tag.name,
-                    color = tag.color,
-                    totalMinutes = minutes.sum()
-                )
-            }
-            .filter { it.totalMinutes > 0 }
-            .sortedWith(compareByDescending<PeriodReviewDraftTag> { it.totalMinutes }.thenBy { it.name.lowercase() })
+            .map { (tag, minutes) -> tag.name to minutes.sum() }
+            .filter { it.second > 0 }
+            .sortedWith(compareByDescending<Pair<String, Int>> { it.second }.thenBy { it.first.lowercase() })
             .take(TopTagLimit)
             .toList()
 
         val highlights = doneItems
             .sortedWith(
-                compareBy<com.checkit.domain.DailyPlanItem> { it.workMinutes() == 0 }
+                compareBy<DailyPlanItem> { it.workMinutes() == 0 }
                     .thenByDescending { it.completedAtMillis }
                     .thenBy { it.sortOrder }
             )
             .take(HighlightLimit)
-            .map { item ->
-                PeriodReviewDraftHighlight(
-                    dateEpochDays = item.dateEpochDays,
-                    title = item.title.ifBlank { "Completed item" },
-                    minutes = item.workMinutes()
-                )
-            }
 
-        val stats = PeriodReviewDraftStats(
-            doneCount = doneItems.size,
-            plannedCount = plannedCount,
-            totalMinutes = doneMinutes,
-            topTags = topTags
-        )
         val seed = highestLevelSeedReview(focus, reviews)
-        return PeriodReviewDraft(
-            content = buildNarrative(seed, focus.period, stats, highlights),
-            statsJson = draftJson.encodeToString(stats),
-            highlightsJson = draftJson.encodeToString(highlights)
-        )
+        return buildNarrative(seed, focus.period, doneItems.size, doneMinutes, topTags, highlights)
     }
 
     /**
      * Finds the saved review at the highest period level that covers [focus],
      * following the breadcrumb hierarchy (Annual top, then Month, Week, Day).
-     * The saved review must span the focus's date range; a narrower period
-     * (e.g. Day) is never chosen over a broader one (e.g. Annual).
      */
     private fun highestLevelSeedReview(
         focus: FocusPeriod,
         reviews: List<PeriodReview>
     ): PeriodReview? {
-        val candidates = reviews.filter { review ->
-            review.covers(focus)
-        }
+        val candidates = reviews.filter { review -> review.covers(focus) }
         return candidates.minByOrNull { it.period.ordinal }
     }
 
@@ -141,23 +105,25 @@ class BuildPeriodReviewDraftUseCase {
     private fun buildNarrative(
         seed: PeriodReview?,
         period: Period,
-        stats: PeriodReviewDraftStats,
-        highlights: List<PeriodReviewDraftHighlight>
+        doneCount: Int,
+        totalMinutes: Int,
+        topTags: List<Pair<String, Int>>,
+        highlights: List<DailyPlanItem>
     ): String = buildString {
         if (seed != null && seed.content.isNotBlank()) {
             append(seed.content.trim())
             append("\n\n")
         }
-        append("Completed ${stats.doneCount} item${if (stats.doneCount == 1) "" else "s"} in ")
-        append(formatMinutes(stats.totalMinutes))
+        append("Completed $doneCount item${if (doneCount == 1) "" else "s"} in ")
+        append(formatMinutes(totalMinutes))
         append(" this ${period.periodWord()}.")
-        if (stats.topTags.isNotEmpty()) {
+        if (topTags.isNotEmpty()) {
             append("\n\nTop focus: ")
-            append(stats.topTags.joinToString(", ") { "${it.name} (${formatMinutes(it.totalMinutes)})" })
+            append(topTags.joinToString(", ") { "${it.first} (${formatMinutes(it.second)})" })
         }
         if (highlights.isNotEmpty()) {
             append("\n\nHighlights:\n")
-            append(highlights.joinToString("\n") { "• ${it.title}" })
+            append(highlights.joinToString("\n") { "• ${it.title.ifBlank { "Completed item" }}" })
         }
     }
 
@@ -184,5 +150,3 @@ class BuildPeriodReviewDraftUseCase {
         const val HighlightLimit = 5
     }
 }
-
-private val draftJson = Json { ignoreUnknownKeys = true }

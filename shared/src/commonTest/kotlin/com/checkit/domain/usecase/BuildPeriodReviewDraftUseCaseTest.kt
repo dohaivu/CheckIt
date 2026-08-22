@@ -46,14 +46,10 @@ class BuildPeriodReviewDraftUseCaseTest {
         )
 
         val draft = assertNotNull(build(focus, plans))
-        assertTrue(draft.content.contains("3 items"))
-        assertTrue(draft.content.contains("2h 30m"))
-        assertTrue(draft.content.contains("Work (1h 30m)"))
-        assertTrue(draft.content.contains("• Deep work"))
-        assertTrue(draft.statsJson.contains("\"doneCount\":3"))
-        assertTrue(draft.statsJson.contains("\"totalMinutes\":150"))
-        assertTrue(draft.statsJson.contains("\"plannedCount\":1"))
-        assertTrue(draft.highlightsJson.contains("Emails"))
+        assertTrue(draft.contains("3 items"))
+        assertTrue(draft.contains("2h 30m"))
+        assertTrue(draft.contains("Work (1h 30m)"))
+        assertTrue(draft.contains("• Deep work"))
     }
 
     @Test
@@ -72,8 +68,8 @@ class BuildPeriodReviewDraftUseCaseTest {
         )
 
         val draft = assertNotNull(build(focus, plans))
-        val bigIndex = draft.content.indexOf("Big")
-        val smallIndex = draft.content.indexOf("Small")
+        val bigIndex = draft.indexOf("Big")
+        val smallIndex = draft.indexOf("Small")
         assertTrue(bigIndex >= 0 && smallIndex > bigIndex, "Big tag should come before Small")
     }
 
@@ -119,8 +115,8 @@ class BuildPeriodReviewDraftUseCaseTest {
         )
 
         val draft = assertNotNull(build(focus, plans, listOf(weekReview, yearReview)))
-        assertTrue(draft.content.startsWith("Annual context"))
-        assertTrue(draft.content.contains("this day"))
+        assertTrue(draft.startsWith("Annual context"))
+        assertTrue(draft.contains("this day"))
     }
 
     @Test
@@ -150,7 +146,7 @@ class BuildPeriodReviewDraftUseCaseTest {
         )
 
         val draft = assertNotNull(build(focus, plans, listOf(monthReview, yearReview)))
-        assertTrue(draft.content.startsWith("Annual context"))
+        assertTrue(draft.startsWith("Annual context"))
     }
 
     @Test
@@ -174,9 +170,9 @@ class BuildPeriodReviewDraftUseCaseTest {
         )
 
         val draft = assertNotNull(build(focus, plans, listOf(outsideReview)))
-        assertFalse(draft.content.contains("Unrelated daily review"))
-        assertTrue(draft.content.contains("1 item"))
-        assertFalse(draft.content.contains("Not done"))
+        assertFalse(draft.contains("Unrelated daily review"))
+        assertTrue(draft.contains("1 item"))
+        assertFalse(draft.contains("Not done"))
     }
 
     @Test
@@ -204,11 +200,11 @@ class BuildPeriodReviewDraftUseCaseTest {
         )
 
         val draft = assertNotNull(build(focus, plans))
-        assertTrue(draft.content.contains("this day"))
+        assertTrue(draft.contains("this day"))
     }
 
     @Test
-    fun autoReviewRoundTripsStatsThroughSave() = runTest {
+    fun autoReviewRoundTripsThroughSave() = runTest {
         val repository = FakeCheckItRepository()
         val focus = FocusPeriod(Period.Week, date)
         val plans = listOf(
@@ -221,17 +217,14 @@ class BuildPeriodReviewDraftUseCaseTest {
 
         SavePeriodReviewUseCase(repository)(
             focus = focus,
-            content = draft.content,
+            content = draft,
             intentNext = "",
-            source = ReviewSource.Auto,
-            statsJson = draft.statsJson,
-            highlightsJson = draft.highlightsJson
+            source = ReviewSource.Auto
         )
 
         val saved = repository.observePeriodReviews().first().single()
         assertEquals(ReviewSource.Auto, saved.source)
-        assertEquals(draft.statsJson, saved.statsJson)
-        assertEquals(draft.highlightsJson, saved.highlightsJson)
+        assertEquals(draft, saved.content)
         assertNotNull(saved.generatedAtMillis)
     }
 

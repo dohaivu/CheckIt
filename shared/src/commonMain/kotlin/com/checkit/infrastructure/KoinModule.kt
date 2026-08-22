@@ -27,6 +27,7 @@ import com.checkit.domain.usecase.AddTaskUseCase
 import com.checkit.domain.usecase.AutoAddTodayTasksToMyDayUseCase
 import com.checkit.domain.usecase.BuildDayCloseSummaryUseCase
 import com.checkit.domain.usecase.BuildPeriodReviewDraftUseCase
+import com.checkit.domain.usecase.RebuildReflectStatsUseCase
 import com.checkit.domain.usecase.CarryOverDailyPlanItemsUseCase
 import com.checkit.domain.usecase.CompleteDayCloseUseCase
 import com.checkit.domain.usecase.CompleteNoteUseCase
@@ -189,6 +190,7 @@ val provideInteractorModule = module {
     single { ObservePeriodReviewsUseCase(get()) }
     single { SavePeriodReviewUseCase(get()) }
     single { BuildPeriodReviewDraftUseCase() }
+    single { RebuildReflectStatsUseCase(get()) }
     single { CompleteDayCloseUseCase(get(), get(), get(), get()) }
     single { AddNoteUseCase(get()) }
     single { UpdateNoteUseCase(get()) }

@@ -54,15 +54,12 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
-import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.ui.components.ReportPeriod
 import com.checkit.ui.components.getMoodColorFromEmoji
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.localizedShortMonthName
 import com.checkit.ui.shortName
-import com.checkit.ui.tasks.cardColor
 import com.checkit.ui.tasks.toDurationLabel
 import com.checkit.ui.theme.toColor
 import kotlinx.datetime.LocalDate
@@ -74,7 +71,6 @@ internal fun HeroSummaryCard(
     previousTotalMinutes: Int,
     selectedPeriod: ReportPeriod,
     trendItems: List<TimeReportItem>,
-    progressItems: List<DailyPlanItem>,
     doneCount: Int,
     plannedCount: Int,
     journalCount: Int,
@@ -87,8 +83,19 @@ internal fun HeroSummaryCard(
     val encouragement = remember(doneCount, plannedCount, selectedPeriod, journalCount) {
         heroEncouragement(doneCount, plannedCount, selectedPeriod, journalCount)
     }
-    val progressSegments = remember(progressItems) {
-        progressItems.toProgressRingSegments()
+    val progressSegments = remember(doneCount, plannedCount) {
+        listOf(
+            ProgressRingSegment(
+                color = ReportGreenDark,
+                count = doneCount,
+                completed = true
+            ),
+            ProgressRingSegment(
+                color = ReportBlue,
+                count = plannedCount,
+                completed = false
+            )
+        ).filter { it.count > 0 }
     }
 
     Box(
@@ -420,10 +427,10 @@ private fun CompletedHighlightRow(
     selectedPeriod: ReportPeriod,
     modifier: Modifier = Modifier
 ) {
-    val accent = if (highlight.journalEntry != null) {
-        highlight.journalEntry.moods.firstOrNull()?.let { getMoodColorFromEmoji(it) } ?: MaterialTheme.colorScheme.primary
+    val accent = if (highlight.isJournal) {
+        highlight.moodEmoji?.let { getMoodColorFromEmoji(it) } ?: MaterialTheme.colorScheme.primary
     } else {
-        highlight.item?.cardColor() ?: MaterialTheme.colorScheme.primary
+        MaterialTheme.colorScheme.primary
     }
 
     Row(
@@ -440,7 +447,7 @@ private fun CompletedHighlightRow(
                 .background(accent.copy(alpha = 0.15f)),
             contentAlignment = Alignment.Center
         ) {
-            val emoji = highlight.journalEntry?.moods?.firstOrNull()
+            val emoji = highlight.moodEmoji
             if (emoji != null) {
                 Text(text = emoji, fontSize = 18.sp)
             } else {
@@ -457,7 +464,7 @@ private fun CompletedHighlightRow(
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             Text(
-                text = highlight.title.ifBlank { if (highlight.journalEntry != null) "Check-In" else "Done item" },
+                text = highlight.title.ifBlank { if (highlight.isJournal) "Check-In" else "Done item" },
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
@@ -701,7 +708,9 @@ internal fun TagReportBarRow(
 }
 
 
-private fun DigestHighlight.icon(): ImageVector = when (item?.source) {
+private fun DigestHighlight.icon(): ImageVector = when (sourceName?.let { source ->
+    runCatching { DailyPlanItemSource.valueOf(source) }.getOrNull()
+}) {
     DailyPlanItemSource.MyDayTask -> Icons.Default.EventAvailable
     DailyPlanItemSource.MyDayNote -> Icons.AutoMirrored.Filled.EventNote
     DailyPlanItemSource.MyDayReminder -> Icons.Default.Schedule
@@ -800,25 +809,6 @@ private fun AnnotatedString.Builder.softEmphasis(text: String) {
 
 private fun Int.itemCountLabel(): String =
     "$this ${if (this == 1) "thing" else "things"}"
-
-private fun List<DailyPlanItem>.toProgressRingSegments(): List<ProgressRingSegment> =
-    progressSegmentsFor(DailyPlanItemStatus.Done, completed = true) +
-        progressSegmentsFor(DailyPlanItemStatus.Planned, completed = false)
-
-private fun List<DailyPlanItem>.progressSegmentsFor(
-    status: DailyPlanItemStatus,
-    completed: Boolean
-): List<ProgressRingSegment> =
-    filter { it.status == status }
-        .groupBy { it.cardColor() }
-        .map { (color, items) ->
-            ProgressRingSegment(
-                color = color,
-                count = items.size,
-                completed = completed
-            )
-        }
-        .sortedByDescending { it.count }
 
 private fun Int.trendSummary(
     previousTotalMinutes: Int,

@@ -4,6 +4,8 @@ import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
+import com.checkit.domain.DailyReflectStat
+import com.checkit.domain.DoneItemSummary
 import com.checkit.ui.components.ReportPeriod
 import com.checkit.ui.reflect.DigestReportSummary
 import com.checkit.ui.reflect.buildDigestReport
@@ -38,13 +40,45 @@ class DigestReportTest {
         period: ReportPeriod,
         selectedDate: LocalDate,
         plans: List<DailyPlan>
-    ): DigestReportSummary =
-        buildDigestReport(
-            dailyPlans = plans,
+    ): DigestReportSummary {
+        val stats = plans.map { plan ->
+            DailyReflectStat(
+                dateEpochDays = plan.date.toEpochDays().toInt(),
+                plannedItemCount = 0,
+                doneItemCount = plan.items.count { it.status == DailyPlanItemStatus.Done },
+                doneMinutes = plan.items
+                    .filter { it.status == DailyPlanItemStatus.Done }
+                    .sumOf { item ->
+                        val start = item.startTimeMinutes ?: 0
+                        val end = item.endTimeMinutes ?: 0
+                        (end - start).coerceAtLeast(0)
+                    },
+                journalCount = 0
+            )
+        }
+        val summaries = plans.flatMap { plan ->
+            plan.items.filter { it.status == DailyPlanItemStatus.Done }.map {
+                DoneItemSummary(
+                    id = it.id,
+                    dateEpochDays = plan.date.toEpochDays().toInt(),
+                    title = it.title,
+                    note = it.note,
+                    sourceName = it.source.name,
+                    startTimeMinutes = it.startTimeMinutes,
+                    endTimeMinutes = it.endTimeMinutes,
+                    completedAtMillis = it.completedAtMillis
+                )
+            }
+        }
+        return buildDigestReport(
+            statsByDate = stats.associateBy { it.dateEpochDays },
+            tagRollups = emptyList(),
+            doneItems = summaries,
             journalEntries = emptyList(),
             period = period,
             selectedDate = selectedDate
         )
+    }
 
     @Test
     fun monthDigestAggregatesAcrossWholeMonth() {
