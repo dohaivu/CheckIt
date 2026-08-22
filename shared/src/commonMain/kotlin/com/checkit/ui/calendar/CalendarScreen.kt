@@ -21,12 +21,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -75,8 +72,6 @@ import com.checkit.domain.JournalEntry
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
-import com.checkit.domain.usecase.BuildDailyPlanMarkdownSummaryUseCase
-import com.checkit.ui.components.MarkdownView
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.components.parseMarkdownToAnnotatedString
@@ -209,9 +204,6 @@ internal fun CalendarScreen(
                                 taskCount = selectedContent.taskCount,
                                 noteCount = selectedContent.noteCount,
                                 journalCount = selectedContent.journalEntries.size,
-                                summaryEnabled = selectedContent.showDailyPlan && state.showDailyPlanSummary,
-                                summaryAvailable = selectedContent.showDailyPlan,
-                                onSummaryToggle = calendarViewModel::toggleDailyPlanSummary,
                                 onJournalClick = { onJournalListClick(state.selectedDate) },
                                 winNote = state.selectedDateReview,
                                 onOpenReflect = onOpenReflect
@@ -227,7 +219,6 @@ internal fun CalendarScreen(
                             }
                             SelectedDateContent(
                                 content = selectedContent,
-                                showDailyPlanSummary = state.showDailyPlanSummary,
                                 onDailyPlanItemClick = onDailyPlanItemClick,
                                 onTaskClick = onTaskClick,
                                 onNoteClick = onNoteClick,
@@ -273,26 +264,12 @@ internal fun CalendarScreen(
 @Composable
 private fun SelectedDateContent(
     content: SelectedCalendarDateContent,
-    showDailyPlanSummary: Boolean,
     onDailyPlanItemClick: (DailyPlanItem, LocalDate) -> Unit,
     onTaskClick: (Long, DailyPlanItem?) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    if (content.showDailyPlan && showDailyPlanSummary) {
-        val summaryBuilder = remember { BuildDailyPlanMarkdownSummaryUseCase() }
-        val summaryMarkdown = remember(content.date, content.dailyPlan, content.board) {
-            summaryBuilder(
-                date = content.date,
-                plan = content.dailyPlan,
-                board = content.board
-            )
-        }
-        DailyPlanMarkdownSummary(
-            markdown = summaryMarkdown,
-            modifier = modifier
-        )
-    } else if (content.hasItems) {
+    if (content.hasItems) {
         if (content.showDailyPlan) {
             MyDayAgenda(
                 items = content.dailyPlanItems,
@@ -413,9 +390,6 @@ private fun SelectedDateHeader(
     taskCount: Int,
     noteCount: Int,
     journalCount: Int,
-    summaryEnabled: Boolean,
-    summaryAvailable: Boolean,
-    onSummaryToggle: () -> Unit,
     onJournalClick: () -> Unit,
     winNote: String?,
     onOpenReflect: (LocalDate) -> Unit
@@ -527,23 +501,6 @@ private fun SelectedDateHeader(
                         count = journalCount,
                         onClick = onJournalClick
                     )
-                    if (summaryAvailable) {
-                        IconButton(
-                            onClick = onSummaryToggle,
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.Article,
-                                contentDescription = if (summaryEnabled) "Hide summary" else "Show summary",
-                                modifier = Modifier.size(18.dp),
-                                tint = if (summaryEnabled) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                }
-                            )
-                        }
-                    }
                     if (winNote != null) {
                         Icon(
                             imageVector = Icons.Default.ExpandMore,
@@ -607,21 +564,8 @@ private fun SelectedDateHeader(
     }
 }
 
-@Composable
-private fun DailyPlanMarkdownSummary(
-    markdown: String,
-    modifier: Modifier = Modifier
-) {
-    val scrollState = rememberScrollState()
-    MarkdownView(
-        markdown = markdown,
-        modifier = modifier.verticalScroll(scrollState)
-    )
-}
-
 private data class SelectedCalendarDateContent(
     val date: LocalDate,
-    val board: TaskBoard,
     val showDailyPlan: Boolean,
     val dailyPlan: DailyPlan?,
     val dailyPlanItems: List<DailyPlanItem>,
@@ -643,7 +587,6 @@ private fun CalendarUiState.selectedDateContent(
     val dateEpochDays = selectedDate.toEpochDays()
     return SelectedCalendarDateContent(
         date = selectedDate,
-        board = board,
         showDailyPlan = showDailyPlan,
         dailyPlan = dailyPlan,
         dailyPlanItems = dailyPlan?.items.orEmpty(),

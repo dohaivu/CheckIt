@@ -28,7 +28,6 @@ data class CalendarUiState(
     val journalEntries: List<JournalEntry> = emptyList(),
     val selectedDateTasks: List<TaskItem> = emptyList(),
     val selectedDateNotes: List<NoteItem> = emptyList(),
-    val showDailyPlanSummary: Boolean = false,
     val calendarDisplayMode: CalendarDisplayMode = CalendarDisplayMode.Week,
     val selectedTagIds: Set<Long> = emptySet(),
     val isMonthlyWinsExpanded: Boolean = false

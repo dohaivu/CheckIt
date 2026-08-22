@@ -128,10 +128,6 @@ class CalendarViewModel(
         }
     }
 
-    fun toggleDailyPlanSummary() {
-        _uiState.update { it.copy(showDailyPlanSummary = !it.showDailyPlanSummary) }
-    }
-
     fun toggleTagFilter(tagId: Long) {
         _uiState.update { state ->
             val selectedTagIds = if (tagId in state.selectedTagIds) {
