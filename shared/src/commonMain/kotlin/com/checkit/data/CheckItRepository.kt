@@ -61,8 +61,10 @@ interface CheckItRepository {
     /** Live per-tag usage counts (tasks, notes, daily plan items, journal entries), computed in the database. */
     fun observeTagUsageCounts(): Flow<Map<Long, Int>>
     fun observeTasksForDate(date: LocalDate): Flow<List<TaskItem>>
+    fun observeTasksInRange(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<TaskItem>>
     fun observeWorkingTasks(date: LocalDate): Flow<List<TaskItem>>
     fun observeNotesForDate(date: LocalDate): Flow<List<NoteItem>>
+    fun observeNotesInRange(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<NoteItem>>
     fun observeDailyPlans(startDate: LocalDate? = null, endDate: LocalDate? = null): Flow<List<DailyPlan>>
     fun observeJournalEntries(): Flow<List<JournalEntry>>
     suspend fun addJournalEntry(input: JournalEntryWriteInput): Long
@@ -285,6 +287,24 @@ class RoomCheckItRepository(
         observeTaskBoardInternal(
             tasksFlow = kotlinx.coroutines.flow.flowOf(emptyList()),
             notesFlow = dao.observeNotesForDate(date.toEpochDays().toInt())
+        ).map { it.notes }
+
+    override fun observeTasksInRange(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<TaskItem>> =
+        observeTaskBoardInternal(
+            tasksFlow = dao.observeTasksForDateRange(
+                startDate.toEpochDays().toInt(),
+                endDateInclusive.toEpochDays().toInt()
+            ),
+            notesFlow = kotlinx.coroutines.flow.flowOf(emptyList())
+        ).map { it.tasks }
+
+    override fun observeNotesInRange(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<NoteItem>> =
+        observeTaskBoardInternal(
+            tasksFlow = kotlinx.coroutines.flow.flowOf(emptyList()),
+            notesFlow = dao.observeNotesForDateRange(
+                startDate.toEpochDays().toInt(),
+                endDateInclusive.toEpochDays().toInt()
+            )
         ).map { it.notes }
 
     private fun observeTaskBoardInternal(

@@ -10,12 +10,14 @@ import com.checkit.domain.PeriodReview
 import com.checkit.domain.Period
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
-import com.checkit.domain.usecase.GetNotesForDateUseCase
-import com.checkit.domain.usecase.GetTasksForDateUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveDailyReflectStatsUseCase
 import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
+import com.checkit.domain.usecase.ObserveNotesForDateUseCase
+import com.checkit.domain.usecase.ObserveNotesInRangeUseCase
 import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
+import com.checkit.domain.usecase.ObserveTasksForDateUseCase
+import com.checkit.domain.usecase.ObserveTasksInRangeUseCase
 import com.checkit.ui.firstDayOfMonth
 import com.checkit.ui.today
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,35 +43,55 @@ class CalendarViewModel(
     private val observePeriodReviews: ObservePeriodReviewsUseCase,
     private val observeJournalEntries: ObserveJournalEntriesUseCase,
     private val observeDailyReflectStats: ObserveDailyReflectStatsUseCase,
-    private val getTasksForDate: GetTasksForDateUseCase,
-    private val getNotesForDate: GetNotesForDateUseCase,
+    private val observeTasksInRange: ObserveTasksInRangeUseCase,
+    private val observeNotesInRange: ObserveNotesInRangeUseCase,
+    private val observeTasksForDate: ObserveTasksForDateUseCase,
+    private val observeNotesForDate: ObserveNotesForDateUseCase
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(CalendarUiState())
     val uiState: StateFlow<CalendarUiState> = _uiState.asStateFlow()
+
+    /** Tasks/notes observed over the recent window, keyed by date. */
+    private val recentTasksByDate = MutableStateFlow<Map<LocalDate, List<TaskItem>>>(emptyMap())
+    private val recentNotesByDate = MutableStateFlow<Map<LocalDate, List<NoteItem>>>(emptyMap())
 
     init {
         viewModelScope.launch {
             _uiState.map { it.selectedMonth }
                 .distinctUntilChanged()
                 .flatMapLatest { month ->
-                    // Past-day aggregates come from the reflect-stats table, so
-                    // live daily plans are only needed from today forward. The
-                    // selected past day's plan is fetched separately below.
+                    // Recent days (last 7 + future through the displayed window)
+                    // are observed proactively so browsing them is instant and
+                    // stays reactive; older aggregates come from the stats table.
                     val statsStart = month.minus(1, DateTimeUnit.MONTH)
                     val end = month.plus(2, DateTimeUnit.MONTH).minus(1, DateTimeUnit.DAY)
+                    val recentStart = today().minus(6, DateTimeUnit.DAY)
                     combine(
-                        observeDailyPlans(startDate = today(), endDate = end),
+                        observeDailyPlans(startDate = recentStart, endDate = end),
                         observePeriodReviews(statsStart, end),
                         observeJournalEntries(statsStart, end),
-                        observeDailyReflectStats(statsStart, end)
-                    ) { dailyPlans, periodReviews, journalEntries, dailyStats ->
-                        CalendarCombined(dailyPlans, periodReviews, journalEntries, dailyStats)
+                        observeDailyReflectStats(statsStart, end),
+                        combine(
+                            observeTasksInRange(recentStart, end),
+                            observeNotesInRange(recentStart, end)
+                        ) { tasks, notes -> tasks to notes }
+                    ) { dailyPlans, periodReviews, journalEntries, dailyStats, (recentTasks, recentNotes) ->
+                        CalendarCombined(
+                            dailyPlans,
+                            periodReviews,
+                            journalEntries,
+                            dailyStats,
+                            recentTasks.groupBy { it.doDate!! },
+                            recentNotes.groupBy { it.date!! }
+                        )
                     }
                 }
                 .catch { _ ->
                     _uiState.update { it.copy() }
                 }
                 .collect { combined ->
+                    recentTasksByDate.value = combined.recentTasksByDate
+                    recentNotesByDate.value = combined.recentNotesByDate
                     _uiState.update { state ->
                         state.copy(
                             dailyPlans = combined.dailyPlans,
@@ -81,27 +103,42 @@ class CalendarViewModel(
                 }
         }
 
-        // Dedicated flow for selected date details (minimal data fetch)
+        // Selected date details: served from the observed recent window when the
+        // date falls inside it, otherwise a dedicated single-date observation.
+        viewModelScope.launch {
+            _uiState.map { it.selectedDate }
+                .distinctUntilChanged()
+                .flatMapLatest { date ->
+                    if (date >= today().minus(6, DateTimeUnit.DAY)) {
+                        combine(recentTasksByDate, recentNotesByDate) { tasks, notes ->
+                            tasks[date].orEmpty() to notes[date].orEmpty()
+                        }
+                    } else {
+                        combine(
+                            observeTasksForDate(date),
+                            observeNotesForDate(date)
+                        ) { tasks, notes -> tasks to notes }
+                    }
+                }
+                .collect { (tasks, notes) ->
+                    _uiState.update {
+                        it.copy(selectedDateTasks = tasks, selectedDateNotes = notes)
+                    }
+                }
+        }
+
+        // Past-day agenda: plans within the recent window arrive via the main
+        // flow; older dates need a one-off single-day plan fetch.
         viewModelScope.launch {
             _uiState.map { it.selectedDate }
                 .distinctUntilChanged()
                 .collect { date ->
-                    val tasks = getTasksForDate(date)
-                    val notes = getNotesForDate(date)
-                    // Today and future days are covered by the main plans flow;
-                    // past days need a one-off single-day plan for the agenda.
-                    val pastPlan = if (date < today()) {
+                    val pastPlan = if (date < today().minus(6, DateTimeUnit.DAY)) {
                         observeDailyPlans(startDate = date, endDate = date).first().firstOrNull()
                     } else {
                         null
                     }
-                    _uiState.update {
-                        it.copy(
-                            selectedDateTasks = tasks,
-                            selectedDateNotes = notes,
-                            selectedDayPlan = pastPlan
-                        )
-                    }
+                    _uiState.update { it.copy(selectedDayPlan = pastPlan) }
                 }
         }
     }
@@ -188,5 +225,7 @@ private data class CalendarCombined(
     val dailyPlans: List<DailyPlan>,
     val dayReviews: List<PeriodReview>,
     val journalEntries: List<JournalEntry>,
-    val dailyStats: List<DailyReflectStat>
+    val dailyStats: List<DailyReflectStat>,
+    val recentTasksByDate: Map<LocalDate, List<TaskItem>>,
+    val recentNotesByDate: Map<LocalDate, List<NoteItem>>
 )

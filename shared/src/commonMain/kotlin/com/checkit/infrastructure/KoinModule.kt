@@ -55,10 +55,12 @@ import com.checkit.domain.usecase.ObserveNestedDocumentTreeUseCase
 import com.checkit.domain.usecase.ObserveNestedDocumentsUseCase
 import com.checkit.domain.usecase.ObserveNestedTagsUseCase
 import com.checkit.domain.usecase.ObserveNotesForDateUseCase
+import com.checkit.domain.usecase.ObserveNotesInRangeUseCase
 import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.ObserveTagUsageCountsUseCase
 import com.checkit.domain.usecase.ObserveTasksForDateUseCase
+import com.checkit.domain.usecase.ObserveTasksInRangeUseCase
 import com.checkit.domain.usecase.ObserveTagsUseCase
 import com.checkit.domain.usecase.ObserveWorkingTasksUseCase
 import com.checkit.domain.usecase.OpenNoteUseCase
@@ -152,6 +154,8 @@ val provideInteractorModule = module {
     single { GetNotesForDateUseCase(get()) }
     single { ObserveTasksForDateUseCase(get()) }
     single { ObserveNotesForDateUseCase(get()) }
+    single { ObserveTasksInRangeUseCase(get()) }
+    single { ObserveNotesInRangeUseCase(get()) }
     single { ObserveWorkingTasksUseCase(get()) }
     single { ObserveTagsUseCase(get()) }
     single { ObserveDailyPlansUseCase(get()) }
@@ -266,7 +270,18 @@ val provideViewModelModule = module {
     viewModel { ListViewModel(get(), get(), get()) }
     viewModel { ListSectionViewModel(get(), get(), get()) }
     viewModel { TagViewModel(get(), get(), get(), get(), get(), get()) }
-    viewModel { CalendarViewModel(get(), get(), get(), get(), get(), get()) }
+    viewModel {
+        CalendarViewModel(
+            observeDailyPlans = get(),
+            observePeriodReviews = get(),
+            observeJournalEntries = get(),
+            observeDailyReflectStats = get(),
+            observeTasksInRange = get(),
+            observeNotesInRange = get(),
+            observeTasksForDate = get(),
+            observeNotesForDate = get()
+        )
+    }
     viewModel { JournalHistoryViewModel(get(), get()) }
     viewModel {
         MyDayViewModel(

@@ -69,6 +69,20 @@ class ObserveNotesForDateUseCase(
     operator fun invoke(date: LocalDate): Flow<List<NoteItem>> = repository.observeNotesForDate(date)
 }
 
+class ObserveTasksInRangeUseCase(
+    private val repository: CheckItRepository
+) {
+    operator fun invoke(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<TaskItem>> =
+        repository.observeTasksInRange(startDate, endDateInclusive)
+}
+
+class ObserveNotesInRangeUseCase(
+    private val repository: CheckItRepository
+) {
+    operator fun invoke(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<NoteItem>> =
+        repository.observeNotesInRange(startDate, endDateInclusive)
+}
+
 // open or done today
 class ObserveWorkingTasksUseCase(
     private val repository: CheckItRepository

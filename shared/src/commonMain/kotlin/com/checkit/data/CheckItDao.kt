@@ -189,6 +189,9 @@ interface CheckItDao {
     @Query("SELECT * FROM tasks WHERE doDateEpochDays = :dateEpochDays AND trashedAtMillis IS NULL AND status != 'Completed' ORDER BY createdAtMillis DESC")
     fun observeTasksForDate(dateEpochDays: Int): Flow<List<TaskEntity>>
 
+    @Query("SELECT * FROM tasks WHERE doDateEpochDays BETWEEN :startEpochDays AND :endEpochDays AND trashedAtMillis IS NULL AND status != 'Completed' ORDER BY createdAtMillis DESC")
+    fun observeTasksForDateRange(startEpochDays: Int, endEpochDays: Int): Flow<List<TaskEntity>>
+
     @Query("""
         SELECT * FROM tasks 
         WHERE trashedAtMillis IS NULL 
@@ -199,6 +202,9 @@ interface CheckItDao {
 
     @Query("SELECT * FROM notes WHERE dateEpochDays = :dateEpochDays AND trashedAtMillis IS NULL AND status != 'Completed' ORDER BY editedAtMillis DESC")
     fun observeNotesForDate(dateEpochDays: Int): Flow<List<NoteEntity>>
+
+    @Query("SELECT * FROM notes WHERE dateEpochDays BETWEEN :startEpochDays AND :endEpochDays AND trashedAtMillis IS NULL AND status != 'Completed' ORDER BY editedAtMillis DESC")
+    fun observeNotesForDateRange(startEpochDays: Int, endEpochDays: Int): Flow<List<NoteEntity>>
 
     @Query("SELECT * FROM sub_tasks ORDER BY sortOrder ASC, id ASC")
     fun observeSubTasks(): Flow<List<SubTaskEntity>>

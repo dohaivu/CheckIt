@@ -136,6 +136,22 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         board.notes.filter { it.date == date && !it.isTrashed && it.status != TaskStatus.Completed }
     }
 
+    override fun observeTasksInRange(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<TaskItem>> =
+        boardFlow.map { board ->
+            board.tasks.filter { task ->
+                !task.isTrashed && task.status != TaskStatus.Completed &&
+                    task.doDate?.let { it >= startDate && it <= endDateInclusive } == true
+            }
+        }
+
+    override fun observeNotesInRange(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<NoteItem>> =
+        boardFlow.map { board ->
+            board.notes.filter { note ->
+                !note.isTrashed && note.status != TaskStatus.Completed &&
+                    note.date?.let { it >= startDate && it <= endDateInclusive } == true
+            }
+        }
+
     override suspend fun getTask(taskId: Long): TaskItem? = 
         boardFlow.value.tasks.find { it.id == taskId }
 
