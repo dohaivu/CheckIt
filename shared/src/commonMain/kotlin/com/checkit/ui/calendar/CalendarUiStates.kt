@@ -60,27 +60,28 @@ data class CalendarUiState(
 
     val dailyPlanByDate: Map<LocalDate, DailyPlan> = filteredDailyPlans.associateBy { it.date }
 
-    /**
-     * Past days read from the precomputed stats table (fast, no item hydration);
-     * today always comes from live plans, and tag-filtered views use live plans
-     * for all days since the rollups are not tag-filtered.
-     */
-    private val dailyPlanMarkersByDate: Map<LocalDate, CalendarDateMarkers> by lazy {
+    /** Markers for past days (< today): precomputed stats when unfiltered, tag-filtered live plans otherwise. */
+    private val pastMarkersByDate: Map<LocalDate, CalendarDateMarkers> by lazy {
         val today = today()
-        val markers = mutableMapOf<LocalDate, CalendarDateMarkers>()
         if (selectedTagIds.isEmpty()) {
-            dailyStatsByDate.forEach { (date, stat) ->
-                if (date < today) {
-                    markers[date] = CalendarDateMarkers(totalCount = stat.doneItemCount + stat.plannedItemCount)
+            dailyStatsByDate
+                .filterKeys { it < today }
+                .mapValues { (_, stat) ->
+                    CalendarDateMarkers(totalCount = stat.doneItemCount + stat.plannedItemCount)
                 }
-            }
+        } else {
+            filteredDailyPlans
+                .filter { it.date < today }
+                .associate { it.date to CalendarDateMarkers(totalCount = it.items.size) }
         }
-        filteredDailyPlans.forEach { plan ->
-            if (plan.date == today || selectedTagIds.isNotEmpty()) {
-                markers[plan.date] = CalendarDateMarkers(totalCount = plan.items.size)
-            }
-        }
-        markers
+    }
+
+    /** Markers for today and future days (>= today), taken from scheduled daily plans. */
+    private val todayAndFutureMarkersByDate: Map<LocalDate, CalendarDateMarkers> by lazy {
+        val today = today()
+        filteredDailyPlans
+            .filter { it.date >= today }
+            .associate { it.date to CalendarDateMarkers(totalCount = it.items.size) }
     }
 
     private val dailyPlanWorkMinutesByDate: Map<LocalDate, Int> by lazy {
@@ -102,25 +103,19 @@ data class CalendarUiState(
     }
 
     fun markersForDate(board: TaskBoard, date: LocalDate): CalendarDateMarkers =
-        if (date <= today()) {
-            dailyPlanMarkersByDate[date] ?: CalendarDateMarkers.Empty
+        if (date < today()) {
+            pastMarkersByDate[date] ?: CalendarDateMarkers.Empty
         } else {
-            futureMarkersFor(board)[date] ?: CalendarDateMarkers.Empty
+            val planCount = todayAndFutureMarkersByDate[date]?.totalCount ?: 0
+            val boardCount = board.tasksByDate[date].orEmpty().size +
+                board.notesByDate[date].orEmpty().size
+            CalendarDateMarkers(totalCount = planCount + boardCount)
         }
 
     fun dailyPlanWorkMinutesForDate(date: LocalDate): Int =
         dailyPlanWorkMinutesByDate[date] ?: 0
 
     fun dailyPlanForDate(date: LocalDate): DailyPlan? = dailyPlanByDate[date]
-
-    private fun futureMarkersFor(board: TaskBoard): Map<LocalDate, CalendarDateMarkers> {
-        val dates = board.tasksByDate.keys + board.notesByDate.keys
-        return dates.associateWith { date ->
-            CalendarDateMarkers(
-                totalCount = board.tasksByDate[date].orEmpty().size + board.notesByDate[date].orEmpty().size
-            )
-        }
-    }
 }
 
 private fun DailyPlanItem.hasAnyTag(tagIds: Set<Long>): Boolean =
