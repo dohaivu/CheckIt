@@ -27,6 +27,8 @@ data class CalendarUiState(
     val journalEntries: List<JournalEntry> = emptyList(),
     val selectedDateTasks: List<TaskItem> = emptyList(),
     val selectedDateNotes: List<NoteItem> = emptyList(),
+    /** Single-day plan fetched on demand when a past date is selected. */
+    val selectedDayPlan: DailyPlan? = null,
     val calendarDisplayMode: CalendarDisplayMode = CalendarDisplayMode.Week,
     val selectedTagIds: Set<Long> = emptySet(),
     val isMonthlyWinsExpanded: Boolean = false
@@ -47,10 +49,13 @@ data class CalendarUiState(
     }
 
     private val filteredDailyPlans: List<DailyPlan> by lazy {
+        // Live plans cover today forward; selectedDayPlan back-fills a past
+        // day's agenda when an earlier date is selected.
+        val allPlans = dailyPlans + listOfNotNull(selectedDayPlan)
         if (selectedTagIds.isEmpty()) {
-            dailyPlans
+            allPlans
         } else {
-            dailyPlans.mapNotNull { plan ->
+            allPlans.mapNotNull { plan ->
                 val filteredItems = plan.items.filter { item -> item.hasAnyTag(selectedTagIds) }
                 if (filteredItems.isEmpty()) null else plan.copy(items = filteredItems)
             }

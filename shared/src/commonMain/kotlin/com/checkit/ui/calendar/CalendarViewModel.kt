@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
@@ -51,13 +52,16 @@ class CalendarViewModel(
             _uiState.map { it.selectedMonth }
                 .distinctUntilChanged()
                 .flatMapLatest { month ->
-                    val start = month.minus(1, DateTimeUnit.MONTH)
+                    // Past-day aggregates come from the reflect-stats table, so
+                    // live daily plans are only needed from today forward. The
+                    // selected past day's plan is fetched separately below.
+                    val statsStart = month.minus(1, DateTimeUnit.MONTH)
                     val end = month.plus(2, DateTimeUnit.MONTH).minus(1, DateTimeUnit.DAY)
                     combine(
-                        observeDailyPlans(startDate = start, endDate = end),
-                        observePeriodReviews(start, end),
-                        observeJournalEntries(start, end),
-                        observeDailyReflectStats(start, end)
+                        observeDailyPlans(startDate = today(), endDate = end),
+                        observePeriodReviews(statsStart, end),
+                        observeJournalEntries(statsStart, end),
+                        observeDailyReflectStats(statsStart, end)
                     ) { dailyPlans, periodReviews, journalEntries, dailyStats ->
                         CalendarCombined(dailyPlans, periodReviews, journalEntries, dailyStats)
                     }
@@ -84,7 +88,20 @@ class CalendarViewModel(
                 .collect { date ->
                     val tasks = getTasksForDate(date)
                     val notes = getNotesForDate(date)
-                    _uiState.update { it.copy(selectedDateTasks = tasks, selectedDateNotes = notes) }
+                    // Today and future days are covered by the main plans flow;
+                    // past days need a one-off single-day plan for the agenda.
+                    val pastPlan = if (date < today()) {
+                        observeDailyPlans(startDate = date, endDate = date).first().firstOrNull()
+                    } else {
+                        null
+                    }
+                    _uiState.update {
+                        it.copy(
+                            selectedDateTasks = tasks,
+                            selectedDateNotes = notes,
+                            selectedDayPlan = pastPlan
+                        )
+                    }
                 }
         }
     }
