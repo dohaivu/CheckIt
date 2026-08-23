@@ -57,6 +57,7 @@ import com.checkit.domain.usecase.ObserveNestedTagsUseCase
 import com.checkit.domain.usecase.ObserveNotesForDateUseCase
 import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
+import com.checkit.domain.usecase.ObserveTagUsageCountsUseCase
 import com.checkit.domain.usecase.ObserveTasksForDateUseCase
 import com.checkit.domain.usecase.ObserveTagsUseCase
 import com.checkit.domain.usecase.ObserveWorkingTasksUseCase
@@ -144,6 +145,7 @@ val provideInteractorModule = module {
     single { AddSuggestedTaskToMyDayUseCase(get(), get(), get()) }
     single { RoomCheckItRepository(get(), get(), get()) as CheckItRepository }
     single { ObserveTaskBoardUseCase(get()) }
+    single { ObserveTagUsageCountsUseCase(get()) }
     single { GetTaskUseCase(get()) }
     single { GetNoteUseCase(get()) }
     single { GetTasksForDateUseCase(get()) }

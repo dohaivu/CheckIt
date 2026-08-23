@@ -103,6 +103,25 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         }
     }
 
+    override fun observeTagUsageCounts(): Flow<Map<Long, Int>> = boardFlow.map { board ->
+        val counts = mutableMapOf<Long, Int>()
+        board.tasks.filter { !it.isTrashed }.forEach { task ->
+            task.tags.forEach { tag -> counts[tag.id] = (counts[tag.id] ?: 0) + 1 }
+        }
+        board.notes.filter { !it.isTrashed }.forEach { note ->
+            note.tags.forEach { tag -> counts[tag.id] = (counts[tag.id] ?: 0) + 1 }
+        }
+        dailyPlansFlow.value.forEach { plan ->
+            plan.items.forEach { item ->
+                item.tags.forEach { tag -> counts[tag.id] = (counts[tag.id] ?: 0) + 1 }
+            }
+        }
+        journalEntriesFlow.value.forEach { entry ->
+            entry.tags.forEach { tag -> counts[tag.id] = (counts[tag.id] ?: 0) + 1 }
+        }
+        counts
+    }
+
     override fun observeTasksForDate(date: LocalDate): Flow<List<TaskItem>> = boardFlow.map { board ->
         board.tasks.filter { it.doDate == date && !it.isTrashed && it.status != TaskStatus.Completed }
     }

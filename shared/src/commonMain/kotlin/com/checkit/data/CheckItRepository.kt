@@ -57,6 +57,9 @@ import kotlin.time.Clock
 
 interface CheckItRepository {
     fun observeTaskBoard(onlyOpen: Boolean = true): Flow<TaskBoard>
+
+    /** Live per-tag usage counts (tasks, notes, daily plan items, journal entries), computed in the database. */
+    fun observeTagUsageCounts(): Flow<Map<Long, Int>>
     fun observeTasksForDate(date: LocalDate): Flow<List<TaskItem>>
     fun observeWorkingTasks(date: LocalDate): Flow<List<TaskItem>>
     fun observeNotesForDate(date: LocalDate): Flow<List<NoteItem>>
@@ -256,6 +259,9 @@ class RoomCheckItRepository(
     private val dailyPlanCache = mutableMapOf<LocalDate, DailyPlan>()
     private val taskItemCache = mutableMapOf<Long, TaskItem>()
     private val noteItemCache = mutableMapOf<Long, NoteItem>()
+
+    override fun observeTagUsageCounts(): Flow<Map<Long, Int>> =
+        dao.observeTagUsageCounts().map { rows -> rows.associate { it.tagId to it.usageCount } }
 
     override fun observeTaskBoard(onlyOpen: Boolean): Flow<TaskBoard> {
         val tasksFlow = if (onlyOpen) dao.observeTasksOpen() else dao.observeTasksAll()

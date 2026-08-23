@@ -209,6 +209,26 @@ interface CheckItDao {
     @Query("SELECT * FROM task_tags")
     fun observeTaskTags(): Flow<List<TaskTagEntity>>
 
+    @Query(
+        """
+        SELECT tagId, COUNT(*) AS usageCount FROM (
+            SELECT tt.tagId AS tagId
+            FROM task_tags tt INNER JOIN tasks t ON t.id = tt.taskId
+            WHERE t.trashedAtMillis IS NULL
+            UNION ALL
+            SELECT nt.tagId AS tagId
+            FROM note_tags nt INNER JOIN notes n ON n.id = nt.noteId
+            WHERE n.trashedAtMillis IS NULL
+            UNION ALL
+            SELECT pt.tagId AS tagId FROM daily_plan_item_tags pt
+            UNION ALL
+            SELECT jt.tagId AS tagId FROM journal_entry_tags jt
+        )
+        GROUP BY tagId
+        """
+    )
+    fun observeTagUsageCounts(): Flow<List<TagUsageCountEntity>>
+
     @Query("SELECT * FROM note_tags")
     fun observeNoteTags(): Flow<List<NoteTagEntity>>
 

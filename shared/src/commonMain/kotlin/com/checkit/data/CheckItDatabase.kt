@@ -290,6 +290,12 @@ data class NoteTagEntity(
     val tagId: Long
 )
 
+/** Projection row for per-tag usage counts (tasks, notes, daily plan items, journal entries). */
+data class TagUsageCountEntity(
+    val tagId: Long,
+    val usageCount: Int
+)
+
 @Entity(
     tableName = "daily_plan_item_tags",
     primaryKeys = ["itemId", "tagId"],

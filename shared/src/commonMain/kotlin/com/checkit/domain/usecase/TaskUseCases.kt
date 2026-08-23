@@ -69,6 +69,7 @@ class ObserveNotesForDateUseCase(
     operator fun invoke(date: LocalDate): Flow<List<NoteItem>> = repository.observeNotesForDate(date)
 }
 
+// open or done today
 class ObserveWorkingTasksUseCase(
     private val repository: CheckItRepository
 ) {
@@ -139,6 +140,12 @@ private fun TaskItem.qualifiesForAddToMyDay(today: LocalDate): Boolean =
         TaskType.Task -> doDate == today
         TaskType.Habit -> completedDate == null
     }
+
+class ObserveTagUsageCountsUseCase(
+    private val repository: CheckItRepository
+) {
+    operator fun invoke(): Flow<Map<Long, Int>> = repository.observeTagUsageCounts()
+}
 
 class AddTagUseCase(
     private val repository: CheckItRepository
