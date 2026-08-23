@@ -42,9 +42,7 @@ import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteTagUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
 import com.checkit.domain.usecase.GetNoteUseCase
-import com.checkit.domain.usecase.GetNotesForDateUseCase
 import com.checkit.domain.usecase.GetTaskUseCase
-import com.checkit.domain.usecase.GetTasksForDateUseCase
 import com.checkit.domain.usecase.MoveNoteUseCase
 import com.checkit.domain.usecase.MoveTaskUseCase
 import com.checkit.domain.usecase.IsTagNameTakenUseCase
@@ -150,8 +148,6 @@ val provideInteractorModule = module {
     single { ObserveTagUsageCountsUseCase(get()) }
     single { GetTaskUseCase(get()) }
     single { GetNoteUseCase(get()) }
-    single { GetTasksForDateUseCase(get()) }
-    single { GetNotesForDateUseCase(get()) }
     single { ObserveTasksForDateUseCase(get()) }
     single { ObserveNotesForDateUseCase(get()) }
     single { ObserveTasksInRangeUseCase(get()) }

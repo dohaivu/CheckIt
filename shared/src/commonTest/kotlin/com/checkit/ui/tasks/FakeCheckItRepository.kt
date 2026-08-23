@@ -158,12 +158,6 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
     override suspend fun getNote(noteId: Long): NoteItem? = 
         boardFlow.value.notes.find { it.id == noteId }
 
-    override suspend fun getTasksForDate(date: LocalDate): List<TaskItem> = 
-        boardFlow.value.tasks.filter { it.doDate == date && !it.isTrashed && it.status != TaskStatus.Completed }
-
-    override suspend fun getNotesForDate(date: LocalDate): List<NoteItem> = 
-        boardFlow.value.notes.filter { it.date == date && !it.isTrashed && it.status != TaskStatus.Completed }
-
     override fun observeDailyPlans(startDate: LocalDate?, endDate: LocalDate?): Flow<List<DailyPlan>> =
         dailyPlansFlow.map { plans ->
             if (startDate != null && endDate != null) {

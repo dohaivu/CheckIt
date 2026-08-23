@@ -110,8 +110,6 @@ interface CheckItRepository {
     suspend fun dailyPlanForDate(date: LocalDate): DailyPlan?
     suspend fun getTask(taskId: Long): TaskItem?
     suspend fun getNote(noteId: Long): NoteItem?
-    suspend fun getTasksForDate(date: LocalDate): List<TaskItem>
-    suspend fun getNotesForDate(date: LocalDate): List<NoteItem>
     fun observePeriodReviews(): Flow<List<PeriodReview>>
     fun observePeriodReviewsInRange(startDate: LocalDate?, endDateInclusive: LocalDate?): Flow<List<PeriodReview>>
     suspend fun periodReviewFor(period: Period, date: LocalDate): PeriodReview?
@@ -939,16 +937,6 @@ class RoomCheckItRepository(
             isPinned = listJoin?.isPinned ?: false,
             sectionId = listJoin?.sectionId
         )
-    }
-
-    override suspend fun getTasksForDate(date: LocalDate): List<TaskItem> {
-        val entities = dao.tasksForDate(date.toEpochDays().toInt())
-        return entities.mapNotNull { getTask(it.id) }
-    }
-
-    override suspend fun getNotesForDate(date: LocalDate): List<NoteItem> {
-        val entities = dao.notesForDate(date.toEpochDays().toInt())
-        return entities.mapNotNull { getNote(it.id) }
     }
 
     override suspend fun dailyPlanForDate(date: LocalDate): DailyPlan? {

@@ -45,18 +45,6 @@ class GetNoteUseCase(
     suspend operator fun invoke(noteId: Long): NoteItem? = repository.getNote(noteId)
 }
 
-class GetTasksForDateUseCase(
-    private val repository: CheckItRepository
-) {
-    suspend operator fun invoke(date: LocalDate): List<TaskItem> = repository.getTasksForDate(date)
-}
-
-class GetNotesForDateUseCase(
-    private val repository: CheckItRepository
-) {
-    suspend operator fun invoke(date: LocalDate): List<NoteItem> = repository.getNotesForDate(date)
-}
-
 class ObserveTasksForDateUseCase(
     private val repository: CheckItRepository
 ) {

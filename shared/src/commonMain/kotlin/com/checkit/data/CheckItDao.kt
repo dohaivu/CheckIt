@@ -181,12 +181,6 @@ interface CheckItDao {
     suspend fun carriedFromCountOnDate(dateEpochDays: Int, sourceItemId: Long): Int
 
     @Query("SELECT * FROM tasks WHERE doDateEpochDays = :dateEpochDays AND trashedAtMillis IS NULL AND status != 'Completed' ORDER BY createdAtMillis DESC")
-    suspend fun tasksForDate(dateEpochDays: Int): List<TaskEntity>
-
-    @Query("SELECT * FROM notes WHERE dateEpochDays = :dateEpochDays AND trashedAtMillis IS NULL AND status != 'Completed' ORDER BY editedAtMillis DESC")
-    suspend fun notesForDate(dateEpochDays: Int): List<NoteEntity>
-
-    @Query("SELECT * FROM tasks WHERE doDateEpochDays = :dateEpochDays AND trashedAtMillis IS NULL AND status != 'Completed' ORDER BY createdAtMillis DESC")
     fun observeTasksForDate(dateEpochDays: Int): Flow<List<TaskEntity>>
 
     @Query("SELECT * FROM tasks WHERE doDateEpochDays BETWEEN :startEpochDays AND :endEpochDays AND trashedAtMillis IS NULL AND status != 'Completed' ORDER BY createdAtMillis DESC")
