@@ -104,7 +104,13 @@ class ReflectViewModel(
                     startDate = habitRollupWindow(today()).first,
                     endDateInclusive = habitRollupWindow(today()).second
                 ),
-                observePeriodReviews()
+                observePeriodReviews(
+                    // Reviews shown are the child-period ones within the current
+                    // window (plus the focus review itself), so only that span
+                    // needs to be observed.
+                    startDate = selection.reviewsWindow().first,
+                    endDateInclusive = selection.reviewsWindow().second
+                )
             ) { habits, reviews -> habits to reviews }
         ) { stats, doneItems, journals, (habits, reviews) ->
             ReflectData(
@@ -115,6 +121,17 @@ class ReflectViewModel(
                 reviews = reviews
             )
         }
+
+    /**
+     * Inclusive date span covering every review the UI can display for this
+     * selection: the child-period reviews of the current window and the focus
+     * review itself.
+     */
+    private fun ReflectSelection.reviewsWindow(): Pair<LocalDate, LocalDate> {
+        val focus = FocusPeriod(period.toPeriod(), date)
+        val rangeFocus = if (period == ReportPeriod.Daily) focus.zoomOut() else focus
+        return rangeFocus.start to rangeFocus.endInclusive
+    }
 
     fun selectPeriod(period: ReportPeriod) {
         _uiState.update { it.copy(selectedPeriod = period) }
@@ -170,7 +187,15 @@ class ReflectViewModel(
                 selectedDate = review.periodStartDate
             )
         }
-        openEditor()
+        // Seed the editor from the tapped review itself; the matching window
+        // loads asynchronously and openEditor() would otherwise miss it.
+        _editor.value = ReflectReviewEditorState(
+            focus = FocusPeriod(review.period, review.periodStartDate),
+            review = review,
+            content = review.content,
+            intentNext = review.intentNext.orEmpty(),
+            source = review.source
+        )
     }
 
     fun openEditor() {

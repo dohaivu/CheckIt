@@ -3,6 +3,7 @@ package com.checkit.ui.journal
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.MoodFilter
 import com.checkit.domain.TagItem
+import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
 import com.checkit.domain.usecase.ObserveTagsUseCase
 import com.checkit.ui.tasks.FakeCheckItRepository
 import kotlinx.coroutines.Dispatchers
@@ -36,7 +37,8 @@ class JournalHistoryViewModelTest {
         )
         viewModel = JournalHistoryViewModel(
             repository = repository,
-            observeTags = ObserveTagsUseCase(repository)
+            observeTags = ObserveTagsUseCase(repository),
+            observePeriodReviews = ObservePeriodReviewsUseCase(repository)
         )
         dispatcher.scheduler.advanceUntilIdle()
     }

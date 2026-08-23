@@ -5,7 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.checkit.data.CheckItRepository
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.MoodFilter
+import com.checkit.domain.Period
+import com.checkit.domain.PeriodReview
 import com.checkit.domain.TagItem
+import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
 import com.checkit.domain.usecase.ObserveTagsUseCase
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,6 +32,8 @@ data class JournalHistoryUiState(
     val filters: JournalHistoryFilters = JournalHistoryFilters(),
     val entries: List<JournalEntry> = emptyList(),
     val tags: List<TagItem> = emptyList(),
+    /** Day reviews shown inline in the history agenda. */
+    val dayReviews: List<PeriodReview> = emptyList(),
     val isLoading: Boolean = true,
     val error: String? = null
 )
@@ -37,7 +42,8 @@ data class JournalHistoryUiState(
 @OptIn(FlowPreview::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class JournalHistoryViewModel(
     private val repository: CheckItRepository,
-    observeTags: ObserveTagsUseCase
+    observeTags: ObserveTagsUseCase,
+    observePeriodReviews: ObservePeriodReviewsUseCase
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(JournalHistoryUiState())
     val uiState: StateFlow<JournalHistoryUiState> = _uiState.asStateFlow()
@@ -46,6 +52,12 @@ class JournalHistoryViewModel(
         viewModelScope.launch {
             observeTags().collect { tags ->
                 _uiState.update { it.copy(tags = tags) }
+            }
+        }
+
+        viewModelScope.launch {
+            observePeriodReviews().collect { reviews ->
+                _uiState.update { it.copy(dayReviews = reviews.filter { review -> review.period == Period.Day }) }
             }
         }
 

@@ -48,7 +48,6 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 internal fun JournalHistorySheet(
     state: JournalHistoryUiState,
-    dayReviews: List<PeriodReview> = emptyList(),
     onMoodToggle: (MoodFilter) -> Unit,
     onSearchTextChange: (String) -> Unit,
     onTagToggle: (Long) -> Unit,
@@ -72,7 +71,7 @@ internal fun JournalHistorySheet(
             )
             JournalAgendaView(
                 journalEntries = state.entries,
-                dayReviews = dayReviews,
+                dayReviews = state.dayReviews,
                 onEntryClick = onEntryClick,
                 onReviewClick = onReviewClick,
                 modifier = Modifier.fillMaxSize()

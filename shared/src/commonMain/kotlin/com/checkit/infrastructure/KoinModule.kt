@@ -278,7 +278,7 @@ val provideViewModelModule = module {
             observeNotesForDate = get()
         )
     }
-    viewModel { JournalHistoryViewModel(get(), get()) }
+    viewModel { JournalHistoryViewModel(get(), get(), get()) }
     viewModel {
         MyDayViewModel(
             observeDailyPlans = get(),

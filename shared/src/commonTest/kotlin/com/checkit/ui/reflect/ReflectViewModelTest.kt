@@ -234,6 +234,7 @@ class ReflectViewModelTest {
         advanceUntilIdle()
 
         viewModel.selectPeriod(ReportPeriod.Month)
+        advanceUntilIdle()
         val dates = viewModel.uiState.value.reviewsForSelectedPeriod.map { it.periodStartDate }
         assertEquals(listOf(inside), dates)
     }
