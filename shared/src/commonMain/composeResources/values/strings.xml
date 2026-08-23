@@ -111,7 +111,7 @@
     <string name="day_close_open">Review day</string>
     <string name="day_close_title">Close your day</string>
     <string name="day_close_banner_title">Close your day</string>
-    <string name="day_close_banner_subtitle">Write today\'s review and plan leftovers for tomorrow.</string>
+    <string name="day_close_banner_subtitle">Write today's review and plan leftovers for tomorrow.</string>
     <string name="day_close_banner_action">Review</string>
     <string name="day_close_done_count">%1$d done</string>
     <string name="day_close_planned_count">%1$d left</string>
