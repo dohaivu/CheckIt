@@ -67,13 +67,13 @@ import checkit.shared.generated.resources.calendar_open_review
 import checkit.shared.generated.resources.calendar_title
 import checkit.shared.generated.resources.relative_today
 import checkit.shared.generated.resources.relative_yesterday
-import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
+import com.checkit.domain.TagItem
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.components.parseMarkdownToAnnotatedString
@@ -528,7 +528,6 @@ private fun SelectedDateHeader(
 private data class SelectedCalendarDateContent(
     val date: LocalDate,
     val showDailyPlan: Boolean,
-    val dailyPlan: DailyPlan?,
     val dailyPlanItems: List<DailyPlanItem>,
     val journalEntries: List<JournalEntry>,
     val tasks: List<TaskItem>,
@@ -539,19 +538,21 @@ private data class SelectedCalendarDateContent(
 }
 
 private fun CalendarUiState.selectedDateContent(today: LocalDate): SelectedCalendarDateContent {
-    val showDailyPlan = selectedDate <= today
-    val dailyPlan = dailyPlanForDate(selectedDate)
     val dateEpochDays = selectedDate.toEpochDays()
     return SelectedCalendarDateContent(
         date = selectedDate,
-        showDailyPlan = showDailyPlan,
-        dailyPlan = dailyPlan,
-        dailyPlanItems = dailyPlan?.items.orEmpty(),
-        journalEntries = journalEntries.filter { it.dateEpochDays == dateEpochDays.toInt() },
-        tasks = selectedDateTasks,
-        notes = selectedDateNotes
+        showDailyPlan = selectedDate <= today,
+        dailyPlanItems = dailyPlanForDate(selectedDate)?.items.orEmpty(),
+        journalEntries = journalEntries
+            .filter { it.dateEpochDays == dateEpochDays.toInt() }
+            .filter { matchesSelectedTags(it.tags) },
+        tasks = selectedDateTasks.filter { matchesSelectedTags(it.tags) },
+        notes = selectedDateNotes.filter { matchesSelectedTags(it.tags) }
     )
 }
+
+private fun CalendarUiState.matchesSelectedTags(tags: List<TagItem>): Boolean =
+    selectedTagIds.isEmpty() || tags.any { it.id in selectedTagIds }
 
 @Composable
 private fun CountBadge(
