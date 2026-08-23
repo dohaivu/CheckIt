@@ -127,11 +127,17 @@ class CarryOverDailyPlanItemsUseCase(
     )
 }
 
-/** Observes all persisted period reviews (day, week, month, year). */
+/**
+ * Observes persisted period reviews (day, week, month, year), optionally
+ * limited to an inclusive window over their start dates.
+ */
 class ObservePeriodReviewsUseCase(
     private val repository: CheckItRepository
 ) {
-    operator fun invoke(): Flow<List<PeriodReview>> = repository.observePeriodReviews()
+    operator fun invoke(
+        startDate: LocalDate? = null,
+        endDateInclusive: LocalDate? = null
+    ): Flow<List<PeriodReview>> = repository.observePeriodReviewsInRange(startDate, endDateInclusive)
 }
 
 /**

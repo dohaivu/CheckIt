@@ -17,9 +17,11 @@ import com.checkit.domain.usecase.CompleteDayCloseUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.DeleteJournalEntryUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
-import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
 import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
-import com.checkit.domain.usecase.ObserveTaskBoardUseCase
+import com.checkit.domain.usecase.ObserveNotesForDateUseCase
+import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
+import com.checkit.domain.usecase.ObserveTagsUseCase
+import com.checkit.domain.usecase.ObserveWorkingTasksUseCase
 import com.checkit.domain.usecase.SmartScheduleDailyPlanUseCase
 import com.checkit.domain.usecase.SprintTransitionUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
@@ -40,9 +42,12 @@ import kotlinx.datetime.LocalDate
  * [DailyPlanEditorController], [SprintController], and [com.checkit.ui.journal.JournalController].
  */
 class MyDayViewModel(
-    observeTaskBoard: ObserveTaskBoardUseCase,
     observeDailyPlans: ObserveDailyPlansUseCase,
     observeJournalEntries: ObserveJournalEntriesUseCase,
+    observePeriodReviews: ObservePeriodReviewsUseCase,
+    observeTags: ObserveTagsUseCase,
+    observeWorkingTasks: ObserveWorkingTasksUseCase,
+    observeNotesForDate: ObserveNotesForDateUseCase,
     addJournalEntry: AddJournalEntryUseCase,
     updateJournalEntry: UpdateJournalEntryUseCase,
     deleteJournalEntry: DeleteJournalEntryUseCase,
@@ -51,7 +56,6 @@ class MyDayViewModel(
     buildDayCloseSummary: BuildDayCloseSummaryUseCase,
     completeDayClose: CompleteDayCloseUseCase,
     carryOverDailyPlanItems: CarryOverDailyPlanItemsUseCase,
-    observePeriodReviews: ObservePeriodReviewsUseCase,
     upsertDailyPlanItem: UpsertDailyPlanItemUseCase,
     addSuggestedTaskToMyDay: AddSuggestedTaskToMyDayUseCase,
     updateDailyPlanItemTime: UpdateDailyPlanItemTimeUseCase,
@@ -60,9 +64,12 @@ class MyDayViewModel(
     sprintTransition: SprintTransitionUseCase
 ) : ViewModel() {
     private val deps = MyDayDependencies(
-        observeTaskBoard = observeTaskBoard,
         observeDailyPlans = observeDailyPlans,
         observeJournalEntries = observeJournalEntries,
+        observePeriodReviews = observePeriodReviews,
+        observeTags = observeTags,
+        observeWorkingTasks = observeWorkingTasks,
+        observeNotesForDate = observeNotesForDate,
         addJournalEntry = addJournalEntry,
         updateJournalEntry = updateJournalEntry,
         deleteJournalEntry = deleteJournalEntry,
@@ -71,7 +78,6 @@ class MyDayViewModel(
         buildDayCloseSummary = buildDayCloseSummary,
         completeDayClose = completeDayClose,
         carryOverDailyPlanItems = carryOverDailyPlanItems,
-        observePeriodReviews = observePeriodReviews,
         upsertDailyPlanItem = upsertDailyPlanItem,
         addSuggestedTaskToMyDay = addSuggestedTaskToMyDay,
         updateDailyPlanItemTime = updateDailyPlanItemTime,

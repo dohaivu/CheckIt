@@ -142,7 +142,6 @@ internal fun ReflectScreen(
                             previousTotalMinutes = digest.previousTotalMinutes,
                             selectedPeriod = state.selectedPeriod,
                             trendItems = digest.trendItems,
-                            progressItems = digest.progressItems,
                             doneCount = digest.doneItemCount,
                             plannedCount = digest.plannedItemCount,
                             journalCount = digest.journalCount

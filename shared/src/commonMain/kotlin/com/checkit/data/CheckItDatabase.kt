@@ -157,14 +157,89 @@ data class PeriodReviewEntity(
     val periodStartEpochDays: Int,
     val periodEndEpochDays: Int,
     val content: String = "",
-    val highlightsJson: String? = null,
     val intentNext: String? = null,
     val source: String = com.checkit.domain.ReviewSource.Manual.name,
     val status: String = com.checkit.domain.ReviewStatus.Draft.name,
     val completedAtMillis: Long? = null,
     val generatedAtMillis: Long? = null,
-    val editedAtMillis: Long? = null,
-    val statsJson: String? = null
+    val editedAtMillis: Long? = null
+)
+
+/** Precomputed daily aggregates feeding the Reflect tab. One row per day. */
+@Entity(tableName = "daily_reflect_stats")
+data class DailyReflectStatsEntity(
+    @PrimaryKey
+    val dateEpochDays: Int,
+    /** Actionable items (MyDayTask/MyDayReminder/ExistingTask) still planned. */
+    val plannedItemCount: Int,
+    /** Actionable items completed. */
+    val doneItemCount: Int,
+    /** Sum of scheduled minutes across all done items. */
+    val doneMinutes: Int,
+    val journalCount: Int,
+    val computedAtMillis: Long
+)
+
+/**
+ * Precomputed done count/minutes per day and tag. Tag name/color are joined
+ * from [TagEntity] at query time so renames and recolors stay in sync.
+ */
+@Entity(
+    tableName = "daily_tag_rollups",
+    primaryKeys = ["dateEpochDays", "tagId"],
+    foreignKeys = [
+        ForeignKey(
+            entity = TagEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["tagId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("tagId")]
+)
+data class DailyTagRollupEntity(
+    val dateEpochDays: Int,
+    val tagId: Long,
+    val doneCount: Int,
+    val doneMinutes: Int
+)
+
+/**
+ * Precomputed habit check-ins per day. [habitKey] is stable across carry-overs:
+ * `task:<taskId>` when the habit is task-backed, otherwise derived from the title.
+ */
+@Entity(
+    tableName = "habit_daily_rollups",
+    primaryKeys = ["dateEpochDays", "habitKey"],
+    indices = [Index("habitKey")]
+)
+data class HabitDailyRollupEntity(
+    val dateEpochDays: Int,
+    val habitKey: String,
+    val title: String,
+    val doneMinutes: Int
+)
+
+/** Slim projection of daily_tag_rollups joined with tag metadata. */
+data class DailyTagRollupWithMeta(
+    val dateEpochDays: Int,
+    val tagId: Long,
+    val tagName: String,
+    val tagColor: String?,
+    val doneCount: Int,
+    val doneMinutes: Int
+)
+
+/** Slim projection of a done daily-plan item for highlights (no tags/labels). */
+data class DoneItemSummaryEntity(
+    val id: Long,
+    val dateEpochDays: Int,
+    val title: String,
+    val note: String?,
+    val source: String,
+    val startTimeMinutes: Int?,
+    val endTimeMinutes: Int?,
+    val completedAtMillis: Long?
 )
 
 @Entity(
@@ -213,6 +288,12 @@ data class TaskTagEntity(
 data class NoteTagEntity(
     val noteId: Long,
     val tagId: Long
+)
+
+/** Projection row for per-tag usage counts (tasks, notes, daily plan items, journal entries). */
+data class TagUsageCountEntity(
+    val tagId: Long,
+    val usageCount: Int
 )
 
 @Entity(
@@ -533,9 +614,12 @@ data class NestedItemTagEntity(
         NestedDocumentEntity::class,
         NestedListItemEntity::class,
         NestedItemTagEntity::class,
-        NestedManualMetricEntity::class
+        NestedManualMetricEntity::class,
+        DailyReflectStatsEntity::class,
+        DailyTagRollupEntity::class,
+        HabitDailyRollupEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)

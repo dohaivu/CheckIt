@@ -18,8 +18,10 @@ import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
 import com.checkit.domain.usecase.CompleteNoteUseCase
-import com.checkit.domain.usecase.OpenTaskUseCase
-import com.checkit.domain.usecase.OpenNoteUseCase
+import com.checkit.domain.usecase.GetNoteUseCase
+import com.checkit.domain.usecase.GetTaskUseCase
+import com.checkit.domain.usecase.UpdateTaskStatusUseCase
+import com.checkit.domain.usecase.UpdateNoteStatusUseCase
 import com.checkit.domain.usecase.RestoreNoteUseCase
 import com.checkit.domain.usecase.RestoreTaskUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
@@ -71,6 +73,8 @@ class TaskViewModelViewsTest {
         viewModel = TaskViewModel(
             observeTaskBoard = ObserveTaskBoardUseCase(repository),
             selectTaskBoardItems = SelectTaskBoardItemsUseCase(),
+            getTask = GetTaskUseCase(repository),
+            getNote = GetNoteUseCase(repository),
             addTask = AddTaskUseCase(repository),
             addTaskToDailyPlan = AddTaskToDailyPlanUseCase(repository),
             updateTask = UpdateTaskUseCase(repository),
@@ -78,8 +82,8 @@ class TaskViewModelViewsTest {
             restoreTask = RestoreTaskUseCase(repository),
             completeTask = CompleteTaskUseCase(repository),
             completeNote = CompleteNoteUseCase(repository),
-            openTask = OpenTaskUseCase(repository),
-            openNote = OpenNoteUseCase(repository),
+            updateTaskStatus = UpdateTaskStatusUseCase(repository),
+            updateNoteStatus = UpdateNoteStatusUseCase(repository),
             addNote = AddNoteUseCase(repository),
             updateNote = UpdateNoteUseCase(repository),
             deleteNote = DeleteNoteUseCase(repository),
@@ -340,6 +344,8 @@ class TaskViewModelViewsTest {
         return TaskViewModel(
             observeTaskBoard = ObserveTaskBoardUseCase(repository),
             selectTaskBoardItems = SelectTaskBoardItemsUseCase(),
+            getTask = GetTaskUseCase(repository),
+            getNote = GetNoteUseCase(repository),
             addTask = AddTaskUseCase(repository),
             addTaskToDailyPlan = AddTaskToDailyPlanUseCase(repository),
             updateTask = UpdateTaskUseCase(repository),
@@ -347,8 +353,8 @@ class TaskViewModelViewsTest {
             restoreTask = RestoreTaskUseCase(repository),
             completeTask = CompleteTaskUseCase(repository),
             completeNote = CompleteNoteUseCase(repository),
-            openTask = OpenTaskUseCase(repository),
-            openNote = OpenNoteUseCase(repository),
+            updateTaskStatus = UpdateTaskStatusUseCase(repository),
+            updateNoteStatus = UpdateNoteStatusUseCase(repository),
             addNote = AddNoteUseCase(repository),
             updateNote = UpdateNoteUseCase(repository),
             deleteNote = DeleteNoteUseCase(repository),

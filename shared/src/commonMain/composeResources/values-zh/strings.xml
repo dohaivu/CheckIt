@@ -93,7 +93,6 @@
     <string name="reflect_stats_done">%1$d 已完成</string>
     <string name="reflect_stats_minutes">%1$d 分钟</string>
     <string name="reflect_stats_entries">%1$d 个签到</string>
-    <string name="journal_agenda_review_card_title">回顾 · 第 %1$d 天</string>
 
     <string name="settings_title">设置</string>
     <string name="version">版本 %1$s</string>

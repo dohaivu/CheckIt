@@ -2,12 +2,13 @@ package com.checkit.domain.usecase
 
 import com.checkit.data.CheckItRepository
 import com.checkit.data.NoteWriteInput
-import com.checkit.data.SettingsRepository
 import com.checkit.data.TagWriteInput
 import com.checkit.data.TaskWriteInput
+import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DueDatePreset
 import com.checkit.domain.NoteItem
+import com.checkit.domain.TagItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskFilter
 import com.checkit.domain.TaskItem
@@ -32,9 +33,69 @@ class ObserveTaskBoardUseCase(
     operator fun invoke(onlyOpen: Boolean = true): Flow<TaskBoard> = repository.observeTaskBoard(onlyOpen)
 }
 
+class GetTaskUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(taskId: Long): TaskItem? = repository.getTask(taskId)
+}
+
+class GetNoteUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(noteId: Long): NoteItem? = repository.getNote(noteId)
+}
+
+class ObserveTasksForDateUseCase(
+    private val repository: CheckItRepository
+) {
+    operator fun invoke(date: LocalDate): Flow<List<TaskItem>> = repository.observeTasksForDate(date)
+}
+
+class ObserveNotesForDateUseCase(
+    private val repository: CheckItRepository
+) {
+    operator fun invoke(date: LocalDate): Flow<List<NoteItem>> = repository.observeNotesForDate(date)
+}
+
+class ObserveTasksInRangeUseCase(
+    private val repository: CheckItRepository
+) {
+    operator fun invoke(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<TaskItem>> =
+        repository.observeTasksInRange(startDate, endDateInclusive)
+}
+
+class ObserveNotesInRangeUseCase(
+    private val repository: CheckItRepository
+) {
+    operator fun invoke(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<NoteItem>> =
+        repository.observeNotesInRange(startDate, endDateInclusive)
+}
+
+// open or done today
+class ObserveWorkingTasksUseCase(
+    private val repository: CheckItRepository
+) {
+    operator fun invoke(date: LocalDate): Flow<List<TaskItem>> = repository.observeWorkingTasks(date)
+}
+
+class ObserveTagsUseCase(
+    private val repository: CheckItRepository
+) {
+    operator fun invoke(): Flow<List<TagItem>> = repository.observeTags()
+}
+
+class GetDailyPlanItemUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(itemId: Long): DailyPlanItem? = repository.getDailyPlanItem(itemId)
+}
+
+/**
+ * Adds open tasks due today to My Day. Idempotent: tasks already on the plan
+ * are skipped, so repeated invocations within a day are safe.
+ */
 class AutoAddTodayTasksToMyDayUseCase(
     private val repository: CheckItRepository,
-    private val settingsRepository: SettingsRepository,
     private val deleteDailyPlanItem: DeleteDailyPlanItemUseCase,
     private val smartScheduleDailyPlan: SmartScheduleDailyPlanUseCase
 ) {
@@ -42,11 +103,6 @@ class AutoAddTodayTasksToMyDayUseCase(
 
     suspend operator fun invoke(): Int = mutex.withLock {
         val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
-        val todayEpochDay = today.toEpochDays().toInt()
-        if (settingsRepository.settings.first().autoMyDayLastRunEpochDay == todayEpochDay) {
-            return@withLock 0
-        }
-
         removeIncompleteHabitsFromYesterday(today)
         val alreadyPlannedTaskIds = repository.dailyPlanForDate(today)
             ?.items
@@ -69,7 +125,6 @@ class AutoAddTodayTasksToMyDayUseCase(
         if (tasksToAdd.isNotEmpty()) {
             smartScheduleDailyPlan().getOrThrow()
         }
-        settingsRepository.setAutoMyDayLastRunEpochDay(todayEpochDay)
         tasksToAdd.size
     }
 
@@ -87,6 +142,12 @@ private fun TaskItem.qualifiesForAddToMyDay(today: LocalDate): Boolean =
         TaskType.Task -> doDate == today
         TaskType.Habit -> completedDate == null
     }
+
+class ObserveTagUsageCountsUseCase(
+    private val repository: CheckItRepository
+) {
+    operator fun invoke(): Flow<Map<Long, Int>> = repository.observeTagUsageCounts()
+}
 
 class AddTagUseCase(
     private val repository: CheckItRepository
@@ -151,10 +212,10 @@ class CompleteTaskUseCase(
     suspend operator fun invoke(taskId: Long) = repository.completeTask(taskId)
 }
 
-class OpenTaskUseCase(
+class UpdateTaskStatusUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(taskId: Long) = repository.openTask(taskId)
+    suspend operator fun invoke(taskId: Long, status: TaskStatus) = repository.updateTaskStatus(taskId, status)
 }
 
 class AddNoteUseCase(
@@ -175,10 +236,10 @@ class CompleteNoteUseCase(
     suspend operator fun invoke(noteId: Long) = repository.completeNote(noteId)
 }
 
-class OpenNoteUseCase(
+class UpdateNoteStatusUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(noteId: Long) = repository.openNote(noteId)
+    suspend operator fun invoke(noteId: Long, status: TaskStatus) = repository.updateNoteStatus(noteId, status)
 }
 
 class DeleteNoteUseCase(

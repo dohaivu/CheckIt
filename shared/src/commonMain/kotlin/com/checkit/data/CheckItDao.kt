@@ -4,6 +4,8 @@ import androidx.room3.Dao
 import androidx.room3.Insert
 import androidx.room3.OnConflictStrategy
 import androidx.room3.Query
+import androidx.room3.RawQuery
+import androidx.room3.RoomRawQuery
 import androidx.room3.Transaction
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DayCloseCommitResult
@@ -57,6 +59,18 @@ interface CheckItDao {
     @Query("SELECT * FROM note_list")
     fun observeNoteLists(): Flow<List<NoteListEntity>>
 
+    @Query("SELECT * FROM task_list WHERE taskId = :taskId LIMIT 1")
+    suspend fun taskListByTaskId(taskId: Long): TaskListEntity?
+
+    @Query("SELECT * FROM note_list WHERE noteId = :noteId LIMIT 1")
+    suspend fun noteListByNoteId(noteId: Long): NoteListEntity?
+
+    @Query("SELECT * FROM lists WHERE id = :listId LIMIT 1")
+    suspend fun listById(listId: Long): ListEntity?
+
+    @Query("SELECT * FROM list_sections WHERE id = :sectionId LIMIT 1")
+    suspend fun sectionById(sectionId: Long): ListSectionEntity?
+
     @Query("SELECT * FROM lists ORDER BY sortOrder ASC, title ASC")
     fun observeLists(): Flow<List<ListEntity>>
 
@@ -81,6 +95,9 @@ interface CheckItDao {
 
     @Query("DELETE FROM journal_entry_tags WHERE entryId = :entryId")
     suspend fun deleteJournalEntryTags(entryId: Long)
+
+    @Query("SELECT COUNT(*) FROM journal_entries WHERE dateEpochDays = :dateEpochDays")
+    suspend fun journalEntryCountForDate(dateEpochDays: Int): Int
 
     @Query("SELECT * FROM journal_entries ORDER BY createdTimeMinutes ASC")
     fun observeJournalEntries(): Flow<List<JournalEntryEntity>>
@@ -139,6 +156,9 @@ interface CheckItDao {
     @Query("SELECT * FROM tasks WHERE id = :taskId LIMIT 1")
     suspend fun taskById(taskId: Long): TaskEntity?
 
+    @Query("SELECT * FROM notes WHERE id = :noteId LIMIT 1")
+    suspend fun noteById(noteId: Long): NoteEntity?
+
     @Query("SELECT * FROM notes WHERE status = 'Open' ORDER BY editedAtMillis DESC")
     fun observeNotesOpen(): Flow<List<NoteEntity>>
 
@@ -160,6 +180,26 @@ interface CheckItDao {
     @Query("SELECT COUNT(*) FROM daily_plan_items WHERE dateEpochDays = :dateEpochDays AND carriedFromItemId = :sourceItemId")
     suspend fun carriedFromCountOnDate(dateEpochDays: Int, sourceItemId: Long): Int
 
+    @Query("SELECT * FROM tasks WHERE doDateEpochDays = :dateEpochDays AND trashedAtMillis IS NULL AND status != 'Completed' ORDER BY createdAtMillis DESC")
+    fun observeTasksForDate(dateEpochDays: Int): Flow<List<TaskEntity>>
+
+    @Query("SELECT * FROM tasks WHERE doDateEpochDays BETWEEN :startEpochDays AND :endEpochDays AND trashedAtMillis IS NULL AND status != 'Completed' ORDER BY createdAtMillis DESC")
+    fun observeTasksForDateRange(startEpochDays: Int, endEpochDays: Int): Flow<List<TaskEntity>>
+
+    @Query("""
+        SELECT * FROM tasks 
+        WHERE trashedAtMillis IS NULL 
+          AND (doDateEpochDays = :dateEpochDays OR status = 'Open' OR completedDateEpochDays = :dateEpochDays)
+        ORDER BY createdAtMillis DESC
+    """)
+    fun observeWorkingTasks(dateEpochDays: Int): Flow<List<TaskEntity>>
+
+    @Query("SELECT * FROM notes WHERE dateEpochDays = :dateEpochDays AND trashedAtMillis IS NULL AND status != 'Completed' ORDER BY editedAtMillis DESC")
+    fun observeNotesForDate(dateEpochDays: Int): Flow<List<NoteEntity>>
+
+    @Query("SELECT * FROM notes WHERE dateEpochDays BETWEEN :startEpochDays AND :endEpochDays AND trashedAtMillis IS NULL AND status != 'Completed' ORDER BY editedAtMillis DESC")
+    fun observeNotesForDateRange(startEpochDays: Int, endEpochDays: Int): Flow<List<NoteEntity>>
+
     @Query("SELECT * FROM sub_tasks ORDER BY sortOrder ASC, id ASC")
     fun observeSubTasks(): Flow<List<SubTaskEntity>>
 
@@ -168,6 +208,26 @@ interface CheckItDao {
 
     @Query("SELECT * FROM task_tags")
     fun observeTaskTags(): Flow<List<TaskTagEntity>>
+
+    @Query(
+        """
+        SELECT tagId, COUNT(*) AS usageCount FROM (
+            SELECT tt.tagId AS tagId
+            FROM task_tags tt INNER JOIN tasks t ON t.id = tt.taskId
+            WHERE t.trashedAtMillis IS NULL
+            UNION ALL
+            SELECT nt.tagId AS tagId
+            FROM note_tags nt INNER JOIN notes n ON n.id = nt.noteId
+            WHERE n.trashedAtMillis IS NULL
+            UNION ALL
+            SELECT pt.tagId AS tagId FROM daily_plan_item_tags pt
+            UNION ALL
+            SELECT jt.tagId AS tagId FROM journal_entry_tags jt
+        )
+        GROUP BY tagId
+        """
+    )
+    fun observeTagUsageCounts(): Flow<List<TagUsageCountEntity>>
 
     @Query("SELECT * FROM note_tags")
     fun observeNoteTags(): Flow<List<NoteTagEntity>>
@@ -213,6 +273,9 @@ interface CheckItDao {
 
     @Query("SELECT tagId FROM task_tags WHERE taskId = :taskId")
     suspend fun tagIdsForTask(taskId: Long): List<Long>
+
+    @Query("SELECT tagId FROM note_tags WHERE noteId = :noteId")
+    suspend fun tagIdsForNote(noteId: Long): List<Long>
 
     @Query("SELECT * FROM tags WHERE id IN (:tagIds)")
     suspend fun tagsByIds(tagIds: List<Long>): List<TagEntity>
@@ -377,12 +440,12 @@ interface CheckItDao {
         """
         UPDATE tasks
         SET status = :status,
-            completedDateEpochDays = NULL,
+            completedDateEpochDays = CASE WHEN :status != 'Completed' THEN NULL ELSE completedDateEpochDays END,
             updatedAtMillis = :updatedAtMillis
         WHERE id = :taskId
         """
     )
-    suspend fun updateTaskStatusOpen(
+    suspend fun updateTaskStatus(
         taskId: Long,
         status: String,
         updatedAtMillis: Long
@@ -469,6 +532,178 @@ interface CheckItDao {
 
     @Query("SELECT * FROM period_reviews ORDER BY periodStartEpochDays ASC")
     fun observePeriodReviews(): Flow<List<PeriodReviewEntity>>
+
+    @Query(
+        """
+        SELECT * FROM period_reviews
+        WHERE (:startEpochDays IS NULL OR periodStartEpochDays >= :startEpochDays)
+          AND (:endEpochDays IS NULL OR periodStartEpochDays <= :endEpochDays)
+        ORDER BY periodStartEpochDays ASC
+        """
+    )
+    fun observePeriodReviewsBetween(startEpochDays: Int?, endEpochDays: Int?): Flow<List<PeriodReviewEntity>>
+
+    // ---------------- Reflect rollups (precomputed daily aggregates) ----------------
+
+    @Query(
+        "SELECT * FROM daily_reflect_stats WHERE dateEpochDays BETWEEN :startEpochDays AND :endEpochDays ORDER BY dateEpochDays ASC"
+    )
+    fun observeDailyReflectStats(startEpochDays: Int, endEpochDays: Int): Flow<List<DailyReflectStatsEntity>>
+
+    @Query(
+        """
+        SELECT r.dateEpochDays AS dateEpochDays,
+               r.tagId AS tagId,
+               t.name AS tagName,
+               t.color AS tagColor,
+               r.doneCount AS doneCount,
+               r.doneMinutes AS doneMinutes
+        FROM daily_tag_rollups AS r
+        JOIN tags AS t ON t.id = r.tagId
+        WHERE r.dateEpochDays BETWEEN :startEpochDays AND :endEpochDays
+        ORDER BY r.dateEpochDays ASC
+        """
+    )
+    fun observeDailyTagRollups(startEpochDays: Int, endEpochDays: Int): Flow<List<DailyTagRollupWithMeta>>
+
+    @Query(
+        "SELECT * FROM habit_daily_rollups WHERE dateEpochDays BETWEEN :startEpochDays AND :endEpochDays ORDER BY dateEpochDays ASC"
+    )
+    fun observeHabitDailyRollups(startEpochDays: Int, endEpochDays: Int): Flow<List<HabitDailyRollupEntity>>
+
+    @Query("DELETE FROM daily_reflect_stats")
+    suspend fun clearDailyReflectStats()
+
+    @Query("DELETE FROM daily_tag_rollups")
+    suspend fun clearDailyTagRollups()
+
+    @Query("DELETE FROM habit_daily_rollups")
+    suspend fun clearHabitDailyRollups()
+
+    @Query(
+        """
+        INSERT OR REPLACE INTO daily_reflect_stats(dateEpochDays, plannedItemCount, doneItemCount, doneMinutes, journalCount, computedAtMillis)
+        SELECT i.dateEpochDays,
+               SUM(CASE WHEN i.status = 'Planned' AND i.source IN ('MyDayTask', 'MyDayReminder', 'ExistingTask') THEN 1 ELSE 0 END),
+               SUM(CASE WHEN i.status = 'Done' AND i.source IN ('MyDayTask', 'MyDayReminder', 'ExistingTask') THEN 1 ELSE 0 END),
+               SUM(
+                   CASE
+                       WHEN i.status = 'Done' AND i.startTimeMinutes IS NOT NULL AND i.endTimeMinutes IS NOT NULL
+                       THEN MAX(i.endTimeMinutes - i.startTimeMinutes, 0)
+                       ELSE 0
+                   END
+               ),
+               0,
+               :computedAtMillis
+        FROM daily_plan_items AS i
+        GROUP BY i.dateEpochDays
+        """
+    )
+    suspend fun insertDailyReflectStatsFromItems(computedAtMillis: Long)
+
+    @Query(
+        """
+        INSERT OR IGNORE INTO daily_reflect_stats(dateEpochDays, plannedItemCount, doneItemCount, doneMinutes, journalCount, computedAtMillis)
+        SELECT j.dateEpochDays, 0, 0, 0, 0, :computedAtMillis
+        FROM journal_entries AS j
+        GROUP BY j.dateEpochDays
+        """
+    )
+    suspend fun insertDailyReflectStatsForJournalOnlyDays(computedAtMillis: Long)
+
+    @Query(
+        """
+        UPDATE daily_reflect_stats
+        SET journalCount = (
+            SELECT COUNT(*) FROM journal_entries AS j WHERE j.dateEpochDays = daily_reflect_stats.dateEpochDays
+        )
+        """
+    )
+    suspend fun updateDailyReflectStatsJournalCounts()
+
+    @Query(
+        """
+        INSERT OR REPLACE INTO daily_tag_rollups(dateEpochDays, tagId, doneCount, doneMinutes)
+        SELECT i.dateEpochDays,
+               it.tagId,
+               COUNT(*),
+               SUM(
+                   CASE
+                       WHEN i.startTimeMinutes IS NOT NULL AND i.endTimeMinutes IS NOT NULL
+                       THEN MAX(i.endTimeMinutes - i.startTimeMinutes, 0)
+                       ELSE 0
+                   END
+               )
+        FROM daily_plan_items AS i
+        JOIN daily_plan_item_tags AS it ON it.itemId = i.id
+        WHERE i.status = 'Done'
+        GROUP BY i.dateEpochDays, it.tagId
+        """
+    )
+    suspend fun insertDailyTagRollups()
+
+    @Query(
+        """
+        INSERT OR REPLACE INTO habit_daily_rollups(dateEpochDays, habitKey, title, doneMinutes)
+        SELECT i.dateEpochDays,
+               CASE WHEN i.taskId IS NOT NULL THEN 'task:' || i.taskId ELSE 'title:' || LOWER(TRIM(i.title)) END,
+               MAX(TRIM(i.title)),
+               SUM(
+                   CASE
+                       WHEN i.startTimeMinutes IS NOT NULL AND i.endTimeMinutes IS NOT NULL
+                       THEN MAX(i.endTimeMinutes - i.startTimeMinutes, 0)
+                       ELSE 0
+                   END
+               )
+        FROM daily_plan_items AS i
+        WHERE i.isHabit = 1 AND i.status = 'Done'
+        GROUP BY i.dateEpochDays,
+                 CASE WHEN i.taskId IS NOT NULL THEN 'task:' || i.taskId ELSE 'title:' || LOWER(TRIM(i.title)) END
+        """
+    )
+    suspend fun insertHabitDailyRollups()
+
+    /**
+     * Rebuilds all Reflect rollups from source tables in one set-based pass.
+     * Cheap enough to run as a whole; called once a day by [com.checkit.domain.usecase.RebuildReflectStatsUseCase].
+     */
+    @Transaction
+    suspend fun rebuildReflectStats(computedAtMillis: Long) {
+        clearDailyReflectStats()
+        clearDailyTagRollups()
+        clearHabitDailyRollups()
+        insertDailyReflectStatsFromItems(computedAtMillis)
+        insertDailyReflectStatsForJournalOnlyDays(computedAtMillis)
+        updateDailyReflectStatsJournalCounts()
+        insertDailyTagRollups()
+        insertHabitDailyRollups()
+    }
+
+    /** Slim projection of done items for highlights; avoids hydrating tags/labels. */
+    @Query(
+        """
+        SELECT id, dateEpochDays, title, note, source, startTimeMinutes, endTimeMinutes, completedAtMillis
+        FROM daily_plan_items
+        WHERE status = 'Done' AND dateEpochDays BETWEEN :startEpochDays AND :endEpochDays
+        ORDER BY completedAtMillis DESC
+        """
+    )
+    fun observeDoneItemSummaries(startEpochDays: Int, endEpochDays: Int): Flow<List<DoneItemSummaryEntity>>
+
+    @Query(
+        "SELECT * FROM journal_entries WHERE dateEpochDays BETWEEN :startEpochDays AND :endEpochDays ORDER BY createdTimeMinutes ASC"
+    )
+    fun observeJournalEntriesInRange(startEpochDays: Int, endEpochDays: Int): Flow<List<JournalEntryEntity>>
+
+    @RawQuery(observedEntities = [JournalEntryEntity::class, JournalEntryTagEntity::class])
+    fun observeJournalEntriesFiltered(query: RoomRawQuery): Flow<List<JournalEntryEntity>>
+
+    @Query("SELECT EXISTS(SELECT 1 FROM journal_entries WHERE dateEpochDays < :epochDays)")
+    fun observeJournalEntryExistsBefore(epochDays: Int): Flow<Boolean>
+
+    @Query("SELECT EXISTS(SELECT 1 FROM period_reviews WHERE periodType = 'Day' AND periodStartEpochDays < :epochDays)")
+    fun observeDayReviewExistsBefore(epochDays: Int): Flow<Boolean>
+
 
     @Query(
         "SELECT * FROM period_reviews WHERE periodType = :periodType AND periodStartEpochDays = :periodStartEpochDays LIMIT 1"

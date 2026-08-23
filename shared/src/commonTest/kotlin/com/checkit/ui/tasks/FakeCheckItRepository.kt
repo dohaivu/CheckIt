@@ -12,7 +12,11 @@ import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
+import com.checkit.domain.DailyReflectStat
+import com.checkit.domain.DailyTagRollup
 import com.checkit.domain.DayCloseCommitResult
+import com.checkit.domain.DoneItemSummary
+import com.checkit.domain.HabitDailyRollup
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.ListItem
 import com.checkit.domain.MetricRollupPolicy
@@ -36,6 +40,7 @@ import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.datetime.LocalDate
@@ -97,6 +102,61 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
             board
         }
     }
+
+    override fun observeTagUsageCounts(): Flow<Map<Long, Int>> = boardFlow.map { board ->
+        val counts = mutableMapOf<Long, Int>()
+        board.tasks.filter { !it.isTrashed }.forEach { task ->
+            task.tags.forEach { tag -> counts[tag.id] = (counts[tag.id] ?: 0) + 1 }
+        }
+        board.notes.filter { !it.isTrashed }.forEach { note ->
+            note.tags.forEach { tag -> counts[tag.id] = (counts[tag.id] ?: 0) + 1 }
+        }
+        dailyPlansFlow.value.forEach { plan ->
+            plan.items.forEach { item ->
+                item.tags.forEach { tag -> counts[tag.id] = (counts[tag.id] ?: 0) + 1 }
+            }
+        }
+        journalEntriesFlow.value.forEach { entry ->
+            entry.tags.forEach { tag -> counts[tag.id] = (counts[tag.id] ?: 0) + 1 }
+        }
+        counts
+    }
+
+    override fun observeTasksForDate(date: LocalDate): Flow<List<TaskItem>> = boardFlow.map { board ->
+        board.tasks.filter { it.doDate == date && !it.isTrashed && it.status != TaskStatus.Completed }
+    }
+
+    override fun observeWorkingTasks(date: LocalDate): Flow<List<TaskItem>> = boardFlow.map { board ->
+        board.tasks.filter { 
+            !it.isTrashed && (it.doDate == date || it.status == TaskStatus.Open || it.completedDate == date)
+        }
+    }
+
+    override fun observeNotesForDate(date: LocalDate): Flow<List<NoteItem>> = boardFlow.map { board ->
+        board.notes.filter { it.date == date && !it.isTrashed && it.status != TaskStatus.Completed }
+    }
+
+    override fun observeTasksInRange(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<TaskItem>> =
+        boardFlow.map { board ->
+            board.tasks.filter { task ->
+                !task.isTrashed && task.status != TaskStatus.Completed &&
+                    task.doDate?.let { it >= startDate && it <= endDateInclusive } == true
+            }
+        }
+
+    override fun observeNotesInRange(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<NoteItem>> =
+        boardFlow.map { board ->
+            board.notes.filter { note ->
+                !note.isTrashed && note.status != TaskStatus.Completed &&
+                    note.date?.let { it >= startDate && it <= endDateInclusive } == true
+            }
+        }
+
+    override suspend fun getTask(taskId: Long): TaskItem? = 
+        boardFlow.value.tasks.find { it.id == taskId }
+
+    override suspend fun getNote(noteId: Long): NoteItem? = 
+        boardFlow.value.notes.find { it.id == noteId }
 
     override fun observeDailyPlans(startDate: LocalDate?, endDate: LocalDate?): Flow<List<DailyPlan>> =
         dailyPlansFlow.map { plans ->
@@ -291,9 +351,9 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         }
     }
 
-    override suspend fun openTask(taskId: Long) {
+    override suspend fun updateTaskStatus(taskId: Long, status: TaskStatus) {
         boardFlow.update { board ->
-            board.copy(tasks = board.tasks.map { if (it.id == taskId) it.copy(status = TaskStatus.Open) else it })
+            board.copy(tasks = board.tasks.map { if (it.id == taskId) it.copy(status = status) else it })
         }
     }
 
@@ -436,6 +496,19 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
 
     override fun observePeriodReviews(): Flow<List<PeriodReview>> = periodReviewsFlow
 
+    override fun observePeriodReviewsInRange(
+        startDate: LocalDate?,
+        endDateInclusive: LocalDate?
+    ): Flow<List<PeriodReview>> =
+        periodReviewsFlow.map { reviews ->
+            reviews.filter { review ->
+                val start = startDate?.toEpochDays()?.toInt()
+                val end = endDateInclusive?.toEpochDays()?.toInt()
+                (start == null || review.periodStartEpochDays >= start) &&
+                    (end == null || review.periodStartEpochDays <= end)
+            }
+        }
+
     override suspend fun periodReviewFor(period: Period, date: LocalDate): PeriodReview? =
         periodReviewsFlow.value.find { it.period == period && it.periodStartEpochDays == date.toEpochDays().toInt() }
 
@@ -456,6 +529,150 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
             }
         }
     }
+
+    override fun observeDailyReflectStats(
+        startDate: LocalDate,
+        endDateInclusive: LocalDate
+    ): Flow<List<DailyReflectStat>> =
+        combine(dailyPlansFlow, journalEntriesFlow) { plans, journals ->
+            val itemsByDate = plans.groupBy({ it.date }) { plan -> plan.items }.mapValues { it.value.flatten() }
+            (itemsByDate.keys + journals.map { LocalDate.fromEpochDays(it.dateEpochDays) })
+                .distinct()
+                .filter { it in startDate..endDateInclusive }
+                .sorted()
+                .map { date ->
+                    val epoch = date.toEpochDays().toInt()
+                    val items = itemsByDate[date].orEmpty()
+                    DailyReflectStat(
+                        dateEpochDays = epoch,
+                        plannedItemCount = items.count { it.status == DailyPlanItemStatus.Planned && it.source.isActionableDigestSource() },
+                        doneItemCount = items.count { it.status == DailyPlanItemStatus.Done && it.source.isActionableDigestSource() },
+                        doneMinutes = items.filter { it.status == DailyPlanItemStatus.Done }.sumOf { it.workMinutes() },
+                        journalCount = journals.count { it.dateEpochDays == epoch }
+                    )
+                }
+        }
+
+    override fun observeDailyTagRollups(
+        startDate: LocalDate,
+        endDateInclusive: LocalDate
+    ): Flow<List<DailyTagRollup>> =
+        dailyPlansFlow.map { plans ->
+            plans.asSequence()
+                .filter { it.date in startDate..endDateInclusive }
+                .flatMap { plan ->
+                    plan.items.asSequence().flatMap { item ->
+                        item.tags.asSequence().map { Triple(plan.date, item, it) }
+                    }
+                }
+                .filter { (_, item, _) -> item.status == DailyPlanItemStatus.Done }
+                .groupBy({ (date, _, tag) -> date.toEpochDays().toInt() to tag.id })
+                .map { (_, rows) ->
+                    val tag = rows.first().third
+                    val items = rows.map { it.second }
+                    DailyTagRollup(
+                        dateEpochDays = rows.first().first.toEpochDays().toInt(),
+                        tagId = tag.id,
+                        tagName = tag.name,
+                        tagColor = tag.color,
+                        doneCount = items.size,
+                        doneMinutes = items.sumOf { it.workMinutes() }
+                    )
+                }
+                .toList()
+        }
+
+    override fun observeHabitDailyRollups(
+        startDate: LocalDate,
+        endDateInclusive: LocalDate
+    ): Flow<List<HabitDailyRollup>> =
+        dailyPlansFlow.map { plans ->
+            plans.asSequence()
+                .filter { it.date in startDate..endDateInclusive }
+                .flatMap { plan ->
+                    plan.items.asSequence()
+                        .filter { it.isHabit && it.status == DailyPlanItemStatus.Done }
+                        .map { HabitDailyRollup(
+                            dateEpochDays = plan.date.toEpochDays().toInt(),
+                            habitKey = habitKeyFor(it),
+                            title = it.title,
+                            doneMinutes = it.workMinutes()
+                        ) }
+                }
+                .toList()
+        }
+
+    override fun observeDoneItemSummaries(
+        startDate: LocalDate,
+        endDateInclusive: LocalDate
+    ): Flow<List<DoneItemSummary>> =
+        dailyPlansFlow.map { plans ->
+            plans.asSequence()
+                .filter { it.date in startDate..endDateInclusive }
+                .flatMap { it.items.asSequence() }
+                .filter { it.status == DailyPlanItemStatus.Done }
+                .sortedByDescending { it.completedAtMillis }
+                .map {
+                    DoneItemSummary(
+                        id = it.id,
+                        dateEpochDays = it.dateEpochDays,
+                        title = it.title,
+                        note = it.note,
+                        sourceName = it.source.name,
+                        startTimeMinutes = it.startTimeMinutes,
+                        endTimeMinutes = it.endTimeMinutes,
+                        completedAtMillis = it.completedAtMillis
+                    )
+                }
+                .toList()
+        }
+
+    override fun observeJournalEntriesInRange(
+        startDate: LocalDate,
+        endDateInclusive: LocalDate
+    ): Flow<List<JournalEntry>> =
+        journalEntriesFlow.map { entries ->
+            entries.filter { LocalDate.fromEpochDays(it.dateEpochDays) in startDate..endDateInclusive }
+        }
+
+    override fun observeJournalEntriesFiltered(
+        moodEmojis: List<String>,
+        searchText: String?,
+        tagId: Long?,
+        startDate: LocalDate?,
+        endDateInclusive: LocalDate?
+    ): Flow<List<JournalEntry>> =
+        journalEntriesFlow.map { entries ->
+            entries.filter { entry ->
+                val moodMatches = moodEmojis.isEmpty() || entry.moods.any { it in moodEmojis }
+                val searchMatches = searchText == null ||
+                    entry.content.contains(searchText, ignoreCase = true) ||
+                    (entry.label?.contains(searchText, ignoreCase = true) == true)
+                val tagMatches = tagId == null || entry.tags.any { it.id == tagId }
+                val startMatches = startDate == null || entry.dateEpochDays >= startDate.toEpochDays().toInt()
+                val endMatches = endDateInclusive == null ||
+                    entry.dateEpochDays <= endDateInclusive.toEpochDays().toInt()
+                moodMatches && searchMatches && tagMatches && startMatches && endMatches
+            }.sortedWith(
+                compareByDescending<JournalEntry> { it.dateEpochDays }.thenBy { it.createdTimeMinutes }
+            )
+        }
+
+    override fun observeOlderJournalHistoryExists(beforeDate: LocalDate): Flow<Boolean> {
+        val epochDays = beforeDate.toEpochDays().toInt()
+        val hasOlder = combine(
+            journalEntriesFlow,
+            periodReviewsFlow
+        ) { entries, reviews ->
+            entries.any { it.dateEpochDays < epochDays } ||
+                reviews.any {
+                    it.period == Period.Day && it.periodStartEpochDays < epochDays
+                }
+        }
+        return hasOlder
+    }
+
+    override suspend fun rebuildReflectStats() = Unit
 
     override suspend fun completeDayClose(
         date: LocalDate,
@@ -604,9 +821,9 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         }
     }
 
-    override suspend fun openNote(noteId: Long) {
+    override suspend fun updateNoteStatus(noteId: Long, status: TaskStatus) {
         boardFlow.update { board ->
-            board.copy(notes = board.notes.map { if (it.id == noteId) it.copy(status = TaskStatus.Open) else it })
+            board.copy(notes = board.notes.map { if (it.id == noteId) it.copy(status = status) else it })
         }
     }
 
@@ -714,3 +931,11 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
     override suspend fun moveNestedItems(moves: List<NestedItemMove>) {}
     override suspend fun deleteNestedItems(itemIds: List<Long>) {}
 }
+
+private fun DailyPlanItemSource.isActionableDigestSource(): Boolean =
+    this == DailyPlanItemSource.MyDayTask ||
+        this == DailyPlanItemSource.MyDayReminder ||
+        this == DailyPlanItemSource.ExistingTask
+
+private fun habitKeyFor(item: DailyPlanItem): String =
+    item.taskId?.let { "task:$it" } ?: "title:${item.title.trim().lowercase()}"

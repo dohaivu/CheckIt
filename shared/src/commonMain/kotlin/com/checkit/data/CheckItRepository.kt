@@ -1,5 +1,6 @@
 package com.checkit.data
 
+import androidx.room3.RoomRawQuery
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
@@ -9,6 +10,10 @@ import com.checkit.domain.PeriodReview
 import com.checkit.domain.Period
 import com.checkit.domain.ReviewSource
 import com.checkit.domain.ReviewStatus
+import com.checkit.domain.DailyReflectStat
+import com.checkit.domain.DailyTagRollup
+import com.checkit.domain.DoneItemSummary
+import com.checkit.domain.HabitDailyRollup
 import com.checkit.domain.DueDatePreset
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.ListItem
@@ -43,6 +48,7 @@ import com.checkit.notifications.TaskReminderNotificationScheduler
 import com.checkit.ui.tasks.views.currentTimeMinutes
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -51,6 +57,14 @@ import kotlin.time.Clock
 
 interface CheckItRepository {
     fun observeTaskBoard(onlyOpen: Boolean = true): Flow<TaskBoard>
+
+    /** Live per-tag usage counts (tasks, notes, daily plan items, journal entries), computed in the database. */
+    fun observeTagUsageCounts(): Flow<Map<Long, Int>>
+    fun observeTasksForDate(date: LocalDate): Flow<List<TaskItem>>
+    fun observeTasksInRange(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<TaskItem>>
+    fun observeWorkingTasks(date: LocalDate): Flow<List<TaskItem>>
+    fun observeNotesForDate(date: LocalDate): Flow<List<NoteItem>>
+    fun observeNotesInRange(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<NoteItem>>
     fun observeDailyPlans(startDate: LocalDate? = null, endDate: LocalDate? = null): Flow<List<DailyPlan>>
     fun observeJournalEntries(): Flow<List<JournalEntry>>
     suspend fun addJournalEntry(input: JournalEntryWriteInput): Long
@@ -69,7 +83,7 @@ interface CheckItRepository {
     suspend fun trashTask(taskId: Long)
     suspend fun restoreTask(taskId: Long)
     suspend fun completeTask(taskId: Long)
-    suspend fun openTask(taskId: Long)
+    suspend fun updateTaskStatus(taskId: Long, status: TaskStatus)
     suspend fun addTaskToDailyPlan(date: LocalDate, task: TaskItem): Long
     suspend fun addDailyPlanItem(
         date: LocalDate,
@@ -94,9 +108,28 @@ interface CheckItRepository {
     suspend fun deleteDailyPlanItem(itemId: Long)
     suspend fun getDailyPlanItem(itemId: Long): DailyPlanItem?
     suspend fun dailyPlanForDate(date: LocalDate): DailyPlan?
+    suspend fun getTask(taskId: Long): TaskItem?
+    suspend fun getNote(noteId: Long): NoteItem?
     fun observePeriodReviews(): Flow<List<PeriodReview>>
+    fun observePeriodReviewsInRange(startDate: LocalDate?, endDateInclusive: LocalDate?): Flow<List<PeriodReview>>
     suspend fun periodReviewFor(period: Period, date: LocalDate): PeriodReview?
     suspend fun savePeriodReview(review: PeriodReview)
+    fun observeDailyReflectStats(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<DailyReflectStat>>
+    fun observeDailyTagRollups(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<DailyTagRollup>>
+    fun observeHabitDailyRollups(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<HabitDailyRollup>>
+    fun observeDoneItemSummaries(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<DoneItemSummary>>
+    fun observeJournalEntriesInRange(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<JournalEntry>>
+    fun observeJournalEntriesFiltered(
+        moodEmojis: List<String>,
+        searchText: String?,
+        tagId: Long?,
+        startDate: LocalDate? = null,
+        endDateInclusive: LocalDate? = null
+    ): Flow<List<JournalEntry>>
+
+    /** Whether any journal entry or day review exists before [beforeDate] (browse-mode "load more" gate). */
+    fun observeOlderJournalHistoryExists(beforeDate: LocalDate): Flow<Boolean>
+    suspend fun rebuildReflectStats()
     suspend fun completeDayClose(
         date: LocalDate,
         markDoneItemIds: List<Long>,
@@ -115,7 +148,7 @@ interface CheckItRepository {
     suspend fun addNote(input: NoteWriteInput): Long
     suspend fun updateNote(noteId: Long, input: NoteWriteInput)
     suspend fun completeNote(noteId: Long)
-    suspend fun openNote(noteId: Long)
+    suspend fun updateNoteStatus(noteId: Long, status: TaskStatus)
     suspend fun trashNote(noteId: Long)
     suspend fun restoreNote(noteId: Long)
     suspend fun moveTask(taskId: Long, listId: Long, sectionId: Long?, sortOrder: Int, isPinned: Boolean)
@@ -232,10 +265,55 @@ class RoomCheckItRepository(
     private val taskItemCache = mutableMapOf<Long, TaskItem>()
     private val noteItemCache = mutableMapOf<Long, NoteItem>()
 
+    override fun observeTagUsageCounts(): Flow<Map<Long, Int>> =
+        dao.observeTagUsageCounts().map { rows -> rows.associate { it.tagId to it.usageCount } }
+
     override fun observeTaskBoard(onlyOpen: Boolean): Flow<TaskBoard> {
         val tasksFlow = if (onlyOpen) dao.observeTasksOpen() else dao.observeTasksAll()
         val notesFlow = if (onlyOpen) dao.observeNotesOpen() else dao.observeNotesAll()
+        return observeTaskBoardInternal(tasksFlow, notesFlow)
+    }
 
+    override fun observeTasksForDate(date: LocalDate): Flow<List<TaskItem>> =
+        observeTaskBoardInternal(
+            tasksFlow = dao.observeTasksForDate(date.toEpochDays().toInt()),
+            notesFlow = kotlinx.coroutines.flow.flowOf(emptyList())
+        ).map { it.tasks }
+
+    override fun observeWorkingTasks(date: LocalDate): Flow<List<TaskItem>> =
+        observeTaskBoardInternal(
+            tasksFlow = dao.observeWorkingTasks(date.toEpochDays().toInt()),
+            notesFlow = kotlinx.coroutines.flow.flowOf(emptyList())
+        ).map { it.tasks }
+
+    override fun observeNotesForDate(date: LocalDate): Flow<List<NoteItem>> =
+        observeTaskBoardInternal(
+            tasksFlow = kotlinx.coroutines.flow.flowOf(emptyList()),
+            notesFlow = dao.observeNotesForDate(date.toEpochDays().toInt())
+        ).map { it.notes }
+
+    override fun observeTasksInRange(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<TaskItem>> =
+        observeTaskBoardInternal(
+            tasksFlow = dao.observeTasksForDateRange(
+                startDate.toEpochDays().toInt(),
+                endDateInclusive.toEpochDays().toInt()
+            ),
+            notesFlow = kotlinx.coroutines.flow.flowOf(emptyList())
+        ).map { it.tasks }
+
+    override fun observeNotesInRange(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<NoteItem>> =
+        observeTaskBoardInternal(
+            tasksFlow = kotlinx.coroutines.flow.flowOf(emptyList()),
+            notesFlow = dao.observeNotesForDateRange(
+                startDate.toEpochDays().toInt(),
+                endDateInclusive.toEpochDays().toInt()
+            )
+        ).map { it.notes }
+
+    private fun observeTaskBoardInternal(
+        tasksFlow: Flow<List<TaskEntity>>,
+        notesFlow: Flow<List<NoteEntity>>
+    ): Flow<TaskBoard> {
         val rowsFlow = combine(
             dao.observeFilters(),
             tasksFlow,
@@ -563,17 +641,27 @@ class RoomCheckItRepository(
             label = input.label,
             updatedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
-        dao.deleteTaskList(taskId)
-        input.listId?.let { listId ->
-            dao.insertTaskList(
-                TaskListEntity(
-                    taskId = taskId,
-                    listId = listId,
-                    isPinned = input.isPinned,
-                    sortOrder = dao.nextTaskSortOrder(listId),
-                    sectionId = input.sectionId
+        val existingTaskListJoin = dao.taskListByTaskId(taskId)
+        if (existingTaskListJoin?.listId != input.listId) {
+            // List membership changed: re-insert at the end of the target list.
+            dao.deleteTaskList(taskId)
+            input.listId?.let { listId ->
+                dao.insertTaskList(
+                    TaskListEntity(
+                        taskId = taskId,
+                        listId = listId,
+                        isPinned = input.isPinned,
+                        sortOrder = dao.nextTaskSortOrder(listId),
+                        sectionId = input.sectionId
+                    )
                 )
-            )
+            }
+        } else if (existingTaskListJoin != null) {
+            // Same list: keep the task's position, only sync pin/section.
+            val updated = existingTaskListJoin.copy(isPinned = input.isPinned, sectionId = input.sectionId)
+            if (updated != existingTaskListJoin) {
+                dao.insertTaskList(updated)
+            }
         }
         dao.deleteTaskTags(taskId)
         input.tagIds.forEach { tagId -> addTaskTag(taskId, tagId) }
@@ -615,11 +703,11 @@ class RoomCheckItRepository(
         dailyPlanScheduleReminderScheduler.rescheduleNext()
     }
 
-    override suspend fun openTask(taskId: Long) {
+    override suspend fun updateTaskStatus(taskId: Long, status: TaskStatus) {
         val now = Clock.System.now().toEpochMilliseconds()
-        dao.updateTaskStatusOpen(
+        dao.updateTaskStatus(
             taskId = taskId,
-            status = TaskStatus.Open.name,
+            status = status.name,
             updatedAtMillis = now
         )
     }
@@ -822,6 +910,50 @@ class RoomCheckItRepository(
         return item.toDomain(tags)
     }
 
+    override suspend fun getTask(taskId: Long): TaskItem? {
+        val entity = dao.taskById(taskId) ?: return null
+        val listJoin = dao.taskListByTaskId(taskId)
+        val list = listJoin?.listId?.let { listId ->
+            val listEntity = dao.listById(listId) ?: return@let null
+            val sections = dao.observeSectionsForList(listId).first()
+            listEntity.toDomain(sections.map { it.toDomain() })
+        }
+        val subtasks = dao.subTasksForTask(taskId).map { it.toDomain() }
+        val reminders = dao.remindersForTask(taskId).map { it.toDomain() }
+        val tagIds = dao.tagIdsForTask(taskId)
+        val tags = if (tagIds.isNotEmpty()) dao.tagsByIds(tagIds).map { it.toDomain() } else emptyList()
+
+        return entity.toDomain(
+            list = list,
+            subtasks = subtasks,
+            reminders = reminders,
+            tags = tags,
+            listSortOrder = listJoin?.sortOrder ?: 0,
+            isPinned = listJoin?.isPinned ?: false,
+            sectionId = listJoin?.sectionId
+        )
+    }
+
+    override suspend fun getNote(noteId: Long): NoteItem? {
+        val entity = dao.noteById(noteId) ?: return null
+        val listJoin = dao.noteListByNoteId(noteId)
+        val list = listJoin?.listId?.let { listId ->
+            val listEntity = dao.listById(listId) ?: return@let null
+            val sections = dao.observeSectionsForList(listId).first()
+            listEntity.toDomain(sections.map { it.toDomain() })
+        }
+        val tagIds = dao.tagIdsForNote(noteId)
+        val tags = if (tagIds.isNotEmpty()) dao.tagsByIds(tagIds).map { it.toDomain() } else emptyList()
+
+        return entity.toDomain(
+            list = list,
+            tags = tags,
+            listSortOrder = listJoin?.sortOrder ?: 0,
+            isPinned = listJoin?.isPinned ?: false,
+            sectionId = listJoin?.sectionId
+        )
+    }
+
     override suspend fun dailyPlanForDate(date: LocalDate): DailyPlan? {
         val items = dao.dailyPlanItemsForDate(date.toEpochDays().toInt())
             .map { item ->
@@ -882,6 +1014,15 @@ class RoomCheckItRepository(
     override fun observePeriodReviews(): Flow<List<PeriodReview>> =
         dao.observePeriodReviews().map { entities -> entities.map { it.toDomain() } }
 
+    override fun observePeriodReviewsInRange(
+        startDate: LocalDate?,
+        endDateInclusive: LocalDate?
+    ): Flow<List<PeriodReview>> =
+        dao.observePeriodReviewsBetween(
+            startDate?.toEpochDays()?.toInt(),
+            endDateInclusive?.toEpochDays()?.toInt()
+        ).map { entities -> entities.map { it.toDomain() } }
+
     override suspend fun periodReviewFor(period: Period, date: LocalDate): PeriodReview? =
         dao.periodReviewFor(period.name, date.toEpochDays().toInt())?.toDomain()
 
@@ -893,16 +1034,177 @@ class RoomCheckItRepository(
                 periodStartEpochDays = review.periodStartEpochDays,
                 periodEndEpochDays = review.periodEndEpochDays,
                 content = review.content,
-                highlightsJson = review.highlightsJson,
                 intentNext = review.intentNext,
                 source = review.source.name,
                 status = review.status.name,
                 completedAtMillis = review.completedAtMillis,
                 generatedAtMillis = review.generatedAtMillis,
-                editedAtMillis = review.editedAtMillis,
-                statsJson = review.statsJson
+                editedAtMillis = review.editedAtMillis
             )
         )
+    }
+
+    override fun observeDailyReflectStats(
+        startDate: LocalDate,
+        endDateInclusive: LocalDate
+    ): Flow<List<DailyReflectStat>> {
+        val startEpochDays = startDate.toEpochDays().toInt()
+        val endEpochDays = endDateInclusive.toEpochDays().toInt()
+        return combine(
+            dao.observeDailyReflectStats(startEpochDays, endEpochDays),
+            dao.observeDailyTagRollups(startEpochDays, endEpochDays)
+        ) { stats, rollups ->
+            val rollupsByDate = rollups.groupBy { it.dateEpochDays }
+            stats.map { entity ->
+                entity.toDomain(
+                    tagRollups = rollupsByDate[entity.dateEpochDays]
+                        .orEmpty()
+                        .map { it.toDomain() }
+                )
+            }
+        }
+    }
+
+    override fun observeDailyTagRollups(
+        startDate: LocalDate,
+        endDateInclusive: LocalDate
+    ): Flow<List<DailyTagRollup>> =
+        dao.observeDailyTagRollups(startDate.toEpochDays().toInt(), endDateInclusive.toEpochDays().toInt())
+            .map { rows -> rows.map { it.toDomain() } }
+
+    override fun observeHabitDailyRollups(
+        startDate: LocalDate,
+        endDateInclusive: LocalDate
+    ): Flow<List<HabitDailyRollup>> =
+        dao.observeHabitDailyRollups(startDate.toEpochDays().toInt(), endDateInclusive.toEpochDays().toInt())
+            .map { entities ->
+                entities.map {
+                    HabitDailyRollup(
+                        dateEpochDays = it.dateEpochDays,
+                        habitKey = it.habitKey,
+                        title = it.title,
+                        doneMinutes = it.doneMinutes
+                    )
+                }
+            }
+
+    override fun observeDoneItemSummaries(
+        startDate: LocalDate,
+        endDateInclusive: LocalDate
+    ): Flow<List<DoneItemSummary>> =
+        dao.observeDoneItemSummaries(startDate.toEpochDays().toInt(), endDateInclusive.toEpochDays().toInt())
+            .map { entities ->
+                entities.map {
+                    DoneItemSummary(
+                        id = it.id,
+                        dateEpochDays = it.dateEpochDays,
+                        title = it.title,
+                        note = it.note,
+                        sourceName = it.source,
+                        startTimeMinutes = it.startTimeMinutes,
+                        endTimeMinutes = it.endTimeMinutes,
+                        completedAtMillis = it.completedAtMillis
+                    )
+                }
+            }
+
+    override fun observeJournalEntriesInRange(
+        startDate: LocalDate,
+        endDateInclusive: LocalDate
+    ): Flow<List<JournalEntry>> =
+        combine(
+            dao.observeJournalEntriesInRange(startDate.toEpochDays().toInt(), endDateInclusive.toEpochDays().toInt()),
+            dao.observeJournalEntryTags(),
+            dao.observeTags()
+        ) { entries, entryTags, tags ->
+            val domainTags = tags.map { it.toDomain() }
+            val tagsById = domainTags.associateBy { it.id }
+            val entryTagIds = entryTags.groupBy { it.entryId }.mapValues { it.value.map { t -> t.tagId } }
+            entries.map { entry ->
+                entry.toDomain(entryTagIds[entry.id].orEmpty().mapNotNull { tagsById[it] })
+            }
+        }
+
+    override fun observeJournalEntriesFiltered(
+        moodEmojis: List<String>,
+        searchText: String?,
+        tagId: Long?,
+        startDate: LocalDate?,
+        endDateInclusive: LocalDate?
+    ): Flow<List<JournalEntry>> {
+        val conditions = mutableListOf<String>()
+        val args = mutableListOf<Any>()
+
+        if (moodEmojis.isNotEmpty()) {
+            conditions.add(
+                moodEmojis.joinToString(separator = " OR ", prefix = "(", postfix = ")") {
+                    args.add("%$it%")
+                    "moods LIKE ?"
+                }
+            )
+        }
+        if (!searchText.isNullOrBlank()) {
+            args.add("%$searchText%")
+            args.add("%$searchText%")
+            conditions.add("(content LIKE ? OR label LIKE ?)")
+        }
+        if (tagId != null) {
+            args.add(tagId)
+            conditions.add(
+                "EXISTS(SELECT 1 FROM journal_entry_tags AS jt WHERE jt.entryId = journal_entries.id AND jt.tagId = ?)"
+            )
+        }
+        if (startDate != null) {
+            args.add(startDate.toEpochDays().toInt())
+            conditions.add("dateEpochDays >= ?")
+        }
+        if (endDateInclusive != null) {
+            args.add(endDateInclusive.toEpochDays().toInt())
+            conditions.add("dateEpochDays <= ?")
+        }
+
+        val sql = buildString {
+            append("SELECT * FROM journal_entries")
+            if (conditions.isNotEmpty()) {
+                append(" WHERE ")
+                append(conditions.joinToString(separator = " AND "))
+            }
+            append(" ORDER BY dateEpochDays DESC, createdTimeMinutes ASC")
+        }
+        val query = RoomRawQuery(sql) { statement ->
+            args.forEachIndexed { index, arg ->
+                when (arg) {
+                    is String -> statement.bindText(index + 1, arg)
+                    is Long -> statement.bindLong(index + 1, arg)
+                    is Int -> statement.bindLong(index + 1, arg.toLong())
+                }
+            }
+        }
+
+        return combine(
+            dao.observeJournalEntriesFiltered(query),
+            dao.observeJournalEntryTags(),
+            dao.observeTags()
+        ) { entries, entryTags, tags ->
+            val domainTags = tags.map { it.toDomain() }
+            val tagsById = domainTags.associateBy { it.id }
+            val entryTagIds = entryTags.groupBy { it.entryId }.mapValues { it.value.map { t -> t.tagId } }
+            entries.map { entry ->
+                entry.toDomain(entryTagIds[entry.id].orEmpty().mapNotNull { tagsById[it] })
+            }
+        }
+    }
+
+    override fun observeOlderJournalHistoryExists(beforeDate: LocalDate): Flow<Boolean> {
+        val epochDays = beforeDate.toEpochDays().toInt()
+        return combine(
+            dao.observeJournalEntryExistsBefore(epochDays),
+            dao.observeDayReviewExistsBefore(epochDays)
+        ) { hasEntries, hasReviews -> hasEntries || hasReviews }
+    }
+
+    override suspend fun rebuildReflectStats() {
+        dao.rebuildReflectStats(computedAtMillis = Clock.System.now().toEpochMilliseconds())
     }
 
     override suspend fun completeDayClose(
@@ -978,17 +1280,27 @@ class RoomCheckItRepository(
             label = input.label,
             editedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
-        dao.deleteNoteList(noteId)
-        input.listId?.let { listId ->
-            dao.insertNoteList(
-                NoteListEntity(
-                    noteId = noteId,
-                    listId = listId,
-                    isPinned = input.isPinned,
-                    sortOrder = dao.nextNoteSortOrder(listId),
-                    sectionId = input.sectionId
+        val existingNoteListJoin = dao.noteListByNoteId(noteId)
+        if (existingNoteListJoin?.listId != input.listId) {
+            // List membership changed: re-insert at the end of the target list.
+            dao.deleteNoteList(noteId)
+            input.listId?.let { listId ->
+                dao.insertNoteList(
+                    NoteListEntity(
+                        noteId = noteId,
+                        listId = listId,
+                        isPinned = input.isPinned,
+                        sortOrder = dao.nextNoteSortOrder(listId),
+                        sectionId = input.sectionId
+                    )
                 )
-            )
+            }
+        } else if (existingNoteListJoin != null) {
+            // Same list: keep the note's position, only sync pin/section.
+            val updated = existingNoteListJoin.copy(isPinned = input.isPinned, sectionId = input.sectionId)
+            if (updated != existingNoteListJoin) {
+                dao.insertNoteList(updated)
+            }
         }
         dao.deleteNoteTags(noteId)
         input.tagIds.forEach { tagId -> addNoteTag(noteId, tagId) }
@@ -1239,10 +1551,10 @@ class RoomCheckItRepository(
         )
     }
 
-    override suspend fun openNote(noteId: Long) {
+    override suspend fun updateNoteStatus(noteId: Long, status: TaskStatus) {
         dao.updateNoteStatus(
             noteId = noteId,
-            status = TaskStatus.Open.name,
+            status = status.name,
             editedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
     }
@@ -1392,14 +1704,30 @@ private fun PeriodReviewEntity.toDomain() = PeriodReview(
     periodStartEpochDays = periodStartEpochDays,
     periodEndEpochDays = periodEndEpochDays,
     content = content,
-    highlightsJson = highlightsJson,
     intentNext = intentNext,
     source = ReviewSource.valueOf(source),
     status = ReviewStatus.valueOf(status),
     completedAtMillis = completedAtMillis,
     generatedAtMillis = generatedAtMillis,
-    editedAtMillis = editedAtMillis,
-    statsJson = statsJson
+    editedAtMillis = editedAtMillis
+)
+
+private fun DailyReflectStatsEntity.toDomain(tagRollups: List<DailyTagRollup> = emptyList()) = DailyReflectStat(
+    dateEpochDays = dateEpochDays,
+    plannedItemCount = plannedItemCount,
+    doneItemCount = doneItemCount,
+    doneMinutes = doneMinutes,
+    journalCount = journalCount,
+    tagRollups = tagRollups
+)
+
+private fun DailyTagRollupWithMeta.toDomain() = DailyTagRollup(
+    dateEpochDays = dateEpochDays,
+    tagId = tagId,
+    tagName = tagName,
+    tagColor = tagColor,
+    doneCount = doneCount,
+    doneMinutes = doneMinutes
 )
 
 private fun JournalEntryEntity.toDomain(tags: List<TagItem> = emptyList()) = JournalEntry(

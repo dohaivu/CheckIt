@@ -21,8 +21,10 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -32,12 +34,15 @@ import androidx.navigation3.ui.NavDisplay
 import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
+import com.checkit.data.SettingsRepository
 import com.checkit.domain.usecase.AutoAddTodayTasksToMyDayUseCase
+import com.checkit.domain.usecase.RebuildReflectStatsUseCase
 import com.checkit.ui.calendar.CalendarScreen
 import com.checkit.ui.components.LocalSnackbarHostState
 import com.checkit.ui.localization.AppLocaleProvider
 import com.checkit.ui.myday.DailyPlanItemEditorSheet
 import com.checkit.ui.journal.JournalEntryEditorSheet
+import com.checkit.ui.journal.JournalHistorySheet
 import com.checkit.ui.journal.JournalListSheet
 import com.checkit.ui.myday.MyDayScreen
 import com.checkit.ui.nested.NestedListScreen
@@ -53,6 +58,7 @@ import com.checkit.ui.tasks.tag.TagEditorSheet
 import com.checkit.ui.tasks.tag.TagScreen
 import com.checkit.ui.theme.AppTheme
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
@@ -62,6 +68,8 @@ import org.koin.compose.koinInject
 fun CheckItApp(
     viewModels: CheckItViewModels = koinCheckItViewModels(),
     autoAddTodayTasksToMyDayUseCase: AutoAddTodayTasksToMyDayUseCase = koinInject(),
+    rebuildReflectStatsUseCase: RebuildReflectStatsUseCase = koinInject(),
+    settingsRepository: SettingsRepository = koinInject(),
     dailyPlanItemLaunchId: Long? = null,
     taskLaunchId: Long? = null,
     noteLaunchId: Long? = null,
@@ -111,23 +119,35 @@ fun CheckItApp(
     val calendarUiState by viewModels.calendar.uiState.collectAsState()
     val nestedUiState by viewModels.nested.uiState.collectAsState()
     val reflectEditorState by viewModels.reflect.editor.collectAsState()
+    val journalHistoryUiState by viewModels.journalHistory.uiState.collectAsState()
+    var showJournalHistory by remember { mutableStateOf(false) }
+
     val lifecycleOwner = LocalLifecycleOwner.current
     val appScope = rememberCoroutineScope()
 
-    fun runAutoAddTodayTasksToMyDay() {
+    fun runAutoTodayTasks() {
         appScope.launch {
-            runCatching { autoAddTodayTasksToMyDayUseCase() }
+            runCatching {
+                // Once-a-day gate shared by both maintenance tasks.
+                val todayEpochDay = today().toEpochDays().toInt()
+                if (settingsRepository.settings.first().autoMyDayLastRunEpochDay == todayEpochDay) {
+                    return@runCatching
+                }
+                autoAddTodayTasksToMyDayUseCase()
+                rebuildReflectStatsUseCase()
+                settingsRepository.setAutoMyDayLastRunEpochDay(todayEpochDay)
+            }
         }
     }
 
     LaunchedEffect(Unit) {
-        runAutoAddTodayTasksToMyDay()
+        runAutoTodayTasks()
     }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                runAutoAddTodayTasksToMyDay()
+                runAutoTodayTasks()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -276,11 +296,12 @@ fun CheckItApp(
                                     AppRoute.Calendar -> {
                                         CalendarScreen(
                                             state = calendarUiState,
+                                            board = taskUiState.board,
                                             calendarViewModel = viewModels.calendar,
                                             onDateDoubleClick = { date -> viewModels.task.openNewTaskOnDate(date) },
                                             onDailyPlanItemClick = viewModels.myDay::openItemEditor,
-                                            onJournalEntryClick = viewModels.myDay::openJournalEditor,
-                                            onJournalListClick = viewModels.myDay::openJournalList,
+                                            onOpenJournalDay = viewModels.myDay::openJournalList,
+                                            onOpenJournalHistory = { showJournalHistory = true },
                                             onAddDailyPlanItem = { date -> viewModels.myDay.openDailyPlan(date = date) },
                                             onTaskClick = viewModels.task::openTask,
                                             onNoteClick = viewModels.task::openNote,
@@ -348,7 +369,7 @@ fun CheckItApp(
                                 onDelete = viewModels.task::deleteEditorItem,
                                 onRestore = viewModels.task::restoreCurrentItem,
                                 onComplete = viewModels.task::completeCurrentItem,
-                                onOpen = viewModels.task::openCurrentItem,
+                                onReopen = viewModels.task::reopenCurrentItem,
                                 onAddToMyDay = {
                                     val taskId = (editor as? TaskEditorState.TaskForm)?.taskId
                                     val task = taskUiState.board.tasks.firstOrNull { it.id == taskId }
@@ -401,7 +422,7 @@ fun CheckItApp(
                     myDayUiState.itemEditor?.let { editor ->
                         DailyPlanItemEditorSheet(
                             state = editor,
-                            availableTags = myDayUiState.board.tags,
+                            availableTags = myDayUiState.tags,
                             recentLabels = myDayUiState.recentLabels,
                             onDismiss = viewModels.myDay::dismissDailyPlanEditor,
                             onTitleChange = viewModels.myDay::updateTitle,
@@ -422,7 +443,7 @@ fun CheckItApp(
                     myDayUiState.journalEditor?.let { editor ->
                         JournalEntryEditorSheet(
                             state = editor,
-                            availableTags = myDayUiState.board.tags,
+                            availableTags = myDayUiState.tags,
                             onDismiss = viewModels.myDay::dismissJournalEditor,
                             onLabelChange = viewModels.myDay::updateJournalEditorLabel,
                             onContentChange = viewModels.myDay::updateJournalEditorContent,
@@ -444,6 +465,25 @@ fun CheckItApp(
                             onDismiss = viewModels.myDay::dismissJournalList
                         )
                     }
+                    if (showJournalHistory) {
+                        JournalHistorySheet(
+                            state = journalHistoryUiState,
+                            onMoodToggle = viewModels.journalHistory::toggleMood,
+                            onSearchTextChange = viewModels.journalHistory::updateSearchText,
+                            onTagToggle = viewModels.journalHistory::toggleTag,
+                            onEntryClick = { entry ->
+                                showJournalHistory = false
+                                viewModels.myDay.openJournalEditor(entry)
+                            },
+                            onReviewClick = { review ->
+                                showJournalHistory = false
+                                viewModels.reflect.focusDay(review.periodStartDate)
+                                navState.resetTo(AppRoute.Reflect)
+                            },
+                            onLoadMore = viewModels.journalHistory::loadOlder,
+                            onDismiss = { showJournalHistory = false }
+                        )
+                    }
                     tagUiState.editor?.let { tagEditor ->
                         TagEditorSheet(
                             editor = tagEditor,
@@ -459,7 +499,6 @@ fun CheckItApp(
                             editor = editor,
                             onContentChange = viewModels.reflect::updateEditorContent,
                             onIntentNextChange = viewModels.reflect::updateEditorIntentNext,
-                            onGenerateDraft = viewModels.reflect::generateDraft,
                             onSave = viewModels.reflect::saveEditor,
                             onDismiss = viewModels.reflect::dismissEditor
                         )

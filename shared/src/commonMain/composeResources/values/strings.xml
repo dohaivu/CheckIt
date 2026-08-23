@@ -95,7 +95,6 @@
     <string name="reflect_stats_done">%1$d done</string>
     <string name="reflect_stats_minutes">%1$d min</string>
     <string name="reflect_stats_entries">%1$d check-ins</string>
-    <string name="journal_agenda_review_card_title">Review · day %1$d</string>
 
     <string name="settings_title">Settings</string>
     <string name="version">Version %1$s</string>

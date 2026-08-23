@@ -11,7 +11,6 @@ import com.checkit.domain.ReviewSource
 import com.checkit.domain.ReviewStatus
 import com.checkit.domain.TagItem
 import com.checkit.domain.endExclusive
-import com.checkit.domain.usecase.BuildPeriodReviewDraftUseCase
 import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
 import com.checkit.domain.usecase.SavePeriodReviewUseCase
 import com.checkit.ui.UiEvent
@@ -63,7 +62,7 @@ class ReflectViewModelTest {
             repository = repository,
             observePeriodReviews = ObservePeriodReviewsUseCase(repository),
             savePeriodReview = SavePeriodReviewUseCase(repository),
-            buildDraft = BuildPeriodReviewDraftUseCase()
+            dataDispatcher = dispatcher
         )
 
     @Test
@@ -161,128 +160,6 @@ class ReflectViewModelTest {
     }
 
     @Test
-    fun generateDraftOpensEditorWithDraftContent() = runTest(dispatcher) {
-        val weekStart = today().minus(today().dayOfWeek.ordinal, DateTimeUnit.DAY)
-        repository.setDailyPlans(
-            listOf(
-                DailyPlan(
-                    date = weekStart,
-                    items = listOf(
-                        item(
-                            id = 1L,
-                            title = "Deep work",
-                            status = DailyPlanItemStatus.Done,
-                            startTimeMinutes = 9 * 60,
-                            endTimeMinutes = 10 * 60,
-                            tags = listOf(TagItem(id = 1L, name = "Work", color = "#2563EB"))
-                        ),
-                        item(
-                            id = 2L,
-                            title = "Shipped PR",
-                            status = DailyPlanItemStatus.Done,
-                            startTimeMinutes = 14 * 60,
-                            endTimeMinutes = 15 * 60
-                        )
-                    )
-                )
-            )
-        )
-        advanceUntilIdle()
-
-        viewModel.generateDraft()
-        advanceUntilIdle()
-
-        val editor = assertNotNull(viewModel.editor.value)
-        assertEquals(ReviewSource.Manual, editor.source)
-        assertTrue(editor.content.contains("2 items"))
-        assertTrue(editor.content.contains("Work"))
-        assertNotNull(editor.statsJson)
-        assertNotNull(editor.highlightsJson)
-    }
-
-    @Test
-    fun generateDraftWithoutActivityOpensEmptyManualEditor() = runTest(dispatcher) {
-        viewModel.generateDraft()
-        advanceUntilIdle()
-
-        val editor = assertNotNull(viewModel.editor.value)
-        assertEquals(ReviewSource.Manual, editor.source)
-        assertEquals("", editor.content)
-    }
-
-    @Test
-    fun generateDraftSeedsFromHighestLevelReviewCoveringFocus() = runTest(dispatcher) {
-        val yearStart = LocalDate(today().year, 1, 1)
-        repository.savePeriodReview(
-            review(
-                period = Period.Year,
-                start = yearStart,
-                content = "Annual context"
-            )
-        )
-        val weekStart = today().minus(today().dayOfWeek.ordinal, DateTimeUnit.DAY)
-        repository.setDailyPlans(
-            listOf(
-                DailyPlan(
-                    date = weekStart,
-                    items = listOf(
-                        item(
-                            id = 1L,
-                            title = "Deep work",
-                            status = DailyPlanItemStatus.Done,
-                            startTimeMinutes = 9 * 60,
-                            endTimeMinutes = 10 * 60
-                        )
-                    )
-                )
-            )
-        )
-        advanceUntilIdle()
-
-        viewModel.generateDraft()
-        advanceUntilIdle()
-
-        val editor = assertNotNull(viewModel.editor.value)
-        assertEquals(ReviewSource.Manual, editor.source)
-        assertTrue(editor.content.startsWith("Annual context"))
-    }
-
-    @Test
-    fun savingGeneratedDraftPersistsAutoSourceAndStats() = runTest(dispatcher) {
-        val weekStart = today().minus(today().dayOfWeek.ordinal, DateTimeUnit.DAY)
-        repository.setDailyPlans(
-            listOf(
-                DailyPlan(
-                    date = weekStart,
-                    items = listOf(
-                        item(
-                            id = 1L,
-                            title = "Deep work",
-                            status = DailyPlanItemStatus.Done,
-                            startTimeMinutes = 9 * 60,
-                            endTimeMinutes = 10 * 60
-                        )
-                    )
-                )
-            )
-        )
-        advanceUntilIdle()
-
-        viewModel.generateDraft()
-        advanceUntilIdle()
-        viewModel.updateEditorIntentNext("Keep shipping")
-        viewModel.saveEditor()
-        advanceUntilIdle()
-
-        val saved = repository.observePeriodReviews().first().single()
-        assertEquals(ReviewSource.Manual, saved.source)
-        assertEquals("Keep shipping", saved.intentNext)
-        assertNotNull(saved.statsJson)
-        assertNotNull(saved.highlightsJson)
-        assertNull(saved.generatedAtMillis)
-    }
-
-    @Test
     fun zoomInAndZoomOutNavigateLevels() {
         assertEquals(ReportPeriod.Week, viewModel.uiState.value.selectedPeriod)
         viewModel.zoomIn()
@@ -357,6 +234,7 @@ class ReflectViewModelTest {
         advanceUntilIdle()
 
         viewModel.selectPeriod(ReportPeriod.Month)
+        advanceUntilIdle()
         val dates = viewModel.uiState.value.reviewsForSelectedPeriod.map { it.periodStartDate }
         assertEquals(listOf(inside), dates)
     }

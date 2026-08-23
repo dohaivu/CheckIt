@@ -21,12 +21,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -57,8 +54,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -68,28 +67,24 @@ import checkit.shared.generated.resources.calendar_open_review
 import checkit.shared.generated.resources.calendar_title
 import checkit.shared.generated.resources.relative_today
 import checkit.shared.generated.resources.relative_yesterday
-import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
-import com.checkit.domain.usecase.BuildDailyPlanMarkdownSummaryUseCase
-import com.checkit.ui.components.MarkdownView
+import com.checkit.domain.TagItem
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.components.parseMarkdownToAnnotatedString
 import com.checkit.ui.firstDayOfMonth
 import com.checkit.ui.isSameMonth
-import com.checkit.ui.journal.JournalHistorySheet
 import com.checkit.ui.localizedMonthTitle
 import com.checkit.ui.localizedShortMonthName
 import com.checkit.ui.localizedWeekdayName
 import com.checkit.ui.myday.DayLinearTimeline
 import com.checkit.ui.myday.MyDayAgenda
 import com.checkit.ui.shortName
-import com.checkit.ui.tasks.TaskAgendaView
 import com.checkit.ui.tasks.toDurationLabel
 import com.checkit.ui.tasks.views.ContentContainerAlpha
 import com.checkit.ui.today
@@ -104,13 +99,14 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 internal fun CalendarScreen(
     state: CalendarUiState,
+    board: TaskBoard,
     calendarViewModel: CalendarViewModel,
     onDateDoubleClick: (LocalDate) -> Unit,
     onDailyPlanItemClick: (DailyPlanItem, LocalDate) -> Unit,
-    onJournalEntryClick: (JournalEntry) -> Unit,
-    onJournalListClick: (LocalDate) -> Unit,
+    onOpenJournalDay: (LocalDate) -> Unit,
+    onOpenJournalHistory: () -> Unit,
     onAddDailyPlanItem: (LocalDate) -> Unit,
-    onTaskClick: (TaskItem, DailyPlanItem?) -> Unit,
+    onTaskClick: (Long, DailyPlanItem?) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
     onNewTagClick: () -> Unit = {},
     onOpenReflect: (LocalDate) -> Unit = {},
@@ -118,7 +114,6 @@ internal fun CalendarScreen(
 ) {
     val today = today()
     val selectedContent = remember(state, today) { state.selectedDateContent(today) }
-    var showJournalHistory by remember { mutableStateOf(false) }
 
     val handleDateDoubleClick: (LocalDate) -> Unit = { date ->
         calendarViewModel.selectDate(date)
@@ -138,11 +133,11 @@ internal fun CalendarScreen(
                     Text(stringResource(Res.string.calendar_title), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
                 },
                 actions = {
-                    IconButton(onClick = { showJournalHistory = true }) {
+                    IconButton(onClick = onOpenJournalHistory) {
                         Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = "Journal history")
                     }
                     TagOptionMenu(
-                        availableTags = state.board.tags,
+                        availableTags = board.tags,
                         selectedTagIds = state.selectedTagIds,
                         onTagToggle = calendarViewModel::toggleTagFilter,
                         onNewTagClick = onNewTagClick
@@ -190,14 +185,16 @@ internal fun CalendarScreen(
                                         selectedDate = state.selectedDate,
                                         onDateSelected = calendarViewModel::selectDate,
                                         onDateDoubleClick = handleDateDoubleClick,
+                                        board = board,
                                         state = state
-                                                    )
+                                    )
                                     CalendarDisplayMode.Week -> WeekCalendar(
                                         selectedDate = state.selectedDate,
                                         onDateSelected = calendarViewModel::selectDate,
                                         onDateDoubleClick = handleDateDoubleClick,
+                                        board = board,
                                         state = state
-                                                    )
+                                    )
                                 }
                             }
                             SelectedDateHeader(
@@ -206,10 +203,7 @@ internal fun CalendarScreen(
                                 taskCount = selectedContent.taskCount,
                                 noteCount = selectedContent.noteCount,
                                 journalCount = selectedContent.journalEntries.size,
-                                summaryEnabled = selectedContent.showDailyPlan && state.showDailyPlanSummary,
-                                summaryAvailable = selectedContent.showDailyPlan,
-                                onSummaryToggle = calendarViewModel::toggleDailyPlanSummary,
-                                onJournalClick = { onJournalListClick(state.selectedDate) },
+                                onJournalClick = { onOpenJournalDay(state.selectedDate) },
                                 winNote = state.selectedDateReview,
                                 onOpenReflect = onOpenReflect
                             )
@@ -224,7 +218,6 @@ internal fun CalendarScreen(
                             }
                             SelectedDateContent(
                                 content = selectedContent,
-                                showDailyPlanSummary = state.showDailyPlanSummary,
                                 onDailyPlanItemClick = onDailyPlanItemClick,
                                 onTaskClick = onTaskClick,
                                 onNoteClick = onNoteClick,
@@ -248,97 +241,30 @@ internal fun CalendarScreen(
                 )
             }
         }
-
-        if (showJournalHistory) {
-            JournalHistorySheet(
-                entries = state.journalEntries,
-                dayReviews = state.dayReviews,
-                onEntryClick = { entry ->
-                    showJournalHistory = false
-                    onJournalEntryClick(entry)
-                },
-                onReviewClick = { review ->
-                    showJournalHistory = false
-                    onOpenReflect(review.periodStartDate)
-                },
-                onDismiss = { showJournalHistory = false }
-            )
-        }
     }
 }
 
 @Composable
 private fun SelectedDateContent(
     content: SelectedCalendarDateContent,
-    showDailyPlanSummary: Boolean,
     onDailyPlanItemClick: (DailyPlanItem, LocalDate) -> Unit,
-    onTaskClick: (TaskItem, DailyPlanItem?) -> Unit,
+    onTaskClick: (Long, DailyPlanItem?) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    if (content.showDailyPlan && showDailyPlanSummary) {
-        val summaryBuilder = remember { BuildDailyPlanMarkdownSummaryUseCase() }
-        val summaryMarkdown = remember(content.date, content.dailyPlan, content.board) {
-            summaryBuilder(
-                date = content.date,
-                plan = content.dailyPlan,
-                board = content.board
-            )
-        }
-        DailyPlanMarkdownSummary(
-            markdown = summaryMarkdown,
-            modifier = modifier
-        )
-    } else if (content.hasItems) {
-        if (content.showDailyPlan) {
-            MyDayAgenda(
-                items = content.dailyPlanItems,
-                board = content.board,
-                date = content.date,
-                activeSprint = null,
-                journalEntries = content.journalEntries,
-                onItemClick = { onDailyPlanItemClick(it, content.date) },
-                onTaskClick = onTaskClick,
-                onNoteClick = onNoteClick,
-                onSprintClick = null,
-                modifier = modifier
-            )
-        } else {
-            TaskAgendaView(
-                tasks = content.tasks,
-                notes = content.notes,
-                onTaskClick = { onTaskClick(it, null) },
-                onNoteClick = onNoteClick,
-                dayLimit = 1,
-                focusedDate = content.date,
-                modifier = modifier
-            )
-        }
-    } else {
-        EmptySelectedDateMessage(
-            showDailyPlan = content.showDailyPlan,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 24.dp, horizontal = 8.dp)
-        )
-    }
-}
-
-@Composable
-private fun EmptySelectedDateMessage(
-    showDailyPlan: Boolean,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = if (showDailyPlan) "No My Day history for this day" else "No tasks or notes for this day",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
+    MyDayAgenda(
+        items = content.dailyPlanItems,
+        notes = content.notes,
+        tasks = content.tasks,
+        journalEntries = content.journalEntries,
+        date = content.date,
+        activeSprint = null,
+        onItemClick = { onDailyPlanItemClick(it, content.date) },
+        onTaskClick = onTaskClick,
+        onNoteClick = onNoteClick,
+        onSprintClick = null,
+        modifier = modifier
+    )
 }
 
 @Composable
@@ -410,9 +336,6 @@ private fun SelectedDateHeader(
     taskCount: Int,
     noteCount: Int,
     journalCount: Int,
-    summaryEnabled: Boolean,
-    summaryAvailable: Boolean,
-    onSummaryToggle: () -> Unit,
     onJournalClick: () -> Unit,
     winNote: String?,
     onOpenReflect: (LocalDate) -> Unit
@@ -421,181 +344,162 @@ private fun SelectedDateHeader(
     val isYesterday = date == today.minus(1, DateTimeUnit.DAY)
     var expanded by remember(winNote != null) { mutableStateOf(winNote != null) }
     val chevronRotation by animateFloatAsState(if (expanded) 180f else 0f, label = "selectedDateChevron")
-    Surface(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 4.dp, vertical = 4.dp)
-            .animateContentSize(),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        shape = RoundedCornerShape(14.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .animateContentSize()
     ) {
-        Column {
-            Row(
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(
+                    if (winNote != null) {
+                        Modifier.clickable { expanded = !expanded }
+                    } else {
+                        Modifier
+                    }
+                )
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .then(
-                        if (winNote != null) {
-                            Modifier.clickable { expanded = !expanded }
+                    .size(width = 44.dp, height = 40.dp)
+                    .background(
+                        if (isToday) {
+                            MaterialTheme.colorScheme.primary
                         } else {
-                            Modifier
+                            MaterialTheme.colorScheme.surfaceContainerHighest
+                        },
+                        RoundedCornerShape(10.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = date.day.toString(),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isToday) {
+                            MaterialTheme.colorScheme.onPrimary
+                        } else {
+                            MaterialTheme.colorScheme.primary
                         }
                     )
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(width = 44.dp, height = 40.dp)
-                        .background(
-                            if (isToday) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.surfaceContainerHighest
-                            },
-                            RoundedCornerShape(10.dp)
-                        ),
-                    contentAlignment = Alignment.Center
+                    Text(
+                        text = date.localizedShortMonthName(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (isToday) {
+                            MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
+                }
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = date.day.toString(),
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isToday) {
-                                MaterialTheme.colorScheme.onPrimary
-                            } else {
-                                MaterialTheme.colorScheme.primary
-                            }
-                        )
-                        Text(
-                            text = date.localizedShortMonthName(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (isToday) {
-                                MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            }
+                    Text(
+                        text = date.localizedWeekdayName(),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (isToday) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurface
+                        }
+                    )
+                    if (winNote != null && !expanded) {
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = Color(0xFFEAB308)
                         )
                     }
                 }
-                Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = when {
+                        isToday -> stringResource(Res.string.relative_today)
+                        isYesterday -> stringResource(Res.string.relative_yesterday)
+                        else -> date.year.toString()
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CountBadge(icon = Icons.Default.TaskAlt, count = taskCount)
+                CountBadge(icon = Icons.AutoMirrored.Filled.Notes, count = noteCount)
+                CountBadge(
+                    icon = Icons.Default.EditNote,
+                    count = journalCount,
+                    onClick = onJournalClick
+                )
+                if (winNote != null) {
+                    Icon(
+                        imageVector = Icons.Default.ExpandMore,
+                        contentDescription = if (expanded) "Collapse win note" else "Expand win note",
+                        modifier = Modifier
+                            .size(18.dp)
+                            .graphicsLayer { rotationZ = chevronRotation },
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+        if (winNote != null) {
+            AnimatedVisibility(visible = expanded) {
+                Column {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
                     Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(
-                            text = date.localizedWeekdayName(),
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (isToday) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.onSurface
-                            }
-                        )
-                        if (winNote != null && !expanded) {
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .background(Color(0xFFEAB308).copy(alpha = 0.16f), RoundedCornerShape(7.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
                             Icon(
                                 imageVector = Icons.Default.Star,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp),
+                                contentDescription = "Win of the day",
+                                modifier = Modifier.size(15.dp),
                                 tint = Color(0xFFEAB308)
                             )
                         }
-                    }
-                    Text(
-                        text = when {
-                            isToday -> stringResource(Res.string.relative_today)
-                            isYesterday -> stringResource(Res.string.relative_yesterday)
-                            else -> date.year.toString()
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    CountBadge(icon = Icons.Default.TaskAlt, count = taskCount)
-                    CountBadge(icon = Icons.AutoMirrored.Filled.Notes, count = noteCount)
-                    CountBadge(
-                        icon = Icons.Default.EditNote,
-                        count = journalCount,
-                        onClick = onJournalClick
-                    )
-                    if (summaryAvailable) {
+                        Text(
+                            modifier = Modifier.weight(1f),
+                            text = remember(winNote) { parseMarkdownToAnnotatedString(winNote) },
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        )
                         IconButton(
-                            onClick = onSummaryToggle,
-                            modifier = Modifier.size(32.dp)
+                            onClick = { onOpenReflect(date) },
+                            modifier = Modifier.size(28.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.Article,
-                                contentDescription = if (summaryEnabled) "Hide summary" else "Show summary",
-                                modifier = Modifier.size(18.dp),
-                                tint = if (summaryEnabled) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                }
+                                imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                contentDescription = stringResource(Res.string.calendar_open_review),
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                        }
-                    }
-                    if (winNote != null) {
-                        Icon(
-                            imageVector = Icons.Default.ExpandMore,
-                            contentDescription = if (expanded) "Collapse win note" else "Expand win note",
-                            modifier = Modifier
-                                .size(18.dp)
-                                .graphicsLayer { rotationZ = chevronRotation },
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-            if (winNote != null) {
-                AnimatedVisibility(visible = expanded) {
-                    Column {
-                        HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = 12.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                        )
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .background(Color(0xFFEAB308).copy(alpha = 0.16f), RoundedCornerShape(7.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Star,
-                                    contentDescription = "Win of the day",
-                                    modifier = Modifier.size(15.dp),
-                                    tint = Color(0xFFEAB308)
-                                )
-                            }
-                            Text(
-                                modifier = Modifier.weight(1f),
-                                text = remember(winNote) { parseMarkdownToAnnotatedString(winNote) },
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            )
-                            IconButton(
-                                onClick = { onOpenReflect(date) },
-                                modifier = Modifier.size(28.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                                    contentDescription = stringResource(Res.string.calendar_open_review),
-                                    modifier = Modifier.size(16.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
                         }
                     }
                 }
@@ -604,79 +508,61 @@ private fun SelectedDateHeader(
     }
 }
 
-@Composable
-private fun DailyPlanMarkdownSummary(
-    markdown: String,
-    modifier: Modifier = Modifier
-) {
-    val scrollState = rememberScrollState()
-    MarkdownView(
-        markdown = markdown,
-        modifier = modifier.verticalScroll(scrollState)
-    )
-}
-
 private data class SelectedCalendarDateContent(
     val date: LocalDate,
-    val board: TaskBoard,
     val showDailyPlan: Boolean,
-    val dailyPlan: DailyPlan?,
     val dailyPlanItems: List<DailyPlanItem>,
     val journalEntries: List<JournalEntry>,
     val tasks: List<TaskItem>,
     val notes: List<NoteItem>
 ) {
-    val taskCount: Int get() = if (showDailyPlan) dailyPlanItems.size else tasks.size
+    val taskCount: Int get() = dailyPlanItems.size + tasks.size
     val noteCount: Int get() = notes.size
-    val hasItems: Boolean get() = if (showDailyPlan) dailyPlanItems.isNotEmpty() else tasks.isNotEmpty() || notes.isNotEmpty()
 }
 
 private fun CalendarUiState.selectedDateContent(today: LocalDate): SelectedCalendarDateContent {
-    val showDailyPlan = selectedDate <= today
-    val dailyPlan = dailyPlanForDate(selectedDate)
     val dateEpochDays = selectedDate.toEpochDays()
     return SelectedCalendarDateContent(
         date = selectedDate,
-        board = board,
-        showDailyPlan = showDailyPlan,
-        dailyPlan = dailyPlan,
-        dailyPlanItems = dailyPlan?.items.orEmpty(),
-        journalEntries = journalEntries.filter { it.dateEpochDays == dateEpochDays.toInt() },
-        tasks = tasksForDate(selectedDate),
-        notes = notesForDate(selectedDate)
+        showDailyPlan = selectedDate <= today,
+        dailyPlanItems = dailyPlanForDate(selectedDate)?.items.orEmpty(),
+        journalEntries = journalEntries
+            .filter { it.dateEpochDays == dateEpochDays.toInt() }
+            .filter { matchesSelectedTags(it.tags) },
+        tasks = selectedDateTasks.filter { matchesSelectedTags(it.tags) },
+        notes = selectedDateNotes.filter { matchesSelectedTags(it.tags) }
     )
 }
 
+internal fun CalendarUiState.matchesSelectedTags(tags: List<TagItem>): Boolean =
+    selectedTagIds.isEmpty() || tags.any { it.id in selectedTagIds }
+
 @Composable
 private fun CountBadge(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     count: Int,
     onClick: (() -> Unit)? = null
 ) {
     if (count <= 0) return
-    Surface(
-        onClick = onClick ?: {},
-        enabled = onClick != null,
-        color = MaterialTheme.colorScheme.surfaceContainerHighest,
-        shape = RoundedCornerShape(8.dp)
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(enabled = onClick != null) { onClick?.invoke() }
+            .padding(horizontal = 2.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(3.dp)
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(13.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                text = count.toString(),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(13.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = count.toString(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -686,6 +572,7 @@ private fun MonthCalendar(
     selectedDate: LocalDate,
     onDateSelected: (LocalDate) -> Unit,
     onDateDoubleClick: (LocalDate) -> Unit,
+    board: TaskBoard,
     state: CalendarUiState
 ) {
     val colors = rememberCalendarCellColors()
@@ -700,6 +587,7 @@ private fun MonthCalendar(
                 colors = colors,
                 onDateSelected = onDateSelected,
                 onDateDoubleClick = onDateDoubleClick,
+                board = board,
                 state = state,
                 isDateEnabled = { it.isSameMonth(month) }
             )
@@ -712,6 +600,7 @@ private fun WeekCalendar(
     selectedDate: LocalDate,
     onDateSelected: (LocalDate) -> Unit,
     onDateDoubleClick: (LocalDate) -> Unit,
+    board: TaskBoard,
     state: CalendarUiState
 ) {
     val colors = rememberCalendarCellColors()
@@ -724,6 +613,7 @@ private fun WeekCalendar(
             colors = colors,
             onDateSelected = onDateSelected,
             onDateDoubleClick = onDateDoubleClick,
+            board = board,
             state = state,
             isDateEnabled = { true }
         )
@@ -763,6 +653,7 @@ private fun CalendarWeekRow(
     colors: CalendarCellColors,
     onDateSelected: (LocalDate) -> Unit,
     onDateDoubleClick: (LocalDate) -> Unit,
+    board: TaskBoard,
     state: CalendarUiState,
     isDateEnabled: (LocalDate) -> Boolean
 ) {
@@ -776,8 +667,8 @@ private fun CalendarWeekRow(
                 colors = colors,
                 onDateSelected = onDateSelected,
                 onDateDoubleClick = onDateDoubleClick,
-                markers = if (isEnabled) state.markersForDate(date) else CalendarDateMarkers.Empty,
-                workMinutes = if (isEnabled) state.dailyPlanWorkMinutesForDate(date) else 0,
+                markers = if (isEnabled) state.markersForDate(board, date) else CalendarDateMarkers.Empty,
+                workMinutes = if (isEnabled) state.doneMinutesForDate(date) else 0,
                 modifier = Modifier.weight(1f)
             )
         }

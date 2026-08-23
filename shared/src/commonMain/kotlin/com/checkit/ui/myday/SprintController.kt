@@ -92,8 +92,8 @@ internal class SprintController(
     }
 
     fun startSprintForItem(item: DailyPlanItem) {
-        val board = state.uiState.value.board
-        startSprintWithChoice(SprintChoice.PlanItem(item, board.tasksById[item.taskId]))
+        val tasks = state.uiState.value.tasks
+        startSprintWithChoice(SprintChoice.PlanItem(item, tasks.find { it.id == item.taskId }))
     }
 
     fun startOngoingSprintForItem(item: DailyPlanItem) {

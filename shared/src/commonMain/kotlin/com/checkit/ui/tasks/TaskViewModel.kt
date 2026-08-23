@@ -14,19 +14,22 @@ import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskReminderPlanner
 import com.checkit.domain.TaskReminderPreset
+import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskType
 import com.checkit.domain.usecase.AddNoteUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
 import com.checkit.domain.usecase.CompleteNoteUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
+import com.checkit.domain.usecase.GetNoteUseCase
+import com.checkit.domain.usecase.GetTaskUseCase
 import com.checkit.domain.usecase.MoveNoteUseCase
 import com.checkit.domain.usecase.MoveTaskUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
-import com.checkit.domain.usecase.OpenNoteUseCase
-import com.checkit.domain.usecase.OpenTaskUseCase
+import com.checkit.domain.usecase.UpdateNoteStatusUseCase
+import com.checkit.domain.usecase.UpdateTaskStatusUseCase
 import com.checkit.domain.usecase.RestoreNoteUseCase
 import com.checkit.domain.usecase.RestoreTaskUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
@@ -60,6 +63,8 @@ import kotlinx.datetime.LocalDate
 class TaskViewModel(
     private val observeTaskBoard: ObserveTaskBoardUseCase,
     private val selectTaskBoardItems: SelectTaskBoardItemsUseCase,
+    private val getTask: GetTaskUseCase,
+    private val getNote: GetNoteUseCase,
     private val addTask: AddTaskUseCase,
     private val addTaskToDailyPlan: AddTaskToDailyPlanUseCase,
     private val updateTask: UpdateTaskUseCase,
@@ -67,8 +72,8 @@ class TaskViewModel(
     private val restoreTask: RestoreTaskUseCase,
     private val completeTask: CompleteTaskUseCase,
     private val completeNote: CompleteNoteUseCase,
-    private val openTask: OpenTaskUseCase,
-    private val openNote: OpenNoteUseCase,
+    private val updateTaskStatus: UpdateTaskStatusUseCase,
+    private val updateNoteStatus: UpdateNoteStatusUseCase,
     private val addNote: AddNoteUseCase,
     private val updateNote: UpdateNoteUseCase,
     private val deleteNote: DeleteNoteUseCase,
@@ -389,7 +394,12 @@ class TaskViewModel(
         }
     }
 
-    fun openTask(task: TaskItem, dailyPlan: DailyPlanItem? = null) {
+    fun openTask(taskId: Long, dailyPlan: DailyPlanItem? = null) {
+        viewModelScope.launch {
+            val task = getTask(taskId) ?: return@launch
+            openTask(task, dailyPlan)
+        }
+    }    fun openTask(task: TaskItem, dailyPlan: DailyPlanItem? = null) {
         cancelPendingTaskTextSave()
         _uiState.update {
             it.copy(
@@ -418,6 +428,12 @@ class TaskViewModel(
         }
     }
 
+    fun openNote(noteId: Long) {
+        viewModelScope.launch {
+            val note = getNote(noteId) ?: return@launch
+            openNote(note)
+        }
+    }
     fun openNote(note: NoteItem) {
         cancelPendingTaskTextSave()
         _uiState.update {
@@ -588,13 +604,13 @@ class TaskViewModel(
         }
     }
 
-    fun openCurrentItem() {
+    fun reopenCurrentItem() {
         flushPendingTaskTextSave()
         val editor = _uiState.value.editor ?: return
         viewModelScope.launch {
             when (editor) {
-                is TaskEditorState.TaskForm -> openTask(editor.taskId ?: return@launch)
-                is TaskEditorState.NoteForm -> openNote(editor.noteId ?: return@launch)
+                is TaskEditorState.TaskForm -> updateTaskStatus(editor.taskId ?: return@launch, TaskStatus.Open)
+                is TaskEditorState.NoteForm -> updateNoteStatus(editor.noteId ?: return@launch, TaskStatus.Open)
             }
             _uiState.update { it.copy(editor = null) }
             sendEvent(UiEvent.ShowSnackbar("Opened"))

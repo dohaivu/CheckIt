@@ -7,11 +7,13 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DayCloseBannerPolicy
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.LeftoversBannerPolicy
+import com.checkit.domain.NoteItem
 import com.checkit.domain.PeriodReview
 import com.checkit.domain.PlanAssistBannerPolicy
 import com.checkit.domain.Period
 import com.checkit.domain.ReviewStreakPolicy
-import com.checkit.domain.TaskBoard
+import com.checkit.domain.TagItem
+import com.checkit.domain.TaskItem
 import com.checkit.domain.YesterdayLeftovers
 import com.checkit.domain.defaultReviewAction
 import com.checkit.ui.UiEvent
@@ -26,7 +28,6 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
-import kotlinx.datetime.plus
 
 /** Observes the underlying data sources and derives the My Day UI state. */
 internal class MyDayDataLoader(
@@ -40,50 +41,60 @@ internal class MyDayDataLoader(
         val today = today()
         scope.launch {
             combine(
-                deps.observeTaskBoard(onlyOpen = false),
+                deps.observeWorkingTasks(today),
+                deps.observeNotesForDate(today),
+                deps.observeTags(),
                 deps.observeDailyPlans(startDate = today.minus(1, DateTimeUnit.DAY), endDate = today),
                 deps.settingsRepository.settings,
                 deps.observePeriodReviews(),
                 deps.observeJournalEntries()
-            ) { board, dailyPlans, settings, dayReviews, journalEntries ->
-                ReviewCombined(board, dailyPlans, settings, dayReviews, journalEntries)
+            ) { array ->
+                ReviewCombined(
+                    tasks = array[0] as List<TaskItem>,
+                    notes = array[1] as List<NoteItem>,
+                    tags = array[2] as List<TagItem>,
+                    dailyPlans = array[3] as List<DailyPlan>,
+                    settings = array[4] as UserSettings,
+                    dayReviews = array[5] as List<PeriodReview>,
+                    journalEntries = array[6] as List<JournalEntry>
+                )
             }
                 .catch { error ->
                     state.update { it.copy(isLoading = false) }
                     state.sendEvent(UiEvent.ShowSnackbar(error.message ?: "Unable to load My Day"))
                 }
-                .collect { (board, dailyPlans, settings, periodReviews, journalEntries) ->
+                .collect { combined ->
                     val date = today()
                     val todayEpoch = date.toEpochDays().toInt()
                     val nowMinutes = currentMyDayTimeMinutes()
-                    val plan = dailyPlans.firstOrNull { it.date == date }
-                    val dayReviews = periodReviews.filter { it.period == Period.Day }
-                    val leftovers = YesterdayLeftovers.items(dailyPlans, date)
+                    val plan = combined.dailyPlans.firstOrNull { it.date == date }
+                    val dayReviews = combined.dayReviews.filter { it.period == Period.Day }
+                    val leftovers = YesterdayLeftovers.items(combined.dailyPlans, date)
                     val pendingLeftovers = YesterdayLeftovers.pendingForToday(leftovers, plan)
                     val reviewStreak = ReviewStreakPolicy.currentStreak(dayReviews, date)
                     val showReviewBanner = DayCloseBannerPolicy.shouldShow(
                         hasPlanItems = plan?.items?.isNotEmpty() == true,
-                        reviewReminderEnabled = settings.reviewReminderEnabled,
-                        reviewReminderTimeMinutes = settings.reviewReminderTimeMinutes,
-                        lastDayCloseEpochDay = settings.lastDayCloseEpochDay,
+                        reviewReminderEnabled = combined.settings.reviewReminderEnabled,
+                        reviewReminderTimeMinutes = combined.settings.reviewReminderTimeMinutes,
+                        lastDayCloseEpochDay = combined.settings.lastDayCloseEpochDay,
                         todayEpochDay = todayEpoch,
                         nowMinutes = nowMinutes
                     )
                     val showLeftoversBanner = LeftoversBannerPolicy.shouldShow(
                         pendingCount = pendingLeftovers.size,
-                        leftoversBannerDismissedEpochDay = settings.leftoversBannerDismissedEpochDay,
+                        leftoversBannerDismissedEpochDay = combined.settings.leftoversBannerDismissedEpochDay,
                         todayEpochDay = todayEpoch
                     )
                     val showPlanAssist = PlanAssistBannerPolicy.shouldShow(
                         todayPlanItemCount = plan?.items?.size ?: 0,
-                        planReminderEnabled = settings.planReminderEnabled,
-                        planReminderTimeMinutes = settings.planReminderTimeMinutes,
-                        reviewReminderTimeMinutes = settings.reviewReminderTimeMinutes,
-                        lastDayPlanDismissedEpochDay = settings.lastDayPlanDismissedEpochDay,
+                        planReminderEnabled = combined.settings.planReminderEnabled,
+                        planReminderTimeMinutes = combined.settings.planReminderTimeMinutes,
+                        reviewReminderTimeMinutes = combined.settings.reviewReminderTimeMinutes,
+                        lastDayPlanDismissedEpochDay = combined.settings.lastDayPlanDismissedEpochDay,
                         todayEpochDay = todayEpoch,
                         nowMinutes = nowMinutes
                     )
-                    maybeAutoCarryOver(settings, pendingLeftovers, date)
+                    maybeAutoCarryOver(combined.settings, pendingLeftovers, date)
 
                     val summary = deps.buildDayCloseSummary(date, plan)
                     state.update { current ->
@@ -95,36 +106,38 @@ internal class MyDayDataLoader(
                                 leftoverActions = existing.leftoverActions.filterKeys { it in validIds } +
                                     validItems
                                         .filter { it.id !in existing.leftoverActions }
-                                        .associate { it.id to it.defaultReviewAction(dailyPlans) },
+                                        .associate { it.id to it.defaultReviewAction(combined.dailyPlans) },
                                 streak = reviewStreak
                             )
                         }
 
-                        val lastFabAction = when (settings.lastFabActionType) {
-                            "TagSprint" -> board.tags.find { it.id == settings.lastFabActionId }?.let { FabAction.TagSprint(it) } ?: FabAction.QuickSprint
+                        val lastFabAction = when (combined.settings.lastFabActionType) {
+                            "TagSprint" -> combined.tags.find { it.id == combined.settings.lastFabActionId }?.let { FabAction.TagSprint(it) } ?: FabAction.QuickSprint
                             else -> FabAction.QuickSprint
                         }
                         current.copy(
-                            board = board,
-                            dailyPlans = dailyPlans,
+                            tasks = combined.tasks,
+                            notes = combined.notes,
+                            tags = combined.tags,
+                            dailyPlans = combined.dailyPlans,
                             dayClose = updatedReview,
-                            journalEntries = journalEntries,
+                            journalEntries = combined.journalEntries,
                             showDayCloseBanner = showReviewBanner && updatedReview == null,
-                            reviewReminderEnabled = settings.reviewReminderEnabled,
-                            reviewReminderTimeMinutes = settings.reviewReminderTimeMinutes,
-                            planReminderEnabled = settings.planReminderEnabled,
-                            planReminderTimeMinutes = settings.planReminderTimeMinutes,
-                            lastDayCloseEpochDay = settings.lastDayCloseEpochDay,
-                            lastDayPlanDismissedEpochDay = settings.lastDayPlanDismissedEpochDay,
-                            leftoversBannerDismissedEpochDay = settings.leftoversBannerDismissedEpochDay,
-                            autoCarryOverLeftovers = settings.autoCarryOverLeftovers,
+                            reviewReminderEnabled = combined.settings.reviewReminderEnabled,
+                            reviewReminderTimeMinutes = combined.settings.reviewReminderTimeMinutes,
+                            planReminderEnabled = combined.settings.planReminderEnabled,
+                            planReminderTimeMinutes = combined.settings.planReminderTimeMinutes,
+                            lastDayCloseEpochDay = combined.settings.lastDayCloseEpochDay,
+                            lastDayPlanDismissedEpochDay = combined.settings.lastDayPlanDismissedEpochDay,
+                            leftoversBannerDismissedEpochDay = combined.settings.leftoversBannerDismissedEpochDay,
+                            autoCarryOverLeftovers = combined.settings.autoCarryOverLeftovers,
                             yesterdayLeftovers = leftovers,
                             pendingYesterdayLeftovers = pendingLeftovers,
-                            recentTags = board.tags.sortedByDescending { it.lastUsedAtMillis }.take(5),
+                            recentTags = combined.tags.sortedByDescending { it.lastUsedAtMillis }.take(5),
                             lastFabAction = lastFabAction,
                             dayReviews = dayReviews,
                             reviewStreak = reviewStreak,
-                            recentLabels = settings.recentLabels,
+                            recentLabels = combined.settings.recentLabels,
                             showLeftoversBanner = showLeftoversBanner &&
                                 updatedReview == null &&
                                 !current.showLeftoversSheet,
@@ -167,7 +180,9 @@ internal class MyDayDataLoader(
 }
 
 private data class ReviewCombined(
-    val board: TaskBoard,
+    val tasks: List<TaskItem>,
+    val notes: List<NoteItem>,
+    val tags: List<TagItem>,
     val dailyPlans: List<DailyPlan>,
     val settings: UserSettings,
     val dayReviews: List<PeriodReview>,
