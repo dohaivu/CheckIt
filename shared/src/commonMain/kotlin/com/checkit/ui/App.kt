@@ -21,8 +21,10 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -40,6 +42,7 @@ import com.checkit.ui.components.LocalSnackbarHostState
 import com.checkit.ui.localization.AppLocaleProvider
 import com.checkit.ui.myday.DailyPlanItemEditorSheet
 import com.checkit.ui.journal.JournalEntryEditorSheet
+import com.checkit.ui.journal.JournalHistorySheet
 import com.checkit.ui.journal.JournalListSheet
 import com.checkit.ui.myday.MyDayScreen
 import com.checkit.ui.nested.NestedListScreen
@@ -116,6 +119,9 @@ fun CheckItApp(
     val calendarUiState by viewModels.calendar.uiState.collectAsState()
     val nestedUiState by viewModels.nested.uiState.collectAsState()
     val reflectEditorState by viewModels.reflect.editor.collectAsState()
+    val journalHistoryUiState by viewModels.journalHistory.uiState.collectAsState()
+    var showJournalHistory by remember { mutableStateOf(false) }
+
     val lifecycleOwner = LocalLifecycleOwner.current
     val appScope = rememberCoroutineScope()
 
@@ -288,17 +294,14 @@ fun CheckItApp(
                                         )
                                     }
                                     AppRoute.Calendar -> {
-                                        val journalHistoryUiState by viewModels.journalHistory.uiState.collectAsState()
                                         CalendarScreen(
                                             state = calendarUiState,
                                             board = taskUiState.board,
                                             calendarViewModel = viewModels.calendar,
-                                            journalHistoryUiState = journalHistoryUiState,
-                                            journalHistoryViewModel = viewModels.journalHistory,
                                             onDateDoubleClick = { date -> viewModels.task.openNewTaskOnDate(date) },
                                             onDailyPlanItemClick = viewModels.myDay::openItemEditor,
-                                            onJournalEntryClick = viewModels.myDay::openJournalEditor,
-                                            onJournalListClick = viewModels.myDay::openJournalList,
+                                            onOpenJournalDay = viewModels.myDay::openJournalList,
+                                            onOpenJournalHistory = { showJournalHistory = true },
                                             onAddDailyPlanItem = { date -> viewModels.myDay.openDailyPlan(date = date) },
                                             onTaskClick = viewModels.task::openTask,
                                             onNoteClick = viewModels.task::openNote,
@@ -460,6 +463,24 @@ fun CheckItApp(
                                 viewModels.myDay.openJournalEditor(entry)
                             },
                             onDismiss = viewModels.myDay::dismissJournalList
+                        )
+                    }
+                    if (showJournalHistory) {
+                        JournalHistorySheet(
+                            state = journalHistoryUiState,
+                            onMoodToggle = viewModels.journalHistory::toggleMood,
+                            onSearchTextChange = viewModels.journalHistory::updateSearchText,
+                            onTagToggle = viewModels.journalHistory::toggleTag,
+                            onEntryClick = { entry ->
+                                showJournalHistory = false
+                                viewModels.myDay.openJournalEditor(entry)
+                            },
+                            onReviewClick = { review ->
+                                showJournalHistory = false
+                                viewModels.reflect.focusDay(review.periodStartDate)
+                                navState.resetTo(AppRoute.Reflect)
+                            },
+                            onDismiss = { showJournalHistory = false }
                         )
                     }
                     tagUiState.editor?.let { tagEditor ->
