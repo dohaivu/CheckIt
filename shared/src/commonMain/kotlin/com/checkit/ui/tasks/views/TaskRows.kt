@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -185,6 +186,7 @@ internal fun StandardTaskRowContent(task: TaskItem, showList: Boolean) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = 62.dp)
             .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
@@ -209,7 +211,10 @@ internal fun StandardTaskRowContent(task: TaskItem, showList: Boolean) {
 @Composable
 internal fun DetailTaskRowContent(task: TaskItem, showList: Boolean) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 62.dp)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         TaskTitleRow(task, descriptionMaxLines = 3)
@@ -231,7 +236,7 @@ internal fun DetailTaskRowContent(task: TaskItem, showList: Boolean) {
 @Composable
 internal fun BriefNoteRowContent(note: NoteItem) {
     Row(
-        modifier = Modifier.fillMaxWidth().fillMaxHeight().padding(horizontal = 10.dp, vertical = 6.dp),
+        modifier = Modifier.fillMaxWidth().fillMaxHeight().padding(horizontal = 8.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -263,7 +268,7 @@ internal fun StandardNoteRowContent(note: NoteItem, showList: Boolean) {
         modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
             NoteIcon(note.status)
             Column(Modifier.weight(1f)) {
                 Row(

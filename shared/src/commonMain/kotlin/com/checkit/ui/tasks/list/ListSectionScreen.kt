@@ -62,6 +62,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.ListSection
+import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.theme.toColor
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -84,8 +85,14 @@ internal fun ListSectionScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("List Sections") },
+            TinyTopAppBar(
+                title = {
+                    Text(
+                        text = "List Sections",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -102,7 +109,7 @@ internal fun ListSectionScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(top = padding.calculateTopPadding())
                 .verticalScroll(rememberScrollState())
                 .padding(vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
