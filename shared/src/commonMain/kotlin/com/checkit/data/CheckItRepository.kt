@@ -83,7 +83,7 @@ interface CheckItRepository {
     suspend fun trashTask(taskId: Long)
     suspend fun restoreTask(taskId: Long)
     suspend fun completeTask(taskId: Long)
-    suspend fun openTask(taskId: Long)
+    suspend fun updateTaskStatus(taskId: Long, status: TaskStatus)
     suspend fun addTaskToDailyPlan(date: LocalDate, task: TaskItem): Long
     suspend fun addDailyPlanItem(
         date: LocalDate,
@@ -145,7 +145,7 @@ interface CheckItRepository {
     suspend fun addNote(input: NoteWriteInput): Long
     suspend fun updateNote(noteId: Long, input: NoteWriteInput)
     suspend fun completeNote(noteId: Long)
-    suspend fun openNote(noteId: Long)
+    suspend fun updateNoteStatus(noteId: Long, status: TaskStatus)
     suspend fun trashNote(noteId: Long)
     suspend fun restoreNote(noteId: Long)
     suspend fun moveTask(taskId: Long, listId: Long, sectionId: Long?, sortOrder: Int, isPinned: Boolean)
@@ -690,11 +690,11 @@ class RoomCheckItRepository(
         dailyPlanScheduleReminderScheduler.rescheduleNext()
     }
 
-    override suspend fun openTask(taskId: Long) {
+    override suspend fun updateTaskStatus(taskId: Long, status: TaskStatus) {
         val now = Clock.System.now().toEpochMilliseconds()
-        dao.updateTaskStatusOpen(
+        dao.updateTaskStatus(
             taskId = taskId,
-            status = TaskStatus.Open.name,
+            status = status.name,
             updatedAtMillis = now
         )
     }
@@ -1519,10 +1519,10 @@ class RoomCheckItRepository(
         )
     }
 
-    override suspend fun openNote(noteId: Long) {
+    override suspend fun updateNoteStatus(noteId: Long, status: TaskStatus) {
         dao.updateNoteStatus(
             noteId = noteId,
-            status = TaskStatus.Open.name,
+            status = status.name,
             editedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
     }

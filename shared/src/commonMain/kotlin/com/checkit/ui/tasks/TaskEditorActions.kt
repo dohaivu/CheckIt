@@ -10,7 +10,7 @@ data class TaskEditorActions(
     val onDelete: () -> Unit,
     val onRestore: () -> Unit,
     val onComplete: () -> Unit,
-    val onOpen: () -> Unit,
+    val onReopen: () -> Unit,
     val onAddToMyDay: () -> Unit,
     val onTaskNameChange: (String) -> Unit,
     val onTaskListChange: (Long) -> Unit,

@@ -224,10 +224,10 @@ class CompleteTaskUseCase(
     suspend operator fun invoke(taskId: Long) = repository.completeTask(taskId)
 }
 
-class OpenTaskUseCase(
+class UpdateTaskStatusUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(taskId: Long) = repository.openTask(taskId)
+    suspend operator fun invoke(taskId: Long, status: TaskStatus) = repository.updateTaskStatus(taskId, status)
 }
 
 class AddNoteUseCase(
@@ -248,10 +248,10 @@ class CompleteNoteUseCase(
     suspend operator fun invoke(noteId: Long) = repository.completeNote(noteId)
 }
 
-class OpenNoteUseCase(
+class UpdateNoteStatusUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(noteId: Long) = repository.openNote(noteId)
+    suspend operator fun invoke(noteId: Long, status: TaskStatus) = repository.updateNoteStatus(noteId, status)
 }
 
 class DeleteNoteUseCase(

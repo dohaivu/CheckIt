@@ -446,12 +446,12 @@ interface CheckItDao {
         """
         UPDATE tasks
         SET status = :status,
-            completedDateEpochDays = NULL,
+            completedDateEpochDays = CASE WHEN :status != 'Completed' THEN NULL ELSE completedDateEpochDays END,
             updatedAtMillis = :updatedAtMillis
         WHERE id = :taskId
         """
     )
-    suspend fun updateTaskStatusOpen(
+    suspend fun updateTaskStatus(
         taskId: Long,
         status: String,
         updatedAtMillis: Long

@@ -63,8 +63,8 @@ import com.checkit.domain.usecase.ObserveTasksForDateUseCase
 import com.checkit.domain.usecase.ObserveTasksInRangeUseCase
 import com.checkit.domain.usecase.ObserveTagsUseCase
 import com.checkit.domain.usecase.ObserveWorkingTasksUseCase
-import com.checkit.domain.usecase.OpenNoteUseCase
-import com.checkit.domain.usecase.OpenTaskUseCase
+import com.checkit.domain.usecase.UpdateNoteStatusUseCase
+import com.checkit.domain.usecase.UpdateTaskStatusUseCase
 import com.checkit.domain.usecase.RenameNestedDocumentUseCase
 import com.checkit.domain.usecase.ReplaceNestedManualMetricsUseCase
 import com.checkit.domain.usecase.RestoreNoteUseCase
@@ -184,8 +184,8 @@ val provideInteractorModule = module {
     single { MoveNoteUseCase(get()) }
     single { CompleteTaskUseCase(get()) }
     single { CompleteNoteUseCase(get()) }
-    single { OpenTaskUseCase(get()) }
-    single { OpenNoteUseCase(get()) }
+    single { UpdateTaskStatusUseCase(get()) }
+    single { UpdateNoteStatusUseCase(get()) }
     single { AddTaskToDailyPlanUseCase(get()) }
     single { AddDailyPlanItemUseCase(get()) }
     single { UpdateDailyPlanItemTimeUseCase(get()) }
@@ -253,8 +253,8 @@ val provideViewModelModule = module {
             restoreTask = get(),
             completeTask = get(),
             completeNote = get(),
-            openTask = get(),
-            openNote = get(),
+            updateTaskStatus = get(),
+            updateNoteStatus = get(),
             addNote = get(),
             updateNote = get(),
             deleteNote = get(),

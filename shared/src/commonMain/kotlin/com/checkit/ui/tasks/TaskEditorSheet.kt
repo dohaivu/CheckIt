@@ -84,7 +84,7 @@ internal fun TaskEditorSheet(
     val onDelete = actions.onDelete
     val onRestore = actions.onRestore
     val onComplete = actions.onComplete
-    val onOpen = actions.onOpen
+    val onReopen = actions.onReopen
     val onAddToMyDay = actions.onAddToMyDay
     val onTaskNameChange = actions.onTaskNameChange
     val onTaskListChange = actions.onTaskListChange
@@ -212,7 +212,7 @@ internal fun TaskEditorSheet(
             onAddToMyDay = onAddToMyDay,
             onDelete = onDelete,
             onComplete = onComplete,
-            onOpen = onOpen,
+            onReopen = onReopen,
             onPinToggle = onPinToggle,
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
         )
@@ -272,7 +272,7 @@ private fun SheetFooter(
     onAddToMyDay: () -> Unit,
     onDelete: () -> Unit,
     onComplete: () -> Unit,
-    onOpen: () -> Unit,
+    onReopen: () -> Unit,
     onPinToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -329,7 +329,7 @@ private fun SheetFooter(
                         leadingIcon = { Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null) },
                         onClick = {
                             onDismiss()
-                            onOpen()
+                            onReopen()
                         }
                     )
                 }

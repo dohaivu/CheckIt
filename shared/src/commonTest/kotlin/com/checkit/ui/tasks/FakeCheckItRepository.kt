@@ -357,9 +357,9 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         }
     }
 
-    override suspend fun openTask(taskId: Long) {
+    override suspend fun updateTaskStatus(taskId: Long, status: TaskStatus) {
         boardFlow.update { board ->
-            board.copy(tasks = board.tasks.map { if (it.id == taskId) it.copy(status = TaskStatus.Open) else it })
+            board.copy(tasks = board.tasks.map { if (it.id == taskId) it.copy(status = status) else it })
         }
     }
 
@@ -808,9 +808,9 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         }
     }
 
-    override suspend fun openNote(noteId: Long) {
+    override suspend fun updateNoteStatus(noteId: Long, status: TaskStatus) {
         boardFlow.update { board ->
-            board.copy(notes = board.notes.map { if (it.id == noteId) it.copy(status = TaskStatus.Open) else it })
+            board.copy(notes = board.notes.map { if (it.id == noteId) it.copy(status = status) else it })
         }
     }
 

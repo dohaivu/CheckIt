@@ -369,7 +369,7 @@ fun CheckItApp(
                                 onDelete = viewModels.task::deleteEditorItem,
                                 onRestore = viewModels.task::restoreCurrentItem,
                                 onComplete = viewModels.task::completeCurrentItem,
-                                onOpen = viewModels.task::openCurrentItem,
+                                onReopen = viewModels.task::reopenCurrentItem,
                                 onAddToMyDay = {
                                     val taskId = (editor as? TaskEditorState.TaskForm)?.taskId
                                     val task = taskUiState.board.tasks.firstOrNull { it.id == taskId }

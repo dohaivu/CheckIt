@@ -14,6 +14,7 @@ import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskReminderPlanner
 import com.checkit.domain.TaskReminderPreset
+import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskType
 import com.checkit.domain.usecase.AddNoteUseCase
 import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
@@ -27,8 +28,8 @@ import com.checkit.domain.usecase.MoveTaskUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
-import com.checkit.domain.usecase.OpenNoteUseCase
-import com.checkit.domain.usecase.OpenTaskUseCase
+import com.checkit.domain.usecase.UpdateNoteStatusUseCase
+import com.checkit.domain.usecase.UpdateTaskStatusUseCase
 import com.checkit.domain.usecase.RestoreNoteUseCase
 import com.checkit.domain.usecase.RestoreTaskUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
@@ -71,8 +72,8 @@ class TaskViewModel(
     private val restoreTask: RestoreTaskUseCase,
     private val completeTask: CompleteTaskUseCase,
     private val completeNote: CompleteNoteUseCase,
-    private val openTask: OpenTaskUseCase,
-    private val openNote: OpenNoteUseCase,
+    private val updateTaskStatus: UpdateTaskStatusUseCase,
+    private val updateNoteStatus: UpdateNoteStatusUseCase,
     private val addNote: AddNoteUseCase,
     private val updateNote: UpdateNoteUseCase,
     private val deleteNote: DeleteNoteUseCase,
@@ -398,9 +399,7 @@ class TaskViewModel(
             val task = getTask(taskId) ?: return@launch
             openTask(task, dailyPlan)
         }
-    }
-
-    fun openTask(task: TaskItem, dailyPlan: DailyPlanItem? = null) {
+    }    fun openTask(task: TaskItem, dailyPlan: DailyPlanItem? = null) {
         cancelPendingTaskTextSave()
         _uiState.update {
             it.copy(
@@ -605,13 +604,13 @@ class TaskViewModel(
         }
     }
 
-    fun openCurrentItem() {
+    fun reopenCurrentItem() {
         flushPendingTaskTextSave()
         val editor = _uiState.value.editor ?: return
         viewModelScope.launch {
             when (editor) {
-                is TaskEditorState.TaskForm -> openTask(editor.taskId ?: return@launch)
-                is TaskEditorState.NoteForm -> openNote(editor.noteId ?: return@launch)
+                is TaskEditorState.TaskForm -> updateTaskStatus(editor.taskId ?: return@launch, TaskStatus.Open)
+                is TaskEditorState.NoteForm -> updateNoteStatus(editor.noteId ?: return@launch, TaskStatus.Open)
             }
             _uiState.update { it.copy(editor = null) }
             sendEvent(UiEvent.ShowSnackbar("Opened"))
