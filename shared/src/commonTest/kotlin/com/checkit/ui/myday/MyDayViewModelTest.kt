@@ -24,7 +24,7 @@ import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.DeleteJournalEntryUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
-import com.checkit.domain.usecase.ObserveTaskBoardUseCase
+import com.checkit.domain.usecase.GetTaskUseCase
 import com.checkit.domain.SprintManager
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
@@ -117,7 +117,7 @@ class MyDayViewModelTest {
                     updateDailyPlanItemTime = updateDailyPlanItemTime,
                     updateDailyPlanItemStatus = UpdateDailyPlanItemStatusUseCase(repository)
                 ),
-                observeTaskBoard = ObserveTaskBoardUseCase(repository)
+                getTask = GetTaskUseCase(repository)
             )
         )
     }

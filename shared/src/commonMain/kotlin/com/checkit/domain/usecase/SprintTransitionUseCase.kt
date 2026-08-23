@@ -2,12 +2,11 @@ package com.checkit.domain.usecase
 
 import com.checkit.domain.SprintManager
 import com.checkit.domain.SprintState
-import kotlinx.coroutines.flow.first
 
 class SprintTransitionUseCase(
     private val sprintManager: SprintManager,
     private val saveSprintAsWin: SaveSprintAsWinUseCase,
-    private val observeTaskBoard: ObserveTaskBoardUseCase
+    private val getTask: GetTaskUseCase
 ) {
     suspend fun saveWin() {
         val finished = sprintManager.takeFinished() ?: return
@@ -30,9 +29,8 @@ class SprintTransitionUseCase(
     suspend fun saveAndContinue() {
         val finished = sprintManager.takeFinished() ?: return
         val savedItemId = saveSprintAsWin(finished)
-        
-        val board = observeTaskBoard().first()
-        val taskName = finished.taskId?.let { board.tasksById[it]?.name }
+
+        val taskName = finished.taskId?.let { getTask(it)?.name }
 
         sprintManager.startSprint(
             taskId = finished.taskId,
@@ -47,9 +45,8 @@ class SprintTransitionUseCase(
 
     suspend fun startNext() {
         val finished = sprintManager.takeFinished() ?: return
-        
-        val board = observeTaskBoard().first()
-        val taskName = finished.taskId?.let { board.tasksById[it]?.name }
+
+        val taskName = finished.taskId?.let { getTask(it)?.name }
 
         sprintManager.startSprint(
             taskId = finished.taskId,
