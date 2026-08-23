@@ -636,17 +636,27 @@ class RoomCheckItRepository(
             label = input.label,
             updatedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
-        dao.deleteTaskList(taskId)
-        input.listId?.let { listId ->
-            dao.insertTaskList(
-                TaskListEntity(
-                    taskId = taskId,
-                    listId = listId,
-                    isPinned = input.isPinned,
-                    sortOrder = dao.nextTaskSortOrder(listId),
-                    sectionId = input.sectionId
+        val existingTaskListJoin = dao.taskListByTaskId(taskId)
+        if (existingTaskListJoin?.listId != input.listId) {
+            // List membership changed: re-insert at the end of the target list.
+            dao.deleteTaskList(taskId)
+            input.listId?.let { listId ->
+                dao.insertTaskList(
+                    TaskListEntity(
+                        taskId = taskId,
+                        listId = listId,
+                        isPinned = input.isPinned,
+                        sortOrder = dao.nextTaskSortOrder(listId),
+                        sectionId = input.sectionId
+                    )
                 )
-            )
+            }
+        } else if (existingTaskListJoin != null) {
+            // Same list: keep the task's position, only sync pin/section.
+            val updated = existingTaskListJoin.copy(isPinned = input.isPinned, sectionId = input.sectionId)
+            if (updated != existingTaskListJoin) {
+                dao.insertTaskList(updated)
+            }
         }
         dao.deleteTaskTags(taskId)
         input.tagIds.forEach { tagId -> addTaskTag(taskId, tagId) }
@@ -1246,17 +1256,27 @@ class RoomCheckItRepository(
             label = input.label,
             editedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
-        dao.deleteNoteList(noteId)
-        input.listId?.let { listId ->
-            dao.insertNoteList(
-                NoteListEntity(
-                    noteId = noteId,
-                    listId = listId,
-                    isPinned = input.isPinned,
-                    sortOrder = dao.nextNoteSortOrder(listId),
-                    sectionId = input.sectionId
+        val existingNoteListJoin = dao.noteListByNoteId(noteId)
+        if (existingNoteListJoin?.listId != input.listId) {
+            // List membership changed: re-insert at the end of the target list.
+            dao.deleteNoteList(noteId)
+            input.listId?.let { listId ->
+                dao.insertNoteList(
+                    NoteListEntity(
+                        noteId = noteId,
+                        listId = listId,
+                        isPinned = input.isPinned,
+                        sortOrder = dao.nextNoteSortOrder(listId),
+                        sectionId = input.sectionId
+                    )
                 )
-            )
+            }
+        } else if (existingNoteListJoin != null) {
+            // Same list: keep the note's position, only sync pin/section.
+            val updated = existingNoteListJoin.copy(isPinned = input.isPinned, sectionId = input.sectionId)
+            if (updated != existingNoteListJoin) {
+                dao.insertNoteList(updated)
+            }
         }
         dao.deleteNoteTags(noteId)
         input.tagIds.forEach { tagId -> addNoteTag(noteId, tagId) }
