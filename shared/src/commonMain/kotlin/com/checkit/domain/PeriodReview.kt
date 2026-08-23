@@ -1,6 +1,8 @@
 package com.checkit.domain
 
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
 
 enum class ReviewSource {
     Auto,
@@ -31,5 +33,6 @@ data class PeriodReview(
     val editedAtMillis: Long? = null
 ) {
     val periodStartDate: LocalDate get() = LocalDate.fromEpochDays(periodStartEpochDays)
+    val periodEndDateInclusive: LocalDate get() = LocalDate.fromEpochDays(periodEndEpochDays).minus(1, DateTimeUnit.DAY)
     val isComplete: Boolean get() = status == ReviewStatus.Complete
 }

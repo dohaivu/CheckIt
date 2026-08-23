@@ -7,15 +7,18 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -41,6 +44,7 @@ import com.checkit.ui.components.asAnnotatedString
 import com.checkit.ui.components.getMoodColorFromEmoji
 import com.checkit.ui.reflect.label
 import com.checkit.ui.reflect.rangeLabel
+import com.checkit.ui.reflect.reviewIcon
 import com.checkit.ui.tasks.TimelineItem
 import com.checkit.ui.tasks.TimelineItemType
 import com.checkit.ui.tasks.views.AgendaView
@@ -154,7 +158,7 @@ internal fun JournalAgendaView(
                     TimelineItem(
                         id = "review-${review.id}",
                         type = TimelineItemType.Journal,
-                        date = review.periodStartDate,
+                        date = review.periodEndDateInclusive,
                         startTimeMinutes = null,
                         endTimeMinutes = null,
                         sortOrder = 0,
@@ -235,11 +239,20 @@ private fun JournalAgendaReviewCard(
             },
         verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
-        Text(
-            text = "Review · ${review.period.label()} ",
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = review.period.reviewIcon(),
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = "${review.period.label()} ",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
         if (review.content.isNotBlank()) {
             Text(
                 text = review.content.asAnnotatedString(),
