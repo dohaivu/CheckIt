@@ -68,6 +68,8 @@ import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.NoteItem
 import com.checkit.domain.SprintState
+import com.checkit.domain.TaskItem
+import com.checkit.domain.TaskStatus
 import com.checkit.domain.hasEndTime
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.journal.JournalSection
@@ -82,6 +84,8 @@ import com.checkit.ui.tasks.views.DailyPlanTimelineCard
 import com.checkit.ui.tasks.views.NoteAllDayCard
 import com.checkit.ui.tasks.views.NoteTimelineCard
 import com.checkit.ui.tasks.views.SprintButton
+import com.checkit.ui.tasks.views.TaskAllDayCard
+import com.checkit.ui.tasks.views.TaskTimelineCard
 import com.checkit.ui.tasks.views.TimelineView
 import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
@@ -559,9 +563,10 @@ private fun MyDayViewSelector(
 internal fun MyDayAgenda(
     items: List<DailyPlanItem>,
     notes: List<NoteItem>,
+    tasks: List<TaskItem> = emptyList(),
+    journalEntries: List<JournalEntry> = emptyList(),
     date: LocalDate,
     activeSprint: SprintState.Running?,
-    journalEntries: List<JournalEntry> = emptyList(),
     onItemClick: (DailyPlanItem) -> Unit,
     onTaskClick: (Long, DailyPlanItem?) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
@@ -569,8 +574,8 @@ internal fun MyDayAgenda(
     modifier: Modifier = Modifier
 ) {
     val projection = remember(items, notes, journalEntries) { items.toDayViewProjection(notes = notes, journalEntries = journalEntries) }
-    val timelineItems = remember(projection, date) {
-        projection.toTimelineItems(date = date)
+    val timelineItems = remember(projection, tasks, date) {
+        projection.toTimelineItems(tasks = tasks, date = date)
     }
 
     AgendaView(
@@ -584,6 +589,7 @@ internal fun MyDayAgenda(
                         onItemClick(tag)
                     }
                 }
+                is TaskItem -> onTaskClick(tag.id, null)
                 is NoteItem -> onNoteClick(tag)
             }
         },
@@ -592,6 +598,11 @@ internal fun MyDayAgenda(
         itemContent = { item ->
             when (val tag = item.tag) {
                 is JournalEntry -> JournalThoughtCard(entry = tag)
+                is TaskItem -> if (item.startTimeMinutes == null) {
+                    TaskAllDayCard(tag, completedOverlay = tag.status == TaskStatus.Completed)
+                } else {
+                    TaskTimelineCard(tag, completedOverlay = tag.status == TaskStatus.Completed)
+                }
                 is DailyPlanItem -> if (item.startTimeMinutes == null) {
                     DailyPlanAllDayCard(
                         item = tag,
@@ -787,6 +798,7 @@ private fun SprintTrailingContent(
 private fun DailyPlanItem.isDone(): Boolean = status == DailyPlanItemStatus.Done
 
 private fun DayViewProjection.toTimelineItems(
+    tasks: List<TaskItem> = emptyList(),
     date: LocalDate? = null,
     resizable: Boolean = false
 ): List<TimelineItem> {
@@ -800,6 +812,18 @@ private fun DayViewProjection.toTimelineItems(
             sortOrder = item.sortOrder,
             isResizable = resizable && (item.taskId != null || item.source.hasEndTime()),
             tag = item
+        )
+    }
+    val taskItems = tasks.map { task ->
+        TimelineItem(
+            id = "task-${task.id}",
+            type = TimelineItemType.Task,
+            date = date,
+            startTimeMinutes = task.startTimeMinutes,
+            endTimeMinutes = task.endTimeMinutes,
+            sortOrder = task.sortOrder,
+            isResizable = false,
+            tag = task
         )
     }
     val noteItems = notes.map { note ->
@@ -826,7 +850,7 @@ private fun DayViewProjection.toTimelineItems(
             tag = entry
         )
     }
-    return (planItems + noteItems + journalItems)
+    return (planItems + noteItems + journalItems + taskItems)
         .sortedWith(compareBy<TimelineItem> { it.startTimeMinutes ?: -1 }.thenBy { it.sortOrder })
 }
 

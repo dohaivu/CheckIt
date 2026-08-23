@@ -85,7 +85,6 @@ import com.checkit.ui.localizedWeekdayName
 import com.checkit.ui.myday.DayLinearTimeline
 import com.checkit.ui.myday.MyDayAgenda
 import com.checkit.ui.shortName
-import com.checkit.ui.tasks.TaskAgendaView
 import com.checkit.ui.tasks.toDurationLabel
 import com.checkit.ui.tasks.views.ContentContainerAlpha
 import com.checkit.ui.today
@@ -253,30 +252,19 @@ private fun SelectedDateContent(
     onNoteClick: (NoteItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    if (content.showDailyPlan) {
-        MyDayAgenda(
-            items = content.dailyPlanItems,
-            notes = content.notes,
-            date = content.date,
-            activeSprint = null,
-            journalEntries = content.journalEntries,
-            onItemClick = { onDailyPlanItemClick(it, content.date) },
-            onTaskClick = onTaskClick,
-            onNoteClick = onNoteClick,
-            onSprintClick = null,
-            modifier = modifier
-        )
-    } else {
-        TaskAgendaView(
-            tasks = content.tasks,
-            notes = content.notes,
-            onTaskClick = { onTaskClick(it.id, null) },
-            onNoteClick = onNoteClick,
-            dayLimit = 1,
-            focusedDate = content.date,
-            modifier = modifier
-        )
-    }
+    MyDayAgenda(
+        items = content.dailyPlanItems,
+        notes = content.notes,
+        tasks = content.tasks,
+        journalEntries = content.journalEntries,
+        date = content.date,
+        activeSprint = null,
+        onItemClick = { onDailyPlanItemClick(it, content.date) },
+        onTaskClick = onTaskClick,
+        onNoteClick = onNoteClick,
+        onSprintClick = null,
+        modifier = modifier
+    )
 }
 
 @Composable
