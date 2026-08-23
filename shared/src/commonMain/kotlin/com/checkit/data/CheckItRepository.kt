@@ -1018,27 +1018,30 @@ class RoomCheckItRepository(
     override fun observeDailyReflectStats(
         startDate: LocalDate,
         endDateInclusive: LocalDate
-    ): Flow<List<DailyReflectStat>> =
-        dao.observeDailyReflectStats(startDate.toEpochDays().toInt(), endDateInclusive.toEpochDays().toInt())
-            .map { entities -> entities.map { it.toDomain() } }
+    ): Flow<List<DailyReflectStat>> {
+        val startEpochDays = startDate.toEpochDays().toInt()
+        val endEpochDays = endDateInclusive.toEpochDays().toInt()
+        return combine(
+            dao.observeDailyReflectStats(startEpochDays, endEpochDays),
+            dao.observeDailyTagRollups(startEpochDays, endEpochDays)
+        ) { stats, rollups ->
+            val rollupsByDate = rollups.groupBy { it.dateEpochDays }
+            stats.map { entity ->
+                entity.toDomain(
+                    tagRollups = rollupsByDate[entity.dateEpochDays]
+                        .orEmpty()
+                        .map { it.toDomain() }
+                )
+            }
+        }
+    }
 
     override fun observeDailyTagRollups(
         startDate: LocalDate,
         endDateInclusive: LocalDate
     ): Flow<List<DailyTagRollup>> =
         dao.observeDailyTagRollups(startDate.toEpochDays().toInt(), endDateInclusive.toEpochDays().toInt())
-            .map { rows ->
-                rows.map {
-                    DailyTagRollup(
-                        dateEpochDays = it.dateEpochDays,
-                        tagId = it.tagId,
-                        tagName = it.tagName,
-                        tagColor = it.tagColor,
-                        doneCount = it.doneCount,
-                        doneMinutes = it.doneMinutes
-                    )
-                }
-            }
+            .map { rows -> rows.map { it.toDomain() } }
 
     override fun observeHabitDailyRollups(
         startDate: LocalDate,
@@ -1651,12 +1654,22 @@ private fun PeriodReviewEntity.toDomain() = PeriodReview(
     editedAtMillis = editedAtMillis
 )
 
-private fun DailyReflectStatsEntity.toDomain() = DailyReflectStat(
+private fun DailyReflectStatsEntity.toDomain(tagRollups: List<DailyTagRollup> = emptyList()) = DailyReflectStat(
     dateEpochDays = dateEpochDays,
     plannedItemCount = plannedItemCount,
     doneItemCount = doneItemCount,
     doneMinutes = doneMinutes,
-    journalCount = journalCount
+    journalCount = journalCount,
+    tagRollups = tagRollups
+)
+
+private fun DailyTagRollupWithMeta.toDomain() = DailyTagRollup(
+    dateEpochDays = dateEpochDays,
+    tagId = tagId,
+    tagName = tagName,
+    tagColor = tagColor,
+    doneCount = doneCount,
+    doneMinutes = doneMinutes
 )
 
 private fun JournalEntryEntity.toDomain(tags: List<TagItem> = emptyList()) = JournalEntry(

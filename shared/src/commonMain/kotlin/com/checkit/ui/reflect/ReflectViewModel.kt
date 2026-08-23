@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.checkit.data.CheckItRepository
 import com.checkit.domain.DailyReflectStat
-import com.checkit.domain.DailyTagRollup
 import com.checkit.domain.DoneItemSummary
 import com.checkit.domain.FocusPeriod
 import com.checkit.domain.HabitDailyRollup
@@ -70,7 +69,6 @@ class ReflectViewModel(
                     _uiState.update {
                         it.copy(
                             dailyStats = data.dailyStats,
-                            tagRollups = data.tagRollups,
                             doneItems = data.doneItems,
                             journalEntries = data.journalEntries,
                             habitRollups = data.habitRollups,
@@ -93,10 +91,6 @@ class ReflectViewModel(
                 startDate = selection.period.statsWindow(selection.date).first,
                 endDateInclusive = selection.period.statsWindow(selection.date).second
             ),
-            repository.observeDailyTagRollups(
-                startDate = selection.period.focusWindow(selection.date).first,
-                endDateInclusive = selection.period.focusWindow(selection.date).second
-            ),
             repository.observeDoneItemSummaries(
                 startDate = selection.period.focusWindow(selection.date).first,
                 endDateInclusive = selection.period.focusWindow(selection.date).second
@@ -112,10 +106,9 @@ class ReflectViewModel(
                 ),
                 observePeriodReviews()
             ) { habits, reviews -> habits to reviews }
-        ) { stats, tags, doneItems, journals, (habits, reviews) ->
+        ) { stats, doneItems, journals, (habits, reviews) ->
             ReflectData(
                 dailyStats = stats,
-                tagRollups = tags,
                 doneItems = doneItems,
                 journalEntries = journals,
                 habitRollups = habits,
@@ -237,7 +230,6 @@ private data class ReflectSelection(
 
 private data class ReflectData(
     val dailyStats: List<DailyReflectStat>,
-    val tagRollups: List<DailyTagRollup>,
     val doneItems: List<DoneItemSummary>,
     val journalEntries: List<JournalEntry>,
     val habitRollups: List<HabitDailyRollup>,

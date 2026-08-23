@@ -11,7 +11,9 @@ data class DailyReflectStat(
     val doneItemCount: Int,
     /** Sum of scheduled minutes across all done items. */
     val doneMinutes: Int,
-    val journalCount: Int
+    val journalCount: Int,
+    /** Per-tag done rollups for this day, joined with tag metadata for filtering. */
+    val tagRollups: List<DailyTagRollup> = emptyList()
 ) {
     val date: LocalDate get() = LocalDate.fromEpochDays(dateEpochDays)
 }

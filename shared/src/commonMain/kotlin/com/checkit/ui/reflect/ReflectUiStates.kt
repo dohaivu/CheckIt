@@ -41,8 +41,6 @@ data class ReflectUiState(
     val selectedDate: LocalDate = today(),
     /** Per-day aggregates covering the selection window (focus + previous + trend). */
     val dailyStats: List<DailyReflectStat> = emptyList(),
-    /** Tag rollups within the focused period. */
-    val tagRollups: List<DailyTagRollup> = emptyList(),
     /** Done items within the focused period (slim, for highlights). */
     val doneItems: List<DoneItemSummary> = emptyList(),
     /** Journal entries within the focused period (for highlights). */
@@ -84,7 +82,7 @@ data class ReflectUiState(
     val digestReport: DigestReportSummary by lazy {
         buildDigestReport(
             statsByDate = dailyStats.associateBy { it.dateEpochDays },
-            tagRollups = tagRollups,
+            tagRollups = dailyStats.flatMap { it.tagRollups },
             doneItems = doneItems,
             journalEntries = journalEntries,
             period = selectedPeriod,
