@@ -4,6 +4,8 @@ import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
+import com.checkit.domain.DailyReflectStat
+import com.checkit.domain.DailyTagRollup
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
@@ -96,12 +98,26 @@ class CalendarUiStateMarkersTest {
                         dailyPlanItem(id = 1L, source = DailyPlanItemSource.ExistingTask, tags = listOf(selectedTag)),
                         dailyPlanItem(id = 2L, source = DailyPlanItemSource.ExistingTask, tags = listOf(otherTag))
                     )
-                ),
-                dailyPlan(
-                    date = otherDate,
-                    items = listOf(
-                        dailyPlanItem(id = 3L, source = DailyPlanItemSource.ExistingTask, tags = listOf(selectedTag)),
-                        dailyPlanItem(id = 4L, source = DailyPlanItemSource.ExistingTask)
+                )
+            ),
+            dailyStatsByDate = mapOf(
+                otherDate to DailyReflectStat(
+                    dateEpochDays = otherDate.toEpochDays().toInt(),
+                    plannedItemCount = 1,
+                    doneItemCount = 2,
+                    doneMinutes = 30,
+                    journalCount = 0,
+                    tagRollups = listOf(
+                        dailyTagRollup(
+                            dateEpochDays = otherDate.toEpochDays().toInt(),
+                            tagId = selectedTag.id,
+                            doneCount = 1
+                        ),
+                        dailyTagRollup(
+                            dateEpochDays = otherDate.toEpochDays().toInt(),
+                            tagId = otherTag.id,
+                            doneCount = 2
+                        )
                     )
                 )
             ),
@@ -139,6 +155,19 @@ class CalendarUiStateMarkersTest {
         id = id,
         name = "Tag $id",
         color = "#FFFFFF"
+    )
+
+    private fun dailyTagRollup(
+        dateEpochDays: Int,
+        tagId: Long,
+        doneCount: Int
+    ) = DailyTagRollup(
+        dateEpochDays = dateEpochDays,
+        tagId = tagId,
+        tagName = "Tag $tagId",
+        tagColor = "#FFFFFF",
+        doneCount = doneCount,
+        doneMinutes = 0
     )
 
     private fun task(

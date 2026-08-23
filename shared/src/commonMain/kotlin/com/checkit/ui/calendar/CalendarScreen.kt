@@ -268,23 +268,6 @@ private fun SelectedDateContent(
 }
 
 @Composable
-private fun EmptySelectedDateMessage(
-    showDailyPlan: Boolean,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = if (showDailyPlan) "No My Day history for this day" else "No tasks or notes for this day",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
 private fun CalendarPeriodHeader(
     month: LocalDate,
     selectedDate: LocalDate,
@@ -551,7 +534,7 @@ private fun CalendarUiState.selectedDateContent(today: LocalDate): SelectedCalen
     )
 }
 
-private fun CalendarUiState.matchesSelectedTags(tags: List<TagItem>): Boolean =
+internal fun CalendarUiState.matchesSelectedTags(tags: List<TagItem>): Boolean =
     selectedTagIds.isEmpty() || tags.any { it.id in selectedTagIds }
 
 @Composable
@@ -685,7 +668,7 @@ private fun CalendarWeekRow(
                 onDateSelected = onDateSelected,
                 onDateDoubleClick = onDateDoubleClick,
                 markers = if (isEnabled) state.markersForDate(board, date) else CalendarDateMarkers.Empty,
-                workMinutes = if (isEnabled) state.dailyPlanWorkMinutesForDate(date) else 0,
+                workMinutes = if (isEnabled) state.doneMinutesForDate(date) else 0,
                 modifier = Modifier.weight(1f)
             )
         }
