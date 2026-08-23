@@ -114,7 +114,7 @@ internal fun CalendarScreen(
     modifier: Modifier = Modifier
 ) {
     val today = today()
-    val selectedContent = remember(state, board, today) { state.selectedDateContent(board, today) }
+    val selectedContent = remember(state, today) { state.selectedDateContent(today) }
 
     val handleDateDoubleClick: (LocalDate) -> Unit = { date ->
         calendarViewModel.selectDate(date)
@@ -253,37 +253,28 @@ private fun SelectedDateContent(
     onNoteClick: (NoteItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    if (content.hasItems) {
-        if (content.showDailyPlan) {
-            MyDayAgenda(
-                items = content.dailyPlanItems,
-                notes = content.notes,
-                date = content.date,
-                activeSprint = null,
-                journalEntries = content.journalEntries,
-                onItemClick = { onDailyPlanItemClick(it, content.date) },
-                onTaskClick = onTaskClick,
-                onNoteClick = onNoteClick,
-                onSprintClick = null,
-                modifier = modifier
-            )
-        } else {
-            TaskAgendaView(
-                tasks = content.tasks,
-                notes = content.notes,
-                onTaskClick = { onTaskClick(it.id, null) },
-                onNoteClick = onNoteClick,
-                dayLimit = 1,
-                focusedDate = content.date,
-                modifier = modifier
-            )
-        }
+    if (content.showDailyPlan) {
+        MyDayAgenda(
+            items = content.dailyPlanItems,
+            notes = content.notes,
+            date = content.date,
+            activeSprint = null,
+            journalEntries = content.journalEntries,
+            onItemClick = { onDailyPlanItemClick(it, content.date) },
+            onTaskClick = onTaskClick,
+            onNoteClick = onNoteClick,
+            onSprintClick = null,
+            modifier = modifier
+        )
     } else {
-        EmptySelectedDateMessage(
-            showDailyPlan = content.showDailyPlan,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 24.dp, horizontal = 8.dp)
+        TaskAgendaView(
+            tasks = content.tasks,
+            notes = content.notes,
+            onTaskClick = { onTaskClick(it.id, null) },
+            onNoteClick = onNoteClick,
+            dayLimit = 1,
+            focusedDate = content.date,
+            modifier = modifier
         )
     }
 }
@@ -555,15 +546,11 @@ private data class SelectedCalendarDateContent(
     val tasks: List<TaskItem>,
     val notes: List<NoteItem>
 ) {
-    val taskCount: Int get() = if (showDailyPlan) dailyPlanItems.size else tasks.size
+    val taskCount: Int get() = dailyPlanItems.size + tasks.size
     val noteCount: Int get() = notes.size
-    val hasItems: Boolean get() = if (showDailyPlan) dailyPlanItems.isNotEmpty() else tasks.isNotEmpty() || notes.isNotEmpty()
 }
 
-private fun CalendarUiState.selectedDateContent(
-    board: TaskBoard,
-    today: LocalDate
-): SelectedCalendarDateContent {
+private fun CalendarUiState.selectedDateContent(today: LocalDate): SelectedCalendarDateContent {
     val showDailyPlan = selectedDate <= today
     val dailyPlan = dailyPlanForDate(selectedDate)
     val dateEpochDays = selectedDate.toEpochDays()
@@ -573,8 +560,8 @@ private fun CalendarUiState.selectedDateContent(
         dailyPlan = dailyPlan,
         dailyPlanItems = dailyPlan?.items.orEmpty(),
         journalEntries = journalEntries.filter { it.dateEpochDays == dateEpochDays.toInt() },
-        tasks = tasksForDate(board, selectedDate),
-        notes = notesForDate(board, selectedDate)
+        tasks = selectedDateTasks,
+        notes = selectedDateNotes
     )
 }
 
@@ -588,17 +575,16 @@ private fun CountBadge(
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 6.dp, vertical = 3.dp),
+            .clickable(enabled = onClick != null) { onClick?.invoke() }
+            .padding(horizontal = 2.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(3.dp)
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
             modifier = Modifier.size(13.dp),
-            tint = MaterialTheme.colorScheme.primary
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Text(
             text = count.toString(),

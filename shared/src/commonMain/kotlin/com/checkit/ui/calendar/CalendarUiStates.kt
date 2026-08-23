@@ -101,12 +101,6 @@ data class CalendarUiState(
         minutes
     }
 
-    fun tasksForDate(board: TaskBoard, date: LocalDate): List<TaskItem> =
-        if (date == selectedDate) selectedDateTasks else board.tasksByDate[date].orEmpty()
-
-    fun notesForDate(board: TaskBoard, date: LocalDate): List<NoteItem> =
-        if (date == selectedDate) selectedDateNotes else board.notesByDate[date].orEmpty()
-
     fun markersForDate(board: TaskBoard, date: LocalDate): CalendarDateMarkers =
         if (date <= today()) {
             dailyPlanMarkersByDate[date] ?: CalendarDateMarkers.Empty
