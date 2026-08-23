@@ -93,7 +93,6 @@
     <string name="reflect_stats_done">%1$d hoàn thành</string>
     <string name="reflect_stats_minutes">%1$d phút</string>
     <string name="reflect_stats_entries">%1$d check-in</string>
-    <string name="journal_agenda_review_card_title">Đánh giá · ngày %1$d</string>
 
     <string name="settings_title">Cài đặt</string>
     <string name="version">Phiên bản %1$s</string>

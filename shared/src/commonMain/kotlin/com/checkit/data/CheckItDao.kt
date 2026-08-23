@@ -698,6 +698,12 @@ interface CheckItDao {
     @RawQuery(observedEntities = [JournalEntryEntity::class, JournalEntryTagEntity::class])
     fun observeJournalEntriesFiltered(query: RoomRawQuery): Flow<List<JournalEntryEntity>>
 
+    @Query("SELECT EXISTS(SELECT 1 FROM journal_entries WHERE dateEpochDays < :epochDays)")
+    fun observeJournalEntryExistsBefore(epochDays: Int): Flow<Boolean>
+
+    @Query("SELECT EXISTS(SELECT 1 FROM period_reviews WHERE periodType = 'Day' AND periodStartEpochDays < :epochDays)")
+    fun observeDayReviewExistsBefore(epochDays: Int): Flow<Boolean>
+
 
     @Query(
         "SELECT * FROM period_reviews WHERE periodType = :periodType AND periodStartEpochDays = :periodStartEpochDays LIMIT 1"

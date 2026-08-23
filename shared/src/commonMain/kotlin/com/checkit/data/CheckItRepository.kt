@@ -122,8 +122,13 @@ interface CheckItRepository {
     fun observeJournalEntriesFiltered(
         moodEmojis: List<String>,
         searchText: String?,
-        tagId: Long?
+        tagId: Long?,
+        startDate: LocalDate? = null,
+        endDateInclusive: LocalDate? = null
     ): Flow<List<JournalEntry>>
+
+    /** Whether any journal entry or day review exists before [beforeDate] (browse-mode "load more" gate). */
+    fun observeOlderJournalHistoryExists(beforeDate: LocalDate): Flow<Boolean>
     suspend fun rebuildReflectStats()
     suspend fun completeDayClose(
         date: LocalDate,
@@ -1123,7 +1128,9 @@ class RoomCheckItRepository(
     override fun observeJournalEntriesFiltered(
         moodEmojis: List<String>,
         searchText: String?,
-        tagId: Long?
+        tagId: Long?,
+        startDate: LocalDate?,
+        endDateInclusive: LocalDate?
     ): Flow<List<JournalEntry>> {
         val conditions = mutableListOf<String>()
         val args = mutableListOf<Any>()
@@ -1147,6 +1154,14 @@ class RoomCheckItRepository(
                 "EXISTS(SELECT 1 FROM journal_entry_tags AS jt WHERE jt.entryId = journal_entries.id AND jt.tagId = ?)"
             )
         }
+        if (startDate != null) {
+            args.add(startDate.toEpochDays().toInt())
+            conditions.add("dateEpochDays >= ?")
+        }
+        if (endDateInclusive != null) {
+            args.add(endDateInclusive.toEpochDays().toInt())
+            conditions.add("dateEpochDays <= ?")
+        }
 
         val sql = buildString {
             append("SELECT * FROM journal_entries")
@@ -1161,6 +1176,7 @@ class RoomCheckItRepository(
                 when (arg) {
                     is String -> statement.bindText(index + 1, arg)
                     is Long -> statement.bindLong(index + 1, arg)
+                    is Int -> statement.bindLong(index + 1, arg.toLong())
                 }
             }
         }
@@ -1177,6 +1193,14 @@ class RoomCheckItRepository(
                 entry.toDomain(entryTagIds[entry.id].orEmpty().mapNotNull { tagsById[it] })
             }
         }
+    }
+
+    override fun observeOlderJournalHistoryExists(beforeDate: LocalDate): Flow<Boolean> {
+        val epochDays = beforeDate.toEpochDays().toInt()
+        return combine(
+            dao.observeJournalEntryExistsBefore(epochDays),
+            dao.observeDayReviewExistsBefore(epochDays)
+        ) { hasEntries, hasReviews -> hasEntries || hasReviews }
     }
 
     override suspend fun rebuildReflectStats() {

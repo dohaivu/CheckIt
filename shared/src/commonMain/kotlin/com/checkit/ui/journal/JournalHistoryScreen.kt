@@ -11,12 +11,15 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,8 +30,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import checkit.shared.generated.resources.Res
-import checkit.shared.generated.resources.journal_agenda_review_card_title
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.MoodFilter
 import com.checkit.domain.PeriodReview
@@ -38,11 +39,12 @@ import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TagPlain
 import com.checkit.ui.components.asAnnotatedString
 import com.checkit.ui.components.getMoodColorFromEmoji
+import com.checkit.ui.reflect.label
+import com.checkit.ui.reflect.rangeLabel
 import com.checkit.ui.tasks.TimelineItem
 import com.checkit.ui.tasks.TimelineItemType
 import com.checkit.ui.tasks.views.AgendaView
 import kotlinx.datetime.LocalDate
-import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,11 +55,13 @@ internal fun JournalHistorySheet(
     onTagToggle: (Long) -> Unit,
     onEntryClick: (JournalEntry) -> Unit,
     onReviewClick: (PeriodReview) -> Unit = {},
+    onLoadMore: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
     AppEditorBottomSheet(
         onDismiss = onDismiss,
-        modifier = Modifier.fillMaxHeight(0.9f)
+        modifier = Modifier.fillMaxHeight(0.9f),
+        sheetGesturesEnabled = false
     ) {
         Column(
             modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
@@ -72,6 +76,8 @@ internal fun JournalHistorySheet(
             JournalAgendaView(
                 journalEntries = state.entries,
                 dayReviews = state.dayReviews,
+                hasOlder = state.hasOlder,
+                onLoadMore = onLoadMore,
                 onEntryClick = onEntryClick,
                 onReviewClick = onReviewClick,
                 modifier = Modifier.fillMaxSize()
@@ -114,15 +120,20 @@ private fun JournalFilterBar(
     }
 }
 
+/** Marker tag for the auto-load sentinel at the end of the history agenda. */
+private data object LoadOlderMarker
+
 @Composable
 internal fun JournalAgendaView(
     journalEntries: List<JournalEntry>,
     dayReviews: List<PeriodReview> = emptyList(),
+    hasOlder: Boolean = false,
+    onLoadMore: () -> Unit = {},
     onEntryClick: (JournalEntry) -> Unit,
     onReviewClick: (PeriodReview) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val timelineItems = remember(journalEntries, dayReviews) {
+    val timelineItems = remember(journalEntries, dayReviews, hasOlder) {
         buildList {
             journalEntries.forEach { entry ->
                 add(
@@ -155,11 +166,24 @@ internal fun JournalAgendaView(
         }.sortedByDescending { it.date }
     }
 
+    val agendaItems = if (hasOlder) {
+        timelineItems + TimelineItem(
+            id = "load-older-sentinel",
+            type = TimelineItemType.Journal,
+            date = LocalDate.fromEpochDays(0),
+            sortOrder = Int.MIN_VALUE,
+            tag = LoadOlderMarker
+        )
+    } else {
+        timelineItems
+    }
+
     AgendaView(
-        items = timelineItems,
+        items = agendaItems,
         onItemClick = { item -> },
         itemContent = { item ->
             when (val tag = item.tag) {
+                LoadOlderMarker -> LoadOlderIndicator(onLoadMore)
                 is JournalEntry -> JournalHistoryEntryCard(
                     entry = tag,
                     onClick = { onEntryClick(tag) },
@@ -174,6 +198,22 @@ internal fun JournalAgendaView(
         },
         modifier = modifier
     )
+}
+
+/** Composing this row (i.e., the user scrolled to the bottom) loads older history. */
+@Composable
+private fun LoadOlderIndicator(onLoadMore: () -> Unit) {
+    LaunchedEffect(Unit) { onLoadMore() }
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.Center
+    ) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(18.dp),
+            strokeWidth = 2.dp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
 }
 
 @Composable
@@ -196,7 +236,7 @@ private fun JournalAgendaReviewCard(
         verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
         Text(
-            text = stringResource(Res.string.journal_agenda_review_card_title, review.periodStartDate.day),
+            text = "Review · ${review.period.label()} ",
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold
         )

@@ -480,6 +480,7 @@ fun CheckItApp(
                                 viewModels.reflect.focusDay(review.periodStartDate)
                                 navState.resetTo(AppRoute.Reflect)
                             },
+                            onLoadMore = viewModels.journalHistory::loadOlder,
                             onDismiss = { showJournalHistory = false }
                         )
                     }

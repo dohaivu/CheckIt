@@ -5,18 +5,14 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -51,16 +47,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import checkit.shared.generated.resources.Res
-import checkit.shared.generated.resources.journal_agenda_review_card_title
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.MoodCalmEmojis
 import com.checkit.domain.MoodEnergeticEmojis
@@ -68,20 +60,12 @@ import com.checkit.domain.MoodFocusedEmojis
 import com.checkit.domain.MoodHappyEmojis
 import com.checkit.domain.MoodLovedEmojis
 import com.checkit.domain.MoodSadEmojis
-import com.checkit.domain.MoodWorriedEmojis
 import com.checkit.domain.MoodTiredEmojis
-import com.checkit.domain.PeriodReview
+import com.checkit.domain.MoodWorriedEmojis
 import com.checkit.ui.components.EmojiPicker
-import com.checkit.ui.components.TagPlain
-import com.checkit.ui.components.getMoodColorFromEmoji
 import com.checkit.ui.components.asAnnotatedString
-import com.checkit.ui.tasks.TimelineItem
-import com.checkit.ui.tasks.TimelineItemType
-import com.checkit.ui.tasks.toClockLabel
-import com.checkit.ui.tasks.views.AgendaView
+import com.checkit.ui.components.getMoodColorFromEmoji
 import kotlinx.coroutines.launch
-import kotlinx.datetime.LocalDate
-import org.jetbrains.compose.resources.stringResource
 
 /** Quick label presets shown as tappable chips in the entry editor. */
 data class JournalLabelPreset(

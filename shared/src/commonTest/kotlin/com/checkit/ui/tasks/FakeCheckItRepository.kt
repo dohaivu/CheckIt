@@ -638,7 +638,9 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
     override fun observeJournalEntriesFiltered(
         moodEmojis: List<String>,
         searchText: String?,
-        tagId: Long?
+        tagId: Long?,
+        startDate: LocalDate?,
+        endDateInclusive: LocalDate?
     ): Flow<List<JournalEntry>> =
         journalEntriesFlow.map { entries ->
             entries.filter { entry ->
@@ -647,11 +649,28 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
                     entry.content.contains(searchText, ignoreCase = true) ||
                     (entry.label?.contains(searchText, ignoreCase = true) == true)
                 val tagMatches = tagId == null || entry.tags.any { it.id == tagId }
-                moodMatches && searchMatches && tagMatches
+                val startMatches = startDate == null || entry.dateEpochDays >= startDate.toEpochDays().toInt()
+                val endMatches = endDateInclusive == null ||
+                    entry.dateEpochDays <= endDateInclusive.toEpochDays().toInt()
+                moodMatches && searchMatches && tagMatches && startMatches && endMatches
             }.sortedWith(
                 compareByDescending<JournalEntry> { it.dateEpochDays }.thenBy { it.createdTimeMinutes }
             )
         }
+
+    override fun observeOlderJournalHistoryExists(beforeDate: LocalDate): Flow<Boolean> {
+        val epochDays = beforeDate.toEpochDays().toInt()
+        val hasOlder = combine(
+            journalEntriesFlow,
+            periodReviewsFlow
+        ) { entries, reviews ->
+            entries.any { it.dateEpochDays < epochDays } ||
+                reviews.any {
+                    it.period == Period.Day && it.periodStartEpochDays < epochDays
+                }
+        }
+        return hasOlder
+    }
 
     override suspend fun rebuildReflectStats() = Unit
 

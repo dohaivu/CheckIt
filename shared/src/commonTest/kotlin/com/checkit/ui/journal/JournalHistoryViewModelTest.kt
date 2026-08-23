@@ -11,12 +11,16 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
+import com.checkit.ui.today
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class JournalHistoryViewModelTest {
@@ -30,9 +34,13 @@ class JournalHistoryViewModelTest {
         repository = FakeCheckItRepository()
         repository.setJournalEntries(
             listOf(
-                entry(id = 1L, day = 20_000, content = "Great run", moods = listOf("😊"), tagIds = listOf(1L)),
-                entry(id = 2L, day = 20_001, content = "Tough day", moods = listOf("😢"), label = "work"),
-                entry(id = 3L, day = 20_002, content = "Quiet evening")
+                entry(id = 1L, day = today().minus(3, DateTimeUnit.DAY), content = "Great run", moods = listOf("😊"), tagIds = listOf(1L)),
+                entry(id = 2L, day = today().minus(2, DateTimeUnit.DAY), content = "Tough day", moods = listOf("😢"), label = "work"),
+                entry(id = 3L, day = today().minus(1, DateTimeUnit.DAY), content = "Quiet evening"),
+                // Outside the initial 7-day window; reachable via loadOlder().
+                entry(id = 4L, day = today().minus(10, DateTimeUnit.DAY), content = "Old memory"),
+                // Even older: proves hasOlder stays true after one expansion.
+                entry(id = 5L, day = today().minus(40, DateTimeUnit.DAY), content = "Ancient memory")
             )
         )
         viewModel = JournalHistoryViewModel(
@@ -49,8 +57,19 @@ class JournalHistoryViewModelTest {
     }
 
     @Test
-    fun loadsAllEntriesNewestFirst() {
-        assertEquals(listOf(3L, 2L, 1L), viewModel.uiState.value.entries.map { it.id })
+    fun loadsRecentWindowNewestFirst() {
+        val state = viewModel.uiState.value
+        assertEquals(listOf(3L, 2L, 1L), state.entries.map { it.id })
+        assertEquals(true, state.hasOlder)
+    }
+
+    @Test
+    fun loadOlderExpandsWindowToIncludeOlderEntries() {
+        viewModel.loadOlder()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(listOf(3L, 2L, 1L, 4L), viewModel.uiState.value.entries.map { it.id })
+        assertTrue(viewModel.uiState.value.hasOlder)
     }
 
     @Test
@@ -92,14 +111,14 @@ class JournalHistoryViewModelTest {
 
     private fun entry(
         id: Long,
-        day: Int,
+        day: LocalDate,
         content: String,
         moods: List<String> = emptyList(),
         label: String? = null,
         tagIds: List<Long> = emptyList()
     ) = JournalEntry(
         id = id,
-        dateEpochDays = day,
+        dateEpochDays = day.toEpochDays().toInt(),
         label = label,
         content = content,
         moods = moods,
