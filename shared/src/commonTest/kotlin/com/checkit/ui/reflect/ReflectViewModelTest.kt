@@ -122,30 +122,43 @@ class ReflectViewModelTest {
             review(
                 period = Period.Week,
                 start = weekStart,
-                content = "Existing content",
-                intentNext = "Existing intent"
+                content = "Existing content"
+            )
+        )
+        // The intent is prefilled from the next period's own review record.
+        repository.savePeriodReview(
+            review(
+                period = Period.Week,
+                start = weekStart.plus(7, DateTimeUnit.DAY),
+                content = "Next week recap",
+                periodIntent = "Existing intent"
             )
         )
         advanceUntilIdle()
 
         viewModel.openEditor()
+        advanceUntilIdle()
         val editor = assertNotNull(viewModel.editor.value)
         assertEquals("Existing content", editor.content)
-        assertEquals("Existing intent", editor.intentNext)
+        assertEquals("Existing intent", editor.nextPeriodIntent)
     }
 
     @Test
     fun saveEditorPersistsAndDismisses() = runTest(dispatcher) {
         viewModel.openEditor()
         viewModel.updateEditorContent("Great week")
-        viewModel.updateEditorIntentNext("Ship more")
+        viewModel.updateEditorNextPeriodIntent("Ship more")
         viewModel.saveEditor()
         advanceUntilIdle()
 
         assertNull(viewModel.editor.value)
-        val saved = repository.observePeriodReviews().first().single()
-        assertEquals("Great week", saved.content)
-        assertEquals("Ship more", saved.intentNext)
+        val reviews = repository.observePeriodReviews().first()
+        // Content is saved for the focused period; the intent lands on the next one.
+        val saved = reviews.single { it.content == "Great week" }
+        assertNull(saved.periodIntent)
+        val nextWeekStart = saved.periodStartEpochDays + 7
+        val nextReview = reviews.single { it.periodStartEpochDays == nextWeekStart }
+        assertEquals("Ship more", nextReview.periodIntent)
     }
 
     @Test
@@ -308,14 +321,14 @@ class ReflectViewModelTest {
         period: Period,
         start: LocalDate,
         content: String,
-        intentNext: String? = null
+        periodIntent: String? = null
     ) = PeriodReview(
         id = 0L,
         period = period,
         periodStartEpochDays = start.toEpochDays().toInt(),
         periodEndEpochDays = period.endExclusive(start).toEpochDays().toInt(),
         content = content,
-        intentNext = intentNext,
+        periodIntent = periodIntent,
         source = ReviewSource.Manual,
         status = ReviewStatus.Complete,
         completedAtMillis = 1L,

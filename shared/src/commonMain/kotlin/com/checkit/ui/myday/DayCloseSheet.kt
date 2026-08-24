@@ -203,7 +203,7 @@ private fun ReflectionSection(
             modifier = Modifier.fillMaxWidth(),
             placeholder = stringResource(Res.string.day_close_win_note_placeholder),
             minLines = 4,
-            maxLines = 8,
+            maxLines = 6,
             enabled = enabled,
             visualTransformation = remember { MarkdownVisualTransformation() }
         )
@@ -218,7 +218,7 @@ private fun TomorrowGoalSection(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
-            text = "Tomorrow's Top Priority",
+            text = "Tomorrow's Top 3 Priorities",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Black,
             color = MaterialTheme.colorScheme.primary
@@ -232,7 +232,8 @@ private fun TomorrowGoalSection(
             ),
             modifier = Modifier.fillMaxWidth(),
             placeholder = "One thing you want to focus on...",
-            minLines = 2,
+            minLines = 3,
+            maxLines = 6,
             enabled = enabled
         )
     }

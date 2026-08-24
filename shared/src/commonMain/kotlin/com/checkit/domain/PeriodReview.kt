@@ -25,7 +25,7 @@ data class PeriodReview(
     val periodStartEpochDays: Int,
     val periodEndEpochDays: Int,
     val content: String = "",
-    val intentNext: String? = null,
+    val periodIntent: String? = null,
     val source: ReviewSource = ReviewSource.Manual,
     val status: ReviewStatus = ReviewStatus.Draft,
     val completedAtMillis: Long? = null,

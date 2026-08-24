@@ -800,13 +800,26 @@ interface CheckItDao {
                 periodStartEpochDays = dateEpochDays,
                 periodEndEpochDays = dateEpochDays + 1,
                 content = winNote?.trim().orEmpty(),
-                intentNext = tomorrowGoal?.trim()?.takeIf { it.isNotEmpty() },
                 source = ReviewSource.Manual.name,
                 status = ReviewStatus.Complete.name,
                 completedAtMillis = nowMillis,
                 editedAtMillis = nowMillis
             )
         )
+
+        // The tomorrow goal describes the next day's period, so it is stored
+        // as the next day's period intent instead of on this record.
+        tomorrowGoal?.trim()?.takeIf { it.isNotEmpty() }?.let { goal ->
+            val nextStartEpochDays = dateEpochDays + 1
+            val existing = periodReviewFor(Period.Day.name, nextStartEpochDays)
+            upsertPeriodReview(
+                (existing ?: PeriodReviewEntity(
+                    periodType = Period.Day.name,
+                    periodStartEpochDays = nextStartEpochDays,
+                    periodEndEpochDays = nextStartEpochDays + 1
+                )).copy(periodIntent = goal, editedAtMillis = nowMillis)
+            )
+        }
 
         return DayCloseCommitResult(
             carriedCount = carriedCount,

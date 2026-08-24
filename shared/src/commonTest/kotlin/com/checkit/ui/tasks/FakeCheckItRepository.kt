@@ -43,7 +43,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.plus
 
 class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepository {
     private val boardFlow = MutableStateFlow(initialBoard)
@@ -730,13 +732,25 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
                 periodStartEpochDays = date.toEpochDays().toInt(),
                 periodEndEpochDays = date.toEpochDays().toInt() + 1,
                 content = winNote?.trim().orEmpty(),
-                intentNext = tomorrowGoal?.trim()?.takeIf { it.isNotEmpty() },
                 source = ReviewSource.Manual,
                 status = ReviewStatus.Complete,
                 completedAtMillis = nowMillis,
                 editedAtMillis = nowMillis
             )
         )
+
+        // The tomorrow goal is the next day's period intent, mirroring CheckItDao.
+        tomorrowGoal?.trim()?.takeIf { it.isNotEmpty() }?.let { goal ->
+            val nextDate = date.plus(1, DateTimeUnit.DAY)
+            val existing = periodReviewFor(Period.Day, nextDate)
+            savePeriodReview(
+                (existing ?: PeriodReview(
+                    period = Period.Day,
+                    periodStartEpochDays = nextDate.toEpochDays().toInt(),
+                    periodEndEpochDays = nextDate.toEpochDays().toInt() + 1
+                )).copy(periodIntent = goal, editedAtMillis = nowMillis)
+            )
+        }
         
         return DayCloseCommitResult(carriedCount = carriedCount, skippedCount = skippedCount)
     }

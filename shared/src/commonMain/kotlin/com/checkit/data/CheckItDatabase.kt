@@ -159,7 +159,7 @@ data class PeriodReviewEntity(
     val periodStartEpochDays: Int,
     val periodEndEpochDays: Int,
     val content: String = "",
-    val intentNext: String? = null,
+    val periodIntent: String? = null,
     val source: String = ReviewSource.Manual.name,
     val status: String = ReviewStatus.Draft.name,
     val completedAtMillis: Long? = null,
@@ -621,7 +621,7 @@ data class NestedItemTagEntity(
         DailyTagRollupEntity::class,
         HabitDailyRollupEntity::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)
