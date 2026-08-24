@@ -409,7 +409,10 @@ class NestedListsViewModel(
 
         viewModelScope.launch {
             runCatching { addItemUseCase(active.documentId, overlay.draft.parentId, text, position) }
-                .onSuccess { cancelAddItem() }
+                .onSuccess { itemId ->
+                    cancelAddItem()
+                    selectItem(itemId)
+                }
                 .onFailure { error -> _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to add item")) }
         }
     }
