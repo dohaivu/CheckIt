@@ -105,6 +105,7 @@ interface CheckItRepository {
     suspend fun updateDailyPlanItemsStatus(itemIds: List<Long>, status: DailyPlanItemStatus)
     suspend fun updateDailyPlanItem(itemId: Long, input: DailyPlanItemWriteInput)
     suspend fun updateDailyPlanItemTags(itemId: Long, tagIds: List<Long>)
+    suspend fun linkDailyPlanItemToTask(itemId: Long, taskId: Long)
     suspend fun deleteDailyPlanItem(itemId: Long)
     suspend fun getDailyPlanItem(itemId: Long): DailyPlanItem?
     suspend fun dailyPlanForDate(date: LocalDate): DailyPlan?
@@ -854,6 +855,10 @@ class RoomCheckItRepository(
     override suspend fun updateDailyPlanItemTags(itemId: Long, tagIds: List<Long>) {
         dao.deleteDailyPlanItemTags(itemId)
         tagIds.forEach { tagId -> addDailyPlanItemTag(itemId, tagId) }
+    }
+
+    override suspend fun linkDailyPlanItemToTask(itemId: Long, taskId: Long) {
+        dao.linkDailyPlanItemToTask(itemId, taskId, DailyPlanItemSource.ExistingTask.name)
     }
 
     override suspend fun deleteDailyPlanItem(itemId: Long) {

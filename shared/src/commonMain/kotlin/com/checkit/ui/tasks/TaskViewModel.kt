@@ -23,6 +23,7 @@ import com.checkit.domain.usecase.CompleteNoteUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
 import com.checkit.domain.usecase.GetNoteUseCase
 import com.checkit.domain.usecase.GetTaskUseCase
+import com.checkit.domain.usecase.LinkDailyPlanItemToTaskUseCase
 import com.checkit.domain.usecase.MoveNoteUseCase
 import com.checkit.domain.usecase.MoveTaskUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
@@ -83,6 +84,7 @@ class TaskViewModel(
     private val updateDailyPlanItemTime: UpdateDailyPlanItemTimeUseCase,
     private val updateDailyPlanItemStatus: UpdateDailyPlanItemStatusUseCase,
     private val updateDailyPlanItemTag: UpdateDailyPlanItemTagUseCase,
+    private val linkDailyPlanItemToTask: LinkDailyPlanItemToTaskUseCase,
     private val settingsRepository: SettingsRepository
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(TaskUiState())
@@ -350,6 +352,30 @@ class TaskViewModel(
                     mode = EditorMode.Add,
                     listId = listId,
                     type = TaskType.Habit,
+                )
+            )
+        }
+    }
+
+    fun openNewTaskFromDailyPlan(
+        planItemId: Long,
+        title: String,
+        note: String,
+        label: String?,
+        tagIds: Set<Long>
+    ) {
+        val listId = editableListId()
+        cancelPendingTaskTextSave()
+        _uiState.update {
+            it.copy(
+                editor = TaskEditorState.TaskForm(
+                    mode = EditorMode.Add,
+                    listId = listId,
+                    name = title,
+                    description = note,
+                    label = label,
+                    selectedTagIds = tagIds,
+                    upgradeDailyPlanItemId = planItemId
                 )
             )
         }
@@ -732,6 +758,9 @@ class TaskViewModel(
                             .mapNotNull { board -> board.tasksById[taskId] }
                             .first()
                     addTaskToDailyPlan(today(), task)
+                }
+                form.upgradeDailyPlanItemId?.let { planItemId ->
+                    linkDailyPlanItemToTask(planItemId, taskId)
                 }
             } else {
                 updateTask(form.taskId ?: return@launch, input)

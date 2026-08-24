@@ -444,7 +444,20 @@ fun CheckItApp(
                             onDelete = viewModels.myDay::deleteDailyPlan,
                             onDuplicate = viewModels.myDay::duplicateDailyPlanItem,
                             onStartSprint = viewModels.myDay::startNewSprintFromEditor,
-                            onStartOngoingSprint = viewModels.myDay::startOngoingSprintFromEditor
+                            onStartOngoingSprint = viewModels.myDay::startOngoingSprintFromEditor,
+                            onUpgradeToTask = {
+                                val current = myDayUiState.itemEditor
+                                viewModels.myDay.dismissDailyPlanEditor()
+                                if (current != null && current.itemId != null) {
+                                    viewModels.task.openNewTaskFromDailyPlan(
+                                        planItemId = current.itemId,
+                                        title = current.title,
+                                        note = current.note,
+                                        label = current.label,
+                                        tagIds = current.selectedTagIds
+                                    )
+                                }
+                            }
                         )
                     }
                     myDayUiState.journalEditor?.let { editor ->

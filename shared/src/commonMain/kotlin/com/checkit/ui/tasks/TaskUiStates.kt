@@ -149,6 +149,7 @@ sealed interface TaskEditorState {
         val selectedTagIds: Set<Long> = emptySet(),
         val addToMyDayOnSave: Boolean = false,
         val dailyPlanItem: DailyPlanItem? = null,
+        val upgradeDailyPlanItemId: Long? = null,
         val trashedAtMillis: Long? = null
     ) : TaskEditorState
 

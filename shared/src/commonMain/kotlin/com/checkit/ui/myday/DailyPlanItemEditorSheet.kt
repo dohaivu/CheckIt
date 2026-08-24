@@ -80,6 +80,7 @@ internal fun DailyPlanItemEditorSheet(
     onDuplicate: () -> Unit,
     onStartSprint: () -> Unit,
     onStartOngoingSprint: () -> Unit,
+    onUpgradeToTask: () -> Unit,
     recentLabels: List<String> = emptyList()
 ) {
     val enabled = state.isEditableByDate()
@@ -126,7 +127,8 @@ internal fun DailyPlanItemEditorSheet(
             onAdd = onAdd,
             onDuplicate = onDuplicate,
             onStartSprint = onStartSprint,
-            onStartOngoingSprint = onStartOngoingSprint
+            onStartOngoingSprint = onStartOngoingSprint,
+            onUpgradeToTask = onUpgradeToTask
         )
     }
 }
@@ -177,7 +179,8 @@ private fun DailyPlanItemSheetFooter(
     onAdd: () -> Unit,
     onDuplicate: () -> Unit,
     onStartSprint: () -> Unit,
-    onStartOngoingSprint: () -> Unit
+    onStartOngoingSprint: () -> Unit,
+    onUpgradeToTask: () -> Unit
 ) {
     if (enabled) {
         if (state.isAddMode) {
@@ -226,6 +229,17 @@ private fun DailyPlanItemSheetFooter(
                         Icon(Icons.Default.ContentCopy, contentDescription = null)
                         Spacer(Modifier.size(8.dp))
                         Text("Schedule new Session")
+                    }
+                }
+
+                if (state.isEditMode && state.taskId == null) {
+                    OutlinedButton(
+                        onClick = onUpgradeToTask,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.TaskAlt, contentDescription = null)
+                        Spacer(Modifier.size(8.dp))
+                        Text("Upgrade to Task")
                     }
                 }
             }

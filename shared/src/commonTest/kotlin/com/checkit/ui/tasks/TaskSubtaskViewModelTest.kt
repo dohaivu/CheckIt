@@ -14,6 +14,7 @@ import com.checkit.domain.usecase.RestoreNoteUseCase
 import com.checkit.domain.usecase.RestoreTaskUseCase
 import com.checkit.domain.usecase.DeleteNoteUseCase
 import com.checkit.domain.usecase.DeleteTaskUseCase
+import com.checkit.domain.usecase.LinkDailyPlanItemToTaskUseCase
 import com.checkit.domain.usecase.GetNoteUseCase
 import com.checkit.domain.usecase.GetTaskUseCase
 import com.checkit.domain.usecase.MoveNoteUseCase
@@ -94,6 +95,7 @@ class TaskSubtaskViewModelTest {
             updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository),
             updateDailyPlanItemStatus = UpdateDailyPlanItemStatusUseCase(repository),
             updateDailyPlanItemTag = UpdateDailyPlanItemTagUseCase(repository),
+            linkDailyPlanItemToTask = LinkDailyPlanItemToTaskUseCase(repository),
             settingsRepository = FakeSettingsRepository()
         )
         dispatcher.scheduler.advanceUntilIdle()

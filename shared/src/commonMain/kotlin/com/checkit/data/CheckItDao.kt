@@ -915,6 +915,16 @@ interface CheckItDao {
 
     @Query(
         """
+        UPDATE daily_plan_items
+        SET taskId = :taskId,
+            source = :source
+        WHERE id = :itemId
+        """
+    )
+    suspend fun linkDailyPlanItemToTask(itemId: Long, taskId: Long, source: String)
+
+    @Query(
+        """
         UPDATE tasks
         SET startTimeMinutes = NULL,
             endTimeMinutes = NULL,

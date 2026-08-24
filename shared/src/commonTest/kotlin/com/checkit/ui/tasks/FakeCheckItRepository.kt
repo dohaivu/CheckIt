@@ -63,6 +63,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
     val updatedDailyPlanItems = mutableListOf<Pair<Long, DailyPlanItemWriteInput>>()
     val updatedDailyPlanItemTimes = mutableListOf<Triple<Long, Int?, Int?>>()
     val deletedDailyPlanItemIds = mutableListOf<Long>()
+    val linkedDailyPlanItemTaskIds = mutableListOf<Pair<Long, Long>>()
     
     val addedSections = mutableListOf<Triple<Long, String, String>>()
     val updatedSections = mutableListOf<com.checkit.domain.ListSection>()
@@ -477,6 +478,15 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
                 plan.copy(items = plan.items.map { if (it.id == itemId) it.copy(
                     tags = tagIds.mapNotNull { tid -> boardFlow.value.tags.find { it.id == tid } }
                 ) else it })
+            }
+        }
+    }
+
+    override suspend fun linkDailyPlanItemToTask(itemId: Long, taskId: Long) {
+        linkedDailyPlanItemTaskIds.add(itemId to taskId)
+        dailyPlansFlow.update { list ->
+            list.map { plan ->
+                plan.copy(items = plan.items.map { if (it.id == itemId) it.copy(taskId = taskId, source = DailyPlanItemSource.ExistingTask) else it })
             }
         }
     }
