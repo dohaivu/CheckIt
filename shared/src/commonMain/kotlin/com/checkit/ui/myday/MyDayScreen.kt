@@ -268,7 +268,7 @@ internal fun MyDayScreen(
                 exit = fadeOut() + slideOutVertically { it },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(horizontal = 16.dp, vertical = 24.dp)
+                    .padding(start = 12.dp, end = 70.dp, bottom = 24.dp)
             ) {
                 FloatingQuickAddBar(onSubmit = { title -> viewModel.addDailyPlanItem(title, emptyList()) })
             }

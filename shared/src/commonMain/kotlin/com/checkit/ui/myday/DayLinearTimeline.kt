@@ -119,8 +119,8 @@ internal fun WorkTimeChip(
 
     // Define status color and pulse duration based on severity
     val (statusColor, duration) = when {
-        totalHours < 3f -> Color(0xFFFF5252) to 1200 // Faster alert for critical
-        totalHours < 6f -> Color(0xFFFFD740) to 2000 // Steady warning
+        totalHours < 3f -> Color(0xFFFF5252) to 1000 // Faster alert for critical
+        totalHours < 6f -> Color(0xFFFFD740) to 1500 // Steady warning
         else -> Color(0xFF69F0AE) to 3000 // Slow healthy breath
     }
 

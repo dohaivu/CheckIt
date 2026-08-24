@@ -19,6 +19,7 @@ import com.checkit.widget.ExtraOpenCheckIn
 import com.checkit.widget.ExtraOpenDayClose
 import com.checkit.widget.ExtraOpenMyDaySuggestions
 import com.checkit.widget.ExtraOpenNewJournalEntry
+import com.checkit.widget.ExtraOpenNewTask
 import com.checkit.widget.ExtraOpenPlanAssist
 import com.checkit.widget.ExtraOpenQuickSprint
 import com.checkit.widget.ExtraStartSprintForItemId
@@ -35,6 +36,7 @@ class MainActivity : ComponentActivity() {
     private val openCheckInLaunch = mutableStateOf(false)
     private val openNewJournalEntryLaunch = mutableStateOf(false)
     private val openQuickSprintLaunch = mutableStateOf(false)
+    private val openNewTaskLaunch = mutableStateOf(false)
     private val startSprintItemIdLaunch = mutableStateOf<Long?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -61,6 +63,7 @@ class MainActivity : ComponentActivity() {
                 openCheckInLaunch = openCheckInLaunch.value,
                 openNewJournalEntryLaunch = openNewJournalEntryLaunch.value,
                 openQuickSprintLaunch = openQuickSprintLaunch.value,
+                openNewTaskLaunch = openNewTaskLaunch.value,
                 startSprintItemIdLaunch = startSprintItemIdLaunch.value,
                 onWidgetLaunchConsumed = ::clearWidgetLaunch
             )
@@ -98,7 +101,8 @@ class MainActivity : ComponentActivity() {
         openCheckInLaunch.value = intent.getBooleanExtra(ExtraOpenCheckIn, false)
         openNewJournalEntryLaunch.value = intent.getBooleanExtra(ExtraOpenNewJournalEntry, false)
         openQuickSprintLaunch.value = intent.getBooleanExtra(ExtraOpenQuickSprint, false)
-        
+        openNewTaskLaunch.value = intent.getBooleanExtra(ExtraOpenNewTask, false)
+
         val startSprintItemId = intent.longExtraOrNull(ExtraStartSprintForItemId)
         startSprintItemIdLaunch.value = startSprintItemId
 
@@ -119,6 +123,7 @@ class MainActivity : ComponentActivity() {
         openCheckInLaunch.value = false
         openNewJournalEntryLaunch.value = false
         openQuickSprintLaunch.value = false
+        openNewTaskLaunch.value = false
         startSprintItemIdLaunch.value = null
     }
 }

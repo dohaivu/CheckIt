@@ -79,6 +79,7 @@ fun CheckItApp(
     openCheckInLaunch: Boolean = false,
     openNewJournalEntryLaunch: Boolean = false,
     openQuickSprintLaunch: Boolean = false,
+    openNewTaskLaunch: Boolean = false,
     startSprintItemIdLaunch: Long? = null,
     onWidgetLaunchConsumed: () -> Unit = {}
 ) {
@@ -193,6 +194,12 @@ fun CheckItApp(
         if (!openQuickSprintLaunch) return@LaunchedEffect
         navState.resetTo(AppRoute.MyDay)
         viewModels.myDay.openQuickSprint()
+        onWidgetLaunchConsumed()
+    }
+
+    LaunchedEffect(openNewTaskLaunch) {
+        if (!openNewTaskLaunch) return@LaunchedEffect
+        viewModels.task.openNewTask()
         onWidgetLaunchConsumed()
     }
 

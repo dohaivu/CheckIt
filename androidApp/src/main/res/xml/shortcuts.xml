@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="new_task"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_new_task"
+        android:shortcutShortLabel="@string/shortcut_new_task_short_label"
+        android:shortcutLongLabel="@string/shortcut_new_task_long_label">
+        <intent
+            android:action="com.checkit.action.OPEN_NEW_TASK"
+            android:targetPackage="com.aimpact.app.checkit"
+            android:targetClass="com.checkit.MainActivity" >
+            <extra android:name="com.checkit.extra.OPEN_NEW_TASK" android:value="true" />
+        </intent>
+    </shortcut>
+</shortcuts>
