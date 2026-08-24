@@ -234,8 +234,11 @@ class DayCloseUseCasesTest {
         assertEquals(1, tomorrowPlan.items.size)
         assertEquals(1, tomorrowPlan.items.count { it.carriedFromItemId == 1L })
 
-        val record = assertNotNull(repository.periodReviewFor(Period.Day, date))
-        assertEquals("Ship the review", record.intentNext)
+        // The tomorrow goal is stored as tomorrow's period intent.
+        val record = assertNotNull(repository.periodReviewFor(Period.Day, tomorrow))
+        assertEquals("Ship the review", record.periodIntent)
+        val todayRecord = repository.periodReviewFor(Period.Day, date)
+        assertEquals(null, todayRecord?.periodIntent)
     }
 
     @Test

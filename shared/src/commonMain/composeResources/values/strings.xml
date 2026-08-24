@@ -79,7 +79,6 @@
     <string name="reflect_review_draft_note">Auto-drafted from your %1$s. Review and save.</string>
     <string name="reflect_review_saved">Review saved</string>
     <string name="reflect_review_error">Unable to save review</string>
-    <string name="reflect_review_content_placeholder">What went well? What drained you?</string>
     <string name="reflect_review_intent_placeholder">What will you focus on next?</string>
     <string name="reflect_review_save">Save</string>
     <string name="reflect_period_day">day</string>
@@ -111,7 +110,7 @@
     <string name="day_close_open">Review day</string>
     <string name="day_close_title">Close your day</string>
     <string name="day_close_banner_title">Close your day</string>
-    <string name="day_close_banner_subtitle">Write today\'s review and plan leftovers for tomorrow.</string>
+    <string name="day_close_banner_subtitle">Write today's review and plan leftovers for tomorrow.</string>
     <string name="day_close_banner_action">Review</string>
     <string name="day_close_done_count">%1$d done</string>
     <string name="day_close_planned_count">%1$d left</string>
@@ -177,6 +176,7 @@
     <string name="nested_new_document">New document</string>
     <string name="nested_delete_document">Delete document</string>
     <string name="nested_delete_confirm">Delete “%1$s” and everything inside it?</string>
+    <string name="nested_delete_confirm_multiple">Delete %1$d selected items?</string>
     <string name="nested_untitled_document">Untitled</string>
     <string name="nested_root">Document</string>
     <string name="nested_confirm_delete">Delete items</string>

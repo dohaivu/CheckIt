@@ -75,6 +75,7 @@ import com.checkit.domain.usecase.SetNestedItemsCheckedUseCase
 import com.checkit.domain.usecase.SmartScheduleDailyPlanUseCase
 import com.checkit.domain.usecase.SprintTransitionUseCase
 import com.checkit.domain.usecase.ToggleNestedItemCollapsedUseCase
+import com.checkit.domain.usecase.LinkDailyPlanItemToTaskUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTagUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
@@ -184,6 +185,7 @@ val provideInteractorModule = module {
     single { UpdateNoteStatusUseCase(get()) }
     single { AddTaskToDailyPlanUseCase(get()) }
     single { AddDailyPlanItemUseCase(get()) }
+    single { LinkDailyPlanItemToTaskUseCase(get()) }
     single { UpdateDailyPlanItemTimeUseCase(get()) }
     single { SmartScheduleDailyPlanUseCase(get()) }
     single { UpdateDailyPlanItemStatusUseCase(get()) }
@@ -260,6 +262,7 @@ val provideViewModelModule = module {
             updateDailyPlanItemTime = get(),
             updateDailyPlanItemStatus = get(),
             updateDailyPlanItemTag = get(),
+            linkDailyPlanItemToTask = get(),
             settingsRepository = get()
         )
     }

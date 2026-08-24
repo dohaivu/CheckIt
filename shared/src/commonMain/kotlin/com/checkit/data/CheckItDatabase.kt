@@ -11,6 +11,8 @@ import androidx.room3.RoomDatabaseConstructor
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.sqlite.execSQL
 import androidx.sqlite.SQLiteConnection
+import com.checkit.domain.ReviewSource
+import com.checkit.domain.ReviewStatus
 import com.checkit.domain.TaskType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -157,9 +159,9 @@ data class PeriodReviewEntity(
     val periodStartEpochDays: Int,
     val periodEndEpochDays: Int,
     val content: String = "",
-    val intentNext: String? = null,
-    val source: String = com.checkit.domain.ReviewSource.Manual.name,
-    val status: String = com.checkit.domain.ReviewStatus.Draft.name,
+    val periodIntent: String? = null,
+    val source: String = ReviewSource.Manual.name,
+    val status: String = ReviewStatus.Draft.name,
     val completedAtMillis: Long? = null,
     val generatedAtMillis: Long? = null,
     val editedAtMillis: Long? = null
@@ -619,7 +621,7 @@ data class NestedItemTagEntity(
         DailyTagRollupEntity::class,
         HabitDailyRollupEntity::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)

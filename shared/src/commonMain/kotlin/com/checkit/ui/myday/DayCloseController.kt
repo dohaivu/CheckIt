@@ -8,6 +8,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.plus
 import kotlin.time.Duration.Companion.milliseconds
 
 /** Handles the end-of-day review flow: opening, editing, confirming. */
@@ -26,6 +28,10 @@ internal class DayCloseController(
             val date = loaded.today
             val summary = deps.buildDayCloseSummary(date, loaded.plan)
             val record = loaded.dayReviews.firstOrNull { it.periodStartDate == date }
+            // The tomorrow goal is stored as the next day's period intent.
+            val tomorrowRecord = loaded.dayReviews.firstOrNull {
+                it.periodStartDate == date.plus(1, DateTimeUnit.DAY)
+            }
             val allItems = summary.plannedItems + summary.alreadyCarriedItems
             val actions = allItems.associate { item ->
                 item.id to item.defaultReviewAction(loaded.dailyPlans)
@@ -36,7 +42,7 @@ internal class DayCloseController(
                         summary = summary,
                         leftoverActions = actions,
                         winNote = record?.content.orEmpty(),
-                        tomorrowGoal = record?.intentNext.orEmpty(),
+                        tomorrowGoal = tomorrowRecord?.periodIntent.orEmpty(),
                         streak = loaded.reviewStreak
                     ),
                     showDayCloseBanner = false,

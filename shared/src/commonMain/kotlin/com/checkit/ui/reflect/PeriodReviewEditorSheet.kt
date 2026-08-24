@@ -1,19 +1,19 @@
 package com.checkit.ui.reflect
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Schedule
@@ -27,18 +27,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.cancel
 import checkit.shared.generated.resources.reflect_review_card_title
-import checkit.shared.generated.resources.reflect_review_content_placeholder
-import checkit.shared.generated.resources.reflect_review_intent_placeholder
 import checkit.shared.generated.resources.reflect_review_save
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.MarkdownVisualTransformation
+import com.checkit.ui.components.asAnnotatedString
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,7 +46,7 @@ import org.jetbrains.compose.resources.stringResource
 internal fun PeriodReviewEditorSheet(
     editor: ReflectReviewEditorState,
     onContentChange: (String) -> Unit,
-    onIntentNextChange: (String) -> Unit,
+    onNextPeriodIntentChange: (String) -> Unit,
     onSave: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -86,18 +86,65 @@ internal fun PeriodReviewEditorSheet(
                     )
                 }
             }
+            editor.periodIntent
+                .takeIf { it.isNotBlank() }
+                ?.let { intent ->
+                    Column {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Schedule,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.secondary
+                            )
+                            Text(
+                                text = "Period focus",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.ExtraBold,
+                                letterSpacing = 1.sp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Text(
+                            text = intent.asAnnotatedString(),
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
+                }
+            Text(
+                text = "What are your wins? frictions? lessons?",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
             AppOutlinedTextField(
                 value = editor.content,
                 onValueChange = onContentChange,
                 textStyle = MaterialTheme.typography.bodyMedium.copy(
                     color = MaterialTheme.colorScheme.onSurface
                 ),
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = stringResource(Res.string.reflect_review_content_placeholder),
-                minLines = 10,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                    .border(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .padding(10.dp),
+                placeholder = "Jot down your reflection ...",
+                minLines = 8,
                 enabled = !editor.isSaving,
                 visualTransformation = remember { MarkdownVisualTransformation() }
             )
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -116,14 +163,29 @@ internal fun PeriodReviewEditorSheet(
                     color = MaterialTheme.colorScheme.primary
                 )
             }
+            Text(
+                text = "What are the 3 non-negotiable priority tasks",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
             AppOutlinedTextField(
-                value = editor.intentNext,
-                onValueChange = onIntentNextChange,
+                value = editor.nextPeriodIntent,
+                onValueChange = onNextPeriodIntentChange,
                 textStyle = MaterialTheme.typography.bodyMedium.copy(
                     color = MaterialTheme.colorScheme.onSurface
                 ),
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = stringResource(Res.string.reflect_review_intent_placeholder),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                    .border(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .padding(10.dp),
+                placeholder = "What will you focus on next?",
                 minLines = 5,
                 enabled = !editor.isSaving,
                 visualTransformation = remember { MarkdownVisualTransformation() }

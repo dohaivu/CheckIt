@@ -223,6 +223,39 @@ class MoveNestedItemsUseCase(
     }
 
     /**
+     * Places [itemId] as child of [newParentId] at [newIndex]. The index refers
+     * to the target group *excluding* the dragged item (so same-parent reorders
+     * behave like gap-based drops). Returns moves that renormalize both affected
+     * groups; empty if the item does not exist or the drop targets its own subtree.
+     */
+    fun moveToPosition(
+        items: List<NestedListItem>,
+        itemId: Long,
+        newParentId: Long?,
+        newIndex: Int
+    ): List<NestedItemMove> {
+        val item = items.firstOrNull { it.id == itemId } ?: return emptyList()
+        var cursor: Long? = newParentId
+        while (cursor != null) {
+            if (cursor == itemId) return emptyList()
+            cursor = items.firstOrNull { it.id == cursor }?.parentId
+        }
+        val sourceSiblings = siblingsOf(items, item.parentId).filterNot { it.id == itemId }
+        return if (newParentId == item.parentId) {
+            val reordered = sourceSiblings.toMutableList().apply {
+                add(newIndex.coerceIn(0, size), item)
+            }
+            renormalizeGroup(reordered, item.parentId)
+        } else {
+            val targetSiblings = siblingsOf(items, newParentId).toMutableList().apply {
+                add(newIndex.coerceIn(0, size), item)
+            }
+            renormalizeGroup(sourceSiblings, item.parentId) +
+                renormalizeGroup(targetSiblings, newParentId)
+        }
+    }
+
+    /**
      * Emits moves that pin [ordered] to contiguous 0-based positions under
      * [parentId], only for items whose parent or position actually changes.
      */

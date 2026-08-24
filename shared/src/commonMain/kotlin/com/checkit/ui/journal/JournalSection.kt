@@ -79,7 +79,7 @@ internal val JournalLabelPresets = listOf(
         type = "gratitude",
         prompt = "What are you thankful for today?",
         template =
-"""**I am grateful for:**:
+""":
 1. 
 2. 
 3. 
@@ -89,7 +89,7 @@ internal val JournalLabelPresets = listOf(
         type = "growth log",
         prompt = "How did today go? Any wins or lessons?",
         template =
-            """**Growth Log**:
+"""
 - **Win**: 
 - **Friction**:
 - **Insight**: 
@@ -98,12 +98,12 @@ internal val JournalLabelPresets = listOf(
     JournalLabelPreset(
         type = "deep thoughts",
         prompt = "What's on your mind right now?",
-        template = "**<Tôi đắn đo suy nghĩ về>**\n- "
+        template = ""
     ),
     JournalLabelPreset(
         type = "idea",
         prompt = "Got a new idea? Jot it down.",
-        template = "## Idea\n\n"
+        template = ""
     ),
     JournalLabelPreset(
         type = "random",
@@ -113,37 +113,37 @@ internal val JournalLabelPresets = listOf(
     JournalLabelPreset(
         type = "lazying",
         prompt = "How's your rest going?",
-        template = "Resting and recharging. "
+        template = ""
     ),
     JournalLabelPreset(
         type = "biking",
         prompt = "How was the ride?",
-        template = "Out on a bike ride. "
+        template = ""
     ),
     JournalLabelPreset(
         type = "coding",
         prompt = "What are you working on?",
-        template = "Coding: "
+        template = ""
     ),
     JournalLabelPreset(
         type = "reading",
         prompt = "What are you reading about?",
-        template = "Reading: "
+        template = ""
     ),
     JournalLabelPreset(
         type = "learning",
         prompt = "What's something new you learned?",
-        template = "Learning: "
+        template = ""
     ),
     JournalLabelPreset(
         type = "event",
         prompt = "How was the event?",
-        template = "At an event: "
+        template = ""
     ),
     JournalLabelPreset(
         type = "at home",
         prompt = "How's the vibe at home?",
-        template = "Relaxing at home. "
+        template = ""
     )
 )
 

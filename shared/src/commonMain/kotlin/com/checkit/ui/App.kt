@@ -79,6 +79,7 @@ fun CheckItApp(
     openCheckInLaunch: Boolean = false,
     openNewJournalEntryLaunch: Boolean = false,
     openQuickSprintLaunch: Boolean = false,
+    openNewTaskLaunch: Boolean = false,
     startSprintItemIdLaunch: Long? = null,
     onWidgetLaunchConsumed: () -> Unit = {}
 ) {
@@ -193,6 +194,12 @@ fun CheckItApp(
         if (!openQuickSprintLaunch) return@LaunchedEffect
         navState.resetTo(AppRoute.MyDay)
         viewModels.myDay.openQuickSprint()
+        onWidgetLaunchConsumed()
+    }
+
+    LaunchedEffect(openNewTaskLaunch) {
+        if (!openNewTaskLaunch) return@LaunchedEffect
+        viewModels.task.openNewTask()
         onWidgetLaunchConsumed()
     }
 
@@ -334,6 +341,9 @@ fun CheckItApp(
                                             onAddToDailyPlan = { title, tagIds, nestedListItemId ->
                                                 navState.resetTo(AppRoute.MyDay)
                                                 viewModels.myDay.openDailyPlan(title, tagIds, nestedListItemId)
+                                            },
+                                            onCopyToTask = { title, note, subtaskTexts ->
+                                                viewModels.task.openNewTaskFromNestedItem(title, note, subtaskTexts)
                                             }
                                         )
                                     }
@@ -437,7 +447,20 @@ fun CheckItApp(
                             onDelete = viewModels.myDay::deleteDailyPlan,
                             onDuplicate = viewModels.myDay::duplicateDailyPlanItem,
                             onStartSprint = viewModels.myDay::startNewSprintFromEditor,
-                            onStartOngoingSprint = viewModels.myDay::startOngoingSprintFromEditor
+                            onStartOngoingSprint = viewModels.myDay::startOngoingSprintFromEditor,
+                            onUpgradeToTask = {
+                                val current = myDayUiState.itemEditor
+                                viewModels.myDay.dismissDailyPlanEditor()
+                                if (current != null && current.itemId != null) {
+                                    viewModels.task.openNewTaskFromDailyPlan(
+                                        planItemId = current.itemId,
+                                        title = current.title,
+                                        note = current.note,
+                                        label = current.label,
+                                        tagIds = current.selectedTagIds
+                                    )
+                                }
+                            }
                         )
                     }
                     myDayUiState.journalEditor?.let { editor ->
@@ -498,7 +521,7 @@ fun CheckItApp(
                         PeriodReviewEditorSheet(
                             editor = editor,
                             onContentChange = viewModels.reflect::updateEditorContent,
-                            onIntentNextChange = viewModels.reflect::updateEditorIntentNext,
+                            onNextPeriodIntentChange = viewModels.reflect::updateEditorNextPeriodIntent,
                             onSave = viewModels.reflect::saveEditor,
                             onDismiss = viewModels.reflect::dismissEditor
                         )

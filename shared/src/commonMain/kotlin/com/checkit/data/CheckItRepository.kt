@@ -105,6 +105,7 @@ interface CheckItRepository {
     suspend fun updateDailyPlanItemsStatus(itemIds: List<Long>, status: DailyPlanItemStatus)
     suspend fun updateDailyPlanItem(itemId: Long, input: DailyPlanItemWriteInput)
     suspend fun updateDailyPlanItemTags(itemId: Long, tagIds: List<Long>)
+    suspend fun linkDailyPlanItemToTask(itemId: Long, taskId: Long)
     suspend fun deleteDailyPlanItem(itemId: Long)
     suspend fun getDailyPlanItem(itemId: Long): DailyPlanItem?
     suspend fun dailyPlanForDate(date: LocalDate): DailyPlan?
@@ -856,6 +857,10 @@ class RoomCheckItRepository(
         tagIds.forEach { tagId -> addDailyPlanItemTag(itemId, tagId) }
     }
 
+    override suspend fun linkDailyPlanItemToTask(itemId: Long, taskId: Long) {
+        dao.linkDailyPlanItemToTask(itemId, taskId, DailyPlanItemSource.ExistingTask.name)
+    }
+
     override suspend fun deleteDailyPlanItem(itemId: Long) {
         val oldEntity = dao.dailyPlanItemById(itemId)
         if (oldEntity?.nestedListItemId != null && oldEntity.status == DailyPlanItemStatus.Done.name) {
@@ -1034,7 +1039,7 @@ class RoomCheckItRepository(
                 periodStartEpochDays = review.periodStartEpochDays,
                 periodEndEpochDays = review.periodEndEpochDays,
                 content = review.content,
-                intentNext = review.intentNext,
+                periodIntent = review.periodIntent,
                 source = review.source.name,
                 status = review.status.name,
                 completedAtMillis = review.completedAtMillis,
@@ -1704,7 +1709,7 @@ private fun PeriodReviewEntity.toDomain() = PeriodReview(
     periodStartEpochDays = periodStartEpochDays,
     periodEndEpochDays = periodEndEpochDays,
     content = content,
-    intentNext = intentNext,
+    periodIntent = periodIntent,
     source = ReviewSource.valueOf(source),
     status = ReviewStatus.valueOf(status),
     completedAtMillis = completedAtMillis,

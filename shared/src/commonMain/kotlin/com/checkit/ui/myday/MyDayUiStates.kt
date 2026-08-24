@@ -17,6 +17,7 @@ import com.checkit.domain.defaultLeftoverAction
 import com.checkit.ui.tasks.EditorMode
 import com.checkit.ui.tasks.isOverdue
 import com.checkit.ui.today
+import com.checkit.ui.currentMyDayTimeMinutes
 import kotlinx.datetime.LocalDate
 
 sealed class SprintChoice {
@@ -72,6 +73,10 @@ data class MyDayUiState(
     val items: List<DailyPlanItem> = plan?.items.orEmpty()
     val plannedItems: List<DailyPlanItem> = items.filter { it.status != DailyPlanItemStatus.Done }
     val doneItems: List<DailyPlanItem> = items.filter { it.status == DailyPlanItemStatus.Done }
+
+    /** True when nothing on today's plan sits within ±30 minutes of now (floating quick-add bar). */
+    val showFloatingQuickAdd: Boolean =
+        !hasDailyPlanItemNearby(items, currentMyDayTimeMinutes())
 
     /** Journal entries for today (used in the MyDay header). */
     val journalVisibleEntries: List<JournalEntry> =
@@ -213,3 +218,21 @@ fun DailyPlan?.doneWorkMinutes(): Int =
         .orEmpty()
         .filter { it.status == DailyPlanItemStatus.Done }
         .sumOf { it.workMinutes() }
+
+/**
+ * True when any timed plan item overlaps the [nowMinutes] ± [windowMinutes] window.
+ * Items without a start time (all-day/unplanned) never count as "nearby".
+ */
+fun hasDailyPlanItemNearby(
+    items: List<DailyPlanItem>,
+    nowMinutes: Int,
+    windowMinutes: Int = 30
+): Boolean {
+    val windowStart = nowMinutes - windowMinutes
+    val windowEnd = nowMinutes + windowMinutes
+    return items.any { item ->
+        val start = item.startTimeMinutes ?: return@any false
+        val end = item.endTimeMinutes ?: start
+        start <= windowEnd && end >= windowStart
+    }
+}

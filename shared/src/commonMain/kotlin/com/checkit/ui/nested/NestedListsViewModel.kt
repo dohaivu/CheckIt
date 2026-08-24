@@ -98,6 +98,7 @@ sealed interface NestedEditorState {
         val filters: NestedFilterState = NestedFilterState()
     ) : NestedEditorState {
         val focusedItem: NestedItemNode? get() = tree.nodeById[zoomPath.lastOrNull()]
+        val selectedItem: NestedItemNode? get() = tree.nodeById[selectedItemId]
     }
 }
 
@@ -387,7 +388,7 @@ class NestedListsViewModel(
         updateActiveEditor { it.copy(overlay = NestedEditorOverlay.None) }
     }
 
-    fun commitNewItem() {
+    fun commitNewItem(thenContinue: Boolean = false) {
         val active = getActiveEditor() ?: return
         val overlay = active.overlay as? NestedEditorOverlay.AddingItem ?: return
         val text = overlay.draft.text
@@ -395,12 +396,12 @@ class NestedListsViewModel(
             cancelAddItem()
             return
         }
-        
+
         val items = active.tree.flatItems
         val anchor = items.firstOrNull { it.id == overlay.draft.anchorId }
-        val isAddingChild = overlay.draft.parentId != null && 
+        val isAddingChild = overlay.draft.parentId != null &&
             (anchor?.id == overlay.draft.parentId || anchor?.parentId != overlay.draft.parentId)
-        
+
         val position = if (isAddingChild) {
             items.filter { it.parentId == overlay.draft.parentId }.maxOfOrNull { it.position }?.plus(1) ?: 0
         } else {
@@ -409,7 +410,27 @@ class NestedListsViewModel(
 
         viewModelScope.launch {
             runCatching { addItemUseCase(active.documentId, overlay.draft.parentId, text, position) }
-                .onSuccess { cancelAddItem() }
+                .onSuccess { itemId ->
+                    if (thenContinue) {
+                        selectItem(itemId)
+                        // Keep the input open, re-anchored below the committed item as its sibling.
+                        updateActiveEditor { current ->
+                            current.copy(
+                                overlay = NestedEditorOverlay.AddingItem(
+                                    NewItemDraft(
+                                        anchorId = itemId,
+                                        parentId = overlay.draft.parentId,
+                                        depth = overlay.draft.depth,
+                                        text = ""
+                                    )
+                                )
+                            )
+                        }
+                    } else {
+                        cancelAddItem()
+                        selectItem(itemId)
+                    }
+                }
                 .onFailure { error -> _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to add item")) }
         }
     }
@@ -506,6 +527,17 @@ class NestedListsViewModel(
     fun outdent(itemId: Long) = applyMove { items -> moveItemsUseCase.outdent(items, itemId) }
     fun moveUp(itemId: Long) = applyMove { items -> moveItemsUseCase.moveUp(items, itemId) }
     fun moveDown(itemId: Long) = applyMove { items -> moveItemsUseCase.moveDown(items, itemId) }
+
+    fun canStartDrag(): Boolean {
+        val active = getActiveEditor() ?: return false
+        return !active.selection.isActive &&
+            active.overlay is NestedEditorOverlay.None &&
+            !active.filters.isActive &&
+            active.editingTextItemId == null
+    }
+
+    fun moveItemTo(itemId: Long, targetParentId: Long?, targetIndex: Int) =
+        applyMove { items -> moveItemsUseCase.moveToPosition(items, itemId, targetParentId, targetIndex) }
 
     private fun applyMove(planner: (List<NestedListItem>) -> List<com.checkit.domain.NestedItemMove>) {
         val active = getActiveEditor() ?: return

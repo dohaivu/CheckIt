@@ -43,6 +43,11 @@ class JournalHistoryViewModelTest {
                 entry(id = 5L, day = today().minus(40, DateTimeUnit.DAY), content = "Ancient memory")
             )
         )
+        repository.setDayReviews(
+            listOf(
+                review(day = today().minus(2, DateTimeUnit.DAY), content = "A review")
+            )
+        )
         viewModel = JournalHistoryViewModel(
             repository = repository,
             observeTags = ObserveTagsUseCase(repository),
@@ -108,6 +113,33 @@ class JournalHistoryViewModelTest {
 
         assertEquals(listOf(2L), viewModel.uiState.value.entries.map { it.id })
     }
+
+    @Test
+    fun dayReviewsEmptyWhenFiltersActive() {
+        // Initial state: has review
+        assertEquals(1, viewModel.uiState.value.dayReviews.size)
+
+        // Apply filter
+        viewModel.updateSearchText("run")
+        dispatcher.scheduler.advanceUntilIdle()
+
+        // Reviews should be hidden
+        assertEquals(emptyList(), viewModel.uiState.value.dayReviews)
+
+        // Clear filter
+        viewModel.clearFilters()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        // Reviews should return
+        assertEquals(1, viewModel.uiState.value.dayReviews.size)
+    }
+
+    private fun review(day: LocalDate, content: String) = com.checkit.domain.PeriodReview(
+        periodStartEpochDays = day.toEpochDays().toInt(),
+        periodEndEpochDays = day.toEpochDays().toInt() + 1,
+        content = content,
+        status = com.checkit.domain.ReviewStatus.Complete
+    )
 
     private fun entry(
         id: Long,

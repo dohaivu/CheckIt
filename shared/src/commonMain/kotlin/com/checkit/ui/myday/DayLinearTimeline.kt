@@ -1,7 +1,9 @@
 package com.checkit.ui.myday
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,12 +28,14 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.TagItem
+import com.checkit.ui.components.statusBreathingGlow
 import com.checkit.ui.shortcutDurationLabel
 import com.checkit.ui.tasks.cardColor
 import com.checkit.ui.theme.toColor
@@ -101,39 +106,81 @@ private fun TagTimeChip(tag: TagItem, minutes: Int) {
     )
 }
 
-/** Narrow chip matching the timeline height, showing hours/minutes on two lines. */
+/** Narrow chip matching the timeline height, showing hours/minutes with a breathing status aura. */
 @Composable
 internal fun WorkTimeChip(
     minutes: Int,
     modifier: Modifier = Modifier
 ) {
     if (minutes <= 0) return
+    val totalHours = minutes / 60f
     val hours = minutes / 60
     val mins = minutes % 60
-    Column(
+
+    // Define status color and pulse duration based on severity
+    val (statusColor, duration) = when {
+        totalHours < 3f -> Color(0xFFFF5252) to 1000 // Faster alert for critical
+        totalHours < 6f -> Color(0xFFFFD740) to 1500 // Steady warning
+        else -> Color(0xFF69F0AE) to 3000 // Slow healthy breath
+    }
+
+    val orbit = rememberInfiniteTransition(label = "workTimePulse")
+    val pulse by orbit.animateFloat(
+        initialValue = 0f,
+        targetValue = 1.2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(duration, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulse"
+    )
+
+    val baseSurface = MaterialTheme.colorScheme.surfaceContainerHigh
+    val chipBgColor = remember(statusColor, baseSurface) {
+        statusColor.copy(alpha = 0.12f).compositeOver(baseSurface)
+    }
+    val chipBorderColor = statusColor.copy(alpha = 0.25f)
+
+    Box(
         modifier = modifier
-            .background(
-                color = MaterialTheme.colorScheme.primaryContainer,
-                shape = RoundedCornerShape(10.dp)
+            .padding(8.dp) // More padding to avoid outer glow clipping
+            .statusBreathingGlow(
+                color = statusColor,
+                pulseFraction = { pulse },
+                cornerRadius = 10.dp // Exactly matches inner chip radius
             )
-            .padding(horizontal = 6.dp, vertical = 2.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
     ) {
-        if (hours > 0) {
-            Text(
-                text = "${hours}h",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-        }
-        if (mins > 0 || hours == 0) {
-            Text(
-                text = "${mins}m",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f)
-            )
+        Column(
+            modifier = Modifier
+                .fillMaxHeight()
+                .background(
+                    color = chipBgColor,
+                    shape = RoundedCornerShape(10.dp)
+                )
+                .border(
+                    width = 1.dp,
+                    color = chipBorderColor,
+                    shape = RoundedCornerShape(10.dp)
+                )
+                .padding(horizontal = 6.dp, vertical = 2.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            if (hours > 0) {
+                Text(
+                    text = "${hours}h",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            if (mins > 0 || hours == 0) {
+                Text(
+                    text = "${mins}m",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                )
+            }
         }
     }
 }

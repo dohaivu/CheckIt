@@ -124,13 +124,14 @@ class ReflectViewModel(
 
     /**
      * Inclusive date span covering every review the UI can display for this
-     * selection: the child-period reviews of the current window and the focus
-     * review itself.
+     * selection: the child-period reviews of the current window, the focus
+     * review itself, and the following period (the editor prefills its intent
+     * field from that period's own review).
      */
     private fun ReflectSelection.reviewsWindow(): Pair<LocalDate, LocalDate> {
         val focus = FocusPeriod(period.toPeriod(), date)
         val rangeFocus = if (period == ReportPeriod.Daily) focus.zoomOut() else focus
-        return rangeFocus.start to rangeFocus.endInclusive
+        return rangeFocus.start to maxOf(rangeFocus.endInclusive, rangeFocus.shift(1).endInclusive)
     }
 
     fun selectPeriod(period: ReportPeriod) {
@@ -189,13 +190,15 @@ class ReflectViewModel(
         }
         // Seed the editor from the tapped review itself; the matching window
         // loads asynchronously and openEditor() would otherwise miss it.
+        val focus = FocusPeriod(review.period, review.periodStartDate)
         _editor.value = ReflectReviewEditorState(
-            focus = FocusPeriod(review.period, review.periodStartDate),
+            focus = focus,
             review = review,
             content = review.content,
-            intentNext = review.intentNext.orEmpty(),
+            periodIntent = review.periodIntent.orEmpty(),
             source = review.source
         )
+        loadNextPeriodIntent(focus)
     }
 
     fun openEditor() {
@@ -204,17 +207,37 @@ class ReflectViewModel(
             focus = state.focus,
             review = state.focusReview,
             content = state.focusReview?.content.orEmpty(),
-            intentNext = state.focusReview?.intentNext.orEmpty(),
+            periodIntent = state.focusReview?.periodIntent.orEmpty(),
             source = state.focusReview?.source ?: ReviewSource.Manual
         )
+        loadNextPeriodIntent(state.focus)
+    }
+
+    /**
+     * The editor's intent field describes the next focus period, so it is
+     * prefilled from that period's own review in the already-observed reviews.
+     */
+    private fun loadNextPeriodIntent(focus: FocusPeriod) {
+        val nextFocus = focus.shift(1)
+        _uiState.value.reviews
+            .firstOrNull {
+                it.period == nextFocus.period && it.periodStartEpochDays == nextFocus.startEpochDays
+            }
+            ?.periodIntent
+            ?.takeIf { it.isNotBlank() }
+            ?.let { intent ->
+                _editor.update { editor ->
+                    editor?.takeIf { it.focus == focus }?.copy(nextPeriodIntent = intent)
+                }
+            }
     }
 
     fun updateEditorContent(value: String) {
         _editor.update { editor -> editor?.copy(content = value) }
     }
 
-    fun updateEditorIntentNext(value: String) {
-        _editor.update { editor -> editor?.copy(intentNext = value) }
+    fun updateEditorNextPeriodIntent(value: String) {
+        _editor.update { editor -> editor?.copy(nextPeriodIntent = value) }
     }
 
     fun dismissEditor() {
@@ -230,7 +253,8 @@ class ReflectViewModel(
                 savePeriodReview(
                     focus = editor.focus,
                     content = editor.content,
-                    intentNext = editor.intentNext,
+                    periodIntent = editor.periodIntent,
+                    nextPeriodIntent = editor.nextPeriodIntent,
                     source = editor.source
                 )
             }.onSuccess {

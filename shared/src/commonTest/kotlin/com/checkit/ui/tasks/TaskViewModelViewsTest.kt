@@ -18,6 +18,7 @@ import com.checkit.domain.usecase.AddTaskToDailyPlanUseCase
 import com.checkit.domain.usecase.AddTaskUseCase
 import com.checkit.domain.usecase.CompleteTaskUseCase
 import com.checkit.domain.usecase.CompleteNoteUseCase
+import com.checkit.domain.usecase.LinkDailyPlanItemToTaskUseCase
 import com.checkit.domain.usecase.GetNoteUseCase
 import com.checkit.domain.usecase.GetTaskUseCase
 import com.checkit.domain.usecase.UpdateTaskStatusUseCase
@@ -93,6 +94,7 @@ class TaskViewModelViewsTest {
             updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository),
             updateDailyPlanItemStatus = UpdateDailyPlanItemStatusUseCase(repository),
             updateDailyPlanItemTag = UpdateDailyPlanItemTagUseCase(repository),
+            linkDailyPlanItemToTask = LinkDailyPlanItemToTaskUseCase(repository),
             settingsRepository = FakeSettingsRepository()
         )
         dispatcher.scheduler.advanceUntilIdle()
@@ -364,6 +366,7 @@ class TaskViewModelViewsTest {
             updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository),
             updateDailyPlanItemStatus = UpdateDailyPlanItemStatusUseCase(repository),
             updateDailyPlanItemTag = UpdateDailyPlanItemTagUseCase(repository),
+            linkDailyPlanItemToTask = LinkDailyPlanItemToTaskUseCase(repository),
             settingsRepository = FakeSettingsRepository()
         )
     }

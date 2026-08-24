@@ -23,7 +23,10 @@ data class ReflectReviewEditorState(
     val focus: FocusPeriod,
     val review: PeriodReview?,
     val content: String = "",
-    val intentNext: String = "",
+    /** This period's own intent (written while reviewing the previous period). */
+    val periodIntent: String = "",
+    /** Intent entered for the next period; saved onto the next focus period's review. */
+    val nextPeriodIntent: String = "",
     val source: ReviewSource = ReviewSource.Manual,
     val isSaving: Boolean = false
 )
