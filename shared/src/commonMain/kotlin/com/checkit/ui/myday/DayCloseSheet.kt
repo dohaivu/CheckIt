@@ -1,6 +1,7 @@
 package com.checkit.ui.myday
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Button
@@ -200,7 +202,16 @@ private fun ReflectionSection(
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Normal
             ),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                    shape = RoundedCornerShape(8.dp)
+                )
+                .padding(10.dp),
             placeholder = stringResource(Res.string.day_close_win_note_placeholder),
             minLines = 4,
             maxLines = 6,
@@ -230,11 +241,21 @@ private fun TomorrowGoalSection(
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Normal
             ),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                    shape = RoundedCornerShape(8.dp)
+                )
+                .padding(10.dp),
             placeholder = "One thing you want to focus on...",
             minLines = 3,
             maxLines = 6,
-            enabled = enabled
+            enabled = enabled,
+            visualTransformation = remember { MarkdownVisualTransformation() }
         )
     }
 }
