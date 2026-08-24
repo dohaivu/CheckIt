@@ -23,3 +23,4 @@ internal val OpenPlanAssistParameterKey = ActionParameters.Key<Boolean>(ExtraOpe
 internal val OpenCheckInParameterKey = ActionParameters.Key<Boolean>(ExtraOpenCheckIn)
 internal val OpenNewJournalEntryParameterKey = ActionParameters.Key<Boolean>(ExtraOpenNewJournalEntry)
 internal val OpenQuickSprintParameterKey = ActionParameters.Key<Boolean>(ExtraOpenQuickSprint)
+internal val OpenNewTaskParameterKey = ActionParameters.Key<Boolean>(ExtraOpenNewTask)

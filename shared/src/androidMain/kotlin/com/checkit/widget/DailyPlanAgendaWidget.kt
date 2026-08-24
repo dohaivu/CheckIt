@@ -193,12 +193,12 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                             modifier = GlanceModifier
                                 .size(32.dp)
                                 .cornerRadius(16.dp)
-                                .clickable(openSuggestionsAction()),
+                                .clickable(openNewTaskAction()),
                             contentAlignment = Alignment.Center
                         ) {
                             Image(
-                                provider = ImageProvider(R.drawable.lightbulb_24px),
-                                contentDescription = "Open suggestions",
+                                provider = ImageProvider(R.drawable.add_task_24px),
+                                contentDescription = "Open new Task",
                                 modifier = GlanceModifier.size(20.dp),
                                 colorFilter = ColorFilter.tint(GlanceTheme.colors.primary)
                             )
@@ -273,6 +273,10 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
             }
         }
     }
+
+    private fun openNewTaskAction(): Action = actionStartActivity<MainActivity>(
+        parameters = actionParametersOf(OpenNewTaskParameterKey to true)
+    )
 
     private fun openSuggestionsAction(): Action = actionStartActivity<MainActivity>(
         parameters = actionParametersOf(OpenMyDaySuggestionsParameterKey to true)
