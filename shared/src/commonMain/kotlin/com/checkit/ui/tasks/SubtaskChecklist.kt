@@ -54,6 +54,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -122,6 +123,7 @@ internal fun SubtaskChecklist(
 ) {
     if (subtasks.isEmpty() && !enabled) return
     val haptic = LocalHapticFeedback.current
+    val focusManager = LocalFocusManager.current
     val scope = rememberCoroutineScope()
     val dragState = remember { SubtaskDragState(scope) }
     val currentSubtasks by rememberUpdatedState(subtasks)
@@ -181,7 +183,7 @@ internal fun SubtaskChecklist(
                             val fromIndex = latest.indexOfFirst { it.stableKey() == dragState.draggingKey }
                             val targetIndex = findSubtaskReorderTarget(
                                 draggedKey = dragState.draggingKey,
-                                visualMiddleY = dragState.visualMiddleY(),
+                                draggedDelta = dragState.draggingOffset,
                                 items = latest.map { entry ->
                                     entry.stableKey() to dragState.bounds[entry.stableKey()]
                                 }
@@ -191,6 +193,7 @@ internal fun SubtaskChecklist(
                             }
                         },
                         onDragStart = {
+                            focusManager.clearFocus()
                             dragState.onDragStart(rowKey)
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         },
@@ -253,14 +256,26 @@ private fun SubtaskRow(
         modifier = modifier
             .fillMaxWidth()
             .background(
-                color = if (isDragging) MaterialTheme.colorScheme.surfaceContainerHighest else Color.Transparent,
+                color = when {
+                    isDragging -> MaterialTheme.colorScheme.surfaceContainerHigh
+                    else -> Color.Transparent
+                },
                 shape = RoundedCornerShape(12.dp)
             )
+            .then(
+                if (isDragging) {
+                    Modifier.border(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                } else Modifier
+            )
             .clip(RoundedCornerShape(12.dp))
-            .padding(horizontal = 8.dp, vertical = 8.dp)
+            .padding(horizontal = 8.dp, vertical = 6.dp)
             .graphicsLayer { alpha = rowAlpha },
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Icon(
             imageVector = if (subtask.isCompleted) Icons.Rounded.CheckBox else Icons.Rounded.CheckBoxOutlineBlank,
@@ -291,7 +306,7 @@ private fun SubtaskRow(
             Row(
                 modifier = Modifier.weight(1f),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 BasicTextField(
                     value = subtask.name,
@@ -314,20 +329,22 @@ private fun SubtaskRow(
                         innerTextField()
                     }
                 )
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = "Clear",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = ContentAlpha),
+                Box(
                     modifier = Modifier
-                        .size(18.dp)
-                        .clickable { onRemove() }
-                )
-                Icon(
-                    Icons.Default.DragIndicator,
-                    contentDescription = "Reorder subtask",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = ContentAlpha),
+                        .size(32.dp)
+                        .clickable(onClick = onRemove),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Clear",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = ContentAlpha),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                Box(
                     modifier = Modifier
-                        .size(20.dp)
+                        .size(32.dp)
                         .pointerInput(Unit) {
                             detectDragGestures(
                                 onDragStart = { currentOnDragStart() },
@@ -338,8 +355,16 @@ private fun SubtaskRow(
                                     currentOnMove(dragAmount.y)
                                 }
                             )
-                        }
-                )
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.DragIndicator,
+                        contentDescription = "Reorder subtask",
+                        tint = if (isDragging) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = ContentAlpha),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
     }
@@ -365,13 +390,8 @@ private class SubtaskDragState(
             return initialTop + dragDelta - top
         }
 
-    fun visualMiddleY(): Float {
-        val row = bounds[draggingKey] ?: return 0f
-        return row.top + draggingOffset + row.height / 2f
-    }
-
     fun onDragStart(key: Any) {
-        val top = bounds[key]?.top ?: return
+        val top = bounds[key]?.top ?: 0f
         draggingKey = key
         previousKey = null
         dragDelta = 0f
@@ -394,8 +414,9 @@ private class SubtaskDragState(
                 previousOffset.animateTo(
                     targetValue = 0f,
                     animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
                         stiffness = Spring.StiffnessMediumLow,
-                        visibilityThreshold = 1f
+                        visibilityThreshold = 0.5f
                     )
                 )
                 if (previousKey == key) {
@@ -416,16 +437,49 @@ internal data class SubtaskRowBounds(
     val height: Float get() = heightPx.toFloat()
 }
 
+/**
+ * Determines the target index for the dragged item by comparing its visual center
+ * against the centers of adjacent items, preventing rapid oscillation and handling
+ * variable-height rows smoothly.
+ */
 internal fun findSubtaskReorderTarget(
     draggedKey: Any?,
-    visualMiddleY: Float,
+    draggedDelta: Float,
     items: List<Pair<Any, SubtaskRowBounds?>>
 ): Int? {
-    if (draggedKey == null) return null
-    return items.indices.firstOrNull { index ->
-        val (key, bounds) = items[index]
-        bounds != null && key != draggedKey && visualMiddleY in bounds.top..bounds.bottom
+    if (draggedKey == null || items.isEmpty()) return null
+    val currentIndex = items.indexOfFirst { it.first == draggedKey }
+    if (currentIndex < 0) return null
+
+    val currentBounds = items[currentIndex].second ?: return null
+    val currentCenter = currentBounds.top + currentBounds.height / 2f
+    val visualCenter = currentCenter + draggedDelta
+
+    var targetIndex = currentIndex
+
+    // Check upward movement (crossing center of items above)
+    while (targetIndex > 0) {
+        val prevBounds = items[targetIndex - 1].second ?: break
+        val prevCenter = prevBounds.top + prevBounds.height / 2f
+        if (visualCenter < prevCenter) {
+            targetIndex--
+        } else {
+            break
+        }
     }
+
+    // Check downward movement (crossing center of items below)
+    while (targetIndex < items.lastIndex) {
+        val nextBounds = items[targetIndex + 1].second ?: break
+        val nextCenter = nextBounds.top + nextBounds.height / 2f
+        if (visualCenter > nextCenter) {
+            targetIndex++
+        } else {
+            break
+        }
+    }
+
+    return if (targetIndex != currentIndex) targetIndex else null
 }
 
 private fun SubTaskEditorState.stableKey(): Any =
@@ -441,7 +495,7 @@ private fun Modifier.subtaskReorderGraphics(
     val placementOffset = remember(key) { Animatable(0f) }
     var previousTop by remember(key) { mutableStateOf<Float?>(null) }
     val lift by animateFloatAsState(
-        targetValue = if (isDragging) 1.03f else 1f,
+        targetValue = if (isDragging) 1.02f else 1f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = Spring.StiffnessMedium
@@ -449,7 +503,7 @@ private fun Modifier.subtaskReorderGraphics(
         label = "subtask-drag-lift"
     )
     val elevation by animateFloatAsState(
-        targetValue = if (isDragging || isSettling) 12f else 0f,
+        targetValue = if (isDragging || isSettling) 8f else 0f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = Spring.StiffnessMedium
@@ -485,7 +539,7 @@ private fun Modifier.subtaskReorderGraphics(
         }
         previousTop = layoutTop
     }
-        .zIndex(if (isDragging || isSettling) 1f else 0f)
+        .zIndex(if (isDragging || isSettling) 2f else 0f)
         .graphicsLayer {
             translationY = when {
                 isDragging -> dragState.draggingOffset
