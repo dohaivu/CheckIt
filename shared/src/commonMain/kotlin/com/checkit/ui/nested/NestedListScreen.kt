@@ -58,7 +58,8 @@ import org.jetbrains.compose.resources.stringResource
 internal fun NestedListScreen(
     state: NestedUiState,
     viewModel: NestedListsViewModel,
-    onAddToDailyPlan: (title: String, tagIds: List<Long>, nestedListItemId: Long?) -> Unit
+    onAddToDailyPlan: (title: String, tagIds: List<Long>, nestedListItemId: Long?) -> Unit,
+    onCopyToTask: (title: String, note: String?, subtaskTexts: List<String>) -> Unit = { _, _, _ -> }
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -178,7 +179,8 @@ internal fun NestedListScreen(
                         NestedListEditorScreen(
                             state = editor,
                             viewModel = viewModel,
-                            onAddToDailyPlan = onAddToDailyPlan
+                            onAddToDailyPlan = onAddToDailyPlan,
+                            onCopyToTask = onCopyToTask
                         )
                     }
                     NestedEditorState.Loading -> {

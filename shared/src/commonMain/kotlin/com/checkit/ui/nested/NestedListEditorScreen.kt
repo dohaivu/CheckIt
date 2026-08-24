@@ -136,7 +136,8 @@ internal fun NestedListEditorScreen(
     state: NestedEditorState.Active,
     viewModel: NestedListsViewModel,
     modifier: Modifier = Modifier,
-    onAddToDailyPlan: (title: String, tagIds: List<Long>, nestedListItemId: Long?) -> Unit = { _, _, _ -> }
+    onAddToDailyPlan: (title: String, tagIds: List<Long>, nestedListItemId: Long?) -> Unit = { _, _, _ -> },
+    onCopyToTask: (title: String, note: String?, subtaskTexts: List<String>) -> Unit = { _, _, _ -> }
 ) {
     var detailsItemId by remember { mutableStateOf<Long?>(null) }
     val tree = state.tree
@@ -210,6 +211,17 @@ internal fun NestedListEditorScreen(
                                 val parentTitle = state.tree.nodeById[item.parentId]?.item?.text
                                 val title = parentTitle?.let { "$it - ${item.text}" } ?: item.text
                                 onAddToDailyPlan(title, item.tags.map { it.id }, item.id)
+                            }
+                        }
+                    },
+                    onCopyToTask = {
+                        state.selectedItemId?.let { id ->
+                            state.tree.nodeById[id]?.let { node ->
+                                onCopyToTask(
+                                    node.item.text,
+                                    node.item.note,
+                                    node.children.sortedBy { it.item.position }.map { it.item.text }
+                                )
                             }
                         }
                     }
@@ -1461,7 +1473,8 @@ private fun EditorToolbar(
     onDelete: () -> Unit,
     onAddRoot: () -> Unit,
     onManageDetails: () -> Unit,
-    onAddToDailyPlan: () -> Unit
+    onAddToDailyPlan: () -> Unit,
+    onCopyToTask: () -> Unit
 ) {
     val hasSelection = state.selectedItemId != null
     val selectedNode = state.selectedItemId?.let { id -> state.tree.nodeById[id] }
@@ -1494,6 +1507,9 @@ private fun EditorToolbar(
                 ToolbarMenuItem("Details", hasSelection, onManageDetails)
                 ToolbarMenuItem("Add to daily plan", hasSelection) {
                     showMore = false; onAddToDailyPlan()
+                }
+                ToolbarMenuItem("Copy to Task", hasSelection) {
+                    showMore = false; onCopyToTask()
                 }
                 ToolbarMenuItem("Add root item", true) {
                     showMore = false; onAddRoot()
@@ -1607,7 +1623,7 @@ private fun NestedTree(
         MaterialTheme.colorScheme.outline.copy(alpha = 0.30f)
     )
     val isSelected = item.id in state.selection.selectedIds ||
-        (!state.selection.isActive && state.selectedItemId == item.id)
+            (!state.selection.isActive && state.selectedItemId == item.id)
     val isEditing = state.editingTextItemId == item.id
 
     AnimatedVisibility(
@@ -1615,220 +1631,238 @@ private fun NestedTree(
         enter = expandVertically(),
         exit = shrinkVertically()
     ) {
-    Column(modifier = Modifier.fillMaxWidth().animateContentSize()) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .drawBehind {
-                    // Draw in the unpadded container so every depth shares the
-                    // same x-coordinate across all rows.
-                    val dotSize = if (item.collapsed && node.hasChildren) 14.dp else 7.dp
-                    val dotTop = 12.dp.toPx()
-                    val dotSizePx = dotSize.toPx()
-                    val dotCenterY = dotTop + dotSizePx / 2
-                    val dotBottomY = dotTop + dotSizePx
-                    val strokeWidth = 1.dp.toPx()
-                    val curveRadius = 6.dp.toPx()
-                    val guideX: (Int) -> Float = { level -> level * 16.dp.toPx() + 8.dp.toPx() }
-
-                    continuingLevels.forEach { level ->
-                        val x = guideX(level)
-                        drawLine(
-                            color = guideColors[level % guideColors.size],
-                            start = Offset(x, 0f),
-                            end = Offset(x, size.height),
-                            strokeWidth = strokeWidth,
-                            cap = StrokeCap.Round
-                        )
-                    }
-
-                    if (depth > 0) {
-                        val x = guideX(depth - 1)
-                        val xDot = guideX(depth)
-                        val lineEnd = xDot - (dotSizePx / 2)
-                        val path = Path().apply {
-                            if (depth - 1 in continuingLevels) {
-                                moveTo(x, dotCenterY - curveRadius)
-                            } else {
-                                moveTo(x, 0f)
-                                lineTo(x, dotCenterY - curveRadius)
-                            }
-                            quadraticTo(x, dotCenterY, x + curveRadius, dotCenterY)
-                            lineTo(lineEnd, dotCenterY)
-                        }
-                        drawPath(
-                            path = path,
-                            color = guideColors[(depth - 1) % guideColors.size],
-                            style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
-                        )
-                    }
-
-                    if (node.hasChildren && !item.collapsed) {
-                        val x = guideX(depth)
-                        drawLine(
-                            color = guideColors[depth % guideColors.size],
-                            start = Offset(x, dotBottomY),
-                            end = Offset(x, size.height),
-                            strokeWidth = strokeWidth,
-                            cap = StrokeCap.Round
-                        )
-                    }
-                }
-        ) {
-            Row(
+        Column(modifier = Modifier.fillMaxWidth().animateContentSize()) {
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = (depth * 16).dp),
-                verticalAlignment = Alignment.Top
-            ) {
-                Box(
-                    modifier = Modifier
-                        .width(24.dp)
-                        .height(36.dp)
-                        .noRippleClickable(
-                            enabled = node.hasChildren,
-                            onClick = { viewModel.toggleCollapsed(item.id) }
-                        ),
-                    contentAlignment = Alignment.TopStart
-                ) {
-                    val dotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.68f)
-                    Box(
-                        modifier = Modifier
-                            .width(16.dp)
-                            .height(36.dp),
-                        contentAlignment = Alignment.TopCenter
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .padding(top = 12.dp)
-                                .size(if (item.collapsed && node.hasChildren) 14.dp else 7.dp)
-                                .clip(CircleShape)
-                                .then(
-                                    if (item.collapsed && node.hasChildren) {
-                                        Modifier.border(2.dp, dotColor, CircleShape)
-                                    } else {
-                                        Modifier.background(dotColor)
-                                    }
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (item.collapsed && node.hasChildren) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(6.dp)
-                                        .clip(CircleShape)
-                                        .background(dotColor)
-                                )
+                    .drawBehind {
+                        // Draw in the unpadded container so every depth shares the
+                        // same x-coordinate across all rows.
+                        val dotSize = if (item.collapsed && node.hasChildren) 14.dp else 7.dp
+                        val dotTop = 12.dp.toPx()
+                        val dotSizePx = dotSize.toPx()
+                        val dotCenterY = dotTop + dotSizePx / 2
+                        val dotBottomY = dotTop + dotSizePx
+                        val strokeWidth = 1.dp.toPx()
+                        val curveRadius = 6.dp.toPx()
+                        val guideX: (Int) -> Float = { level -> level * 16.dp.toPx() + 8.dp.toPx() }
+
+                        continuingLevels.forEach { level ->
+                            val x = guideX(level)
+                            drawLine(
+                                color = guideColors[level % guideColors.size],
+                                start = Offset(x, 0f),
+                                end = Offset(x, size.height),
+                                strokeWidth = strokeWidth,
+                                cap = StrokeCap.Round
+                            )
+                        }
+
+                        if (depth > 0) {
+                            val x = guideX(depth - 1)
+                            val xDot = guideX(depth)
+                            val lineEnd = xDot - (dotSizePx / 2)
+                            val path = Path().apply {
+                                if (depth - 1 in continuingLevels) {
+                                    moveTo(x, dotCenterY - curveRadius)
+                                } else {
+                                    moveTo(x, 0f)
+                                    lineTo(x, dotCenterY - curveRadius)
+                                }
+                                quadraticTo(x, dotCenterY, x + curveRadius, dotCenterY)
+                                lineTo(lineEnd, dotCenterY)
                             }
+                            drawPath(
+                                path = path,
+                                color = guideColors[(depth - 1) % guideColors.size],
+                                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                            )
+                        }
+
+                        if (node.hasChildren && !item.collapsed) {
+                            val x = guideX(depth)
+                            drawLine(
+                                color = guideColors[depth % guideColors.size],
+                                start = Offset(x, dotBottomY),
+                                end = Offset(x, size.height),
+                                strokeWidth = strokeWidth,
+                                cap = StrokeCap.Round
+                            )
                         }
                     }
-                }
-
+            ) {
                 Row(
                     modifier = Modifier
-                        .weight(1f)
-                        .offset(x = (-8).dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(
-                            when {
-                                isSelected -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
-                                isEditing -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                                item.backgroundColor != NestedColorToken.Default -> nestedColor(item.backgroundColor).copy(alpha = 0.18f)
-                                else -> Color.Transparent
-                            }
-                        )
-                        .combinedClickable(
-                            onClick = {
-                                if (state.selection.isActive) {
-                                    viewModel.toggleSelect(item.id)
-                                } else {
-                                    viewModel.selectItem(item.id)
-                                    if (state.overlay is NestedEditorOverlay.AddingItem) viewModel.cancelAddItem()
-                                }
-                            },
-                            onDoubleClick = {
-                                if (!state.selection.isActive) viewModel.startEditText(item.id)
-                            }
-                        )
-                        .padding(horizontal = 4.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .fillMaxWidth()
+                        .padding(start = (depth * 16).dp),
+                    verticalAlignment = Alignment.Top
                 ) {
-
-                if (item.checkboxEnabled) {
-                    Checkbox(
-                        checked = item.checked,
-                        onCheckedChange = { viewModel.toggleChecked(item.id) },
-                        modifier = Modifier.size(28.dp).scale(0.7f).align(Alignment.Top)
-                    )
-                } else {
-                    Spacer(Modifier.width(8.dp))
-                }
-
-                Column(modifier = Modifier.weight(1f)) {
-                    if (isEditing) {
-                        var text by remember(item.id) { mutableStateOf(item.text) }
-                        val focusRequester = remember(item.id) { FocusRequester() }
-                        LaunchedEffect(item.id) {
-                            text = item.text
-                            focusRequester.requestFocus()
+                    Box(
+                        modifier = Modifier
+                            .width(24.dp)
+                            .height(36.dp)
+                            .noRippleClickable(
+                                enabled = node.hasChildren,
+                                onClick = { viewModel.toggleCollapsed(item.id) }
+                            ),
+                        contentAlignment = Alignment.TopStart
+                    ) {
+                        val dotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.68f)
+                        Box(
+                            modifier = Modifier
+                                .width(16.dp)
+                                .height(36.dp),
+                            contentAlignment = Alignment.TopCenter
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .padding(top = 12.dp)
+                                    .size(if (item.collapsed && node.hasChildren) 14.dp else 7.dp)
+                                    .clip(CircleShape)
+                                    .then(
+                                        if (item.collapsed && node.hasChildren) {
+                                            Modifier.border(2.dp, dotColor, CircleShape)
+                                        } else {
+                                            Modifier.background(dotColor)
+                                        }
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (item.collapsed && node.hasChildren) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(6.dp)
+                                            .clip(CircleShape)
+                                            .background(dotColor)
+                                    )
+                                }
+                            }
                         }
-                        val focusManager = LocalFocusManager.current
-                        BasicTextField(
-                            value = text,
-                            onValueChange = { text = it },
-                            singleLine = true,
-                            textStyle = nestedTextStyle(item.textStyle).copy(color = nestedTextColor(item.textColor)),
-                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                            keyboardActions = KeyboardActions(onDone = {
-                                focusManager.clearFocus()
-                                viewModel.saveItemText(item.id, text)
-                            }),
-                            modifier = Modifier.fillMaxWidth().focusRequester(focusRequester)
-                        )
-                    } else {
-                        Text(
-                            text = item.text,
-                            style = nestedTextStyle(item.textStyle),
-                            textDecoration = if (item.checked) TextDecoration.LineThrough else TextDecoration.None,
-                            color = when {
-                                isInCheckedBranch -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.68f)
-                                item.textColor != NestedColorToken.Default -> nestedColor(item.textColor)
-                                else -> MaterialTheme.colorScheme.onSurface
-                            },
-                            fontWeight = if (depth == 0 && !node.hasChildren) FontWeight.Bold else null
-                        )
                     }
-                    NestedItemMetadataPreview(
-                        item = item,
-                        summary = state.tree.metricSummaryById[item.id] ?: NestedMetricSummary(),
-                        isLeaf = !node.hasChildren
-                    )
+
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .offset(x = (-8).dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(
+                                when {
+                                    isSelected -> MaterialTheme.colorScheme.secondaryContainer.copy(
+                                        alpha = 0.5f
+                                    )
+
+                                    isEditing -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                    item.backgroundColor != NestedColorToken.Default -> nestedColor(
+                                        item.backgroundColor
+                                    ).copy(alpha = 0.18f)
+
+                                    else -> Color.Transparent
+                                }
+                            )
+                            .combinedClickable(
+                                onClick = {
+                                    if (state.selection.isActive) {
+                                        viewModel.toggleSelect(item.id)
+                                    } else {
+                                        viewModel.selectItem(item.id)
+                                        if (state.overlay is NestedEditorOverlay.AddingItem) viewModel.cancelAddItem()
+                                    }
+                                },
+                                onDoubleClick = {
+                                    if (!state.selection.isActive) viewModel.startEditText(item.id)
+                                }
+                            )
+                            .padding(horizontal = 4.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+
+                        if (item.checkboxEnabled) {
+                            Checkbox(
+                                checked = item.checked,
+                                onCheckedChange = { viewModel.toggleChecked(item.id) },
+                                modifier = Modifier.size(28.dp).scale(0.7f).align(Alignment.Top)
+                            )
+                        } else {
+                            Spacer(Modifier.width(8.dp))
+                        }
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            if (isEditing) {
+                                var text by remember(item.id) { mutableStateOf(item.text) }
+                                val focusRequester = remember(item.id) { FocusRequester() }
+                                LaunchedEffect(item.id) {
+                                    text = item.text
+                                    focusRequester.requestFocus()
+                                }
+                                val focusManager = LocalFocusManager.current
+                                BasicTextField(
+                                    value = text,
+                                    onValueChange = { text = it },
+                                    singleLine = true,
+                                    textStyle = nestedTextStyle(item.textStyle).copy(
+                                        color = nestedTextColor(
+                                            item.textColor
+                                        )
+                                    ),
+                                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                                    keyboardActions = KeyboardActions(onDone = {
+                                        focusManager.clearFocus()
+                                        viewModel.saveItemText(item.id, text)
+                                    }),
+                                    modifier = Modifier.fillMaxWidth()
+                                        .focusRequester(focusRequester)
+                                )
+                            } else {
+                                Text(
+                                    text = item.text,
+                                    style = nestedTextStyle(item.textStyle),
+                                    textDecoration = if (item.checked) TextDecoration.LineThrough else TextDecoration.None,
+                                    color = when {
+                                        isInCheckedBranch -> MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                            alpha = 0.68f
+                                        )
+
+                                        item.textColor != NestedColorToken.Default -> nestedColor(
+                                            item.textColor
+                                        )
+
+                                        else -> MaterialTheme.colorScheme.onSurface
+                                    },
+                                    fontWeight = if (depth == 0 && !node.hasChildren) FontWeight.Bold else null
+                                )
+                            }
+                            NestedItemMetadataPreview(
+                                item = item,
+                                summary = state.tree.metricSummaryById[item.id]
+                                    ?: NestedMetricSummary(),
+                                isLeaf = !node.hasChildren
+                            )
+                        }
+
+                        if (item.priority != TaskPriority.None) {
+                            Text(
+                                text = priorityMarker(item.priority),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = priorityColor(item.priority),
+                                modifier = Modifier.padding(end = 4.dp).align(Alignment.Top)
+                            )
+                        }
+
+                        if (state.selection.isActive) {
+                            Checkbox(
+                                checked = isSelected,
+                                onCheckedChange = { viewModel.toggleSelect(item.id) },
+                                modifier = Modifier.size(28.dp).align(Alignment.Top)
+                            )
+                        }
+                    }
                 }
 
-                if (item.priority != TaskPriority.None) {
-                    Text(
-                        text = priorityMarker(item.priority),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = priorityColor(item.priority),
-                        modifier = Modifier.padding(end = 4.dp).align(Alignment.Top)
-                    )
-                }
-
-                if (state.selection.isActive) {
-                    Checkbox(
-                        checked = isSelected,
-                        onCheckedChange = { viewModel.toggleSelect(item.id) },
-                        modifier = Modifier.size(28.dp).align(Alignment.Top)
-                    )
-                }
             }
         }
-
     }
-    }
-}
 }
 
 @Composable

@@ -381,6 +381,22 @@ class TaskViewModel(
         }
     }
 
+    fun openNewTaskFromNestedItem(title: String, note: String?, subtaskTexts: List<String>) {
+        val listId = editableListId()
+        cancelPendingTaskTextSave()
+        _uiState.update {
+            it.copy(
+                editor = TaskEditorState.TaskForm(
+                    mode = EditorMode.Add,
+                    listId = listId,
+                    name = title,
+                    description = note.orEmpty(),
+                    subtasks = subtaskTexts.map { text -> SubTaskEditorState(name = text) }
+                )
+            )
+        }
+    }
+
     fun openNewTaskOnDate(date: LocalDate, addToMyDayOnSave: Boolean = false) {
         val listId = editableListId()
         cancelPendingTaskTextSave()

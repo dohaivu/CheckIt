@@ -341,6 +341,9 @@ fun CheckItApp(
                                             onAddToDailyPlan = { title, tagIds, nestedListItemId ->
                                                 navState.resetTo(AppRoute.MyDay)
                                                 viewModels.myDay.openDailyPlan(title, tagIds, nestedListItemId)
+                                            },
+                                            onCopyToTask = { title, note, subtaskTexts ->
+                                                viewModels.task.openNewTaskFromNestedItem(title, note, subtaskTexts)
                                             }
                                         )
                                     }
