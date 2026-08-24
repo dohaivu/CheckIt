@@ -92,15 +92,15 @@ fun Modifier.statusBreathingGlow(
     drawRoundRect(
         color = color,
         cornerRadius = CornerRadius(cornerRadius.toPx()),
-        style = Stroke(width = 7.dp.toPx(), cap = StrokeCap.Round),
+        style = Stroke(width = 7.dp.toPx() * pulse, cap = StrokeCap.Round),
         alpha = baseAlpha * 0.4f * pulse
     )
-    // Layer 3: Inner core (stable)
+    // Layer 3: Inner core (now also follows pulse to allow "disappearing")
     drawRoundRect(
         color = color,
         cornerRadius = CornerRadius(cornerRadius.toPx()),
         style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round),
-        alpha = baseAlpha * 0.9f
+        alpha = baseAlpha * 0.9f * pulse.coerceIn(0f, 1f)
     )
 }
 

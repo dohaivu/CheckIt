@@ -126,7 +126,7 @@ internal fun WorkTimeChip(
 
     val orbit = rememberInfiniteTransition(label = "workTimePulse")
     val pulse by orbit.animateFloat(
-        initialValue = 0.6f,
+        initialValue = 0f,
         targetValue = 1.2f,
         animationSpec = infiniteRepeatable(
             animation = tween(duration, easing = FastOutSlowInEasing),
@@ -143,11 +143,11 @@ internal fun WorkTimeChip(
 
     Box(
         modifier = modifier
-            .padding(4.dp)
+            .padding(8.dp) // More padding to avoid outer glow clipping
             .statusBreathingGlow(
                 color = statusColor,
                 pulseFraction = { pulse },
-                cornerRadius = 10.dp + 4.dp
+                cornerRadius = 10.dp // Exactly matches inner chip radius
             )
     ) {
         Column(
