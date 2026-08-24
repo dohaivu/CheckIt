@@ -528,6 +528,17 @@ class NestedListsViewModel(
     fun moveUp(itemId: Long) = applyMove { items -> moveItemsUseCase.moveUp(items, itemId) }
     fun moveDown(itemId: Long) = applyMove { items -> moveItemsUseCase.moveDown(items, itemId) }
 
+    fun canStartDrag(): Boolean {
+        val active = getActiveEditor() ?: return false
+        return !active.selection.isActive &&
+            active.overlay is NestedEditorOverlay.None &&
+            !active.filters.isActive &&
+            active.editingTextItemId == null
+    }
+
+    fun moveItemTo(itemId: Long, targetParentId: Long?, targetIndex: Int) =
+        applyMove { items -> moveItemsUseCase.moveToPosition(items, itemId, targetParentId, targetIndex) }
+
     private fun applyMove(planner: (List<NestedListItem>) -> List<com.checkit.domain.NestedItemMove>) {
         val active = getActiveEditor() ?: return
         val moves = planner(active.tree.flatItems)

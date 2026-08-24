@@ -24,7 +24,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListItemInfo
+import androidx.compose.foundation.lazy.LazyListLayoutInfo
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -85,6 +90,12 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.zIndex
+import com.checkit.domain.NestedListItem
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -121,8 +132,10 @@ import com.checkit.domain.NestedMetricUnit
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.TagItem
 import com.checkit.domain.FocusPeriod
+import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.filterNestedTree
+import com.checkit.domain.nestedDescendantIds
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DateRangePill
 import com.checkit.ui.components.FocusPeriodHeader
@@ -131,7 +144,9 @@ import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TagPill
 import com.checkit.ui.components.TagPlain
 import com.checkit.ui.tasks.noRippleClickable
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
+import kotlin.math.roundToInt
 
 @Composable
 internal fun NestedListEditorScreen(
@@ -144,21 +159,25 @@ internal fun NestedListEditorScreen(
     var detailsItemId by remember { mutableStateOf<Long?>(null) }
     val tree = state.tree
     val focusedNode = state.focusedItem
-    val unfilteredRoots = focusedNode?.let { listOf(it) } ?: tree.rootNodes
-    val visibleRoots = if (state.filters.isVisible) {
-        filterNestedTree(
-            roots = unfilteredRoots,
-            start = state.filters.focus?.start,
-            end = state.filters.focus?.endInclusive,
-            query = state.filters.query,
-            hideChecked = state.filters.hideChecked,
-            selectedTagIds = state.filters.selectedTagIds
-        )
-    } else {
-        unfilteredRoots
+    val unfilteredRoots = remember(focusedNode, tree.rootNodes) {
+        focusedNode?.let { listOf(it) } ?: tree.rootNodes
     }
-    val visibleRows = flattenVisibleNodes(visibleRoots)
-    val breadcrumbs = buildBreadcrumbs(state, tree.rootNodes)
+    val visibleRoots = remember(unfilteredRoots, state.filters) {
+        if (state.filters.isVisible) {
+            filterNestedTree(
+                roots = unfilteredRoots,
+                start = state.filters.focus?.start,
+                end = state.filters.focus?.endInclusive,
+                query = state.filters.query,
+                hideChecked = state.filters.hideChecked,
+                selectedTagIds = state.filters.selectedTagIds
+            )
+        } else {
+            unfilteredRoots
+        }
+    }
+    val visibleRows = remember(visibleRoots) { flattenVisibleNodes(visibleRoots) }
+    val breadcrumbs = remember(state.zoomPath, tree.rootNodes) { buildBreadcrumbs(state, tree.rootNodes) }
 
     Column(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)) {
@@ -239,7 +258,84 @@ internal fun NestedListEditorScreen(
             modifier = Modifier.weight(1f).fillMaxWidth()
         ) {
             val addingItem = state.overlay as? NestedEditorOverlay.AddingItem
+            val listState = rememberLazyListState()
+            val haptics = LocalHapticFeedback.current
+            val density = androidx.compose.ui.platform.LocalDensity.current
+            var drag by remember { mutableStateOf<DragDropState?>(null) }
+
+            val draggedDescendantIds = remember<Set<Long>>(drag?.itemId, state.tree) {
+                val id = drag?.itemId
+                val node = if (id != null) state.tree.nodeById[id] else null
+                if (node != null && node.hasChildren) {
+                    val result = HashSet<Long>()
+                    val stack = ArrayDeque<NestedItemNode>()
+                    stack.addAll(node.children)
+                    while (stack.isNotEmpty()) {
+                        val curr = stack.removeLast()
+                        result.add(curr.item.id)
+                        stack.addAll(curr.children)
+                    }
+                    result
+                } else {
+                    emptySet()
+                }
+            }
+            val effectiveVisibleRows = remember(visibleRows, draggedDescendantIds) {
+                if (draggedDescendantIds.isNotEmpty()) {
+                    visibleRows.filterNot { it.node.item.id in draggedDescendantIds }
+                } else {
+                    visibleRows
+                }
+            }
+
+            fun updateDropTarget(current: DragDropState) {
+                val resolved = resolveDropTarget(
+                    tree = state.tree,
+                    rows = effectiveVisibleRows,
+                    layoutInfo = listState.layoutInfo,
+                    drag = current,
+                    density = density
+                )
+                if (resolved != null) {
+                    current.targetParentId = resolved.parentId
+                    current.targetIndex = resolved.index
+                    current.indicatorRowId = resolved.rowId
+                    current.below = resolved.below
+                    current.indicatorDepth = resolved.depth
+                    current.hasResolved = true
+                }
+            }
+
+            // Edge auto-scroll while dragging with proportional velocity and real-time drop target updates.
+            LaunchedEffect(drag?.itemId) {
+                val active = drag ?: return@LaunchedEffect
+                while (true) {
+                    val info = listState.layoutInfo
+                    val edge = with(density) { 56.dp.toPx() }
+                    val maxVelocity = with(density) { 16.dp.toPx() }
+                    val viewportY = active.pointerViewportY
+                    val scrolled = when {
+                        viewportY < edge && listState.canScrollBackward -> {
+                            val factor = ((edge - viewportY) / edge).coerceIn(0.1f, 1f)
+                            listState.scrollBy(-maxVelocity * factor)
+                            true
+                        }
+                        viewportY > (info.viewportEndOffset - edge) && listState.canScrollForward -> {
+                            val factor = ((viewportY - (info.viewportEndOffset - edge)) / edge).coerceIn(0.1f, 1f)
+                            listState.scrollBy(maxVelocity * factor)
+                            true
+                        }
+                        else -> false
+                    }
+                    if (scrolled) {
+                        updateDropTarget(active)
+                    }
+                    delay(16)
+                }
+            }
+
             LazyColumn(
+                state = listState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
             ) {
@@ -255,23 +351,104 @@ internal fun NestedListEditorScreen(
                         )
                     }
                 }
-                if (visibleRows.isEmpty()) {
+                if (effectiveVisibleRows.isEmpty()) {
                     if (addingItem == null || addingItem.draft.anchorId != null) {
                         item(key = "empty-list") {
                             EmptyNestedList(onAddItem = viewModel::startAddRoot)
                         }
                     }
                 } else {
-                    items(visibleRows, key = { it.node.item.id }) { row ->
-                        NestedTree(
-                            node = row.node,
-                            depth = row.depth,
-                            isVisible = row.isVisible,
-                            isInCheckedBranch = row.isInCheckedBranch,
-                            continuingLevels = row.continuingLevels,
-                            state = state,
-                            viewModel = viewModel
-                        )
+                    items(effectiveVisibleRows, key = { it.node.item.id }) { row ->
+                        val isDragged = drag?.itemId == row.node.item.id
+                        val indicator = drag?.takeIf { it.indicatorRowId == row.node.item.id }
+                        Box(
+                            modifier = Modifier
+                                .animateItem()
+                                .zIndex(if (isDragged) 2f else 0f)
+                        ) {
+                            Column {
+                                if (indicator != null && !indicator.below) {
+                                    DropIndicatorLine(indicator.indicatorDepth)
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .graphicsLayer {
+                                            translationY =
+                                                if (isDragged) (drag?.totalDragY ?: 0f) else 0f
+                                            scaleX = if (isDragged) 1.02f else 1f
+                                            scaleY = if (isDragged) 1.02f else 1f
+                                            shadowElevation =
+                                                if (isDragged) with(density) { 8.dp.toPx() } else 0f
+                                            alpha = if (isDragged) 0.92f else 1f
+                                        }
+                                        .then(
+                                            if (isDragged) {
+                                                Modifier.background(
+                                                    MaterialTheme.colorScheme.surfaceContainerHigh,
+                                                    RoundedCornerShape(8.dp)
+                                                )
+                                            } else {
+                                                Modifier
+                                            }
+                                        )
+                                        .pointerInput(row.node.item.id) {
+                                            detectDragGesturesAfterLongPress(
+                                                onDragStart = { startOffset ->
+                                                    if (!viewModel.canStartDrag()) return@detectDragGesturesAfterLongPress
+                                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                    val entry = listState.layoutInfo.visibleItemsInfo
+                                                        .firstOrNull { it.key == row.node.item.id }
+                                                    val initialY = (entry?.offset ?: 0) + startOffset.y.roundToInt()
+                                                    val newState = DragDropState(
+                                                        itemId = row.node.item.id,
+                                                        initialDepth = row.depth
+                                                    ).apply {
+                                                        pointerViewportY = initialY
+                                                        indicatorDepth = row.depth
+                                                    }
+                                                    drag = newState
+                                                    updateDropTarget(newState)
+                                                },
+                                                onDrag = { change, amount ->
+                                                    change.consume()
+                                                    val current = drag ?: return@detectDragGesturesAfterLongPress
+                                                    current.totalDragY += amount.y
+                                                    current.totalDragX += amount.x
+                                                    current.pointerViewportY += amount.y.roundToInt()
+                                                    updateDropTarget(current)
+                                                },
+                                                onDragEnd = {
+                                                    val finished = drag
+                                                    drag = null
+                                                    if (finished != null && finished.hasResolved) {
+                                                        viewModel.moveItemTo(
+                                                            finished.itemId,
+                                                            finished.targetParentId,
+                                                            finished.targetIndex
+                                                        )
+                                                    }
+                                                },
+                                                onDragCancel = { drag = null }
+                                            )
+                                        }
+                                ) {
+                                    NestedTree(
+                                        node = row.node,
+                                        depth = row.depth,
+                                        isVisible = row.isVisible,
+                                        isInCheckedBranch = row.isInCheckedBranch,
+                                        continuingLevels = row.continuingLevels,
+                                        state = state,
+                                        viewModel = viewModel,
+                                        isDragActive = drag != null,
+                                        isDragged = isDragged
+                                    )
+                                }
+                                if (indicator != null && indicator.below) {
+                                    DropIndicatorLine(indicator.indicatorDepth)
+                                }
+                            }
+                        }
                         if (addingItem != null && addingItem.draft.anchorId == row.node.item.id) {
                             NewItemRow(
                                 depth = addingItem.draft.depth,
@@ -1633,7 +1810,9 @@ private fun NestedTree(
     isInCheckedBranch: Boolean,
     continuingLevels: Set<Int>,
     state: NestedEditorState.Active,
-    viewModel: NestedListsViewModel
+    viewModel: NestedListsViewModel,
+    isDragActive: Boolean = false,
+    isDragged: Boolean = false
 ) {
     val item = node.item
     val guideColors = listOf(
@@ -1656,58 +1835,60 @@ private fun NestedTree(
                 modifier = Modifier
                     .fillMaxWidth()
                     .drawBehind {
-                        // Draw in the unpadded container so every depth shares the
-                        // same x-coordinate across all rows.
-                        val dotSize = if (item.collapsed && node.hasChildren) 14.dp else 7.dp
-                        val dotTop = 12.dp.toPx()
-                        val dotSizePx = dotSize.toPx()
-                        val dotCenterY = dotTop + dotSizePx / 2
-                        val dotBottomY = dotTop + dotSizePx
-                        val strokeWidth = 1.dp.toPx()
-                        val curveRadius = 6.dp.toPx()
-                        val guideX: (Int) -> Float = { level -> level * 16.dp.toPx() + 8.dp.toPx() }
+                        if (!isDragged) {
+                            // Draw in the unpadded container so every depth shares the
+                            // same x-coordinate across all rows.
+                            val dotSize = if (item.collapsed && node.hasChildren) 14.dp else 7.dp
+                            val dotTop = 12.dp.toPx()
+                            val dotSizePx = dotSize.toPx()
+                            val dotCenterY = dotTop + dotSizePx / 2
+                            val dotBottomY = dotTop + dotSizePx
+                            val strokeWidth = 1.dp.toPx()
+                            val curveRadius = 6.dp.toPx()
+                            val guideX: (Int) -> Float = { level -> level * 16.dp.toPx() + 8.dp.toPx() }
 
-                        continuingLevels.forEach { level ->
-                            val x = guideX(level)
-                            drawLine(
-                                color = guideColors[level % guideColors.size],
-                                start = Offset(x, 0f),
-                                end = Offset(x, size.height),
-                                strokeWidth = strokeWidth,
-                                cap = StrokeCap.Round
-                            )
-                        }
-
-                        if (depth > 0) {
-                            val x = guideX(depth - 1)
-                            val xDot = guideX(depth)
-                            val lineEnd = xDot - (dotSizePx / 2)
-                            val path = Path().apply {
-                                if (depth - 1 in continuingLevels) {
-                                    moveTo(x, dotCenterY - curveRadius)
-                                } else {
-                                    moveTo(x, 0f)
-                                    lineTo(x, dotCenterY - curveRadius)
-                                }
-                                quadraticTo(x, dotCenterY, x + curveRadius, dotCenterY)
-                                lineTo(lineEnd, dotCenterY)
+                            continuingLevels.forEach { level ->
+                                val x = guideX(level)
+                                drawLine(
+                                    color = guideColors[level % guideColors.size],
+                                    start = Offset(x, 0f),
+                                    end = Offset(x, size.height),
+                                    strokeWidth = strokeWidth,
+                                    cap = StrokeCap.Round
+                                )
                             }
-                            drawPath(
-                                path = path,
-                                color = guideColors[(depth - 1) % guideColors.size],
-                                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
-                            )
-                        }
 
-                        if (node.hasChildren && !item.collapsed) {
-                            val x = guideX(depth)
-                            drawLine(
-                                color = guideColors[depth % guideColors.size],
-                                start = Offset(x, dotBottomY),
-                                end = Offset(x, size.height),
-                                strokeWidth = strokeWidth,
-                                cap = StrokeCap.Round
-                            )
+                            if (depth > 0) {
+                                val x = guideX(depth - 1)
+                                val xDot = guideX(depth)
+                                val lineEnd = xDot - (dotSizePx / 2)
+                                val path = Path().apply {
+                                    if (depth - 1 in continuingLevels) {
+                                        moveTo(x, dotCenterY - curveRadius)
+                                    } else {
+                                        moveTo(x, 0f)
+                                        lineTo(x, dotCenterY - curveRadius)
+                                    }
+                                    quadraticTo(x, dotCenterY, x + curveRadius, dotCenterY)
+                                    lineTo(lineEnd, dotCenterY)
+                                }
+                                drawPath(
+                                    path = path,
+                                    color = guideColors[(depth - 1) % guideColors.size],
+                                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                                )
+                            }
+
+                            if (node.hasChildren && !item.collapsed) {
+                                val x = guideX(depth)
+                                drawLine(
+                                    color = guideColors[depth % guideColors.size],
+                                    start = Offset(x, dotBottomY),
+                                    end = Offset(x, size.height),
+                                    strokeWidth = strokeWidth,
+                                    cap = StrokeCap.Round
+                                )
+                            }
                         }
                     }
             ) {
@@ -1884,6 +2065,7 @@ private fun NestedTree(
                     isSelected &&
                     !state.selection.isActive &&
                     !isEditing &&
+                    !isDragActive &&
                     state.overlay !is NestedEditorOverlay.AddingItem
                 ) {
                     Box(
@@ -1949,6 +2131,171 @@ private data class NestedTraversalEntry(
 )
 
 /** Iterative traversal keeps stable rows available for expand/collapse animation. */
+// ---------------- drag & drop ----------------
+
+/** Mutable state for an in-progress row drag; lives across gesture callbacks. */
+private class DragDropState(
+    val itemId: Long,
+    val initialDepth: Int
+) {
+    // Observable so graphicsLayer/composition react to gesture mutations.
+    var pointerViewportY by mutableStateOf(0)
+    var totalDragY by mutableStateOf(0f)
+    var totalDragX by mutableStateOf(0f)
+    var targetParentId by mutableStateOf<Long?>(null)
+    var targetIndex by mutableStateOf(0)
+    var indicatorRowId by mutableStateOf<Long?>(null)
+    var indicatorDepth by mutableStateOf(0)
+    var below by mutableStateOf(false)
+    var hasResolved by mutableStateOf(false)
+}
+
+private data class ResolvedDropTarget(
+    val parentId: Long?,
+    val index: Int,
+    val rowId: Long,
+    val below: Boolean,
+    val depth: Int
+)
+
+/**
+ * Resolves the current drop placement from the dragged item's pointer position.
+ * Uses the vertical gap between visible rows to determine allowed nesting depth,
+ * and horizontal drag delta to choose the exact indent/outdent level.
+ */
+private fun resolveDropTarget(
+    tree: com.checkit.domain.NestedDocumentTree,
+    rows: List<VisibleNestedRow>,
+    layoutInfo: LazyListLayoutInfo,
+    drag: DragDropState,
+    density: androidx.compose.ui.unit.Density
+): ResolvedDropTarget? {
+    if (rows.isEmpty()) return null
+    val entries = layoutInfo.visibleItemsInfo.filter { it.key is Long }
+    if (entries.isEmpty()) return null
+
+    val pointerY = drag.pointerViewportY
+    val hovered = entries.firstOrNull { pointerY in it.offset until (it.offset + it.size) }
+        ?: if (pointerY < entries.first().offset) entries.first()
+        else if (pointerY >= entries.last().offset + entries.last().size) entries.last()
+        else entries.minByOrNull { kotlin.math.abs((it.offset + it.size / 2) - pointerY) }
+        ?: return null
+
+    val hoveredKey = hovered.key as? Long ?: return null
+    val hoveredRowIdx = rows.indexOfFirst { it.node.item.id == hoveredKey }
+    if (hoveredRowIdx < 0) return null
+    val hoveredRow = rows[hoveredRowIdx]
+
+    val rowCenterY = hovered.offset + hovered.size / 2
+    val isBelow = pointerY > rowCenterY
+
+    val aboveRow: VisibleNestedRow?
+    val belowRow: VisibleNestedRow?
+    if (!isBelow) {
+        aboveRow = if (hoveredRowIdx > 0) rows[hoveredRowIdx - 1] else null
+        belowRow = hoveredRow
+    } else {
+        aboveRow = hoveredRow
+        belowRow = if (hoveredRowIdx < rows.lastIndex) rows[hoveredRowIdx + 1] else null
+    }
+
+    val minDepth = belowRow?.depth ?: 0
+    val maxDepth = if (aboveRow != null) aboveRow.depth + 1 else 0
+    val effectiveMinDepth = minDepth.coerceAtMost(maxDepth)
+
+    val baseDepth = if (isBelow) aboveRow?.depth ?: 0 else belowRow?.depth ?: 0
+
+    val stepPx = with(density) { 32.dp.toPx() }
+    val depthDelta = (drag.totalDragX / stepPx).toInt()
+    val targetDepth = (baseDepth + depthDelta).coerceIn(effectiveMinDepth, maxDepth)
+
+    fun siblingsOf(parentId: Long?): List<NestedListItem> {
+        val nodes = if (parentId == null) tree.rootNodes else tree.nodeById[parentId]?.children.orEmpty()
+        return nodes.mapNotNull { if (it.item.id != drag.itemId) it.item else null }
+    }
+
+    val targetParentId: Long?
+    val targetIndex: Int
+
+    if (aboveRow == null) {
+        targetParentId = belowRow?.node?.item?.parentId
+        targetIndex = 0
+    } else if (targetDepth == aboveRow.depth + 1) {
+        targetParentId = aboveRow.node.item.id
+        targetIndex = siblingsOf(aboveRow.node.item.id).size
+    } else if (targetDepth == aboveRow.depth) {
+        targetParentId = aboveRow.node.item.parentId
+        val siblings = siblingsOf(targetParentId)
+        val aboveIdx = siblings.indexOfFirst { it.id == aboveRow.node.item.id }
+        targetIndex = if (aboveIdx >= 0) (aboveIdx + 1).coerceAtMost(siblings.size) else siblings.size
+    } else {
+        val levelsUp = aboveRow.depth - targetDepth
+        var ancestorItem: NestedListItem? = aboveRow.node.item
+        repeat(levelsUp) {
+            ancestorItem = ancestorItem?.parentId?.let { tree.itemById[it] }
+        }
+        if (ancestorItem != null) {
+            targetParentId = ancestorItem.parentId
+            val siblings = siblingsOf(targetParentId)
+            val ancIdx = siblings.indexOfFirst { it.id == ancestorItem.id }
+            targetIndex = if (ancIdx >= 0) (ancIdx + 1).coerceAtMost(siblings.size) else siblings.size
+        } else {
+            targetParentId = null
+            targetIndex = siblingsOf(null).size
+        }
+    }
+
+    val displayRowId: Long
+    val displayBelow: Boolean
+    if (belowRow != null) {
+        displayRowId = belowRow.node.item.id
+        displayBelow = false
+    } else if (aboveRow != null) {
+        displayRowId = aboveRow.node.item.id
+        displayBelow = true
+    } else {
+        displayRowId = hoveredRow.node.item.id
+        displayBelow = isBelow
+    }
+
+    return ResolvedDropTarget(
+        parentId = targetParentId,
+        index = targetIndex,
+        rowId = displayRowId,
+        below = displayBelow,
+        depth = targetDepth
+    )
+}
+
+@Composable
+private fun DropIndicatorLine(depth: Int) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = (depth * 16 + 8).dp, end = 12.dp, top = 2.dp, bottom = 2.dp),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(7.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary)
+            )
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(2.5.dp)
+                    .clip(RoundedCornerShape(1.5.dp))
+                    .background(MaterialTheme.colorScheme.primary)
+            )
+        }
+    }
+}
+
 private fun flattenVisibleNodes(roots: List<NestedItemNode>): List<VisibleNestedRow> {
     if (roots.isEmpty()) return emptyList()
     val result = ArrayList<VisibleNestedRow>()
