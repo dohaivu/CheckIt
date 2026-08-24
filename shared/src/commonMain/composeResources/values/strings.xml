@@ -176,6 +176,7 @@
     <string name="nested_new_document">New document</string>
     <string name="nested_delete_document">Delete document</string>
     <string name="nested_delete_confirm">Delete “%1$s” and everything inside it?</string>
+    <string name="nested_delete_confirm_multiple">Delete %1$d selected items?</string>
     <string name="nested_untitled_document">Untitled</string>
     <string name="nested_root">Document</string>
     <string name="nested_confirm_delete">Delete items</string>

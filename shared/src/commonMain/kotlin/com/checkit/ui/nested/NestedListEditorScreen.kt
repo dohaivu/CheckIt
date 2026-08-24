@@ -103,6 +103,7 @@ import checkit.shared.generated.resources.nested_add_sibling
 import checkit.shared.generated.resources.nested_batch_delete
 import checkit.shared.generated.resources.nested_confirm_delete
 import checkit.shared.generated.resources.nested_delete_confirm
+import checkit.shared.generated.resources.nested_delete_confirm_multiple
 import checkit.shared.generated.resources.nested_edit_note
 import checkit.shared.generated.resources.nested_indent
 import checkit.shared.generated.resources.nested_move_down
@@ -317,10 +318,22 @@ internal fun NestedListEditorScreen(
 
     when (val overlay = state.overlay) {
         is NestedEditorOverlay.ConfirmDelete -> {
+            val deleteCount = overlay.itemIds.size
+            val singleItemText = if (deleteCount == 1) {
+                overlay.itemIds.firstOrNull()?.let { state.tree.itemById[it]?.text } ?: ""
+            } else {
+                ""
+            }
             AlertDialog(
                 onDismissRequest = viewModel::dismissDeleteConfirm,
                 title = { Text(stringResource(Res.string.nested_confirm_delete)) },
-                text = { Text(stringResource(Res.string.nested_delete_confirm, state.selectedItem?.item?.text ?: "")) },
+                text = {
+                    if (deleteCount <= 1) {
+                        Text(stringResource(Res.string.nested_delete_confirm, singleItemText))
+                    } else {
+                        Text(stringResource(Res.string.nested_delete_confirm_multiple, deleteCount))
+                    }
+                },
                 confirmButton = {
                     TextButton(onClick = viewModel::confirmDeleteSelected) {
                         Text(stringResource(Res.string.nested_batch_delete))
