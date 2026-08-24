@@ -2,6 +2,7 @@ package com.checkit.ui.tasks
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
@@ -57,13 +58,15 @@ import kotlinx.datetime.plus
 
 fun Modifier.noRippleClickable(
     enabled: Boolean = true,
-    onClick: () -> Unit
+    onDoubleClick: (() -> Unit)? = null,
+    onClick: () -> Unit,
 ): Modifier = composed {
-    this.clickable(
+    this.combinedClickable(
         interactionSource = remember { MutableInteractionSource() },
         indication = null,
         enabled = enabled,
-        onClick = onClick
+        onClick = onClick,
+        onDoubleClick = onDoubleClick
     )
 }
 

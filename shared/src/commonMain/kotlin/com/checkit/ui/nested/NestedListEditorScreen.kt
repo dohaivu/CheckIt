@@ -1424,7 +1424,7 @@ private fun BreadcrumbBar(
             .horizontalScroll(scrollState)
             .padding(horizontal = 12.dp, vertical = 0.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Text(
             text = stringResource(Res.string.nested_root),
@@ -1440,7 +1440,7 @@ private fun BreadcrumbBar(
         breadcrumbs.drop(1).forEach { crumb ->
             val isCurrent = crumb.depth == breadcrumbs.lastOrNull()?.depth
             Icon(
-                imageVector = Icons.Default.KeyboardArrowRight,
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(16.dp)
@@ -1453,7 +1453,7 @@ private fun BreadcrumbBar(
                         else Color.Transparent
                     )
                     .clickable(enabled = !isCurrent) { crumb.itemId?.let(onCrumbClick) }
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                    .padding(horizontal = 6.dp, vertical = 4.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -1504,12 +1504,13 @@ private fun EditorToolbar(
             .horizontalScroll(rememberScrollState())
             .background(MaterialTheme.colorScheme.surface)
             .padding(horizontal = 8.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(3.dp)
     ) {
         ToolbarButton(Icons.Default.ZoomIn, stringResource(Res.string.nested_zoom_in), canZoomIn, onZoomIn)
         ToolbarButton(Icons.Default.ZoomOut, stringResource(Res.string.nested_zoom_out), canZoomOut, onZoomOut)
-        ToolbarButton(Icons.AutoMirrored.Filled.KeyboardArrowRight, stringResource(Res.string.nested_indent), hasSelection, onIndent)
         ToolbarButton(Icons.AutoMirrored.Filled.KeyboardArrowLeft, stringResource(Res.string.nested_outdent), hasSelection, onOutdent)
+        ToolbarButton(Icons.AutoMirrored.Filled.KeyboardArrowRight, stringResource(Res.string.nested_indent), hasSelection, onIndent)
         ToolbarButton(Icons.Default.KeyboardArrowUp, stringResource(Res.string.nested_move_up), hasSelection, onMoveUp)
         ToolbarButton(Icons.Default.KeyboardArrowDown, stringResource(Res.string.nested_move_down), hasSelection, onMoveDown)
         ToolbarButton(Icons.Default.Add, stringResource(Res.string.nested_add_child), hasSelection, onAddChild)
@@ -1722,7 +1723,8 @@ private fun NestedTree(
                             .height(36.dp)
                             .noRippleClickable(
                                 enabled = node.hasChildren,
-                                onClick = { viewModel.toggleCollapsed(item.id) }
+                                onClick = { viewModel.toggleCollapsed(item.id) },
+                                onDoubleClick = {viewModel.zoomToItem(item.id)}
                             ),
                         contentAlignment = Alignment.TopStart
                     ) {
