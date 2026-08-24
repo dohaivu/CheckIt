@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.checkit.data.CheckItRepository
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.MoodFilter
-import com.checkit.domain.Period
 import com.checkit.domain.PeriodReview
 import com.checkit.domain.TagItem
 import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
@@ -71,9 +70,18 @@ class JournalHistoryViewModel(
                 _uiState.map { it.filters }.debounce(250).distinctUntilChanged(),
                 windowStart
             ) { filters, start -> filters to start }
-                .flatMapLatest { (filters, start) ->                    // Hybrid windowing: browse mode loads a recent window that
+                .flatMapLatest { (filters, start) ->
+                    // Hybrid windowing: browse mode loads a recent window that
                     // expands on demand; active filters search all history.
-                    val effectiveStart = if (filters.hasActiveFilters()) null else start
+                    val hasFilters = filters.hasActiveFilters()
+                    val effectiveStart = if (hasFilters) null else start
+
+                    val reviewsFlow = if (hasFilters) {
+                        kotlinx.coroutines.flow.flowOf(emptyList<PeriodReview>())
+                    } else {
+                        observePeriodReviews(startDate = effectiveStart, endDateInclusive = null)
+                    }
+
                     combine(
                         repository.observeJournalEntriesFiltered(
                             moodEmojis = filters.mood?.emojis.orEmpty(),
@@ -81,7 +89,7 @@ class JournalHistoryViewModel(
                             tagId = filters.tagId,
                             startDate = effectiveStart
                         ),
-                        observePeriodReviews(startDate = effectiveStart, endDateInclusive = null)
+                        reviewsFlow
                     ) { entries, reviews ->
                         entries to reviews
                     }
