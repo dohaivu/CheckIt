@@ -33,6 +33,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.NoteAdd
@@ -205,6 +206,7 @@ internal fun NestedListEditorScreen(
                     onDelete = viewModel::requestDeleteSelected,
                     onAddRoot = viewModel::startAddRoot,
                     onManageDetails = { state.selectedItemId?.let { detailsItemId = it } },
+                    onEnterSelection = viewModel::enterSelectionMode,
                     onAddToDailyPlan = {
                         state.selectedItemId?.let { id ->
                             state.tree.nodeById[id]?.item?.let { item ->
@@ -318,7 +320,7 @@ internal fun NestedListEditorScreen(
             AlertDialog(
                 onDismissRequest = viewModel::dismissDeleteConfirm,
                 title = { Text(stringResource(Res.string.nested_confirm_delete)) },
-                text = { Text(stringResource(Res.string.nested_delete_confirm)) },
+                text = { Text(stringResource(Res.string.nested_delete_confirm, state.selectedItem?.item?.text ?: "")) },
                 confirmButton = {
                     TextButton(onClick = viewModel::confirmDeleteSelected) {
                         Text(stringResource(Res.string.nested_batch_delete))
@@ -1474,7 +1476,8 @@ private fun EditorToolbar(
     onAddRoot: () -> Unit,
     onManageDetails: () -> Unit,
     onAddToDailyPlan: () -> Unit,
-    onCopyToTask: () -> Unit
+    onCopyToTask: () -> Unit,
+    onEnterSelection: () -> Unit
 ) {
     val hasSelection = state.selectedItemId != null
     val selectedNode = state.selectedItemId?.let { id -> state.tree.nodeById[id] }
@@ -1513,6 +1516,9 @@ private fun EditorToolbar(
                 }
                 ToolbarMenuItem("Add root item", true) {
                     showMore = false; onAddRoot()
+                }
+                ToolbarMenuItem("Select items", true) {
+                    showMore = false; onEnterSelection()
                 }
                 ToolbarMenuItem(stringResource(Res.string.nested_batch_delete), hasSelection) {
                     showMore = false; onDelete()
@@ -1572,7 +1578,7 @@ private fun SelectionToolbar(
         )
         ToolbarButton(Icons.Default.Done, "Mark done", count > 0, onToggleDone)
         ToolbarButton(Icons.Default.Delete, stringResource(Res.string.nested_batch_delete), count > 0, onDelete)
-        ToolbarButton(Icons.Default.ArrowBack, stringResource(Res.string.cancel), true, onExit)
+        Text(text = "Exit", modifier = Modifier.clickable {onExit()})
     }
 }
 
@@ -1775,7 +1781,6 @@ private fun NestedTree(
                             .padding(horizontal = 4.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-
                         if (item.checkboxEnabled) {
                             Checkbox(
                                 checked = item.checked,
@@ -1854,7 +1859,7 @@ private fun NestedTree(
                             Checkbox(
                                 checked = isSelected,
                                 onCheckedChange = { viewModel.toggleSelect(item.id) },
-                                modifier = Modifier.size(28.dp).align(Alignment.Top)
+                                modifier = Modifier.size(28.dp).scale(0.7f).align(Alignment.Top)
                             )
                         }
                     }

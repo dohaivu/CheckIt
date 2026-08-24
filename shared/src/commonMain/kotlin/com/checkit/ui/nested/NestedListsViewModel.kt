@@ -98,6 +98,7 @@ sealed interface NestedEditorState {
         val filters: NestedFilterState = NestedFilterState()
     ) : NestedEditorState {
         val focusedItem: NestedItemNode? get() = tree.nodeById[zoomPath.lastOrNull()]
+        val selectedItem: NestedItemNode? get() = tree.nodeById[selectedItemId]
     }
 }
 
