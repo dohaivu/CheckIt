@@ -387,7 +387,7 @@ class NestedListsViewModel(
         updateActiveEditor { it.copy(overlay = NestedEditorOverlay.None) }
     }
 
-    fun commitNewItem() {
+    fun commitNewItem(thenContinue: Boolean = false) {
         val active = getActiveEditor() ?: return
         val overlay = active.overlay as? NestedEditorOverlay.AddingItem ?: return
         val text = overlay.draft.text
@@ -395,12 +395,12 @@ class NestedListsViewModel(
             cancelAddItem()
             return
         }
-        
+
         val items = active.tree.flatItems
         val anchor = items.firstOrNull { it.id == overlay.draft.anchorId }
-        val isAddingChild = overlay.draft.parentId != null && 
+        val isAddingChild = overlay.draft.parentId != null &&
             (anchor?.id == overlay.draft.parentId || anchor?.parentId != overlay.draft.parentId)
-        
+
         val position = if (isAddingChild) {
             items.filter { it.parentId == overlay.draft.parentId }.maxOfOrNull { it.position }?.plus(1) ?: 0
         } else {
@@ -410,8 +410,25 @@ class NestedListsViewModel(
         viewModelScope.launch {
             runCatching { addItemUseCase(active.documentId, overlay.draft.parentId, text, position) }
                 .onSuccess { itemId ->
-                    cancelAddItem()
-                    selectItem(itemId)
+                    if (thenContinue) {
+                        selectItem(itemId)
+                        // Keep the input open, re-anchored below the committed item as its sibling.
+                        updateActiveEditor { current ->
+                            current.copy(
+                                overlay = NestedEditorOverlay.AddingItem(
+                                    NewItemDraft(
+                                        anchorId = itemId,
+                                        parentId = overlay.draft.parentId,
+                                        depth = overlay.draft.depth,
+                                        text = ""
+                                    )
+                                )
+                            )
+                        }
+                    } else {
+                        cancelAddItem()
+                        selectItem(itemId)
+                    }
                 }
                 .onFailure { error -> _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to add item")) }
         }

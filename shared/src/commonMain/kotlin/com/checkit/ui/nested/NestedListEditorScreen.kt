@@ -246,7 +246,7 @@ internal fun NestedListEditorScreen(
                             depth = 0,
                             text = addingItem.draft.text,
                             onTextChange = viewModel::updateNewItemText,
-                            onCommit = viewModel::commitNewItem,
+                            onCommit = { viewModel.commitNewItem(thenContinue = false) },
                             onCancel = viewModel::cancelAddItem,
                             continuingLevels = emptySet()
                         )
@@ -274,7 +274,7 @@ internal fun NestedListEditorScreen(
                                 depth = addingItem.draft.depth,
                                 text = addingItem.draft.text,
                                 onTextChange = viewModel::updateNewItemText,
-                                onCommit = viewModel::commitNewItem,
+                                onCommit = { viewModel.commitNewItem(thenContinue = true) },
                                 onCancel = viewModel::cancelAddItem,
                                 continuingLevels = row.continuingLevels
                             )
@@ -1860,6 +1860,30 @@ private fun NestedTree(
                     }
                 }
 
+                if (
+                    isSelected &&
+                    !state.selection.isActive &&
+                    !isEditing &&
+                    state.overlay !is NestedEditorOverlay.AddingItem
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.50f))
+                            .clickable { viewModel.startAddSibling(item.id) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = "Add sibling below",
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+
             }
         }
     }
@@ -1868,7 +1892,7 @@ private fun NestedTree(
 @Composable
 private fun nestedTextStyle(style: NestedTextStyle) = when (style) {
     NestedTextStyle.Body -> MaterialTheme.typography.bodyLarge
-    NestedTextStyle.Header -> MaterialTheme.typography.titleLarge
+    NestedTextStyle.Header -> MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold)
     NestedTextStyle.Subheader -> MaterialTheme.typography.titleMedium
 }
 
