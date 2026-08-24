@@ -79,7 +79,6 @@
     <string name="reflect_review_draft_note">Auto-drafted from your %1$s. Review and save.</string>
     <string name="reflect_review_saved">Review saved</string>
     <string name="reflect_review_error">Unable to save review</string>
-    <string name="reflect_review_content_placeholder">What went well? What drained you?</string>
     <string name="reflect_review_intent_placeholder">What will you focus on next?</string>
     <string name="reflect_review_save">Save</string>
     <string name="reflect_period_day">day</string>

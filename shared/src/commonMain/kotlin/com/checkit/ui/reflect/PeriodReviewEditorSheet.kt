@@ -4,15 +4,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -33,8 +30,6 @@ import androidx.compose.ui.unit.sp
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.cancel
 import checkit.shared.generated.resources.reflect_review_card_title
-import checkit.shared.generated.resources.reflect_review_content_placeholder
-import checkit.shared.generated.resources.reflect_review_intent_placeholder
 import checkit.shared.generated.resources.reflect_review_save
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
@@ -86,6 +81,12 @@ internal fun PeriodReviewEditorSheet(
                     )
                 }
             }
+            Text(
+                text = "What are your wins? frictions? lessons?",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
             AppOutlinedTextField(
                 value = editor.content,
                 onValueChange = onContentChange,
@@ -93,11 +94,12 @@ internal fun PeriodReviewEditorSheet(
                     color = MaterialTheme.colorScheme.onSurface
                 ),
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = stringResource(Res.string.reflect_review_content_placeholder),
+                placeholder = "Jot down your reflection ...",
                 minLines = 10,
                 enabled = !editor.isSaving,
                 visualTransformation = remember { MarkdownVisualTransformation() }
             )
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -116,6 +118,12 @@ internal fun PeriodReviewEditorSheet(
                     color = MaterialTheme.colorScheme.primary
                 )
             }
+            Text(
+                text = "What are the 3 non-negotiable priority tasks for tomorrow?",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
             AppOutlinedTextField(
                 value = editor.intentNext,
                 onValueChange = onIntentNextChange,
@@ -123,7 +131,7 @@ internal fun PeriodReviewEditorSheet(
                     color = MaterialTheme.colorScheme.onSurface
                 ),
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = stringResource(Res.string.reflect_review_intent_placeholder),
+                placeholder = "What will you focus on next?",
                 minLines = 5,
                 enabled = !editor.isSaving,
                 visualTransformation = remember { MarkdownVisualTransformation() }
