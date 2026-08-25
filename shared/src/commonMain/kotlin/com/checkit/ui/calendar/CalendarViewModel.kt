@@ -7,7 +7,6 @@ import com.checkit.domain.DailyReflectStat
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.NoteItem
 import com.checkit.domain.PeriodReview
-import com.checkit.domain.Period
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
@@ -95,7 +94,7 @@ class CalendarViewModel(
                     _uiState.update { state ->
                         state.copy(
                             dailyPlans = combined.dailyPlans,
-                            dayReviews = combined.dayReviews.filter { it.period == Period.Day },
+                            periodReviews = combined.dayReviews,
                             journalEntries = combined.journalEntries,
                             dailyStatsByDate = combined.dailyStats.associateBy { it.date }
                         )

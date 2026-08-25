@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material.icons.outlined.ViewDay
@@ -71,6 +72,7 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.NoteItem
+import com.checkit.domain.PeriodReview
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TagItem
@@ -205,7 +207,9 @@ internal fun CalendarScreen(
                                 noteCount = selectedContent.noteCount,
                                 journalCount = selectedContent.journalEntries.size,
                                 onJournalClick = { showJournalList = true },
-                                winNote = state.selectedDateReview,
+                                dayReview = state.selectedDatePeriodReview,
+                                weekIntent = state.selectedWeekIntent,
+                                monthIntent = state.selectedMonthIntent,
                                 onOpenReflect = onOpenReflect
                             )
                             if (selectedContent.showDailyPlan) {
@@ -346,12 +350,17 @@ private fun SelectedDateHeader(
     noteCount: Int,
     journalCount: Int,
     onJournalClick: () -> Unit,
-    winNote: String?,
+    dayReview: PeriodReview?,
+    weekIntent: String?,
+    monthIntent: String?,
     onOpenReflect: (LocalDate) -> Unit
 ) {
     val isToday = date == today
     val isYesterday = date == today.minus(1, DateTimeUnit.DAY)
-    var expanded by remember(winNote != null) { mutableStateOf(winNote != null) }
+    val reviewContent = dayReview?.content?.takeIf { it.isNotBlank() }
+    val dayIntent = dayReview?.periodIntent?.takeIf { it.isNotBlank() }
+    val hasDetails = reviewContent != null || dayIntent != null || weekIntent != null || monthIntent != null
+    var expanded by remember(hasDetails) { mutableStateOf(false) }
     val chevronRotation by animateFloatAsState(if (expanded) 180f else 0f, label = "selectedDateChevron")
     Column(
         modifier = Modifier
@@ -365,7 +374,7 @@ private fun SelectedDateHeader(
             modifier = Modifier
                 .fillMaxWidth()
                 .then(
-                    if (winNote != null) {
+                    if (hasDetails) {
                         Modifier.clickable { expanded = !expanded }
                     } else {
                         Modifier
@@ -425,7 +434,7 @@ private fun SelectedDateHeader(
                             MaterialTheme.colorScheme.onSurface
                         }
                     )
-                    if (winNote != null && !expanded) {
+                    if (reviewContent != null && !expanded) {
                         Icon(
                             imageVector = Icons.Default.Star,
                             contentDescription = null,
@@ -455,10 +464,10 @@ private fun SelectedDateHeader(
                     count = journalCount,
                     onClick = onJournalClick
                 )
-                if (winNote != null) {
+                if (hasDetails) {
                     Icon(
                         imageVector = Icons.Default.ExpandMore,
-                        contentDescription = if (expanded) "Collapse win note" else "Expand win note",
+                        contentDescription = if (expanded) "Collapse" else "Expand",
                         modifier = Modifier
                             .size(18.dp)
                             .graphicsLayer { rotationZ = chevronRotation },
@@ -467,52 +476,96 @@ private fun SelectedDateHeader(
                 }
             }
         }
-        if (winNote != null) {
+        if (hasDetails) {
             AnimatedVisibility(visible = expanded) {
                 Column {
                     HorizontalDivider(
                         modifier = Modifier.padding(horizontal = 12.dp),
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                     )
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .background(Color(0xFFEAB308).copy(alpha = 0.16f), RoundedCornerShape(7.dp)),
-                            contentAlignment = Alignment.Center
+                    if (reviewContent != null) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Star,
-                                contentDescription = "Win of the day",
-                                modifier = Modifier.size(15.dp),
-                                tint = Color(0xFFEAB308)
+                            Box(
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .background(Color(0xFFEAB308).copy(alpha = 0.16f), RoundedCornerShape(7.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Star,
+                                    contentDescription = "Win of the day",
+                                    modifier = Modifier.size(15.dp),
+                                    tint = Color(0xFFEAB308)
+                                )
+                            }
+                            Text(
+                                modifier = Modifier.weight(1f),
+                                text = remember(reviewContent) { parseMarkdownToAnnotatedString(reviewContent) },
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
                             )
+                            IconButton(
+                                onClick = { onOpenReflect(date) },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                    contentDescription = stringResource(Res.string.calendar_open_review),
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
-                        Text(
-                            modifier = Modifier.weight(1f),
-                            text = remember(winNote) { parseMarkdownToAnnotatedString(winNote) },
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        )
-                        IconButton(
-                            onClick = { onOpenReflect(date) },
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                                contentDescription = stringResource(Res.string.calendar_open_review),
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                    }
+                    dayIntent?.let {
+                        PeriodIntentRow(label = "DAY", intent = it, color = MaterialTheme.colorScheme.secondary)
+                    }
+                    weekIntent?.let {
+                        PeriodIntentRow(label = "WEEK", intent = it, color = MaterialTheme.colorScheme.tertiary)
+                    }
+                    monthIntent?.let {
+                        PeriodIntentRow(label = "MONTH", intent = it, color = MaterialTheme.colorScheme.primary)
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun PeriodIntentRow(
+    label: String,
+    intent: String,
+    color: Color
+) {
+    Row(
+        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Default.Schedule,
+            contentDescription = null,
+            modifier = Modifier.size(14.dp),
+            tint = color
+        )
+        Column {
+            Text(
+                text = "$label INTENT",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.ExtraBold,
+                color = color
+            )
+            Text(
+                text = intent,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface
+            )
         }
     }
 }
