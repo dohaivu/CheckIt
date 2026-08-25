@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.AddTask
@@ -30,6 +31,8 @@ import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.RateReview
 import androidx.compose.material.icons.filled.Schedule
@@ -43,17 +46,20 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.day_close_banner_subtitle
@@ -76,6 +82,8 @@ import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.hasEndTime
 import com.checkit.ui.components.TinyTopAppBar
+import com.checkit.ui.components.icons.AppIcons
+import com.checkit.ui.components.icons.Target
 import com.checkit.ui.journal.JournalListSheet
 import com.checkit.ui.journal.JournalSection
 import com.checkit.ui.journal.JournalThoughtCard
@@ -172,7 +180,7 @@ internal fun MyDayScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 if (state.showLeftoversBanner) {
@@ -204,9 +212,17 @@ internal fun MyDayScreen(
                 JournalSection(
                     entries = state.journalEntries,
                     onAddClick = viewModel::openNewJournalEntry,
-                    onViewClick = viewModel::openJournalList,
-                    modifier = Modifier.padding(top = 4.dp)
+                    onViewClick = viewModel::openJournalList
                 )
+                state.dayReviews
+                    .firstOrNull { it.periodStartDate == state.today }
+                    ?.periodIntent
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { intent ->
+                        PeriodIntentBanner(
+                            intent = intent
+                        )
+                    }
                 when (state.selectedView) {
                     MyDayView.Agenda -> MyDayAgenda(
                         items = state.items,
@@ -395,54 +411,87 @@ private fun CelebrationOverlay(visible: Boolean) {
 }
 
 @Composable
+private fun PeriodIntentBanner(
+    intent: String,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f))
+            .clickable { expanded = !expanded }
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Icon(
+            imageVector = AppIcons.Target,
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            text = intent,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = if (expanded) Int.MAX_VALUE else 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
+        Icon(
+            imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+            contentDescription = if (expanded) "Collapse" else "Expand",
+            modifier = Modifier.size(18.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
 private fun DayCloseBanner(onClick: () -> Unit) {
-    Surface(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        color = MaterialTheme.colorScheme.primaryContainer,
-        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-        shape = MaterialTheme.shapes.medium
+            .clip(MaterialTheme.shapes.medium)
+            .background(MaterialTheme.colorScheme.primaryContainer)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Row(
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                .size(40.dp)
+                .background(MaterialTheme.colorScheme.primary, MaterialTheme.shapes.small),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(MaterialTheme.colorScheme.primary, MaterialTheme.shapes.small),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.RateReview,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(Res.string.day_close_banner_title),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = stringResource(Res.string.day_close_banner_subtitle),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                )
-            }
             Icon(
-                Icons.Default.ChevronRight,
+                Icons.Default.RateReview,
                 contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
+                tint = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.size(24.dp)
             )
         }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(Res.string.day_close_banner_title),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = stringResource(Res.string.day_close_banner_subtitle),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+            )
+        }
+        Icon(
+            Icons.Default.ChevronRight,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
+        )
     }
 }
 
@@ -453,64 +502,62 @@ private fun LeftoversBanner(
     onReview: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.tertiaryContainer,
-        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-        shape = MaterialTheme.shapes.medium
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.medium)
+            .background(MaterialTheme.colorScheme.tertiaryContainer)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Icon(
-                    Icons.Default.Schedule,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp)
+            Icon(
+                Icons.Default.Schedule,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+                tint = MaterialTheme.colorScheme.onTertiaryContainer
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(Res.string.leftovers_banner_title, count),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer
                 )
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(Res.string.leftovers_banner_title, count),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = stringResource(Res.string.leftovers_banner_subtitle),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f)
-                    )
-                }
-                IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = stringResource(Res.string.leftovers_banner_dismiss),
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
+                Text(
+                    text = stringResource(Res.string.leftovers_banner_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f)
+                )
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-                verticalAlignment = Alignment.CenterVertically
+            IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = stringResource(Res.string.leftovers_banner_dismiss),
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onTertiaryContainer
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextButton(onClick = onReview) {
+                Text(stringResource(Res.string.leftovers_banner_review))
+            }
+            FilledTonalButton(
+                onClick = onCarryAll,
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = MaterialTheme.colorScheme.tertiary,
+                    contentColor = MaterialTheme.colorScheme.onTertiary
+                )
             ) {
-                TextButton(onClick = onReview) {
-                    Text(stringResource(Res.string.leftovers_banner_review))
-                }
-                FilledTonalButton(
-                    onClick = onCarryAll,
-                    colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = MaterialTheme.colorScheme.tertiary,
-                        contentColor = MaterialTheme.colorScheme.onTertiary
-                    )
-                ) {
-                    Text(stringResource(Res.string.leftovers_banner_carry_all))
-                }
+                Text(stringResource(Res.string.leftovers_banner_carry_all))
             }
         }
     }
@@ -521,53 +568,49 @@ private fun PlanAssistBanner(
     onPlan: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    Surface(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onPlan),
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-        shape = MaterialTheme.shapes.medium
+            .clip(MaterialTheme.shapes.medium)
+            .background(MaterialTheme.colorScheme.secondaryContainer)
+            .clickable(onClick = onPlan)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Row(
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                .size(40.dp)
+                .background(MaterialTheme.colorScheme.secondary, MaterialTheme.shapes.small),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(MaterialTheme.colorScheme.secondary, MaterialTheme.shapes.small),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.Lightbulb,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSecondary,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(Res.string.plan_assist_banner_title),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = stringResource(Res.string.plan_assist_banner_subtitle),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
-                )
-            }
-            IconButton(onClick = onDismiss) {
-                Icon(
-                    Icons.Default.Close,
-                    contentDescription = stringResource(Res.string.plan_assist_banner_dismiss),
-                    modifier = Modifier.size(18.dp)
-                )
-            }
+            Icon(
+                Icons.Default.Lightbulb,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSecondary,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(Res.string.plan_assist_banner_title),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+            Text(
+                text = stringResource(Res.string.plan_assist_banner_subtitle),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+            )
+        }
+        IconButton(onClick = onDismiss) {
+            Icon(
+                Icons.Default.Close,
+                contentDescription = stringResource(Res.string.plan_assist_banner_dismiss),
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.onSecondaryContainer
+            )
         }
     }
 }

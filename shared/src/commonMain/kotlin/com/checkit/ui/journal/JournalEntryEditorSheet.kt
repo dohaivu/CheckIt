@@ -72,7 +72,7 @@ internal fun JournalEntryEditorSheet(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 0.dp),
+                .padding(horizontal = 12.dp, vertical = 0.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.End
         ) {
@@ -89,9 +89,9 @@ internal fun JournalEntryEditorSheet(
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp),
+                .padding(horizontal = 12.dp),
             contentPadding = PaddingValues(top = 10.dp, bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             item {
                 Column(
@@ -159,7 +159,7 @@ internal fun JournalEntryEditorSheet(
                                 color = MaterialTheme.colorScheme.onSurface
                             ),
                             placeholder = "What's on your mind? Share your thoughts...",
-                            minLines = 8,
+                            minLines = 5,
                             modifier = Modifier.fillMaxWidth(),
                             visualTransformation = remember { MarkdownVisualTransformation() }
                         )
