@@ -625,8 +625,6 @@ class RoomCheckItRepository(
     }
 
     override suspend fun updateTask(taskId: Long, input: TaskWriteInput) {
-        val existingTask = dao.taskById(taskId)
-        val shouldRemoveOpenDailyPlanItems = existingTask?.hasDifferentScheduleThan(input) == true
         val isTask = input.type == TaskType.Task
         dao.updateTask(
             taskId = taskId,
@@ -668,10 +666,6 @@ class RoomCheckItRepository(
         input.tagIds.forEach { tagId -> addTaskTag(taskId, tagId) }
         dao.replaceTaskSubTasks(taskId, input.subtasks)
         dao.replaceTaskReminders(taskId, input.reminders)
-        if (shouldRemoveOpenDailyPlanItems) {
-            dao.deletePlannedDailyPlanItemsForTask(taskId)
-            dailyPlanScheduleReminderScheduler.rescheduleNext()
-        }
         scheduleTaskReminders(taskId, input)
     }
 
@@ -696,12 +690,7 @@ class RoomCheckItRepository(
             completedDateEpochDays = today.toEpochDays().toInt(),
             updatedAtMillis = completedAtMillis
         )
-        dao.completePlannedDailyPlanItemsForTask(
-            taskId = taskId,
-            completedAtMillis = completedAtMillis
-        )
         reminderNotificationScheduler.cancelTaskReminders(taskId)
-        dailyPlanScheduleReminderScheduler.rescheduleNext()
     }
 
     override suspend fun updateTaskStatus(taskId: Long, status: TaskStatus) {
@@ -1642,12 +1631,6 @@ private fun TaskFilterEntity.toDomain() = TaskFilter(
     includeTrashed = includeTrashed,
     sortOrder = sortOrder
 )
-
-private fun TaskEntity.hasDifferentScheduleThan(input: TaskWriteInput): Boolean =
-    type != input.type.name ||
-        doDateEpochDays != input.doDate?.toEpochDays()?.toInt() ||
-        startTimeMinutes != input.startTimeMinutes ||
-        endTimeMinutes != input.endTimeMinutes
 
 private fun TaskEntity.toDomain(
     list: ListItem?,
