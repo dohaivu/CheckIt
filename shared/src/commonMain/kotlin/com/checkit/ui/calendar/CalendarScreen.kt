@@ -32,7 +32,9 @@ import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.TaskAlt
@@ -367,7 +369,7 @@ private fun SelectedDateHeader(
     val reviewContent = dayReview?.content?.takeIf { it.isNotBlank() }
     val dayIntent = dayReview?.periodIntent?.takeIf { it.isNotBlank() }
     val hasDetails = reviewContent != null || dayIntent != null || weekIntent != null || monthIntent != null
-    var expanded by remember(hasDetails) { mutableStateOf(false) }
+    var expanded by remember(date) { mutableStateOf(false) }
     val chevronRotation by animateFloatAsState(if (expanded) 180f else 0f, label = "selectedDateChevron")
     var headerSize by remember { mutableStateOf(IntSize.Zero) }
     Box(modifier = Modifier.onSizeChanged { headerSize = it }) {
@@ -487,68 +489,107 @@ private fun SelectedDateHeader(
         }
         if (hasDetails && expanded) {
             val density = LocalDensity.current
+            val popupOffset = with(density) { (headerSize.height - 4.dp.roundToPx()).coerceAtLeast(0) }
             Popup(
                 alignment = Alignment.TopStart,
-                offset = IntOffset(0, headerSize.height),
+                offset = IntOffset(0, popupOffset),
                 onDismissRequest = { expanded = false },
                 properties = PopupProperties(focusable = true)
             ) {
-                Column(
+                Surface(
                     modifier = Modifier
                         .width(with(density) { headerSize.width.toDp() })
+                        .padding(horizontal = 4.dp)
+                        .padding(bottom = 12.dp) // Breathing room for shadow to prevent clipping
                         .clip(RoundedCornerShape(14.dp))
-                        .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                        .animateContentSize(),
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    tonalElevation = 6.dp,
+                    shadowElevation = 8.dp
                 ) {
-                    if (reviewContent != null) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Box(
+                    Column(
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    ) {
+                        if (reviewContent != null) {
+                            Row(
                                 modifier = Modifier
-                                    .size(24.dp)
-                                    .background(Color(0xFFEAB308).copy(alpha = 0.16f), RoundedCornerShape(7.dp)),
-                                contentAlignment = Alignment.Center
+                                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color(0xFFEAB308).copy(alpha = 0.08f))
+                                    .padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Star,
-                                    contentDescription = "Win of the day",
-                                    modifier = Modifier.size(15.dp),
-                                    tint = Color(0xFFEAB308)
+                                Box(
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .background(Color(0xFFEAB308).copy(alpha = 0.16f), RoundedCornerShape(7.dp)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Star,
+                                        contentDescription = "Win of the day",
+                                        modifier = Modifier.size(15.dp),
+                                        tint = Color(0xFFEAB308)
+                                    )
+                                }
+                                Text(
+                                    modifier = Modifier.weight(1f),
+                                    text = remember(reviewContent) { parseMarkdownToAnnotatedString(reviewContent) },
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        fontWeight = FontWeight.Medium
+                                    )
                                 )
-                            }
-                            Text(
-                                modifier = Modifier.weight(1f),
-                                text = remember(reviewContent) { parseMarkdownToAnnotatedString(reviewContent) },
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            )
-                            IconButton(
-                                onClick = {
-                                    expanded = false
-                                    onOpenReflect(date)
-                                },
-                                modifier = Modifier.size(28.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                                    contentDescription = stringResource(Res.string.calendar_open_review),
-                                    modifier = Modifier.size(16.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                IconButton(
+                                    onClick = {
+                                        expanded = false
+                                        onOpenReflect(date)
+                                    },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                        contentDescription = stringResource(Res.string.calendar_open_review),
+                                        modifier = Modifier.size(16.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
-                    }
-                    dayIntent?.let {
-                        PeriodIntentRow(label = "DAY", intent = it, color = MaterialTheme.colorScheme.secondary)
-                    }
-                    weekIntent?.let {
-                        PeriodIntentRow(label = "WEEK", intent = it, color = MaterialTheme.colorScheme.tertiary)
-                    }
-                    monthIntent?.let {
-                        PeriodIntentRow(label = "MONTH", intent = it, color = MaterialTheme.colorScheme.primary)
+
+                        if (reviewContent != null && (dayIntent != null || weekIntent != null || monthIntent != null)) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                            )
+                        }
+
+                        dayIntent?.let {
+                            PeriodIntentRow(
+                                icon = Icons.Default.Flag,
+                                label = "DAY",
+                                intent = it,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                        }
+                        weekIntent?.let {
+                            PeriodIntentRow(
+                                icon = Icons.Default.DateRange,
+                                label = "WEEK",
+                                intent = it,
+                                color = MaterialTheme.colorScheme.tertiary
+                            )
+                        }
+                        monthIntent?.let {
+                            PeriodIntentRow(
+                                icon = Icons.Default.CalendarMonth,
+                                label = "MONTH",
+                                intent = it,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                 }
             }
@@ -558,6 +599,7 @@ private fun SelectedDateHeader(
 
 @Composable
 private fun PeriodIntentRow(
+    icon: ImageVector,
     label: String,
     intent: String,
     color: Color
@@ -565,12 +607,12 @@ private fun PeriodIntentRow(
     Row(
         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Icon(
-            imageVector = Icons.Default.Schedule,
+            imageVector = icon,
             contentDescription = null,
-            modifier = Modifier.size(14.dp),
+            modifier = Modifier.size(16.dp),
             tint = color
         )
         Column {
@@ -629,9 +671,9 @@ private fun CountBadge(
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
             .clickable(enabled = onClick != null) { onClick?.invoke() }
-            .padding(horizontal = 2.dp, vertical = 2.dp),
+            .padding(horizontal = 4.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(2.dp)
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Icon(
             imageVector = icon,
