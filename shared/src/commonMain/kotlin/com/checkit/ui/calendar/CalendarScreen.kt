@@ -1,6 +1,5 @@
 package com.checkit.ui.calendar
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
@@ -19,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -56,13 +56,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.calendar_open_review
 import checkit.shared.generated.resources.calendar_title
@@ -362,127 +369,136 @@ private fun SelectedDateHeader(
     val hasDetails = reviewContent != null || dayIntent != null || weekIntent != null || monthIntent != null
     var expanded by remember(hasDetails) { mutableStateOf(false) }
     val chevronRotation by animateFloatAsState(if (expanded) 180f else 0f, label = "selectedDateChevron")
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 4.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)
-            .animateContentSize()
-    ) {
-        Row(
+    var headerSize by remember { mutableStateOf(IntSize.Zero) }
+    Box(modifier = Modifier.onSizeChanged { headerSize = it }) {
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .then(
-                    if (hasDetails) {
-                        Modifier.clickable { expanded = !expanded }
-                    } else {
-                        Modifier
-                    }
-                )
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                .padding(horizontal = 4.dp, vertical = 4.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerLow)
         ) {
-            Box(
+            Row(
                 modifier = Modifier
-                    .size(width = 44.dp, height = 40.dp)
-                    .background(
-                        if (isToday) {
-                            MaterialTheme.colorScheme.primary
+                    .fillMaxWidth()
+                    .then(
+                        if (hasDetails) {
+                            Modifier.clickable { expanded = !expanded }
                         } else {
-                            MaterialTheme.colorScheme.surfaceContainerHighest
-                        },
-                        RoundedCornerShape(10.dp)
-                    ),
-                contentAlignment = Alignment.Center
+                            Modifier
+                        }
+                    )
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = date.day.toString(),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isToday) {
-                            MaterialTheme.colorScheme.onPrimary
-                        } else {
-                            MaterialTheme.colorScheme.primary
-                        }
-                    )
-                    Text(
-                        text = date.localizedShortMonthName(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (isToday) {
-                            MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        }
-                    )
-                }
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                Box(
+                    modifier = Modifier
+                        .size(width = 44.dp, height = 40.dp)
+                        .background(
+                            if (isToday) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.surfaceContainerHighest
+                            },
+                            RoundedCornerShape(10.dp)
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = date.localizedWeekdayName(),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (isToday) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.onSurface
-                        }
-                    )
-                    if (reviewContent != null && !expanded) {
-                        Icon(
-                            imageVector = Icons.Default.Star,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = Color(0xFFEAB308)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = date.day.toString(),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isToday) {
+                                MaterialTheme.colorScheme.onPrimary
+                            } else {
+                                MaterialTheme.colorScheme.primary
+                            }
+                        )
+                        Text(
+                            text = date.localizedShortMonthName(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (isToday) {
+                                MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            }
                         )
                     }
                 }
-                Text(
-                    text = when {
-                        isToday -> stringResource(Res.string.relative_today)
-                        isYesterday -> stringResource(Res.string.relative_yesterday)
-                        else -> date.year.toString()
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                CountBadge(icon = Icons.Default.TaskAlt, count = taskCount)
-                CountBadge(icon = Icons.AutoMirrored.Filled.Notes, count = noteCount)
-                CountBadge(
-                    icon = Icons.Default.EditNote,
-                    count = journalCount,
-                    onClick = onJournalClick
-                )
-                if (hasDetails) {
-                    Icon(
-                        imageVector = Icons.Default.ExpandMore,
-                        contentDescription = if (expanded) "Collapse" else "Expand",
-                        modifier = Modifier
-                            .size(18.dp)
-                            .graphicsLayer { rotationZ = chevronRotation },
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        Text(
+                            text = date.localizedWeekdayName(),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (isToday) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            }
+                        )
+                        if (reviewContent != null && !expanded) {
+                            Icon(
+                                imageVector = Icons.Default.Star,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = Color(0xFFEAB308)
+                            )
+                        }
+                    }
+                    Text(
+                        text = when {
+                            isToday -> stringResource(Res.string.relative_today)
+                            isYesterday -> stringResource(Res.string.relative_yesterday)
+                            else -> date.year.toString()
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CountBadge(icon = Icons.Default.TaskAlt, count = taskCount)
+                    CountBadge(icon = Icons.AutoMirrored.Filled.Notes, count = noteCount)
+                    CountBadge(
+                        icon = Icons.Default.EditNote,
+                        count = journalCount,
+                        onClick = onJournalClick
+                    )
+                    if (hasDetails) {
+                        Icon(
+                            imageVector = Icons.Default.ExpandMore,
+                            contentDescription = if (expanded) "Collapse" else "Expand",
+                            modifier = Modifier
+                                .size(18.dp)
+                                .graphicsLayer { rotationZ = chevronRotation },
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }
-        if (hasDetails) {
-            AnimatedVisibility(visible = expanded) {
-                Column {
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 12.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                    )
+        if (hasDetails && expanded) {
+            val density = LocalDensity.current
+            Popup(
+                alignment = Alignment.TopStart,
+                offset = IntOffset(0, headerSize.height),
+                onDismissRequest = { expanded = false },
+                properties = PopupProperties(focusable = true)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .width(with(density) { headerSize.width.toDp() })
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                ) {
                     if (reviewContent != null) {
                         Row(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -510,7 +526,10 @@ private fun SelectedDateHeader(
                                 )
                             )
                             IconButton(
-                                onClick = { onOpenReflect(date) },
+                                onClick = {
+                                    expanded = false
+                                    onOpenReflect(date)
+                                },
                                 modifier = Modifier.size(28.dp)
                             ) {
                                 Icon(
