@@ -8,10 +8,8 @@ import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DayCloseBannerPolicy
 import com.checkit.domain.DayCloseConfirmInput
 import com.checkit.domain.LeftoverAction
-import com.checkit.domain.PeriodReview
 import com.checkit.domain.Period
 import com.checkit.domain.ReviewStatus
-import com.checkit.domain.ReviewStreakPolicy
 import com.checkit.domain.TagItem
 import com.checkit.domain.defaultLeftoverAction
 import com.checkit.domain.defaultReviewAction
@@ -377,35 +375,6 @@ class DayCloseUseCasesTest {
     }
 
     @Test
-    fun reviewStreakCountsConsecutiveDays() {
-        val records = listOf(
-            streakRecord(LocalDate(2026, 7, 9)),
-            streakRecord(LocalDate(2026, 7, 8)),
-            streakRecord(LocalDate(2026, 7, 7))
-        )
-        assertEquals(3, ReviewStreakPolicy.currentStreak(records, LocalDate(2026, 7, 9)))
-    }
-
-    @Test
-    fun reviewStreakCountsFromYesterdayWhenTodayNotReviewed() {
-        val records = listOf(
-            streakRecord(LocalDate(2026, 7, 8)),
-            streakRecord(LocalDate(2026, 7, 7))
-        )
-        assertEquals(2, ReviewStreakPolicy.currentStreak(records, LocalDate(2026, 7, 9)))
-    }
-
-    @Test
-    fun reviewStreakStopsAtGap() {
-        val records = listOf(
-            streakRecord(LocalDate(2026, 7, 9)),
-            streakRecord(LocalDate(2026, 7, 8)),
-            streakRecord(LocalDate(2026, 7, 6))
-        )
-        assertEquals(2, ReviewStreakPolicy.currentStreak(records, LocalDate(2026, 7, 9)))
-    }
-
-    @Test
     fun bannerPolicyRespectsTimeSettingsAndCompletion() {
         assertTrue(
             DayCloseBannerPolicy.shouldShow(
@@ -458,15 +427,6 @@ class DayCloseUseCasesTest {
             )
         )
     }
-
-    private fun streakRecord(day: LocalDate) = PeriodReview(
-        id = 0L,
-        period = Period.Day,
-        periodStartEpochDays = day.toEpochDays().toInt(),
-        periodEndEpochDays = day.toEpochDays().toInt() + 1,
-        status = ReviewStatus.Complete,
-        completedAtMillis = 1L
-    )
 
     private fun item(
         id: Long,

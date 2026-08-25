@@ -1,10 +1,7 @@
 package com.checkit.domain
 
 import com.checkit.ui.MinutesPerDay
-import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.minus
-import kotlinx.datetime.plus
 
 /**
  * Actions for unfinished (Planned) items during evening review.
@@ -89,27 +86,6 @@ data class DayCloseCommitResult(
     val carriedCount: Int,
     val skippedCount: Int
 )
-
-object ReviewStreakPolicy {
-    /**
-     * Number of consecutive days (ending today) with a completed review.
-     * If today is not yet reviewed, the streak is measured from yesterday.
-     */
-    fun currentStreak(records: List<PeriodReview>, fromDate: LocalDate): Int {
-        val dates = records
-            .filter { it.period == Period.Day }
-            .map { it.periodStartDate }
-            .toSet()
-        val start = if (fromDate in dates) fromDate else fromDate.minus(1, DateTimeUnit.DAY)
-        var streak = 0
-        var cursor = start
-        while (cursor in dates) {
-            streak += 1
-            cursor = cursor.minus(1, DateTimeUnit.DAY)
-        }
-        return streak
-    }
-}
 
 data class CarryOverResult(
     val carriedCount: Int,

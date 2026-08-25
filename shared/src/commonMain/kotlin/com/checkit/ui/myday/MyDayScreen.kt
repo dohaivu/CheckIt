@@ -202,7 +202,7 @@ internal fun MyDayScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
                 JournalSection(
-                    entries = state.journalVisibleEntries,
+                    entries = state.journalEntries,
                     onAddClick = viewModel::openNewJournalEntry,
                     onViewClick = viewModel::openJournalList,
                     modifier = Modifier.padding(top = 4.dp)
@@ -213,7 +213,7 @@ internal fun MyDayScreen(
                         notes = state.notes,
                         date = state.today,
                         activeSprint = activeSprint,
-                        journalEntries = state.journalVisibleEntries,
+                        journalEntries = state.journalEntries,
                         onItemClick = { viewModel.openItemEditor(it, state.today) },
                         onTaskClick = onTaskClick,
                         onNoteClick = onNoteClick,
@@ -348,7 +348,7 @@ internal fun MyDayScreen(
 
     if (state.showJournalList) {
         JournalListSheet(
-            entries = state.journalVisibleEntries,
+            entries = state.journalEntries,
             onEntryClick = { entry ->
                 viewModel.dismissJournalList()
                 viewModel.openJournalEditor(entry)
