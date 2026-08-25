@@ -64,7 +64,6 @@ data class MyDayUiState(
     val journalEntries: List<JournalEntry> = emptyList(),
     val journalEditor: JournalEntryEditorState? = null,
     val showJournalList: Boolean = false,
-    val journalListDate: LocalDate? = null,
     val recentLabels: List<String> = emptyList(),
     val isLoading: Boolean = true
 ) {
@@ -78,15 +77,9 @@ data class MyDayUiState(
     val showFloatingQuickAdd: Boolean =
         !hasDailyPlanItemNearby(items, currentMyDayTimeMinutes())
 
-    /** Journal entries for today (used in the MyDay header). */
+    /** Journal entries for today (used in the MyDay header and list sheet). */
     val journalVisibleEntries: List<JournalEntry> =
         journalEntries.filter { it.dateEpochDays == today.toEpochDays().toInt() }
-
-    /** Journal entries for the list viewer (can be a different date when opened from Calendar). */
-    val journalSheetEntries: List<JournalEntry> =
-        journalEntries.filter {
-            it.dateEpochDays == (journalListDate ?: today).toEpochDays().toInt()
-        }
 
     val suggestedTasks: List<TaskItem> = tasks
         .filter { task ->

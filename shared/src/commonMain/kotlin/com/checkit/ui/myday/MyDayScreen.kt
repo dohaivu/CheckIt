@@ -76,6 +76,7 @@ import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.hasEndTime
 import com.checkit.ui.components.TinyTopAppBar
+import com.checkit.ui.journal.JournalListSheet
 import com.checkit.ui.journal.JournalSection
 import com.checkit.ui.journal.JournalThoughtCard
 import com.checkit.ui.localizedCompactDateWithDayName
@@ -342,6 +343,17 @@ internal fun MyDayScreen(
             onWinNoteChange = viewModel::updateWinNote,
             onTomorrowGoalChange = viewModel::updateTomorrowGoal,
             onConfirm = viewModel::confirmDayClose
+        )
+    }
+
+    if (state.showJournalList) {
+        JournalListSheet(
+            entries = state.journalVisibleEntries,
+            onEntryClick = { entry ->
+                viewModel.dismissJournalList()
+                viewModel.openJournalEditor(entry)
+            },
+            onDismiss = viewModel::dismissJournalList
         )
     }
 

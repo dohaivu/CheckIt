@@ -79,6 +79,7 @@ import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.components.parseMarkdownToAnnotatedString
 import com.checkit.ui.firstDayOfMonth
 import com.checkit.ui.isSameMonth
+import com.checkit.ui.journal.JournalListSheet
 import com.checkit.ui.localizedMonthTitle
 import com.checkit.ui.localizedShortMonthName
 import com.checkit.ui.localizedWeekdayName
@@ -103,7 +104,6 @@ internal fun CalendarScreen(
     calendarViewModel: CalendarViewModel,
     onDateDoubleClick: (LocalDate) -> Unit,
     onDailyPlanItemClick: (DailyPlanItem, LocalDate) -> Unit,
-    onOpenJournalDay: (LocalDate) -> Unit,
     onOpenJournalHistory: () -> Unit,
     onAddDailyPlanItem: (LocalDate) -> Unit,
     onTaskClick: (Long, DailyPlanItem?) -> Unit,
@@ -114,6 +114,7 @@ internal fun CalendarScreen(
 ) {
     val today = today()
     val selectedContent = remember(state, today) { state.selectedDateContent(today) }
+    var showJournalList by remember { mutableStateOf(false) }
 
     val handleDateDoubleClick: (LocalDate) -> Unit = { date ->
         calendarViewModel.selectDate(date)
@@ -203,7 +204,7 @@ internal fun CalendarScreen(
                                 taskCount = selectedContent.taskCount,
                                 noteCount = selectedContent.noteCount,
                                 journalCount = selectedContent.journalEntries.size,
-                                onJournalClick = { onOpenJournalDay(state.selectedDate) },
+                                onJournalClick = { showJournalList = true },
                                 winNote = state.selectedDateReview,
                                 onOpenReflect = onOpenReflect
                             )
@@ -240,6 +241,14 @@ internal fun CalendarScreen(
                     onClick = calendarViewModel::toggleMonthlyWinsExpanded
                 )
             }
+        }
+
+        if (showJournalList) {
+            JournalListSheet(
+                entries = selectedContent.journalEntries,
+                onEntryClick = {},
+                onDismiss = { showJournalList = false }
+            )
         }
     }
 }
