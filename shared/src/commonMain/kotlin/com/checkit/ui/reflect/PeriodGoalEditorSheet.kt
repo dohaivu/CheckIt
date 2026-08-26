@@ -62,6 +62,8 @@ import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.CompactFlatTextField
 import com.checkit.ui.components.MarkdownVisualTransformation
+import com.checkit.ui.components.icons.AppIcons
+import com.checkit.ui.components.icons.Target
 import com.checkit.ui.displayName
 import org.jetbrains.compose.resources.stringResource
 
@@ -89,7 +91,7 @@ internal fun PeriodGoalEditorSheet(
                 .padding(horizontal = 20.dp, vertical = 8.dp)
                 .weight(1f)
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -158,13 +160,13 @@ internal fun PeriodGoalEditorSheet(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Schedule,
+                    imageVector = AppIcons.Target,
                     contentDescription = null,
                     modifier = Modifier.size(16.dp),
                     tint = MaterialTheme.colorScheme.secondary
                 )
                 Text(
-                    text = "PERIOD GOAL",
+                    text = "GOAL",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.ExtraBold,
                     letterSpacing = 1.sp,

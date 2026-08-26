@@ -195,7 +195,7 @@ internal fun ActivityChart(
                 ),
                 RoundedCornerShape(24.dp)
             )
-            .padding(24.dp)
+            .padding(16.dp)
     ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -355,7 +355,7 @@ internal fun CompletedHighlightsCard(
                 ),
                 RoundedCornerShape(24.dp)
             )
-            .padding(vertical = 24.dp)
+            .padding(vertical = 20.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(
