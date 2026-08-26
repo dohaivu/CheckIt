@@ -51,23 +51,21 @@ data class CalendarUiState(
     }
 
     /** Goal recorded on the week containing the selected date, if any. */
-    val selectedWeekGoal: String? by lazy {
-        goalFor(Period.Week)
+    val selectedWeekGoal: PeriodGoal? by lazy {
+        periodGoalFor(Period.Week)
     }
 
     /** Goal recorded on the month containing the selected date, if any. */
-    val selectedMonthGoal: String? by lazy {
-        goalFor(Period.Month)
+    val selectedMonthGoal: PeriodGoal? by lazy {
+        periodGoalFor(Period.Month)
     }
 
-    private fun goalFor(period: Period): String? =
+    private fun periodGoalFor(period: Period): PeriodGoal? =
         periodGoals
             .firstOrNull {
                 it.period == period &&
                     it.startEpochDays == period.startOf(selectedDate).toEpochDays().toInt()
             }
-            ?.goal
-            ?.takeIf { it.isNotBlank() }
 
     private val filteredDailyPlans: List<DailyPlan> by lazy {
         // Live plans cover today forward; selectedDayPlan back-fills a past

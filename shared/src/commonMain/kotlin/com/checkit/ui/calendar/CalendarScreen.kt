@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -68,6 +70,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import checkit.shared.generated.resources.Res
@@ -83,6 +86,7 @@ import com.checkit.domain.PeriodGoal
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TagItem
+import com.checkit.ui.MetricChip
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.components.parseMarkdownToAnnotatedString
@@ -358,15 +362,15 @@ private fun SelectedDateHeader(
     journalCount: Int,
     onJournalClick: () -> Unit,
     dayGoal: PeriodGoal?,
-    weekGoal: String?,
-    monthGoal: String?,
+    weekGoal: PeriodGoal?,
+    monthGoal: PeriodGoal?,
     onOpenReflect: (LocalDate) -> Unit
 ) {
     val isToday = date == today
     val isYesterday = date == today.minus(1, DateTimeUnit.DAY)
-    val reviewContent = dayGoal?.review?.takeIf { it.isNotBlank() }
+    val dayReview = dayGoal?.review?.takeIf { it.isNotBlank() }
     val dayIntent = dayGoal?.goal?.takeIf { it.isNotBlank() }
-    val hasDetails = reviewContent != null || dayIntent != null || weekGoal != null || monthGoal != null
+    val hasDetails = dayReview != null || dayIntent != null || weekGoal != null || monthGoal != null
     var expanded by remember(date) { mutableStateOf(false) }
     val chevronRotation by animateFloatAsState(if (expanded) 180f else 0f, label = "selectedDateChevron")
     var headerSize by remember { mutableStateOf(IntSize.Zero) }
@@ -442,7 +446,7 @@ private fun SelectedDateHeader(
                                 MaterialTheme.colorScheme.onSurface
                             }
                         )
-                        if (reviewContent != null && !expanded) {
+                        if (dayReview != null && !expanded) {
                             Icon(
                                 imageVector = Icons.Default.Star,
                                 contentDescription = null,
@@ -509,32 +513,32 @@ private fun SelectedDateHeader(
                     Column(
                         modifier = Modifier.padding(vertical = 4.dp)
                     ) {
-                        if (reviewContent != null) {
+                        if (dayReview != null) {
                             Row(
                                 modifier = Modifier
-                                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                                    .padding(horizontal = 12.dp, vertical = 4.dp)
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(Color(0xFFEAB308).copy(alpha = 0.08f))
-                                    .padding(8.dp),
+                                    .padding(horizontal = 8.dp, vertical = 6.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Box(
                                     modifier = Modifier
-                                        .size(24.dp)
-                                        .background(Color(0xFFEAB308).copy(alpha = 0.16f), RoundedCornerShape(7.dp)),
+                                        .size(20.dp)
+                                        .background(Color(0xFFEAB308).copy(alpha = 0.16f), RoundedCornerShape(5.dp)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Star,
                                         contentDescription = "Win of the day",
-                                        modifier = Modifier.size(15.dp),
+                                        modifier = Modifier.size(13.dp),
                                         tint = Color(0xFFEAB308)
                                     )
                                 }
                                 Text(
                                     modifier = Modifier.weight(1f),
-                                    text = remember(reviewContent) { parseMarkdownToAnnotatedString(reviewContent) },
+                                    text = remember(dayReview) { parseMarkdownToAnnotatedString(dayReview) },
                                     style = MaterialTheme.typography.bodySmall.copy(
                                         color = MaterialTheme.colorScheme.onSurface,
                                         fontWeight = FontWeight.Medium
@@ -545,48 +549,54 @@ private fun SelectedDateHeader(
                                         expanded = false
                                         onOpenReflect(date)
                                     },
-                                    modifier = Modifier.size(28.dp)
+                                    modifier = Modifier.size(24.dp)
                                 ) {
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Filled.OpenInNew,
                                         contentDescription = stringResource(Res.string.calendar_open_review),
-                                        modifier = Modifier.size(16.dp),
+                                        modifier = Modifier.size(14.dp),
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
                         }
 
-                        if (reviewContent != null && (dayIntent != null || weekGoal != null || monthGoal != null)) {
+                        if (dayReview != null && (dayGoal?.hasContent() == true || weekGoal?.hasContent() == true || monthGoal?.hasContent() == true)) {
                             HorizontalDivider(
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
                             )
                         }
 
-                        dayIntent?.let {
-                            PeriodGoalRow(
-                                icon = Icons.Default.Flag,
-                                label = "DAY",
-                                goal = it,
-                                color = MaterialTheme.colorScheme.secondary
-                            )
+                        dayGoal?.let { goal ->
+                            if (goal.hasContent()) {
+                                PeriodGoalRow(
+                                    icon = Icons.Default.Flag,
+                                    label = "DAY",
+                                    goal = goal,
+                                    color = MaterialTheme.colorScheme.secondary
+                                )
+                            }
                         }
-                        weekGoal?.let {
-                            PeriodGoalRow(
-                                icon = Icons.Default.DateRange,
-                                label = "WEEK",
-                                goal = it,
-                                color = MaterialTheme.colorScheme.tertiary
-                            )
+                        weekGoal?.let { goal ->
+                            if (goal.hasContent()) {
+                                PeriodGoalRow(
+                                    icon = Icons.Default.DateRange,
+                                    label = "WEEK",
+                                    goal = goal,
+                                    color = MaterialTheme.colorScheme.tertiary
+                                )
+                            }
                         }
-                        monthGoal?.let {
-                            PeriodGoalRow(
-                                icon = Icons.Default.CalendarMonth,
-                                label = "MONTH",
-                                goal = it,
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                        monthGoal?.let { goal ->
+                            if (goal.hasContent()) {
+                                PeriodGoalRow(
+                                    icon = Icons.Default.CalendarMonth,
+                                    label = "MONTH",
+                                    goal = goal,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
                         }
                     }
                 }
@@ -599,35 +609,70 @@ private fun SelectedDateHeader(
 private fun PeriodGoalRow(
     icon: ImageVector,
     label: String,
-    goal: String,
+    goal: PeriodGoal,
     color: Color
 ) {
     Row(
-        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+        modifier = Modifier
+            .padding(horizontal = 12.dp, vertical = 2.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(color.copy(alpha = 0.06f))
+            .padding(horizontal = 8.dp, vertical = 6.dp),
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            modifier = Modifier.size(16.dp),
-            tint = color
-        )
-        Column {
+        Box(
+            modifier = Modifier
+                .size(20.dp)
+                .background(color.copy(alpha = 0.12f), RoundedCornerShape(5.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(13.dp),
+                tint = color
+            )
+        }
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
             Text(
                 text = "$label GOAL",
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.ExtraBold,
-                color = color
+                color = color.copy(alpha = 0.9f),
+                letterSpacing = 0.4.sp
             )
-            Text(
-                text = goal,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            goal.goal?.takeIf { it.isNotBlank() }?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+            if (goal.metrics.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    goal.metrics.forEach { metric ->
+                        MetricChip(metric)
+                    }
+                }
+            }
         }
     }
 }
+
+private fun PeriodGoal.hasContent(): Boolean =
+    goal?.isNotBlank() == true || metrics.isNotEmpty()
 
 private data class SelectedCalendarDateContent(
     val date: LocalDate,
