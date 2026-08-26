@@ -8,6 +8,7 @@ import com.checkit.domain.HabitDailyRollup
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.Period
 import com.checkit.domain.PeriodGoal
+import com.checkit.domain.PeriodMetric
 import com.checkit.domain.isGoodMood
 import com.checkit.ui.components.ReportPeriod
 import com.checkit.ui.firstDayOfMonth
@@ -25,7 +26,8 @@ data class ReflectGoalEditorState(
     val review: String = "",
     /** This period's own goal (written while reviewing the previous period). */
     val goal: String = "",
-    val ratings: Float = 0f,
+    val rating: Float = 0f,
+    val metrics: List<PeriodMetric> = emptyList(),
     val isSaving: Boolean = false
 )
 

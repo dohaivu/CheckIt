@@ -1,13 +1,16 @@
 package com.checkit.domain.usecase
 
 import com.checkit.domain.FocusPeriod
+import com.checkit.domain.MetricUnit
 import com.checkit.domain.Period
+import com.checkit.domain.PeriodMetric
 import com.checkit.ui.tasks.FakeCheckItRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 
 class SavePeriodGoalUseCaseTest {
@@ -35,10 +38,10 @@ class SavePeriodGoalUseCaseTest {
         val save = SavePeriodGoalUseCase(repository)
         val focus = FocusPeriod(Period.Week, date)
 
-        save(focus, review = "Solid week", ratings = 4.5f)
+        save(focus, review = "Solid week", rating = 4.5f)
 
         val goal = repository.observePeriodGoals().first().single()
-        assertEquals(4.5f, goal.ratings)
+        assertEquals(4.5f, goal.rating)
     }
 
     @Test
@@ -78,5 +81,39 @@ class SavePeriodGoalUseCaseTest {
         assertEquals(1, goals.size)
         assertEquals("Second pass", goals.single().review)
         assertEquals("Keep going", goals.single().goal)
+    }
+
+    @Test
+    fun savesMetricsAttachedToTheGoal() = runTest {
+        val repository = FakeCheckItRepository()
+        val save = SavePeriodGoalUseCase(repository)
+        val focus = FocusPeriod(Period.Day, date)
+
+        save(
+            focus,
+            review = "Done",
+            metrics = listOf(
+                PeriodMetric(
+                    goalId = 0L,
+                    name = "Distance",
+                    value = "20",
+                    unit = MetricUnit.Custom,
+                    customUnit = "km"
+                )
+            )
+        )
+
+        val goal = repository.observePeriodGoals().first().single()
+        assertEquals(1, goal.metrics.size)
+        val metric = goal.metrics.single()
+        assertEquals("Distance", metric.name)
+        assertEquals("20", metric.value)
+        assertEquals(MetricUnit.Custom, metric.unit)
+        assertEquals("km", metric.customUnit)
+        assertNotEquals(0L, metric.goalId)
+
+        // Re-saving without the metric removes it.
+        save(focus, review = "Done again")
+        assertEquals(0, repository.observePeriodGoals().first().single().metrics.size)
     }
 }

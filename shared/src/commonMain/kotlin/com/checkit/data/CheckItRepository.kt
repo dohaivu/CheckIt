@@ -26,7 +26,7 @@ import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.MetricRollupPolicy
 import com.checkit.domain.NestedManualMetric
-import com.checkit.domain.NestedMetricUnit
+import com.checkit.domain.MetricUnit
 import com.checkit.domain.buildNestedTree
 import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
@@ -1008,19 +1008,33 @@ class RoomCheckItRepository(
     }
 
     override fun observePeriodGoals(): Flow<List<PeriodGoal>> =
-        dao.observePeriodGoals().map { entities -> entities.map { it.toDomain() } }
+        combine(
+            dao.observePeriodGoals(),
+            dao.observeAllPeriodMetrics()
+        ) { goals, metrics ->
+            val metricsByGoal = metrics.groupBy(PeriodMetricEntity::goalId)
+            goals.map { it.toDomain(metricsByGoal[it.id].orEmpty().map(PeriodMetricEntity::toDomain)) }
+        }
 
     override fun observePeriodGoalsInRange(
         startDate: LocalDate?,
         endDateInclusive: LocalDate?
     ): Flow<List<PeriodGoal>> =
-        dao.observePeriodGoalsBetween(
-            startDate?.toEpochDays()?.toInt(),
-            endDateInclusive?.toEpochDays()?.toInt()
-        ).map { entities -> entities.map { it.toDomain() } }
+        combine(
+            dao.observePeriodGoalsBetween(
+                startDate?.toEpochDays()?.toInt(),
+                endDateInclusive?.toEpochDays()?.toInt()
+            ),
+            dao.observeAllPeriodMetrics()
+        ) { goals, metrics ->
+            val metricsByGoal = metrics.groupBy(PeriodMetricEntity::goalId)
+            goals.map { it.toDomain(metricsByGoal[it.id].orEmpty().map(PeriodMetricEntity::toDomain)) }
+        }
 
-    override suspend fun periodGoalFor(period: Period, date: LocalDate): PeriodGoal? =
-        dao.periodGoalFor(period.name, date.toEpochDays().toInt())?.toDomain()
+    override suspend fun periodGoalFor(period: Period, date: LocalDate): PeriodGoal? {
+        val entity = dao.periodGoalFor(period.name, date.toEpochDays().toInt()) ?: return null
+        return entity.toDomain(dao.periodMetricsFor(entity.id).map { it.toDomain() })
+    }
 
     override suspend fun savePeriodGoal(goal: PeriodGoal) {
         dao.upsertPeriodGoal(
@@ -1031,10 +1045,19 @@ class RoomCheckItRepository(
                 endEpochDays = goal.endEpochDays,
                 review = goal.review,
                 goal = goal.goal,
-                ratings = goal.ratings,
+                rating = goal.rating,
                 completedAtMillis = goal.completedAtMillis,
                 editedAtMillis = goal.editedAtMillis
             )
+        )
+        val goalId = if (goal.id != 0L) {
+            goal.id
+        } else {
+            dao.periodGoalFor(goal.period.name, goal.startEpochDays)?.id
+        } ?: return
+        dao.replacePeriodMetrics(
+            goalId = goalId,
+            metrics = goal.metrics.map { it.toEntity(goalId) }
         )
     }
 
@@ -1696,16 +1719,17 @@ private fun DailyPlanItemEntity.toDomain(tags: List<TagItem> = emptyList()) = Da
     handledAtMillis = handledAtMillis
 )
 
-private fun PeriodGoalEntity.toDomain() = PeriodGoal(
+private fun PeriodGoalEntity.toDomain(metrics: List<PeriodMetric> = emptyList()) = PeriodGoal(
     id = id,
     period = Period.valueOf(periodType),
     startEpochDays = startEpochDays,
     endEpochDays = endEpochDays,
     review = review,
     goal = goal,
-    ratings = ratings,
+    rating = rating,
     completedAtMillis = completedAtMillis,
-    editedAtMillis = editedAtMillis
+    editedAtMillis = editedAtMillis,
+    metrics = metrics
 )
 
 private fun PeriodMetricEntity.toDomain() = PeriodMetric(
@@ -1714,7 +1738,7 @@ private fun PeriodMetricEntity.toDomain() = PeriodMetric(
     name = name,
     value = value,
     targetValue = targetValue,
-    unit = runCatching { NestedMetricUnit.valueOf(unit) }.getOrDefault(NestedMetricUnit.None),
+    unit = runCatching { MetricUnit.valueOf(unit) }.getOrDefault(MetricUnit.None),
     customUnit = customUnit,
     sortOrder = sortOrder,
     enabled = enabled
@@ -1835,7 +1859,7 @@ private fun NestedManualMetricEntity.toDomain() = NestedManualMetric(
     name = name,
     value = value,
     targetValue = targetValue,
-    unit = runCatching { NestedMetricUnit.valueOf(unit) }.getOrDefault(NestedMetricUnit.None),
+    unit = runCatching { MetricUnit.valueOf(unit) }.getOrDefault(MetricUnit.None),
     customUnit = customUnit,
     sortOrder = sortOrder,
     enabled = enabled

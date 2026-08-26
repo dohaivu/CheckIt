@@ -510,7 +510,8 @@ fun CheckItApp(
                             editor = editor,
                             onReviewChange = viewModels.reflect::updateEditorReview,
                             onGoalChange = viewModels.reflect::updateEditorGoal,
-                            onRatingsChange = viewModels.reflect::updateEditorRatings,
+                            onRatingChange = viewModels.reflect::updateEditorRating,
+                            onMetricsChange = viewModels.reflect::updateEditorMetrics,
                             onSave = viewModels.reflect::saveEditor,
                             onDismiss = viewModels.reflect::dismissEditor
                         )

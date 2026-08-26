@@ -340,3 +340,16 @@ enum class DueDatePreset {
     NoDate,
     Someday
 }
+
+enum class MetricUnit {
+    None,
+    Percentage,
+    Points,
+    Count,
+    Items,
+    Hours,
+    Days,
+    Currency,
+    Rating,
+    Custom
+}

@@ -506,7 +506,8 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
     override suspend fun dailyPlanForDate(date: LocalDate): DailyPlan? =
         dailyPlansFlow.value.find { it.date == date }
 
-    override fun observePeriodGoals(): Flow<List<PeriodGoal>> = periodGoalsFlow
+    override fun observePeriodGoals(): Flow<List<PeriodGoal>> =
+        periodGoalsFlow.map { goals -> goals.map { it.copy(metrics = periodMetricsByGoal[it.id].orEmpty()) } }
 
     override fun observePeriodGoalsInRange(
         startDate: LocalDate?,
@@ -518,13 +519,15 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
                 val end = endDateInclusive?.toEpochDays()?.toInt()
                 (start == null || goal.startEpochDays >= start) &&
                     (end == null || goal.startEpochDays <= end)
-            }
+            }.map { it.copy(metrics = periodMetricsByGoal[it.id].orEmpty()) }
         }
 
     override suspend fun periodGoalFor(period: Period, date: LocalDate): PeriodGoal? =
         periodGoalsFlow.value.find { it.period == period && it.startEpochDays == date.toEpochDays().toInt() }
+            ?.let { it.copy(metrics = periodMetricsByGoal[it.id].orEmpty()) }
 
     override suspend fun savePeriodGoal(goal: PeriodGoal) {
+        var resolvedId = goal.id
         periodGoalsFlow.update { list ->
             val existingIndex = list.indexOfFirst {
                 (it.id != 0L && it.id == goal.id) ||
@@ -533,13 +536,15 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
             if (existingIndex >= 0) {
                 list.toMutableList().apply {
                     val old = get(existingIndex)
-                    set(existingIndex, goal.copy(id = if (goal.id == 0L) old.id else goal.id))
+                    resolvedId = if (goal.id == 0L) old.id else goal.id
+                    set(existingIndex, goal.copy(id = resolvedId))
                 }
             } else {
-                val newId = if (goal.id == 0L) (list.maxOfOrNull { it.id } ?: 0L) + 1 else goal.id
-                list + goal.copy(id = newId)
+                resolvedId = if (goal.id == 0L) (list.maxOfOrNull { it.id } ?: 0L) + 1 else goal.id
+                list + goal.copy(id = resolvedId)
             }
         }
+        replacePeriodMetrics(resolvedId, goal.metrics)
     }
 
     private val periodMetricsByGoal = mutableMapOf<Long, List<PeriodMetric>>()
@@ -551,8 +556,13 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         periodMetricsByGoal[goalId].orEmpty()
 
     override suspend fun replacePeriodMetrics(goalId: Long, metrics: List<PeriodMetric>) {
-        periodMetricsByGoal[goalId] = metrics
+        periodMetricsByGoal[goalId] = metrics.mapIndexed { index, metric ->
+            val metricId = if (metric.id != 0L) metric.id else nextPeriodMetricId++
+            metric.copy(id = metricId, goalId = goalId, sortOrder = index)
+        }
     }
+
+    private var nextPeriodMetricId = 1L
 
     override fun observeDailyReflectStats(
         startDate: LocalDate,

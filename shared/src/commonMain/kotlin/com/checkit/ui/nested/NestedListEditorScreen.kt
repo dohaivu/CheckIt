@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.lazy.LazyListLayoutInfo
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -38,12 +37,10 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.NoteAdd
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
@@ -54,7 +51,6 @@ import androidx.compose.material.icons.filled.FormatColorFill
 import androidx.compose.material.icons.filled.FormatColorText
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.ZoomIn
@@ -128,21 +124,19 @@ import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedItemNode
 import com.checkit.domain.NestedManualMetric
 import com.checkit.domain.NestedMetricSummary
-import com.checkit.domain.NestedMetricUnit
+import com.checkit.domain.MetricUnit
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.TagItem
 import com.checkit.domain.FocusPeriod
-import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.filterNestedTree
-import com.checkit.domain.nestedDescendantIds
 import com.checkit.ui.components.AppOutlinedTextField
+import com.checkit.ui.components.CompactFlatTextField
 import com.checkit.ui.components.DateRangePill
 import com.checkit.ui.components.FocusPeriodHeader
 import com.checkit.ui.components.PeriodPicker
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TagPill
-import com.checkit.ui.components.TagPlain
 import com.checkit.ui.tasks.noRippleClickable
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
@@ -948,28 +942,28 @@ private fun MetricChip(content: AnnotatedString, manual: Boolean = false) {
 }
 
 private fun NestedManualMetric.displayUnit(): String? = when (unit) {
-    NestedMetricUnit.None -> null
-    NestedMetricUnit.Custom -> customUnit?.takeIf { it.isNotBlank() }
+    MetricUnit.None -> null
+    MetricUnit.Custom -> customUnit?.takeIf { it.isNotBlank() }
     else -> unitLabel(unit)
 }
 
-private fun NestedMetricUnit.displayName(customUnit: String? = null): String = when (this) {
-    NestedMetricUnit.None -> "None"
-    NestedMetricUnit.Custom -> customUnit?.takeIf { it.isNotBlank() } ?: "Custom"
+private fun MetricUnit.displayName(customUnit: String? = null): String = when (this) {
+    MetricUnit.None -> "None"
+    MetricUnit.Custom -> customUnit?.takeIf { it.isNotBlank() } ?: "Custom"
     else -> unitLabel(this)
 }
 
-private fun unitLabel(unit: NestedMetricUnit): String = when (unit) {
-    NestedMetricUnit.None -> ""
-    NestedMetricUnit.Percentage -> "%"
-    NestedMetricUnit.Points -> "points"
-    NestedMetricUnit.Count -> "count"
-    NestedMetricUnit.Items -> "items"
-    NestedMetricUnit.Hours -> "hours"
-    NestedMetricUnit.Days -> "days"
-    NestedMetricUnit.Currency -> "currency"
-    NestedMetricUnit.Rating -> "rating"
-    NestedMetricUnit.Custom -> ""
+private fun unitLabel(unit: MetricUnit): String = when (unit) {
+    MetricUnit.None -> ""
+    MetricUnit.Percentage -> "%"
+    MetricUnit.Points -> "points"
+    MetricUnit.Count -> "count"
+    MetricUnit.Items -> "items"
+    MetricUnit.Hours -> "hours"
+    MetricUnit.Days -> "days"
+    MetricUnit.Currency -> "currency"
+    MetricUnit.Rating -> "rating"
+    MetricUnit.Custom -> ""
 }
 
 @Composable
@@ -1273,14 +1267,14 @@ private fun NestedItemDetailsDialog(
                                         expanded = unitExpandedIndex == index,
                                         onDismissRequest = { unitExpandedIndex = null }
                                     ) {
-                                        NestedMetricUnit.entries.forEach { unit ->
+                                        MetricUnit.entries.forEach { unit ->
                                             DropdownMenuItem(
                                                 text = { Text(unit.displayName(), style = MaterialTheme.typography.bodySmall) },
                                                 onClick = {
                                                     metrics = metrics.toMutableList().also {
                                                         it[index] = metric.copy(
                                                             unit = unit,
-                                                            customUnit = if (unit == NestedMetricUnit.Custom) metric.customUnit else null
+                                                            customUnit = if (unit == MetricUnit.Custom) metric.customUnit else null
                                                         )
                                                     }
                                                     unitExpandedIndex = null
@@ -1291,7 +1285,7 @@ private fun NestedItemDetailsDialog(
                                 }
                             }
 
-                            if (metric.unit == NestedMetricUnit.Custom) {
+                            if (metric.unit == MetricUnit.Custom) {
                                 CompactFlatTextField(
                                     value = metric.customUnit.orEmpty(),
                                     onValueChange = { value ->
@@ -1359,58 +1353,6 @@ private fun DetailMetricStatCard(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
-    }
-}
-
-@Composable
-private fun CompactFlatTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    placeholder: String,
-    modifier: Modifier = Modifier,
-    suffix: String? = null,
-    keyboardOptions: KeyboardOptions = KeyboardOptions.Default
-) {
-    Row(
-        modifier = modifier
-            .height(34.dp)
-            .clip(RoundedCornerShape(6.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f), RoundedCornerShape(6.dp))
-            .padding(horizontal = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier.weight(1f),
-            contentAlignment = Alignment.CenterStart
-        ) {
-            if (value.isEmpty()) {
-                Text(
-                    text = placeholder,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            BasicTextField(
-                value = value,
-                onValueChange = onValueChange,
-                textStyle = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurface),
-                singleLine = true,
-                keyboardOptions = keyboardOptions,
-                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-        if (suffix != null) {
-            Text(
-                text = suffix,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                modifier = Modifier.padding(start = 4.dp)
-            )
-        }
     }
 }
 

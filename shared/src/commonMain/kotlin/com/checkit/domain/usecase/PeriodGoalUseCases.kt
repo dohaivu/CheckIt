@@ -3,11 +3,12 @@ package com.checkit.domain.usecase
 import com.checkit.data.CheckItRepository
 import com.checkit.domain.FocusPeriod
 import com.checkit.domain.PeriodGoal
+import com.checkit.domain.PeriodMetric
 import kotlin.time.Clock
 
 /**
  * Persists a period goal (upsert) for [focus]. [goal] is stored on this
- * period's own record.
+ * period's own record; [metrics] replaces the goal's custom metrics.
  */
 class SavePeriodGoalUseCase(
     private val repository: CheckItRepository
@@ -16,7 +17,8 @@ class SavePeriodGoalUseCase(
         focus: FocusPeriod,
         review: String,
         goal: String? = null,
-        ratings: Float = 0f
+        rating: Float = 0f,
+        metrics: List<PeriodMetric> = emptyList()
     ) {
         val now = Clock.System.now().toEpochMilliseconds()
         repository.savePeriodGoal(
@@ -26,9 +28,10 @@ class SavePeriodGoalUseCase(
                 endEpochDays = focus.endExclusive.toEpochDays().toInt(),
                 review = review.trim(),
                 goal = goal?.trim()?.takeIf { it.isNotEmpty() },
-                ratings = ratings,
+                rating = rating,
                 completedAtMillis = if (review.isNotBlank()) now else null,
-                editedAtMillis = now
+                editedAtMillis = now,
+                metrics = metrics
             )
         )
     }

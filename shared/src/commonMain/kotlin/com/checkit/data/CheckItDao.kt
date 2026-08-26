@@ -708,6 +708,9 @@ interface CheckItDao {
 
     // ---------------- Period metrics ----------------
 
+    @Query("SELECT * FROM period_metrics ORDER BY sortOrder ASC")
+    fun observeAllPeriodMetrics(): Flow<List<PeriodMetricEntity>>
+
     @Query("SELECT * FROM period_metrics WHERE goalId = :goalId ORDER BY sortOrder ASC")
     fun observePeriodMetrics(goalId: Long): Flow<List<PeriodMetricEntity>>
 

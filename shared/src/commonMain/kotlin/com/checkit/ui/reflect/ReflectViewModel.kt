@@ -9,6 +9,7 @@ import com.checkit.domain.FocusPeriod
 import com.checkit.domain.HabitDailyRollup
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.PeriodGoal
+import com.checkit.domain.PeriodMetric
 import com.checkit.domain.usecase.ObservePeriodGoalsUseCase
 import com.checkit.domain.usecase.SavePeriodGoalUseCase
 import com.checkit.ui.UiEvent
@@ -194,7 +195,8 @@ class ReflectViewModel(
             existing = goal,
             review = goal.review,
             goal = goal.goal.orEmpty(),
-            ratings = goal.ratings
+            rating = goal.rating,
+            metrics = goal.metrics
         )
     }
 
@@ -205,7 +207,8 @@ class ReflectViewModel(
             existing = state.focusGoal,
             review = state.focusGoal?.review.orEmpty(),
             goal = state.focusGoal?.goal.orEmpty(),
-            ratings = state.focusGoal?.ratings ?: 0f
+            rating = state.focusGoal?.rating ?: 0f,
+            metrics = state.focusGoal?.metrics.orEmpty()
         )
     }
 
@@ -217,8 +220,12 @@ class ReflectViewModel(
         _editor.update { editor -> editor?.copy(goal = value) }
     }
 
-    fun updateEditorRatings(value: Float) {
-        _editor.update { editor -> editor?.copy(ratings = value) }
+    fun updateEditorRating(value: Float) {
+        _editor.update { editor -> editor?.copy(rating = value) }
+    }
+
+    fun updateEditorMetrics(value: List<PeriodMetric>) {
+        _editor.update { editor -> editor?.copy(metrics = value) }
     }
 
     fun dismissEditor() {
@@ -235,7 +242,8 @@ class ReflectViewModel(
                     focus = editor.focus,
                     review = editor.review,
                     goal = editor.goal,
-                    ratings = editor.ratings
+                    rating = editor.rating,
+                    metrics = editor.metrics
                 )
             }.onSuccess {
                 _editor.value = null

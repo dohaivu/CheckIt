@@ -159,7 +159,7 @@ data class PeriodGoalEntity(
     val review: String = "",
     val goal: String? = null,
     /** Satisfaction for this period (e.g. 0..5). */
-    val ratings: Float = 0f,
+    val rating: Float = 0f,
     val completedAtMillis: Long? = null,
     val editedAtMillis: Long? = null
 )

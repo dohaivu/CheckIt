@@ -25,26 +25,13 @@ enum class MetricRollupPolicy {
     ExcludeFromParent
 }
 
-enum class NestedMetricUnit {
-    None,
-    Percentage,
-    Points,
-    Count,
-    Items,
-    Hours,
-    Days,
-    Currency,
-    Rating,
-    Custom
-}
-
 data class NestedManualMetric(
     val id: Long = 0L,
     val itemId: Long,
     val name: String,
     val value: String,
     val targetValue: String? = null,
-    val unit: NestedMetricUnit = NestedMetricUnit.None,
+    val unit: MetricUnit = MetricUnit.None,
     val customUnit: String? = null,
     val sortOrder: Int = 0,
     val enabled: Boolean = true

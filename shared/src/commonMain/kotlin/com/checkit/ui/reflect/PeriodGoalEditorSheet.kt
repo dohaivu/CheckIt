@@ -2,8 +2,11 @@ package com.checkit.ui.reflect
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -16,21 +19,32 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
@@ -38,8 +52,11 @@ import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.cancel
 import checkit.shared.generated.resources.reflect_review_card_title
 import checkit.shared.generated.resources.reflect_review_save
+import com.checkit.domain.MetricUnit
+import com.checkit.domain.PeriodMetric
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
+import com.checkit.ui.components.CompactFlatTextField
 import com.checkit.ui.components.MarkdownVisualTransformation
 import org.jetbrains.compose.resources.stringResource
 
@@ -49,7 +66,8 @@ internal fun PeriodGoalEditorSheet(
     editor: ReflectGoalEditorState,
     onReviewChange: (String) -> Unit,
     onGoalChange: (String) -> Unit,
-    onRatingsChange: (Float) -> Unit,
+    onRatingChange: (Float) -> Unit,
+    onMetricsChange: (List<PeriodMetric>) -> Unit,
     onSave: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -136,15 +154,15 @@ internal fun PeriodGoalEditorSheet(
                 )
                 Spacer(Modifier.weight(1f))
                 Text(
-                    text = ((editor.ratings * 10).roundToInt() / 10f).toString(),
+                    text = ((editor.rating * 10).roundToInt() / 10f).toString(),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.secondary
                 )
             }
             Slider(
-                value = editor.ratings,
-                onValueChange = onRatingsChange,
+                value = editor.rating,
+                onValueChange = onRatingChange,
                 valueRange = 0f..5f,
                 steps = 9,
                 enabled = !editor.isSaving
@@ -195,6 +213,13 @@ internal fun PeriodGoalEditorSheet(
                 enabled = !editor.isSaving,
                 visualTransformation = remember { MarkdownVisualTransformation() }
             )
+
+            PeriodMetricsSection(
+                metrics = editor.metrics,
+                enabled = !editor.isSaving,
+                onMetricsChange = onMetricsChange
+            )
+
             Spacer(modifier = Modifier.weight(1f))
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -211,4 +236,189 @@ internal fun PeriodGoalEditorSheet(
             Spacer(Modifier.height(16.dp))
         }
     }
+}
+
+/** Add/edit/delete custom metrics for the goal (mirrors nested-item details dialog, section 3). */
+@Composable
+private fun PeriodMetricsSection(
+    metrics: List<PeriodMetric>,
+    enabled: Boolean,
+    onMetricsChange: (List<PeriodMetric>) -> Unit
+) {
+    var unitExpandedIndex by remember { mutableStateOf<Int?>(null) }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "CUSTOM METRICS",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
+            TextButton(
+                onClick = {
+                    if (!enabled) return@TextButton
+                    onMetricsChange(
+                        metrics + PeriodMetric(
+                            goalId = 0L,
+                            name = "",
+                            value = "",
+                            sortOrder = metrics.size
+                        )
+                    )
+                },
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                modifier = Modifier.height(28.dp)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(2.dp))
+                Text("Add", style = MaterialTheme.typography.labelMedium)
+            }
+        }
+
+        if (metrics.isEmpty()) {
+            Text(
+                text = "No custom metrics added.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+            )
+        }
+
+        metrics.forEachIndexed { index, metric ->
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                    .padding(8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    CompactFlatTextField(
+                        value = metric.name,
+                        onValueChange = { value ->
+                            onMetricsChange(metrics.toMutableList().also { it[index] = metric.copy(name = value) })
+                        },
+                        placeholder = "Metric name",
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(
+                        onClick = { onMetricsChange(metrics.filterIndexed { metricIndex, _ -> metricIndex != index }) },
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete metric",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    CompactFlatTextField(
+                        value = metric.value,
+                        onValueChange = { value ->
+                            onMetricsChange(metrics.toMutableList().also { it[index] = metric.copy(value = value) })
+                        },
+                        placeholder = "Value",
+                        modifier = Modifier.weight(1f)
+                    )
+                    CompactFlatTextField(
+                        value = metric.targetValue.orEmpty(),
+                        onValueChange = { value ->
+                            onMetricsChange(metrics.toMutableList().also { it[index] = metric.copy(targetValue = value) })
+                        },
+                        placeholder = "Target",
+                        modifier = Modifier.weight(1f)
+                    )
+                    Box(modifier = Modifier.weight(1f)) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(34.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(MaterialTheme.colorScheme.surface)
+                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                                .clickable(enabled = enabled) { unitExpandedIndex = index }
+                                .padding(horizontal = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = metric.unit.displayName(metric.customUnit),
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Icon(
+                                imageVector = Icons.Default.KeyboardArrowDown,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = unitExpandedIndex == index,
+                            onDismissRequest = { unitExpandedIndex = null }
+                        ) {
+                            MetricUnit.entries.forEach { unit ->
+                                DropdownMenuItem(
+                                    text = { Text(unit.displayName(), style = MaterialTheme.typography.bodySmall) },
+                                    onClick = {
+                                        onMetricsChange(
+                                            metrics.toMutableList().also {
+                                                it[index] = metric.copy(
+                                                    unit = unit,
+                                                    customUnit = if (unit == MetricUnit.Custom) metric.customUnit else null
+                                                )
+                                            }
+                                        )
+                                        unitExpandedIndex = null
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (metric.unit == MetricUnit.Custom) {
+                    CompactFlatTextField(
+                        value = metric.customUnit.orEmpty(),
+                        onValueChange = { value ->
+                            onMetricsChange(metrics.toMutableList().also { it[index] = metric.copy(customUnit = value) })
+                        },
+                        placeholder = "Custom unit (e.g. kg, pts)",
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun MetricUnit.displayName(customUnit: String? = null): String = when (this) {
+    MetricUnit.None -> "None"
+    MetricUnit.Custom -> customUnit?.takeIf { it.isNotBlank() } ?: "Custom"
+    MetricUnit.Percentage -> "%"
+    MetricUnit.Points -> "points"
+    MetricUnit.Count -> "count"
+    MetricUnit.Items -> "items"
+    MetricUnit.Hours -> "hours"
+    MetricUnit.Days -> "days"
+    MetricUnit.Currency -> "currency"
+    MetricUnit.Rating -> "rating"
 }
