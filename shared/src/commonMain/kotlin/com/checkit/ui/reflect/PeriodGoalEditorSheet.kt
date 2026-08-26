@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -50,7 +52,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlin.math.roundToInt
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.cancel
 import checkit.shared.generated.resources.reflect_review_card_title
@@ -139,36 +140,17 @@ internal fun PeriodGoalEditorSheet(
             )
 
             Row(
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.End
             ) {
-                Icon(
-                    imageVector = Icons.Default.Star,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.secondary
-                )
-                Text(
-                    text = "SATISFACTION",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 1.sp,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(Modifier.weight(1f))
-                Text(
-                    text = if (editor.rating > 0) ((editor.rating * 10).roundToInt() / 10f).toString() else "Not rated",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f)
+                RatingBar(
+                    rating = editor.rating,
+                    onRatingChange = onRatingChange,
+                    enabled = !editor.isSaving,
+                    modifier = Modifier.width(150.dp).height(32.dp)
                 )
             }
-            RatingBar(
-                rating = editor.rating,
-                onRatingChange = onRatingChange,
-                enabled = !editor.isSaving,
-                modifier = Modifier.fillMaxWidth()
-            )
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -249,7 +231,7 @@ private fun RatingBar(
 ) {
     Row(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         repeat(5) { index ->
@@ -271,7 +253,8 @@ private fun RatingBar(
 
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .weight(1f)
+                    .aspectRatio(1f)
                     .pointerInput(enabled, rating) {
                         if (enabled) {
                             detectTapGestures { offset ->
@@ -289,7 +272,7 @@ private fun RatingBar(
                     imageVector = icon,
                     contentDescription = "Rate $starValue stars",
                     tint = tint,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.fillMaxSize()
                 )
             }
         }
