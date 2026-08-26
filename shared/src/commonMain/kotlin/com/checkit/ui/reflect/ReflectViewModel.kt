@@ -8,10 +8,9 @@ import com.checkit.domain.DoneItemSummary
 import com.checkit.domain.FocusPeriod
 import com.checkit.domain.HabitDailyRollup
 import com.checkit.domain.JournalEntry
-import com.checkit.domain.PeriodReview
-import com.checkit.domain.ReviewSource
-import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
-import com.checkit.domain.usecase.SavePeriodReviewUseCase
+import com.checkit.domain.PeriodGoal
+import com.checkit.domain.usecase.ObservePeriodGoalsUseCase
+import com.checkit.domain.usecase.SavePeriodGoalUseCase
 import com.checkit.ui.UiEvent
 import com.checkit.ui.components.ReportPeriod
 import com.checkit.ui.firstDayOfMonth
@@ -39,15 +38,15 @@ import kotlinx.datetime.plus
 @OptIn(ExperimentalCoroutinesApi::class)
 class ReflectViewModel(
     private val repository: CheckItRepository,
-    private val observePeriodReviews: ObservePeriodReviewsUseCase,
-    private val savePeriodReview: SavePeriodReviewUseCase,
+    private val observePeriodGoals: ObservePeriodGoalsUseCase,
+    private val savePeriodGoal: SavePeriodGoalUseCase,
     private val dataDispatcher: CoroutineDispatcher = Dispatchers.Default
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ReflectUiState())
     val uiState: StateFlow<ReflectUiState> = _uiState.asStateFlow()
 
-    private val _editor = MutableStateFlow<ReflectReviewEditorState?>(null)
-    val editor: StateFlow<ReflectReviewEditorState?> = _editor.asStateFlow()
+    private val _editor = MutableStateFlow<ReflectGoalEditorState?>(null)
+    val editor: StateFlow<ReflectGoalEditorState?> = _editor.asStateFlow()
 
     private val _events = Channel<UiEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
@@ -66,16 +65,16 @@ class ReflectViewModel(
                     sendEvent(UiEvent.ShowSnackbar(error.message ?: "Unable to load Reflect"))
                 }
                 .collect { data ->
-                    _uiState.update {
-                        it.copy(
-                            dailyStats = data.dailyStats,
-                            doneItems = data.doneItems,
-                            journalEntries = data.journalEntries,
-                            habitRollups = data.habitRollups,
-                            reviews = data.reviews,
-                            isLoading = false
-                        )
-                    }
+                _uiState.update {
+                    it.copy(
+                        dailyStats = data.dailyStats,
+                        doneItems = data.doneItems,
+                        journalEntries = data.journalEntries,
+                        habitRollups = data.habitRollups,
+                        goals = data.goals,
+                        isLoading = false
+                    )
+                }
                 }
         }
     }
@@ -104,30 +103,30 @@ class ReflectViewModel(
                     startDate = habitRollupWindow(today()).first,
                     endDateInclusive = habitRollupWindow(today()).second
                 ),
-                observePeriodReviews(
-                    // Reviews shown are the child-period ones within the current
-                    // window (plus the focus review itself), so only that span
+                observePeriodGoals(
+                    // Goals shown are the child-period ones within the current
+                    // window (plus the focus goal itself), so only that span
                     // needs to be observed.
-                    startDate = selection.reviewsWindow().first,
-                    endDateInclusive = selection.reviewsWindow().second
+                    startDate = selection.goalsWindow().first,
+                    endDateInclusive = selection.goalsWindow().second
                 )
-            ) { habits, reviews -> habits to reviews }
-        ) { stats, doneItems, journals, (habits, reviews) ->
+            ) { habits, goals -> habits to goals }
+        ) { stats, doneItems, journals, (habits, goals) ->
             ReflectData(
                 dailyStats = stats,
                 doneItems = doneItems,
                 journalEntries = journals,
                 habitRollups = habits,
-                reviews = reviews
+                goals = goals
             )
         }
 
     /**
-     * Inclusive date span covering every review the UI can display for this
-     * selection: the child-period reviews of the current window and the focus
-     * review itself.
+     * Inclusive date span covering every goal the UI can display for this
+     * selection: the child-period goals of the current window and the focus
+     * goal itself.
      */
-    private fun ReflectSelection.reviewsWindow(): Pair<LocalDate, LocalDate> {
+    private fun ReflectSelection.goalsWindow(): Pair<LocalDate, LocalDate> {
         val focus = FocusPeriod(period.toPeriod(), date)
         val rangeFocus = if (period == ReportPeriod.Daily) focus.zoomOut() else focus
         return rangeFocus.start to rangeFocus.endInclusive
@@ -180,42 +179,46 @@ class ReflectViewModel(
         _uiState.update { it.copy(selectedPeriod = period) }
     }
 
-    fun openReview(review: PeriodReview) {
+    fun openGoal(goal: PeriodGoal) {
         _uiState.update {
             it.copy(
-                selectedPeriod = review.period.toReportPeriod(),
-                selectedDate = review.periodStartDate
+                selectedPeriod = goal.period.toReportPeriod(),
+                selectedDate = goal.startDate
             )
         }
-        // Seed the editor from the tapped review itself; the matching window
+        // Seed the editor from the tapped goal itself; the matching window
         // loads asynchronously and openEditor() would otherwise miss it.
-        val focus = FocusPeriod(review.period, review.periodStartDate)
-        _editor.value = ReflectReviewEditorState(
+        val focus = FocusPeriod(goal.period, goal.startDate)
+        _editor.value = ReflectGoalEditorState(
             focus = focus,
-            review = review,
-            content = review.content,
-            periodIntent = review.periodIntent.orEmpty(),
-            source = review.source
+            existing = goal,
+            review = goal.review,
+            goal = goal.goal.orEmpty(),
+            ratings = goal.ratings
         )
     }
 
     fun openEditor() {
         val state = _uiState.value
-        _editor.value = ReflectReviewEditorState(
+        _editor.value = ReflectGoalEditorState(
             focus = state.focus,
-            review = state.focusReview,
-            content = state.focusReview?.content.orEmpty(),
-            periodIntent = state.focusReview?.periodIntent.orEmpty(),
-            source = state.focusReview?.source ?: ReviewSource.Manual
+            existing = state.focusGoal,
+            review = state.focusGoal?.review.orEmpty(),
+            goal = state.focusGoal?.goal.orEmpty(),
+            ratings = state.focusGoal?.ratings ?: 0f
         )
     }
 
-    fun updateEditorContent(value: String) {
-        _editor.update { editor -> editor?.copy(content = value) }
+    fun updateEditorReview(value: String) {
+        _editor.update { editor -> editor?.copy(review = value) }
     }
 
-    fun updateEditorPeriodIntent(value: String) {
-        _editor.update { editor -> editor?.copy(periodIntent = value) }
+    fun updateEditorGoal(value: String) {
+        _editor.update { editor -> editor?.copy(goal = value) }
+    }
+
+    fun updateEditorRatings(value: Float) {
+        _editor.update { editor -> editor?.copy(ratings = value) }
     }
 
     fun dismissEditor() {
@@ -228,18 +231,18 @@ class ReflectViewModel(
         _editor.value = editor.copy(isSaving = true)
         viewModelScope.launch {
             runCatching {
-                savePeriodReview(
+                savePeriodGoal(
                     focus = editor.focus,
-                    content = editor.content,
-                    periodIntent = editor.periodIntent,
-                    source = editor.source
+                    review = editor.review,
+                    goal = editor.goal,
+                    ratings = editor.ratings
                 )
             }.onSuccess {
                 _editor.value = null
-                sendEvent(UiEvent.ShowSnackbar("Review saved"))
+                sendEvent(UiEvent.ShowSnackbar("Goal saved"))
             }.onFailure { error ->
                 _editor.update { it?.copy(isSaving = false) }
-                sendEvent(UiEvent.ShowSnackbar(error.message ?: "Unable to save review"))
+                sendEvent(UiEvent.ShowSnackbar(error.message ?: "Unable to save goal"))
             }
         }
     }
@@ -259,7 +262,7 @@ private data class ReflectData(
     val doneItems: List<DoneItemSummary>,
     val journalEntries: List<JournalEntry>,
     val habitRollups: List<HabitDailyRollup>,
-    val reviews: List<PeriodReview>
+    val goals: List<PeriodGoal>
 )
 
 private fun ReportPeriod.move(date: LocalDate, amount: Int): LocalDate = when (this) {

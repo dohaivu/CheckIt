@@ -81,7 +81,7 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.NoteItem
-import com.checkit.domain.PeriodReview
+import com.checkit.domain.PeriodGoal
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TagItem
@@ -216,9 +216,9 @@ internal fun CalendarScreen(
                                 noteCount = selectedContent.noteCount,
                                 journalCount = selectedContent.journalEntries.size,
                                 onJournalClick = { showJournalList = true },
-                                dayReview = state.selectedDatePeriodReview,
-                                weekIntent = state.selectedWeekIntent,
-                                monthIntent = state.selectedMonthIntent,
+                                dayGoal = state.selectedDatePeriodGoal,
+                                weekGoal = state.selectedWeekGoal,
+                                monthGoal = state.selectedMonthGoal,
                                 onOpenReflect = onOpenReflect
                             )
                             if (selectedContent.showDailyPlan) {
@@ -359,16 +359,16 @@ private fun SelectedDateHeader(
     noteCount: Int,
     journalCount: Int,
     onJournalClick: () -> Unit,
-    dayReview: PeriodReview?,
-    weekIntent: String?,
-    monthIntent: String?,
+    dayGoal: PeriodGoal?,
+    weekGoal: String?,
+    monthGoal: String?,
     onOpenReflect: (LocalDate) -> Unit
 ) {
     val isToday = date == today
     val isYesterday = date == today.minus(1, DateTimeUnit.DAY)
-    val reviewContent = dayReview?.content?.takeIf { it.isNotBlank() }
-    val dayIntent = dayReview?.periodIntent?.takeIf { it.isNotBlank() }
-    val hasDetails = reviewContent != null || dayIntent != null || weekIntent != null || monthIntent != null
+    val reviewContent = dayGoal?.review?.takeIf { it.isNotBlank() }
+    val dayIntent = dayGoal?.goal?.takeIf { it.isNotBlank() }
+    val hasDetails = reviewContent != null || dayIntent != null || weekGoal != null || monthGoal != null
     var expanded by remember(date) { mutableStateOf(false) }
     val chevronRotation by animateFloatAsState(if (expanded) 180f else 0f, label = "selectedDateChevron")
     var headerSize by remember { mutableStateOf(IntSize.Zero) }
@@ -559,7 +559,7 @@ private fun SelectedDateHeader(
                             }
                         }
 
-                        if (reviewContent != null && (dayIntent != null || weekIntent != null || monthIntent != null)) {
+                        if (reviewContent != null && (dayIntent != null || weekGoal != null || monthGoal != null)) {
                             HorizontalDivider(
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
@@ -567,26 +567,26 @@ private fun SelectedDateHeader(
                         }
 
                         dayIntent?.let {
-                            PeriodIntentRow(
+                            PeriodGoalRow(
                                 icon = Icons.Default.Flag,
                                 label = "DAY",
-                                intent = it,
+                                goal = it,
                                 color = MaterialTheme.colorScheme.secondary
                             )
                         }
-                        weekIntent?.let {
-                            PeriodIntentRow(
+                        weekGoal?.let {
+                            PeriodGoalRow(
                                 icon = Icons.Default.DateRange,
                                 label = "WEEK",
-                                intent = it,
+                                goal = it,
                                 color = MaterialTheme.colorScheme.tertiary
                             )
                         }
-                        monthIntent?.let {
-                            PeriodIntentRow(
+                        monthGoal?.let {
+                            PeriodGoalRow(
                                 icon = Icons.Default.CalendarMonth,
                                 label = "MONTH",
-                                intent = it,
+                                goal = it,
                                 color = MaterialTheme.colorScheme.primary
                             )
                         }
@@ -598,10 +598,10 @@ private fun SelectedDateHeader(
 }
 
 @Composable
-private fun PeriodIntentRow(
+private fun PeriodGoalRow(
     icon: ImageVector,
     label: String,
-    intent: String,
+    goal: String,
     color: Color
 ) {
     Row(
@@ -623,7 +623,7 @@ private fun PeriodIntentRow(
                 color = color
             )
             Text(
-                text = intent,
+                text = goal,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface
             )

@@ -11,8 +11,6 @@ import androidx.room3.RoomDatabaseConstructor
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.sqlite.execSQL
 import androidx.sqlite.SQLiteConnection
-import com.checkit.domain.ReviewSource
-import com.checkit.domain.ReviewStatus
 import com.checkit.domain.TaskType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -149,22 +147,50 @@ data class DailyPlanItemEntity(
 )
 
 @Entity(
-    tableName = "period_reviews",
-    indices = [Index(value = ["periodType", "periodStartEpochDays"], unique = true)]
+    tableName = "period_goals",
+    indices = [Index(value = ["periodType", "startEpochDays"], unique = true)]
 )
-data class PeriodReviewEntity(
+data class PeriodGoalEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0L,
     val periodType: String,
-    val periodStartEpochDays: Int,
-    val periodEndEpochDays: Int,
-    val content: String = "",
-    val periodIntent: String? = null,
-    val source: String = ReviewSource.Manual.name,
-    val status: String = ReviewStatus.Draft.name,
+    val startEpochDays: Int,
+    val endEpochDays: Int,
+    val review: String = "",
+    val goal: String? = null,
+    /** Satisfaction for this period (e.g. 0..5). */
+    val ratings: Float = 0f,
     val completedAtMillis: Long? = null,
-    val generatedAtMillis: Long? = null,
     val editedAtMillis: Long? = null
+)
+
+/**
+ * A manually tracked metric attached to a [PeriodGoalEntity], mirroring
+ * [NestedManualMetricEntity]: free-form name/value pairs with an optional unit.
+ */
+@Entity(
+    tableName = "period_metrics",
+    foreignKeys = [
+        ForeignKey(
+            entity = PeriodGoalEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["goalId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("goalId"), Index(value = ["goalId", "sortOrder"])]
+)
+data class PeriodMetricEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0L,
+    val goalId: Long,
+    val name: String,
+    val value: String,
+    val targetValue: String? = null,
+    val unit: String = "None",
+    val customUnit: String? = null,
+    val sortOrder: Int = 0,
+    val enabled: Boolean = true
 )
 
 /** Precomputed daily aggregates feeding the Reflect tab. One row per day. */
@@ -600,7 +626,8 @@ data class NestedItemTagEntity(
         SubTaskEntity::class,
         NoteEntity::class,
         DailyPlanItemEntity::class,
-        PeriodReviewEntity::class,
+        PeriodGoalEntity::class,
+        PeriodMetricEntity::class,
         TagEntity::class,
         TaskTagEntity::class,
         NoteTagEntity::class,
@@ -621,7 +648,7 @@ data class NestedItemTagEntity(
         DailyTagRollupEntity::class,
         HabitDailyRollupEntity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)

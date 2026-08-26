@@ -214,9 +214,9 @@ internal fun MyDayScreen(
                     onAddClick = viewModel::openNewJournalEntry,
                     onViewClick = viewModel::openJournalList
                 )
-                state.dayReviews
-                    .firstOrNull { it.periodStartDate == state.today }
-                    ?.periodIntent
+                state.dayGoals
+                    .firstOrNull { it.startDate == state.today }
+                    ?.goal
                     ?.takeIf { it.isNotBlank() }
                     ?.let { intent ->
                         PeriodIntentBanner(

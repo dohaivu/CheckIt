@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -28,7 +27,6 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -49,13 +47,12 @@ import checkit.shared.generated.resources.reflect_period_week
 import checkit.shared.generated.resources.reflect_period_year
 import checkit.shared.generated.resources.reflect_review_card_title
 import checkit.shared.generated.resources.reflect_review_empty
-import checkit.shared.generated.resources.reflect_review_status_draft
 import checkit.shared.generated.resources.reflect_reviews_empty
 import checkit.shared.generated.resources.reflect_reviews_subtitle
 import checkit.shared.generated.resources.reflect_reviews_title
 import checkit.shared.generated.resources.reflect_reviews_written
 import checkit.shared.generated.resources.tab_reflect
-import com.checkit.domain.PeriodReview
+import com.checkit.domain.PeriodGoal
 import com.checkit.domain.Period
 import com.checkit.ui.components.ReportPeriod
 import com.checkit.ui.components.ReportPeriodHeader
@@ -170,10 +167,10 @@ internal fun ReflectScreen(
                             )
                         }
 
-                        ReviewsSection(
-                            reviews = state.reviewsForSelectedPeriod,
+                        GoalsSection(
+                            goals = state.goalsForSelectedPeriod,
                             selectedPeriod = state.selectedPeriod,
-                            onOpenReview = viewModel::openReview
+                            onOpenGoal = viewModel::openGoal
                         )
                     }
                 }
@@ -187,7 +184,7 @@ private fun ReviewCard(
     state: ReflectUiState,
     onOpenEditor: () -> Unit
 ) {
-    val review = state.focusReview
+    val goal = state.focusGoal
     val periodLabel = state.focus.period.label()
 
     val gradient = Brush.linearGradient(
@@ -237,7 +234,7 @@ private fun ReviewCard(
                 )
             }
 
-            if (review == null || review.content.isBlank()) {
+            if (goal == null || goal.review.isBlank()) {
                 Text(
                     text = stringResource(Res.string.reflect_review_empty, periodLabel),
                     style = MaterialTheme.typography.titleMedium,
@@ -246,7 +243,7 @@ private fun ReviewCard(
                 )
             } else {
                 Text(
-                    text = review.content.asAnnotatedString(),
+                    text = goal.review.asAnnotatedString(),
                     style = MaterialTheme.typography.bodyMedium.copy(
                         lineHeight = 24.sp,
                         fontWeight = FontWeight.Medium,
@@ -255,7 +252,7 @@ private fun ReviewCard(
                 )
             }
 
-            review?.periodIntent?.takeIf { it.isNotBlank() }?.let { intent ->
+            goal?.goal?.takeIf { it.isNotBlank() }?.let { periodGoal ->
                 Column (
                     verticalArrangement = Arrangement.spacedBy(0.dp),
                     horizontalAlignment = Alignment.Start,
@@ -282,7 +279,7 @@ private fun ReviewCard(
                         )
                     }
                     Text(
-                        text = intent.asAnnotatedString(),
+                        text = periodGoal.asAnnotatedString(),
                         style = MaterialTheme.typography.bodySmall.copy(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -294,10 +291,10 @@ private fun ReviewCard(
 }
 
 @Composable
-private fun ReviewsSection(
-    reviews: List<PeriodReview>,
+private fun GoalsSection(
+    goals: List<PeriodGoal>,
     selectedPeriod: ReportPeriod,
-    onOpenReview: (PeriodReview) -> Unit
+    onOpenGoal: (PeriodGoal) -> Unit
 ) {
     val periodLabel = selectedPeriod.toPeriod().label()
     Column(
@@ -327,21 +324,21 @@ private fun ReviewsSection(
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                 )
             }
-            if (reviews.isNotEmpty()) {
+            if (goals.isNotEmpty()) {
                 Text(
-                    text = stringResource(Res.string.reflect_reviews_written, reviews.size),
+                    text = stringResource(Res.string.reflect_reviews_written, goals.size),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
                 )
             }
         }
-        if (reviews.isEmpty()) {
+        if (goals.isEmpty()) {
             ReviewsEmptyState(periodLabel = selectedPeriod.childPeriod().label())
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
-                reviews.forEach { review ->
-                    ReviewRow(review = review, onClick = { onOpenReview(review) })
+                goals.forEach { goal ->
+                    GoalRow(goal = goal, onClick = { onOpenGoal(goal) })
                 }
             }
         }
@@ -374,8 +371,8 @@ private fun ReviewsEmptyState(periodLabel: String) {
 }
 
 @Composable
-private fun ReviewRow(
-    review: PeriodReview,
+private fun GoalRow(
+    goal: PeriodGoal,
     onClick: () -> Unit
 ) {
     Row(
@@ -397,7 +394,7 @@ private fun ReviewRow(
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = review.period.reviewIcon(),
+                imageVector = goal.period.reviewIcon(),
                 contentDescription = null,
                 modifier = Modifier.size(20.dp),
                 tint = MaterialTheme.colorScheme.primary
@@ -407,22 +404,16 @@ private fun ReviewRow(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            Text(
+                text = goal.rangeLabel(),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (goal.review.isNotBlank()) {
                 Text(
-                    text = review.rangeLabel(),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                ReviewStatusPill(review = review)
-            }
-            if (review.content.isNotBlank()) {
-                Text(
-                    text = review.content.asAnnotatedString(),
+                    text = goal.review.asAnnotatedString(),
                     style = MaterialTheme.typography.bodySmall.copy(
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                     ),
@@ -440,24 +431,6 @@ private fun ReviewRow(
 }
 
 @Composable
-private fun ReviewStatusPill(review: PeriodReview) {
-    if (review.status == com.checkit.domain.ReviewStatus.Draft) {
-        Surface(
-            color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.7f),
-            shape = CircleShape
-        ) {
-            Text(
-                text = stringResource(Res.string.reflect_review_status_draft),
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onTertiaryContainer
-            )
-        }
-    }
-}
-
-@Composable
 internal fun Period.reviewIcon(): ImageVector = when (this) {
     Period.Day -> Icons.Default.Star
     Period.Week -> Icons.Default.DateRange
@@ -467,12 +440,12 @@ internal fun Period.reviewIcon(): ImageVector = when (this) {
 }
 
 @Composable
-internal fun PeriodReview.rangeLabel(): String = when (period) {
-    Period.Day -> periodStartDate.localizedCompactDateWithDayName()
-    Period.Week -> "${periodStartDate.localizedShortMonthName()} ${periodStartDate.day}"
-    Period.Month -> periodStartDate.localizedMonthTitle()
-    Period.Year -> periodStartDate.year.toString()
-    else -> periodStartDate.toString()
+internal fun PeriodGoal.rangeLabel(): String = when (period) {
+    Period.Day -> startDate.localizedCompactDateWithDayName()
+    Period.Week -> "${startDate.localizedShortMonthName()} ${startDate.day}"
+    Period.Month -> startDate.localizedMonthTitle()
+    Period.Year -> startDate.year.toString()
+    else -> startDate.toString()
 }
 
 @Composable

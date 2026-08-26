@@ -7,8 +7,7 @@ import com.checkit.domain.FocusPeriod
 import com.checkit.domain.HabitDailyRollup
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.Period
-import com.checkit.domain.PeriodReview
-import com.checkit.domain.ReviewSource
+import com.checkit.domain.PeriodGoal
 import com.checkit.domain.isGoodMood
 import com.checkit.ui.components.ReportPeriod
 import com.checkit.ui.firstDayOfMonth
@@ -19,13 +18,14 @@ import kotlinx.datetime.daysUntil
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 
-data class ReflectReviewEditorState(
+data class ReflectGoalEditorState(
     val focus: FocusPeriod,
-    val review: PeriodReview?,
-    val content: String = "",
-    /** This period's own intent (written while reviewing the previous period). */
-    val periodIntent: String = "",
-    val source: ReviewSource = ReviewSource.Manual,
+    /** The persisted goal being edited, if any. */
+    val existing: PeriodGoal? = null,
+    val review: String = "",
+    /** This period's own goal (written while reviewing the previous period). */
+    val goal: String = "",
+    val ratings: Float = 0f,
     val isSaving: Boolean = false
 )
 
@@ -48,33 +48,33 @@ data class ReflectUiState(
     val journalEntries: List<JournalEntry> = emptyList(),
     /** Habit rollups in a fixed trailing window ending today. */
     val habitRollups: List<HabitDailyRollup> = emptyList(),
-    val reviews: List<PeriodReview> = emptyList(),
+    val goals: List<PeriodGoal> = emptyList(),
     val isLoading: Boolean = true
 ) {
     val focus: FocusPeriod by lazy { FocusPeriod(selectedPeriod.toPeriod(), selectedDate) }
     val focusStartEpochDays: Int get() = focus.start.toEpochDays().toInt()
-    val focusReview: PeriodReview? by lazy {
-        reviews.firstOrNull {
-            it.period == focus.period && it.periodStartEpochDays == focusStartEpochDays
+    val focusGoal: PeriodGoal? by lazy {
+        goals.firstOrNull {
+            it.period == focus.period && it.startEpochDays == focusStartEpochDays
         }
     }
 
     /**
-     * Reviews of the child zoom level within the current window, newest first.
-     * Week shows that week's Day reviews, Month shows that month's Week reviews,
-     * Annual shows that year's Month reviews; Daily behaves like Week.
+     * Goals of the child zoom level within the current window, newest first.
+     * Week shows that week's Day goals, Month shows that month's Week goals,
+     * Annual shows that year's Month goals; Daily behaves like Week.
      */
-    val reviewsForSelectedPeriod: List<PeriodReview> by lazy {
+    val goalsForSelectedPeriod: List<PeriodGoal> by lazy {
         val rangeFocus = if (selectedPeriod == ReportPeriod.Daily) focus.zoomOut() else focus
         val startEpoch = rangeFocus.start.toEpochDays().toInt()
         val endEpoch = rangeFocus.endExclusive.toEpochDays().toInt()
-        reviews
+        goals
             .filter {
                 it.period == selectedPeriod.childPeriod() &&
-                    it.periodStartEpochDays in startEpoch until endEpoch
+                    it.startEpochDays in startEpoch until endEpoch
             }
             .sortedWith(
-                compareByDescending<PeriodReview> { it.periodStartEpochDays }
+                compareByDescending<PeriodGoal> { it.startEpochDays }
                     .thenByDescending { it.id }
             )
     }

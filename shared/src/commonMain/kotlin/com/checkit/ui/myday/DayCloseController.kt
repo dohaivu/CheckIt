@@ -27,10 +27,10 @@ internal class DayCloseController(
             if (loaded.dayClose != null) return@launch
             val date = loaded.today
             val summary = deps.buildDayCloseSummary(date, loaded.plan)
-            val record = loaded.dayReviews.firstOrNull { it.periodStartDate == date }
-            // The tomorrow goal is stored as the next day's period intent.
-            val tomorrowRecord = loaded.dayReviews.firstOrNull {
-                it.periodStartDate == date.plus(1, DateTimeUnit.DAY)
+            val record = loaded.dayGoals.firstOrNull { it.startDate == date }
+            // The tomorrow goal is stored as the next day's goal.
+            val tomorrowRecord = loaded.dayGoals.firstOrNull {
+                it.startDate == date.plus(1, DateTimeUnit.DAY)
             }
             val allItems = summary.plannedItems + summary.alreadyCarriedItems
             val actions = allItems.associate { item ->
@@ -41,8 +41,8 @@ internal class DayCloseController(
                     dayClose = DayCloseUiState(
                         summary = summary,
                         leftoverActions = actions,
-                        winNote = record?.content.orEmpty(),
-                        tomorrowGoal = tomorrowRecord?.periodIntent.orEmpty()
+                        winNote = record?.review.orEmpty(),
+                        tomorrowGoal = tomorrowRecord?.goal.orEmpty()
                     ),
                     showDayCloseBanner = false,
                     showLeftoversSheet = false,

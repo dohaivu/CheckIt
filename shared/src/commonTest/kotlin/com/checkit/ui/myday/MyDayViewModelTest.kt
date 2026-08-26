@@ -4,11 +4,10 @@ import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DailyPlanItemSource
-import com.checkit.domain.PeriodReview
+import com.checkit.domain.PeriodGoal
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.LeftoverAction
 import com.checkit.domain.Period
-import com.checkit.domain.ReviewStatus
 import com.checkit.domain.TagItem
 import com.checkit.domain.usecase.AddDailyPlanItemUseCase
 import com.checkit.domain.usecase.AddJournalEntryUseCase
@@ -17,7 +16,7 @@ import com.checkit.domain.usecase.BuildDayCloseSummaryUseCase
 import com.checkit.domain.usecase.CarryOverDailyPlanItemsUseCase
 import com.checkit.domain.usecase.CompleteDayCloseUseCase
 import com.checkit.domain.usecase.ObserveNotesForDateUseCase
-import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
+import com.checkit.domain.usecase.ObservePeriodGoalsUseCase
 import com.checkit.domain.usecase.ObserveTagsUseCase
 import com.checkit.domain.usecase.ObserveWorkingTasksUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
@@ -75,14 +74,14 @@ class MyDayViewModelTest {
         val carryOver = CarryOverDailyPlanItemsUseCase(repository, dispatcher)
         val observeDailyPlans = ObserveDailyPlansUseCase(repository)
         val observeJournalEntries = ObserveJournalEntriesUseCase(repository)
-        val observePeriodReviews = ObservePeriodReviewsUseCase(repository)
+        val observePeriodGoals = ObservePeriodGoalsUseCase(repository)
         val addTaskToDailyPlan = AddTaskToDailyPlanUseCase(repository)
         val updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository)
 
         return MyDayViewModel(
             observeDailyPlans = observeDailyPlans,
             observeJournalEntries = observeJournalEntries,
-            observePeriodReviews = observePeriodReviews,
+            observePeriodGoals = observePeriodGoals,
             observeTags = ObserveTagsUseCase(repository),
             observeWorkingTasks = ObserveWorkingTasksUseCase(repository),
             observeNotesForDate = ObserveNotesForDateUseCase(repository),
@@ -130,14 +129,13 @@ class MyDayViewModelTest {
     @Test
     fun openDayClosePrefillsExistingWinNoteFromHistory() = runTest(dispatcher) {
         val today = today()
-        repository.setDayReviews(
+        repository.setDayGoals(
             listOf(
-                PeriodReview(
+                PeriodGoal(
                     period = Period.Day,
-                    periodStartEpochDays = today.toEpochDays().toInt(),
-                    periodEndEpochDays = today.toEpochDays().toInt() + 1,
-                    content = "Shipped the review loop",
-                    status = ReviewStatus.Complete,
+                    startEpochDays = today.toEpochDays().toInt(),
+                    endEpochDays = today.toEpochDays().toInt() + 1,
+                    review = "Shipped the review loop",
                     completedAtMillis = 1L
                 )
             )

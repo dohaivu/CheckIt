@@ -8,7 +8,7 @@ import com.checkit.domain.DayCloseBannerPolicy
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.LeftoversBannerPolicy
 import com.checkit.domain.NoteItem
-import com.checkit.domain.PeriodReview
+import com.checkit.domain.PeriodGoal
 import com.checkit.domain.PlanAssistBannerPolicy
 import com.checkit.domain.Period
 import com.checkit.domain.TagItem
@@ -46,7 +46,7 @@ internal class MyDayDataLoader(
                 deps.observeTags(),
                 deps.observeDailyPlans(startDate = today.minus(1, DateTimeUnit.DAY), endDate = today),
                 deps.settingsRepository.settings,
-                deps.observePeriodReviews(startDate = today, endDateInclusive = today.plus(1, DateTimeUnit.DAY)),
+                deps.observePeriodGoals(startDate = today, endDateInclusive = today.plus(1, DateTimeUnit.DAY)),
                 deps.observeJournalEntries(startDate = today, endDateInclusive = today)
             ) { array ->
                 ReviewCombined(
@@ -55,7 +55,7 @@ internal class MyDayDataLoader(
                     tags = array[2] as List<TagItem>,
                     dailyPlans = array[3] as List<DailyPlan>,
                     settings = array[4] as UserSettings,
-                    dayReviews = array[5] as List<PeriodReview>,
+                    dayGoals = array[5] as List<PeriodGoal>,
                     journalEntries = array[6] as List<JournalEntry>
                 )
             }
@@ -68,7 +68,7 @@ internal class MyDayDataLoader(
                     val todayEpoch = date.toEpochDays().toInt()
                     val nowMinutes = currentMyDayTimeMinutes()
                     val plan = combined.dailyPlans.firstOrNull { it.date == date }
-                    val dayReviews = combined.dayReviews.filter { it.period == Period.Day }
+                    val dayGoals = combined.dayGoals.filter { it.period == Period.Day }
                     val leftovers = YesterdayLeftovers.items(combined.dailyPlans, date)
                     val pendingLeftovers = YesterdayLeftovers.pendingForToday(leftovers, plan)
                     val showReviewBanner = DayCloseBannerPolicy.shouldShow(
@@ -133,7 +133,7 @@ internal class MyDayDataLoader(
                             pendingYesterdayLeftovers = pendingLeftovers,
                             recentTags = combined.tags.sortedByDescending { it.lastUsedAtMillis }.take(5),
                             lastFabAction = lastFabAction,
-                            dayReviews = dayReviews,
+                            dayGoals = dayGoals,
                             recentLabels = combined.settings.recentLabels,
                             showLeftoversBanner = showLeftoversBanner &&
                                 updatedReview == null &&
@@ -182,6 +182,6 @@ private data class ReviewCombined(
     val tags: List<TagItem>,
     val dailyPlans: List<DailyPlan>,
     val settings: UserSettings,
-    val dayReviews: List<PeriodReview>,
+    val dayGoals: List<PeriodGoal>,
     val journalEntries: List<JournalEntry>
 )

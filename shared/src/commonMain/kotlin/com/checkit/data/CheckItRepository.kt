@@ -6,10 +6,9 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DayCloseCommitResult
-import com.checkit.domain.PeriodReview
+import com.checkit.domain.PeriodGoal
 import com.checkit.domain.Period
-import com.checkit.domain.ReviewSource
-import com.checkit.domain.ReviewStatus
+import com.checkit.domain.PeriodMetric
 import com.checkit.domain.DailyReflectStat
 import com.checkit.domain.DailyTagRollup
 import com.checkit.domain.DoneItemSummary
@@ -111,10 +110,13 @@ interface CheckItRepository {
     suspend fun dailyPlanForDate(date: LocalDate): DailyPlan?
     suspend fun getTask(taskId: Long): TaskItem?
     suspend fun getNote(noteId: Long): NoteItem?
-    fun observePeriodReviews(): Flow<List<PeriodReview>>
-    fun observePeriodReviewsInRange(startDate: LocalDate?, endDateInclusive: LocalDate?): Flow<List<PeriodReview>>
-    suspend fun periodReviewFor(period: Period, date: LocalDate): PeriodReview?
-    suspend fun savePeriodReview(review: PeriodReview)
+    fun observePeriodGoals(): Flow<List<PeriodGoal>>
+    fun observePeriodGoalsInRange(startDate: LocalDate?, endDateInclusive: LocalDate?): Flow<List<PeriodGoal>>
+    suspend fun periodGoalFor(period: Period, date: LocalDate): PeriodGoal?
+    suspend fun savePeriodGoal(goal: PeriodGoal)
+    fun observePeriodMetrics(goalId: Long): Flow<List<PeriodMetric>>
+    suspend fun periodMetricsFor(goalId: Long): List<PeriodMetric>
+    suspend fun replacePeriodMetrics(goalId: Long, metrics: List<PeriodMetric>)
     fun observeDailyReflectStats(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<DailyReflectStat>>
     fun observeDailyTagRollups(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<DailyTagRollup>>
     fun observeHabitDailyRollups(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<HabitDailyRollup>>
@@ -1005,37 +1007,45 @@ class RoomCheckItRepository(
         return itemId
     }
 
-    override fun observePeriodReviews(): Flow<List<PeriodReview>> =
-        dao.observePeriodReviews().map { entities -> entities.map { it.toDomain() } }
+    override fun observePeriodGoals(): Flow<List<PeriodGoal>> =
+        dao.observePeriodGoals().map { entities -> entities.map { it.toDomain() } }
 
-    override fun observePeriodReviewsInRange(
+    override fun observePeriodGoalsInRange(
         startDate: LocalDate?,
         endDateInclusive: LocalDate?
-    ): Flow<List<PeriodReview>> =
-        dao.observePeriodReviewsBetween(
+    ): Flow<List<PeriodGoal>> =
+        dao.observePeriodGoalsBetween(
             startDate?.toEpochDays()?.toInt(),
             endDateInclusive?.toEpochDays()?.toInt()
         ).map { entities -> entities.map { it.toDomain() } }
 
-    override suspend fun periodReviewFor(period: Period, date: LocalDate): PeriodReview? =
-        dao.periodReviewFor(period.name, date.toEpochDays().toInt())?.toDomain()
+    override suspend fun periodGoalFor(period: Period, date: LocalDate): PeriodGoal? =
+        dao.periodGoalFor(period.name, date.toEpochDays().toInt())?.toDomain()
 
-    override suspend fun savePeriodReview(review: PeriodReview) {
-        dao.upsertPeriodReview(
-            PeriodReviewEntity(
-                id = review.id,
-                periodType = review.period.name,
-                periodStartEpochDays = review.periodStartEpochDays,
-                periodEndEpochDays = review.periodEndEpochDays,
-                content = review.content,
-                periodIntent = review.periodIntent,
-                source = review.source.name,
-                status = review.status.name,
-                completedAtMillis = review.completedAtMillis,
-                generatedAtMillis = review.generatedAtMillis,
-                editedAtMillis = review.editedAtMillis
+    override suspend fun savePeriodGoal(goal: PeriodGoal) {
+        dao.upsertPeriodGoal(
+            PeriodGoalEntity(
+                id = goal.id,
+                periodType = goal.period.name,
+                startEpochDays = goal.startEpochDays,
+                endEpochDays = goal.endEpochDays,
+                review = goal.review,
+                goal = goal.goal,
+                ratings = goal.ratings,
+                completedAtMillis = goal.completedAtMillis,
+                editedAtMillis = goal.editedAtMillis
             )
         )
+    }
+
+    override fun observePeriodMetrics(goalId: Long): Flow<List<PeriodMetric>> =
+        dao.observePeriodMetrics(goalId).map { entities -> entities.map { it.toDomain() } }
+
+    override suspend fun periodMetricsFor(goalId: Long): List<PeriodMetric> =
+        dao.periodMetricsFor(goalId).map { it.toDomain() }
+
+    override suspend fun replacePeriodMetrics(goalId: Long, metrics: List<PeriodMetric>) {
+        dao.replacePeriodMetrics(goalId, metrics.map { it.toEntity(goalId) })
     }
 
     override fun observeDailyReflectStats(
@@ -1193,8 +1203,8 @@ class RoomCheckItRepository(
         val epochDays = beforeDate.toEpochDays().toInt()
         return combine(
             dao.observeJournalEntryExistsBefore(epochDays),
-            dao.observeDayReviewExistsBefore(epochDays)
-        ) { hasEntries, hasReviews -> hasEntries || hasReviews }
+            dao.observeDayGoalExistsBefore(epochDays)
+        ) { hasEntries, hasGoals -> hasEntries || hasGoals }
     }
 
     override suspend fun rebuildReflectStats() {
@@ -1686,18 +1696,40 @@ private fun DailyPlanItemEntity.toDomain(tags: List<TagItem> = emptyList()) = Da
     handledAtMillis = handledAtMillis
 )
 
-private fun PeriodReviewEntity.toDomain() = PeriodReview(
+private fun PeriodGoalEntity.toDomain() = PeriodGoal(
     id = id,
     period = Period.valueOf(periodType),
-    periodStartEpochDays = periodStartEpochDays,
-    periodEndEpochDays = periodEndEpochDays,
-    content = content,
-    periodIntent = periodIntent,
-    source = ReviewSource.valueOf(source),
-    status = ReviewStatus.valueOf(status),
+    startEpochDays = startEpochDays,
+    endEpochDays = endEpochDays,
+    review = review,
+    goal = goal,
+    ratings = ratings,
     completedAtMillis = completedAtMillis,
-    generatedAtMillis = generatedAtMillis,
     editedAtMillis = editedAtMillis
+)
+
+private fun PeriodMetricEntity.toDomain() = PeriodMetric(
+    id = id,
+    goalId = goalId,
+    name = name,
+    value = value,
+    targetValue = targetValue,
+    unit = runCatching { NestedMetricUnit.valueOf(unit) }.getOrDefault(NestedMetricUnit.None),
+    customUnit = customUnit,
+    sortOrder = sortOrder,
+    enabled = enabled
+)
+
+private fun PeriodMetric.toEntity(goalId: Long) = PeriodMetricEntity(
+    id = id,
+    goalId = goalId,
+    name = name.trim(),
+    value = value.trim(),
+    targetValue = targetValue?.trim()?.takeIf { it.isNotEmpty() },
+    unit = unit.name,
+    customUnit = customUnit?.trim()?.takeIf { it.isNotEmpty() },
+    sortOrder = sortOrder,
+    enabled = enabled
 )
 
 private fun DailyReflectStatsEntity.toDomain(tagRollups: List<DailyTagRollup> = emptyList()) = DailyReflectStat(

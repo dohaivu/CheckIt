@@ -10,8 +10,6 @@ import androidx.room3.Transaction
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DayCloseCommitResult
 import com.checkit.domain.Period
-import com.checkit.domain.ReviewSource
-import com.checkit.domain.ReviewStatus
 import com.checkit.domain.TaskReminderWriteInput
 import kotlinx.coroutines.flow.Flow
 
@@ -516,18 +514,18 @@ interface CheckItDao {
     @Query("UPDATE daily_plan_items SET handledAtMillis = :handledAtMillis WHERE id IN (:itemIds)")
     suspend fun markDailyPlanItemsHandled(itemIds: List<Long>, handledAtMillis: Long)
 
-    @Query("SELECT * FROM period_reviews ORDER BY periodStartEpochDays ASC")
-    fun observePeriodReviews(): Flow<List<PeriodReviewEntity>>
+    @Query("SELECT * FROM period_goals ORDER BY startEpochDays ASC")
+    fun observePeriodGoals(): Flow<List<PeriodGoalEntity>>
 
     @Query(
         """
-        SELECT * FROM period_reviews
-        WHERE (:startEpochDays IS NULL OR periodStartEpochDays >= :startEpochDays)
-          AND (:endEpochDays IS NULL OR periodStartEpochDays <= :endEpochDays)
-        ORDER BY periodStartEpochDays ASC
+        SELECT * FROM period_goals
+        WHERE (:startEpochDays IS NULL OR startEpochDays >= :startEpochDays)
+          AND (:endEpochDays IS NULL OR startEpochDays <= :endEpochDays)
+        ORDER BY startEpochDays ASC
         """
     )
-    fun observePeriodReviewsBetween(startEpochDays: Int?, endEpochDays: Int?): Flow<List<PeriodReviewEntity>>
+    fun observePeriodGoalsBetween(startEpochDays: Int?, endEpochDays: Int?): Flow<List<PeriodGoalEntity>>
 
     // ---------------- Reflect rollups (precomputed daily aggregates) ----------------
 
@@ -687,26 +685,46 @@ interface CheckItDao {
     @Query("SELECT EXISTS(SELECT 1 FROM journal_entries WHERE dateEpochDays < :epochDays)")
     fun observeJournalEntryExistsBefore(epochDays: Int): Flow<Boolean>
 
-    @Query("SELECT EXISTS(SELECT 1 FROM period_reviews WHERE periodType = 'Day' AND periodStartEpochDays < :epochDays)")
-    fun observeDayReviewExistsBefore(epochDays: Int): Flow<Boolean>
+    @Query("SELECT EXISTS(SELECT 1 FROM period_goals WHERE periodType = 'Day' AND startEpochDays < :epochDays)")
+    fun observeDayGoalExistsBefore(epochDays: Int): Flow<Boolean>
 
 
     @Query(
-        "SELECT * FROM period_reviews WHERE periodType = :periodType AND periodStartEpochDays = :periodStartEpochDays LIMIT 1"
+        "SELECT * FROM period_goals WHERE periodType = :periodType AND startEpochDays = :startEpochDays LIMIT 1"
     )
-    suspend fun periodReviewFor(periodType: String, periodStartEpochDays: Int): PeriodReviewEntity?
+    suspend fun periodGoalFor(periodType: String, startEpochDays: Int): PeriodGoalEntity?
 
     @Query(
-        "SELECT * FROM period_reviews WHERE periodType = :periodType AND periodStartEpochDays >= :startEpochDays AND periodStartEpochDays < :endEpochDays ORDER BY periodStartEpochDays ASC"
+        "SELECT * FROM period_goals WHERE periodType = :periodType AND startEpochDays >= :startEpochDays AND startEpochDays < :endEpochDays ORDER BY startEpochDays ASC"
     )
-    fun observePeriodReviewsInRange(
+    fun observePeriodGoalsInRange(
         periodType: String,
         startEpochDays: Int,
         endEpochDays: Int
-    ): Flow<List<PeriodReviewEntity>>
+    ): Flow<List<PeriodGoalEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsertPeriodReview(review: PeriodReviewEntity)
+    suspend fun upsertPeriodGoal(goal: PeriodGoalEntity)
+
+    // ---------------- Period metrics ----------------
+
+    @Query("SELECT * FROM period_metrics WHERE goalId = :goalId ORDER BY sortOrder ASC")
+    fun observePeriodMetrics(goalId: Long): Flow<List<PeriodMetricEntity>>
+
+    @Query("SELECT * FROM period_metrics WHERE goalId = :goalId ORDER BY sortOrder ASC")
+    suspend fun periodMetricsFor(goalId: Long): List<PeriodMetricEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertPeriodMetrics(metrics: List<PeriodMetricEntity>)
+
+    @Query("DELETE FROM period_metrics WHERE goalId = :goalId AND id NOT IN (:keepIds)")
+    suspend fun deletePeriodMetricsNotIn(goalId: Long, keepIds: List<Long>)
+
+    @Transaction
+    suspend fun replacePeriodMetrics(goalId: Long, metrics: List<PeriodMetricEntity>) {
+        upsertPeriodMetrics(metrics)
+        deletePeriodMetricsNotIn(goalId, metrics.map { it.id })
+    }
 
     /**
      * Applies a complete evening review atomically: marks done items, carries
@@ -780,30 +798,28 @@ interface CheckItDao {
             markDailyPlanItemsHandled(listOf(source.id), nowMillis)
         }
 
-        upsertPeriodReview(
-            PeriodReviewEntity(
+        upsertPeriodGoal(
+            PeriodGoalEntity(
                 periodType = Period.Day.name,
-                periodStartEpochDays = dateEpochDays,
-                periodEndEpochDays = dateEpochDays + 1,
-                content = winNote?.trim().orEmpty(),
-                source = ReviewSource.Manual.name,
-                status = ReviewStatus.Complete.name,
+                startEpochDays = dateEpochDays,
+                endEpochDays = dateEpochDays + 1,
+                review = winNote?.trim().orEmpty(),
                 completedAtMillis = nowMillis,
                 editedAtMillis = nowMillis
             )
         )
 
         // The tomorrow goal describes the next day's period, so it is stored
-        // as the next day's period intent instead of on this record.
+        // as the next day's goal instead of on this record.
         tomorrowGoal?.trim()?.takeIf { it.isNotEmpty() }?.let { goal ->
             val nextStartEpochDays = dateEpochDays + 1
-            val existing = periodReviewFor(Period.Day.name, nextStartEpochDays)
-            upsertPeriodReview(
-                (existing ?: PeriodReviewEntity(
+            val existing = periodGoalFor(Period.Day.name, nextStartEpochDays)
+            upsertPeriodGoal(
+                (existing ?: PeriodGoalEntity(
                     periodType = Period.Day.name,
-                    periodStartEpochDays = nextStartEpochDays,
-                    periodEndEpochDays = nextStartEpochDays + 1
-                )).copy(periodIntent = goal, editedAtMillis = nowMillis)
+                    startEpochDays = nextStartEpochDays,
+                    endEpochDays = nextStartEpochDays + 1
+                )).copy(goal = goal, editedAtMillis = nowMillis)
             )
         }
 

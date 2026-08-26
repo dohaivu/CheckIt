@@ -12,7 +12,7 @@ import com.checkit.domain.DayCloseConfirmResult
 import com.checkit.domain.DayCloseSummary
 import com.checkit.domain.DayCloseTagMinutes
 import com.checkit.domain.LeftoverAction
-import com.checkit.domain.PeriodReview
+import com.checkit.domain.PeriodGoal
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -128,16 +128,16 @@ class CarryOverDailyPlanItemsUseCase(
 }
 
 /**
- * Observes persisted period reviews (day, week, month, year), optionally
+ * Observes persisted period goals (day, week, month, year), optionally
  * limited to an inclusive window over their start dates.
  */
-class ObservePeriodReviewsUseCase(
+class ObservePeriodGoalsUseCase(
     private val repository: CheckItRepository
 ) {
     operator fun invoke(
         startDate: LocalDate? = null,
         endDateInclusive: LocalDate? = null
-    ): Flow<List<PeriodReview>> = repository.observePeriodReviewsInRange(startDate, endDateInclusive)
+    ): Flow<List<PeriodGoal>> = repository.observePeriodGoalsInRange(startDate, endDateInclusive)
 }
 
 /**

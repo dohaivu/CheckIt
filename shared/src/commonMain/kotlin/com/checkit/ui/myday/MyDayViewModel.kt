@@ -19,7 +19,7 @@ import com.checkit.domain.usecase.DeleteJournalEntryUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
 import com.checkit.domain.usecase.ObserveNotesForDateUseCase
-import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
+import com.checkit.domain.usecase.ObservePeriodGoalsUseCase
 import com.checkit.domain.usecase.ObserveTagsUseCase
 import com.checkit.domain.usecase.ObserveWorkingTasksUseCase
 import com.checkit.domain.usecase.SmartScheduleDailyPlanUseCase
@@ -44,7 +44,7 @@ import kotlinx.datetime.LocalDate
 class MyDayViewModel(
     observeDailyPlans: ObserveDailyPlansUseCase,
     observeJournalEntries: ObserveJournalEntriesUseCase,
-    observePeriodReviews: ObservePeriodReviewsUseCase,
+    observePeriodGoals: ObservePeriodGoalsUseCase,
     observeTags: ObserveTagsUseCase,
     observeWorkingTasks: ObserveWorkingTasksUseCase,
     observeNotesForDate: ObserveNotesForDateUseCase,
@@ -66,7 +66,7 @@ class MyDayViewModel(
     private val deps = MyDayDependencies(
         observeDailyPlans = observeDailyPlans,
         observeJournalEntries = observeJournalEntries,
-        observePeriodReviews = observePeriodReviews,
+        observePeriodGoals = observePeriodGoals,
         observeTags = observeTags,
         observeWorkingTasks = observeWorkingTasks,
         observeNotesForDate = observeNotesForDate,

@@ -54,7 +54,7 @@ import com.checkit.domain.usecase.ObserveNestedDocumentsUseCase
 import com.checkit.domain.usecase.ObserveNestedTagsUseCase
 import com.checkit.domain.usecase.ObserveNotesForDateUseCase
 import com.checkit.domain.usecase.ObserveNotesInRangeUseCase
-import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
+import com.checkit.domain.usecase.ObservePeriodGoalsUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.ObserveTagUsageCountsUseCase
 import com.checkit.domain.usecase.ObserveTasksForDateUseCase
@@ -67,7 +67,7 @@ import com.checkit.domain.usecase.RenameNestedDocumentUseCase
 import com.checkit.domain.usecase.ReplaceNestedManualMetricsUseCase
 import com.checkit.domain.usecase.RestoreNoteUseCase
 import com.checkit.domain.usecase.RestoreTaskUseCase
-import com.checkit.domain.usecase.SavePeriodReviewUseCase
+import com.checkit.domain.usecase.SavePeriodGoalUseCase
 import com.checkit.domain.usecase.SaveSprintAsWinUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.SetNestedItemCheckboxEnabledUseCase
@@ -193,8 +193,8 @@ val provideInteractorModule = module {
     single { DeleteDailyPlanItemUseCase(get()) }
     single { BuildDayCloseSummaryUseCase(get()) }
     single { CarryOverDailyPlanItemsUseCase(get(), get()) }
-    single { ObservePeriodReviewsUseCase(get()) }
-    single { SavePeriodReviewUseCase(get()) }
+    single { ObservePeriodGoalsUseCase(get()) }
+    single { SavePeriodGoalUseCase(get()) }
     single { RebuildReflectStatsUseCase(get()) }
     single { CompleteDayCloseUseCase(get(), get(), get(), get()) }
     single { AddNoteUseCase(get()) }
@@ -272,7 +272,7 @@ val provideViewModelModule = module {
     viewModel {
         CalendarViewModel(
             observeDailyPlans = get(),
-            observePeriodReviews = get(),
+            observePeriodGoals = get(),
             observeJournalEntries = get(),
             observeDailyReflectStats = get(),
             observeTasksInRange = get(),
@@ -286,7 +286,7 @@ val provideViewModelModule = module {
         MyDayViewModel(
             observeDailyPlans = get(),
             observeJournalEntries = get(),
-            observePeriodReviews = get(),
+            observePeriodGoals = get(),
             observeTags = get(),
             observeWorkingTasks = get(),
             observeNotesForDate = get(),
@@ -309,8 +309,8 @@ val provideViewModelModule = module {
     viewModel {
         ReflectViewModel(
             repository = get(),
-            observePeriodReviews = get(),
-            savePeriodReview = get()
+            observePeriodGoals = get(),
+            savePeriodGoal = get()
         )
     }
     viewModel { SettingsViewModel(get(), get(), get(), get<AppReminderScheduler>()) }

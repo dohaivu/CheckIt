@@ -8,7 +8,7 @@ import com.checkit.domain.DayCloseSummary
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.LeftoverAction
 import com.checkit.domain.NoteItem
-import com.checkit.domain.PeriodReview
+import com.checkit.domain.PeriodGoal
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TagItem
@@ -59,7 +59,7 @@ data class MyDayUiState(
     val suggestionEndTimeMinutes: Int? = null,
     val recentTags: List<TagItem> = emptyList(),
     val lastFabAction: FabAction = FabAction.QuickSprint,
-    val dayReviews: List<PeriodReview> = emptyList(),
+    val dayGoals: List<PeriodGoal> = emptyList(),
     /** Journal entries for today. */
     val journalEntries: List<JournalEntry> = emptyList(),
     val journalEditor: JournalEntryEditorState? = null,

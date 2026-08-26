@@ -35,7 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.MoodFilter
-import com.checkit.domain.PeriodReview
+import com.checkit.domain.PeriodGoal
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.TagOptionMenu
@@ -58,7 +58,7 @@ internal fun JournalHistorySheet(
     onSearchTextChange: (String) -> Unit,
     onTagToggle: (Long) -> Unit,
     onEntryClick: (JournalEntry) -> Unit,
-    onReviewClick: (PeriodReview) -> Unit = {},
+    onGoalClick: (PeriodGoal) -> Unit = {},
     onLoadMore: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
@@ -79,11 +79,11 @@ internal fun JournalHistorySheet(
             )
             JournalAgendaView(
                 journalEntries = state.entries,
-                dayReviews = state.dayReviews,
+                dayGoals = state.dayGoals,
                 hasOlder = state.hasOlder,
                 onLoadMore = onLoadMore,
                 onEntryClick = onEntryClick,
-                onReviewClick = onReviewClick,
+                onGoalClick = onGoalClick,
                 modifier = Modifier.fillMaxSize()
             )
         }
@@ -130,14 +130,14 @@ private data object LoadOlderMarker
 @Composable
 internal fun JournalAgendaView(
     journalEntries: List<JournalEntry>,
-    dayReviews: List<PeriodReview> = emptyList(),
+    dayGoals: List<PeriodGoal> = emptyList(),
     hasOlder: Boolean = false,
     onLoadMore: () -> Unit = {},
     onEntryClick: (JournalEntry) -> Unit,
-    onReviewClick: (PeriodReview) -> Unit = {},
+    onGoalClick: (PeriodGoal) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val timelineItems = remember(journalEntries, dayReviews, hasOlder) {
+    val timelineItems = remember(journalEntries, dayGoals, hasOlder) {
         buildList {
             journalEntries.forEach { entry ->
                 add(
@@ -153,17 +153,17 @@ internal fun JournalAgendaView(
                     )
                 )
             }
-            dayReviews.forEach { review ->
+            dayGoals.forEach { goal ->
                 add(
                     TimelineItem(
-                        id = "review-${review.id}",
+                        id = "goal-${goal.id}",
                         type = TimelineItemType.Journal,
-                        date = review.periodEndDateInclusive,
+                        date = goal.endDateInclusive,
                         startTimeMinutes = null,
                         endTimeMinutes = null,
                         sortOrder = 0,
                         isResizable = false,
-                        tag = review
+                        tag = goal
                     )
                 )
             }
@@ -193,9 +193,9 @@ internal fun JournalAgendaView(
                     onClick = { onEntryClick(tag) },
                     modifier = Modifier.padding(start = 8.dp)
                 )
-                is PeriodReview -> JournalAgendaReviewCard(
-                    review = tag,
-                    onClick = { onReviewClick(tag)},
+                is PeriodGoal -> JournalAgendaGoalCard(
+                    goal = tag,
+                    onClick = { onGoalClick(tag)},
                     modifier = Modifier.padding(start = 8.dp)
                 )
             }
@@ -221,8 +221,8 @@ private fun LoadOlderIndicator(onLoadMore: () -> Unit) {
 }
 
 @Composable
-private fun JournalAgendaReviewCard(
-    review: PeriodReview,
+private fun JournalAgendaGoalCard(
+    goal: PeriodGoal,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -232,7 +232,7 @@ private fun JournalAgendaReviewCard(
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
             .padding(horizontal = 12.dp, vertical = 10.dp)
-            .pointerInput(review.id) {
+            .pointerInput(goal.id) {
                 detectTapGestures(
                     onLongPress = { onClick() }
                 )
@@ -241,21 +241,21 @@ private fun JournalAgendaReviewCard(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
-                imageVector = review.period.reviewIcon(),
+                imageVector = goal.period.reviewIcon(),
                 contentDescription = null,
                 modifier = Modifier.size(16.dp),
                 tint = MaterialTheme.colorScheme.primary
             )
             Spacer(Modifier.width(6.dp))
             Text(
-                text = "${review.period.label()} ",
+                text = "${goal.period.label()} ",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold
             )
         }
-        if (review.content.isNotBlank()) {
+        if (goal.review.isNotBlank()) {
             Text(
-                text = review.content.asAnnotatedString(),
+                text = goal.review.asAnnotatedString(),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

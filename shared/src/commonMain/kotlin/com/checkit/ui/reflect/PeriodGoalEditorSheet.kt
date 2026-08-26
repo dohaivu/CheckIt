@@ -17,11 +17,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -31,6 +33,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.cancel
 import checkit.shared.generated.resources.reflect_review_card_title
@@ -42,10 +45,11 @@ import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun PeriodReviewEditorSheet(
-    editor: ReflectReviewEditorState,
-    onContentChange: (String) -> Unit,
-    onPeriodIntentChange: (String) -> Unit,
+internal fun PeriodGoalEditorSheet(
+    editor: ReflectGoalEditorState,
+    onReviewChange: (String) -> Unit,
+    onGoalChange: (String) -> Unit,
+    onRatingsChange: (Float) -> Unit,
     onSave: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -92,8 +96,8 @@ internal fun PeriodReviewEditorSheet(
                 modifier = Modifier.padding(bottom = 8.dp)
             )
             AppOutlinedTextField(
-                value = editor.content,
-                onValueChange = onContentChange,
+                value = editor.review,
+                onValueChange = onReviewChange,
                 textStyle = MaterialTheme.typography.bodyMedium.copy(
                     color = MaterialTheme.colorScheme.onSurface
                 ),
@@ -118,13 +122,46 @@ internal fun PeriodReviewEditorSheet(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(
+                    imageVector = Icons.Default.Star,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.secondary
+                )
+                Text(
+                    text = "SATISFACTION",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 1.sp,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.weight(1f))
+                Text(
+                    text = ((editor.ratings * 10).roundToInt() / 10f).toString(),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+            }
+            Slider(
+                value = editor.ratings,
+                onValueChange = onRatingsChange,
+                valueRange = 0f..5f,
+                steps = 9,
+                enabled = !editor.isSaving
+            )
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
                     imageVector = Icons.Default.Schedule,
                     contentDescription = null,
                     modifier = Modifier.size(16.dp),
                     tint = MaterialTheme.colorScheme.secondary
                 )
                 Text(
-                    text = "PERIOD INTENT",
+                    text = "PERIOD GOAL",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.ExtraBold,
                     letterSpacing = 1.sp,
@@ -138,8 +175,8 @@ internal fun PeriodReviewEditorSheet(
                 modifier = Modifier.padding(bottom = 8.dp)
             )
             AppOutlinedTextField(
-                value = editor.periodIntent,
-                onValueChange = onPeriodIntentChange,
+                value = editor.goal,
+                onValueChange = onGoalChange,
                 textStyle = MaterialTheme.typography.bodyMedium.copy(
                     color = MaterialTheme.colorScheme.onSurface
                 ),
