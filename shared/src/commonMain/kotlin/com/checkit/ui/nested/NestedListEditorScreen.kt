@@ -8,6 +8,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,8 +29,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListLayoutInfo
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -85,13 +85,11 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.zIndex
-import com.checkit.domain.NestedListItem
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -103,6 +101,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.zIndex
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.cancel
 import checkit.shared.generated.resources.nested_add_child
@@ -119,15 +118,16 @@ import checkit.shared.generated.resources.nested_outdent
 import checkit.shared.generated.resources.nested_root
 import checkit.shared.generated.resources.nested_zoom_in
 import checkit.shared.generated.resources.nested_zoom_out
+import com.checkit.domain.FocusPeriod
+import com.checkit.domain.MetricItem
 import com.checkit.domain.MetricRollupPolicy
+import com.checkit.domain.MetricUnit
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedItemNode
-import com.checkit.domain.NestedManualMetric
+import com.checkit.domain.NestedListItem
 import com.checkit.domain.NestedMetricSummary
-import com.checkit.domain.MetricUnit
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.TagItem
-import com.checkit.domain.FocusPeriod
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.filterNestedTree
 import com.checkit.ui.components.AppOutlinedTextField
@@ -138,8 +138,8 @@ import com.checkit.ui.components.PeriodPicker
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TagPill
 import com.checkit.ui.displayName
+import com.checkit.ui.displayUnit
 import com.checkit.ui.noRippleClickable
-import com.checkit.ui.unitLabel
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
@@ -943,18 +943,12 @@ private fun MetricChip(content: AnnotatedString, manual: Boolean = false) {
     }
 }
 
-private fun NestedManualMetric.displayUnit(): String? = when (unit) {
-    MetricUnit.None -> null
-    MetricUnit.Custom -> customUnit?.takeIf { it.isNotBlank() }
-    else -> unit.unitLabel()
-}
-
 @Composable
 private fun NestedItemDetailsDialog(
     node: NestedItemNode,
     summary: NestedMetricSummary,
     onDismiss: () -> Unit,
-    onSave: (Int, MetricRollupPolicy, Boolean, List<NestedManualMetric>) -> Unit
+    onSave: (Int, MetricRollupPolicy, Boolean, List<MetricItem>) -> Unit
 ) {
     val item = node.item
     val isLeaf = !node.hasChildren
@@ -1142,7 +1136,7 @@ private fun NestedItemDetailsDialog(
                         )
                         TextButton(
                             onClick = {
-                                metrics = metrics + NestedManualMetric(
+                                metrics = metrics + MetricItem(
                                     name = "",
                                     value = "",
                                     sortOrder = metrics.size

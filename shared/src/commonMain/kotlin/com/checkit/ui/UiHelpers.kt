@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
+import com.checkit.domain.MetricItem
 import com.checkit.domain.MetricUnit
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
@@ -324,8 +325,9 @@ fun MetricUnit.displayName(customUnit: String? = null): String = when (this) {
     MetricUnit.Rating -> "rating"
 }
 
-fun MetricUnit.unitLabel(): String = when (this) {
-    MetricUnit.None -> ""
+fun MetricItem.displayUnit(): String? = when (unit) {
+    MetricUnit.None -> null
+    MetricUnit.Custom -> customUnit?.takeIf { it.isNotBlank() }
     MetricUnit.Percentage -> "%"
     MetricUnit.Points -> "points"
     MetricUnit.Items -> "items"
@@ -335,5 +337,4 @@ fun MetricUnit.unitLabel(): String = when (this) {
     MetricUnit.VND -> "đ"
     MetricUnit.Lan -> "lần"
     MetricUnit.Km -> "km"
-    MetricUnit.Custom -> ""
 }

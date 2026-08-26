@@ -1,6 +1,7 @@
 package com.checkit.domain
 
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.Serializable
 
 data class AppConfig(val versionName: String)
 
@@ -353,3 +354,18 @@ enum class MetricUnit {
     Km,
     Custom
 }
+
+/**
+ * A manually tracked metric attached to a [PeriodGoal] or nested list item:
+ * free-form name/value pair with an optional unit. Stored inline as JSON.
+ */
+@Serializable
+data class MetricItem(
+    val name: String,
+    val value: String,
+    val targetValue: String? = null,
+    val unit: MetricUnit = MetricUnit.None,
+    val customUnit: String? = null,
+    val sortOrder: Int = 0,
+    val enabled: Boolean = true
+)

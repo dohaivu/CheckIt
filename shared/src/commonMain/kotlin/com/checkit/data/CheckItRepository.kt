@@ -8,7 +8,6 @@ import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DayCloseCommitResult
 import com.checkit.domain.PeriodGoal
 import com.checkit.domain.Period
-import com.checkit.domain.PeriodMetric
 import com.checkit.domain.DailyReflectStat
 import com.checkit.domain.DailyTagRollup
 import com.checkit.domain.DoneItemSummary
@@ -25,8 +24,8 @@ import com.checkit.domain.NestedListItem
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.MetricRollupPolicy
-import com.checkit.domain.NestedManualMetric
-import com.checkit.domain.MetricUnit
+import com.checkit.domain.MetricItem
+
 import com.checkit.domain.buildNestedTree
 import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
@@ -173,7 +172,7 @@ interface CheckItRepository {
     suspend fun updateNestedItemDateRange(itemId: Long, startDate: LocalDate?, endDate: LocalDate?)
     suspend fun updateNestedItemTags(itemId: Long, tagIds: List<Long>)
     suspend fun updateNestedItemMetricSettings(itemId: Long, actualMinutes: Int, metricRollupPolicy: MetricRollupPolicy, showTrackedMinutes: Boolean)
-    suspend fun replaceNestedManualMetrics(itemId: Long, metrics: List<NestedManualMetric>)
+    suspend fun replaceNestedManualMetrics(itemId: Long, metrics: List<MetricItem>)
     suspend fun setNestedItemCheckboxEnabled(itemId: Long, checkboxEnabled: Boolean)
     suspend fun setNestedItemsChecked(itemIds: List<Long>, checked: Boolean)
     suspend fun toggleNestedItemCollapsed(itemId: Long)
@@ -1041,7 +1040,7 @@ class RoomCheckItRepository(
                 rating = goal.rating,
                 completedAtMillis = goal.completedAtMillis,
                 editedAtMillis = goal.editedAtMillis,
-                metricsJson = Json.encodeToString(goal.metrics.map { it.toData() })
+                metricsJson = Json.encodeToString(goal.metrics.map { it.normalized() })
             )
         )
     }
@@ -1481,10 +1480,10 @@ class RoomCheckItRepository(
         )
     }
 
-    override suspend fun replaceNestedManualMetrics(itemId: Long, metrics: List<NestedManualMetric>) {
+    override suspend fun replaceNestedManualMetrics(itemId: Long, metrics: List<MetricItem>) {
         dao.updateNestedItemManualMetrics(
             itemId = itemId,
-            metricsJson = Json.encodeToString(metrics.map { it.toData() }),
+            metricsJson = Json.encodeToString(metrics.map { it.normalized() }),
             updatedAtMillis = Clock.System.now().toEpochMilliseconds()
         )
     }
@@ -1695,8 +1694,15 @@ private fun DailyPlanItemEntity.toDomain(tags: List<TagItem> = emptyList()) = Da
     handledAtMillis = handledAtMillis
 )
 
-private val periodMetricsJson = Json { ignoreUnknownKeys = true }
-private val nestedManualMetricsJson = Json { ignoreUnknownKeys = true }
+private val metricsJsonFormat = Json { ignoreUnknownKeys = true }
+
+/** Trims free-text fields and drops blank optional values before persisting. */
+private fun MetricItem.normalized() = copy(
+    name = name.trim(),
+    value = value.trim(),
+    targetValue = targetValue?.trim()?.takeIf { it.isNotEmpty() },
+    customUnit = customUnit?.trim()?.takeIf { it.isNotEmpty() }
+)
 
 private fun PeriodGoalEntity.toDomain() = PeriodGoal(
     id = id,
@@ -1709,28 +1715,8 @@ private fun PeriodGoalEntity.toDomain() = PeriodGoal(
     completedAtMillis = completedAtMillis,
     editedAtMillis = editedAtMillis,
     metrics = runCatching {
-        periodMetricsJson.decodeFromString<List<PeriodMetricData>>(metricsJson)
-    }.getOrDefault(emptyList()).map { it.toDomain() }
-)
-
-private fun PeriodMetricData.toDomain() = PeriodMetric(
-    name = name,
-    value = value,
-    targetValue = targetValue,
-    unit = runCatching { MetricUnit.valueOf(unit) }.getOrDefault(MetricUnit.None),
-    customUnit = customUnit,
-    sortOrder = sortOrder,
-    enabled = enabled
-)
-
-private fun PeriodMetric.toData() = PeriodMetricData(
-    name = name.trim(),
-    value = value.trim(),
-    targetValue = targetValue?.trim()?.takeIf { it.isNotEmpty() },
-    unit = unit.name,
-    customUnit = customUnit?.trim()?.takeIf { it.isNotEmpty() },
-    sortOrder = sortOrder,
-    enabled = enabled
+        metricsJsonFormat.decodeFromString<List<MetricItem>>(metricsJson)
+    }.getOrDefault(emptyList())
 )
 
 private fun DailyReflectStatsEntity.toDomain(tagRollups: List<DailyTagRollup> = emptyList()) = DailyReflectStat(
@@ -1825,28 +1811,8 @@ private fun NestedListItemEntity.toNestedListItem(
         .getOrDefault(MetricRollupPolicy.IncludeChildren),
     showTrackedMinutes = showTrackedMinutes,
     manualMetrics = runCatching {
-        nestedManualMetricsJson.decodeFromString<List<NestedManualMetricData>>(manualMetricsJson)
-    }.getOrDefault(emptyList()).map { it.toDomain() },
+        metricsJsonFormat.decodeFromString<List<MetricItem>>(manualMetricsJson)
+    }.getOrDefault(emptyList()),
     createdAtMillis = createdAtMillis,
     updatedAtMillis = updatedAtMillis
-)
-
-private fun NestedManualMetricData.toDomain() = NestedManualMetric(
-    name = name,
-    value = value,
-    targetValue = targetValue,
-    unit = runCatching { MetricUnit.valueOf(unit) }.getOrDefault(MetricUnit.None),
-    customUnit = customUnit,
-    sortOrder = sortOrder,
-    enabled = enabled
-)
-
-private fun NestedManualMetric.toData() = NestedManualMetricData(
-    name = name.trim(),
-    value = value.trim(),
-    targetValue = targetValue?.trim()?.takeIf { it.isNotEmpty() },
-    unit = unit.name,
-    customUnit = customUnit?.trim()?.takeIf { it.isNotEmpty() },
-    sortOrder = sortOrder,
-    enabled = enabled
 )

@@ -8,6 +8,7 @@ import com.checkit.data.ListWriteInput
 import com.checkit.data.NoteWriteInput
 import com.checkit.data.TagWriteInput
 import com.checkit.data.TaskWriteInput
+import com.checkit.domain.MetricItem
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
@@ -24,12 +25,11 @@ import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedDocument
 import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemMove
-import com.checkit.domain.NestedManualMetric
+
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.NoteItem
 import com.checkit.domain.PeriodGoal
 import com.checkit.domain.Period
-import com.checkit.domain.PeriodMetric
 
 import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TagItem
@@ -950,7 +950,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
     override suspend fun updateNestedItemDateRange(itemId: Long, startDate: LocalDate?, endDate: LocalDate?) {}
     override suspend fun updateNestedItemTags(itemId: Long, tagIds: List<Long>) {}
     override suspend fun updateNestedItemMetricSettings(itemId: Long, actualMinutes: Int, metricRollupPolicy: MetricRollupPolicy, showTrackedMinutes: Boolean) {}
-    override suspend fun replaceNestedManualMetrics(itemId: Long, metrics: List<NestedManualMetric>) {}
+    override suspend fun replaceNestedManualMetrics(itemId: Long, metrics: List<MetricItem>) {}
     override suspend fun setNestedItemCheckboxEnabled(itemId: Long, checkboxEnabled: Boolean) {}
     override suspend fun setNestedItemsChecked(itemIds: List<Long>, checked: Boolean) {}
     override suspend fun toggleNestedItemCollapsed(itemId: Long) {}

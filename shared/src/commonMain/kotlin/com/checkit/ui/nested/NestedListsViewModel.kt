@@ -3,13 +3,14 @@ package com.checkit.ui.nested
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.checkit.data.SettingsRepository
+import com.checkit.domain.MetricItem
 import com.checkit.domain.MetricRollupPolicy
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedDocument
 import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemNode
 import com.checkit.domain.NestedListItem
-import com.checkit.domain.NestedManualMetric
+
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.TagItem
 import com.checkit.domain.TaskPriority
@@ -498,7 +499,7 @@ class NestedListsViewModel(
         viewModelScope.launch { updateItemMetricSettingsUseCase(itemId, min, policy, show) }
     }
 
-    fun replaceManualMetrics(itemId: Long, metrics: List<NestedManualMetric>) {
+    fun replaceManualMetrics(itemId: Long, metrics: List<MetricItem>) {
         viewModelScope.launch { replaceNestedManualMetricsUseCase(itemId, metrics) }
     }
 

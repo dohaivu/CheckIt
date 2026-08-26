@@ -14,7 +14,6 @@ import androidx.sqlite.SQLiteConnection
 import com.checkit.domain.TaskType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
-import kotlinx.serialization.Serializable
 
 @Entity(tableName = "lists")
 data class ListEntity(
@@ -165,22 +164,6 @@ data class PeriodGoalEntity(
     val editedAtMillis: Long? = null,
     /** Custom metrics stored inline as JSON; always loaded/saved with the goal. */
     val metricsJson: String = "[]"
-)
-
-/**
- * A manually tracked metric attached to a [PeriodGoalEntity], mirroring
- * [NestedManualMetric]: free-form name/value pairs with an optional unit.
- * Serialized to [PeriodGoalEntity.metricsJson].
- */
-@Serializable
-data class PeriodMetricData(
-    val name: String,
-    val value: String,
-    val targetValue: String? = null,
-    val unit: String = "None",
-    val customUnit: String? = null,
-    val sortOrder: Int = 0,
-    val enabled: Boolean = true
 )
 
 /** Precomputed daily aggregates feeding the Reflect tab. One row per day. */
@@ -561,22 +544,6 @@ data class NestedListItemEntity(
     val updatedAtMillis: Long,
     /** Custom metrics stored inline as JSON; always loaded/saved with the item. */
     val manualMetricsJson: String = "[]"
-)
-
-/**
- * A manually tracked metric attached to a [NestedListItemEntity], mirroring
- * [NestedManualMetric]: free-form name/value pairs with an optional unit.
- * Serialized to [NestedListItemEntity.manualMetricsJson].
- */
-@Serializable
-data class NestedManualMetricData(
-    val name: String,
-    val value: String,
-    val targetValue: String? = null,
-    val unit: String = "None",
-    val customUnit: String? = null,
-    val sortOrder: Int = 0,
-    val enabled: Boolean = true
 )
 
 @Entity(

@@ -3,13 +3,14 @@ package com.checkit.ui.reflect
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.checkit.data.CheckItRepository
+import com.checkit.domain.MetricItem
 import com.checkit.domain.DailyReflectStat
 import com.checkit.domain.DoneItemSummary
 import com.checkit.domain.FocusPeriod
 import com.checkit.domain.HabitDailyRollup
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.PeriodGoal
-import com.checkit.domain.PeriodMetric
+
 import com.checkit.domain.usecase.ObservePeriodGoalsUseCase
 import com.checkit.domain.usecase.SavePeriodGoalUseCase
 import com.checkit.ui.UiEvent
@@ -224,7 +225,7 @@ class ReflectViewModel(
         _editor.update { editor -> editor?.copy(rating = value) }
     }
 
-    fun updateEditorMetrics(value: List<PeriodMetric>) {
+    fun updateEditorMetrics(value: List<MetricItem>) {
         _editor.update { editor -> editor?.copy(metrics = value) }
     }
 

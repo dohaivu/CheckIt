@@ -1,9 +1,10 @@
 package com.checkit.domain.usecase
 
 import com.checkit.data.CheckItRepository
+import com.checkit.domain.MetricItem
 import com.checkit.domain.FocusPeriod
 import com.checkit.domain.PeriodGoal
-import com.checkit.domain.PeriodMetric
+
 import kotlin.time.Clock
 
 /**
@@ -18,7 +19,7 @@ class SavePeriodGoalUseCase(
         review: String,
         goal: String? = null,
         rating: Float = 0f,
-        metrics: List<PeriodMetric> = emptyList()
+        metrics: List<MetricItem> = emptyList()
     ) {
         val now = Clock.System.now().toEpochMilliseconds()
         repository.savePeriodGoal(

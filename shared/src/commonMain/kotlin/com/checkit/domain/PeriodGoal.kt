@@ -19,22 +19,8 @@ data class PeriodGoal(
     val completedAtMillis: Long? = null,
     val editedAtMillis: Long? = null,
     /** Custom/manual metrics tracked for this period. */
-    val metrics: List<PeriodMetric> = emptyList()
+    val metrics: List<MetricItem> = emptyList()
 ) {
     val startDate: LocalDate get() = LocalDate.fromEpochDays(startEpochDays)
     val endDateInclusive: LocalDate get() = LocalDate.fromEpochDays(endEpochDays - 1)
 }
-
-/**
- * A manually tracked metric attached to a [PeriodGoal], mirroring
- * [NestedManualMetric]: free-form name/value pairs with an optional unit.
- */
-data class PeriodMetric(
-    val name: String,
-    val value: String,
-    val targetValue: String? = null,
-    val unit: MetricUnit = MetricUnit.None,
-    val customUnit: String? = null,
-    val sortOrder: Int = 0,
-    val enabled: Boolean = true
-)

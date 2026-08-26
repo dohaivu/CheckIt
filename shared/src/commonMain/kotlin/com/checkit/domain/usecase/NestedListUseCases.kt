@@ -1,6 +1,7 @@
 package com.checkit.domain.usecase
 
 import com.checkit.data.CheckItRepository
+import com.checkit.domain.MetricItem
 import com.checkit.domain.NestedDocument
 import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemMove
@@ -10,7 +11,7 @@ import com.checkit.domain.TagItem
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.MetricRollupPolicy
-import com.checkit.domain.NestedManualMetric
+
 import com.checkit.domain.TaskPriority
 import kotlinx.datetime.LocalDate
 import kotlinx.coroutines.flow.Flow
@@ -136,7 +137,7 @@ class UpdateNestedItemMetricSettingsUseCase(
 class ReplaceNestedManualMetricsUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(itemId: Long, metrics: List<NestedManualMetric>) =
+    suspend operator fun invoke(itemId: Long, metrics: List<MetricItem>) =
         repository.replaceNestedManualMetrics(itemId, metrics)
 }
 

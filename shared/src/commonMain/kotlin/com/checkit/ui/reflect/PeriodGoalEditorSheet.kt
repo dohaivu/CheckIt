@@ -56,8 +56,9 @@ import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.cancel
 import checkit.shared.generated.resources.reflect_review_card_title
 import checkit.shared.generated.resources.reflect_review_save
+import com.checkit.domain.MetricItem
 import com.checkit.domain.MetricUnit
-import com.checkit.domain.PeriodMetric
+
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.CompactFlatTextField
@@ -72,7 +73,7 @@ internal fun PeriodGoalEditorSheet(
     onReviewChange: (String) -> Unit,
     onGoalChange: (String) -> Unit,
     onRatingChange: (Float) -> Unit,
-    onMetricsChange: (List<PeriodMetric>) -> Unit,
+    onMetricsChange: (List<MetricItem>) -> Unit,
     onSave: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -283,9 +284,9 @@ private fun RatingBar(
 /** Add/edit/delete custom metrics for the goal (mirrors nested-item details dialog, section 3). */
 @Composable
 private fun PeriodMetricsSection(
-    metrics: List<PeriodMetric>,
+    metrics: List<MetricItem>,
     enabled: Boolean,
-    onMetricsChange: (List<PeriodMetric>) -> Unit
+    onMetricsChange: (List<MetricItem>) -> Unit
 ) {
     var unitExpandedIndex by remember { mutableStateOf<Int?>(null) }
 
@@ -308,7 +309,7 @@ private fun PeriodMetricsSection(
                 onClick = {
                     if (!enabled) return@TextButton
                     onMetricsChange(
-                        metrics + PeriodMetric(
+                        metrics + MetricItem(
                             name = "",
                             value = "",
                             sortOrder = metrics.size

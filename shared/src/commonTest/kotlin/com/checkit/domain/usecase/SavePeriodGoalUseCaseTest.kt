@@ -1,9 +1,10 @@
 package com.checkit.domain.usecase
 
 import com.checkit.domain.FocusPeriod
+import com.checkit.domain.MetricItem
 import com.checkit.domain.MetricUnit
 import com.checkit.domain.Period
-import com.checkit.domain.PeriodMetric
+
 import com.checkit.ui.tasks.FakeCheckItRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -92,7 +93,7 @@ class SavePeriodGoalUseCaseTest {
             focus,
             review = "Done",
             metrics = listOf(
-                PeriodMetric(
+                MetricItem(
                     name = "Distance",
                     value = "20",
                     unit = MetricUnit.Custom,
