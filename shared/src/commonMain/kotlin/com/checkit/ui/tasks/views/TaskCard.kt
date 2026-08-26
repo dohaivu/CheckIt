@@ -44,15 +44,15 @@ import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskType
-import com.checkit.ui.tasks.DailyPlanIcon
-import com.checkit.ui.tasks.HabitIcon
-import com.checkit.ui.tasks.NoteIcon
-import com.checkit.ui.tasks.TaskIcon
-import com.checkit.ui.tasks.cardColor
-import com.checkit.ui.tasks.isOverdue
-import com.checkit.ui.tasks.priorityColor
-import com.checkit.ui.tasks.timeRangeLabel
-import com.checkit.ui.tasks.toClockLabel
+import com.checkit.ui.DailyPlanIcon
+import com.checkit.ui.HabitIcon
+import com.checkit.ui.NoteIcon
+import com.checkit.ui.TaskIcon
+import com.checkit.ui.cardColor
+import com.checkit.ui.isOverdue
+import com.checkit.ui.priorityColor
+import com.checkit.ui.timeRangeLabel
+import com.checkit.ui.toClockLabel
 
 @Composable
 internal fun TaskCard(

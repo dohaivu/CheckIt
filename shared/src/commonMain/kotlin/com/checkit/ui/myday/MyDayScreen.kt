@@ -88,9 +88,9 @@ import com.checkit.ui.journal.JournalListSheet
 import com.checkit.ui.journal.JournalSection
 import com.checkit.ui.journal.JournalThoughtCard
 import com.checkit.ui.localizedCompactDateWithDayName
-import com.checkit.ui.tasks.TimelineItem
-import com.checkit.ui.tasks.TimelineItemType
-import com.checkit.ui.tasks.isOverdue
+import com.checkit.ui.TimelineItem
+import com.checkit.ui.TimelineItemType
+import com.checkit.ui.isOverdue
 import com.checkit.ui.tasks.views.AgendaView
 import com.checkit.ui.tasks.views.DailyPlanAllDayCard
 import com.checkit.ui.tasks.views.DailyPlanTimelineCard

@@ -73,7 +73,7 @@ import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.localizedCompactDateWithDayName
-import com.checkit.ui.tasks.toClockLabel
+import com.checkit.ui.toClockLabel
 import com.checkit.ui.tasks.views.DailyPlanTimelineCard
 import com.checkit.ui.tasks.views.SprintButton
 import com.checkit.ui.tasks.views.TaskTimelineCard

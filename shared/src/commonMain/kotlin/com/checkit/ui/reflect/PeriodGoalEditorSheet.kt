@@ -62,6 +62,7 @@ import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.CompactFlatTextField
 import com.checkit.ui.components.MarkdownVisualTransformation
+import com.checkit.ui.displayName
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -428,7 +429,8 @@ private fun PeriodMetricsSection(
                                             }
                                         )
                                         unitExpandedIndex = null
-                                    }
+                                    },
+                                    modifier = Modifier.height(30.dp)
                                 )
                             }
                         }
@@ -448,17 +450,4 @@ private fun PeriodMetricsSection(
             }
         }
     }
-}
-
-private fun MetricUnit.displayName(customUnit: String? = null): String = when (this) {
-    MetricUnit.None -> "None"
-    MetricUnit.Custom -> customUnit?.takeIf { it.isNotBlank() } ?: "Custom"
-    MetricUnit.Percentage -> "%"
-    MetricUnit.Points -> "points"
-    MetricUnit.Count -> "count"
-    MetricUnit.Items -> "items"
-    MetricUnit.Hours -> "hours"
-    MetricUnit.Days -> "days"
-    MetricUnit.Currency -> "currency"
-    MetricUnit.Rating -> "rating"
 }

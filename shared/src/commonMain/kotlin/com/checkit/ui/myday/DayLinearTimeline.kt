@@ -37,7 +37,7 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.TagItem
 import com.checkit.ui.components.statusBreathingGlow
 import com.checkit.ui.shortcutDurationLabel
-import com.checkit.ui.tasks.cardColor
+import com.checkit.ui.cardColor
 import com.checkit.ui.theme.toColor
 import kotlin.math.roundToInt
 

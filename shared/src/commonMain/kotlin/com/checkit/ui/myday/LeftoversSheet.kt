@@ -25,7 +25,7 @@ import checkit.shared.generated.resources.leftovers_sheet_empty
 import checkit.shared.generated.resources.leftovers_sheet_title
 import com.checkit.domain.DailyPlanItem
 import com.checkit.ui.components.AppEditorBottomSheet
-import com.checkit.ui.tasks.isOverdue
+import com.checkit.ui.isOverdue
 import com.checkit.ui.tasks.views.DailyPlanTimelineCard
 import com.checkit.ui.today
 import org.jetbrains.compose.resources.stringResource

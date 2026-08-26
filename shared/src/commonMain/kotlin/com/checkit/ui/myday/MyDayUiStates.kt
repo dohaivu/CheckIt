@@ -15,7 +15,7 @@ import com.checkit.domain.TagItem
 import com.checkit.domain.YesterdayLeftovers
 import com.checkit.domain.defaultLeftoverAction
 import com.checkit.ui.tasks.EditorMode
-import com.checkit.ui.tasks.isOverdue
+import com.checkit.ui.isOverdue
 import com.checkit.ui.today
 import com.checkit.ui.currentMyDayTimeMinutes
 import kotlinx.datetime.LocalDate

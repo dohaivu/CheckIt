@@ -137,7 +137,9 @@ import com.checkit.ui.components.FocusPeriodHeader
 import com.checkit.ui.components.PeriodPicker
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TagPill
-import com.checkit.ui.tasks.noRippleClickable
+import com.checkit.ui.displayName
+import com.checkit.ui.noRippleClickable
+import com.checkit.ui.unitLabel
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
@@ -944,26 +946,7 @@ private fun MetricChip(content: AnnotatedString, manual: Boolean = false) {
 private fun NestedManualMetric.displayUnit(): String? = when (unit) {
     MetricUnit.None -> null
     MetricUnit.Custom -> customUnit?.takeIf { it.isNotBlank() }
-    else -> unitLabel(unit)
-}
-
-private fun MetricUnit.displayName(customUnit: String? = null): String = when (this) {
-    MetricUnit.None -> "None"
-    MetricUnit.Custom -> customUnit?.takeIf { it.isNotBlank() } ?: "Custom"
-    else -> unitLabel(this)
-}
-
-private fun unitLabel(unit: MetricUnit): String = when (unit) {
-    MetricUnit.None -> ""
-    MetricUnit.Percentage -> "%"
-    MetricUnit.Points -> "points"
-    MetricUnit.Count -> "count"
-    MetricUnit.Items -> "items"
-    MetricUnit.Hours -> "hours"
-    MetricUnit.Days -> "days"
-    MetricUnit.Currency -> "currency"
-    MetricUnit.Rating -> "rating"
-    MetricUnit.Custom -> ""
+    else -> unit.unitLabel()
 }
 
 @Composable

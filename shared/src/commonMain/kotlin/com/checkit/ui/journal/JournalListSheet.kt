@@ -40,7 +40,7 @@ import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.TagPlain
 import com.checkit.ui.components.asAnnotatedString
 import com.checkit.ui.components.getMoodColorFromEmoji
-import com.checkit.ui.tasks.toClockLabel
+import com.checkit.ui.toClockLabel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

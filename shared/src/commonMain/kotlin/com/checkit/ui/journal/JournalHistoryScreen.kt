@@ -43,10 +43,9 @@ import com.checkit.ui.components.TagPlain
 import com.checkit.ui.components.asAnnotatedString
 import com.checkit.ui.components.getMoodColorFromEmoji
 import com.checkit.ui.reflect.label
-import com.checkit.ui.reflect.rangeLabel
 import com.checkit.ui.reflect.reviewIcon
-import com.checkit.ui.tasks.TimelineItem
-import com.checkit.ui.tasks.TimelineItemType
+import com.checkit.ui.TimelineItem
+import com.checkit.ui.TimelineItemType
 import com.checkit.ui.tasks.views.AgendaView
 import kotlinx.datetime.LocalDate
 

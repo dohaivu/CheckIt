@@ -47,7 +47,6 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.NoteItem
-import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveNotesForDateUseCase
@@ -55,10 +54,10 @@ import com.checkit.shared.R
 import com.checkit.ui.myday.DayViewProjection
 import com.checkit.ui.myday.doneWorkMinutes
 import com.checkit.ui.myday.toDayViewProjection
-import com.checkit.ui.tasks.cardColor
-import com.checkit.ui.tasks.isOverdue
-import com.checkit.ui.tasks.toClockLabel
-import com.checkit.ui.tasks.toDurationLabel
+import com.checkit.ui.cardColor
+import com.checkit.ui.isOverdue
+import com.checkit.ui.toClockLabel
+import com.checkit.ui.toDurationLabel
 import com.checkit.ui.today
 import kotlinx.coroutines.flow.first
 import kotlinx.datetime.TimeZone

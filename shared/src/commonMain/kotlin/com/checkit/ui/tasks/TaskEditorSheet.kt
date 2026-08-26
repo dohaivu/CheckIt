@@ -56,6 +56,9 @@ import com.checkit.domain.TagItem
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskType
+import com.checkit.ui.HabitIcon
+import com.checkit.ui.NoteIcon
+import com.checkit.ui.TaskIcon
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.AppOutlinedTextField
@@ -67,6 +70,8 @@ import com.checkit.ui.components.MarkdownVisualTransformation
 import com.checkit.ui.components.PriorityPicker
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.components.TimeRangePicker
+import com.checkit.ui.isOverdue
+import com.checkit.ui.priorityColor
 import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
 

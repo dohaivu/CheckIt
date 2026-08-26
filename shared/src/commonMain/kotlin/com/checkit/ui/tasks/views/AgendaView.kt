@@ -39,9 +39,9 @@ import androidx.compose.ui.unit.sp
 import com.checkit.domain.JournalEntry
 import com.checkit.ui.shortMonthName
 import com.checkit.ui.shortName
-import com.checkit.ui.tasks.TimelineItem
-import com.checkit.ui.tasks.TimelineItemType
-import com.checkit.ui.tasks.toClockLabel
+import com.checkit.ui.TimelineItem
+import com.checkit.ui.TimelineItemType
+import com.checkit.ui.toClockLabel
 import com.checkit.ui.today
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DateTimeUnit

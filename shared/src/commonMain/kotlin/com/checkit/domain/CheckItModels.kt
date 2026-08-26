@@ -1,7 +1,6 @@
 package com.checkit.domain
 
 import kotlinx.datetime.LocalDate
-import kotlinx.serialization.Serializable
 
 data class AppConfig(val versionName: String)
 
@@ -345,11 +344,12 @@ enum class MetricUnit {
     None,
     Percentage,
     Points,
-    Count,
     Items,
     Hours,
     Days,
-    Currency,
     Rating,
+    VND,
+    Lan,
+    Km,
     Custom
 }
