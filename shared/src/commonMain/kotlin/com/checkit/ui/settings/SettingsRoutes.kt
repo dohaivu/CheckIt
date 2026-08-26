@@ -9,4 +9,7 @@ internal sealed interface SettingsRoute : NavKey {
 
     @Serializable
     data object Reminders : SettingsRoute
+
+    @Serializable
+    data object DevOptions : SettingsRoute
 }
