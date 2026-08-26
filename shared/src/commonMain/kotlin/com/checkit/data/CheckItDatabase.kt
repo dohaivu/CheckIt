@@ -558,25 +558,18 @@ data class NestedListItemEntity(
     val metricRollupPolicy: String = "IncludeChildren",
     val showTrackedMinutes: Boolean = false,
     val createdAtMillis: Long,
-    val updatedAtMillis: Long
+    val updatedAtMillis: Long,
+    /** Custom metrics stored inline as JSON; always loaded/saved with the item. */
+    val manualMetricsJson: String = "[]"
 )
 
-@Entity(
-    tableName = "nested_manual_metrics",
-    foreignKeys = [
-        ForeignKey(
-            entity = NestedListItemEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["itemId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [Index("itemId"), Index(value = ["itemId", "sortOrder"])]
-)
-data class NestedManualMetricEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0L,
-    val itemId: Long,
+/**
+ * A manually tracked metric attached to a [NestedListItemEntity], mirroring
+ * [NestedManualMetric]: free-form name/value pairs with an optional unit.
+ * Serialized to [NestedListItemEntity.manualMetricsJson].
+ */
+@Serializable
+data class NestedManualMetricData(
     val name: String,
     val value: String,
     val targetValue: String? = null,
@@ -632,12 +625,11 @@ data class NestedItemTagEntity(
         NestedDocumentEntity::class,
         NestedListItemEntity::class,
         NestedItemTagEntity::class,
-        NestedManualMetricEntity::class,
         DailyReflectStatsEntity::class,
         DailyTagRollupEntity::class,
         HabitDailyRollupEntity::class
     ],
-    version = 11,
+    version = 12,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)

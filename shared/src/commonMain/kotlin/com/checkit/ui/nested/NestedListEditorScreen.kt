@@ -1160,7 +1160,6 @@ private fun NestedItemDetailsDialog(
                         TextButton(
                             onClick = {
                                 metrics = metrics + NestedManualMetric(
-                                    itemId = item.id,
                                     name = "",
                                     value = "",
                                     sortOrder = metrics.size

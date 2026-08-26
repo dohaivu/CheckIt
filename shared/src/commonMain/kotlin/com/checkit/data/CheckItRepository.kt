@@ -1379,23 +1379,20 @@ class RoomCheckItRepository(
         combine(
             dao.observeNestedDocuments(),
             dao.observeNestedItems(documentId),
-            dao.observeNestedItemTags(documentId),
-            dao.observeNestedManualMetrics(documentId)
-        ) { documents, items, links, metricEntities ->
+            dao.observeNestedItemTags(documentId)
+        ) { documents, items, links ->
             val tagsById = links.map { it.tagId }.distinct()
                 .takeIf { it.isNotEmpty() }
                 ?.let { dao.tagsByIds(it).associateBy(TagEntity::id) }
                 .orEmpty()
             val tagsByItemId = links.groupBy(NestedItemTagEntity::itemId)
-            val metricsByItemId = metricEntities.groupBy(NestedManualMetricEntity::itemId)
             NestedDocumentTree(
                 document = documents.firstOrNull { it.id == documentId }
                     ?.let { NestedDocument(it.id, it.title, it.createdAtMillis, it.updatedAtMillis) }
                     ?: NestedDocument(id = documentId, title = "", createdAtMillis = 0L, updatedAtMillis = 0L),
                 rootNodes = buildNestedTree(items.map { item ->
                     item.toNestedListItem(
-                        tags = tagsByItemId[item.id].orEmpty().mapNotNull { tagsById[it.tagId]?.toDomain() },
-                        manualMetrics = metricsByItemId[item.id].orEmpty().map { it.toDomain() }
+                        tags = tagsByItemId[item.id].orEmpty().mapNotNull { tagsById[it.tagId]?.toDomain() }
                     )
                 })
             )
@@ -1485,7 +1482,11 @@ class RoomCheckItRepository(
     }
 
     override suspend fun replaceNestedManualMetrics(itemId: Long, metrics: List<NestedManualMetric>) {
-        dao.replaceNestedManualMetrics(itemId, metrics.map { it.toEntity(itemId) })
+        dao.updateNestedItemManualMetrics(
+            itemId = itemId,
+            metricsJson = Json.encodeToString(metrics.map { it.toData() }),
+            updatedAtMillis = Clock.System.now().toEpochMilliseconds()
+        )
     }
 
     override suspend fun updateNestedItemTags(itemId: Long, tagIds: List<Long>) {
@@ -1695,6 +1696,7 @@ private fun DailyPlanItemEntity.toDomain(tags: List<TagItem> = emptyList()) = Da
 )
 
 private val periodMetricsJson = Json { ignoreUnknownKeys = true }
+private val nestedManualMetricsJson = Json { ignoreUnknownKeys = true }
 
 private fun PeriodGoalEntity.toDomain() = PeriodGoal(
     id = id,
@@ -1800,8 +1802,7 @@ private fun NoteEntity.toDomain(
 )
 
 private fun NestedListItemEntity.toNestedListItem(
-    tags: List<TagItem> = emptyList(),
-    manualMetrics: List<NestedManualMetric> = emptyList()
+    tags: List<TagItem> = emptyList()
 ) = NestedListItem(
     id = id,
     documentId = documentId,
@@ -1823,14 +1824,14 @@ private fun NestedListItemEntity.toNestedListItem(
     metricRollupPolicy = runCatching { MetricRollupPolicy.valueOf(metricRollupPolicy) }
         .getOrDefault(MetricRollupPolicy.IncludeChildren),
     showTrackedMinutes = showTrackedMinutes,
-    manualMetrics = manualMetrics,
+    manualMetrics = runCatching {
+        nestedManualMetricsJson.decodeFromString<List<NestedManualMetricData>>(manualMetricsJson)
+    }.getOrDefault(emptyList()).map { it.toDomain() },
     createdAtMillis = createdAtMillis,
     updatedAtMillis = updatedAtMillis
 )
 
-private fun NestedManualMetricEntity.toDomain() = NestedManualMetric(
-    id = id,
-    itemId = itemId,
+private fun NestedManualMetricData.toDomain() = NestedManualMetric(
     name = name,
     value = value,
     targetValue = targetValue,
@@ -1840,9 +1841,7 @@ private fun NestedManualMetricEntity.toDomain() = NestedManualMetric(
     enabled = enabled
 )
 
-private fun NestedManualMetric.toEntity(itemId: Long) = NestedManualMetricEntity(
-    id = id,
-    itemId = itemId,
+private fun NestedManualMetric.toData() = NestedManualMetricData(
     name = name.trim(),
     value = value.trim(),
     targetValue = targetValue?.trim()?.takeIf { it.isNotEmpty() },

@@ -26,8 +26,6 @@ enum class MetricRollupPolicy {
 }
 
 data class NestedManualMetric(
-    val id: Long = 0L,
-    val itemId: Long,
     val name: String,
     val value: String,
     val targetValue: String? = null,
