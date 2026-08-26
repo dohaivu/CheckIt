@@ -3,7 +3,6 @@ package com.checkit.ui.reflect
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,7 +46,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -59,6 +57,7 @@ import checkit.shared.generated.resources.reflect_review_save
 import com.checkit.domain.MetricItem
 import com.checkit.domain.MetricUnit
 
+import com.checkit.ui.RatingBar
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.CompactFlatTextField
@@ -220,63 +219,6 @@ internal fun PeriodGoalEditorSheet(
                 }
             }
             Spacer(Modifier.height(16.dp))
-        }
-    }
-}
-
-@Composable
-private fun RatingBar(
-    rating: Float,
-    onRatingChange: (Float) -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true
-) {
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        repeat(5) { index ->
-            val starValue = index + 1f
-            val isFull = rating >= starValue
-            val isHalf = rating >= starValue - 0.5f && !isFull
-
-            val icon = when {
-                isFull -> Icons.Filled.Star
-                isHalf -> Icons.AutoMirrored.Filled.StarHalf
-                else -> Icons.Filled.StarBorder
-            }
-
-            val tint = if (isFull || isHalf) {
-                MaterialTheme.colorScheme.secondary
-            } else {
-                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-            }
-
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .aspectRatio(1f)
-                    .pointerInput(enabled, rating) {
-                        if (enabled) {
-                            detectTapGestures { offset ->
-                                val isLeft = offset.x < size.width / 2
-                                val newRating = if (isLeft) starValue - 0.5f else starValue
-                                // Toggle logic: if tapping 0.5 and it's already 0.5, set to 0
-                                val finalRating = if (newRating == 0.5f && rating == 0.5f) 0f else newRating
-                                onRatingChange(finalRating)
-                            }
-                        }
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = "Rate $starValue stars",
-                    tint = tint,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
         }
     }
 }

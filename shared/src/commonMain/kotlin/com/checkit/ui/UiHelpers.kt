@@ -2,26 +2,37 @@ package com.checkit.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.EventNote
 import androidx.compose.material.icons.automirrored.filled.Notes
+import androidx.compose.material.icons.automirrored.filled.StarHalf
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.ViewAgenda
 import androidx.compose.material.icons.rounded.CheckBox
 import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
 import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -35,6 +46,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.DailyPlanItem
@@ -337,4 +354,107 @@ fun MetricItem.displayUnit(): String? = when (unit) {
     MetricUnit.VND -> "đ"
     MetricUnit.Lan -> "lần"
     MetricUnit.Km -> "km"
+}
+
+@Composable
+fun RatingBar(
+    rating: Float,
+    onRatingChange: ((Float) -> Unit)? = null,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        repeat(5) { index ->
+            val starValue = index + 1f
+            val isFull = rating >= starValue
+            val isHalf = rating >= starValue - 0.5f && !isFull
+
+            val icon = when {
+                isFull -> Icons.Filled.Star
+                isHalf -> Icons.AutoMirrored.Filled.StarHalf
+                else -> Icons.Filled.StarBorder
+            }
+
+            val tint = if (isFull || isHalf) {
+                MaterialTheme.colorScheme.secondary
+            } else {
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            }
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .aspectRatio(1f)
+                    .then(
+                        if (onRatingChange != null) {
+                            Modifier.pointerInput(enabled, rating) {
+                                if (enabled) {
+                                    detectTapGestures { offset ->
+                                        val isLeft = offset.x < size.width / 2
+                                        val newRating = if (isLeft) starValue - 0.5f else starValue
+                                        // Toggle logic: if tapping 0.5 and it's already 0.5, set to 0
+                                        val finalRating =
+                                            if (newRating == 0.5f && rating == 0.5f) 0f else newRating
+                                        onRatingChange(finalRating)
+                                    }
+                                }
+                            }
+                        } else Modifier
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = "Rate $starValue stars",
+                    tint = tint,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun MetricChip(
+    metric: MetricItem,
+    modifier: Modifier = Modifier
+) {
+    val content = buildAnnotatedString {
+        if (metric.name.isNotBlank()) {
+            append(metric.name)
+            append(" ")
+        }
+        withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)) {
+            append(metric.value)
+        }
+        if (!metric.targetValue.isNullOrBlank()) {
+            append("/")
+            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                append(metric.targetValue)
+            }
+        }
+        val unit = metric.displayUnit()
+        if (unit != null) {
+            append(" ")
+            append(unit)
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f))
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+    ) {
+        Text(
+            text = content,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onTertiaryContainer,
+            maxLines = 1
+        )
+    }
 }

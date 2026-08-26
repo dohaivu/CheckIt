@@ -2,6 +2,7 @@ package com.checkit.ui.reflect
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -32,6 +34,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -54,6 +57,8 @@ import checkit.shared.generated.resources.reflect_reviews_written
 import checkit.shared.generated.resources.tab_reflect
 import com.checkit.domain.PeriodGoal
 import com.checkit.domain.Period
+import com.checkit.ui.MetricChip
+import com.checkit.ui.RatingBar
 import com.checkit.ui.components.ReportPeriod
 import com.checkit.ui.components.ReportPeriodHeader
 import com.checkit.ui.components.TinyTopAppBar
@@ -189,8 +194,8 @@ private fun ReviewCard(
 
     val gradient = Brush.linearGradient(
         colors = listOf(
-            MaterialTheme.colorScheme.primaryContainer,
-            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f)
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
+            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
         )
     )
 
@@ -202,14 +207,17 @@ private fun ReviewCard(
             .padding(20.dp)
     ) {
         Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
                     Icon(
                         imageVector = state.focus.period.reviewIcon(),
                         contentDescription = null,
@@ -222,16 +230,25 @@ private fun ReviewCard(
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 1.2.sp,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
 
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                    contentDescription = stringResource(Res.string.calendar_open_review),
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-                )
+                if (goal != null && goal.rating > 0) {
+                    RatingBar(
+                        rating = goal.rating,
+                        modifier = Modifier.width(80.dp).height(16.dp)
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                        contentDescription = stringResource(Res.string.calendar_open_review),
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                    )
+                }
             }
 
             if (goal == null || goal.review.isBlank()) {
@@ -239,26 +256,45 @@ private fun ReviewCard(
                     text = stringResource(Res.string.reflect_review_empty, periodLabel),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                 )
             } else {
                 Text(
                     text = goal.review.asAnnotatedString(),
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        lineHeight = 24.sp,
+                        lineHeight = 22.sp,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurface
-                    )
+                    ),
+                    maxLines = 6,
+                    overflow = TextOverflow.Ellipsis
                 )
+            }
+
+            if (goal != null && goal.metrics.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    goal.metrics.forEach { metric ->
+                        MetricChip(metric)
+                    }
+                }
             }
 
             goal?.goal?.takeIf { it.isNotBlank() }?.let { periodGoal ->
                 Column (
-                    verticalArrangement = Arrangement.spacedBy(0.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                     horizontalAlignment = Alignment.Start,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 8.dp)
+                        .padding(top = 4.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.4f))
+                        .padding(10.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -267,22 +303,25 @@ private fun ReviewCard(
                         Icon(
                             imageVector = Icons.Default.Schedule,
                             contentDescription = null,
-                            modifier = Modifier.size(16.dp),
+                            modifier = Modifier.size(14.dp),
                             tint = MaterialTheme.colorScheme.secondary
                         )
                         Text(
-                            text = "This ${periodLabel.uppercase()} focus",
-                            style = MaterialTheme.typography.labelMedium,
+                            text = "${periodLabel.uppercase()} FOCUS",
+                            style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.ExtraBold,
                             letterSpacing = 1.sp,
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
                         )
                     }
                     Text(
                         text = periodGoal.asAnnotatedString(),
                         style = MaterialTheme.typography.bodySmall.copy(
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Medium
+                        ),
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
