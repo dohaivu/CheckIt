@@ -43,7 +43,6 @@ import com.checkit.ui.localization.AppLocaleProvider
 import com.checkit.ui.myday.DailyPlanItemEditorSheet
 import com.checkit.ui.journal.JournalEntryEditorSheet
 import com.checkit.ui.journal.JournalHistorySheet
-import com.checkit.ui.journal.JournalListSheet
 import com.checkit.ui.myday.MyDayScreen
 import com.checkit.ui.nested.NestedListScreen
 import com.checkit.ui.reflect.PeriodReviewEditorSheet
@@ -307,7 +306,6 @@ fun CheckItApp(
                                             calendarViewModel = viewModels.calendar,
                                             onDateDoubleClick = { date -> viewModels.task.openNewTaskOnDate(date) },
                                             onDailyPlanItemClick = viewModels.myDay::openItemEditor,
-                                            onOpenJournalDay = viewModels.myDay::openJournalList,
                                             onOpenJournalHistory = { showJournalHistory = true },
                                             onAddDailyPlanItem = { date -> viewModels.myDay.openDailyPlan(date = date) },
                                             onTaskClick = viewModels.task::openTask,
@@ -478,16 +476,6 @@ fun CheckItApp(
                             onDelete = { editor.entryId?.let { viewModels.myDay.deleteJournalEntry(it) } }
                         )
                     }
-                    if (myDayUiState.showJournalList) {
-                        JournalListSheet(
-                            entries = myDayUiState.journalSheetEntries,
-                            onEntryClick = { entry ->
-                                viewModels.myDay.dismissJournalList()
-                                viewModels.myDay.openJournalEditor(entry)
-                            },
-                            onDismiss = viewModels.myDay::dismissJournalList
-                        )
-                    }
                     if (showJournalHistory) {
                         JournalHistorySheet(
                             state = journalHistoryUiState,
@@ -521,7 +509,7 @@ fun CheckItApp(
                         PeriodReviewEditorSheet(
                             editor = editor,
                             onContentChange = viewModels.reflect::updateEditorContent,
-                            onNextPeriodIntentChange = viewModels.reflect::updateEditorNextPeriodIntent,
+                            onPeriodIntentChange = viewModels.reflect::updateEditorPeriodIntent,
                             onSave = viewModels.reflect::saveEditor,
                             onDismiss = viewModels.reflect::dismissEditor
                         )

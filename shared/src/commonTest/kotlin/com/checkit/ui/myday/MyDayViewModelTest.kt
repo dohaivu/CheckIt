@@ -425,7 +425,7 @@ class MyDayViewModelTest {
     }
 
     @Test
-    fun journalVisibleEntriesIncludeOnlyToday() = runTest(dispatcher) {
+    fun journalEntriesIncludeOnlyToday() = runTest(dispatcher) {
         val today = today()
         repository.setJournalEntries(
             listOf(
@@ -454,7 +454,7 @@ class MyDayViewModelTest {
         )
         dispatcher.scheduler.advanceUntilIdle()
 
-        assertEquals(listOf(1L, 2L), viewModel.uiState.value.journalVisibleEntries.map { it.id })
+        assertEquals(listOf(1L, 2L), viewModel.uiState.value.journalEntries.map { it.id })
     }
 
     @Test

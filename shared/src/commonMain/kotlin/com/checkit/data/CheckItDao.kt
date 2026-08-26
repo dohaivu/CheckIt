@@ -453,20 +453,6 @@ interface CheckItDao {
 
     @Query(
         """
-        UPDATE daily_plan_items
-        SET status = 'Done',
-            completedAtMillis = :completedAtMillis
-        WHERE taskId = :taskId
-          AND status = 'Planned'
-        """
-    )
-    suspend fun completePlannedDailyPlanItemsForTask(
-        taskId: Long,
-        completedAtMillis: Long
-    )
-
-    @Query(
-        """
         DELETE FROM daily_plan_items
         WHERE taskId = :taskId
           AND status = 'Planned'

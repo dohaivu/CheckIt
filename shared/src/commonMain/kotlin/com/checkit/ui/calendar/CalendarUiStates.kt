@@ -6,9 +6,11 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyReflectStat
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.NoteItem
+import com.checkit.domain.Period
 import com.checkit.domain.PeriodReview
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
+import com.checkit.domain.startOf
 import com.checkit.ui.components.ReportPeriod
 import com.checkit.ui.components.parseMarkdownToAnnotatedString
 import com.checkit.ui.firstDayOfMonth
@@ -23,7 +25,7 @@ data class CalendarUiState(
     val selectedDate: LocalDate = today(),
     val dailyPlans: List<DailyPlan> = emptyList(),
     val dailyStatsByDate: Map<LocalDate, DailyReflectStat> = emptyMap(),
-    val dayReviews: List<PeriodReview> = emptyList(),
+    val periodReviews: List<PeriodReview> = emptyList(),
     val journalEntries: List<JournalEntry> = emptyList(),
     val selectedDateTasks: List<TaskItem> = emptyList(),
     val selectedDateNotes: List<NoteItem> = emptyList(),
@@ -32,21 +34,40 @@ data class CalendarUiState(
     val calendarDisplayMode: CalendarDisplayMode = CalendarDisplayMode.Week,
     val selectedTagIds: Set<Long> = emptySet(),
     val isMonthlyWinsExpanded: Boolean = false
-) {
+    ) {
     val monthlyWins: List<Pair<LocalDate, AnnotatedString>> by lazy {
-        dayReviews
+        periodReviews
+            .filter { it.period == Period.Day }
             .filter { it.periodStartDate.isSameMonth(selectedMonth) && it.content.isNotBlank() }
             .sortedByDescending { it.periodStartDate }
             .map { it.periodStartDate to parseMarkdownToAnnotatedString(it.content) }
     }
 
-    /** Win-of-the-day note for the currently selected date, if one was recorded. */
-    val selectedDateReview: String? by lazy {
-        dayReviews
-            .firstOrNull { it.periodStartDate == selectedDate }
-            ?.content
-            ?.takeIf { it.isNotBlank() }
+    /** Review record (content + intent) for the currently selected date. */
+    val selectedDatePeriodReview: PeriodReview? by lazy {
+        periodReviews.firstOrNull {
+            it.period == Period.Day && it.periodStartDate == selectedDate
+        }
     }
+
+    /** periodIntent recorded on the week containing the selected date, if any. */
+    val selectedWeekIntent: String? by lazy {
+        intentFor(Period.Week)
+    }
+
+    /** periodIntent recorded on the month containing the selected date, if any. */
+    val selectedMonthIntent: String? by lazy {
+        intentFor(Period.Month)
+    }
+
+    private fun intentFor(period: Period): String? =
+        periodReviews
+            .firstOrNull {
+                it.period == period &&
+                    it.periodStartEpochDays == period.startOf(selectedDate).toEpochDays().toInt()
+            }
+            ?.periodIntent
+            ?.takeIf { it.isNotBlank() }
 
     private val filteredDailyPlans: List<DailyPlan> by lazy {
         // Live plans cover today forward; selectedDayPlan back-fills a past

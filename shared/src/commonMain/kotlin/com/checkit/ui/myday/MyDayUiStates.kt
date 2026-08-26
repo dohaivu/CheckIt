@@ -60,11 +60,10 @@ data class MyDayUiState(
     val recentTags: List<TagItem> = emptyList(),
     val lastFabAction: FabAction = FabAction.QuickSprint,
     val dayReviews: List<PeriodReview> = emptyList(),
-    val reviewStreak: Int = 0,
+    /** Journal entries for today. */
     val journalEntries: List<JournalEntry> = emptyList(),
     val journalEditor: JournalEntryEditorState? = null,
     val showJournalList: Boolean = false,
-    val journalListDate: LocalDate? = null,
     val recentLabels: List<String> = emptyList(),
     val isLoading: Boolean = true
 ) {
@@ -77,16 +76,6 @@ data class MyDayUiState(
     /** True when nothing on today's plan sits within ±30 minutes of now (floating quick-add bar). */
     val showFloatingQuickAdd: Boolean =
         !hasDailyPlanItemNearby(items, currentMyDayTimeMinutes())
-
-    /** Journal entries for today (used in the MyDay header). */
-    val journalVisibleEntries: List<JournalEntry> =
-        journalEntries.filter { it.dateEpochDays == today.toEpochDays().toInt() }
-
-    /** Journal entries for the list viewer (can be a different date when opened from Calendar). */
-    val journalSheetEntries: List<JournalEntry> =
-        journalEntries.filter {
-            it.dateEpochDays == (journalListDate ?: today).toEpochDays().toInt()
-        }
 
     val suggestedTasks: List<TaskItem> = tasks
         .filter { task ->
@@ -136,7 +125,6 @@ data class DayCloseUiState(
     val leftoverActions: Map<Long, LeftoverAction> = emptyMap(),
     val winNote: String = "",
     val tomorrowGoal: String = "",
-    val streak: Int = 0,
     val isSubmitting: Boolean = false
 ) {
     fun actionFor(item: DailyPlanItem): LeftoverAction =

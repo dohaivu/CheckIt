@@ -251,7 +251,7 @@ private fun TomorrowGoalSection(
                     shape = RoundedCornerShape(8.dp)
                 )
                 .padding(10.dp),
-            placeholder = "One thing you want to focus on...",
+            placeholder = "3 things you want to focus on...",
             minLines = 3,
             maxLines = 6,
             enabled = enabled,
@@ -269,10 +269,6 @@ private fun SummaryAndTagsRow(state: DayCloseUiState) {
         SummaryChip(label = stringResource(Res.string.day_close_done_count, state.summary.doneCount))
         SummaryChip(label = stringResource(Res.string.day_close_planned_count, state.summary.plannedCount))
         SummaryChip(label = stringResource(Res.string.day_close_done_minutes, state.summary.doneMinutes))
-        
-        if (state.streak > 0) {
-            SummaryChip(label = "${state.streak}-day review streak")
-        }
 
         state.summary.topTags.forEach { tag ->
             TagChip(tag)

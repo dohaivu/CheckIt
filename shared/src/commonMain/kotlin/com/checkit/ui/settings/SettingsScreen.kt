@@ -39,6 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -72,9 +73,13 @@ import com.checkit.ui.AppLanguage
 import com.checkit.ui.AppThemeMode
 import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.TinyTopAppBar
+import com.checkit.domain.usecase.RebuildReflectStatsUseCase
+import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
+import kotlin.time.Clock
 import kotlin.time.Instant
 
 @Composable
@@ -118,7 +123,8 @@ internal fun SettingsScreen(
                         SettingsHomeScreen(
                             state = currentState,
                             viewModel = settingsViewModel,
-                            onOpenReminders = { push(SettingsRoute.Reminders) }
+                            onOpenReminders = { push(SettingsRoute.Reminders) },
+                            onOpenDevOptions = { push(SettingsRoute.DevOptions) }
                         )
                     }
                     SettingsRoute.Reminders -> {
@@ -126,6 +132,12 @@ internal fun SettingsScreen(
                         ReminderSettingsScreen(
                             state = currentState.reminders,
                             viewModel = settingsViewModel,
+                            onBack = { pop() }
+                        )
+                    }
+                    SettingsRoute.DevOptions -> {
+                        DevOptionsScreen(
+                            rebuildReflectStats = koinInject(),
                             onBack = { pop() }
                         )
                     }
@@ -165,7 +177,8 @@ internal fun SettingsScaffold(
 private fun SettingsHomeScreen(
     state: SettingsUiState,
     viewModel: SettingsViewModel,
-    onOpenReminders: () -> Unit
+    onOpenReminders: () -> Unit,
+    onOpenDevOptions: () -> Unit
 ) {
     SettingsScaffold(title = stringResource(Res.string.settings_title)) { contentModifier ->
         Column(
@@ -182,6 +195,13 @@ private fun SettingsHomeScreen(
                         title = "Reminders",
                         subtitle = reminderSummary(state.reminders),
                         onClick = onOpenReminders
+                    )
+                }
+                item {
+                    SettingsRow(
+                        title = "Dev options",
+                        subtitle = "Maintenance tools and diagnostics",
+                        onClick = onOpenDevOptions
                     )
                 }
             }
@@ -253,6 +273,64 @@ private fun ReminderSettingsScreen(
                     enabled = state.autoCarryOverLeftovers,
                     onEnabledChange = viewModel::setAutoCarryOverLeftovers
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DevOptionsScreen(
+    rebuildReflectStats: RebuildReflectStatsUseCase,
+    onBack: () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    var isRebuilding by remember { mutableStateOf(false) }
+    var lastResult by remember { mutableStateOf<String?>(null) }
+
+    SettingsScaffold(
+        title = "Dev options",
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            }
+        }
+    ) { contentModifier ->
+        LazyColumn(
+            modifier = contentModifier.fillMaxSize().padding(horizontal = 16.dp),
+        ) {
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Rebuild reflect stats", fontWeight = FontWeight.SemiBold)
+                        Text(
+                            text = lastResult ?: "Recompute daily rollups from source data",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    TextButton(
+                        onClick = {
+                            scope.launch {
+                                isRebuilding = true
+                                runCatching { rebuildReflectStats() }
+                                    .onSuccess {
+                                        lastResult = "Last rebuilt ${formatLastShown(Clock.System.now().toEpochMilliseconds())}"
+                                    }
+                                    .onFailure { error ->
+                                        lastResult = "Failed: ${error.message ?: "unknown error"}"
+                                    }
+                                isRebuilding = false
+                            }
+                        },
+                        enabled = !isRebuilding
+                    ) {
+                        Text(if (isRebuilding) "Rebuilding…" else "Rebuild")
+                    }
+                }
+                AppHorizontalDivider()
             }
         }
     }

@@ -11,7 +11,6 @@ import com.checkit.domain.NoteItem
 import com.checkit.domain.PeriodReview
 import com.checkit.domain.PlanAssistBannerPolicy
 import com.checkit.domain.Period
-import com.checkit.domain.ReviewStreakPolicy
 import com.checkit.domain.TagItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.YesterdayLeftovers
@@ -28,6 +27,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 
 /** Observes the underlying data sources and derives the My Day UI state. */
 internal class MyDayDataLoader(
@@ -46,8 +46,8 @@ internal class MyDayDataLoader(
                 deps.observeTags(),
                 deps.observeDailyPlans(startDate = today.minus(1, DateTimeUnit.DAY), endDate = today),
                 deps.settingsRepository.settings,
-                deps.observePeriodReviews(),
-                deps.observeJournalEntries()
+                deps.observePeriodReviews(startDate = today, endDateInclusive = today.plus(1, DateTimeUnit.DAY)),
+                deps.observeJournalEntries(startDate = today, endDateInclusive = today)
             ) { array ->
                 ReviewCombined(
                     tasks = array[0] as List<TaskItem>,
@@ -71,7 +71,6 @@ internal class MyDayDataLoader(
                     val dayReviews = combined.dayReviews.filter { it.period == Period.Day }
                     val leftovers = YesterdayLeftovers.items(combined.dailyPlans, date)
                     val pendingLeftovers = YesterdayLeftovers.pendingForToday(leftovers, plan)
-                    val reviewStreak = ReviewStreakPolicy.currentStreak(dayReviews, date)
                     val showReviewBanner = DayCloseBannerPolicy.shouldShow(
                         hasPlanItems = plan?.items?.isNotEmpty() == true,
                         reviewReminderEnabled = combined.settings.reviewReminderEnabled,
@@ -106,8 +105,7 @@ internal class MyDayDataLoader(
                                 leftoverActions = existing.leftoverActions.filterKeys { it in validIds } +
                                     validItems
                                         .filter { it.id !in existing.leftoverActions }
-                                        .associate { it.id to it.defaultReviewAction(combined.dailyPlans) },
-                                streak = reviewStreak
+                                        .associate { it.id to it.defaultReviewAction(combined.dailyPlans) }
                             )
                         }
 
@@ -136,7 +134,6 @@ internal class MyDayDataLoader(
                             recentTags = combined.tags.sortedByDescending { it.lastUsedAtMillis }.take(5),
                             lastFabAction = lastFabAction,
                             dayReviews = dayReviews,
-                            reviewStreak = reviewStreak,
                             recentLabels = combined.settings.recentLabels,
                             showLeftoversBanner = showLeftoversBanner &&
                                 updatedReview == null &&

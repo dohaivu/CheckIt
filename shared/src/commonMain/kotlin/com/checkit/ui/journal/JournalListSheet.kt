@@ -51,7 +51,7 @@ internal fun JournalListSheet(
 ) {
     AppEditorBottomSheet(
         onDismiss = onDismiss,
-        modifier = Modifier.heightIn(max = 700.dp)
+        modifier = Modifier.heightIn(min = 600.dp)
     ) {
         Row(
             modifier = Modifier

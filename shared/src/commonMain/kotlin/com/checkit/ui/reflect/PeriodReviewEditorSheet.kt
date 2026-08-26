@@ -38,7 +38,6 @@ import checkit.shared.generated.resources.reflect_review_save
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.MarkdownVisualTransformation
-import com.checkit.ui.components.asAnnotatedString
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,7 +45,7 @@ import org.jetbrains.compose.resources.stringResource
 internal fun PeriodReviewEditorSheet(
     editor: ReflectReviewEditorState,
     onContentChange: (String) -> Unit,
-    onNextPeriodIntentChange: (String) -> Unit,
+    onPeriodIntentChange: (String) -> Unit,
     onSave: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -86,37 +85,6 @@ internal fun PeriodReviewEditorSheet(
                     )
                 }
             }
-            editor.periodIntent
-                .takeIf { it.isNotBlank() }
-                ?.let { intent ->
-                    Column {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Schedule,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.secondary
-                            )
-                            Text(
-                                text = "Period focus",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.ExtraBold,
-                                letterSpacing = 1.sp,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                        Text(
-                            text = intent.asAnnotatedString(),
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            ),
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
-                    }
-                }
             Text(
                 text = "What are your wins? frictions? lessons?",
                 style = MaterialTheme.typography.labelMedium,
@@ -156,7 +124,7 @@ internal fun PeriodReviewEditorSheet(
                     tint = MaterialTheme.colorScheme.secondary
                 )
                 Text(
-                    text = "NEXT FOCUS",
+                    text = "PERIOD INTENT",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.ExtraBold,
                     letterSpacing = 1.sp,
@@ -170,8 +138,8 @@ internal fun PeriodReviewEditorSheet(
                 modifier = Modifier.padding(bottom = 8.dp)
             )
             AppOutlinedTextField(
-                value = editor.nextPeriodIntent,
-                onValueChange = onNextPeriodIntentChange,
+                value = editor.periodIntent,
+                onValueChange = onPeriodIntentChange,
                 textStyle = MaterialTheme.typography.bodyMedium.copy(
                     color = MaterialTheme.colorScheme.onSurface
                 ),
@@ -185,7 +153,7 @@ internal fun PeriodReviewEditorSheet(
                         shape = RoundedCornerShape(8.dp)
                     )
                     .padding(10.dp),
-                placeholder = "What will you focus on next?",
+                placeholder = "What will you focus on?",
                 minLines = 5,
                 enabled = !editor.isSaving,
                 visualTransformation = remember { MarkdownVisualTransformation() }

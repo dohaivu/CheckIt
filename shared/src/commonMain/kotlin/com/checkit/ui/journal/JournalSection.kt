@@ -46,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -206,21 +207,16 @@ internal fun JournalSection(
                 modifier = Modifier
                     .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(8.dp))
                     .padding(horizontal = 8.dp, vertical = 2.dp)
+                    .clickable {
+                        onViewClick()
+                    }
             )
         }
         Spacer(Modifier.weight(1f))
-        IconButton(onClick = onAddClick) {
+        IconButton(onClick = onAddClick, modifier = Modifier.size(24.dp)) {
             Icon(
                 imageVector = Icons.Default.Add,
                 contentDescription = "Add check-in",
-                modifier = Modifier.size(20.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-        }
-        IconButton(onClick = onViewClick) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.Notes,
-                contentDescription = "View check-ins",
                 modifier = Modifier.size(20.dp),
                 tint = MaterialTheme.colorScheme.primary
             )
@@ -240,7 +236,7 @@ internal fun MoodRow(
     val rotation by animateFloatAsState(if (isExpanded) 180f else 0f)
     val shape = RoundedCornerShape(12.dp)
 
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         // Selected moods row (Header/Toggle)
         // ... (existing code for Selected moods row)
         Row(
@@ -293,7 +289,7 @@ internal fun MoodRow(
         }
 
         AnimatedVisibility(visible = isExpanded) {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 MoodCategories.forEach { (name, emojis) ->
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
@@ -324,11 +320,11 @@ internal fun MoodRow(
                                             shape = shape
                                         )
                                         .clickable { onToggle(mood) }
-                                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                                        .padding(horizontal = 6.dp, vertical = 3.dp)
                                 ) {
                                     Text(
                                         text = mood,
-                                        fontSize = 20.sp
+                                        fontSize = 16.sp
                                     )
                                 }
                             }

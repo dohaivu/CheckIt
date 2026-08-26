@@ -17,11 +17,11 @@ internal class JournalController(
     private val state: MyDayStateHolder,
     private val scope: CoroutineScope
 ) {
-    fun openJournalList(date: LocalDate? = null) = state.update {
-        it.copy(showJournalList = true, journalListDate = date)
+    fun openJournalList() = state.update {
+        it.copy(showJournalList = true)
     }
     fun dismissJournalList() = state.update {
-        it.copy(showJournalList = false, journalListDate = null)
+        it.copy(showJournalList = false)
     }
 
     // Editor sheet

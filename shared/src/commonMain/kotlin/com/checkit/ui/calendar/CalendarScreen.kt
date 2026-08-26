@@ -1,6 +1,5 @@
 package com.checkit.ui.calendar
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
@@ -19,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -32,7 +32,10 @@ import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material.icons.outlined.ViewDay
@@ -55,13 +58,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.calendar_open_review
 import checkit.shared.generated.resources.calendar_title
@@ -71,6 +81,7 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.NoteItem
+import com.checkit.domain.PeriodReview
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TagItem
@@ -79,6 +90,7 @@ import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.components.parseMarkdownToAnnotatedString
 import com.checkit.ui.firstDayOfMonth
 import com.checkit.ui.isSameMonth
+import com.checkit.ui.journal.JournalListSheet
 import com.checkit.ui.localizedMonthTitle
 import com.checkit.ui.localizedShortMonthName
 import com.checkit.ui.localizedWeekdayName
@@ -103,7 +115,6 @@ internal fun CalendarScreen(
     calendarViewModel: CalendarViewModel,
     onDateDoubleClick: (LocalDate) -> Unit,
     onDailyPlanItemClick: (DailyPlanItem, LocalDate) -> Unit,
-    onOpenJournalDay: (LocalDate) -> Unit,
     onOpenJournalHistory: () -> Unit,
     onAddDailyPlanItem: (LocalDate) -> Unit,
     onTaskClick: (Long, DailyPlanItem?) -> Unit,
@@ -114,6 +125,7 @@ internal fun CalendarScreen(
 ) {
     val today = today()
     val selectedContent = remember(state, today) { state.selectedDateContent(today) }
+    var showJournalList by remember { mutableStateOf(false) }
 
     val handleDateDoubleClick: (LocalDate) -> Unit = { date ->
         calendarViewModel.selectDate(date)
@@ -203,8 +215,10 @@ internal fun CalendarScreen(
                                 taskCount = selectedContent.taskCount,
                                 noteCount = selectedContent.noteCount,
                                 journalCount = selectedContent.journalEntries.size,
-                                onJournalClick = { onOpenJournalDay(state.selectedDate) },
-                                winNote = state.selectedDateReview,
+                                onJournalClick = { showJournalList = true },
+                                dayReview = state.selectedDatePeriodReview,
+                                weekIntent = state.selectedWeekIntent,
+                                monthIntent = state.selectedMonthIntent,
                                 onOpenReflect = onOpenReflect
                             )
                             if (selectedContent.showDailyPlan) {
@@ -240,6 +254,14 @@ internal fun CalendarScreen(
                     onClick = calendarViewModel::toggleMonthlyWinsExpanded
                 )
             }
+        }
+
+        if (showJournalList) {
+            JournalListSheet(
+                entries = selectedContent.journalEntries,
+                onEntryClick = {},
+                onDismiss = { showJournalList = false }
+            )
         }
     }
 }
@@ -337,173 +359,274 @@ private fun SelectedDateHeader(
     noteCount: Int,
     journalCount: Int,
     onJournalClick: () -> Unit,
-    winNote: String?,
+    dayReview: PeriodReview?,
+    weekIntent: String?,
+    monthIntent: String?,
     onOpenReflect: (LocalDate) -> Unit
 ) {
     val isToday = date == today
     val isYesterday = date == today.minus(1, DateTimeUnit.DAY)
-    var expanded by remember(winNote != null) { mutableStateOf(winNote != null) }
+    val reviewContent = dayReview?.content?.takeIf { it.isNotBlank() }
+    val dayIntent = dayReview?.periodIntent?.takeIf { it.isNotBlank() }
+    val hasDetails = reviewContent != null || dayIntent != null || weekIntent != null || monthIntent != null
+    var expanded by remember(date) { mutableStateOf(false) }
     val chevronRotation by animateFloatAsState(if (expanded) 180f else 0f, label = "selectedDateChevron")
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 4.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)
-            .animateContentSize()
-    ) {
-        Row(
+    var headerSize by remember { mutableStateOf(IntSize.Zero) }
+    Box(modifier = Modifier.onSizeChanged { headerSize = it }) {
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .then(
-                    if (winNote != null) {
-                        Modifier.clickable { expanded = !expanded }
-                    } else {
-                        Modifier
-                    }
-                )
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                .padding(horizontal = 4.dp, vertical = 4.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerLow)
         ) {
-            Box(
+            Row(
                 modifier = Modifier
-                    .size(width = 44.dp, height = 40.dp)
-                    .background(
-                        if (isToday) {
-                            MaterialTheme.colorScheme.primary
+                    .fillMaxWidth()
+                    .then(
+                        if (hasDetails) {
+                            Modifier.clickable { expanded = !expanded }
                         } else {
-                            MaterialTheme.colorScheme.surfaceContainerHighest
-                        },
-                        RoundedCornerShape(10.dp)
-                    ),
-                contentAlignment = Alignment.Center
+                            Modifier
+                        }
+                    )
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = date.day.toString(),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isToday) {
-                            MaterialTheme.colorScheme.onPrimary
-                        } else {
-                            MaterialTheme.colorScheme.primary
-                        }
-                    )
-                    Text(
-                        text = date.localizedShortMonthName(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (isToday) {
-                            MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        }
-                    )
-                }
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                Box(
+                    modifier = Modifier
+                        .size(width = 44.dp, height = 40.dp)
+                        .background(
+                            if (isToday) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.surfaceContainerHighest
+                            },
+                            RoundedCornerShape(10.dp)
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = date.localizedWeekdayName(),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (isToday) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.onSurface
-                        }
-                    )
-                    if (winNote != null && !expanded) {
-                        Icon(
-                            imageVector = Icons.Default.Star,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = Color(0xFFEAB308)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = date.day.toString(),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isToday) {
+                                MaterialTheme.colorScheme.onPrimary
+                            } else {
+                                MaterialTheme.colorScheme.primary
+                            }
+                        )
+                        Text(
+                            text = date.localizedShortMonthName(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (isToday) {
+                                MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            }
                         )
                     }
                 }
-                Text(
-                    text = when {
-                        isToday -> stringResource(Res.string.relative_today)
-                        isYesterday -> stringResource(Res.string.relative_yesterday)
-                        else -> date.year.toString()
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                CountBadge(icon = Icons.Default.TaskAlt, count = taskCount)
-                CountBadge(icon = Icons.AutoMirrored.Filled.Notes, count = noteCount)
-                CountBadge(
-                    icon = Icons.Default.EditNote,
-                    count = journalCount,
-                    onClick = onJournalClick
-                )
-                if (winNote != null) {
-                    Icon(
-                        imageVector = Icons.Default.ExpandMore,
-                        contentDescription = if (expanded) "Collapse win note" else "Expand win note",
-                        modifier = Modifier
-                            .size(18.dp)
-                            .graphicsLayer { rotationZ = chevronRotation },
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-        if (winNote != null) {
-            AnimatedVisibility(visible = expanded) {
-                Column {
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 12.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                    )
+                Column(modifier = Modifier.weight(1f)) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .background(Color(0xFFEAB308).copy(alpha = 0.16f), RoundedCornerShape(7.dp)),
-                            contentAlignment = Alignment.Center
-                        ) {
+                        Text(
+                            text = date.localizedWeekdayName(),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (isToday) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            }
+                        )
+                        if (reviewContent != null && !expanded) {
                             Icon(
                                 imageVector = Icons.Default.Star,
-                                contentDescription = "Win of the day",
-                                modifier = Modifier.size(15.dp),
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
                                 tint = Color(0xFFEAB308)
                             )
                         }
-                        Text(
-                            modifier = Modifier.weight(1f),
-                            text = remember(winNote) { parseMarkdownToAnnotatedString(winNote) },
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
+                    }
+                    Text(
+                        text = when {
+                            isToday -> stringResource(Res.string.relative_today)
+                            isYesterday -> stringResource(Res.string.relative_yesterday)
+                            else -> date.year.toString()
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CountBadge(icon = Icons.Default.TaskAlt, count = taskCount)
+                    CountBadge(icon = Icons.AutoMirrored.Filled.Notes, count = noteCount)
+                    CountBadge(
+                        icon = Icons.Default.EditNote,
+                        count = journalCount,
+                        onClick = onJournalClick
+                    )
+                    if (hasDetails) {
+                        Icon(
+                            imageVector = Icons.Default.ExpandMore,
+                            contentDescription = if (expanded) "Collapse" else "Expand",
+                            modifier = Modifier
+                                .size(18.dp)
+                                .graphicsLayer { rotationZ = chevronRotation },
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        IconButton(
-                            onClick = { onOpenReflect(date) },
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                                contentDescription = stringResource(Res.string.calendar_open_review),
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                }
+            }
+        }
+        if (hasDetails && expanded) {
+            val density = LocalDensity.current
+            val popupOffset = with(density) { (headerSize.height - 4.dp.roundToPx()).coerceAtLeast(0) }
+            Popup(
+                alignment = Alignment.TopStart,
+                offset = IntOffset(0, popupOffset),
+                onDismissRequest = { expanded = false },
+                properties = PopupProperties(focusable = true)
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .width(with(density) { headerSize.width.toDp() })
+                        .padding(horizontal = 4.dp)
+                        .padding(bottom = 12.dp) // Breathing room for shadow to prevent clipping
+                        .clip(RoundedCornerShape(14.dp))
+                        .animateContentSize(),
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    tonalElevation = 6.dp,
+                    shadowElevation = 8.dp
+                ) {
+                    Column(
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    ) {
+                        if (reviewContent != null) {
+                            Row(
+                                modifier = Modifier
+                                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color(0xFFEAB308).copy(alpha = 0.08f))
+                                    .padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .background(Color(0xFFEAB308).copy(alpha = 0.16f), RoundedCornerShape(7.dp)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Star,
+                                        contentDescription = "Win of the day",
+                                        modifier = Modifier.size(15.dp),
+                                        tint = Color(0xFFEAB308)
+                                    )
+                                }
+                                Text(
+                                    modifier = Modifier.weight(1f),
+                                    text = remember(reviewContent) { parseMarkdownToAnnotatedString(reviewContent) },
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                )
+                                IconButton(
+                                    onClick = {
+                                        expanded = false
+                                        onOpenReflect(date)
+                                    },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                        contentDescription = stringResource(Res.string.calendar_open_review),
+                                        modifier = Modifier.size(16.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+
+                        if (reviewContent != null && (dayIntent != null || weekIntent != null || monthIntent != null)) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                            )
+                        }
+
+                        dayIntent?.let {
+                            PeriodIntentRow(
+                                icon = Icons.Default.Flag,
+                                label = "DAY",
+                                intent = it,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                        }
+                        weekIntent?.let {
+                            PeriodIntentRow(
+                                icon = Icons.Default.DateRange,
+                                label = "WEEK",
+                                intent = it,
+                                color = MaterialTheme.colorScheme.tertiary
+                            )
+                        }
+                        monthIntent?.let {
+                            PeriodIntentRow(
+                                icon = Icons.Default.CalendarMonth,
+                                label = "MONTH",
+                                intent = it,
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun PeriodIntentRow(
+    icon: ImageVector,
+    label: String,
+    intent: String,
+    color: Color
+) {
+    Row(
+        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            tint = color
+        )
+        Column {
+            Text(
+                text = "$label GOAL",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.ExtraBold,
+                color = color
+            )
+            Text(
+                text = intent,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface
+            )
         }
     }
 }
@@ -548,9 +671,9 @@ private fun CountBadge(
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
             .clickable(enabled = onClick != null) { onClick?.invoke() }
-            .padding(horizontal = 2.dp, vertical = 2.dp),
+            .padding(horizontal = 4.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(2.dp)
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Icon(
             imageVector = icon,

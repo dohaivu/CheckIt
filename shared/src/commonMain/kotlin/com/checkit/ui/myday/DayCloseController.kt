@@ -42,8 +42,7 @@ internal class DayCloseController(
                         summary = summary,
                         leftoverActions = actions,
                         winNote = record?.content.orEmpty(),
-                        tomorrowGoal = tomorrowRecord?.periodIntent.orEmpty(),
-                        streak = loaded.reviewStreak
+                        tomorrowGoal = tomorrowRecord?.periodIntent.orEmpty()
                     ),
                     showDayCloseBanner = false,
                     showLeftoversSheet = false,

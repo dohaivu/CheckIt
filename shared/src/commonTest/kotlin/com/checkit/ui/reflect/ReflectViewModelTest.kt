@@ -122,15 +122,7 @@ class ReflectViewModelTest {
             review(
                 period = Period.Week,
                 start = weekStart,
-                content = "Existing content"
-            )
-        )
-        // The intent is prefilled from the next period's own review record.
-        repository.savePeriodReview(
-            review(
-                period = Period.Week,
-                start = weekStart.plus(7, DateTimeUnit.DAY),
-                content = "Next week recap",
+                content = "Existing content",
                 periodIntent = "Existing intent"
             )
         )
@@ -140,25 +132,21 @@ class ReflectViewModelTest {
         advanceUntilIdle()
         val editor = assertNotNull(viewModel.editor.value)
         assertEquals("Existing content", editor.content)
-        assertEquals("Existing intent", editor.nextPeriodIntent)
+        assertEquals("Existing intent", editor.periodIntent)
     }
 
     @Test
     fun saveEditorPersistsAndDismisses() = runTest(dispatcher) {
         viewModel.openEditor()
         viewModel.updateEditorContent("Great week")
-        viewModel.updateEditorNextPeriodIntent("Ship more")
+        viewModel.updateEditorPeriodIntent("Ship more")
         viewModel.saveEditor()
         advanceUntilIdle()
 
         assertNull(viewModel.editor.value)
-        val reviews = repository.observePeriodReviews().first()
-        // Content is saved for the focused period; the intent lands on the next one.
-        val saved = reviews.single { it.content == "Great week" }
-        assertNull(saved.periodIntent)
-        val nextWeekStart = saved.periodStartEpochDays + 7
-        val nextReview = reviews.single { it.periodStartEpochDays == nextWeekStart }
-        assertEquals("Ship more", nextReview.periodIntent)
+        val reviews = repository.observePeriodReviews().first().single()
+        assertEquals("Great week", reviews.content)
+        assertEquals("Ship more", reviews.periodIntent)
     }
 
     @Test
