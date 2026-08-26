@@ -9,9 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -21,13 +19,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.StarHalf
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material.icons.rounded.CheckBox
+import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -56,7 +52,6 @@ import checkit.shared.generated.resources.reflect_review_card_title
 import checkit.shared.generated.resources.reflect_review_save
 import com.checkit.domain.MetricItem
 import com.checkit.domain.MetricUnit
-
 import com.checkit.ui.RatingBar
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
@@ -291,6 +286,18 @@ private fun PeriodMetricsSection(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
+                    Icon(
+                        imageVector = if (metric.isCompleted) Icons.Rounded.CheckBox else Icons.Rounded.CheckBoxOutlineBlank,
+                        contentDescription = if (metric.isCompleted) "Mark incomplete" else "Mark complete",
+                        tint = if (metric.isCompleted) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)
+                        },
+                        modifier = Modifier
+                            .size(22.dp)
+                            .then(if (enabled) Modifier.clickable { onMetricsChange(metrics.toMutableList().also { it[index] = metric.copy(isCompleted = !metric.isCompleted) }) } else Modifier)
+                    )
                     CompactFlatTextField(
                         value = metric.name,
                         onValueChange = { value ->
@@ -307,7 +314,7 @@ private fun PeriodMetricsSection(
                             imageVector = Icons.Default.Delete,
                             contentDescription = "Delete metric",
                             tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }

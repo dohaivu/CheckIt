@@ -444,16 +444,37 @@ fun MetricChip(
         }
     }
 
-    Box(
+    val isCompleted = metric.isCompleted
+    val containerColor = if (isCompleted) {
+        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f)
+    } else {
+        MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f)
+    }
+    val contentColor = if (isCompleted) {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    } else {
+        MaterialTheme.colorScheme.onTertiaryContainer
+    }
+    Row(
         modifier = modifier
             .clip(RoundedCornerShape(6.dp))
-            .background(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f))
-            .padding(horizontal = 6.dp, vertical = 2.dp)
+            .background(containerColor)
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(3.dp)
     ) {
+        if (isCompleted) {
+            Icon(
+                imageVector = Icons.Filled.Check,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(12.dp)
+            )
+        }
         Text(
             text = content,
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onTertiaryContainer,
+            color = contentColor,
             maxLines = 1
         )
     }

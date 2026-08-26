@@ -41,6 +41,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.NoteAdd
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
@@ -55,8 +56,12 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOut
+import androidx.compose.material.icons.rounded.CheckBox
+import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxColors
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -867,15 +872,17 @@ private fun NestedItemMetadataPreview(
                 })
             }
             item.manualMetrics.filter { it.enabled }.forEach { metric ->
-                if (metric.value.isNotBlank()) {
+                if (metric.value.isNotBlank() || metric.isCompleted) {
                     MetricChip(
                         content = buildAnnotatedString {
                             if (metric.name.isNotBlank()) {
                                 append(metric.name)
                                 append(" ")
                             }
-                            withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)) {
-                                append(metric.value)
+                            if (metric.value.isNotBlank()) {
+                                withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)) {
+                                    append(metric.value)
+                                }
                             }
                             if (!metric.targetValue.isNullOrBlank()) {
                                 append("/")
@@ -889,7 +896,8 @@ private fun NestedItemMetadataPreview(
                                 append(unit)
                             }
                         },
-                        manual = true
+                        manual = true,
+                        isCompleted = metric.isCompleted
                     )
                 }
             }
@@ -924,20 +932,39 @@ private fun NestedItemMetadataPreview(
 }
 
 @Composable
-private fun MetricChip(content: AnnotatedString, manual: Boolean = false) {
-    Box(
+private fun MetricChip(content: AnnotatedString, manual: Boolean = false, isCompleted: Boolean = false) {
+    val containerColor = when {
+        isCompleted && manual -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f)
+        isCompleted -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+        manual -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.85f)
+        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+    }
+    val contentColor = when {
+        isCompleted && manual -> MaterialTheme.colorScheme.onPrimaryContainer
+        isCompleted -> MaterialTheme.colorScheme.onPrimaryContainer
+        manual -> MaterialTheme.colorScheme.onTertiaryContainer
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Row(
         modifier = Modifier
             .clip(RoundedCornerShape(6.dp))
-            .background(
-                if (manual) MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.85f)
-                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
-            )
-            .padding(horizontal = 6.dp, vertical = 2.dp)
+            .background(containerColor)
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(3.dp)
     ) {
+        if (isCompleted) {
+            Icon(
+                imageVector = Icons.Filled.Check,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(12.dp)
+            )
+        }
         Text(
             text = content,
             style = MaterialTheme.typography.labelSmall,
-            color = if (manual) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+            color = contentColor,
             maxLines = 1
         )
     }
@@ -1173,6 +1200,20 @@ private fun NestedItemDetailsDialog(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
+                                Icon(
+                                    imageVector = if (metric.isCompleted) Icons.Rounded.CheckBox else Icons.Rounded.CheckBoxOutlineBlank,
+                                    contentDescription = if (metric.isCompleted) "Mark incomplete" else "Mark complete",
+                                    tint = if (metric.isCompleted) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)
+                                    },
+                                    modifier = Modifier
+                                        .size(22.dp)
+                                        .then(Modifier.clickable {
+                                            metrics = metrics.toMutableList().also { it[index] = metric.copy(isCompleted = !metric.isCompleted) }
+                                        })
+                                )
                                 CompactFlatTextField(
                                     value = metric.name,
                                     onValueChange = { value ->
@@ -1283,7 +1324,7 @@ private fun NestedItemDetailsDialog(
                         actualMinutes.toIntOrNull() ?: 0,
                         policy,
                         showTrackedMinutes,
-                        metrics.filter { it.name.isNotBlank() && it.value.isNotBlank() }
+                        metrics.filter { it.name.isNotBlank() && (it.value.isNotBlank() || it.isCompleted) }
                     )
                 }
             ) {
@@ -1899,7 +1940,8 @@ private fun NestedTree(
                             Checkbox(
                                 checked = item.checked,
                                 onCheckedChange = { viewModel.toggleChecked(item.id) },
-                                modifier = Modifier.size(28.dp).scale(0.7f).align(Alignment.Top)
+                                modifier = Modifier.size(28.dp).scale(0.7f).align(Alignment.Top),
+                                colors = CheckboxDefaults.colors(uncheckedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
                             )
                         } else {
                             Spacer(Modifier.width(8.dp))

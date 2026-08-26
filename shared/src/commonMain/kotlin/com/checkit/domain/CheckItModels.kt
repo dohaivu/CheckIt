@@ -367,5 +367,6 @@ data class MetricItem(
     val unit: MetricUnit = MetricUnit.None,
     val customUnit: String? = null,
     val sortOrder: Int = 0,
-    val enabled: Boolean = true
+    val enabled: Boolean = true,
+    val isCompleted: Boolean = false
 )
