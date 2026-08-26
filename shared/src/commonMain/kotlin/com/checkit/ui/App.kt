@@ -509,7 +509,7 @@ fun CheckItApp(
                         PeriodReviewEditorSheet(
                             editor = editor,
                             onContentChange = viewModels.reflect::updateEditorContent,
-                            onNextPeriodIntentChange = viewModels.reflect::updateEditorNextPeriodIntent,
+                            onPeriodIntentChange = viewModels.reflect::updateEditorPeriodIntent,
                             onSave = viewModels.reflect::saveEditor,
                             onDismiss = viewModels.reflect::dismissEditor
                         )

@@ -9,8 +9,7 @@ import kotlin.time.Clock
 
 /**
  * Persists a period review (upsert) for [focus]. [periodIntent] is stored on
- * this period's own review; [nextPeriodIntent] describes the next period, so
- * it is merged into that period's review instead.
+ * this period's own review.
  */
 class SavePeriodReviewUseCase(
     private val repository: CheckItRepository
@@ -19,7 +18,6 @@ class SavePeriodReviewUseCase(
         focus: FocusPeriod,
         content: String,
         periodIntent: String? = null,
-        nextPeriodIntent: String = "",
         source: ReviewSource = ReviewSource.Manual
     ) {
         val now = Clock.System.now().toEpochMilliseconds()
@@ -36,21 +34,6 @@ class SavePeriodReviewUseCase(
                 generatedAtMillis = if (source == ReviewSource.Manual) null else now,
                 editedAtMillis = now
             )
-        )
-        saveIntentForNextPeriod(focus, nextPeriodIntent, now)
-    }
-
-    /** Merges [periodIntent] into the next focus period's review (creating a draft if missing). */
-    private suspend fun saveIntentForNextPeriod(focus: FocusPeriod, periodIntent: String, nowMillis: Long) {
-        val intent = periodIntent.trim().takeIf { it.isNotEmpty() } ?: return
-        val nextFocus = focus.shift(1)
-        val existing = repository.periodReviewFor(nextFocus.period, nextFocus.start)
-        repository.savePeriodReview(
-            (existing ?: PeriodReview(
-                period = nextFocus.period,
-                periodStartEpochDays = nextFocus.startEpochDays,
-                periodEndEpochDays = nextFocus.endExclusive.toEpochDays().toInt()
-            )).copy(periodIntent = intent, editedAtMillis = nowMillis)
         )
     }
 }

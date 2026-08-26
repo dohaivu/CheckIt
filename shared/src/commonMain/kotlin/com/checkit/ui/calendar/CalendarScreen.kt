@@ -617,7 +617,7 @@ private fun PeriodIntentRow(
         )
         Column {
             Text(
-                text = "$label INTENT",
+                text = "$label GOAL",
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.ExtraBold,
                 color = color
