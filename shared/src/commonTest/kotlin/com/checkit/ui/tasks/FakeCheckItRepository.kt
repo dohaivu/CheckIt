@@ -506,8 +506,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
     override suspend fun dailyPlanForDate(date: LocalDate): DailyPlan? =
         dailyPlansFlow.value.find { it.date == date }
 
-    override fun observePeriodGoals(): Flow<List<PeriodGoal>> =
-        periodGoalsFlow.map { goals -> goals.map { it.copy(metrics = periodMetricsByGoal[it.id].orEmpty()) } }
+    override fun observePeriodGoals(): Flow<List<PeriodGoal>> = periodGoalsFlow
 
     override fun observePeriodGoalsInRange(
         startDate: LocalDate?,
@@ -519,15 +518,13 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
                 val end = endDateInclusive?.toEpochDays()?.toInt()
                 (start == null || goal.startEpochDays >= start) &&
                     (end == null || goal.startEpochDays <= end)
-            }.map { it.copy(metrics = periodMetricsByGoal[it.id].orEmpty()) }
+            }
         }
 
     override suspend fun periodGoalFor(period: Period, date: LocalDate): PeriodGoal? =
         periodGoalsFlow.value.find { it.period == period && it.startEpochDays == date.toEpochDays().toInt() }
-            ?.let { it.copy(metrics = periodMetricsByGoal[it.id].orEmpty()) }
 
     override suspend fun savePeriodGoal(goal: PeriodGoal) {
-        var resolvedId = goal.id
         periodGoalsFlow.update { list ->
             val existingIndex = list.indexOfFirst {
                 (it.id != 0L && it.id == goal.id) ||
@@ -536,33 +533,14 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
             if (existingIndex >= 0) {
                 list.toMutableList().apply {
                     val old = get(existingIndex)
-                    resolvedId = if (goal.id == 0L) old.id else goal.id
-                    set(existingIndex, goal.copy(id = resolvedId))
+                    set(existingIndex, goal.copy(id = if (goal.id == 0L) old.id else goal.id))
                 }
             } else {
-                resolvedId = if (goal.id == 0L) (list.maxOfOrNull { it.id } ?: 0L) + 1 else goal.id
-                list + goal.copy(id = resolvedId)
+                val newId = if (goal.id == 0L) (list.maxOfOrNull { it.id } ?: 0L) + 1 else goal.id
+                list + goal.copy(id = newId)
             }
         }
-        replacePeriodMetrics(resolvedId, goal.metrics)
     }
-
-    private val periodMetricsByGoal = mutableMapOf<Long, List<PeriodMetric>>()
-
-    override fun observePeriodMetrics(goalId: Long): Flow<List<PeriodMetric>> =
-        kotlinx.coroutines.flow.flowOf(periodMetricsByGoal[goalId].orEmpty())
-
-    override suspend fun periodMetricsFor(goalId: Long): List<PeriodMetric> =
-        periodMetricsByGoal[goalId].orEmpty()
-
-    override suspend fun replacePeriodMetrics(goalId: Long, metrics: List<PeriodMetric>) {
-        periodMetricsByGoal[goalId] = metrics.mapIndexed { index, metric ->
-            val metricId = if (metric.id != 0L) metric.id else nextPeriodMetricId++
-            metric.copy(id = metricId, goalId = goalId, sortOrder = index)
-        }
-    }
-
-    private var nextPeriodMetricId = 1L
 
     override fun observeDailyReflectStats(
         startDate: LocalDate,
@@ -748,11 +726,15 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
             if (newId != null) carriedCount++ else skippedCount++
         }
 
+        // Merge the win note into any existing record so its goal text and
+        // metrics are preserved, mirroring CheckItDao.
+        val existingToday = periodGoalFor(Period.Day, date)
         savePeriodGoal(
-            PeriodGoal(
+            (existingToday ?: PeriodGoal(
                 period = Period.Day,
                 startEpochDays = date.toEpochDays().toInt(),
-                endEpochDays = date.toEpochDays().toInt() + 1,
+                endEpochDays = date.toEpochDays().toInt() + 1
+            )).copy(
                 review = winNote?.trim().orEmpty(),
                 completedAtMillis = nowMillis,
                 editedAtMillis = nowMillis

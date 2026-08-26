@@ -30,8 +30,6 @@ data class PeriodGoal(
  * [NestedManualMetric]: free-form name/value pairs with an optional unit.
  */
 data class PeriodMetric(
-    val id: Long = 0L,
-    val goalId: Long,
     val name: String,
     val value: String,
     val targetValue: String? = null,

@@ -7,6 +7,7 @@ import androidx.room3.Query
 import androidx.room3.RawQuery
 import androidx.room3.RoomRawQuery
 import androidx.room3.Transaction
+import androidx.room3.Upsert
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DayCloseCommitResult
 import com.checkit.domain.Period
@@ -703,31 +704,15 @@ interface CheckItDao {
         endEpochDays: Int
     ): Flow<List<PeriodGoalEntity>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsertPeriodGoal(goal: PeriodGoalEntity)
-
-    // ---------------- Period metrics ----------------
-
-    @Query("SELECT * FROM period_metrics ORDER BY sortOrder ASC")
-    fun observeAllPeriodMetrics(): Flow<List<PeriodMetricEntity>>
-
-    @Query("SELECT * FROM period_metrics WHERE goalId = :goalId ORDER BY sortOrder ASC")
-    fun observePeriodMetrics(goalId: Long): Flow<List<PeriodMetricEntity>>
-
-    @Query("SELECT * FROM period_metrics WHERE goalId = :goalId ORDER BY sortOrder ASC")
-    suspend fun periodMetricsFor(goalId: Long): List<PeriodMetricEntity>
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsertPeriodMetrics(metrics: List<PeriodMetricEntity>)
-
-    @Query("DELETE FROM period_metrics WHERE goalId = :goalId AND id NOT IN (:keepIds)")
-    suspend fun deletePeriodMetricsNotIn(goalId: Long, keepIds: List<Long>)
-
-    @Transaction
-    suspend fun replacePeriodMetrics(goalId: Long, metrics: List<PeriodMetricEntity>) {
-        upsertPeriodMetrics(metrics)
-        deletePeriodMetricsNotIn(goalId, metrics.map { it.id })
-    }
+    /**
+     * Insert-or-update without delete: keeps the existing primary key on
+     * conflicts so a goal's inline metrics survive. Callers must resolve
+     * [PeriodGoalEntity.id] for existing rows first — the fallback update
+     * matches by primary key only.
+     * Returns the new rowId on insert, or -1 when an existing row was updated.
+     */
+    @Upsert
+    suspend fun upsertPeriodGoal(goal: PeriodGoalEntity): Long
 
     /**
      * Applies a complete evening review atomically: marks done items, carries
@@ -801,11 +786,15 @@ interface CheckItDao {
             markDailyPlanItemsHandled(listOf(source.id), nowMillis)
         }
 
+        // Merge the win note into any existing record so its goal text and
+        // metrics are preserved.
+        val existingToday = periodGoalFor(Period.Day.name, dateEpochDays)
         upsertPeriodGoal(
-            PeriodGoalEntity(
+            (existingToday ?: PeriodGoalEntity(
                 periodType = Period.Day.name,
                 startEpochDays = dateEpochDays,
-                endEpochDays = dateEpochDays + 1,
+                endEpochDays = dateEpochDays + 1
+            )).copy(
                 review = winNote?.trim().orEmpty(),
                 completedAtMillis = nowMillis,
                 editedAtMillis = nowMillis

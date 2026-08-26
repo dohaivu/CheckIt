@@ -49,6 +49,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -114,9 +117,6 @@ interface CheckItRepository {
     fun observePeriodGoalsInRange(startDate: LocalDate?, endDateInclusive: LocalDate?): Flow<List<PeriodGoal>>
     suspend fun periodGoalFor(period: Period, date: LocalDate): PeriodGoal?
     suspend fun savePeriodGoal(goal: PeriodGoal)
-    fun observePeriodMetrics(goalId: Long): Flow<List<PeriodMetric>>
-    suspend fun periodMetricsFor(goalId: Long): List<PeriodMetric>
-    suspend fun replacePeriodMetrics(goalId: Long, metrics: List<PeriodMetric>)
     fun observeDailyReflectStats(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<DailyReflectStat>>
     fun observeDailyTagRollups(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<DailyTagRollup>>
     fun observeHabitDailyRollups(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<HabitDailyRollup>>
@@ -1008,38 +1008,31 @@ class RoomCheckItRepository(
     }
 
     override fun observePeriodGoals(): Flow<List<PeriodGoal>> =
-        combine(
-            dao.observePeriodGoals(),
-            dao.observeAllPeriodMetrics()
-        ) { goals, metrics ->
-            val metricsByGoal = metrics.groupBy(PeriodMetricEntity::goalId)
-            goals.map { it.toDomain(metricsByGoal[it.id].orEmpty().map(PeriodMetricEntity::toDomain)) }
-        }
+        dao.observePeriodGoals().map { entities -> entities.map { it.toDomain() } }
 
     override fun observePeriodGoalsInRange(
         startDate: LocalDate?,
         endDateInclusive: LocalDate?
     ): Flow<List<PeriodGoal>> =
-        combine(
-            dao.observePeriodGoalsBetween(
-                startDate?.toEpochDays()?.toInt(),
-                endDateInclusive?.toEpochDays()?.toInt()
-            ),
-            dao.observeAllPeriodMetrics()
-        ) { goals, metrics ->
-            val metricsByGoal = metrics.groupBy(PeriodMetricEntity::goalId)
-            goals.map { it.toDomain(metricsByGoal[it.id].orEmpty().map(PeriodMetricEntity::toDomain)) }
-        }
+        dao.observePeriodGoalsBetween(
+            startDate?.toEpochDays()?.toInt(),
+            endDateInclusive?.toEpochDays()?.toInt()
+        ).map { entities -> entities.map { it.toDomain() } }
 
-    override suspend fun periodGoalFor(period: Period, date: LocalDate): PeriodGoal? {
-        val entity = dao.periodGoalFor(period.name, date.toEpochDays().toInt()) ?: return null
-        return entity.toDomain(dao.periodMetricsFor(entity.id).map { it.toDomain() })
-    }
+    override suspend fun periodGoalFor(period: Period, date: LocalDate): PeriodGoal? =
+        dao.periodGoalFor(period.name, date.toEpochDays().toInt())?.toDomain()
 
     override suspend fun savePeriodGoal(goal: PeriodGoal) {
+        // Resolve the persisted id up front: a row may already exist for this
+        // (periodType, startEpochDays) even when [goal] carries no id, and
+        // Room's @Upsert only falls back to "update WHERE id" (which cannot
+        // match an unset id). With the id resolved, the upsert either inserts
+        // a genuinely new row or updates the existing one by primary key.
+        val existingId = goal.id.takeIf { it != 0L }
+            ?: dao.periodGoalFor(goal.period.name, goal.startEpochDays)?.id
         dao.upsertPeriodGoal(
             PeriodGoalEntity(
-                id = goal.id,
+                id = existingId ?: 0L,
                 periodType = goal.period.name,
                 startEpochDays = goal.startEpochDays,
                 endEpochDays = goal.endEpochDays,
@@ -1047,28 +1040,10 @@ class RoomCheckItRepository(
                 goal = goal.goal,
                 rating = goal.rating,
                 completedAtMillis = goal.completedAtMillis,
-                editedAtMillis = goal.editedAtMillis
+                editedAtMillis = goal.editedAtMillis,
+                metricsJson = Json.encodeToString(goal.metrics.map { it.toData() })
             )
         )
-        val goalId = if (goal.id != 0L) {
-            goal.id
-        } else {
-            dao.periodGoalFor(goal.period.name, goal.startEpochDays)?.id
-        } ?: return
-        dao.replacePeriodMetrics(
-            goalId = goalId,
-            metrics = goal.metrics.map { it.toEntity(goalId) }
-        )
-    }
-
-    override fun observePeriodMetrics(goalId: Long): Flow<List<PeriodMetric>> =
-        dao.observePeriodMetrics(goalId).map { entities -> entities.map { it.toDomain() } }
-
-    override suspend fun periodMetricsFor(goalId: Long): List<PeriodMetric> =
-        dao.periodMetricsFor(goalId).map { it.toDomain() }
-
-    override suspend fun replacePeriodMetrics(goalId: Long, metrics: List<PeriodMetric>) {
-        dao.replacePeriodMetrics(goalId, metrics.map { it.toEntity(goalId) })
     }
 
     override fun observeDailyReflectStats(
@@ -1719,7 +1694,9 @@ private fun DailyPlanItemEntity.toDomain(tags: List<TagItem> = emptyList()) = Da
     handledAtMillis = handledAtMillis
 )
 
-private fun PeriodGoalEntity.toDomain(metrics: List<PeriodMetric> = emptyList()) = PeriodGoal(
+private val periodMetricsJson = Json { ignoreUnknownKeys = true }
+
+private fun PeriodGoalEntity.toDomain() = PeriodGoal(
     id = id,
     period = Period.valueOf(periodType),
     startEpochDays = startEpochDays,
@@ -1729,12 +1706,12 @@ private fun PeriodGoalEntity.toDomain(metrics: List<PeriodMetric> = emptyList())
     rating = rating,
     completedAtMillis = completedAtMillis,
     editedAtMillis = editedAtMillis,
-    metrics = metrics
+    metrics = runCatching {
+        periodMetricsJson.decodeFromString<List<PeriodMetricData>>(metricsJson)
+    }.getOrDefault(emptyList()).map { it.toDomain() }
 )
 
-private fun PeriodMetricEntity.toDomain() = PeriodMetric(
-    id = id,
-    goalId = goalId,
+private fun PeriodMetricData.toDomain() = PeriodMetric(
     name = name,
     value = value,
     targetValue = targetValue,
@@ -1744,9 +1721,7 @@ private fun PeriodMetricEntity.toDomain() = PeriodMetric(
     enabled = enabled
 )
 
-private fun PeriodMetric.toEntity(goalId: Long) = PeriodMetricEntity(
-    id = id,
-    goalId = goalId,
+private fun PeriodMetric.toData() = PeriodMetricData(
     name = name.trim(),
     value = value.trim(),
     targetValue = targetValue?.trim()?.takeIf { it.isNotEmpty() },

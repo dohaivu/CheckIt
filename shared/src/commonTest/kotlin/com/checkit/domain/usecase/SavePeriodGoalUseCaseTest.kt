@@ -10,7 +10,6 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 
 class SavePeriodGoalUseCaseTest {
@@ -94,7 +93,6 @@ class SavePeriodGoalUseCaseTest {
             review = "Done",
             metrics = listOf(
                 PeriodMetric(
-                    goalId = 0L,
                     name = "Distance",
                     value = "20",
                     unit = MetricUnit.Custom,
@@ -110,7 +108,6 @@ class SavePeriodGoalUseCaseTest {
         assertEquals("20", metric.value)
         assertEquals(MetricUnit.Custom, metric.unit)
         assertEquals("km", metric.customUnit)
-        assertNotEquals(0L, metric.goalId)
 
         // Re-saving without the metric removes it.
         save(focus, review = "Done again")

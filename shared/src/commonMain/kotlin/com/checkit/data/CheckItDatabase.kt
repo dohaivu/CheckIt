@@ -14,6 +14,7 @@ import androidx.sqlite.SQLiteConnection
 import com.checkit.domain.TaskType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.serialization.Serializable
 
 @Entity(tableName = "lists")
 data class ListEntity(
@@ -161,29 +162,18 @@ data class PeriodGoalEntity(
     /** Satisfaction for this period (e.g. 0..5). */
     val rating: Float = 0f,
     val completedAtMillis: Long? = null,
-    val editedAtMillis: Long? = null
+    val editedAtMillis: Long? = null,
+    /** Custom metrics stored inline as JSON; always loaded/saved with the goal. */
+    val metricsJson: String = "[]"
 )
 
 /**
  * A manually tracked metric attached to a [PeriodGoalEntity], mirroring
- * [NestedManualMetricEntity]: free-form name/value pairs with an optional unit.
+ * [NestedManualMetric]: free-form name/value pairs with an optional unit.
+ * Serialized to [PeriodGoalEntity.metricsJson].
  */
-@Entity(
-    tableName = "period_metrics",
-    foreignKeys = [
-        ForeignKey(
-            entity = PeriodGoalEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["goalId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [Index("goalId"), Index(value = ["goalId", "sortOrder"])]
-)
-data class PeriodMetricEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0L,
-    val goalId: Long,
+@Serializable
+data class PeriodMetricData(
     val name: String,
     val value: String,
     val targetValue: String? = null,
@@ -627,7 +617,6 @@ data class NestedItemTagEntity(
         NoteEntity::class,
         DailyPlanItemEntity::class,
         PeriodGoalEntity::class,
-        PeriodMetricEntity::class,
         TagEntity::class,
         TaskTagEntity::class,
         NoteTagEntity::class,
@@ -648,7 +637,7 @@ data class NestedItemTagEntity(
         DailyTagRollupEntity::class,
         HabitDailyRollupEntity::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)

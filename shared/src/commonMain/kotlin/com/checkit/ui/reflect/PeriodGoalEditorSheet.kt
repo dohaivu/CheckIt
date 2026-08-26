@@ -325,7 +325,6 @@ private fun PeriodMetricsSection(
                     if (!enabled) return@TextButton
                     onMetricsChange(
                         metrics + PeriodMetric(
-                            goalId = 0L,
                             name = "",
                             value = "",
                             sortOrder = metrics.size
