@@ -46,8 +46,8 @@ import com.checkit.domain.TagItem
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.localizedCompactDateWithDayName
-import com.checkit.ui.tasks.isOverdue
-import com.checkit.ui.tasks.timeRangeLabel
+import com.checkit.ui.isOverdue
+import com.checkit.ui.timeRangeLabel
 import com.checkit.ui.tasks.views.DailyPlanTimelineCard
 import com.checkit.ui.tasks.views.TaskTimelineCard
 import com.checkit.ui.today

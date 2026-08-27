@@ -5,11 +5,10 @@ import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
-import com.checkit.domain.DayCloseBannerPolicy
 import com.checkit.domain.DayCloseConfirmInput
 import com.checkit.domain.LeftoverAction
 import com.checkit.domain.Period
-import com.checkit.domain.ReviewStatus
+import com.checkit.domain.PeriodGoal
 import com.checkit.domain.TagItem
 import com.checkit.domain.defaultLeftoverAction
 import com.checkit.domain.defaultReviewAction
@@ -232,11 +231,11 @@ class DayCloseUseCasesTest {
         assertEquals(1, tomorrowPlan.items.size)
         assertEquals(1, tomorrowPlan.items.count { it.carriedFromItemId == 1L })
 
-        // The tomorrow goal is stored as tomorrow's period intent.
-        val record = assertNotNull(repository.periodReviewFor(Period.Day, tomorrow))
-        assertEquals("Ship the review", record.periodIntent)
-        val todayRecord = repository.periodReviewFor(Period.Day, date)
-        assertEquals(null, todayRecord?.periodIntent)
+        // The tomorrow goal is stored as tomorrow's goal.
+        val record = assertNotNull(repository.periodGoalFor(Period.Day, tomorrow))
+        assertEquals("Ship the review", record.goal)
+        val todayRecord = repository.periodGoalFor(Period.Day, date)
+        assertEquals(null, todayRecord?.goal)
     }
 
     @Test
@@ -325,8 +324,8 @@ class DayCloseUseCasesTest {
         ).getOrThrow()
 
         assertFalse(result.winNoteSaved)
-        val record = assertNotNull(repository.periodReviewFor(Period.Day, date))
-        assertEquals("", record.content)
+        val record = assertNotNull(repository.periodGoalFor(Period.Day, date))
+        assertEquals("", record.review)
     }
 
     @Test
@@ -372,60 +371,6 @@ class DayCloseUseCasesTest {
             handledAtMillis = 10L
         )
         assertEquals(LeftoverAction.Drop, source.defaultReviewAction(listOf(DailyPlan(today, emptyList()))))
-    }
-
-    @Test
-    fun bannerPolicyRespectsTimeSettingsAndCompletion() {
-        assertTrue(
-            DayCloseBannerPolicy.shouldShow(
-                hasPlanItems = true,
-                reviewReminderEnabled = true,
-                reviewReminderTimeMinutes = 21 * 60,
-                lastDayCloseEpochDay = null,
-                todayEpochDay = 10,
-                nowMinutes = 21 * 60
-            )
-        )
-        assertFalse(
-            DayCloseBannerPolicy.shouldShow(
-                hasPlanItems = true,
-                reviewReminderEnabled = true,
-                reviewReminderTimeMinutes = 21 * 60,
-                lastDayCloseEpochDay = null,
-                todayEpochDay = 10,
-                nowMinutes = 20 * 60
-            )
-        )
-        assertFalse(
-            DayCloseBannerPolicy.shouldShow(
-                hasPlanItems = true,
-                reviewReminderEnabled = true,
-                reviewReminderTimeMinutes = 21 * 60,
-                lastDayCloseEpochDay = 10,
-                todayEpochDay = 10,
-                nowMinutes = 22 * 60
-            )
-        )
-        assertFalse(
-            DayCloseBannerPolicy.shouldShow(
-                hasPlanItems = false,
-                reviewReminderEnabled = true,
-                reviewReminderTimeMinutes = 21 * 60,
-                lastDayCloseEpochDay = null,
-                todayEpochDay = 10,
-                nowMinutes = 22 * 60
-            )
-        )
-        assertFalse(
-            DayCloseBannerPolicy.shouldShow(
-                hasPlanItems = true,
-                reviewReminderEnabled = false,
-                reviewReminderTimeMinutes = 21 * 60,
-                lastDayCloseEpochDay = null,
-                todayEpochDay = 10,
-                nowMinutes = 22 * 60
-            )
-        )
     }
 
     private fun item(

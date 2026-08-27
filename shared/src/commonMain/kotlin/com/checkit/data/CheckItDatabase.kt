@@ -11,8 +11,6 @@ import androidx.room3.RoomDatabaseConstructor
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.sqlite.execSQL
 import androidx.sqlite.SQLiteConnection
-import com.checkit.domain.ReviewSource
-import com.checkit.domain.ReviewStatus
 import com.checkit.domain.TaskType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -149,22 +147,23 @@ data class DailyPlanItemEntity(
 )
 
 @Entity(
-    tableName = "period_reviews",
-    indices = [Index(value = ["periodType", "periodStartEpochDays"], unique = true)]
+    tableName = "period_goals",
+    indices = [Index(value = ["periodType", "startEpochDays"], unique = true)]
 )
-data class PeriodReviewEntity(
+data class PeriodGoalEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0L,
     val periodType: String,
-    val periodStartEpochDays: Int,
-    val periodEndEpochDays: Int,
-    val content: String = "",
-    val periodIntent: String? = null,
-    val source: String = ReviewSource.Manual.name,
-    val status: String = ReviewStatus.Draft.name,
+    val startEpochDays: Int,
+    val endEpochDays: Int,
+    val review: String = "",
+    val goal: String? = null,
+    /** Satisfaction for this period (e.g. 0..5). */
+    val rating: Float = 0f,
     val completedAtMillis: Long? = null,
-    val generatedAtMillis: Long? = null,
-    val editedAtMillis: Long? = null
+    val editedAtMillis: Long? = null,
+    /** Custom metrics stored inline as JSON; always loaded/saved with the goal. */
+    val metricsJson: String = "[]"
 )
 
 /** Precomputed daily aggregates feeding the Reflect tab. One row per day. */
@@ -542,32 +541,9 @@ data class NestedListItemEntity(
     val metricRollupPolicy: String = "IncludeChildren",
     val showTrackedMinutes: Boolean = false,
     val createdAtMillis: Long,
-    val updatedAtMillis: Long
-)
-
-@Entity(
-    tableName = "nested_manual_metrics",
-    foreignKeys = [
-        ForeignKey(
-            entity = NestedListItemEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["itemId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [Index("itemId"), Index(value = ["itemId", "sortOrder"])]
-)
-data class NestedManualMetricEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0L,
-    val itemId: Long,
-    val name: String,
-    val value: String,
-    val targetValue: String? = null,
-    val unit: String = "None",
-    val customUnit: String? = null,
-    val sortOrder: Int = 0,
-    val enabled: Boolean = true
+    val updatedAtMillis: Long,
+    /** Custom metrics stored inline as JSON; always loaded/saved with the item. */
+    val manualMetricsJson: String = "[]"
 )
 
 @Entity(
@@ -600,7 +576,7 @@ data class NestedItemTagEntity(
         SubTaskEntity::class,
         NoteEntity::class,
         DailyPlanItemEntity::class,
-        PeriodReviewEntity::class,
+        PeriodGoalEntity::class,
         TagEntity::class,
         TaskTagEntity::class,
         NoteTagEntity::class,
@@ -616,12 +592,11 @@ data class NestedItemTagEntity(
         NestedDocumentEntity::class,
         NestedListItemEntity::class,
         NestedItemTagEntity::class,
-        NestedManualMetricEntity::class,
         DailyReflectStatsEntity::class,
         DailyTagRollupEntity::class,
         HabitDailyRollupEntity::class
     ],
-    version = 9,
+    version = 12,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)

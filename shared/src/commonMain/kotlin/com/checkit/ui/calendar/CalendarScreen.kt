@@ -8,11 +8,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,6 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -30,19 +33,17 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material.icons.outlined.ViewDay
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -58,7 +59,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -70,6 +70,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import checkit.shared.generated.resources.Res
@@ -81,10 +82,13 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.NoteItem
-import com.checkit.domain.PeriodReview
+import com.checkit.domain.PeriodGoal
+import com.checkit.domain.TagItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
-import com.checkit.domain.TagItem
+import com.checkit.ui.components.MetricChip
+import com.checkit.ui.components.PeriodGoalRow
+import com.checkit.ui.components.RatingBar
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.components.parseMarkdownToAnnotatedString
@@ -97,8 +101,8 @@ import com.checkit.ui.localizedWeekdayName
 import com.checkit.ui.myday.DayLinearTimeline
 import com.checkit.ui.myday.MyDayAgenda
 import com.checkit.ui.shortName
-import com.checkit.ui.tasks.toDurationLabel
 import com.checkit.ui.tasks.views.ContentContainerAlpha
+import com.checkit.ui.toDurationLabel
 import com.checkit.ui.today
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
@@ -216,9 +220,9 @@ internal fun CalendarScreen(
                                 noteCount = selectedContent.noteCount,
                                 journalCount = selectedContent.journalEntries.size,
                                 onJournalClick = { showJournalList = true },
-                                dayReview = state.selectedDatePeriodReview,
-                                weekIntent = state.selectedWeekIntent,
-                                monthIntent = state.selectedMonthIntent,
+                                dayGoal = state.selectedDatePeriodGoal,
+                                weekGoal = state.selectedWeekGoal,
+                                monthGoal = state.selectedMonthGoal,
                                 onOpenReflect = onOpenReflect
                             )
                             if (selectedContent.showDailyPlan) {
@@ -300,53 +304,68 @@ private fun CalendarPeriodHeader(
     onDisplayModeToggle: () -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(42.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+            .padding(2.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        IconButton(onClick = onPreviousPeriod) {
-            Icon(Icons.Default.ChevronLeft, contentDescription = "Previous period")
+        IconButton(onClick = onPreviousPeriod, modifier = Modifier.size(38.dp)) {
+            Icon(
+                imageVector = Icons.Default.ChevronLeft,
+                contentDescription = "Previous period",
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
         }
-        Row(
+
+        Box(
             modifier = Modifier
                 .weight(1f)
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f), RoundedCornerShape(14.dp))
-                .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f), RoundedCornerShape(14.dp))
-                .clickable(onClick = onCurrentMonth)
-                .padding(start = 14.dp, end = 6.dp, top = 5.dp, bottom = 5.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
+                .fillMaxHeight()
+                .clip(CircleShape)
+                .clickable(onClick = onCurrentMonth),
+            contentAlignment = Alignment.Center
         ) {
             Text(
                 text = when (displayMode) {
                     CalendarDisplayMode.Month -> month.localizedMonthTitle()
                     CalendarDisplayMode.Week -> selectedDate.localizedWeekRangeTitle()
                 },
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1f),
-                textAlign = TextAlign.Center
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+                maxLines = 1
             )
-            IconButton(
-                onClick = onDisplayModeToggle,
-                modifier = Modifier.size(34.dp)
-            ) {
-                Icon(
-                    imageVector = when (displayMode) {
-                        CalendarDisplayMode.Month -> Icons.Outlined.ViewDay
-                        CalendarDisplayMode.Week -> Icons.Default.CalendarMonth
-                    },
-                    contentDescription = when (displayMode) {
-                        CalendarDisplayMode.Month -> "Show week"
-                        CalendarDisplayMode.Week -> "Show month"
-                    },
-                    modifier = Modifier.size(20.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
         }
-        IconButton(onClick = onNextPeriod) {
-            Icon(Icons.Default.ChevronRight, contentDescription = "Next period")
+
+        IconButton(
+            onClick = onDisplayModeToggle,
+            modifier = Modifier
+                .size(32.dp)
+        ) {
+            Icon(
+                imageVector = when (displayMode) {
+                    CalendarDisplayMode.Month -> Icons.Outlined.ViewDay
+                    CalendarDisplayMode.Week -> Icons.Default.CalendarMonth
+                },
+                contentDescription = "Toggle view",
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+
+        IconButton(onClick = onNextPeriod, modifier = Modifier.size(38.dp)) {
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = "Next period",
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
         }
     }
 }
@@ -359,16 +378,16 @@ private fun SelectedDateHeader(
     noteCount: Int,
     journalCount: Int,
     onJournalClick: () -> Unit,
-    dayReview: PeriodReview?,
-    weekIntent: String?,
-    monthIntent: String?,
+    dayGoal: PeriodGoal?,
+    weekGoal: PeriodGoal?,
+    monthGoal: PeriodGoal?,
     onOpenReflect: (LocalDate) -> Unit
 ) {
     val isToday = date == today
     val isYesterday = date == today.minus(1, DateTimeUnit.DAY)
-    val reviewContent = dayReview?.content?.takeIf { it.isNotBlank() }
-    val dayIntent = dayReview?.periodIntent?.takeIf { it.isNotBlank() }
-    val hasDetails = reviewContent != null || dayIntent != null || weekIntent != null || monthIntent != null
+    val dayReview = dayGoal?.review?.takeIf { it.isNotBlank() }
+    val dayIntent = dayGoal?.goal?.takeIf { it.isNotBlank() }
+    val hasDetails = dayReview != null || dayIntent != null || weekGoal != null || monthGoal != null
     var expanded by remember(date) { mutableStateOf(false) }
     val chevronRotation by animateFloatAsState(if (expanded) 180f else 0f, label = "selectedDateChevron")
     var headerSize by remember { mutableStateOf(IntSize.Zero) }
@@ -444,13 +463,8 @@ private fun SelectedDateHeader(
                                 MaterialTheme.colorScheme.onSurface
                             }
                         )
-                        if (reviewContent != null && !expanded) {
-                            Icon(
-                                imageVector = Icons.Default.Star,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                                tint = Color(0xFFEAB308)
-                            )
+                        if (dayGoal != null && dayGoal.rating != 0f) {
+                            RatingBar(dayGoal.rating, modifier = Modifier.width(80.dp), iconTint = Color(0xFFEAB308))
                         }
                     }
                     Text(
@@ -500,7 +514,6 @@ private fun SelectedDateHeader(
                     modifier = Modifier
                         .width(with(density) { headerSize.width.toDp() })
                         .padding(horizontal = 4.dp)
-                        .padding(bottom = 12.dp) // Breathing room for shadow to prevent clipping
                         .clip(RoundedCornerShape(14.dp))
                         .animateContentSize(),
                     shape = RoundedCornerShape(14.dp),
@@ -508,35 +521,32 @@ private fun SelectedDateHeader(
                     tonalElevation = 6.dp,
                     shadowElevation = 8.dp
                 ) {
-                    Column(
-                        modifier = Modifier.padding(vertical = 4.dp)
-                    ) {
-                        if (reviewContent != null) {
+                    Column {
+                        if (dayReview != null) {
                             Row(
                                 modifier = Modifier
-                                    .padding(horizontal = 12.dp, vertical = 8.dp)
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(Color(0xFFEAB308).copy(alpha = 0.08f))
-                                    .padding(8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.Top,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
                                 Box(
                                     modifier = Modifier
-                                        .size(24.dp)
-                                        .background(Color(0xFFEAB308).copy(alpha = 0.16f), RoundedCornerShape(7.dp)),
+                                        .size(20.dp)
+                                        .background(Color(0xFFEAB308).copy(alpha = 0.16f), RoundedCornerShape(5.dp)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Star,
                                         contentDescription = "Win of the day",
-                                        modifier = Modifier.size(15.dp),
+                                        modifier = Modifier.size(13.dp),
                                         tint = Color(0xFFEAB308)
                                     )
                                 }
                                 Text(
                                     modifier = Modifier.weight(1f),
-                                    text = remember(reviewContent) { parseMarkdownToAnnotatedString(reviewContent) },
+                                    text = remember(dayReview) { parseMarkdownToAnnotatedString(dayReview) },
                                     style = MaterialTheme.typography.bodySmall.copy(
                                         color = MaterialTheme.colorScheme.onSurface,
                                         fontWeight = FontWeight.Medium
@@ -547,48 +557,47 @@ private fun SelectedDateHeader(
                                         expanded = false
                                         onOpenReflect(date)
                                     },
-                                    modifier = Modifier.size(28.dp)
+                                    modifier = Modifier.size(24.dp)
                                 ) {
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Filled.OpenInNew,
                                         contentDescription = stringResource(Res.string.calendar_open_review),
-                                        modifier = Modifier.size(16.dp),
+                                        modifier = Modifier.size(14.dp),
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
                         }
 
-                        if (reviewContent != null && (dayIntent != null || weekIntent != null || monthIntent != null)) {
-                            HorizontalDivider(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                            )
+                        dayGoal?.let { goal ->
+                            if (goal.hasContent()) {
+                                PeriodGoalRow(
+                                    icon = Icons.Default.Flag,
+                                    label = "DAY",
+                                    goal = goal,
+                                    color = MaterialTheme.colorScheme.secondary
+                                )
+                            }
                         }
-
-                        dayIntent?.let {
-                            PeriodIntentRow(
-                                icon = Icons.Default.Flag,
-                                label = "DAY",
-                                intent = it,
-                                color = MaterialTheme.colorScheme.secondary
-                            )
+                        weekGoal?.let { goal ->
+                            if (goal.hasContent()) {
+                                PeriodGoalRow(
+                                    icon = Icons.Default.DateRange,
+                                    label = "WEEK",
+                                    goal = goal,
+                                    color = MaterialTheme.colorScheme.tertiary
+                                )
+                            }
                         }
-                        weekIntent?.let {
-                            PeriodIntentRow(
-                                icon = Icons.Default.DateRange,
-                                label = "WEEK",
-                                intent = it,
-                                color = MaterialTheme.colorScheme.tertiary
-                            )
-                        }
-                        monthIntent?.let {
-                            PeriodIntentRow(
-                                icon = Icons.Default.CalendarMonth,
-                                label = "MONTH",
-                                intent = it,
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                        monthGoal?.let { goal ->
+                            if (goal.hasContent()) {
+                                PeriodGoalRow(
+                                    icon = Icons.Default.CalendarMonth,
+                                    label = "MONTH",
+                                    goal = goal,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
                         }
                     }
                 }
@@ -598,38 +607,73 @@ private fun SelectedDateHeader(
 }
 
 @Composable
-private fun PeriodIntentRow(
+private fun PeriodGoalRow(
     icon: ImageVector,
     label: String,
-    intent: String,
+    goal: PeriodGoal,
     color: Color
 ) {
     Row(
-        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+        modifier = Modifier
+            .padding(horizontal = 12.dp, vertical = 2.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(color.copy(alpha = 0.06f))
+            .padding(horizontal = 8.dp, vertical = 6.dp),
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            modifier = Modifier.size(16.dp),
-            tint = color
-        )
-        Column {
+        Box(
+            modifier = Modifier
+                .size(20.dp)
+                .background(color.copy(alpha = 0.12f), RoundedCornerShape(5.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(13.dp),
+                tint = color
+            )
+        }
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
             Text(
                 text = "$label GOAL",
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.ExtraBold,
-                color = color
+                color = color.copy(alpha = 0.9f),
+                letterSpacing = 0.4.sp
             )
-            Text(
-                text = intent,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            goal.goal?.takeIf { it.isNotBlank() }?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+            if (goal.metrics.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    goal.metrics.forEach { metric ->
+                        MetricChip(metric)
+                    }
+                }
+            }
         }
     }
 }
+
+private fun PeriodGoal.hasContent(): Boolean =
+    goal?.isNotBlank() == true || metrics.isNotEmpty()
 
 private data class SelectedCalendarDateContent(
     val date: LocalDate,
@@ -1043,7 +1087,7 @@ private fun HallOfFameHandle(
 
 @Composable
 private fun MonthlyWinsGallery(
-    wins: List<Pair<LocalDate, AnnotatedString>>,
+    wins: List<Triple<LocalDate, AnnotatedString, Float>>,
     onDateClick: (LocalDate) -> Unit
 ) {
     if (wins.isEmpty()) {
@@ -1064,85 +1108,47 @@ private fun MonthlyWinsGallery(
             contentPadding = PaddingValues(bottom = 64.dp, top = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(wins) { (date, winNote) ->
-                WinCard(date, winNote, onClick = { onDateClick(date) })
+            items(wins) { (date, winNote, rating) ->
+                Row (
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                        .clickable {
+                            onDateClick(date)
+                        }
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = date.day.toString(),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = date.localizedShortMonthName(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    VerticalDivider(modifier = Modifier.height(32.dp), color = MaterialTheme.colorScheme.outlineVariant)
+
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        RatingBar(rating = rating, modifier = Modifier.width(80.dp), iconTint = Color(0xFFEAB308))
+                        Text(
+                            text = winNote,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        )
+                    }
+                }
             }
-        }
-    }
-}
-
-@Composable
-private fun WinCard(
-    date: LocalDate,
-    winNote: AnnotatedString,
-    modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null
-) {
-    if (onClick != null) {
-        Card(
-            onClick = onClick,
-            modifier = modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            WinCardContent(date, winNote)
-        }
-    } else {
-        Card(
-            modifier = modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            WinCardContent(date, winNote)
-        }
-    }
-}
-
-@Composable
-private fun WinCardContent(
-    date: LocalDate,
-    winNote: AnnotatedString
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = date.day.toString(),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                text = date.localizedShortMonthName(),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        VerticalDivider(modifier = Modifier.height(32.dp), color = MaterialTheme.colorScheme.outlineVariant)
-
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Icon(Icons.Default.Star, null, Modifier.size(14.dp), tint = Color(0xFFEAB308))
-                Text(
-                    text = "WIN OF THE DAY",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Black,
-                    color = Color(0xFFEAB308)
-                )
-            }
-            Text(
-                text = winNote,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            )
         }
     }
 }

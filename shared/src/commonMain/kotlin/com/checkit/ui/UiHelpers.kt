@@ -1,7 +1,6 @@
-package com.checkit.ui.tasks
+package com.checkit.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -31,6 +30,7 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -40,18 +40,18 @@ import androidx.compose.ui.unit.dp
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
+import com.checkit.domain.MetricItem
+import com.checkit.domain.MetricUnit
 import com.checkit.domain.NoteItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskType
-import com.checkit.ui.shortMonthName
-import com.checkit.ui.shortName
+import com.checkit.ui.tasks.TaskWorkspaceView
 import com.checkit.ui.tasks.views.currentTimeMinutes
 import com.checkit.ui.theme.AppIconColorDefaults
 import com.checkit.ui.theme.AppIconColorDefaults.FallbackColor
 import com.checkit.ui.theme.toColor
-import com.checkit.ui.today
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.plus
@@ -304,9 +304,38 @@ fun Modifier.dashedBorder(
     // Draw the actual border shape
     drawRoundRect(
         color = color,
-        topLeft = androidx.compose.ui.geometry.Offset(halfWidth, halfWidth),
+        topLeft = Offset(halfWidth, halfWidth),
         size = sizeWithStroke,
         cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx),
         style = stroke
     )
 }
+
+fun MetricUnit.displayName(customUnit: String? = null): String = when (this) {
+    MetricUnit.None -> "None"
+    MetricUnit.Custom -> customUnit?.takeIf { it.isNotBlank() } ?: "Custom"
+    MetricUnit.Percentage -> "%"
+    MetricUnit.Points -> "points"
+    MetricUnit.Items -> "items"
+    MetricUnit.Hours -> "hours"
+    MetricUnit.Days -> "days"
+    MetricUnit.VND -> "vnđ"
+    MetricUnit.Lan -> "lần"
+    MetricUnit.Km -> "km"
+    MetricUnit.Rating -> "rating"
+}
+
+fun MetricItem.displayUnit(): String? = when (unit) {
+    MetricUnit.None -> null
+    MetricUnit.Custom -> customUnit?.takeIf { it.isNotBlank() }
+    MetricUnit.Percentage -> "%"
+    MetricUnit.Points -> "points"
+    MetricUnit.Items -> "items"
+    MetricUnit.Hours -> "hours"
+    MetricUnit.Days -> "days"
+    MetricUnit.Rating -> "rating"
+    MetricUnit.VND -> "đ"
+    MetricUnit.Lan -> "lần"
+    MetricUnit.Km -> "km"
+}
+

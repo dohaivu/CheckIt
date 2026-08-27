@@ -10,32 +10,43 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.AddTask
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.RateReview
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -43,9 +54,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -57,40 +66,43 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import checkit.shared.generated.resources.Res
-import checkit.shared.generated.resources.day_close_banner_subtitle
-import checkit.shared.generated.resources.day_close_banner_title
 import checkit.shared.generated.resources.day_close_open
-import checkit.shared.generated.resources.leftovers_banner_carry_all
-import checkit.shared.generated.resources.leftovers_banner_dismiss
-import checkit.shared.generated.resources.leftovers_banner_review
-import checkit.shared.generated.resources.leftovers_banner_subtitle
-import checkit.shared.generated.resources.leftovers_banner_title
-import checkit.shared.generated.resources.plan_assist_banner_dismiss
-import checkit.shared.generated.resources.plan_assist_banner_subtitle
-import checkit.shared.generated.resources.plan_assist_banner_title
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.NoteItem
+import com.checkit.domain.Period
+import com.checkit.domain.PeriodGoal
 import com.checkit.domain.SprintState
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.hasEndTime
+import com.checkit.ui.components.MetricChip
+import com.checkit.ui.components.PeriodGoalRow
+import com.checkit.ui.components.RatingBar
 import com.checkit.ui.components.TinyTopAppBar
-import com.checkit.ui.components.icons.AppIcons
-import com.checkit.ui.components.icons.Target
 import com.checkit.ui.journal.JournalListSheet
 import com.checkit.ui.journal.JournalSection
 import com.checkit.ui.journal.JournalThoughtCard
 import com.checkit.ui.localizedCompactDateWithDayName
-import com.checkit.ui.tasks.TimelineItem
-import com.checkit.ui.tasks.TimelineItemType
-import com.checkit.ui.tasks.isOverdue
+import com.checkit.ui.TimelineItem
+import com.checkit.ui.TimelineItemType
+import com.checkit.ui.isOverdue
+import com.checkit.ui.reflect.ReflectGoalEditorMode
 import com.checkit.ui.tasks.views.AgendaView
 import com.checkit.ui.tasks.views.DailyPlanAllDayCard
 import com.checkit.ui.tasks.views.DailyPlanTimelineCard
@@ -112,6 +124,7 @@ internal fun MyDayScreen(
     onNoteClick: (NoteItem) -> Unit,
     onNoteTimeChange: (NoteItem, Int) -> Unit,
     onCreateTask: (addToMyDayOnSave: Boolean) -> Unit,
+    onOpenGoalEditor: (LocalDate, com.checkit.domain.Period, ReflectGoalEditorMode) -> Unit,
     onNewTagClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -183,24 +196,6 @@ internal fun MyDayScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                if (state.showLeftoversBanner) {
-                    LeftoversBanner(
-                        count = state.pendingYesterdayLeftovers.size,
-                        onCarryAll = viewModel::carryAllYesterdayLeftovers,
-                        onReview = viewModel::openLeftoversSheet,
-                        onDismiss = viewModel::dismissLeftoversBanner
-                    )
-                }
-                if (state.showPlanAssistBanner) {
-                    PlanAssistBanner(
-                        onPlan = viewModel::openPlanAssist,
-                        onDismiss = viewModel::dismissPlanAssist
-                    )
-                }
-                if (state.showDayCloseBanner) {
-                    DayCloseBanner(onClick = viewModel::openDayClose)
-                }
-
                 MyDayViewSelector(
                     selectedView = state.selectedView,
                     onSelect = viewModel::selectView
@@ -214,15 +209,55 @@ internal fun MyDayScreen(
                     onAddClick = viewModel::openNewJournalEntry,
                     onViewClick = viewModel::openJournalList
                 )
-                state.dayReviews
-                    .firstOrNull { it.periodStartDate == state.today }
-                    ?.periodIntent
-                    ?.takeIf { it.isNotBlank() }
-                    ?.let { intent ->
-                        PeriodIntentBanner(
-                            intent = intent
-                        )
+
+                val dayBannerType = state.bannerTypeFor(Period.Day)
+                val weekBannerType = state.bannerTypeFor(Period.Week)
+                val monthBannerType = state.bannerTypeFor(Period.Month)
+
+                // Period banners
+                if (!state.isLoading) {
+                    listOf(
+                        Period.Day to dayBannerType,
+                        Period.Week to weekBannerType,
+                        Period.Month to monthBannerType
+                    ).forEach { (period, type) ->
+                        val goal = state.goalFor(period)
+                        when (type) {
+                            PeriodBannerType.ReviewPending -> {
+                                ReviewReminder(
+                                    period = period,
+                                    onClick = {
+                                        if (period == Period.Day) {
+                                            viewModel.openDayClose()
+                                        } else {
+                                            onOpenGoalEditor(state.today, period, ReflectGoalEditorMode.Full)
+                                        }
+                                    }
+                                )
+                            }
+
+                            PeriodBannerType.MissingGoal -> {
+                                GoalReminder(
+                                    period = period,
+                                    onClick = {
+                                        onOpenGoalEditor(state.today, period, ReflectGoalEditorMode.GoalOnly)
+                                    }
+                                )
+                            }
+
+                            PeriodBannerType.ActiveGoal -> {
+                                if (period == Period.Day) {
+                                    DayGoalBanner(
+                                        goal = goal!!,
+                                        weekGoal = if (weekBannerType == PeriodBannerType.ActiveGoal) state.goalFor(Period.Week) else null,
+                                        monthGoal = if (monthBannerType == PeriodBannerType.ActiveGoal) state.goalFor(Period.Month) else null
+                                    )
+                                }
+                            }
+                        }
                     }
+                }
+
                 when (state.selectedView) {
                     MyDayView.Agenda -> MyDayAgenda(
                         items = state.items,
@@ -342,15 +377,6 @@ internal fun MyDayScreen(
         )
     }
 
-    if (state.showLeftoversSheet) {
-        LeftoversSheet(
-            items = state.pendingYesterdayLeftovers,
-            onDismiss = viewModel::dismissLeftoversSheet,
-            onCarry = viewModel::carryYesterdayLeftover,
-            onCarryAll = viewModel::carryAllYesterdayLeftovers
-        )
-    }
-
     state.dayClose?.let { review ->
         DayCloseSheet(
             state = review,
@@ -411,206 +437,283 @@ private fun CelebrationOverlay(visible: Boolean) {
 }
 
 @Composable
-private fun PeriodIntentBanner(
-    intent: String,
+private fun ReviewReminder(
+    period: Period,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    val periodLabel = when (period) {
+        Period.Day -> "today"
+        Period.Week -> "this week"
+        Period.Month -> "this month"
+        else -> period.name.lowercase()
+    }
+    val gradient = Brush.horizontalGradient(
+        colors = listOf(
+            MaterialTheme.colorScheme.primary,
+            MaterialTheme.colorScheme.tertiary
+        )
+    )
+
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f))
-            .clickable { expanded = !expanded }
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Icon(
-            imageVector = AppIcons.Target,
-            contentDescription = null,
-            modifier = Modifier.size(16.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
-        Text(
-            text = intent,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = if (expanded) Int.MAX_VALUE else 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
-        )
-        Icon(
-            imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-            contentDescription = if (expanded) "Collapse" else "Expand",
-            modifier = Modifier.size(18.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
-private fun DayCloseBanner(onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(MaterialTheme.shapes.medium)
-            .background(MaterialTheme.colorScheme.primaryContainer)
+            .background(MaterialTheme.colorScheme.surface)
+            .border(
+                width = 1.5.dp,
+                brush = gradient,
+                shape = RoundedCornerShape(12.dp)
+            )
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 12.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(40.dp)
-                .background(MaterialTheme.colorScheme.primary, MaterialTheme.shapes.small),
+                .size(36.dp)
+                .background(gradient, RoundedCornerShape(10.dp)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                Icons.Default.RateReview,
+                imageVector = Icons.Default.RateReview,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.onPrimary
             )
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = stringResource(Res.string.day_close_banner_title),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
+                text = "Time to Reflect".uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Black,
+                color = MaterialTheme.colorScheme.primary,
+                letterSpacing = 1.sp
             )
             Text(
-                text = stringResource(Res.string.day_close_banner_subtitle),
+                text = "How was $periodLabel? Jot down your wins and lessons.",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Medium
             )
         }
         Icon(
-            Icons.Default.ChevronRight,
+            imageVector = Icons.Default.ChevronRight,
             contentDescription = null,
             modifier = Modifier.size(20.dp),
-            tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
+            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
         )
     }
 }
 
 @Composable
-private fun LeftoversBanner(
-    count: Int,
-    onCarryAll: () -> Unit,
-    onReview: () -> Unit,
-    onDismiss: () -> Unit
+private fun GoalReminder(
+    period: Period,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(MaterialTheme.shapes.medium)
-            .background(MaterialTheme.colorScheme.tertiaryContainer)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Icon(
-                Icons.Default.Schedule,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp),
-                tint = MaterialTheme.colorScheme.onTertiaryContainer
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(Res.string.leftovers_banner_title, count),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onTertiaryContainer
-                )
-                Text(
-                    text = stringResource(Res.string.leftovers_banner_subtitle),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f)
-                )
-            }
-            IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
-                Icon(
-                    Icons.Default.Close,
-                    contentDescription = stringResource(Res.string.leftovers_banner_dismiss),
-                    modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.onTertiaryContainer
-                )
-            }
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TextButton(onClick = onReview) {
-                Text(stringResource(Res.string.leftovers_banner_review))
-            }
-            FilledTonalButton(
-                onClick = onCarryAll,
-                colors = ButtonDefaults.filledTonalButtonColors(
-                    containerColor = MaterialTheme.colorScheme.tertiary,
-                    contentColor = MaterialTheme.colorScheme.onTertiary
-                )
-            ) {
-                Text(stringResource(Res.string.leftovers_banner_carry_all))
-            }
-        }
+    val periodLabel = when (period) {
+        Period.Day -> "today's"
+        Period.Week -> "this week's"
+        Period.Month -> "this month's"
+        else -> period.name.lowercase()
     }
-}
+    val color = when (period) {
+        Period.Day -> MaterialTheme.colorScheme.secondary
+        Period.Week -> MaterialTheme.colorScheme.tertiary
+        Period.Month -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.error
+    }
 
-@Composable
-private fun PlanAssistBanner(
-    onPlan: () -> Unit,
-    onDismiss: () -> Unit
-) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .clip(MaterialTheme.shapes.medium)
-            .background(MaterialTheme.colorScheme.secondaryContainer)
-            .clickable(onClick = onPlan)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .clip(RoundedCornerShape(12.dp))
+            .background(color.copy(alpha = 0.08f))
+            .border(
+                width = 1.dp,
+                color = color.copy(alpha = 0.25f),
+                shape = RoundedCornerShape(12.dp)
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(40.dp)
-                .background(MaterialTheme.colorScheme.secondary, MaterialTheme.shapes.small),
-            contentAlignment = Alignment.Center
+                .size(32.dp)
+                .background(MaterialTheme.colorScheme.error.copy(alpha = 0.7f), RoundedCornerShape(8.dp)),
+
+        contentAlignment = Alignment.Center
         ) {
             Icon(
-                Icons.Default.Lightbulb,
+                imageVector = Icons.Default.Warning,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSecondary,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.onError
             )
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = stringResource(Res.string.plan_assist_banner_title),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSecondaryContainer
+                text = "Missing Goal".uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Black,
+                color = color,
+                letterSpacing = 1.sp
             )
             Text(
-                text = stringResource(Res.string.plan_assist_banner_subtitle),
+                text = "Tap to set $periodLabel focus and metrics.",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Medium
             )
         }
-        IconButton(onClick = onDismiss) {
-            Icon(
-                Icons.Default.Close,
-                contentDescription = stringResource(Res.string.plan_assist_banner_dismiss),
-                modifier = Modifier.size(18.dp),
-                tint = MaterialTheme.colorScheme.onSecondaryContainer
-            )
+        Icon(
+            imageVector = Icons.Default.ChevronRight,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            tint = color.copy(alpha = 0.6f)
+        )
+    }
+}
+
+@Composable
+private fun DayGoalBanner(
+    goal: PeriodGoal,
+    weekGoal: PeriodGoal? = null,
+    monthGoal: PeriodGoal? = null,
+    modifier: Modifier = Modifier
+) {
+    val color = when (goal.period) {
+        Period.Day -> MaterialTheme.colorScheme.secondary
+        Period.Week -> MaterialTheme.colorScheme.tertiary
+        Period.Month -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.secondary
+    }
+    var expanded by remember { mutableStateOf(false) }
+    var bannerSize by remember { mutableStateOf(IntSize.Zero) }
+
+    val hasWeekGoal = weekGoal?.goal?.isNotBlank() == true || weekGoal?.metrics?.isNotEmpty() == true
+    val hasMonthGoal = monthGoal?.goal?.isNotBlank() == true || monthGoal?.metrics?.isNotEmpty() == true
+    val hasMoreGoals = hasWeekGoal || hasMonthGoal
+
+    Box(modifier = modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .onSizeChanged { bannerSize = it }
+                .clip(RoundedCornerShape(12.dp))
+                .background(color.copy(alpha = 0.08f))
+                .clickable { expanded = !expanded }
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .background(
+                            color.copy(alpha = 0.12f),
+                            androidx.compose.foundation.shape.RoundedCornerShape(5.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Flag,
+                        contentDescription = null,
+                        modifier = Modifier.size(13.dp),
+                        tint = color
+                    )
+                }
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        text = "${goal.period.name.uppercase()} FOCUS",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = color,
+                    )
+                    goal.goal?.takeIf { it.isNotBlank() }?.let { intent ->
+                        Text(
+                            text = intent,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    if (goal.metrics.isNotEmpty()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            goal.metrics.forEach { metric ->
+                                MetricChip(metric)
+                            }
+                        }
+                    }
+                }
+                if (hasMoreGoals) {
+                    Icon(
+                        imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = if (expanded) "Collapse" else "Expand",
+                        modifier = Modifier.size(18.dp),
+                        tint = color.copy(alpha = 0.6f)
+                    )
+                }
+            }
+        }
+
+        if (hasMoreGoals && expanded) {
+            val density = LocalDensity.current
+            Popup(
+                alignment = Alignment.TopStart,
+                offset = IntOffset(0, bannerSize.height),
+                onDismissRequest = { expanded = false },
+                properties = PopupProperties(focusable = true)
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .width(with(density) { bannerSize.width.toDp() })
+                        .clip(RoundedCornerShape(14.dp)),
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    tonalElevation = 6.dp,
+                    shadowElevation = 8.dp
+                ) {
+                    Column(
+                    ) {
+                        weekGoal?.let {
+                            if (it.goal?.isNotBlank() == true || it.metrics.isNotEmpty()) {
+                                PeriodGoalRow(
+                                    icon = Icons.Default.DateRange,
+                                    label = "WEEK",
+                                    goal = it,
+                                    color = MaterialTheme.colorScheme.tertiary
+                                )
+                            }
+                        }
+                        monthGoal?.let {
+                            if (it.goal?.isNotBlank() == true || it.metrics.isNotEmpty()) {
+                                PeriodGoalRow(
+                                    icon = Icons.Default.CalendarMonth,
+                                    label = "MONTH",
+                                    goal = it,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -618,18 +721,61 @@ private fun PlanAssistBanner(
 @Composable
 private fun MyDayViewSelector(
     selectedView: MyDayView,
-    onSelect: (MyDayView) -> Unit
+    onSelect: (MyDayView) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    SingleChoiceSegmentedButtonRow {
-        MyDayView.entries.forEachIndexed { index, view ->
-            SegmentedButton(
-                selected = selectedView == view,
-                onClick = { onSelect(view) },
-                shape = SegmentedButtonDefaults.itemShape(index = index, count = MyDayView.entries.size),
-                icon = { Icon(view.icon(), contentDescription = null, modifier = Modifier.size(18.dp)) },
-                label = { Text(view.label()) },
-                colors = SegmentedButtonDefaults.colors(activeContainerColor = MaterialTheme.colorScheme.primaryContainer, activeContentColor = MaterialTheme.colorScheme.primary)
-            )
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(42.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        MyDayView.entries.forEach { view ->
+            val selected = selectedView == view
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .clip(CircleShape)
+                    .background(
+                        brush = if (selected) {
+                            Brush.horizontalGradient(
+                                listOf(
+                                    MaterialTheme.colorScheme.primary,
+                                    MaterialTheme.colorScheme.tertiary
+                                )
+                            )
+                        } else {
+                            Brush.linearGradient(listOf(Color.Transparent, Color.Transparent))
+                        }
+                    )
+                    .clickable { onSelect(view) },
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = view.icon(),
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = view.label(),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                        color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
         }
     }
 }

@@ -91,6 +91,9 @@ fun Period.endExclusive(anchorDate: LocalDate): LocalDate = when (this) {
     Period.Year -> startOf(anchorDate).plus(1, DateTimeUnit.YEAR)
 }
 
+fun Period.endDateInclusive(anchorDate: LocalDate): LocalDate =
+    endExclusive(anchorDate).minus(1, DateTimeUnit.DAY)
+
 fun Period.move(anchorDate: LocalDate, amount: Int): LocalDate = when (this) {
     Period.Day -> anchorDate.plus(amount, DateTimeUnit.DAY)
     Period.Week -> anchorDate.plus(amount * 7, DateTimeUnit.DAY)

@@ -1,5 +1,7 @@
 package com.checkit.ui.myday
 
+import com.checkit.domain.CarryOverTimePolicy
+import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DefaultTaskDurationMinutes
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
@@ -8,7 +10,6 @@ import com.checkit.domain.nextAvailableTimeRange
 import com.checkit.ui.UiEvent
 import com.checkit.ui.currentMyDayTimeMinutes
 import com.checkit.ui.tasks.EditorMode
-import com.checkit.ui.today
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -18,33 +19,6 @@ internal class PlanAssistController(
     private val state: MyDayStateHolder,
     private val scope: CoroutineScope
 ) {
-    fun openPlanAssist() {
-        state.update {
-            it.copy(
-                showPlanAssistBanner = false,
-                showSuggestions = true,
-                showLeftoversSheet = false,
-                suggestionStartTimeMinutes = null,
-                suggestionEndTimeMinutes = null,
-                itemEditor = null,
-                dayClose = null
-            )
-        }
-    }
-
-    fun dismissPlanAssist() {
-        val todayEpoch = today().toEpochDays().toInt()
-        scope.launch {
-            deps.settingsRepository.setLastDayPlanDismissedEpochDay(todayEpoch)
-        }
-        state.update {
-            it.copy(
-                showPlanAssistBanner = false,
-                lastDayPlanDismissedEpochDay = todayEpoch
-            )
-        }
-    }
-
     fun openSuggestions(
         startTimeMinutes: Int? = null,
         endTimeMinutes: Int? = null
@@ -52,7 +26,6 @@ internal class PlanAssistController(
         state.update {
             it.copy(
                 showSuggestions = true,
-                showPlanAssistBanner = false,
                 suggestionStartTimeMinutes = startTimeMinutes,
                 suggestionEndTimeMinutes = endTimeMinutes
             )
@@ -75,6 +48,56 @@ internal class PlanAssistController(
 
     fun addTaskToMyDay(task: TaskItem) {
         addTaskToMyDay(task, clearSuggestions = false)
+    }
+
+    fun carryAllYesterdayLeftovers() {
+        val current = state.uiState.value
+        val items = current.pendingYesterdayLeftovers
+        if (items.isEmpty()) return
+        scope.launch {
+            runCatching {
+                deps.carryOverDailyPlanItems.carryAll(
+                    items = items,
+                    toDate = current.today,
+                    timePolicy = CarryOverTimePolicy.ClearTimes
+                )
+            }.onSuccess { result ->
+                state.sendEvent(
+                    UiEvent.ShowSnackbar(
+                        when {
+                            result.carriedCount > 0 && result.skippedCount > 0 ->
+                                "${result.carriedCount} carried · ${result.skippedCount} already on today"
+                            result.carriedCount > 0 ->
+                                "${result.carriedCount} carried from yesterday"
+                            else -> "Nothing new to carry"
+                        }
+                    )
+                )
+            }.onFailure { error ->
+                state.sendEvent(UiEvent.ShowSnackbar(error.message ?: "Unable to carry leftovers"))
+            }
+        }
+    }
+
+    fun carryYesterdayLeftover(item: DailyPlanItem) {
+        scope.launch {
+            runCatching {
+                deps.carryOverDailyPlanItems(
+                    items = listOf(item),
+                    itemIds = setOf(item.id),
+                    toDate = com.checkit.ui.today(),
+                    timePolicy = CarryOverTimePolicy.ClearTimes
+                )
+            }.onSuccess { result ->
+                state.sendEvent(
+                    UiEvent.ShowSnackbar(
+                        if (result.carriedCount > 0) "Carried to today" else "Already on today"
+                    )
+                )
+            }.onFailure { error ->
+                state.sendEvent(UiEvent.ShowSnackbar(error.message ?: "Unable to carry item"))
+            }
+        }
     }
 
     fun addDailyPlanItem(title: String, tagIds: List<Long>, nestedListItemId: Long? = null) {

@@ -60,8 +60,6 @@ import checkit.shared.generated.resources.color_scheme_sky_blue
 import checkit.shared.generated.resources.color_scheme_sunset
 import checkit.shared.generated.resources.color_scheme_system_default
 import checkit.shared.generated.resources.language
-import checkit.shared.generated.resources.settings_auto_carry_subtitle
-import checkit.shared.generated.resources.settings_auto_carry_title
 import checkit.shared.generated.resources.settings_title
 import checkit.shared.generated.resources.theme
 import checkit.shared.generated.resources.theme_dark
@@ -264,14 +262,6 @@ private fun ReminderSettingsScreen(
                     enabled = state.checkInEnabled,
                     lastShownAtMillis = state.checkInLastShownAtMillis,
                     onEnabledChange = viewModel::setCheckInReminderEnabled
-                )
-            }
-            item {
-                SwitchSettingsRow(
-                    title = stringResource(Res.string.settings_auto_carry_title),
-                    subtitle = stringResource(Res.string.settings_auto_carry_subtitle),
-                    enabled = state.autoCarryOverLeftovers,
-                    onEnabledChange = viewModel::setAutoCarryOverLeftovers
                 )
             }
         }

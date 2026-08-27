@@ -8,6 +8,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,12 +26,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.lazy.LazyListLayoutInfo
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -38,12 +37,11 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.NoteAdd
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
@@ -54,13 +52,16 @@ import androidx.compose.material.icons.filled.FormatColorFill
 import androidx.compose.material.icons.filled.FormatColorText
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOut
+import androidx.compose.material.icons.rounded.CheckBox
+import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxColors
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -89,13 +90,11 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.zIndex
-import com.checkit.domain.NestedListItem
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -107,6 +106,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.zIndex
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.cancel
 import checkit.shared.generated.resources.nested_add_child
@@ -123,27 +123,28 @@ import checkit.shared.generated.resources.nested_outdent
 import checkit.shared.generated.resources.nested_root
 import checkit.shared.generated.resources.nested_zoom_in
 import checkit.shared.generated.resources.nested_zoom_out
+import com.checkit.domain.FocusPeriod
+import com.checkit.domain.MetricItem
 import com.checkit.domain.MetricRollupPolicy
+import com.checkit.domain.MetricUnit
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedItemNode
-import com.checkit.domain.NestedManualMetric
+import com.checkit.domain.NestedListItem
 import com.checkit.domain.NestedMetricSummary
-import com.checkit.domain.NestedMetricUnit
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.TagItem
-import com.checkit.domain.FocusPeriod
-import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.filterNestedTree
-import com.checkit.domain.nestedDescendantIds
 import com.checkit.ui.components.AppOutlinedTextField
+import com.checkit.ui.components.CompactFlatTextField
 import com.checkit.ui.components.DateRangePill
 import com.checkit.ui.components.FocusPeriodHeader
 import com.checkit.ui.components.PeriodPicker
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TagPill
-import com.checkit.ui.components.TagPlain
-import com.checkit.ui.tasks.noRippleClickable
+import com.checkit.ui.displayName
+import com.checkit.ui.displayUnit
+import com.checkit.ui.noRippleClickable
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
@@ -871,15 +872,17 @@ private fun NestedItemMetadataPreview(
                 })
             }
             item.manualMetrics.filter { it.enabled }.forEach { metric ->
-                if (metric.value.isNotBlank()) {
+                if (metric.value.isNotBlank() || metric.isCompleted) {
                     MetricChip(
                         content = buildAnnotatedString {
                             if (metric.name.isNotBlank()) {
                                 append(metric.name)
                                 append(" ")
                             }
-                            withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)) {
-                                append(metric.value)
+                            if (metric.value.isNotBlank()) {
+                                withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)) {
+                                    append(metric.value)
+                                }
                             }
                             if (!metric.targetValue.isNullOrBlank()) {
                                 append("/")
@@ -893,7 +896,8 @@ private fun NestedItemMetadataPreview(
                                 append(unit)
                             }
                         },
-                        manual = true
+                        manual = true,
+                        isCompleted = metric.isCompleted
                     )
                 }
             }
@@ -928,48 +932,42 @@ private fun NestedItemMetadataPreview(
 }
 
 @Composable
-private fun MetricChip(content: AnnotatedString, manual: Boolean = false) {
-    Box(
+private fun MetricChip(content: AnnotatedString, manual: Boolean = false, isCompleted: Boolean = false) {
+    val containerColor = when {
+        isCompleted && manual -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f)
+        isCompleted -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+        manual -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.85f)
+        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+    }
+    val contentColor = when {
+        isCompleted && manual -> MaterialTheme.colorScheme.onPrimaryContainer
+        isCompleted -> MaterialTheme.colorScheme.onPrimaryContainer
+        manual -> MaterialTheme.colorScheme.onTertiaryContainer
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Row(
         modifier = Modifier
             .clip(RoundedCornerShape(6.dp))
-            .background(
-                if (manual) MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.85f)
-                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
-            )
-            .padding(horizontal = 6.dp, vertical = 2.dp)
+            .background(containerColor)
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(3.dp)
     ) {
+        if (isCompleted) {
+            Icon(
+                imageVector = Icons.Filled.Check,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(12.dp)
+            )
+        }
         Text(
             text = content,
             style = MaterialTheme.typography.labelSmall,
-            color = if (manual) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+            color = contentColor,
             maxLines = 1
         )
     }
-}
-
-private fun NestedManualMetric.displayUnit(): String? = when (unit) {
-    NestedMetricUnit.None -> null
-    NestedMetricUnit.Custom -> customUnit?.takeIf { it.isNotBlank() }
-    else -> unitLabel(unit)
-}
-
-private fun NestedMetricUnit.displayName(customUnit: String? = null): String = when (this) {
-    NestedMetricUnit.None -> "None"
-    NestedMetricUnit.Custom -> customUnit?.takeIf { it.isNotBlank() } ?: "Custom"
-    else -> unitLabel(this)
-}
-
-private fun unitLabel(unit: NestedMetricUnit): String = when (unit) {
-    NestedMetricUnit.None -> ""
-    NestedMetricUnit.Percentage -> "%"
-    NestedMetricUnit.Points -> "points"
-    NestedMetricUnit.Count -> "count"
-    NestedMetricUnit.Items -> "items"
-    NestedMetricUnit.Hours -> "hours"
-    NestedMetricUnit.Days -> "days"
-    NestedMetricUnit.Currency -> "currency"
-    NestedMetricUnit.Rating -> "rating"
-    NestedMetricUnit.Custom -> ""
 }
 
 @Composable
@@ -977,7 +975,7 @@ private fun NestedItemDetailsDialog(
     node: NestedItemNode,
     summary: NestedMetricSummary,
     onDismiss: () -> Unit,
-    onSave: (Int, MetricRollupPolicy, Boolean, List<NestedManualMetric>) -> Unit
+    onSave: (Int, MetricRollupPolicy, Boolean, List<MetricItem>) -> Unit
 ) {
     val item = node.item
     val isLeaf = !node.hasChildren
@@ -1165,8 +1163,7 @@ private fun NestedItemDetailsDialog(
                         )
                         TextButton(
                             onClick = {
-                                metrics = metrics + NestedManualMetric(
-                                    itemId = item.id,
+                                metrics = metrics + MetricItem(
                                     name = "",
                                     value = "",
                                     sortOrder = metrics.size
@@ -1203,6 +1200,20 @@ private fun NestedItemDetailsDialog(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
+                                Icon(
+                                    imageVector = if (metric.isCompleted) Icons.Rounded.CheckBox else Icons.Rounded.CheckBoxOutlineBlank,
+                                    contentDescription = if (metric.isCompleted) "Mark incomplete" else "Mark complete",
+                                    tint = if (metric.isCompleted) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)
+                                    },
+                                    modifier = Modifier
+                                        .size(22.dp)
+                                        .then(Modifier.clickable {
+                                            metrics = metrics.toMutableList().also { it[index] = metric.copy(isCompleted = !metric.isCompleted) }
+                                        })
+                                )
                                 CompactFlatTextField(
                                     value = metric.name,
                                     onValueChange = { value ->
@@ -1273,14 +1284,14 @@ private fun NestedItemDetailsDialog(
                                         expanded = unitExpandedIndex == index,
                                         onDismissRequest = { unitExpandedIndex = null }
                                     ) {
-                                        NestedMetricUnit.entries.forEach { unit ->
+                                        MetricUnit.entries.forEach { unit ->
                                             DropdownMenuItem(
                                                 text = { Text(unit.displayName(), style = MaterialTheme.typography.bodySmall) },
                                                 onClick = {
                                                     metrics = metrics.toMutableList().also {
                                                         it[index] = metric.copy(
                                                             unit = unit,
-                                                            customUnit = if (unit == NestedMetricUnit.Custom) metric.customUnit else null
+                                                            customUnit = if (unit == MetricUnit.Custom) metric.customUnit else null
                                                         )
                                                     }
                                                     unitExpandedIndex = null
@@ -1291,7 +1302,7 @@ private fun NestedItemDetailsDialog(
                                 }
                             }
 
-                            if (metric.unit == NestedMetricUnit.Custom) {
+                            if (metric.unit == MetricUnit.Custom) {
                                 CompactFlatTextField(
                                     value = metric.customUnit.orEmpty(),
                                     onValueChange = { value ->
@@ -1313,7 +1324,7 @@ private fun NestedItemDetailsDialog(
                         actualMinutes.toIntOrNull() ?: 0,
                         policy,
                         showTrackedMinutes,
-                        metrics.filter { it.name.isNotBlank() && it.value.isNotBlank() }
+                        metrics.filter { it.name.isNotBlank() && (it.value.isNotBlank() || it.isCompleted) }
                     )
                 }
             ) {
@@ -1359,58 +1370,6 @@ private fun DetailMetricStatCard(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
-    }
-}
-
-@Composable
-private fun CompactFlatTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    placeholder: String,
-    modifier: Modifier = Modifier,
-    suffix: String? = null,
-    keyboardOptions: KeyboardOptions = KeyboardOptions.Default
-) {
-    Row(
-        modifier = modifier
-            .height(34.dp)
-            .clip(RoundedCornerShape(6.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f), RoundedCornerShape(6.dp))
-            .padding(horizontal = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier.weight(1f),
-            contentAlignment = Alignment.CenterStart
-        ) {
-            if (value.isEmpty()) {
-                Text(
-                    text = placeholder,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            BasicTextField(
-                value = value,
-                onValueChange = onValueChange,
-                textStyle = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurface),
-                singleLine = true,
-                keyboardOptions = keyboardOptions,
-                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-        if (suffix != null) {
-            Text(
-                text = suffix,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                modifier = Modifier.padding(start = 4.dp)
-            )
-        }
     }
 }
 
@@ -1981,7 +1940,8 @@ private fun NestedTree(
                             Checkbox(
                                 checked = item.checked,
                                 onCheckedChange = { viewModel.toggleChecked(item.id) },
-                                modifier = Modifier.size(28.dp).scale(0.7f).align(Alignment.Top)
+                                modifier = Modifier.size(28.dp).scale(0.7f).align(Alignment.Top),
+                                colors = CheckboxDefaults.colors(uncheckedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f))
                             )
                         } else {
                             Spacer(Modifier.width(8.dp))

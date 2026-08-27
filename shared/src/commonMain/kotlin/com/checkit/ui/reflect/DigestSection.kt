@@ -24,9 +24,6 @@ import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.TaskAlt
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -60,7 +57,7 @@ import com.checkit.ui.components.getMoodColorFromEmoji
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.localizedShortMonthName
 import com.checkit.ui.shortName
-import com.checkit.ui.tasks.toDurationLabel
+import com.checkit.ui.toDurationLabel
 import com.checkit.ui.theme.toColor
 import kotlinx.datetime.LocalDate
 import kotlin.math.abs
@@ -198,7 +195,7 @@ internal fun ActivityChart(
                 ),
                 RoundedCornerShape(24.dp)
             )
-            .padding(24.dp)
+            .padding(16.dp)
     ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -358,7 +355,7 @@ internal fun CompletedHighlightsCard(
                 ),
                 RoundedCornerShape(24.dp)
             )
-            .padding(vertical = 24.dp)
+            .padding(vertical = 20.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(

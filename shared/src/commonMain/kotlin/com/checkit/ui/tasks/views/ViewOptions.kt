@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -53,7 +52,7 @@ import com.checkit.ui.components.DetailChip
 import com.checkit.ui.tasks.TaskSortOption
 import com.checkit.ui.tasks.TaskWorkspaceView
 import com.checkit.ui.components.AppOutlinedTextField
-import com.checkit.ui.tasks.icon
+import com.checkit.ui.icon
 import com.checkit.ui.theme.materialIcon
 
 

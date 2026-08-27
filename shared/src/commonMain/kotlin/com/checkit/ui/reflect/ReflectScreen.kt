@@ -1,7 +1,9 @@
 package com.checkit.ui.reflect
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,31 +11,29 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -49,18 +49,21 @@ import checkit.shared.generated.resources.reflect_period_week
 import checkit.shared.generated.resources.reflect_period_year
 import checkit.shared.generated.resources.reflect_review_card_title
 import checkit.shared.generated.resources.reflect_review_empty
-import checkit.shared.generated.resources.reflect_review_status_draft
 import checkit.shared.generated.resources.reflect_reviews_empty
 import checkit.shared.generated.resources.reflect_reviews_subtitle
 import checkit.shared.generated.resources.reflect_reviews_title
 import checkit.shared.generated.resources.reflect_reviews_written
 import checkit.shared.generated.resources.tab_reflect
-import com.checkit.domain.PeriodReview
+import com.checkit.domain.PeriodGoal
 import com.checkit.domain.Period
+import com.checkit.ui.components.MetricChip
+import com.checkit.ui.components.RatingBar
 import com.checkit.ui.components.ReportPeriod
 import com.checkit.ui.components.ReportPeriodHeader
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.components.asAnnotatedString
+import com.checkit.ui.components.icons.AppIcons
+import com.checkit.ui.components.icons.Target
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.localizedMonthTitle
 import com.checkit.ui.localizedShortMonthName
@@ -170,10 +173,10 @@ internal fun ReflectScreen(
                             )
                         }
 
-                        ReviewsSection(
-                            reviews = state.reviewsForSelectedPeriod,
+                        GoalsSection(
+                            goals = state.goalsForSelectedPeriod,
                             selectedPeriod = state.selectedPeriod,
-                            onOpenReview = viewModel::openReview
+                            onOpenGoal = viewModel::openGoal
                         )
                     }
                 }
@@ -187,13 +190,13 @@ private fun ReviewCard(
     state: ReflectUiState,
     onOpenEditor: () -> Unit
 ) {
-    val review = state.focusReview
+    val goal = state.focusGoal
     val periodLabel = state.focus.period.label()
 
     val gradient = Brush.linearGradient(
         colors = listOf(
-            MaterialTheme.colorScheme.primaryContainer,
-            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f)
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
+            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
         )
     )
 
@@ -202,17 +205,20 @@ private fun ReviewCard(
             .fillMaxWidth()
             .background(gradient, RoundedCornerShape(24.dp))
             .clickable(onClick = onOpenEditor)
-            .padding(20.dp)
+            .padding(16.dp)
     ) {
         Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
                     Icon(
                         imageVector = state.focus.period.reviewIcon(),
                         contentDescription = null,
@@ -225,66 +231,95 @@ private fun ReviewCard(
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 1.2.sp,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
 
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                    contentDescription = stringResource(Res.string.calendar_open_review),
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-                )
+                if (goal != null && goal.rating > 0) {
+                    RatingBar(
+                        rating = goal.rating,
+                        modifier = Modifier.width(80.dp).height(16.dp)
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                        contentDescription = stringResource(Res.string.calendar_open_review),
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                    )
+                }
             }
 
-            if (review == null || review.content.isBlank()) {
+            if (goal == null || goal.review.isBlank()) {
                 Text(
                     text = stringResource(Res.string.reflect_review_empty, periodLabel),
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                 )
             } else {
                 Text(
-                    text = review.content.asAnnotatedString(),
+                    text = goal.review.asAnnotatedString(),
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        lineHeight = 24.sp,
+                        lineHeight = 22.sp,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurface
-                    )
+                    ),
+                    maxLines = 6,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 
-            review?.periodIntent?.takeIf { it.isNotBlank() }?.let { intent ->
+            if (goal != null && goal.metrics.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    goal.metrics.forEach { metric ->
+                        MetricChip(metric)
+                    }
+                }
+            }
+
+            goal?.goal?.takeIf { it.isNotBlank() }?.let { periodGoal ->
                 Column (
-                    verticalArrangement = Arrangement.spacedBy(0.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                     horizontalAlignment = Alignment.Start,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 8.dp)
+                        .padding(top = 4.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.4f))
+                        .padding(10.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Schedule,
+                            imageVector = AppIcons.Target,
                             contentDescription = null,
-                            modifier = Modifier.size(16.dp),
+                            modifier = Modifier.size(14.dp),
                             tint = MaterialTheme.colorScheme.secondary
                         )
                         Text(
-                            text = "This ${periodLabel.uppercase()} focus",
-                            style = MaterialTheme.typography.labelMedium,
+                            text = "${periodLabel.uppercase()} FOCUS",
+                            style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.ExtraBold,
                             letterSpacing = 1.sp,
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
                         )
                     }
                     Text(
-                        text = intent.asAnnotatedString(),
+                        text = periodGoal.asAnnotatedString(),
                         style = MaterialTheme.typography.bodySmall.copy(
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Medium
                         )
                     )
                 }
@@ -294,10 +329,10 @@ private fun ReviewCard(
 }
 
 @Composable
-private fun ReviewsSection(
-    reviews: List<PeriodReview>,
+private fun GoalsSection(
+    goals: List<PeriodGoal>,
     selectedPeriod: ReportPeriod,
-    onOpenReview: (PeriodReview) -> Unit
+    onOpenGoal: (PeriodGoal) -> Unit
 ) {
     val periodLabel = selectedPeriod.toPeriod().label()
     Column(
@@ -327,21 +362,37 @@ private fun ReviewsSection(
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                 )
             }
-            if (reviews.isNotEmpty()) {
+            if (goals.isNotEmpty()) {
                 Text(
-                    text = stringResource(Res.string.reflect_reviews_written, reviews.size),
+                    text = stringResource(Res.string.reflect_reviews_written, goals.size),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
                 )
             }
         }
-        if (reviews.isEmpty()) {
+        if (goals.isEmpty()) {
             ReviewsEmptyState(periodLabel = selectedPeriod.childPeriod().label())
         } else {
-            Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
-                reviews.forEach { review ->
-                    ReviewRow(review = review, onClick = { onOpenReview(review) })
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                    .border(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(24.dp)
+                    )
+            ) {
+                goals.forEachIndexed { index, goal ->
+                    GoalRow(goal = goal, onClick = { onOpenGoal(goal) })
+                    if (index < goals.lastIndex) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                        )
+                    }
                 }
             }
         }
@@ -374,85 +425,106 @@ private fun ReviewsEmptyState(periodLabel: String) {
 }
 
 @Composable
-private fun ReviewRow(
-    review: PeriodReview,
+private fun GoalRow(
+    goal: PeriodGoal,
     onClick: () -> Unit
 ) {
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .background(
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
-                    shape = RoundedCornerShape(12.dp)
-                ),
-            contentAlignment = Alignment.Center
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Icon(
-                imageVector = review.period.reviewIcon(),
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-        }
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = review.rangeLabel(),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                ReviewStatusPill(review = review)
-            }
-            if (review.content.isNotBlank()) {
-                Text(
-                    text = review.content.asAnnotatedString(),
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                        shape = RoundedCornerShape(8.dp)
                     ),
-                    modifier = Modifier.padding(top = 2.dp)
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = goal.period.reviewIcon(),
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+            Text(
+                text = goal.rangeLabel(),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            if (goal.rating > 0) {
+                RatingBar(
+                    rating = goal.rating,
+                    modifier = Modifier.width(80.dp).height(14.dp)
                 )
             }
         }
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            contentDescription = null,
-            modifier = Modifier.size(20.dp),
-            tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
-        )
-    }
-}
 
-@Composable
-private fun ReviewStatusPill(review: PeriodReview) {
-    if (review.status == com.checkit.domain.ReviewStatus.Draft) {
-        Surface(
-            color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.7f),
-            shape = CircleShape
-        ) {
+        if (goal.review.isNotBlank()) {
             Text(
-                text = stringResource(Res.string.reflect_review_status_draft),
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onTertiaryContainer
+                text = goal.review.asAnnotatedString(),
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = MaterialTheme.colorScheme.onSurface,
+                    lineHeight = 18.sp
+                ),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
+        }
+
+        if (goal.metrics.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                goal.metrics.forEach { metric ->
+                    MetricChip(metric)
+                }
+            }
+        }
+
+        goal.goal?.takeIf { it.isNotBlank() }?.let { periodGoal ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(
+                    imageVector = AppIcons.Target,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.secondary
+                )
+                Text(
+                    text = periodGoal,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                        fontWeight = FontWeight.Medium
+                    ),
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
     }
 }
@@ -467,12 +539,12 @@ internal fun Period.reviewIcon(): ImageVector = when (this) {
 }
 
 @Composable
-internal fun PeriodReview.rangeLabel(): String = when (period) {
-    Period.Day -> periodStartDate.localizedCompactDateWithDayName()
-    Period.Week -> "${periodStartDate.localizedShortMonthName()} ${periodStartDate.day}"
-    Period.Month -> periodStartDate.localizedMonthTitle()
-    Period.Year -> periodStartDate.year.toString()
-    else -> periodStartDate.toString()
+internal fun PeriodGoal.rangeLabel(): String = when (period) {
+    Period.Day -> startDate.localizedCompactDateWithDayName()
+    Period.Week -> "${startDate.localizedShortMonthName()} ${startDate.day}"
+    Period.Month -> startDate.localizedMonthTitle()
+    Period.Year -> startDate.year.toString()
+    else -> startDate.toString()
 }
 
 @Composable

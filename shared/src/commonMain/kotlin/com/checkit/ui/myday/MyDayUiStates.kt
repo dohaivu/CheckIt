@@ -8,14 +8,16 @@ import com.checkit.domain.DayCloseSummary
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.LeftoverAction
 import com.checkit.domain.NoteItem
-import com.checkit.domain.PeriodReview
+import com.checkit.domain.Period
+import com.checkit.domain.PeriodGoal
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TagItem
-import com.checkit.domain.YesterdayLeftovers
 import com.checkit.domain.defaultLeftoverAction
+import com.checkit.domain.endDateInclusive
+import com.checkit.domain.startOf
 import com.checkit.ui.tasks.EditorMode
-import com.checkit.ui.tasks.isOverdue
+import com.checkit.ui.isOverdue
 import com.checkit.ui.today
 import com.checkit.ui.currentMyDayTimeMinutes
 import kotlinx.datetime.LocalDate
@@ -38,20 +40,7 @@ data class MyDayUiState(
     val selectedView: MyDayView = MyDayView.Timeline,
     val itemEditor: DailyPlanItemEditorState? = null,
     val dayClose: DayCloseUiState? = null,
-    val showDayCloseBanner: Boolean = false,
-    val reviewReminderEnabled: Boolean = true,
-    val reviewReminderTimeMinutes: Int = 21 * 60,
-    val planReminderEnabled: Boolean = true,
-    val planReminderTimeMinutes: Int = 7 * 60,
-    val lastDayCloseEpochDay: Int? = null,
-    val lastDayPlanDismissedEpochDay: Int? = null,
-    val leftoversBannerDismissedEpochDay: Int? = null,
-    val autoCarryOverLeftovers: Boolean = false,
-    val yesterdayLeftovers: List<DailyPlanItem> = emptyList(),
     val pendingYesterdayLeftovers: List<DailyPlanItem> = emptyList(),
-    val showLeftoversBanner: Boolean = false,
-    val showLeftoversSheet: Boolean = false,
-    val showPlanAssistBanner: Boolean = false,
     val showSuggestions: Boolean = false,
     val showQuickSprintSheet: Boolean = false,
     val showCelebration: Boolean = false,
@@ -59,12 +48,13 @@ data class MyDayUiState(
     val suggestionEndTimeMinutes: Int? = null,
     val recentTags: List<TagItem> = emptyList(),
     val lastFabAction: FabAction = FabAction.QuickSprint,
-    val dayReviews: List<PeriodReview> = emptyList(),
+    val periodGoals: List<PeriodGoal> = emptyList(),
     /** Journal entries for today. */
     val journalEntries: List<JournalEntry> = emptyList(),
     val journalEditor: JournalEntryEditorState? = null,
     val showJournalList: Boolean = false,
     val recentLabels: List<String> = emptyList(),
+    val nowMinutes: Int = 0,
     val isLoading: Boolean = true
 ) {
     val today: LocalDate = today()
@@ -92,8 +82,6 @@ data class MyDayUiState(
                 .thenBy { it.sortOrder }
         )
 
-    val yesterdayDate: LocalDate get() = YesterdayLeftovers.sourceDate(today)
-
     val sprintSuggestedToday: List<SprintChoice> = plannedItems
         .take(5)
         .map { item -> SprintChoice.PlanItem(item, tasks.find { it.id == item.taskId }) }
@@ -118,6 +106,36 @@ data class MyDayUiState(
         ?: sprintSuggestedToday.firstOrNull()
         ?: sprintSuggestedYesterday.firstOrNull()
         ?: sprintSuggestedTasks.firstOrNull()?.let { SprintChoice.Task(it) }
+
+    fun goalFor(period: Period): PeriodGoal? {
+        val startEpoch = period.startOf(today).toEpochDays().toInt()
+        return periodGoals.firstOrNull { it.period == period && it.startEpochDays == startEpoch }
+    }
+
+    fun bannerTypeFor(period: Period): PeriodBannerType {
+        val goal = goalFor(period)
+        val isReviewMissing = goal == null || goal.review.isBlank()
+        val isGoalMissing = goal == null || (goal.goal.isNullOrBlank() && goal.metrics.isEmpty())
+
+        val isReviewTime = when (period) {
+            Period.Day -> nowMinutes >= 19 * 60 // 7 PM
+            Period.Week,
+            Period.Month -> today == period.endDateInclusive(today)
+            else -> false
+        }
+
+        return when {
+            isReviewTime && isReviewMissing -> PeriodBannerType.ReviewPending
+            isGoalMissing -> PeriodBannerType.MissingGoal
+            else -> PeriodBannerType.ActiveGoal
+        }
+    }
+}
+
+enum class PeriodBannerType {
+    MissingGoal,
+    ActiveGoal,
+    ReviewPending
 }
 
 data class DayCloseUiState(
@@ -214,7 +232,7 @@ fun DailyPlan?.doneWorkMinutes(): Int =
 fun hasDailyPlanItemNearby(
     items: List<DailyPlanItem>,
     nowMinutes: Int,
-    windowMinutes: Int = 30
+    windowMinutes: Int = 15
 ): Boolean {
     val windowStart = nowMinutes - windowMinutes
     val windowEnd = nowMinutes + windowMinutes

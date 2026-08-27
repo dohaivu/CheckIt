@@ -22,8 +22,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.checkit.ui.tasks.compact
-import com.checkit.ui.tasks.toClockLabel
+import com.checkit.ui.compact
+import com.checkit.ui.toClockLabel
 import kotlinx.datetime.LocalDate
 
 @Composable

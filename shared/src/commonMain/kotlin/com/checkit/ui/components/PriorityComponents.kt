@@ -14,7 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.TaskPriority
-import com.checkit.ui.tasks.priorityColor
+import com.checkit.ui.priorityColor
 import com.checkit.ui.tasks.views.ContentAlpha
 import com.checkit.ui.tasks.views.ContentContainerAlpha
 

@@ -5,14 +5,14 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.JournalEntry
-import com.checkit.domain.PeriodReview
+import com.checkit.domain.PeriodGoal
 import com.checkit.domain.Period
-import com.checkit.domain.ReviewSource
-import com.checkit.domain.ReviewStatus
+
+
 import com.checkit.domain.TagItem
 import com.checkit.domain.endExclusive
-import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
-import com.checkit.domain.usecase.SavePeriodReviewUseCase
+import com.checkit.domain.usecase.ObservePeriodGoalsUseCase
+import com.checkit.domain.usecase.SavePeriodGoalUseCase
 import com.checkit.ui.UiEvent
 import com.checkit.ui.components.ReportPeriod
 import com.checkit.ui.firstDayOfMonth
@@ -60,8 +60,8 @@ class ReflectViewModelTest {
     private fun createViewModel(repository: FakeCheckItRepository): ReflectViewModel =
         ReflectViewModel(
             repository = repository,
-            observePeriodReviews = ObservePeriodReviewsUseCase(repository),
-            savePeriodReview = SavePeriodReviewUseCase(repository),
+            observePeriodGoals = ObservePeriodGoalsUseCase(repository),
+            savePeriodGoal = SavePeriodGoalUseCase(repository),
             dataDispatcher = dispatcher
         )
 
@@ -74,14 +74,14 @@ class ReflectViewModelTest {
     }
 
     @Test
-    fun focusReviewMatchesSelectedPeriodAndDate() = runTest(dispatcher) {
+    fun focusGoalMatchesSelectedPeriodAndDate() = runTest(dispatcher) {
         val weekStart = today().minus(today().dayOfWeek.ordinal, DateTimeUnit.DAY)
-        repository.savePeriodReview(
+        repository.savePeriodGoal(
             review(period = Period.Week, start = weekStart, content = "Week recap")
         )
         advanceUntilIdle()
 
-        assertEquals("Week recap", viewModel.uiState.value.focusReview?.content)
+        assertEquals("Week recap", viewModel.uiState.value.focusGoal?.review)
     }
 
     @Test
@@ -118,7 +118,7 @@ class ReflectViewModelTest {
     @Test
     fun openEditorPrefillsFromExistingReview() = runTest(dispatcher) {
         val weekStart = today().minus(today().dayOfWeek.ordinal, DateTimeUnit.DAY)
-        repository.savePeriodReview(
+        repository.savePeriodGoal(
             review(
                 period = Period.Week,
                 start = weekStart,
@@ -131,28 +131,28 @@ class ReflectViewModelTest {
         viewModel.openEditor()
         advanceUntilIdle()
         val editor = assertNotNull(viewModel.editor.value)
-        assertEquals("Existing content", editor.content)
-        assertEquals("Existing intent", editor.periodIntent)
+        assertEquals("Existing content", editor.review)
+        assertEquals("Existing intent", editor.goal)
     }
 
     @Test
     fun saveEditorPersistsAndDismisses() = runTest(dispatcher) {
         viewModel.openEditor()
-        viewModel.updateEditorContent("Great week")
-        viewModel.updateEditorPeriodIntent("Ship more")
+        viewModel.updateEditorReview("Great week")
+        viewModel.updateEditorGoal("Ship more")
         viewModel.saveEditor()
         advanceUntilIdle()
 
         assertNull(viewModel.editor.value)
-        val reviews = repository.observePeriodReviews().first().single()
-        assertEquals("Great week", reviews.content)
-        assertEquals("Ship more", reviews.periodIntent)
+        val goals = repository.observePeriodGoals().first().single()
+        assertEquals("Great week", goals.review)
+        assertEquals("Ship more", goals.goal)
     }
 
     @Test
     fun saveEditorEmitsSnackbar() = runTest(dispatcher) {
         viewModel.openEditor()
-        viewModel.updateEditorContent("Done")
+        viewModel.updateEditorReview("Done")
         viewModel.saveEditor()
         advanceUntilIdle()
 
@@ -174,48 +174,48 @@ class ReflectViewModelTest {
     }
 
     @Test
-    fun openReviewMovesFocusAndOpensEditor() = runTest(dispatcher) {
+    fun openGoalMovesFocusAndOpensEditor() = runTest(dispatcher) {
         val monthStart = LocalDate(today().year, today().month, 1)
-        repository.savePeriodReview(
+        repository.savePeriodGoal(
             review(period = Period.Month, start = monthStart, content = "Monthly recap")
         )
         advanceUntilIdle()
 
-        val record = repository.observePeriodReviews().first().single()
-        viewModel.openReview(record)
+        val record = repository.observePeriodGoals().first().single()
+        viewModel.openGoal(record)
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
         assertEquals(ReportPeriod.Month, state.selectedPeriod)
         assertEquals(monthStart, state.selectedDate)
         val editor = assertNotNull(viewModel.editor.value)
-        assertEquals("Monthly recap", editor.content)
+        assertEquals("Monthly recap", editor.review)
     }
 
     @Test
-    fun reviewsForSelectedPeriodShowChildPeriodWithinWindow() = runTest(dispatcher) {
+    fun goalsForSelectedPeriodShowChildPeriodWithinWindow() = runTest(dispatcher) {
         val weekStart = today().minus(today().dayOfWeek.ordinal, DateTimeUnit.DAY)
-        repository.savePeriodReview(
+        repository.savePeriodGoal(
             review(period = Period.Day, start = weekStart, content = "Mon")
         )
-        repository.savePeriodReview(
+        repository.savePeriodGoal(
             review(period = Period.Day, start = weekStart.plus(1, DateTimeUnit.DAY), content = "Tue")
         )
-        repository.savePeriodReview(
+        repository.savePeriodGoal(
             review(period = Period.Day, start = weekStart.minus(1, DateTimeUnit.DAY), content = "Outside")
         )
-        repository.savePeriodReview(
+        repository.savePeriodGoal(
             review(period = Period.Week, start = weekStart, content = "Week excluded")
         )
         advanceUntilIdle()
 
         // Week view shows only this week's Day reviews, newest first.
-        val weekDates = viewModel.uiState.value.reviewsForSelectedPeriod.map { it.periodStartDate }
+        val weekDates = viewModel.uiState.value.goalsForSelectedPeriod.map { it.startDate }
         assertEquals(listOf(weekStart.plus(1, DateTimeUnit.DAY), weekStart), weekDates)
 
         // Daily behaves like Week: the same week's Day reviews.
         viewModel.selectPeriod(ReportPeriod.Daily)
-        assertEquals(weekDates, viewModel.uiState.value.reviewsForSelectedPeriod.map { it.periodStartDate })
+        assertEquals(weekDates, viewModel.uiState.value.goalsForSelectedPeriod.map { it.startDate })
     }
 
     @Test
@@ -223,20 +223,20 @@ class ReflectViewModelTest {
         val monthStart = today().firstDayOfMonth()
         val inside = monthStart
         val outside = monthStart.minus(1, DateTimeUnit.DAY)
-        repository.savePeriodReview(
+        repository.savePeriodGoal(
             review(period = Period.Week, start = inside, content = "Week inside")
         )
-        repository.savePeriodReview(
+        repository.savePeriodGoal(
             review(period = Period.Week, start = outside, content = "Week outside")
         )
-        repository.savePeriodReview(
+        repository.savePeriodGoal(
             review(period = Period.Month, start = monthStart, content = "Month excluded")
         )
         advanceUntilIdle()
 
         viewModel.selectPeriod(ReportPeriod.Month)
         advanceUntilIdle()
-        val dates = viewModel.uiState.value.reviewsForSelectedPeriod.map { it.periodStartDate }
+        val dates = viewModel.uiState.value.goalsForSelectedPeriod.map { it.startDate }
         assertEquals(listOf(inside), dates)
     }
 
@@ -310,15 +310,13 @@ class ReflectViewModelTest {
         start: LocalDate,
         content: String,
         periodIntent: String? = null
-    ) = PeriodReview(
+    ) = PeriodGoal(
         id = 0L,
         period = period,
-        periodStartEpochDays = start.toEpochDays().toInt(),
-        periodEndEpochDays = period.endExclusive(start).toEpochDays().toInt(),
-        content = content,
-        periodIntent = periodIntent,
-        source = ReviewSource.Manual,
-        status = ReviewStatus.Complete,
+        startEpochDays = start.toEpochDays().toInt(),
+        endEpochDays = period.endExclusive(start).toEpochDays().toInt(),
+        review = content,
+        goal = periodIntent,
         completedAtMillis = 1L,
         editedAtMillis = 1L
     )

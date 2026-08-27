@@ -6,7 +6,7 @@ import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyReflectStat
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.NoteItem
-import com.checkit.domain.PeriodReview
+import com.checkit.domain.PeriodGoal
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
@@ -14,7 +14,7 @@ import com.checkit.domain.usecase.ObserveDailyReflectStatsUseCase
 import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
 import com.checkit.domain.usecase.ObserveNotesForDateUseCase
 import com.checkit.domain.usecase.ObserveNotesInRangeUseCase
-import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
+import com.checkit.domain.usecase.ObservePeriodGoalsUseCase
 import com.checkit.domain.usecase.ObserveTasksForDateUseCase
 import com.checkit.domain.usecase.ObserveTasksInRangeUseCase
 import com.checkit.ui.firstDayOfMonth
@@ -39,7 +39,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 @OptIn(ExperimentalCoroutinesApi::class)
 class CalendarViewModel(
     private val observeDailyPlans: ObserveDailyPlansUseCase,
-    private val observePeriodReviews: ObservePeriodReviewsUseCase,
+    private val observePeriodGoals: ObservePeriodGoalsUseCase,
     private val observeJournalEntries: ObserveJournalEntriesUseCase,
     private val observeDailyReflectStats: ObserveDailyReflectStatsUseCase,
     private val observeTasksInRange: ObserveTasksInRangeUseCase,
@@ -67,17 +67,17 @@ class CalendarViewModel(
                     val recentStart = today().minus(6, DateTimeUnit.DAY)
                     combine(
                         observeDailyPlans(startDate = recentStart, endDate = end),
-                        observePeriodReviews(statsStart, end),
+                        observePeriodGoals(statsStart, end),
                         observeJournalEntries(statsStart, end),
                         observeDailyReflectStats(statsStart, end),
                         combine(
                             observeTasksInRange(recentStart, end),
                             observeNotesInRange(recentStart, end)
                         ) { tasks, notes -> tasks to notes }
-                    ) { dailyPlans, periodReviews, journalEntries, dailyStats, (recentTasks, recentNotes) ->
+                    ) { dailyPlans, periodGoals, journalEntries, dailyStats, (recentTasks, recentNotes) ->
                         CalendarCombined(
                             dailyPlans,
-                            periodReviews,
+                            periodGoals,
                             journalEntries,
                             dailyStats,
                             recentTasks.groupBy { it.doDate!! },
@@ -94,7 +94,7 @@ class CalendarViewModel(
                     _uiState.update { state ->
                         state.copy(
                             dailyPlans = combined.dailyPlans,
-                            periodReviews = combined.dayReviews,
+                            periodGoals = combined.dayGoals,
                             journalEntries = combined.journalEntries,
                             dailyStatsByDate = combined.dailyStats.associateBy { it.date }
                         )
@@ -222,7 +222,7 @@ class CalendarViewModel(
 
 private data class CalendarCombined(
     val dailyPlans: List<DailyPlan>,
-    val dayReviews: List<PeriodReview>,
+    val dayGoals: List<PeriodGoal>,
     val journalEntries: List<JournalEntry>,
     val dailyStats: List<DailyReflectStat>,
     val recentTasksByDate: Map<LocalDate, List<TaskItem>>,

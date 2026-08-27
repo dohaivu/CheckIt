@@ -5,9 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.checkit.data.CheckItRepository
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.MoodFilter
-import com.checkit.domain.PeriodReview
+import com.checkit.domain.PeriodGoal
 import com.checkit.domain.TagItem
-import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
+import com.checkit.domain.usecase.ObservePeriodGoalsUseCase
 import com.checkit.domain.usecase.ObserveTagsUseCase
 import com.checkit.ui.today
 import kotlinx.coroutines.FlowPreview
@@ -38,8 +38,8 @@ data class JournalHistoryUiState(
     val filters: JournalHistoryFilters = JournalHistoryFilters(),
     val entries: List<JournalEntry> = emptyList(),
     val tags: List<TagItem> = emptyList(),
-    /** Day reviews shown inline in the history agenda. */
-    val dayReviews: List<PeriodReview> = emptyList(),
+    /** Day goals shown inline in the history agenda. */
+    val dayGoals: List<PeriodGoal> = emptyList(),
     /** Whether older history exists outside the loaded window (browse mode only). */
     val hasOlder: Boolean = false,
     val isLoading: Boolean = true,
@@ -51,7 +51,7 @@ data class JournalHistoryUiState(
 class JournalHistoryViewModel(
     private val repository: CheckItRepository,
     observeTags: ObserveTagsUseCase,
-    private val observePeriodReviews: ObservePeriodReviewsUseCase
+    private val observePeriodGoals: ObservePeriodGoalsUseCase
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(JournalHistoryUiState())
     val uiState: StateFlow<JournalHistoryUiState> = _uiState.asStateFlow()
@@ -77,9 +77,9 @@ class JournalHistoryViewModel(
                     val effectiveStart = if (hasFilters) null else start
 
                     val reviewsFlow = if (hasFilters) {
-                        kotlinx.coroutines.flow.flowOf(emptyList<PeriodReview>())
+                        kotlinx.coroutines.flow.flowOf(emptyList<PeriodGoal>())
                     } else {
-                        observePeriodReviews(startDate = effectiveStart, endDateInclusive = null)
+                        observePeriodGoals(startDate = effectiveStart, endDateInclusive = null)
                     }
 
                     combine(
@@ -99,9 +99,9 @@ class JournalHistoryViewModel(
                         it.copy(isLoading = false, error = error.message ?: "Unable to load journals")
                     }
                 }
-                .collect { (entries, dayReviews) ->
+                .collect { (entries, dayGoals) ->
                     _uiState.update {
-                        it.copy(entries = entries, dayReviews = dayReviews, isLoading = false)
+                        it.copy(entries = entries, dayGoals = dayGoals, isLoading = false)
                     }
                 }
         }

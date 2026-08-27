@@ -1,7 +1,6 @@
 package com.checkit.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
@@ -25,8 +24,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -40,6 +37,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -85,64 +83,40 @@ internal fun ReportPeriodSwitcher(
     periods: List<ReportPeriod> = ReportPeriod.entries,
     modifier: Modifier = Modifier
 ) {
-    val fillAvailableWidth = periods.size > 2
     Row(
-        modifier = if (fillAvailableWidth) {
-            modifier
-                .fillMaxWidth()
-                .height(44.dp)
-        } else {
-            modifier.height(44.dp)
-        },
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .height(42.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         periods.forEach { period ->
             val selected = selectedPeriod == period
             Box(
                 modifier = Modifier
-                    .height(42.dp)
-                    .then(
-                        if (fillAvailableWidth) {
-                            Modifier.weight(1f)
-                        } else {
-                            Modifier.widthIn(min = 96.dp)
-                        }
-                    )
+                    .weight(1f)
+                    .fillMaxHeight()
                     .clip(CircleShape)
                     .background(
                         brush = if (selected) {
                             Brush.horizontalGradient(listOf(ReportHeaderBlue, ReportHeaderPurple))
                         } else {
-                            Brush.horizontalGradient(
-                                listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surface)
-                            )
+                            Brush.linearGradient(listOf(Color.Transparent, Color.Transparent))
                         }
                     )
-                    .border(
-                        width = 1.dp,
-                        color = if (selected) {
-                            Color.Transparent
-                        } else {
-                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f)
-                        },
-                        shape = CircleShape
-                    )
-                    .clickable { onPeriodSelected(period) }
-                    .padding(horizontal = 8.dp),
+                    .clickable { onPeriodSelected(period) },
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = period.label(),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (selected) {
-                        Color.White
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                    color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
-                    autoSize = TextAutoSize.StepBased(maxFontSize = 14.sp)
+                    textAlign = TextAlign.Center
                 )
             }
         }
@@ -172,7 +146,7 @@ internal fun ReportPeriodHeader(
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         ReportPeriodSwitcher(
             selectedPeriod = selectedPeriod,
@@ -365,59 +339,57 @@ private fun PeriodHeader(
     nextContentDescription: String,
     subtitle: String? = null
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-        border = CardDefaults.outlinedCardBorder().copy(
-            brush = Brush.linearGradient(
-                listOf(
-                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
-                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.18f)
-                )
-            )
-        )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(50.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+            .padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
+        IconButton(onClick = onPrevious, modifier = Modifier.size(40.dp)) {
+            Icon(
+                imageVector = Icons.Default.ChevronLeft,
+                contentDescription = previousContentDescription,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(62.dp)
-                .padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .weight(1f)
+                .fillMaxHeight()
+                .pointerInput(onCurrentPeriod) {
+                    detectTapGestures(onDoubleTap = { onCurrentPeriod() })
+                },
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
         ) {
-            IconButton(onClick = onPrevious) {
-                Icon(Icons.Default.ChevronLeft, contentDescription = previousContentDescription)
-            }
-            Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .pointerInput(onCurrentPeriod) {
-                        detectTapGestures(onDoubleTap = { onCurrentPeriod() })
-                    },
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.CalendarMonth,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.width(12.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.ExtraBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            if (subtitle != null) {
                 Text(
-                    text = if (subtitle == null) title else "$title ($subtitle)",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurface
+                    text = " ($subtitle)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
                 )
             }
-            IconButton(onClick = onNext) {
-                Icon(Icons.Default.ChevronRight, contentDescription = nextContentDescription)
-            }
+        }
+        IconButton(onClick = onNext, modifier = Modifier.size(40.dp)) {
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = nextContentDescription,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
         }
     }
 }

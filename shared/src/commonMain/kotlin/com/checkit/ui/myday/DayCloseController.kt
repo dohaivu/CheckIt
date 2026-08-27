@@ -2,6 +2,7 @@ package com.checkit.ui.myday
 
 import com.checkit.domain.DayCloseConfirmInput
 import com.checkit.domain.LeftoverAction
+import com.checkit.domain.Period
 import com.checkit.domain.defaultReviewAction
 import com.checkit.ui.UiEvent
 import kotlinx.coroutines.CoroutineScope
@@ -27,10 +28,10 @@ internal class DayCloseController(
             if (loaded.dayClose != null) return@launch
             val date = loaded.today
             val summary = deps.buildDayCloseSummary(date, loaded.plan)
-            val record = loaded.dayReviews.firstOrNull { it.periodStartDate == date }
-            // The tomorrow goal is stored as the next day's period intent.
-            val tomorrowRecord = loaded.dayReviews.firstOrNull {
-                it.periodStartDate == date.plus(1, DateTimeUnit.DAY)
+            val record = loaded.periodGoals.firstOrNull { it.startDate == date && it.period == Period.Day }
+            // The tomorrow goal is stored as the next day's goal.
+            val tomorrowRecord = loaded.periodGoals.firstOrNull {
+                it.startDate == date.plus(1, DateTimeUnit.DAY) && it.period == Period.Day
             }
             val allItems = summary.plannedItems + summary.alreadyCarriedItems
             val actions = allItems.associate { item ->
@@ -41,11 +42,9 @@ internal class DayCloseController(
                     dayClose = DayCloseUiState(
                         summary = summary,
                         leftoverActions = actions,
-                        winNote = record?.content.orEmpty(),
-                        tomorrowGoal = tomorrowRecord?.periodIntent.orEmpty()
+                        winNote = record?.review.orEmpty(),
+                        tomorrowGoal = tomorrowRecord?.goal.orEmpty()
                     ),
-                    showDayCloseBanner = false,
-                    showLeftoversSheet = false,
                     showSuggestions = false,
                     itemEditor = null
                 )
@@ -97,7 +96,7 @@ internal class DayCloseController(
                     tomorrowGoal = review.tomorrowGoal
                 )
             ).onSuccess { result ->
-                state.update { it.copy(dayClose = null, showDayCloseBanner = false, showCelebration = true) }
+                state.update { it.copy(dayClose = null, showCelebration = true) }
                 scope.launch {
                     delay(3000.milliseconds)
                     state.update { it.copy(showCelebration = false) }

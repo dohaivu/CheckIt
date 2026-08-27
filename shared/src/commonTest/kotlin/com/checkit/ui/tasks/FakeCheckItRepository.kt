@@ -8,6 +8,7 @@ import com.checkit.data.ListWriteInput
 import com.checkit.data.NoteWriteInput
 import com.checkit.data.TagWriteInput
 import com.checkit.data.TaskWriteInput
+import com.checkit.domain.MetricItem
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
@@ -24,13 +25,12 @@ import com.checkit.domain.NestedColorToken
 import com.checkit.domain.NestedDocument
 import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemMove
-import com.checkit.domain.NestedManualMetric
+
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.NoteItem
-import com.checkit.domain.PeriodReview
+import com.checkit.domain.PeriodGoal
 import com.checkit.domain.Period
-import com.checkit.domain.ReviewSource
-import com.checkit.domain.ReviewStatus
+
 import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TagItem
 import com.checkit.domain.TaskBoard
@@ -87,7 +87,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
     val copiedDailyPlanItems = mutableListOf<DailyPlanItem>()
     val statusUpdates = mutableListOf<Pair<Long, DailyPlanItemStatus>>()
     val markedHandledItemIds = mutableListOf<Long>()
-    private val periodReviewsFlow = MutableStateFlow<List<PeriodReview>>(emptyList())
+    private val periodGoalsFlow = MutableStateFlow<List<PeriodGoal>>(emptyList())
 
     private val journalEntriesFlow = MutableStateFlow<List<JournalEntry>>(emptyList())
     val addedJournalEntries = mutableListOf<JournalEntryWriteInput>()
@@ -219,8 +219,8 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         dailyPlansFlow.value = plans
     }
 
-    fun setDayReviews(reviews: List<PeriodReview>) {
-        periodReviewsFlow.value = reviews
+    fun setDayGoals(goals: List<PeriodGoal>) {
+        periodGoalsFlow.value = goals
     }
 
     override suspend fun addList(input: ListWriteInput): Long {
@@ -506,38 +506,38 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
     override suspend fun dailyPlanForDate(date: LocalDate): DailyPlan? =
         dailyPlansFlow.value.find { it.date == date }
 
-    override fun observePeriodReviews(): Flow<List<PeriodReview>> = periodReviewsFlow
+    override fun observePeriodGoals(): Flow<List<PeriodGoal>> = periodGoalsFlow
 
-    override fun observePeriodReviewsInRange(
+    override fun observePeriodGoalsInRange(
         startDate: LocalDate?,
         endDateInclusive: LocalDate?
-    ): Flow<List<PeriodReview>> =
-        periodReviewsFlow.map { reviews ->
-            reviews.filter { review ->
+    ): Flow<List<PeriodGoal>> =
+        periodGoalsFlow.map { goals ->
+            goals.filter { goal ->
                 val start = startDate?.toEpochDays()?.toInt()
                 val end = endDateInclusive?.toEpochDays()?.toInt()
-                (start == null || review.periodStartEpochDays >= start) &&
-                    (end == null || review.periodStartEpochDays <= end)
+                (start == null || goal.startEpochDays >= start) &&
+                    (end == null || goal.startEpochDays <= end)
             }
         }
 
-    override suspend fun periodReviewFor(period: Period, date: LocalDate): PeriodReview? =
-        periodReviewsFlow.value.find { it.period == period && it.periodStartEpochDays == date.toEpochDays().toInt() }
+    override suspend fun periodGoalFor(period: Period, date: LocalDate): PeriodGoal? =
+        periodGoalsFlow.value.find { it.period == period && it.startEpochDays == date.toEpochDays().toInt() }
 
-    override suspend fun savePeriodReview(review: PeriodReview) {
-        periodReviewsFlow.update { list ->
-            val existingIndex = list.indexOfFirst { 
-                (it.id != 0L && it.id == review.id) || 
-                (it.period == review.period && it.periodStartEpochDays == review.periodStartEpochDays)
+    override suspend fun savePeriodGoal(goal: PeriodGoal) {
+        periodGoalsFlow.update { list ->
+            val existingIndex = list.indexOfFirst {
+                (it.id != 0L && it.id == goal.id) ||
+                    (it.period == goal.period && it.startEpochDays == goal.startEpochDays)
             }
             if (existingIndex >= 0) {
-                list.toMutableList().apply { 
+                list.toMutableList().apply {
                     val old = get(existingIndex)
-                    set(existingIndex, review.copy(id = if (review.id == 0L) old.id else review.id)) 
+                    set(existingIndex, goal.copy(id = if (goal.id == 0L) old.id else goal.id))
                 }
             } else {
-                val newId = if (review.id == 0L) (list.maxOfOrNull { it.id } ?: 0L) + 1 else review.id
-                list + review.copy(id = newId)
+                val newId = if (goal.id == 0L) (list.maxOfOrNull { it.id } ?: 0L) + 1 else goal.id
+                list + goal.copy(id = newId)
             }
         }
     }
@@ -674,11 +674,11 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         val epochDays = beforeDate.toEpochDays().toInt()
         val hasOlder = combine(
             journalEntriesFlow,
-            periodReviewsFlow
-        ) { entries, reviews ->
+            periodGoalsFlow
+        ) { entries, goals ->
             entries.any { it.dateEpochDays < epochDays } ||
-                reviews.any {
-                    it.period == Period.Day && it.periodStartEpochDays < epochDays
+                goals.any {
+                    it.period == Period.Day && it.startEpochDays < epochDays
                 }
         }
         return hasOlder
@@ -726,29 +726,31 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
             if (newId != null) carriedCount++ else skippedCount++
         }
 
-        savePeriodReview(
-            PeriodReview(
+        // Merge the win note into any existing record so its goal text and
+        // metrics are preserved, mirroring CheckItDao.
+        val existingToday = periodGoalFor(Period.Day, date)
+        savePeriodGoal(
+            (existingToday ?: PeriodGoal(
                 period = Period.Day,
-                periodStartEpochDays = date.toEpochDays().toInt(),
-                periodEndEpochDays = date.toEpochDays().toInt() + 1,
-                content = winNote?.trim().orEmpty(),
-                source = ReviewSource.Manual,
-                status = ReviewStatus.Complete,
+                startEpochDays = date.toEpochDays().toInt(),
+                endEpochDays = date.toEpochDays().toInt() + 1
+            )).copy(
+                review = winNote?.trim().orEmpty(),
                 completedAtMillis = nowMillis,
                 editedAtMillis = nowMillis
             )
         )
 
-        // The tomorrow goal is the next day's period intent, mirroring CheckItDao.
+        // The tomorrow goal is the next day's goal, mirroring CheckItDao.
         tomorrowGoal?.trim()?.takeIf { it.isNotEmpty() }?.let { goal ->
             val nextDate = date.plus(1, DateTimeUnit.DAY)
-            val existing = periodReviewFor(Period.Day, nextDate)
-            savePeriodReview(
-                (existing ?: PeriodReview(
+            val existing = periodGoalFor(Period.Day, nextDate)
+            savePeriodGoal(
+                (existing ?: PeriodGoal(
                     period = Period.Day,
-                    periodStartEpochDays = nextDate.toEpochDays().toInt(),
-                    periodEndEpochDays = nextDate.toEpochDays().toInt() + 1
-                )).copy(periodIntent = goal, editedAtMillis = nowMillis)
+                    startEpochDays = nextDate.toEpochDays().toInt(),
+                    endEpochDays = nextDate.toEpochDays().toInt() + 1
+                )).copy(goal = goal, editedAtMillis = nowMillis)
             )
         }
         
@@ -948,7 +950,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
     override suspend fun updateNestedItemDateRange(itemId: Long, startDate: LocalDate?, endDate: LocalDate?) {}
     override suspend fun updateNestedItemTags(itemId: Long, tagIds: List<Long>) {}
     override suspend fun updateNestedItemMetricSettings(itemId: Long, actualMinutes: Int, metricRollupPolicy: MetricRollupPolicy, showTrackedMinutes: Boolean) {}
-    override suspend fun replaceNestedManualMetrics(itemId: Long, metrics: List<NestedManualMetric>) {}
+    override suspend fun replaceNestedManualMetrics(itemId: Long, metrics: List<MetricItem>) {}
     override suspend fun setNestedItemCheckboxEnabled(itemId: Long, checkboxEnabled: Boolean) {}
     override suspend fun setNestedItemsChecked(itemIds: List<Long>, checked: Boolean) {}
     override suspend fun toggleNestedItemCollapsed(itemId: Long) {}

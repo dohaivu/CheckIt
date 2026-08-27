@@ -6,23 +6,16 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Event
-import androidx.compose.material.icons.filled.PushPin
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,20 +33,17 @@ import com.checkit.domain.TaskStatus
 import com.checkit.domain.TaskType
 import com.checkit.ui.components.CompactDetailChip
 import com.checkit.ui.components.DateTimeRangeDetailChip
-import com.checkit.ui.components.DetailChip
 import com.checkit.ui.components.SupportingPills
 import com.checkit.ui.components.asAnnotatedString
-import com.checkit.ui.duration
-import com.checkit.ui.tasks.HabitIcon
-import com.checkit.ui.tasks.NoteIcon
+import com.checkit.ui.HabitIcon
+import com.checkit.ui.NoteIcon
 import com.checkit.ui.tasks.SubtaskBriefList
-import com.checkit.ui.tasks.TaskIcon
+import com.checkit.ui.TaskIcon
 import com.checkit.ui.tasks.TaskListDisplayType
-import com.checkit.ui.tasks.cardColor
-import com.checkit.ui.tasks.compact
-import com.checkit.ui.tasks.isOverdue
-import com.checkit.ui.tasks.priorityColor
-import com.checkit.ui.tasks.toDurationLabel
+import com.checkit.ui.cardColor
+import com.checkit.ui.compact
+import com.checkit.ui.isOverdue
+import com.checkit.ui.priorityColor
 
 @Composable
 internal fun TaskRow(

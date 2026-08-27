@@ -1,6 +1,5 @@
 package com.checkit.domain
 
-import com.checkit.ui.MinutesPerDay
 import kotlinx.datetime.LocalDate
 
 /**
@@ -92,21 +91,3 @@ data class CarryOverResult(
     val skippedCount: Int,
     val newItemIds: List<Long>
 )
-
-/** Banner / auto-prompt rules for day review. */
-object DayCloseBannerPolicy {
-    fun shouldShow(
-        hasPlanItems: Boolean,
-        reviewReminderEnabled: Boolean,
-        reviewReminderTimeMinutes: Int,
-        lastDayCloseEpochDay: Int?,
-        todayEpochDay: Int,
-        nowMinutes: Int
-    ): Boolean {
-        if (!hasPlanItems) return false
-        if (!reviewReminderEnabled) return false
-        if (lastDayCloseEpochDay == todayEpochDay) return false
-        val threshold = reviewReminderTimeMinutes.coerceIn(0, MinutesPerDay - 1)
-        return nowMinutes >= threshold
-    }
-}

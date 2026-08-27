@@ -45,7 +45,8 @@ import com.checkit.ui.journal.JournalEntryEditorSheet
 import com.checkit.ui.journal.JournalHistorySheet
 import com.checkit.ui.myday.MyDayScreen
 import com.checkit.ui.nested.NestedListScreen
-import com.checkit.ui.reflect.PeriodReviewEditorSheet
+import com.checkit.ui.reflect.PeriodGoalEditorSheet
+import com.checkit.ui.reflect.ReflectGoalEditorMode
 import com.checkit.ui.reflect.ReflectScreen
 import com.checkit.ui.settings.SettingsScreen
 import com.checkit.ui.tasks.TaskEditorActions
@@ -171,7 +172,7 @@ fun CheckItApp(
     LaunchedEffect(openPlanAssistLaunch) {
         if (!openPlanAssistLaunch) return@LaunchedEffect
         navState.resetTo(AppRoute.MyDay)
-        viewModels.myDay.openPlanAssist()
+        viewModels.myDay.openSuggestions()
         onWidgetLaunchConsumed()
     }
 
@@ -296,7 +297,10 @@ fun CheckItApp(
                                             onNoteClick = viewModels.task::openNote,
                                             onNoteTimeChange = viewModels.task::updateNoteTime,
                                             onCreateTask = viewModels.task::openNewTask,
-                                            onNewTagClick = viewModels.tag::openNewTag
+                                            onNewTagClick = viewModels.tag::openNewTag,
+                                            onOpenGoalEditor = { date, period, mode ->
+                                                viewModels.reflect.openNewGoalEditor(date, period, mode)
+                                            }
                                         )
                                     }
                                     AppRoute.Calendar -> {
@@ -486,9 +490,9 @@ fun CheckItApp(
                                 showJournalHistory = false
                                 viewModels.myDay.openJournalEditor(entry)
                             },
-                            onReviewClick = { review ->
+                            onGoalClick = { goal ->
                                 showJournalHistory = false
-                                viewModels.reflect.focusDay(review.periodStartDate)
+                                viewModels.reflect.focusDay(goal.startDate)
                                 navState.resetTo(AppRoute.Reflect)
                             },
                             onLoadMore = viewModels.journalHistory::loadOlder,
@@ -506,10 +510,12 @@ fun CheckItApp(
                         )
                     }
                     reflectEditorState?.let { editor ->
-                        PeriodReviewEditorSheet(
+                        PeriodGoalEditorSheet(
                             editor = editor,
-                            onContentChange = viewModels.reflect::updateEditorContent,
-                            onPeriodIntentChange = viewModels.reflect::updateEditorPeriodIntent,
+                            onReviewChange = viewModels.reflect::updateEditorReview,
+                            onGoalChange = viewModels.reflect::updateEditorGoal,
+                            onRatingChange = viewModels.reflect::updateEditorRating,
+                            onMetricsChange = viewModels.reflect::updateEditorMetrics,
                             onSave = viewModels.reflect::saveEditor,
                             onDismiss = viewModels.reflect::dismissEditor
                         )

@@ -13,7 +13,7 @@ import com.checkit.domain.usecase.DeleteJournalEntryUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
 import com.checkit.domain.usecase.ObserveNotesForDateUseCase
-import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
+import com.checkit.domain.usecase.ObservePeriodGoalsUseCase
 import com.checkit.domain.usecase.ObserveTagsUseCase
 import com.checkit.domain.usecase.ObserveTasksForDateUseCase
 import com.checkit.domain.usecase.ObserveWorkingTasksUseCase
@@ -27,7 +27,7 @@ import com.checkit.domain.usecase.UpsertDailyPlanItemUseCase
 internal class MyDayDependencies(
     val observeDailyPlans: ObserveDailyPlansUseCase,
     val observeJournalEntries: ObserveJournalEntriesUseCase,
-    val observePeriodReviews: ObservePeriodReviewsUseCase,
+    val observePeriodGoals: ObservePeriodGoalsUseCase,
     val observeTags: ObserveTagsUseCase,
     val observeWorkingTasks: ObserveWorkingTasksUseCase,
     val observeNotesForDate: ObserveNotesForDateUseCase,

@@ -25,31 +25,6 @@ enum class MetricRollupPolicy {
     ExcludeFromParent
 }
 
-enum class NestedMetricUnit {
-    None,
-    Percentage,
-    Points,
-    Count,
-    Items,
-    Hours,
-    Days,
-    Currency,
-    Rating,
-    Custom
-}
-
-data class NestedManualMetric(
-    val id: Long = 0L,
-    val itemId: Long,
-    val name: String,
-    val value: String,
-    val targetValue: String? = null,
-    val unit: NestedMetricUnit = NestedMetricUnit.None,
-    val customUnit: String? = null,
-    val sortOrder: Int = 0,
-    val enabled: Boolean = true
-)
-
 data class NestedMetricSummary(
     val doneItemCount: Int = 0,
     val trackedMinutes: Int = 0
@@ -89,7 +64,7 @@ data class NestedListItem(
     val actualMinutes: Int = 0,
     val metricRollupPolicy: MetricRollupPolicy = MetricRollupPolicy.IncludeChildren,
     val showTrackedMinutes: Boolean = false,
-    val manualMetrics: List<NestedManualMetric> = emptyList(),
+    val manualMetrics: List<MetricItem> = emptyList(),
     val createdAtMillis: Long,
     val updatedAtMillis: Long
 )

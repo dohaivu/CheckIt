@@ -1,7 +1,6 @@
 package com.checkit.domain.usecase
 
 import com.checkit.data.CheckItRepository
-import com.checkit.data.SettingsRepository
 import com.checkit.domain.CarryOverResult
 import com.checkit.domain.CarryOverTimePolicy
 import com.checkit.domain.DailyPlan
@@ -12,7 +11,7 @@ import com.checkit.domain.DayCloseConfirmResult
 import com.checkit.domain.DayCloseSummary
 import com.checkit.domain.DayCloseTagMinutes
 import com.checkit.domain.LeftoverAction
-import com.checkit.domain.PeriodReview
+import com.checkit.domain.PeriodGoal
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -128,16 +127,16 @@ class CarryOverDailyPlanItemsUseCase(
 }
 
 /**
- * Observes persisted period reviews (day, week, month, year), optionally
+ * Observes persisted period goals (day, week, month, year), optionally
  * limited to an inclusive window over their start dates.
  */
-class ObservePeriodReviewsUseCase(
+class ObservePeriodGoalsUseCase(
     private val repository: CheckItRepository
 ) {
     operator fun invoke(
         startDate: LocalDate? = null,
         endDateInclusive: LocalDate? = null
-    ): Flow<List<PeriodReview>> = repository.observePeriodReviewsInRange(startDate, endDateInclusive)
+    ): Flow<List<PeriodGoal>> = repository.observePeriodGoalsInRange(startDate, endDateInclusive)
 }
 
 /**
@@ -148,7 +147,6 @@ class ObservePeriodReviewsUseCase(
  */
 class CompleteDayCloseUseCase(
     private val repository: CheckItRepository,
-    private val settingsRepository: SettingsRepository,
     private val buildSummary: BuildDayCloseSummaryUseCase,
     private val dispatcher: CoroutineDispatcher = Dispatchers.Default
 ) {
@@ -174,7 +172,6 @@ class CompleteDayCloseUseCase(
                 targetDate = tomorrow,
                 nowMillis = Clock.System.now().toEpochMilliseconds()
             )
-            settingsRepository.setLastDayCloseEpochDay(input.date.toEpochDays().toInt())
 
             DayCloseConfirmResult(
                 markedDoneCount = resolution.markDoneIds.size,

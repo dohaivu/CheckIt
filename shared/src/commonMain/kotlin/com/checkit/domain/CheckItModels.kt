@@ -340,3 +340,33 @@ enum class DueDatePreset {
     NoDate,
     Someday
 }
+
+enum class MetricUnit {
+    None,
+    Percentage,
+    Points,
+    Items,
+    Hours,
+    Days,
+    Rating,
+    VND,
+    Lan,
+    Km,
+    Custom
+}
+
+/**
+ * A manually tracked metric attached to a [PeriodGoal] or nested list item:
+ * free-form name/value pair with an optional unit. Stored inline as JSON.
+ */
+@Serializable
+data class MetricItem(
+    val name: String,
+    val value: String,
+    val targetValue: String? = null,
+    val unit: MetricUnit = MetricUnit.None,
+    val customUnit: String? = null,
+    val sortOrder: Int = 0,
+    val enabled: Boolean = true,
+    val isCompleted: Boolean = false
+)

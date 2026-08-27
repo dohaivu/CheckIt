@@ -6,10 +6,8 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DayCloseCommitResult
-import com.checkit.domain.PeriodReview
+import com.checkit.domain.PeriodGoal
 import com.checkit.domain.Period
-import com.checkit.domain.ReviewSource
-import com.checkit.domain.ReviewStatus
 import com.checkit.domain.DailyReflectStat
 import com.checkit.domain.DailyTagRollup
 import com.checkit.domain.DoneItemSummary
@@ -26,8 +24,8 @@ import com.checkit.domain.NestedListItem
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.NestedColorToken
 import com.checkit.domain.MetricRollupPolicy
-import com.checkit.domain.NestedManualMetric
-import com.checkit.domain.NestedMetricUnit
+import com.checkit.domain.MetricItem
+
 import com.checkit.domain.buildNestedTree
 import com.checkit.domain.SubTaskItem
 import com.checkit.domain.TaskBoard
@@ -50,6 +48,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -111,10 +112,10 @@ interface CheckItRepository {
     suspend fun dailyPlanForDate(date: LocalDate): DailyPlan?
     suspend fun getTask(taskId: Long): TaskItem?
     suspend fun getNote(noteId: Long): NoteItem?
-    fun observePeriodReviews(): Flow<List<PeriodReview>>
-    fun observePeriodReviewsInRange(startDate: LocalDate?, endDateInclusive: LocalDate?): Flow<List<PeriodReview>>
-    suspend fun periodReviewFor(period: Period, date: LocalDate): PeriodReview?
-    suspend fun savePeriodReview(review: PeriodReview)
+    fun observePeriodGoals(): Flow<List<PeriodGoal>>
+    fun observePeriodGoalsInRange(startDate: LocalDate?, endDateInclusive: LocalDate?): Flow<List<PeriodGoal>>
+    suspend fun periodGoalFor(period: Period, date: LocalDate): PeriodGoal?
+    suspend fun savePeriodGoal(goal: PeriodGoal)
     fun observeDailyReflectStats(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<DailyReflectStat>>
     fun observeDailyTagRollups(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<DailyTagRollup>>
     fun observeHabitDailyRollups(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<HabitDailyRollup>>
@@ -171,7 +172,7 @@ interface CheckItRepository {
     suspend fun updateNestedItemDateRange(itemId: Long, startDate: LocalDate?, endDate: LocalDate?)
     suspend fun updateNestedItemTags(itemId: Long, tagIds: List<Long>)
     suspend fun updateNestedItemMetricSettings(itemId: Long, actualMinutes: Int, metricRollupPolicy: MetricRollupPolicy, showTrackedMinutes: Boolean)
-    suspend fun replaceNestedManualMetrics(itemId: Long, metrics: List<NestedManualMetric>)
+    suspend fun replaceNestedManualMetrics(itemId: Long, metrics: List<MetricItem>)
     suspend fun setNestedItemCheckboxEnabled(itemId: Long, checkboxEnabled: Boolean)
     suspend fun setNestedItemsChecked(itemIds: List<Long>, checked: Boolean)
     suspend fun toggleNestedItemCollapsed(itemId: Long)
@@ -1005,35 +1006,41 @@ class RoomCheckItRepository(
         return itemId
     }
 
-    override fun observePeriodReviews(): Flow<List<PeriodReview>> =
-        dao.observePeriodReviews().map { entities -> entities.map { it.toDomain() } }
+    override fun observePeriodGoals(): Flow<List<PeriodGoal>> =
+        dao.observePeriodGoals().map { entities -> entities.map { it.toDomain() } }
 
-    override fun observePeriodReviewsInRange(
+    override fun observePeriodGoalsInRange(
         startDate: LocalDate?,
         endDateInclusive: LocalDate?
-    ): Flow<List<PeriodReview>> =
-        dao.observePeriodReviewsBetween(
+    ): Flow<List<PeriodGoal>> =
+        dao.observePeriodGoalsBetween(
             startDate?.toEpochDays()?.toInt(),
             endDateInclusive?.toEpochDays()?.toInt()
         ).map { entities -> entities.map { it.toDomain() } }
 
-    override suspend fun periodReviewFor(period: Period, date: LocalDate): PeriodReview? =
-        dao.periodReviewFor(period.name, date.toEpochDays().toInt())?.toDomain()
+    override suspend fun periodGoalFor(period: Period, date: LocalDate): PeriodGoal? =
+        dao.periodGoalFor(period.name, date.toEpochDays().toInt())?.toDomain()
 
-    override suspend fun savePeriodReview(review: PeriodReview) {
-        dao.upsertPeriodReview(
-            PeriodReviewEntity(
-                id = review.id,
-                periodType = review.period.name,
-                periodStartEpochDays = review.periodStartEpochDays,
-                periodEndEpochDays = review.periodEndEpochDays,
-                content = review.content,
-                periodIntent = review.periodIntent,
-                source = review.source.name,
-                status = review.status.name,
-                completedAtMillis = review.completedAtMillis,
-                generatedAtMillis = review.generatedAtMillis,
-                editedAtMillis = review.editedAtMillis
+    override suspend fun savePeriodGoal(goal: PeriodGoal) {
+        // Resolve the persisted id up front: a row may already exist for this
+        // (periodType, startEpochDays) even when [goal] carries no id, and
+        // Room's @Upsert only falls back to "update WHERE id" (which cannot
+        // match an unset id). With the id resolved, the upsert either inserts
+        // a genuinely new row or updates the existing one by primary key.
+        val existingId = goal.id.takeIf { it != 0L }
+            ?: dao.periodGoalFor(goal.period.name, goal.startEpochDays)?.id
+        dao.upsertPeriodGoal(
+            PeriodGoalEntity(
+                id = existingId ?: 0L,
+                periodType = goal.period.name,
+                startEpochDays = goal.startEpochDays,
+                endEpochDays = goal.endEpochDays,
+                review = goal.review,
+                goal = goal.goal,
+                rating = goal.rating,
+                completedAtMillis = goal.completedAtMillis,
+                editedAtMillis = goal.editedAtMillis,
+                metricsJson = Json.encodeToString(goal.metrics.map { it.normalized() })
             )
         )
     }
@@ -1193,8 +1200,8 @@ class RoomCheckItRepository(
         val epochDays = beforeDate.toEpochDays().toInt()
         return combine(
             dao.observeJournalEntryExistsBefore(epochDays),
-            dao.observeDayReviewExistsBefore(epochDays)
-        ) { hasEntries, hasReviews -> hasEntries || hasReviews }
+            dao.observeDayGoalExistsBefore(epochDays)
+        ) { hasEntries, hasGoals -> hasEntries || hasGoals }
     }
 
     override suspend fun rebuildReflectStats() {
@@ -1371,23 +1378,20 @@ class RoomCheckItRepository(
         combine(
             dao.observeNestedDocuments(),
             dao.observeNestedItems(documentId),
-            dao.observeNestedItemTags(documentId),
-            dao.observeNestedManualMetrics(documentId)
-        ) { documents, items, links, metricEntities ->
+            dao.observeNestedItemTags(documentId)
+        ) { documents, items, links ->
             val tagsById = links.map { it.tagId }.distinct()
                 .takeIf { it.isNotEmpty() }
                 ?.let { dao.tagsByIds(it).associateBy(TagEntity::id) }
                 .orEmpty()
             val tagsByItemId = links.groupBy(NestedItemTagEntity::itemId)
-            val metricsByItemId = metricEntities.groupBy(NestedManualMetricEntity::itemId)
             NestedDocumentTree(
                 document = documents.firstOrNull { it.id == documentId }
                     ?.let { NestedDocument(it.id, it.title, it.createdAtMillis, it.updatedAtMillis) }
                     ?: NestedDocument(id = documentId, title = "", createdAtMillis = 0L, updatedAtMillis = 0L),
                 rootNodes = buildNestedTree(items.map { item ->
                     item.toNestedListItem(
-                        tags = tagsByItemId[item.id].orEmpty().mapNotNull { tagsById[it.tagId]?.toDomain() },
-                        manualMetrics = metricsByItemId[item.id].orEmpty().map { it.toDomain() }
+                        tags = tagsByItemId[item.id].orEmpty().mapNotNull { tagsById[it.tagId]?.toDomain() }
                     )
                 })
             )
@@ -1476,8 +1480,12 @@ class RoomCheckItRepository(
         )
     }
 
-    override suspend fun replaceNestedManualMetrics(itemId: Long, metrics: List<NestedManualMetric>) {
-        dao.replaceNestedManualMetrics(itemId, metrics.map { it.toEntity(itemId) })
+    override suspend fun replaceNestedManualMetrics(itemId: Long, metrics: List<MetricItem>) {
+        dao.updateNestedItemManualMetrics(
+            itemId = itemId,
+            metricsJson = Json.encodeToString(metrics.map { it.normalized() }),
+            updatedAtMillis = Clock.System.now().toEpochMilliseconds()
+        )
     }
 
     override suspend fun updateNestedItemTags(itemId: Long, tagIds: List<Long>) {
@@ -1686,18 +1694,29 @@ private fun DailyPlanItemEntity.toDomain(tags: List<TagItem> = emptyList()) = Da
     handledAtMillis = handledAtMillis
 )
 
-private fun PeriodReviewEntity.toDomain() = PeriodReview(
+private val metricsJsonFormat = Json { ignoreUnknownKeys = true }
+
+/** Trims free-text fields and drops blank optional values before persisting. */
+private fun MetricItem.normalized() = copy(
+    name = name.trim(),
+    value = value.trim(),
+    targetValue = targetValue?.trim()?.takeIf { it.isNotEmpty() },
+    customUnit = customUnit?.trim()?.takeIf { it.isNotEmpty() }
+)
+
+private fun PeriodGoalEntity.toDomain() = PeriodGoal(
     id = id,
     period = Period.valueOf(periodType),
-    periodStartEpochDays = periodStartEpochDays,
-    periodEndEpochDays = periodEndEpochDays,
-    content = content,
-    periodIntent = periodIntent,
-    source = ReviewSource.valueOf(source),
-    status = ReviewStatus.valueOf(status),
+    startEpochDays = startEpochDays,
+    endEpochDays = endEpochDays,
+    review = review,
+    goal = goal,
+    rating = rating,
     completedAtMillis = completedAtMillis,
-    generatedAtMillis = generatedAtMillis,
-    editedAtMillis = editedAtMillis
+    editedAtMillis = editedAtMillis,
+    metrics = runCatching {
+        metricsJsonFormat.decodeFromString<List<MetricItem>>(metricsJson)
+    }.getOrDefault(emptyList())
 )
 
 private fun DailyReflectStatsEntity.toDomain(tagRollups: List<DailyTagRollup> = emptyList()) = DailyReflectStat(
@@ -1769,8 +1788,7 @@ private fun NoteEntity.toDomain(
 )
 
 private fun NestedListItemEntity.toNestedListItem(
-    tags: List<TagItem> = emptyList(),
-    manualMetrics: List<NestedManualMetric> = emptyList()
+    tags: List<TagItem> = emptyList()
 ) = NestedListItem(
     id = id,
     documentId = documentId,
@@ -1792,31 +1810,9 @@ private fun NestedListItemEntity.toNestedListItem(
     metricRollupPolicy = runCatching { MetricRollupPolicy.valueOf(metricRollupPolicy) }
         .getOrDefault(MetricRollupPolicy.IncludeChildren),
     showTrackedMinutes = showTrackedMinutes,
-    manualMetrics = manualMetrics,
+    manualMetrics = runCatching {
+        metricsJsonFormat.decodeFromString<List<MetricItem>>(manualMetricsJson)
+    }.getOrDefault(emptyList()),
     createdAtMillis = createdAtMillis,
     updatedAtMillis = updatedAtMillis
-)
-
-private fun NestedManualMetricEntity.toDomain() = NestedManualMetric(
-    id = id,
-    itemId = itemId,
-    name = name,
-    value = value,
-    targetValue = targetValue,
-    unit = runCatching { NestedMetricUnit.valueOf(unit) }.getOrDefault(NestedMetricUnit.None),
-    customUnit = customUnit,
-    sortOrder = sortOrder,
-    enabled = enabled
-)
-
-private fun NestedManualMetric.toEntity(itemId: Long) = NestedManualMetricEntity(
-    id = id,
-    itemId = itemId,
-    name = name.trim(),
-    value = value.trim(),
-    targetValue = targetValue?.trim()?.takeIf { it.isNotEmpty() },
-    unit = unit.name,
-    customUnit = customUnit?.trim()?.takeIf { it.isNotEmpty() },
-    sortOrder = sortOrder,
-    enabled = enabled
 )

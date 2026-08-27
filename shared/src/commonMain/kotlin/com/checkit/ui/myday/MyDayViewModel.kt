@@ -19,7 +19,7 @@ import com.checkit.domain.usecase.DeleteJournalEntryUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
 import com.checkit.domain.usecase.ObserveNotesForDateUseCase
-import com.checkit.domain.usecase.ObservePeriodReviewsUseCase
+import com.checkit.domain.usecase.ObservePeriodGoalsUseCase
 import com.checkit.domain.usecase.ObserveTagsUseCase
 import com.checkit.domain.usecase.ObserveWorkingTasksUseCase
 import com.checkit.domain.usecase.SmartScheduleDailyPlanUseCase
@@ -38,13 +38,13 @@ import kotlinx.datetime.LocalDate
 
 /**
  * Orchestrates the My Day feature. Heavy lifting is split into small controllers:
- * [MyDayDataLoader], [DayCloseController], [LeftoversController], [PlanAssistController],
+ * [MyDayDataLoader], [DayCloseController], [PlanAssistController],
  * [DailyPlanEditorController], [SprintController], and [com.checkit.ui.journal.JournalController].
  */
 class MyDayViewModel(
     observeDailyPlans: ObserveDailyPlansUseCase,
     observeJournalEntries: ObserveJournalEntriesUseCase,
-    observePeriodReviews: ObservePeriodReviewsUseCase,
+    observePeriodGoals: ObservePeriodGoalsUseCase,
     observeTags: ObserveTagsUseCase,
     observeWorkingTasks: ObserveWorkingTasksUseCase,
     observeNotesForDate: ObserveNotesForDateUseCase,
@@ -66,7 +66,7 @@ class MyDayViewModel(
     private val deps = MyDayDependencies(
         observeDailyPlans = observeDailyPlans,
         observeJournalEntries = observeJournalEntries,
-        observePeriodReviews = observePeriodReviews,
+        observePeriodGoals = observePeriodGoals,
         observeTags = observeTags,
         observeWorkingTasks = observeWorkingTasks,
         observeNotesForDate = observeNotesForDate,
@@ -92,7 +92,6 @@ class MyDayViewModel(
 
     private val loader = MyDayDataLoader(deps, state, viewModelScope)
     private val dayClose = DayCloseController(deps, state, viewModelScope)
-    private val leftovers = LeftoversController(deps, state, viewModelScope)
     private val planAssist = PlanAssistController(deps, state, viewModelScope)
     private val dailyPlanEditor = DailyPlanEditorController(deps, state, viewModelScope)
     private val sprints = SprintController(deps, state, viewModelScope)
@@ -115,21 +114,14 @@ class MyDayViewModel(
     fun updateTomorrowGoal(goal: String) = dayClose.updateTomorrowGoal(goal)
     fun confirmDayClose() = dayClose.confirm()
 
-    // Leftovers
-    fun openLeftoversSheet() = leftovers.openSheet()
-    fun dismissLeftoversSheet() = leftovers.dismissSheet()
-    fun dismissLeftoversBanner() = leftovers.dismissBanner()
-    fun carryAllYesterdayLeftovers() = leftovers.carryAll()
-    fun carryYesterdayLeftover(item: DailyPlanItem) = leftovers.carryItem(item)
-
     // Plan assist / suggestions
-    fun openPlanAssist() = planAssist.openPlanAssist()
-    fun dismissPlanAssist() = planAssist.dismissPlanAssist()
     fun openSuggestions(startTimeMinutes: Int? = null, endTimeMinutes: Int? = null) = planAssist.openSuggestions(startTimeMinutes, endTimeMinutes)
     fun dismissSuggestions() = planAssist.dismissSuggestions()
     fun addTaskFromSuggestion(task: TaskItem) = planAssist.addTaskFromSuggestion(task)
     fun addTaskToMyDay(task: TaskItem) = planAssist.addTaskToMyDay(task)
     fun addDailyPlanItem(title: String, tagIds: List<Long>, nestedListItemId: Long? = null) = planAssist.addDailyPlanItem(title, tagIds, nestedListItemId)
+    fun carryAllYesterdayLeftovers() = planAssist.carryAllYesterdayLeftovers()
+    fun carryYesterdayLeftover(item: DailyPlanItem) = planAssist.carryYesterdayLeftover(item)
 
     // Smart scheduler
     fun smartSchedule() = smartScheduler.scheduleAll()
