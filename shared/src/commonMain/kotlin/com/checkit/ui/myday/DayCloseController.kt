@@ -45,7 +45,6 @@ internal class DayCloseController(
                         winNote = record?.review.orEmpty(),
                         tomorrowGoal = tomorrowRecord?.goal.orEmpty()
                     ),
-                    showDayCloseBanner = false,
                     showLeftoversSheet = false,
                     showSuggestions = false,
                     itemEditor = null
@@ -98,7 +97,7 @@ internal class DayCloseController(
                     tomorrowGoal = review.tomorrowGoal
                 )
             ).onSuccess { result ->
-                state.update { it.copy(dayClose = null, showDayCloseBanner = false, showCelebration = true) }
+                state.update { it.copy(dayClose = null, showCelebration = true) }
                 scope.launch {
                     delay(3000.milliseconds)
                     state.update { it.copy(showCelebration = false) }

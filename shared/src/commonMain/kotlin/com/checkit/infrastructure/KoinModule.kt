@@ -196,7 +196,7 @@ val provideInteractorModule = module {
     single { ObservePeriodGoalsUseCase(get()) }
     single { SavePeriodGoalUseCase(get()) }
     single { RebuildReflectStatsUseCase(get()) }
-    single { CompleteDayCloseUseCase(get(), get(), get(), get()) }
+    single { CompleteDayCloseUseCase(get(), get(), get()) }
     single { AddNoteUseCase(get()) }
     single { UpdateNoteUseCase(get()) }
     single { DeleteNoteUseCase(get()) }

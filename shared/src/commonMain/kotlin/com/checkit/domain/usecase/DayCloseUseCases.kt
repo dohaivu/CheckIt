@@ -1,7 +1,6 @@
 package com.checkit.domain.usecase
 
 import com.checkit.data.CheckItRepository
-import com.checkit.data.SettingsRepository
 import com.checkit.domain.CarryOverResult
 import com.checkit.domain.CarryOverTimePolicy
 import com.checkit.domain.DailyPlan
@@ -148,7 +147,6 @@ class ObservePeriodGoalsUseCase(
  */
 class CompleteDayCloseUseCase(
     private val repository: CheckItRepository,
-    private val settingsRepository: SettingsRepository,
     private val buildSummary: BuildDayCloseSummaryUseCase,
     private val dispatcher: CoroutineDispatcher = Dispatchers.Default
 ) {
@@ -174,7 +172,6 @@ class CompleteDayCloseUseCase(
                 targetDate = tomorrow,
                 nowMillis = Clock.System.now().toEpochMilliseconds()
             )
-            settingsRepository.setLastDayCloseEpochDay(input.date.toEpochDays().toInt())
 
             DayCloseConfirmResult(
                 markedDoneCount = resolution.markDoneIds.size,

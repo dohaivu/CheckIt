@@ -1,10 +1,8 @@
 package com.checkit.ui.myday
 
 import com.checkit.data.UserSettings
-import com.checkit.domain.CarryOverTimePolicy
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
-import com.checkit.domain.DayCloseBannerPolicy
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.LeftoversBannerPolicy
 import com.checkit.domain.NoteItem
@@ -22,8 +20,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
@@ -35,8 +31,6 @@ internal class MyDayDataLoader(
     private val state: MyDayStateHolder,
     private val scope: CoroutineScope
 ) {
-    private val autoCarryMutex = Mutex()
-
     fun start() {
         val today = today()
         scope.launch {
@@ -74,20 +68,11 @@ internal class MyDayDataLoader(
                     val periodGoals = combined.periodGoals
                     val leftovers = YesterdayLeftovers.items(combined.dailyPlans, date)
                     val pendingLeftovers = YesterdayLeftovers.pendingForToday(leftovers, plan)
-                    val showReviewBanner = DayCloseBannerPolicy.shouldShow(
-                        hasPlanItems = plan?.items?.isNotEmpty() == true,
-                        reviewReminderEnabled = combined.settings.reviewReminderEnabled,
-                        reviewReminderTimeMinutes = combined.settings.reviewReminderTimeMinutes,
-                        lastDayCloseEpochDay = combined.settings.lastDayCloseEpochDay,
-                        todayEpochDay = todayEpoch,
-                        nowMinutes = nowMinutes
-                    )
                     val showLeftoversBanner = LeftoversBannerPolicy.shouldShow(
                         pendingCount = pendingLeftovers.size,
                         leftoversBannerDismissedEpochDay = combined.settings.leftoversBannerDismissedEpochDay,
                         todayEpochDay = todayEpoch
                     )
-                    maybeAutoCarryOver(combined.settings, pendingLeftovers, date)
 
                     val summary = deps.buildDayCloseSummary(date, plan)
                     state.update { current ->
@@ -114,15 +99,11 @@ internal class MyDayDataLoader(
                             dailyPlans = combined.dailyPlans,
                             dayClose = updatedReview,
                             journalEntries = combined.journalEntries,
-                            showDayCloseBanner = showReviewBanner && updatedReview == null,
                             reviewReminderEnabled = combined.settings.reviewReminderEnabled,
                             reviewReminderTimeMinutes = combined.settings.reviewReminderTimeMinutes,
                             planReminderEnabled = combined.settings.planReminderEnabled,
                             planReminderTimeMinutes = combined.settings.planReminderTimeMinutes,
-                            lastDayCloseEpochDay = combined.settings.lastDayCloseEpochDay,
-                            lastDayPlanDismissedEpochDay = combined.settings.lastDayPlanDismissedEpochDay,
                             leftoversBannerDismissedEpochDay = combined.settings.leftoversBannerDismissedEpochDay,
-                            autoCarryOverLeftovers = combined.settings.autoCarryOverLeftovers,
                             yesterdayLeftovers = leftovers,
                             pendingYesterdayLeftovers = pendingLeftovers,
                             recentTags = combined.tags.sortedByDescending { it.lastUsedAtMillis }.take(5),
@@ -137,33 +118,6 @@ internal class MyDayDataLoader(
                         )
                     }
                 }
-        }
-    }
-
-    private fun maybeAutoCarryOver(
-        settings: UserSettings,
-        pendingLeftovers: List<DailyPlanItem>,
-        today: LocalDate
-    ) {
-        if (!settings.autoCarryOverLeftovers) return
-        if (pendingLeftovers.isEmpty()) return
-        val todayEpoch = today.toEpochDays().toInt()
-        if (settings.autoCarryOverLastRunEpochDay == todayEpoch) return
-        scope.launch {
-            autoCarryMutex.withLock {
-                runCatching {
-                    val result = deps.carryOverDailyPlanItems.carryAll(
-                        items = pendingLeftovers,
-                        toDate = today,
-                        timePolicy = CarryOverTimePolicy.ClearTimes
-                    )
-                    deps.settingsRepository.setAutoCarryOverLastRunEpochDay(todayEpoch)
-                    deps.settingsRepository.setLeftoversBannerDismissedEpochDay(todayEpoch)
-                    if (result.carriedCount > 0) {
-                        state.sendEvent(UiEvent.ShowSnackbar("${result.carriedCount} carried from yesterday"))
-                    }
-                }
-            }
         }
     }
 }

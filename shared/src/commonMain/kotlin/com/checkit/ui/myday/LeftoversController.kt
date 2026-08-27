@@ -55,7 +55,6 @@ internal class LeftoversController(
             }.onSuccess { result ->
                 val todayEpoch = current.today.toEpochDays().toInt()
                 deps.settingsRepository.setLeftoversBannerDismissedEpochDay(todayEpoch)
-                deps.settingsRepository.setAutoCarryOverLastRunEpochDay(todayEpoch)
                 state.update {
                     it.copy(
                         showLeftoversBanner = false,

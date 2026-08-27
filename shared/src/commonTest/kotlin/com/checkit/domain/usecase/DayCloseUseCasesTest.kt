@@ -5,7 +5,6 @@ import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
-import com.checkit.domain.DayCloseBannerPolicy
 import com.checkit.domain.DayCloseConfirmInput
 import com.checkit.domain.LeftoverAction
 import com.checkit.domain.Period
@@ -372,60 +371,6 @@ class DayCloseUseCasesTest {
             handledAtMillis = 10L
         )
         assertEquals(LeftoverAction.Drop, source.defaultReviewAction(listOf(DailyPlan(today, emptyList()))))
-    }
-
-    @Test
-    fun bannerPolicyRespectsTimeSettingsAndCompletion() {
-        assertTrue(
-            DayCloseBannerPolicy.shouldShow(
-                hasPlanItems = true,
-                reviewReminderEnabled = true,
-                reviewReminderTimeMinutes = 21 * 60,
-                lastDayCloseEpochDay = null,
-                todayEpochDay = 10,
-                nowMinutes = 21 * 60
-            )
-        )
-        assertFalse(
-            DayCloseBannerPolicy.shouldShow(
-                hasPlanItems = true,
-                reviewReminderEnabled = true,
-                reviewReminderTimeMinutes = 21 * 60,
-                lastDayCloseEpochDay = null,
-                todayEpochDay = 10,
-                nowMinutes = 20 * 60
-            )
-        )
-        assertFalse(
-            DayCloseBannerPolicy.shouldShow(
-                hasPlanItems = true,
-                reviewReminderEnabled = true,
-                reviewReminderTimeMinutes = 21 * 60,
-                lastDayCloseEpochDay = 10,
-                todayEpochDay = 10,
-                nowMinutes = 22 * 60
-            )
-        )
-        assertFalse(
-            DayCloseBannerPolicy.shouldShow(
-                hasPlanItems = false,
-                reviewReminderEnabled = true,
-                reviewReminderTimeMinutes = 21 * 60,
-                lastDayCloseEpochDay = null,
-                todayEpochDay = 10,
-                nowMinutes = 22 * 60
-            )
-        )
-        assertFalse(
-            DayCloseBannerPolicy.shouldShow(
-                hasPlanItems = true,
-                reviewReminderEnabled = false,
-                reviewReminderTimeMinutes = 21 * 60,
-                lastDayCloseEpochDay = null,
-                todayEpochDay = 10,
-                nowMinutes = 22 * 60
-            )
-        )
     }
 
     private fun item(

@@ -78,8 +78,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import checkit.shared.generated.resources.Res
-import checkit.shared.generated.resources.day_close_banner_subtitle
-import checkit.shared.generated.resources.day_close_banner_title
 import checkit.shared.generated.resources.day_close_open
 import checkit.shared.generated.resources.leftovers_banner_carry_all
 import checkit.shared.generated.resources.leftovers_banner_dismiss
@@ -208,9 +206,6 @@ internal fun MyDayScreen(
                         onReview = viewModel::openLeftoversSheet,
                         onDismiss = viewModel::dismissLeftoversBanner
                     )
-                }
-                if (state.showDayCloseBanner) {
-                    DayCloseBanner(onClick = viewModel::openDayClose)
                 }
 
                 MyDayViewSelector(
@@ -620,10 +615,11 @@ private fun DayGoalBanner(
     val hasMonthGoal = monthGoal?.goal?.isNotBlank() == true || monthGoal?.metrics?.isNotEmpty() == true
     val hasMoreGoals = hasWeekGoal || hasMonthGoal
 
-    Box(modifier = modifier.fillMaxWidth().onSizeChanged { bannerSize = it }) {
+    Box(modifier = modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .onSizeChanged { bannerSize = it }
                 .clip(RoundedCornerShape(12.dp))
                 .background(color.copy(alpha = 0.08f))
                 .clickable { expanded = !expanded }
@@ -723,52 +719,6 @@ private fun DayGoalBanner(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun DayCloseBanner(onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(MaterialTheme.shapes.medium)
-            .background(MaterialTheme.colorScheme.primaryContainer)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .background(MaterialTheme.colorScheme.primary, MaterialTheme.shapes.small),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                Icons.Default.RateReview,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = stringResource(Res.string.day_close_banner_title),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = stringResource(Res.string.day_close_banner_subtitle),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-            )
-        }
-        Icon(
-            Icons.Default.ChevronRight,
-            contentDescription = null,
-            modifier = Modifier.size(20.dp),
-            tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
-        )
     }
 }
 

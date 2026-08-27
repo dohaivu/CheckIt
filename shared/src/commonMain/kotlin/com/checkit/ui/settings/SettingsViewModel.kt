@@ -115,13 +115,6 @@ class SettingsViewModel(
         }
     }
 
-    fun setAutoCarryOverLeftovers(enabled: Boolean) {
-        _uiState.update { it.copy(reminders = it.reminders.copy(autoCarryOverLeftovers = enabled)) }
-        viewModelScope.launch {
-            settingsRepository.setAutoCarryOverLeftovers(enabled)
-        }
-    }
-
     private fun sendEvent(event: UiEvent) {
         viewModelScope.launch { _events.send(event) }
     }
@@ -134,6 +127,5 @@ private fun UserSettings.toReminderSettingsUiState() = ReminderSettingsUiState(
     reviewTimeMinutes = reviewReminderTimeMinutes,
     checkInEnabled = checkInReminderEnabled,
     scheduleEnabled = scheduleReminderEnabled,
-    checkInLastShownAtMillis = checkInReminderLastShownAtMillis,
-    autoCarryOverLeftovers = autoCarryOverLeftovers
+    checkInLastShownAtMillis = checkInReminderLastShownAtMillis
 )
