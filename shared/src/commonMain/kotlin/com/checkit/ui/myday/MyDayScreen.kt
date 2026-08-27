@@ -10,6 +10,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -19,17 +20,14 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ViewList
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddTask
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Celebration
@@ -42,6 +40,7 @@ import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.RateReview
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -67,6 +66,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.day_close_banner_subtitle
 import checkit.shared.generated.resources.day_close_banner_title
@@ -86,8 +86,6 @@ import com.checkit.domain.TaskStatus
 import com.checkit.domain.hasEndTime
 import com.checkit.ui.MetricChip
 import com.checkit.ui.components.TinyTopAppBar
-import com.checkit.ui.components.icons.AppIcons
-import com.checkit.ui.components.icons.Target
 import com.checkit.ui.journal.JournalListSheet
 import com.checkit.ui.journal.JournalSection
 import com.checkit.ui.journal.JournalThoughtCard
@@ -116,6 +114,7 @@ internal fun MyDayScreen(
     onNoteClick: (NoteItem) -> Unit,
     onNoteTimeChange: (NoteItem, Int) -> Unit,
     onCreateTask: (addToMyDayOnSave: Boolean) -> Unit,
+    onOpenGoalEditor: (LocalDate, com.checkit.domain.Period) -> Unit,
     onNewTagClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -212,13 +211,33 @@ internal fun MyDayScreen(
                     onAddClick = viewModel::openNewJournalEntry,
                     onViewClick = viewModel::openJournalList
                 )
-                state.dayGoals
-                    .firstOrNull { it.startDate == state.today }
-                    ?.let { goal ->
-                        if (goal.goal?.isNotBlank() == true || goal.metrics.isNotEmpty()) {
-                            DayGoalBanner(goal = goal)
-                        }
-                    }
+                val dayGoal = state.goalFor(com.checkit.domain.Period.Day)
+                val weekGoal = state.goalFor(com.checkit.domain.Period.Week)
+                val monthGoal = state.goalFor(com.checkit.domain.Period.Month)
+
+                if (dayGoal?.goal.isNullOrBlank() && dayGoal?.metrics?.isEmpty() != false) {
+                    GoalReminder(
+                        period = com.checkit.domain.Period.Day,
+                        onClick = { onOpenGoalEditor(state.today, com.checkit.domain.Period.Day) }
+                    )
+                } else {
+                    GoalBanner(goal = dayGoal)
+                }
+
+                if (weekGoal?.goal.isNullOrBlank() && weekGoal?.metrics?.isEmpty() != false) {
+                    GoalReminder(
+                        period = com.checkit.domain.Period.Week,
+                        onClick = { onOpenGoalEditor(state.today, com.checkit.domain.Period.Week) }
+                    )
+                }
+
+                if (monthGoal?.goal.isNullOrBlank() && monthGoal?.metrics?.isEmpty() != false) {
+                    GoalReminder(
+                        period = com.checkit.domain.Period.Month,
+                        onClick = { onOpenGoalEditor(state.today, com.checkit.domain.Period.Month) }
+                    )
+                }
+
                 when (state.selectedView) {
                     MyDayView.Agenda -> MyDayAgenda(
                         items = state.items,
@@ -407,16 +426,94 @@ private fun CelebrationOverlay(visible: Boolean) {
 }
 
 @Composable
-private fun DayGoalBanner(
+private fun GoalReminder(
+    period: com.checkit.domain.Period,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val periodLabel = when (period) {
+        com.checkit.domain.Period.Day -> "today's"
+        com.checkit.domain.Period.Week -> "this week's"
+        com.checkit.domain.Period.Month -> "this month's"
+        else -> period.name.lowercase()
+    }
+    val color = when (period) {
+        com.checkit.domain.Period.Day -> MaterialTheme.colorScheme.secondary
+        com.checkit.domain.Period.Week -> MaterialTheme.colorScheme.tertiary
+        com.checkit.domain.Period.Month -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.error
+    }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(color.copy(alpha = 0.08f))
+            .border(
+                width = 1.dp,
+                color = color.copy(alpha = 0.25f),
+                shape = RoundedCornerShape(12.dp)
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .background(MaterialTheme.colorScheme.error.copy(alpha = 0.7f), RoundedCornerShape(8.dp)),
+
+        contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Warning,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.onError
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Missing Goal".uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Black,
+                color = color,
+                letterSpacing = 1.sp
+            )
+            Text(
+                text = "Tap to set $periodLabel focus and metrics.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Medium
+            )
+        }
+        Icon(
+            imageVector = Icons.Default.ChevronRight,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            tint = color.copy(alpha = 0.6f)
+        )
+    }
+}
+
+@Composable
+private fun GoalBanner(
     goal: com.checkit.domain.PeriodGoal,
     modifier: Modifier = Modifier
 ) {
+    val color = when (goal.period) {
+        com.checkit.domain.Period.Day -> MaterialTheme.colorScheme.secondary
+        com.checkit.domain.Period.Week -> MaterialTheme.colorScheme.tertiary
+        com.checkit.domain.Period.Month -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.secondary
+    }
     var expanded by remember { mutableStateOf(false) }
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.08f))
+            .background(color.copy(alpha = 0.08f))
             .clickable { expanded = !expanded }
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -429,13 +526,13 @@ private fun DayGoalBanner(
                 imageVector = Icons.Default.Flag,
                 contentDescription = null,
                 modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.primary
+                tint = color
             )
             Text(
-                text = "TODAY'S FOCUS",
+                text = "${goal.period.name.uppercase()} FOCUS",
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.primary,
+                color = color,
                 modifier = Modifier.weight(1f)
             )
             Icon(

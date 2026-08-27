@@ -296,7 +296,10 @@ fun CheckItApp(
                                             onNoteClick = viewModels.task::openNote,
                                             onNoteTimeChange = viewModels.task::updateNoteTime,
                                             onCreateTask = viewModels.task::openNewTask,
-                                            onNewTagClick = viewModels.tag::openNewTag
+                                            onNewTagClick = viewModels.tag::openNewTag,
+                                            onOpenGoalEditor = { date, period ->
+                                                viewModels.reflect.openNewGoalEditor(date, period)
+                                            }
                                         )
                                     }
                                     AppRoute.Calendar -> {

@@ -201,6 +201,17 @@ class ReflectViewModel(
         )
     }
 
+    fun openNewGoalEditor(date: LocalDate, period: com.checkit.domain.Period) {
+        val focus = FocusPeriod(period, date)
+        _editor.value = ReflectGoalEditorState(
+            focus = focus,
+            review = "",
+            goal = "",
+            rating = 0f,
+            metrics = emptyList()
+        )
+    }
+
     fun openEditor() {
         val state = _uiState.value
         _editor.value = ReflectGoalEditorState(

@@ -2,6 +2,7 @@ package com.checkit.ui.myday
 
 import com.checkit.domain.DayCloseConfirmInput
 import com.checkit.domain.LeftoverAction
+import com.checkit.domain.Period
 import com.checkit.domain.defaultReviewAction
 import com.checkit.ui.UiEvent
 import kotlinx.coroutines.CoroutineScope
@@ -27,10 +28,10 @@ internal class DayCloseController(
             if (loaded.dayClose != null) return@launch
             val date = loaded.today
             val summary = deps.buildDayCloseSummary(date, loaded.plan)
-            val record = loaded.dayGoals.firstOrNull { it.startDate == date }
+            val record = loaded.periodGoals.firstOrNull { it.startDate == date && it.period == Period.Day }
             // The tomorrow goal is stored as the next day's goal.
-            val tomorrowRecord = loaded.dayGoals.firstOrNull {
-                it.startDate == date.plus(1, DateTimeUnit.DAY)
+            val tomorrowRecord = loaded.periodGoals.firstOrNull {
+                it.startDate == date.plus(1, DateTimeUnit.DAY) && it.period == Period.Day
             }
             val allItems = summary.plannedItems + summary.alreadyCarriedItems
             val actions = allItems.associate { item ->

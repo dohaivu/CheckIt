@@ -14,6 +14,7 @@ import com.checkit.domain.TaskStatus
 import com.checkit.domain.TagItem
 import com.checkit.domain.YesterdayLeftovers
 import com.checkit.domain.defaultLeftoverAction
+import com.checkit.domain.startOf
 import com.checkit.ui.tasks.EditorMode
 import com.checkit.ui.isOverdue
 import com.checkit.ui.today
@@ -58,7 +59,7 @@ data class MyDayUiState(
     val suggestionEndTimeMinutes: Int? = null,
     val recentTags: List<TagItem> = emptyList(),
     val lastFabAction: FabAction = FabAction.QuickSprint,
-    val dayGoals: List<PeriodGoal> = emptyList(),
+    val periodGoals: List<PeriodGoal> = emptyList(),
     /** Journal entries for today. */
     val journalEntries: List<JournalEntry> = emptyList(),
     val journalEditor: JournalEntryEditorState? = null,
@@ -117,6 +118,11 @@ data class MyDayUiState(
         ?: sprintSuggestedToday.firstOrNull()
         ?: sprintSuggestedYesterday.firstOrNull()
         ?: sprintSuggestedTasks.firstOrNull()?.let { SprintChoice.Task(it) }
+
+    fun goalFor(period: com.checkit.domain.Period): PeriodGoal? {
+        val startEpoch = period.startOf(today).toEpochDays().toInt()
+        return periodGoals.firstOrNull { it.period == period && it.startEpochDays == startEpoch }
+    }
 }
 
 data class DayCloseUiState(
@@ -213,7 +219,7 @@ fun DailyPlan?.doneWorkMinutes(): Int =
 fun hasDailyPlanItemNearby(
     items: List<DailyPlanItem>,
     nowMinutes: Int,
-    windowMinutes: Int = 30
+    windowMinutes: Int = 15
 ): Boolean {
     val windowStart = nowMinutes - windowMinutes
     val windowEnd = nowMinutes + windowMinutes
