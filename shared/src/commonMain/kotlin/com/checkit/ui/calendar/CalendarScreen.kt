@@ -33,9 +33,9 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Star
@@ -44,7 +44,6 @@ import androidx.compose.material.icons.outlined.ViewDay
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -84,11 +83,12 @@ import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.NoteItem
 import com.checkit.domain.PeriodGoal
+import com.checkit.domain.TagItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
-import com.checkit.domain.TagItem
 import com.checkit.ui.components.MetricChip
 import com.checkit.ui.components.PeriodGoalRow
+import com.checkit.ui.components.RatingBar
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.components.parseMarkdownToAnnotatedString
@@ -101,8 +101,8 @@ import com.checkit.ui.localizedWeekdayName
 import com.checkit.ui.myday.DayLinearTimeline
 import com.checkit.ui.myday.MyDayAgenda
 import com.checkit.ui.shortName
-import com.checkit.ui.toDurationLabel
 import com.checkit.ui.tasks.views.ContentContainerAlpha
+import com.checkit.ui.toDurationLabel
 import com.checkit.ui.today
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
@@ -463,13 +463,8 @@ private fun SelectedDateHeader(
                                 MaterialTheme.colorScheme.onSurface
                             }
                         )
-                        if (dayReview != null && !expanded) {
-                            Icon(
-                                imageVector = Icons.Default.Star,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                                tint = Color(0xFFEAB308)
-                            )
+                        if (dayGoal != null && dayGoal.rating != 0f) {
+                            RatingBar(dayGoal.rating, modifier = Modifier.width(80.dp), iconTint = Color(0xFFEAB308))
                         }
                     }
                     Text(

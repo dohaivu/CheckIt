@@ -642,6 +642,19 @@ private fun DayGoalBanner(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                     }
+                    if (goal.metrics.isNotEmpty()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            goal.metrics.forEach { metric ->
+                                MetricChip(metric)
+                            }
+                        }
+                    }
                 }
                 if (hasMoreGoals) {
                     Icon(
@@ -650,22 +663,6 @@ private fun DayGoalBanner(
                         modifier = Modifier.size(18.dp),
                         tint = color.copy(alpha = 0.6f)
                     )
-                }
-            }
-
-
-
-            if (goal.metrics.isNotEmpty()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    goal.metrics.forEach { metric ->
-                        MetricChip(metric)
-                    }
                 }
             }
         }

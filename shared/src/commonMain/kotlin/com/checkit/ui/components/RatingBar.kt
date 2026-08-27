@@ -15,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 
@@ -23,7 +24,8 @@ fun RatingBar(
     rating: Float,
     onRatingChange: ((Float) -> Unit)? = null,
     modifier: Modifier = Modifier.Companion,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    iconTint: Color = MaterialTheme.colorScheme.secondary
 ) {
     Row(
         modifier = modifier,
@@ -42,7 +44,7 @@ fun RatingBar(
             }
 
             val tint = if (isFull || isHalf) {
-                MaterialTheme.colorScheme.secondary
+                iconTint
             } else {
                 MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
             }
