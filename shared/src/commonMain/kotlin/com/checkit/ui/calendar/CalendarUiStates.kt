@@ -35,12 +35,12 @@ data class CalendarUiState(
     val selectedTagIds: Set<Long> = emptySet(),
     val isMonthlyWinsExpanded: Boolean = false
     ) {
-    val monthlyWins: List<Pair<LocalDate, AnnotatedString>> by lazy {
+    val monthlyWins: List<Triple<LocalDate, AnnotatedString, Float>> by lazy {
         periodGoals
             .filter { it.period == Period.Day }
             .filter { it.startDate.isSameMonth(selectedMonth) && it.review.isNotBlank() }
             .sortedByDescending { it.startDate }
-            .map { it.startDate to parseMarkdownToAnnotatedString(it.review) }
+            .map { Triple(it.startDate, parseMarkdownToAnnotatedString(it.review), it.rating) }
     }
 
     /** Goal record (review + goal) for the currently selected date. */

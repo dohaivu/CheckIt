@@ -1087,7 +1087,7 @@ private fun HallOfFameHandle(
 
 @Composable
 private fun MonthlyWinsGallery(
-    wins: List<Pair<LocalDate, AnnotatedString>>,
+    wins: List<Triple<LocalDate, AnnotatedString, Float>>,
     onDateClick: (LocalDate) -> Unit
 ) {
     if (wins.isEmpty()) {
@@ -1108,85 +1108,47 @@ private fun MonthlyWinsGallery(
             contentPadding = PaddingValues(bottom = 64.dp, top = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(wins) { (date, winNote) ->
-                WinCard(date, winNote, onClick = { onDateClick(date) })
+            items(wins) { (date, winNote, rating) ->
+                Row (
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                        .clickable {
+                            onDateClick(date)
+                        }
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = date.day.toString(),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = date.localizedShortMonthName(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    VerticalDivider(modifier = Modifier.height(32.dp), color = MaterialTheme.colorScheme.outlineVariant)
+
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        RatingBar(rating = rating, modifier = Modifier.width(80.dp), iconTint = Color(0xFFEAB308))
+                        Text(
+                            text = winNote,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        )
+                    }
+                }
             }
-        }
-    }
-}
-
-@Composable
-private fun WinCard(
-    date: LocalDate,
-    winNote: AnnotatedString,
-    modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null
-) {
-    if (onClick != null) {
-        Card(
-            onClick = onClick,
-            modifier = modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            WinCardContent(date, winNote)
-        }
-    } else {
-        Card(
-            modifier = modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            WinCardContent(date, winNote)
-        }
-    }
-}
-
-@Composable
-private fun WinCardContent(
-    date: LocalDate,
-    winNote: AnnotatedString
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = date.day.toString(),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                text = date.localizedShortMonthName(),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        VerticalDivider(modifier = Modifier.height(32.dp), color = MaterialTheme.colorScheme.outlineVariant)
-
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Icon(Icons.Default.Star, null, Modifier.size(14.dp), tint = Color(0xFFEAB308))
-                Text(
-                    text = "WIN OF THE DAY",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Black,
-                    color = Color(0xFFEAB308)
-                )
-            }
-            Text(
-                text = winNote,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            )
         }
     }
 }
