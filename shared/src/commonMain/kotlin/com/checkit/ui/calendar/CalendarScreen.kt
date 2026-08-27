@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -303,53 +304,68 @@ private fun CalendarPeriodHeader(
     onDisplayModeToggle: () -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(42.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+            .padding(2.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        IconButton(onClick = onPreviousPeriod) {
-            Icon(Icons.Default.ChevronLeft, contentDescription = "Previous period")
+        IconButton(onClick = onPreviousPeriod, modifier = Modifier.size(38.dp)) {
+            Icon(
+                imageVector = Icons.Default.ChevronLeft,
+                contentDescription = "Previous period",
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
         }
-        Row(
+
+        Box(
             modifier = Modifier
                 .weight(1f)
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f), RoundedCornerShape(14.dp))
-                .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f), RoundedCornerShape(14.dp))
-                .clickable(onClick = onCurrentMonth)
-                .padding(start = 14.dp, end = 6.dp, top = 5.dp, bottom = 5.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
+                .fillMaxHeight()
+                .clip(CircleShape)
+                .clickable(onClick = onCurrentMonth),
+            contentAlignment = Alignment.Center
         ) {
             Text(
                 text = when (displayMode) {
                     CalendarDisplayMode.Month -> month.localizedMonthTitle()
                     CalendarDisplayMode.Week -> selectedDate.localizedWeekRangeTitle()
                 },
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1f),
-                textAlign = TextAlign.Center
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+                maxLines = 1
             )
-            IconButton(
-                onClick = onDisplayModeToggle,
-                modifier = Modifier.size(34.dp)
-            ) {
-                Icon(
-                    imageVector = when (displayMode) {
-                        CalendarDisplayMode.Month -> Icons.Outlined.ViewDay
-                        CalendarDisplayMode.Week -> Icons.Default.CalendarMonth
-                    },
-                    contentDescription = when (displayMode) {
-                        CalendarDisplayMode.Month -> "Show week"
-                        CalendarDisplayMode.Week -> "Show month"
-                    },
-                    modifier = Modifier.size(20.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
         }
-        IconButton(onClick = onNextPeriod) {
-            Icon(Icons.Default.ChevronRight, contentDescription = "Next period")
+
+        IconButton(
+            onClick = onDisplayModeToggle,
+            modifier = Modifier
+                .size(32.dp)
+        ) {
+            Icon(
+                imageVector = when (displayMode) {
+                    CalendarDisplayMode.Month -> Icons.Outlined.ViewDay
+                    CalendarDisplayMode.Week -> Icons.Default.CalendarMonth
+                },
+                contentDescription = "Toggle view",
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+
+        IconButton(onClick = onNextPeriod, modifier = Modifier.size(38.dp)) {
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = "Next period",
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
         }
     }
 }
@@ -514,12 +530,11 @@ private fun SelectedDateHeader(
                         if (dayReview != null) {
                             Row(
                                 modifier = Modifier
-                                    .padding(horizontal = 12.dp, vertical = 4.dp)
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(Color(0xFFEAB308).copy(alpha = 0.08f))
                                     .padding(horizontal = 8.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                verticalAlignment = Alignment.Top,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
                                 Box(
                                     modifier = Modifier
@@ -557,13 +572,6 @@ private fun SelectedDateHeader(
                                     )
                                 }
                             }
-                        }
-
-                        if (dayReview != null && (dayGoal?.hasContent() == true || weekGoal?.hasContent() == true || monthGoal?.hasContent() == true)) {
-                            HorizontalDivider(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
-                            )
                         }
 
                         dayGoal?.let { goal ->

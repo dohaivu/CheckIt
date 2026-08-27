@@ -255,7 +255,7 @@ private fun ReviewCard(
             if (goal == null || goal.review.isBlank()) {
                 Text(
                     text = stringResource(Res.string.reflect_review_empty, periodLabel),
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                 )

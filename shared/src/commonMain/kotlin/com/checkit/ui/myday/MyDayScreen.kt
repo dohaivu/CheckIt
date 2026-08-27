@@ -606,22 +606,43 @@ private fun DayGoalBanner(
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Flag,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = color
-                )
-                Text(
-                    text = "${goal.period.name.uppercase()} FOCUS",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = color,
-                    modifier = Modifier.weight(1f)
-                )
+                Box(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .background(
+                            color.copy(alpha = 0.12f),
+                            androidx.compose.foundation.shape.RoundedCornerShape(5.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Flag,
+                        contentDescription = null,
+                        modifier = Modifier.size(13.dp),
+                        tint = color
+                    )
+                }
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        text = "${goal.period.name.uppercase()} FOCUS",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = color,
+                    )
+                    goal.goal?.takeIf { it.isNotBlank() }?.let { intent ->
+                        Text(
+                            text = intent,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
                 if (hasMoreGoals) {
                     Icon(
                         imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
@@ -632,13 +653,7 @@ private fun DayGoalBanner(
                 }
             }
 
-            goal.goal?.takeIf { it.isNotBlank() }?.let { intent ->
-                Text(
-                    text = intent,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
+
 
             if (goal.metrics.isNotEmpty()) {
                 Row(
