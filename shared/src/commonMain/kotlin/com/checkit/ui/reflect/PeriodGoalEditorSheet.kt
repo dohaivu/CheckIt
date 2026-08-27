@@ -94,14 +94,18 @@ internal fun PeriodGoalEditorSheet(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        imageVector = editor.focus.period.reviewIcon(),
+                        imageVector = if (editor.mode == ReflectGoalEditorMode.GoalOnly) AppIcons.Target else editor.focus.period.reviewIcon(),
                         contentDescription = null,
                         modifier = Modifier.size(18.dp),
                         tint = MaterialTheme.colorScheme.primary
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = stringResource(Res.string.reflect_review_card_title, periodLabel).uppercase(),
+                        text = if (editor.mode == ReflectGoalEditorMode.GoalOnly) {
+                            "${periodLabel.uppercase()} FOCUS"
+                        } else {
+                            stringResource(Res.string.reflect_review_card_title, periodLabel).uppercase()
+                        },
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 1.2.sp,
@@ -109,64 +113,71 @@ internal fun PeriodGoalEditorSheet(
                     )
                 }
             }
-            Text(
-                text = "What are your wins? frictions? lessons?",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            AppOutlinedTextField(
-                value = editor.review,
-                onValueChange = onReviewChange,
-                textStyle = MaterialTheme.typography.bodyMedium.copy(
-                    color = MaterialTheme.colorScheme.onSurface
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                    .border(
-                        width = 1.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                        shape = RoundedCornerShape(8.dp)
-                    )
-                    .padding(10.dp),
-                placeholder = "Jot down your reflection ...",
-                minLines = 6,
-                enabled = !editor.isSaving,
-                visualTransformation = remember { MarkdownVisualTransformation() }
-            )
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.End
-            ) {
-                RatingBar(
-                    rating = editor.rating,
-                    onRatingChange = onRatingChange,
-                    enabled = !editor.isSaving,
-                    modifier = Modifier.width(150.dp).height(32.dp)
+            if (editor.mode == ReflectGoalEditorMode.Full) {
+                Text(
+                    text = "What are your wins? frictions? lessons?",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 8.dp)
                 )
+                AppOutlinedTextField(
+                    value = editor.review,
+                    onValueChange = onReviewChange,
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                        color = MaterialTheme.colorScheme.onSurface
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .padding(10.dp),
+                    placeholder = "Jot down your reflection ...",
+                    minLines = 6,
+                    enabled = !editor.isSaving,
+                    visualTransformation = remember { MarkdownVisualTransformation() }
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    RatingBar(
+                        rating = editor.rating,
+                        onRatingChange = onRatingChange,
+                        enabled = !editor.isSaving,
+                        modifier = Modifier
+                            .width(150.dp)
+                            .height(32.dp)
+                    )
+                }
             }
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    imageVector = AppIcons.Target,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.secondary
-                )
-                Text(
-                    text = "GOAL",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 1.sp,
-                    color = MaterialTheme.colorScheme.primary
-                )
+            if (editor.mode == ReflectGoalEditorMode.Full) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = AppIcons.Target,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.secondary
+                    )
+                    Text(
+                        text = "GOAL",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = 1.sp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
             Text(
                 text = "What are the 3 non-negotiable priority tasks",

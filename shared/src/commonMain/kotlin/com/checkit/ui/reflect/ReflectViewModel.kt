@@ -193,6 +193,7 @@ class ReflectViewModel(
         val focus = FocusPeriod(goal.period, goal.startDate)
         _editor.value = ReflectGoalEditorState(
             focus = focus,
+            mode = ReflectGoalEditorMode.Full,
             existing = goal,
             review = goal.review,
             goal = goal.goal.orEmpty(),
@@ -201,10 +202,15 @@ class ReflectViewModel(
         )
     }
 
-    fun openNewGoalEditor(date: LocalDate, period: com.checkit.domain.Period) {
+    fun openNewGoalEditor(
+        date: LocalDate,
+        period: com.checkit.domain.Period,
+        mode: ReflectGoalEditorMode = ReflectGoalEditorMode.GoalOnly
+    ) {
         val focus = FocusPeriod(period, date)
         _editor.value = ReflectGoalEditorState(
             focus = focus,
+            mode = mode,
             review = "",
             goal = "",
             rating = 0f,
@@ -216,6 +222,7 @@ class ReflectViewModel(
         val state = _uiState.value
         _editor.value = ReflectGoalEditorState(
             focus = state.focus,
+            mode = ReflectGoalEditorMode.Full,
             existing = state.focusGoal,
             review = state.focusGoal?.review.orEmpty(),
             goal = state.focusGoal?.goal.orEmpty(),

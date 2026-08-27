@@ -20,8 +20,14 @@ import kotlinx.datetime.daysUntil
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 
+enum class ReflectGoalEditorMode {
+    Full,
+    GoalOnly
+}
+
 data class ReflectGoalEditorState(
     val focus: FocusPeriod,
+    val mode: ReflectGoalEditorMode = ReflectGoalEditorMode.Full,
     /** The persisted goal being edited, if any. */
     val existing: PeriodGoal? = null,
     val review: String = "",
