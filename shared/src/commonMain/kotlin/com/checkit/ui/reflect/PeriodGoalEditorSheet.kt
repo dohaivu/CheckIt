@@ -52,7 +52,7 @@ import checkit.shared.generated.resources.reflect_review_card_title
 import checkit.shared.generated.resources.reflect_review_save
 import com.checkit.domain.MetricItem
 import com.checkit.domain.MetricUnit
-import com.checkit.ui.RatingBar
+import com.checkit.ui.components.RatingBar
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.CompactFlatTextField

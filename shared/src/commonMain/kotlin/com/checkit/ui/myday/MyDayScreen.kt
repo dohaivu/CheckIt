@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -30,10 +31,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.AddTask
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Flag
@@ -51,6 +54,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -63,10 +67,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.day_close_banner_subtitle
 import checkit.shared.generated.resources.day_close_banner_title
@@ -84,7 +93,8 @@ import com.checkit.domain.SprintState
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.hasEndTime
-import com.checkit.ui.MetricChip
+import com.checkit.ui.components.MetricChip
+import com.checkit.ui.components.PeriodGoalRow
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.journal.JournalListSheet
 import com.checkit.ui.journal.JournalSection
@@ -221,7 +231,11 @@ internal fun MyDayScreen(
                         onClick = { onOpenGoalEditor(state.today, com.checkit.domain.Period.Day) }
                     )
                 } else {
-                    GoalBanner(goal = dayGoal)
+                    DayGoalBanner(
+                        goal = dayGoal,
+                        weekGoal = weekGoal,
+                        monthGoal = monthGoal
+                    )
                 }
 
                 if (weekGoal?.goal.isNullOrBlank() && weekGoal?.metrics?.isEmpty() != false) {
@@ -498,8 +512,10 @@ private fun GoalReminder(
 }
 
 @Composable
-private fun GoalBanner(
+private fun DayGoalBanner(
     goal: com.checkit.domain.PeriodGoal,
+    weekGoal: com.checkit.domain.PeriodGoal? = null,
+    monthGoal: com.checkit.domain.PeriodGoal? = null,
     modifier: Modifier = Modifier
 ) {
     val color = when (goal.period) {
@@ -509,60 +525,116 @@ private fun GoalBanner(
         else -> MaterialTheme.colorScheme.secondary
     }
     var expanded by remember { mutableStateOf(false) }
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(color.copy(alpha = 0.08f))
-            .clickable { expanded = !expanded }
-            .padding(horizontal = 10.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+    var bannerSize by remember { mutableStateOf(IntSize.Zero) }
+
+    val hasWeekGoal = weekGoal?.goal?.isNotBlank() == true || weekGoal?.metrics?.isNotEmpty() == true
+    val hasMonthGoal = monthGoal?.goal?.isNotBlank() == true || monthGoal?.metrics?.isNotEmpty() == true
+    val hasMoreGoals = hasWeekGoal || hasMonthGoal
+
+    Box(modifier = modifier.fillMaxWidth().onSizeChanged { bannerSize = it }) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(color.copy(alpha = 0.08f))
+                .clickable { expanded = !expanded }
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.Flag,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
-                tint = color
-            )
-            Text(
-                text = "${goal.period.name.uppercase()} FOCUS",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.ExtraBold,
-                color = color,
-                modifier = Modifier.weight(1f)
-            )
-            Icon(
-                imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                contentDescription = if (expanded) "Collapse" else "Expand",
-                modifier = Modifier.size(18.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-            )
-        }
-
-        goal.goal?.takeIf { it.isNotBlank() }?.let { intent ->
-            Text(
-                text = intent,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = if (expanded) Int.MAX_VALUE else 2,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-
-        if (goal.metrics.isNotEmpty()) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                goal.metrics.forEach { metric ->
-                    MetricChip(metric)
+                Icon(
+                    imageVector = Icons.Default.Flag,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = color
+                )
+                Text(
+                    text = "${goal.period.name.uppercase()} FOCUS",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = color,
+                    modifier = Modifier.weight(1f)
+                )
+                if (hasMoreGoals) {
+                    Icon(
+                        imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = if (expanded) "Collapse" else "Expand",
+                        modifier = Modifier.size(18.dp),
+                        tint = color.copy(alpha = 0.6f)
+                    )
+                }
+            }
+
+            goal.goal?.takeIf { it.isNotBlank() }?.let { intent ->
+                Text(
+                    text = intent,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            if (goal.metrics.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    goal.metrics.forEach { metric ->
+                        MetricChip(metric)
+                    }
+                }
+            }
+        }
+
+        if (hasMoreGoals && expanded) {
+            val density = LocalDensity.current
+            Popup(
+                alignment = Alignment.TopStart,
+                offset = IntOffset(0, bannerSize.height),
+                onDismissRequest = { expanded = false },
+                properties = PopupProperties(focusable = true)
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .width(with(density) { bannerSize.width.toDp() })
+                        .padding(bottom = 12.dp)
+                        .clip(RoundedCornerShape(14.dp)),
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.background,
+                    tonalElevation = 6.dp,
+                    shadowElevation = 8.dp
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .background(color.copy(alpha = 0.08f))
+                            .padding(vertical = 4.dp)
+                    ) {
+                        weekGoal?.let {
+                            if (it.goal?.isNotBlank() == true || it.metrics.isNotEmpty()) {
+                                PeriodGoalRow(
+                                    icon = Icons.Default.DateRange,
+                                    label = "WEEK",
+                                    goal = it,
+                                    color = MaterialTheme.colorScheme.tertiary
+                                )
+                            }
+                        }
+                        monthGoal?.let {
+                            if (it.goal?.isNotBlank() == true || it.metrics.isNotEmpty()) {
+                                PeriodGoalRow(
+                                    icon = Icons.Default.CalendarMonth,
+                                    label = "MONTH",
+                                    goal = it,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

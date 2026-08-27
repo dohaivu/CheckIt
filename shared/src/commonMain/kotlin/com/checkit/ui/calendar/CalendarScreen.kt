@@ -86,7 +86,8 @@ import com.checkit.domain.PeriodGoal
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TagItem
-import com.checkit.ui.MetricChip
+import com.checkit.ui.components.MetricChip
+import com.checkit.ui.components.PeriodGoalRow
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.components.parseMarkdownToAnnotatedString
