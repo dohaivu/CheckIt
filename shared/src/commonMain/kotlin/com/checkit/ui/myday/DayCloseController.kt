@@ -45,7 +45,6 @@ internal class DayCloseController(
                         winNote = record?.review.orEmpty(),
                         tomorrowGoal = tomorrowRecord?.goal.orEmpty()
                     ),
-                    showLeftoversSheet = false,
                     showSuggestions = false,
                     itemEditor = null
                 )

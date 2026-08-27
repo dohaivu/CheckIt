@@ -68,10 +68,6 @@ class DataStoreSettingsRepository(
         dataStore.setAutoMyDayLastRunEpochDay(epochDay)
     }
 
-    override suspend fun setLeftoversBannerDismissedEpochDay(epochDay: Int) {
-        dataStore.setLeftoversBannerDismissedEpochDay(epochDay)
-    }
-
     override suspend fun setLastFabAction(type: String, id: Long?) {
         dataStore.setLastFabAction(type, id)
     }

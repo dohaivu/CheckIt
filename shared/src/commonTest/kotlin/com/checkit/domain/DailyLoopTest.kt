@@ -3,7 +3,6 @@ package com.checkit.domain
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class DailyLoopTest {
@@ -59,31 +58,6 @@ class DailyLoopTest {
         )
         val pending = YesterdayLeftovers.pendingForToday(leftovers, todayPlan)
         assertEquals(listOf(2L), pending.map { it.id })
-    }
-
-    @Test
-    fun leftoversBannerPolicy() {
-        assertTrue(
-            LeftoversBannerPolicy.shouldShow(
-                pendingCount = 2,
-                leftoversBannerDismissedEpochDay = null,
-                todayEpochDay = 100
-            )
-        )
-        assertFalse(
-            LeftoversBannerPolicy.shouldShow(
-                pendingCount = 2,
-                leftoversBannerDismissedEpochDay = 100,
-                todayEpochDay = 100
-            )
-        )
-        assertFalse(
-            LeftoversBannerPolicy.shouldShow(
-                pendingCount = 0,
-                leftoversBannerDismissedEpochDay = null,
-                todayEpochDay = 100
-            )
-        )
     }
 
     private fun planItem(

@@ -36,7 +36,6 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
                 scheduleReminderEnabled = prefs[KEY_SCHEDULE_REMINDER_ENABLED] ?: UserSettings().scheduleReminderEnabled,
                 checkInReminderLastShownAtMillis = prefs[KEY_CHECK_IN_REMINDER_LAST_SHOWN],
                 autoMyDayLastRunEpochDay = prefs[KEY_AUTO_MY_DAY_LAST_RUN_EPOCH_DAY],
-                leftoversBannerDismissedEpochDay = prefs[KEY_LEFTOVERS_BANNER_DISMISSED_EPOCH_DAY],
                 lastFabActionType = prefs[KEY_LAST_FAB_ACTION_TYPE] ?: UserSettings().lastFabActionType,
                 lastFabActionId = prefs[KEY_LAST_FAB_ACTION_ID],
                 lastNestedDocumentId = prefs[KEY_LAST_NESTED_DOCUMENT_ID],
@@ -104,10 +103,6 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { it[KEY_AUTO_MY_DAY_LAST_RUN_EPOCH_DAY] = epochDay }
     }
 
-    suspend fun setLeftoversBannerDismissedEpochDay(epochDay: Int) {
-        dataStore.edit { it[KEY_LEFTOVERS_BANNER_DISMISSED_EPOCH_DAY] = epochDay }
-    }
-
     suspend fun setLastFabAction(type: String, id: Long?) {
         dataStore.edit { prefs ->
             prefs[KEY_LAST_FAB_ACTION_TYPE] = type
@@ -155,7 +150,6 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
         val KEY_SCHEDULE_REMINDER_ENABLED = booleanPreferencesKey("schedule_reminder_enabled")
         val KEY_CHECK_IN_REMINDER_LAST_SHOWN = longPreferencesKey("check_in_reminder_last_shown_at_millis")
         val KEY_AUTO_MY_DAY_LAST_RUN_EPOCH_DAY = intPreferencesKey("auto_my_day_last_run_epoch_day")
-        val KEY_LEFTOVERS_BANNER_DISMISSED_EPOCH_DAY = intPreferencesKey("leftovers_banner_dismissed_epoch_day")
         val KEY_LAST_FAB_ACTION_TYPE = stringPreferencesKey("last_fab_action_type")
         val KEY_LAST_FAB_ACTION_ID = longPreferencesKey("last_fab_action_id")
         val KEY_LAST_NESTED_DOCUMENT_ID = longPreferencesKey("last_nested_document_id")

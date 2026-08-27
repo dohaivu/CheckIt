@@ -73,10 +73,6 @@ class FakeSettingsRepository(initialSettings: UserSettings = UserSettings()) : S
         settingsFlow.update { it.copy(autoMyDayLastRunEpochDay = epochDay) }
     }
 
-    override suspend fun setLeftoversBannerDismissedEpochDay(epochDay: Int) {
-        settingsFlow.update { it.copy(leftoversBannerDismissedEpochDay = epochDay) }
-    }
-
     override suspend fun setLastFabAction(type: String, id: Long?) {
         settingsFlow.update { it.copy(lastFabActionType = type, lastFabActionId = id) }
     }

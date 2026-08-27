@@ -18,8 +18,6 @@ data class UserSettings(
     val scheduleReminderEnabled: Boolean = true,
     val checkInReminderLastShownAtMillis: Long? = null,
     val autoMyDayLastRunEpochDay: Int? = null,
-    /** Suppresses the morning leftovers banner for this epoch day. */
-    val leftoversBannerDismissedEpochDay: Int? = null,
     val lastFabActionType: String = "QuickSprint",
     val lastFabActionId: Long? = null,
     val lastNestedDocumentId: Long? = null,
@@ -43,7 +41,6 @@ interface SettingsRepository {
     suspend fun setScheduleReminderEnabled(enabled: Boolean)
     suspend fun setCheckInReminderLastShownAtMillis(millis: Long)
     suspend fun setAutoMyDayLastRunEpochDay(epochDay: Int)
-    suspend fun setLeftoversBannerDismissedEpochDay(epochDay: Int)
     suspend fun setLastFabAction(type: String, id: Long?)
     suspend fun setLastNestedDocumentId(id: Long?)
     suspend fun addRecentLabel(label: String)

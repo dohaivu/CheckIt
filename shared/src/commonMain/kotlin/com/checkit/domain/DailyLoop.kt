@@ -42,15 +42,3 @@ object YesterdayLeftovers {
     }
 }
 
-object LeftoversBannerPolicy {
-    fun shouldShow(
-        pendingCount: Int,
-        leftoversBannerDismissedEpochDay: Int?,
-        todayEpochDay: Int
-    ): Boolean {
-        if (pendingCount <= 0) return false
-        if (leftoversBannerDismissedEpochDay == todayEpochDay) return false
-        return true
-    }
-}
-

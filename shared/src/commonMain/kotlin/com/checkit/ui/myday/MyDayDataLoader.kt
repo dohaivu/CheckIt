@@ -4,7 +4,6 @@ import com.checkit.data.UserSettings
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.JournalEntry
-import com.checkit.domain.LeftoversBannerPolicy
 import com.checkit.domain.NoteItem
 import com.checkit.domain.PeriodGoal
 import com.checkit.domain.Period
@@ -62,17 +61,11 @@ internal class MyDayDataLoader(
                 }
                 .collect { combined ->
                     val date = today()
-                    val todayEpoch = date.toEpochDays().toInt()
                     val nowMinutes = currentMyDayTimeMinutes()
                     val plan = combined.dailyPlans.firstOrNull { it.date == date }
                     val periodGoals = combined.periodGoals
                     val leftovers = YesterdayLeftovers.items(combined.dailyPlans, date)
                     val pendingLeftovers = YesterdayLeftovers.pendingForToday(leftovers, plan)
-                    val showLeftoversBanner = LeftoversBannerPolicy.shouldShow(
-                        pendingCount = pendingLeftovers.size,
-                        leftoversBannerDismissedEpochDay = combined.settings.leftoversBannerDismissedEpochDay,
-                        todayEpochDay = todayEpoch
-                    )
 
                     val summary = deps.buildDayCloseSummary(date, plan)
                     state.update { current ->
@@ -99,21 +92,12 @@ internal class MyDayDataLoader(
                             dailyPlans = combined.dailyPlans,
                             dayClose = updatedReview,
                             journalEntries = combined.journalEntries,
-                            reviewReminderEnabled = combined.settings.reviewReminderEnabled,
-                            reviewReminderTimeMinutes = combined.settings.reviewReminderTimeMinutes,
-                            planReminderEnabled = combined.settings.planReminderEnabled,
-                            planReminderTimeMinutes = combined.settings.planReminderTimeMinutes,
-                            leftoversBannerDismissedEpochDay = combined.settings.leftoversBannerDismissedEpochDay,
-                            yesterdayLeftovers = leftovers,
                             pendingYesterdayLeftovers = pendingLeftovers,
                             recentTags = combined.tags.sortedByDescending { it.lastUsedAtMillis }.take(5),
                             lastFabAction = lastFabAction,
                             periodGoals = periodGoals,
                             recentLabels = combined.settings.recentLabels,
                             nowMinutes = nowMinutes,
-                            showLeftoversBanner = showLeftoversBanner &&
-                                updatedReview == null &&
-                                !current.showLeftoversSheet,
                             isLoading = false
                         )
                     }

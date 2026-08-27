@@ -79,11 +79,6 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.day_close_open
-import checkit.shared.generated.resources.leftovers_banner_carry_all
-import checkit.shared.generated.resources.leftovers_banner_dismiss
-import checkit.shared.generated.resources.leftovers_banner_review
-import checkit.shared.generated.resources.leftovers_banner_subtitle
-import checkit.shared.generated.resources.leftovers_banner_title
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.JournalEntry
@@ -199,15 +194,6 @@ internal fun MyDayScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                if (state.showLeftoversBanner) {
-                    LeftoversBanner(
-                        count = state.pendingYesterdayLeftovers.size,
-                        onCarryAll = viewModel::carryAllYesterdayLeftovers,
-                        onReview = viewModel::openLeftoversSheet,
-                        onDismiss = viewModel::dismissLeftoversBanner
-                    )
-                }
-
                 MyDayViewSelector(
                     selectedView = state.selectedView,
                     onSelect = viewModel::selectView
@@ -381,15 +367,6 @@ internal fun MyDayScreen(
                 onCreateTask(true)
             },
             onNewTagClick = onNewTagClick
-        )
-    }
-
-    if (state.showLeftoversSheet) {
-        LeftoversSheet(
-            items = state.pendingYesterdayLeftovers,
-            onDismiss = viewModel::dismissLeftoversSheet,
-            onCarry = viewModel::carryYesterdayLeftover,
-            onCarryAll = viewModel::carryAllYesterdayLeftovers
         )
     }
 
@@ -717,74 +694,6 @@ private fun DayGoalBanner(
                         }
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun LeftoversBanner(
-    count: Int,
-    onCarryAll: () -> Unit,
-    onReview: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(MaterialTheme.shapes.medium)
-            .background(MaterialTheme.colorScheme.tertiaryContainer)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Icon(
-                Icons.Default.Schedule,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp),
-                tint = MaterialTheme.colorScheme.onTertiaryContainer
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(Res.string.leftovers_banner_title, count),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onTertiaryContainer
-                )
-                Text(
-                    text = stringResource(Res.string.leftovers_banner_subtitle),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f)
-                )
-            }
-            IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
-                Icon(
-                    Icons.Default.Close,
-                    contentDescription = stringResource(Res.string.leftovers_banner_dismiss),
-                    modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.onTertiaryContainer
-                )
-            }
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TextButton(onClick = onReview) {
-                Text(stringResource(Res.string.leftovers_banner_review))
-            }
-            FilledTonalButton(
-                onClick = onCarryAll,
-                colors = ButtonDefaults.filledTonalButtonColors(
-                    containerColor = MaterialTheme.colorScheme.tertiary,
-                    contentColor = MaterialTheme.colorScheme.onTertiary
-                )
-            ) {
-                Text(stringResource(Res.string.leftovers_banner_carry_all))
             }
         }
     }
