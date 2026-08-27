@@ -215,40 +215,45 @@ internal fun MyDayScreen(
                 val monthBannerType = state.bannerTypeFor(Period.Month)
 
                 // Period banners
-                listOf(
-                    Period.Day to dayBannerType,
-                    Period.Week to weekBannerType,
-                    Period.Month to monthBannerType
-                ).forEach { (period, type) ->
-                    val goal = state.goalFor(period)
-                    when (type) {
-                        PeriodBannerType.ReviewPending -> {
-                            ReviewReminder(
-                                period = period,
-                                onClick = {
-                                    if (period == Period.Day) {
-                                        viewModel.openDayClose()
-                                    } else {
-                                        onOpenGoalEditor(state.today, period, ReflectGoalEditorMode.Full)
+                if (!state.isLoading) {
+                    listOf(
+                        Period.Day to dayBannerType,
+                        Period.Week to weekBannerType,
+                        Period.Month to monthBannerType
+                    ).forEach { (period, type) ->
+                        val goal = state.goalFor(period)
+                        when (type) {
+                            PeriodBannerType.ReviewPending -> {
+                                ReviewReminder(
+                                    period = period,
+                                    onClick = {
+                                        if (period == Period.Day) {
+                                            viewModel.openDayClose()
+                                        } else {
+                                            onOpenGoalEditor(state.today, period, ReflectGoalEditorMode.Full)
+                                        }
                                     }
-                                }
-                            )
-                        }
-                        PeriodBannerType.MissingGoal -> {
-                            GoalReminder(
-                                period = period,
-                                onClick = { onOpenGoalEditor(state.today, period, ReflectGoalEditorMode.GoalOnly) }
-                            )
-                        }
-                        PeriodBannerType.ActiveGoal -> {
-                            if (period == Period.Day) {
-                                DayGoalBanner(
-                                    goal = goal!!,
-                                    weekGoal = if (weekBannerType == PeriodBannerType.ActiveGoal) state.goalFor(Period.Week) else null,
-                                    monthGoal = if (monthBannerType == PeriodBannerType.ActiveGoal) state.goalFor(Period.Month) else null
                                 )
                             }
-                            // Week/Month ActiveGoals are shown inside the DayGoalBanner popup
+
+                            PeriodBannerType.MissingGoal -> {
+                                GoalReminder(
+                                    period = period,
+                                    onClick = {
+                                        onOpenGoalEditor(state.today, period, ReflectGoalEditorMode.GoalOnly)
+                                    }
+                                )
+                            }
+
+                            PeriodBannerType.ActiveGoal -> {
+                                if (period == Period.Day) {
+                                    DayGoalBanner(
+                                        goal = goal!!,
+                                        weekGoal = if (weekBannerType == PeriodBannerType.ActiveGoal) state.goalFor(Period.Week) else null,
+                                        monthGoal = if (monthBannerType == PeriodBannerType.ActiveGoal) state.goalFor(Period.Month) else null
+                                    )
+                                }
+                            }
                         }
                     }
                 }
