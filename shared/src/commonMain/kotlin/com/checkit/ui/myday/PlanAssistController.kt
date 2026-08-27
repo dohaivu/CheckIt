@@ -8,7 +8,6 @@ import com.checkit.domain.nextAvailableTimeRange
 import com.checkit.ui.UiEvent
 import com.checkit.ui.currentMyDayTimeMinutes
 import com.checkit.ui.tasks.EditorMode
-import com.checkit.ui.today
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -18,33 +17,6 @@ internal class PlanAssistController(
     private val state: MyDayStateHolder,
     private val scope: CoroutineScope
 ) {
-    fun openPlanAssist() {
-        state.update {
-            it.copy(
-                showPlanAssistBanner = false,
-                showSuggestions = true,
-                showLeftoversSheet = false,
-                suggestionStartTimeMinutes = null,
-                suggestionEndTimeMinutes = null,
-                itemEditor = null,
-                dayClose = null
-            )
-        }
-    }
-
-    fun dismissPlanAssist() {
-        val todayEpoch = today().toEpochDays().toInt()
-        scope.launch {
-            deps.settingsRepository.setLastDayPlanDismissedEpochDay(todayEpoch)
-        }
-        state.update {
-            it.copy(
-                showPlanAssistBanner = false,
-                lastDayPlanDismissedEpochDay = todayEpoch
-            )
-        }
-    }
-
     fun openSuggestions(
         startTimeMinutes: Int? = null,
         endTimeMinutes: Int? = null
@@ -52,7 +24,6 @@ internal class PlanAssistController(
         state.update {
             it.copy(
                 showSuggestions = true,
-                showPlanAssistBanner = false,
                 suggestionStartTimeMinutes = startTimeMinutes,
                 suggestionEndTimeMinutes = endTimeMinutes
             )

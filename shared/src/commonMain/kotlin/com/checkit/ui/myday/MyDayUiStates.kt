@@ -51,7 +51,6 @@ data class MyDayUiState(
     val pendingYesterdayLeftovers: List<DailyPlanItem> = emptyList(),
     val showLeftoversBanner: Boolean = false,
     val showLeftoversSheet: Boolean = false,
-    val showPlanAssistBanner: Boolean = false,
     val showSuggestions: Boolean = false,
     val showQuickSprintSheet: Boolean = false,
     val showCelebration: Boolean = false,

@@ -76,9 +76,6 @@ import checkit.shared.generated.resources.leftovers_banner_dismiss
 import checkit.shared.generated.resources.leftovers_banner_review
 import checkit.shared.generated.resources.leftovers_banner_subtitle
 import checkit.shared.generated.resources.leftovers_banner_title
-import checkit.shared.generated.resources.plan_assist_banner_dismiss
-import checkit.shared.generated.resources.plan_assist_banner_subtitle
-import checkit.shared.generated.resources.plan_assist_banner_title
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.JournalEntry
@@ -196,12 +193,6 @@ internal fun MyDayScreen(
                         onCarryAll = viewModel::carryAllYesterdayLeftovers,
                         onReview = viewModel::openLeftoversSheet,
                         onDismiss = viewModel::dismissLeftoversBanner
-                    )
-                }
-                if (state.showPlanAssistBanner) {
-                    PlanAssistBanner(
-                        onPlan = viewModel::openPlanAssist,
-                        onDismiss = viewModel::dismissPlanAssist
                     )
                 }
                 if (state.showDayCloseBanner) {
@@ -591,58 +582,6 @@ private fun LeftoversBanner(
             ) {
                 Text(stringResource(Res.string.leftovers_banner_carry_all))
             }
-        }
-    }
-}
-
-@Composable
-private fun PlanAssistBanner(
-    onPlan: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(MaterialTheme.shapes.medium)
-            .background(MaterialTheme.colorScheme.secondaryContainer)
-            .clickable(onClick = onPlan)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .background(MaterialTheme.colorScheme.secondary, MaterialTheme.shapes.small),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                Icons.Default.Lightbulb,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSecondary,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = stringResource(Res.string.plan_assist_banner_title),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSecondaryContainer
-            )
-            Text(
-                text = stringResource(Res.string.plan_assist_banner_subtitle),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
-            )
-        }
-        IconButton(onClick = onDismiss) {
-            Icon(
-                Icons.Default.Close,
-                contentDescription = stringResource(Res.string.plan_assist_banner_dismiss),
-                modifier = Modifier.size(18.dp),
-                tint = MaterialTheme.colorScheme.onSecondaryContainer
-            )
         }
     }
 }

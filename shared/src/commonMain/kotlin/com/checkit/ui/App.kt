@@ -171,7 +171,7 @@ fun CheckItApp(
     LaunchedEffect(openPlanAssistLaunch) {
         if (!openPlanAssistLaunch) return@LaunchedEffect
         navState.resetTo(AppRoute.MyDay)
-        viewModels.myDay.openPlanAssist()
+        viewModels.myDay.openSuggestions()
         onWidgetLaunchConsumed()
     }
 

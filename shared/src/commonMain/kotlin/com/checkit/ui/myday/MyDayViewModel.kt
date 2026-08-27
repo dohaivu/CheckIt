@@ -123,8 +123,6 @@ class MyDayViewModel(
     fun carryYesterdayLeftover(item: DailyPlanItem) = leftovers.carryItem(item)
 
     // Plan assist / suggestions
-    fun openPlanAssist() = planAssist.openPlanAssist()
-    fun dismissPlanAssist() = planAssist.dismissPlanAssist()
     fun openSuggestions(startTimeMinutes: Int? = null, endTimeMinutes: Int? = null) = planAssist.openSuggestions(startTimeMinutes, endTimeMinutes)
     fun dismissSuggestions() = planAssist.dismissSuggestions()
     fun addTaskFromSuggestion(task: TaskItem) = planAssist.addTaskFromSuggestion(task)

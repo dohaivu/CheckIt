@@ -86,65 +86,6 @@ class DailyLoopTest {
         )
     }
 
-    @Test
-    fun planAssistBannerPolicy() {
-        assertTrue(
-            PlanAssistBannerPolicy.shouldShow(
-                todayPlanItemCount = 0,
-                planReminderEnabled = true,
-                planReminderTimeMinutes = 7 * 60,
-                reviewReminderTimeMinutes = 21 * 60,
-                lastDayPlanDismissedEpochDay = null,
-                todayEpochDay = 100,
-                nowMinutes = 8 * 60
-            )
-        )
-        assertFalse(
-            PlanAssistBannerPolicy.shouldShow(
-                todayPlanItemCount = 1,
-                planReminderEnabled = true,
-                planReminderTimeMinutes = 7 * 60,
-                reviewReminderTimeMinutes = 21 * 60,
-                lastDayPlanDismissedEpochDay = null,
-                todayEpochDay = 100,
-                nowMinutes = 8 * 60
-            )
-        )
-        assertFalse(
-            PlanAssistBannerPolicy.shouldShow(
-                todayPlanItemCount = 0,
-                planReminderEnabled = true,
-                planReminderTimeMinutes = 7 * 60,
-                reviewReminderTimeMinutes = 21 * 60,
-                lastDayPlanDismissedEpochDay = null,
-                todayEpochDay = 100,
-                nowMinutes = 6 * 60
-            )
-        )
-        assertFalse(
-            PlanAssistBannerPolicy.shouldShow(
-                todayPlanItemCount = 0,
-                planReminderEnabled = true,
-                planReminderTimeMinutes = 7 * 60,
-                reviewReminderTimeMinutes = 21 * 60,
-                lastDayPlanDismissedEpochDay = null,
-                todayEpochDay = 100,
-                nowMinutes = 21 * 60
-            )
-        )
-        assertFalse(
-            PlanAssistBannerPolicy.shouldShow(
-                todayPlanItemCount = 0,
-                planReminderEnabled = true,
-                planReminderTimeMinutes = 7 * 60,
-                reviewReminderTimeMinutes = 21 * 60,
-                lastDayPlanDismissedEpochDay = 100,
-                todayEpochDay = 100,
-                nowMinutes = 8 * 60
-            )
-        )
-    }
-
     private fun planItem(
         id: Long,
         title: String,

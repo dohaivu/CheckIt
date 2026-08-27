@@ -9,7 +9,6 @@ import com.checkit.domain.JournalEntry
 import com.checkit.domain.LeftoversBannerPolicy
 import com.checkit.domain.NoteItem
 import com.checkit.domain.PeriodGoal
-import com.checkit.domain.PlanAssistBannerPolicy
 import com.checkit.domain.Period
 import com.checkit.domain.TagItem
 import com.checkit.domain.TaskItem
@@ -84,15 +83,6 @@ internal class MyDayDataLoader(
                         leftoversBannerDismissedEpochDay = combined.settings.leftoversBannerDismissedEpochDay,
                         todayEpochDay = todayEpoch
                     )
-                    val showPlanAssist = PlanAssistBannerPolicy.shouldShow(
-                        todayPlanItemCount = plan?.items?.size ?: 0,
-                        planReminderEnabled = combined.settings.planReminderEnabled,
-                        planReminderTimeMinutes = combined.settings.planReminderTimeMinutes,
-                        reviewReminderTimeMinutes = combined.settings.reviewReminderTimeMinutes,
-                        lastDayPlanDismissedEpochDay = combined.settings.lastDayPlanDismissedEpochDay,
-                        todayEpochDay = todayEpoch,
-                        nowMinutes = nowMinutes
-                    )
                     maybeAutoCarryOver(combined.settings, pendingLeftovers, date)
 
                     val summary = deps.buildDayCloseSummary(date, plan)
@@ -138,9 +128,6 @@ internal class MyDayDataLoader(
                             showLeftoversBanner = showLeftoversBanner &&
                                 updatedReview == null &&
                                 !current.showLeftoversSheet,
-                            showPlanAssistBanner = showPlanAssist &&
-                                updatedReview == null &&
-                                !current.showSuggestions,
                             isLoading = false
                         )
                     }
