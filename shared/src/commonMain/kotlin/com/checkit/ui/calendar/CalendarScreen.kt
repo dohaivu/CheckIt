@@ -503,7 +503,6 @@ private fun SelectedDateHeader(
                     modifier = Modifier
                         .width(with(density) { headerSize.width.toDp() })
                         .padding(horizontal = 4.dp)
-                        .padding(bottom = 12.dp) // Breathing room for shadow to prevent clipping
                         .clip(RoundedCornerShape(14.dp))
                         .animateContentSize(),
                     shape = RoundedCornerShape(14.dp),
@@ -511,9 +510,7 @@ private fun SelectedDateHeader(
                     tonalElevation = 6.dp,
                     shadowElevation = 8.dp
                 ) {
-                    Column(
-                        modifier = Modifier.padding(vertical = 4.dp)
-                    ) {
+                    Column {
                         if (dayReview != null) {
                             Row(
                                 modifier = Modifier

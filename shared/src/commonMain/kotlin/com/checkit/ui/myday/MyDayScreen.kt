@@ -66,6 +66,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -89,12 +90,15 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.NoteItem
+import com.checkit.domain.Period
+import com.checkit.domain.PeriodGoal
 import com.checkit.domain.SprintState
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.hasEndTime
 import com.checkit.ui.components.MetricChip
 import com.checkit.ui.components.PeriodGoalRow
+import com.checkit.ui.components.RatingBar
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.journal.JournalListSheet
 import com.checkit.ui.journal.JournalSection
@@ -103,6 +107,7 @@ import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.TimelineItem
 import com.checkit.ui.TimelineItemType
 import com.checkit.ui.isOverdue
+import com.checkit.ui.reflect.ReflectGoalEditorMode
 import com.checkit.ui.tasks.views.AgendaView
 import com.checkit.ui.tasks.views.DailyPlanAllDayCard
 import com.checkit.ui.tasks.views.DailyPlanTimelineCard
@@ -124,7 +129,7 @@ internal fun MyDayScreen(
     onNoteClick: (NoteItem) -> Unit,
     onNoteTimeChange: (NoteItem, Int) -> Unit,
     onCreateTask: (addToMyDayOnSave: Boolean) -> Unit,
-    onOpenGoalEditor: (LocalDate, com.checkit.domain.Period) -> Unit,
+    onOpenGoalEditor: (LocalDate, com.checkit.domain.Period, ReflectGoalEditorMode) -> Unit,
     onNewTagClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -221,35 +226,48 @@ internal fun MyDayScreen(
                     onAddClick = viewModel::openNewJournalEntry,
                     onViewClick = viewModel::openJournalList
                 )
-                val dayGoal = state.goalFor(com.checkit.domain.Period.Day)
-                val weekGoal = state.goalFor(com.checkit.domain.Period.Week)
-                val monthGoal = state.goalFor(com.checkit.domain.Period.Month)
 
-                if (dayGoal?.goal.isNullOrBlank() && dayGoal?.metrics?.isEmpty() != false) {
-                    GoalReminder(
-                        period = com.checkit.domain.Period.Day,
-                        onClick = { onOpenGoalEditor(state.today, com.checkit.domain.Period.Day) }
-                    )
-                } else {
-                    DayGoalBanner(
-                        goal = dayGoal,
-                        weekGoal = weekGoal,
-                        monthGoal = monthGoal
-                    )
-                }
+                val dayBannerType = state.bannerTypeFor(Period.Day)
+                val weekBannerType = state.bannerTypeFor(Period.Week)
+                val monthBannerType = state.bannerTypeFor(Period.Month)
 
-                if (weekGoal?.goal.isNullOrBlank() && weekGoal?.metrics?.isEmpty() != false) {
-                    GoalReminder(
-                        period = com.checkit.domain.Period.Week,
-                        onClick = { onOpenGoalEditor(state.today, com.checkit.domain.Period.Week) }
-                    )
-                }
-
-                if (monthGoal?.goal.isNullOrBlank() && monthGoal?.metrics?.isEmpty() != false) {
-                    GoalReminder(
-                        period = com.checkit.domain.Period.Month,
-                        onClick = { onOpenGoalEditor(state.today, com.checkit.domain.Period.Month) }
-                    )
+                // Period banners
+                listOf(
+                    Period.Day to dayBannerType,
+                    Period.Week to weekBannerType,
+                    Period.Month to monthBannerType
+                ).forEach { (period, type) ->
+                    val goal = state.goalFor(period)
+                    when (type) {
+                        PeriodBannerType.ReviewPending -> {
+                            ReviewReminder(
+                                period = period,
+                                onClick = {
+                                    if (period == Period.Day) {
+                                        viewModel.openDayClose()
+                                    } else {
+                                        onOpenGoalEditor(state.today, period, ReflectGoalEditorMode.Full)
+                                    }
+                                }
+                            )
+                        }
+                        PeriodBannerType.MissingGoal -> {
+                            GoalReminder(
+                                period = period,
+                                onClick = { onOpenGoalEditor(state.today, period, ReflectGoalEditorMode.GoalOnly) }
+                            )
+                        }
+                        PeriodBannerType.ActiveGoal -> {
+                            if (period == Period.Day) {
+                                DayGoalBanner(
+                                    goal = goal!!,
+                                    weekGoal = if (weekBannerType == PeriodBannerType.ActiveGoal) state.goalFor(Period.Week) else null,
+                                    monthGoal = if (monthBannerType == PeriodBannerType.ActiveGoal) state.goalFor(Period.Month) else null
+                                )
+                            }
+                            // Week/Month ActiveGoals are shown inside the DayGoalBanner popup
+                        }
+                    }
                 }
 
                 when (state.selectedView) {
@@ -440,21 +458,92 @@ private fun CelebrationOverlay(visible: Boolean) {
 }
 
 @Composable
-private fun GoalReminder(
-    period: com.checkit.domain.Period,
+private fun ReviewReminder(
+    period: Period,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val periodLabel = when (period) {
-        com.checkit.domain.Period.Day -> "today's"
-        com.checkit.domain.Period.Week -> "this week's"
-        com.checkit.domain.Period.Month -> "this month's"
+        Period.Day -> "today"
+        Period.Week -> "this week"
+        Period.Month -> "this month"
+        else -> period.name.lowercase()
+    }
+    val gradient = Brush.horizontalGradient(
+        colors = listOf(
+            MaterialTheme.colorScheme.primary,
+            MaterialTheme.colorScheme.tertiary
+        )
+    )
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(
+                width = 1.5.dp,
+                brush = gradient,
+                shape = RoundedCornerShape(12.dp)
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .background(gradient, RoundedCornerShape(10.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.RateReview,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.onPrimary
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Time to Reflect".uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Black,
+                color = MaterialTheme.colorScheme.primary,
+                letterSpacing = 1.sp
+            )
+            Text(
+                text = "How was $periodLabel? Jot down your wins and lessons.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Medium
+            )
+        }
+        Icon(
+            imageVector = Icons.Default.ChevronRight,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+        )
+    }
+}
+
+@Composable
+private fun GoalReminder(
+    period: Period,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val periodLabel = when (period) {
+        Period.Day -> "today's"
+        Period.Week -> "this week's"
+        Period.Month -> "this month's"
         else -> period.name.lowercase()
     }
     val color = when (period) {
-        com.checkit.domain.Period.Day -> MaterialTheme.colorScheme.secondary
-        com.checkit.domain.Period.Week -> MaterialTheme.colorScheme.tertiary
-        com.checkit.domain.Period.Month -> MaterialTheme.colorScheme.primary
+        Period.Day -> MaterialTheme.colorScheme.secondary
+        Period.Week -> MaterialTheme.colorScheme.tertiary
+        Period.Month -> MaterialTheme.colorScheme.primary
         else -> MaterialTheme.colorScheme.error
     }
 
@@ -513,15 +602,15 @@ private fun GoalReminder(
 
 @Composable
 private fun DayGoalBanner(
-    goal: com.checkit.domain.PeriodGoal,
-    weekGoal: com.checkit.domain.PeriodGoal? = null,
-    monthGoal: com.checkit.domain.PeriodGoal? = null,
+    goal: PeriodGoal,
+    weekGoal: PeriodGoal? = null,
+    monthGoal: PeriodGoal? = null,
     modifier: Modifier = Modifier
 ) {
     val color = when (goal.period) {
-        com.checkit.domain.Period.Day -> MaterialTheme.colorScheme.secondary
-        com.checkit.domain.Period.Week -> MaterialTheme.colorScheme.tertiary
-        com.checkit.domain.Period.Month -> MaterialTheme.colorScheme.primary
+        Period.Day -> MaterialTheme.colorScheme.secondary
+        Period.Week -> MaterialTheme.colorScheme.tertiary
+        Period.Month -> MaterialTheme.colorScheme.primary
         else -> MaterialTheme.colorScheme.secondary
     }
     var expanded by remember { mutableStateOf(false) }
@@ -602,17 +691,13 @@ private fun DayGoalBanner(
                 Surface(
                     modifier = Modifier
                         .width(with(density) { bannerSize.width.toDp() })
-                        .padding(bottom = 12.dp)
                         .clip(RoundedCornerShape(14.dp)),
                     shape = RoundedCornerShape(14.dp),
-                    color = MaterialTheme.colorScheme.background,
+                    color = MaterialTheme.colorScheme.surfaceContainer,
                     tonalElevation = 6.dp,
                     shadowElevation = 8.dp
                 ) {
                     Column(
-                        modifier = Modifier
-                            .background(color.copy(alpha = 0.08f))
-                            .padding(vertical = 4.dp)
                     ) {
                         weekGoal?.let {
                             if (it.goal?.isNotBlank() == true || it.metrics.isNotEmpty()) {

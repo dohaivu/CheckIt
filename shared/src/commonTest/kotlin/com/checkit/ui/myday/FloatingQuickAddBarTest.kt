@@ -39,9 +39,9 @@ class FloatingQuickAddBarTest {
 
     @Test
     fun itemStartingWithinWindowIsNearby() {
-        // Starts 20 minutes from now, within the default ±30 window.
+        // Starts 10 minutes from now, within the default ±15 window.
         val items = listOf(item(1L, startTimeMinutes = 620))
-        assertTrue(hasDailyPlanItemNearby(items, nowMinutes = 600))
+        assertTrue(hasDailyPlanItemNearby(items, nowMinutes = 610))
     }
 
     @Test

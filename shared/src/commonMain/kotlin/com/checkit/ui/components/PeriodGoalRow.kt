@@ -34,9 +34,7 @@ fun PeriodGoalRow(
 ) {
     Row(
         modifier = Modifier
-            .padding(horizontal = 12.dp, vertical = 2.dp)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
             .background(color.copy(alpha = 0.06f))
             .padding(horizontal = 8.dp, vertical = 6.dp),
         verticalAlignment = Alignment.Top,

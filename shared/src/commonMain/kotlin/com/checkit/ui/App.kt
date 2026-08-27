@@ -46,6 +46,7 @@ import com.checkit.ui.journal.JournalHistorySheet
 import com.checkit.ui.myday.MyDayScreen
 import com.checkit.ui.nested.NestedListScreen
 import com.checkit.ui.reflect.PeriodGoalEditorSheet
+import com.checkit.ui.reflect.ReflectGoalEditorMode
 import com.checkit.ui.reflect.ReflectScreen
 import com.checkit.ui.settings.SettingsScreen
 import com.checkit.ui.tasks.TaskEditorActions
@@ -297,8 +298,8 @@ fun CheckItApp(
                                             onNoteTimeChange = viewModels.task::updateNoteTime,
                                             onCreateTask = viewModels.task::openNewTask,
                                             onNewTagClick = viewModels.tag::openNewTag,
-                                            onOpenGoalEditor = { date, period ->
-                                                viewModels.reflect.openNewGoalEditor(date, period)
+                                            onOpenGoalEditor = { date, period, mode ->
+                                                viewModels.reflect.openNewGoalEditor(date, period, mode)
                                             }
                                         )
                                     }
