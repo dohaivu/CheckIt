@@ -3,14 +3,14 @@ package com.checkit.ui.myday
 import com.checkit.data.UserSettings
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
+import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.NoteItem
-import com.checkit.domain.PeriodGoal
 import com.checkit.domain.Period
+import com.checkit.domain.PeriodGoal
 import com.checkit.domain.startOf
 import com.checkit.domain.TagItem
 import com.checkit.domain.TaskItem
-import com.checkit.domain.YesterdayLeftovers
 import com.checkit.domain.defaultReviewAction
 import com.checkit.ui.UiEvent
 import com.checkit.ui.currentMyDayTimeMinutes
@@ -61,11 +61,8 @@ internal class MyDayDataLoader(
                 }
                 .collect { combined ->
                     val date = today()
-                    val nowMinutes = currentMyDayTimeMinutes()
                     val plan = combined.dailyPlans.firstOrNull { it.date == date }
-                    val periodGoals = combined.periodGoals
-                    val leftovers = YesterdayLeftovers.items(combined.dailyPlans, date)
-                    val pendingLeftovers = YesterdayLeftovers.pendingForToday(leftovers, plan)
+                    val pendingLeftovers = calculatePendingLeftovers(combined.dailyPlans, date)
 
                     val summary = deps.buildDayCloseSummary(date, plan)
                     state.update { current ->
@@ -95,14 +92,34 @@ internal class MyDayDataLoader(
                             pendingYesterdayLeftovers = pendingLeftovers,
                             recentTags = combined.tags.sortedByDescending { it.lastUsedAtMillis }.take(5),
                             lastFabAction = lastFabAction,
-                            periodGoals = periodGoals,
+                            periodGoals = combined.periodGoals,
                             recentLabels = combined.settings.recentLabels,
-                            nowMinutes = nowMinutes,
+                            nowMinutes = currentMyDayTimeMinutes(),
                             isLoading = false
                         )
                     }
                 }
         }
+    }
+
+    private fun calculatePendingLeftovers(
+        dailyPlans: List<DailyPlan>,
+        today: LocalDate
+    ): List<DailyPlanItem> {
+        val yesterday = today.minus(1, DateTimeUnit.DAY)
+        val yesterdayPlan = dailyPlans.firstOrNull { it.date == yesterday } ?: return emptyList()
+        val todayItems = dailyPlans.firstOrNull { it.date == today }?.items.orEmpty()
+
+        val todayTaskIds = todayItems.mapNotNull { it.taskId }.toSet()
+        val todayCarriedFromIds = todayItems.mapNotNull { it.carriedFromItemId }.toSet()
+
+        return yesterdayPlan.items
+            .filter { it.status == DailyPlanItemStatus.Planned && it.handledAtMillis == null }
+            .filter { item ->
+                val taskId = item.taskId
+                (taskId == null || taskId !in todayTaskIds) && item.id !in todayCarriedFromIds
+            }
+            .sortedBy { it.startTimeMinutes ?: Int.MAX_VALUE }
     }
 }
 

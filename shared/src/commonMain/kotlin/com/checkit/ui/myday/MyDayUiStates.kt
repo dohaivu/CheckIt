@@ -13,7 +13,6 @@ import com.checkit.domain.PeriodGoal
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.TagItem
-import com.checkit.domain.YesterdayLeftovers
 import com.checkit.domain.defaultLeftoverAction
 import com.checkit.domain.endDateInclusive
 import com.checkit.domain.startOf
