@@ -262,7 +262,7 @@ class ReflectViewModel(
                     review = editor.review,
                     goal = editor.goal,
                     rating = editor.rating,
-                    metrics = editor.metrics
+                    metrics = editor.metrics.filter { it.value.isNotBlank() }
                 )
             }.onSuccess {
                 _editor.value = null

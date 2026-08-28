@@ -1324,7 +1324,7 @@ private fun NestedItemDetailsDialog(
                         actualMinutes.toIntOrNull() ?: 0,
                         policy,
                         showTrackedMinutes,
-                        metrics.filter { it.name.isNotBlank() && (it.value.isNotBlank() || it.isCompleted) }
+                        metrics.filter { it.value.isNotBlank() }
                     )
                 }
             ) {
