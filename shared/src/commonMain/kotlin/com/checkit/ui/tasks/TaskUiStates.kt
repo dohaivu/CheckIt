@@ -150,7 +150,8 @@ sealed interface TaskEditorState {
         val addToMyDayOnSave: Boolean = false,
         val dailyPlanItem: DailyPlanItem? = null,
         val upgradeDailyPlanItemId: Long? = null,
-        val trashedAtMillis: Long? = null
+        val trashedAtMillis: Long? = null,
+        val error: String? = null
     ) : TaskEditorState
 
     data class NoteForm(
@@ -165,7 +166,8 @@ sealed interface TaskEditorState {
         val label: String? = null,
         val isPinned: Boolean = false,
         val selectedTagIds: Set<Long> = emptySet(),
-        val trashedAtMillis: Long? = null
+        val trashedAtMillis: Long? = null,
+        val error: String? = null
     ) : TaskEditorState
 }
 

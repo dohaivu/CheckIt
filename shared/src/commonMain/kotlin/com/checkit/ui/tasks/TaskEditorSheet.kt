@@ -464,8 +464,17 @@ private fun TaskFormContent(
             ),
             maxLines = 3,
             placeholder = namePlaceholder,
-            enabled = enabled
+            enabled = enabled,
+            isError = form.error != null
         )
+        form.error?.let { error ->
+            Text(
+                text = error,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 4.dp)
+            )
+        }
         AppOutlinedTextField(
             value = form.description,
             onValueChange = onDescriptionChange,
@@ -713,7 +722,8 @@ private fun NoteFormContent(
             maxLines = 3,
             placeholder = "Note title",
             enabled = enabled,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            isError = form.error != null
         )
         AppOutlinedTextField(
             value = form.content,
@@ -727,8 +737,17 @@ private fun NoteFormContent(
             placeholder = "Add more details",
             enabled = enabled,
             modifier = Modifier.fillMaxWidth().height(130.dp),
-            visualTransformation = remember { MarkdownVisualTransformation() }
+            visualTransformation = remember { MarkdownVisualTransformation() },
+            isError = form.error != null
         )
+        form.error?.let { error ->
+            Text(
+                text = error,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 4.dp)
+            )
+        }
 
         FlowRow(
             modifier = Modifier.fillMaxWidth(),

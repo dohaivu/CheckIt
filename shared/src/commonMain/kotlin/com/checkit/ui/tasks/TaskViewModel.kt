@@ -514,7 +514,7 @@ class TaskViewModel(
         _uiState.update { it.copy(editor = null) }
     }
 
-    fun updateTaskName(name: String) = updateTaskForm(saveImmediately = false) { it.copy(name = name) }
+    fun updateTaskName(name: String) = updateTaskForm(saveImmediately = false) { it.copy(name = name, error = null) }
     fun updateTaskListId(listId: Long) = updateTaskForm { it.copy(listId = listId) }
     fun updateTaskDescription(description: String) = updateTaskForm(saveImmediately = false) { it.copy(description = description) }
     fun updateTaskDoDate(doDate: LocalDate?) = updateTaskForm {
@@ -580,8 +580,8 @@ class TaskViewModel(
             }
         }
     }
-    fun updateNoteTitle(title: String) = updateNoteForm { it.copy(title = title) }
-    fun updateNoteContent(content: String) = updateNoteForm { it.copy(content = content) }
+    fun updateNoteTitle(title: String) = updateNoteForm { it.copy(title = title, error = null) }
+    fun updateNoteContent(content: String) = updateNoteForm { it.copy(content = content, error = null) }
     fun updateNoteListId(listId: Long) = updateNoteForm { it.copy(listId = listId) }
     fun updateNoteDate(date: LocalDate?) = updateNoteForm { it.copy(date = date) }
     fun updateNoteStartTime(timeMinutes: Int?) = updateNoteForm { it.copy(startTimeMinutes = timeMinutes) }
@@ -607,17 +607,18 @@ class TaskViewModel(
     }
 
     fun updateTaskLabel(label: String) = updateTaskForm(saveImmediately = false) { it.copy(label = label) }
-    fun updateNoteLabel(label: String) = updateNoteForm { it.copy(label = label) }
+    fun updateNoteLabel(label: String) = updateNoteForm { it.copy(label = label, error = null) }
 
     fun saveEditor() {
         flushPendingTaskTextSave()
         val editor = _uiState.value.editor ?: return
-        when (editor) {
-            is TaskEditorState.TaskForm -> if (editor.mode != EditorMode.View) saveTask(editor)
-            is TaskEditorState.NoteForm -> if (editor.mode != EditorMode.View) saveNote(editor)
+        val didSave = when (editor) {
+            is TaskEditorState.TaskForm -> if (editor.mode != EditorMode.View) saveTask(editor) else true
+            is TaskEditorState.NoteForm -> if (editor.mode != EditorMode.View) saveNote(editor) else true
         }
-
-        _uiState.update { it.copy(editor = null) }
+        if (didSave) {
+            _uiState.update { it.copy(editor = null) }
+        }
     }
 
     fun deleteEditorItem() {
@@ -762,8 +763,25 @@ class TaskViewModel(
         }
     }
 
-    private fun saveTask(form: TaskEditorState.TaskForm) {
-        val input = form.toWriteInput() ?: return
+    private fun saveTask(form: TaskEditorState.TaskForm): Boolean {
+        if (form.name.isBlank()) {
+            _uiState.update { state ->
+                val current = state.editor as? TaskEditorState.TaskForm ?: return@update state
+                // Only update if still same form (by taskId/mode) to avoid clobbering newer edits
+                if (current.taskId != form.taskId || current.mode != form.mode) return@update state
+                state.copy(editor = current.copy(error = "Task name cannot be empty"))
+            }
+            return false
+        }
+        // Clear previous error if now valid
+        if (form.error != null) {
+            _uiState.update { state ->
+                val current = state.editor as? TaskEditorState.TaskForm ?: return@update state
+                if (current.taskId != form.taskId || current.mode != form.mode) return@update state
+                state.copy(editor = current.copy(error = null))
+            }
+        }
+        val input = form.toWriteInput() ?: return false
         viewModelScope.launch {
             if (form.taskId == null) form.label?.let { settingsRepository.addRecentLabel(it) }
             if (form.mode == EditorMode.Add) {
@@ -782,12 +800,24 @@ class TaskViewModel(
                 updateTask(form.taskId ?: return@launch, input)
             }
         }
+        return true
     }
 
-    private fun saveNote(form: TaskEditorState.NoteForm) {
+    private fun saveNote(form: TaskEditorState.NoteForm): Boolean {
         if (form.title.isBlank() && form.content.isBlank()) {
-            sendEvent(UiEvent.ShowSnackbar("Add a note title or content"))
-            return
+            _uiState.update { state ->
+                val current = state.editor as? TaskEditorState.NoteForm ?: return@update state
+                if (current.noteId != form.noteId || current.mode != form.mode) return@update state
+                state.copy(editor = current.copy(error = "Add a note title or content"))
+            }
+            return false
+        }
+        if (form.error != null) {
+            _uiState.update { state ->
+                val current = state.editor as? TaskEditorState.NoteForm ?: return@update state
+                if (current.noteId != form.noteId || current.mode != form.mode) return@update state
+                state.copy(editor = current.copy(error = null))
+            }
         }
         viewModelScope.launch {
             if (form.noteId == null) form.label?.let { settingsRepository.addRecentLabel(it) }
@@ -808,11 +838,11 @@ class TaskViewModel(
                 updateNote(form.noteId ?: return@launch, input)
             }
         }
+        return true
     }
 
     private fun TaskEditorState.TaskForm.toWriteInput(): TaskWriteInput? {
         if (name.isBlank()) {
-            sendEvent(UiEvent.ShowSnackbar("Add a task title"))
             return null
         }
         return TaskWriteInput(
@@ -868,6 +898,22 @@ class TaskViewModel(
     }
 
     private fun persistTaskInPlace(form: TaskEditorState.TaskForm) {
+        // For in-place edits (e.g. toggles, pin), silently skip if invalid to avoid spamming inline errors
+        if (form.name.isBlank()) {
+            _uiState.update { state ->
+                val current = state.editor as? TaskEditorState.TaskForm ?: return@update state
+                if (current.taskId != form.taskId) return@update state
+                state.copy(editor = current.copy(error = "Task name cannot be empty"))
+            }
+            return
+        }
+        if (form.error != null) {
+            _uiState.update { state ->
+                val current = state.editor as? TaskEditorState.TaskForm ?: return@update state
+                if (current.taskId != form.taskId) return@update state
+                state.copy(editor = current.copy(error = null))
+            }
+        }
         val input = form.toWriteInput() ?: return
         val taskId = form.taskId ?: return
         viewModelScope.launch {
