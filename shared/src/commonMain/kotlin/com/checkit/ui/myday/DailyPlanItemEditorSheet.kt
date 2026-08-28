@@ -334,7 +334,8 @@ private fun DailyPlanItemFormContent(
             maxLines = 3,
             placeholder = displaySource.titlePlaceholder(),
             enabled = enabled,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            isError = state.error != null
         )
 
         AppOutlinedTextField(
@@ -349,8 +350,17 @@ private fun DailyPlanItemFormContent(
             placeholder = if (sourceLocked) null else "Add details",
             enabled = enabled,
             modifier = Modifier.fillMaxWidth(),
-            visualTransformation = remember { MarkdownVisualTransformation() }
+            visualTransformation = remember { MarkdownVisualTransformation() },
+            isError = state.error != null
         )
+        state.error?.let { error ->
+            Text(
+                text = error,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 4.dp)
+            )
+        }
 
         if (sourceLocked) {
             FixedTypeControls(

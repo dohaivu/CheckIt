@@ -181,7 +181,8 @@ data class DailyPlanItemEditorState(
     val label: String? = null,
     val startTimeMinutes: Int? = null,
     val endTimeMinutes: Int? = null,
-    val selectedTagIds: Set<Long> = emptySet()
+    val selectedTagIds: Set<Long> = emptySet(),
+    val error: String? = null
 ) {
     val isAddMode: Boolean get() = mode == EditorMode.Add
     val isEditMode: Boolean get() = mode == EditorMode.Edit

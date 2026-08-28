@@ -79,18 +79,84 @@ internal class DailyPlanEditorController(
     fun addDailyPlan() {
         val editor = state.uiState.value.itemEditor ?: return
         if (!saveDailyPlan(editor)) return
-        state.update { it.copy(itemEditor = null) }
-        state.sendEvent(UiEvent.ShowSnackbar("Saved"))
+        // Wait for upsert to finish before dismissing; optimistic close after validation passed
+        scope.launch {
+            val result = deps.upsertDailyPlanItem(editor.clearError())
+            if (result.isSuccess) {
+                if (editor.itemId == null) editor.label?.let { deps.settingsRepository.addRecentLabel(it) }
+                state.update { it.copy(itemEditor = null) }
+                state.sendEvent(UiEvent.ShowSnackbar("Saved"))
+            } else {
+                val message = result.exceptionOrNull()?.message ?: "Unable to save"
+                state.update { s ->
+                    val current = s.itemEditor ?: return@update s
+                    s.copy(itemEditor = current.copy(error = message))
+                }
+            }
+        }
     }
 
     fun saveDailyPlan(editor: DailyPlanItemEditorState): Boolean {
-        scope.launch {
-            if (editor.itemId == null) editor.label?.let { deps.settingsRepository.addRecentLabel(it) }
-            deps.upsertDailyPlanItem(editor).onFailure { error ->
-                state.sendEvent(UiEvent.ShowSnackbar(error.message ?: "Unable to save"))
+        val validationError = validate(editor)
+        if (validationError != null) {
+            state.update { s ->
+                val current = s.itemEditor ?: return@update s
+                // Only update if same editor (by itemId/mode) to avoid clobbering newer edits
+                if (current.itemId != editor.itemId || current.mode != editor.mode) return@update s
+                s.copy(itemEditor = current.copy(error = validationError))
+            }
+            return false
+        }
+        // Clear previous error if now valid
+        if (editor.error != null) {
+            state.update { s ->
+                val current = s.itemEditor ?: return@update s
+                if (current.itemId != editor.itemId || current.mode != editor.mode) return@update s
+                s.copy(itemEditor = current.copy(error = null))
+            }
+        }
+        // For Add mode, the caller (addDailyPlan) handles the actual upsert; for Edit mode we persist here
+        if (editor.isEditMode) {
+            scope.launch {
+                if (editor.itemId == null) editor.label?.let { deps.settingsRepository.addRecentLabel(it) }
+                deps.upsertDailyPlanItem(editor.clearError()).onFailure { error ->
+                    val message = error.message ?: "Unable to save"
+                    state.update { s ->
+                        val current = s.itemEditor ?: return@update s
+                        s.copy(itemEditor = current.copy(error = message))
+                    }
+                }
             }
         }
         return true
+    }
+
+    private fun DailyPlanItemEditorState.clearError(): DailyPlanItemEditorState =
+        if (error == null) this else copy(error = null)
+
+    private fun validate(editor: DailyPlanItemEditorState): String? {
+        val title = editor.title.trim()
+        val note = editor.note.trim()
+        return when (editor.source) {
+            DailyPlanItemSource.MyDayNote -> {
+                if (title.isBlank() && note.isBlank()) "Add a note" else null
+            }
+            DailyPlanItemSource.MyDayReminder -> {
+                when {
+                    title.isBlank() -> "Add a reminder"
+                    editor.startTimeMinutes == null -> "Add reminder time"
+                    else -> null
+                }
+            }
+            DailyPlanItemSource.MyDayTask -> {
+                when {
+                    title.isBlank() -> "Add a title"
+                    editor.startTimeMinutes != null && editor.endTimeMinutes != null && editor.endTimeMinutes <= editor.startTimeMinutes -> "End time must be after start"
+                    else -> null
+                }
+            }
+            DailyPlanItemSource.ExistingTask -> null
+        }
     }
 
     fun updateItemTime(item: DailyPlanItem, startTimeMinutes: Int, endTimeMinutes: Int) {
@@ -122,9 +188,9 @@ internal class DailyPlanEditorController(
             )
         }
     }
-    fun updateTitle(title: String) = updateItemEditor(saveImmediately = false) { it.copy(title = title) }
-    fun updateNote(note: String) = updateItemEditor(saveImmediately = false) { it.copy(note = note) }
-    fun updateLabel(label: String) = updateItemEditor(saveImmediately = false) { it.copy(label = label) }
+    fun updateTitle(title: String) = updateItemEditor(saveImmediately = false) { it.copy(title = title, error = null) }
+    fun updateNote(note: String) = updateItemEditor(saveImmediately = false) { it.copy(note = note, error = null) }
+    fun updateLabel(label: String) = updateItemEditor(saveImmediately = false) { it.copy(label = label, error = null) }
 
     fun duplicateDailyPlanItem() {
         val current = state.uiState.value
@@ -161,20 +227,22 @@ internal class DailyPlanEditorController(
     }
 
     fun updateStatus(isDone: Boolean) = updateItemEditor {
-        it.copy(status = if (isDone) DailyPlanItemStatus.Done else DailyPlanItemStatus.Planned)
+        it.copy(status = if (isDone) DailyPlanItemStatus.Done else DailyPlanItemStatus.Planned, error = null)
     }
     fun updateEditorSource(source: DailyPlanItemSource) = updateItemEditor {
         it.copy(
             source = source,
             status = if (it.isAddMode) source.inferredAddStatus(it.startTimeMinutes) else source.defaultStatus(),
-            endTimeMinutes = if (source.hasEndTime()) it.endTimeMinutes else null
+            endTimeMinutes = if (source.hasEndTime()) it.endTimeMinutes else null,
+            error = null
         )
     }
     fun updateTime(startTimeMinutes: Int?, endTimeMinutes: Int?) = updateItemEditor {
         it.copy(
             startTimeMinutes = startTimeMinutes,
             endTimeMinutes = endTimeMinutes,
-            status = if (it.isAddMode) it.source.inferredAddStatus(startTimeMinutes) else it.status
+            status = if (it.isAddMode) it.source.inferredAddStatus(startTimeMinutes) else it.status,
+            error = null
         )
     }
     fun toggleTag(tagId: Long) = updateItemEditor {
