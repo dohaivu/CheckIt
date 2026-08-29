@@ -31,9 +31,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -56,6 +58,7 @@ import checkit.shared.generated.resources.reflect_reviews_written
 import checkit.shared.generated.resources.tab_reflect
 import com.checkit.domain.PeriodGoal
 import com.checkit.domain.Period
+import com.checkit.ui.color
 import com.checkit.ui.components.MetricChip
 import com.checkit.ui.components.RatingBar
 import com.checkit.ui.components.ReportPeriod
@@ -192,23 +195,41 @@ private fun ReviewCard(
 ) {
     val goal = state.focusGoal
     val periodLabel = state.focus.period.label()
-
-    val gradient = Brush.linearGradient(
-        colors = listOf(
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
-            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+    val color = state.focus.period.color()
+    
+    val surfaceBase = MaterialTheme.colorScheme.surfaceContainerLow
+    val periodContainer = when (state.focus.period) {
+        Period.Day -> MaterialTheme.colorScheme.secondaryContainer
+        Period.Week -> MaterialTheme.colorScheme.tertiaryContainer
+        else -> MaterialTheme.colorScheme.primaryContainer
+    }
+    val gradient = remember(color, periodContainer, surfaceBase) {
+        Brush.linearGradient(
+            colors = listOf(
+                periodContainer.copy(alpha = 0.58f),
+                color.copy(alpha = 0.14f),
+                surfaceBase
+            ),
+            start = Offset.Zero,
+            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
         )
-    )
+    }
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(gradient, RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(20.dp))
+            .background(gradient)
+            .border(
+                width = 1.dp,
+                color = color.copy(alpha = 0.12f),
+                shape = RoundedCornerShape(20.dp)
+            )
             .clickable(onClick = onOpenEditor)
-            .padding(16.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         Column(
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -223,7 +244,7 @@ private fun ReviewCard(
                         imageVector = state.focus.period.reviewIcon(),
                         contentDescription = null,
                         modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = color
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
@@ -231,7 +252,7 @@ private fun ReviewCard(
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 1.2.sp,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = color,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -240,7 +261,8 @@ private fun ReviewCard(
                 if (goal != null && goal.rating > 0) {
                     RatingBar(
                         rating = goal.rating,
-                        modifier = Modifier.width(80.dp).height(16.dp)
+                        modifier = Modifier.width(80.dp).height(16.dp),
+                        iconTint = color
                     )
                 } else {
                     Icon(
@@ -377,12 +399,12 @@ private fun GoalsSection(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(24.dp))
+                    .clip(RoundedCornerShape(20.dp))
                     .background(MaterialTheme.colorScheme.surfaceContainerLow)
                     .border(
                         width = 1.dp,
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(24.dp)
+                        shape = RoundedCornerShape(20.dp)
                     )
             ) {
                 goals.forEachIndexed { index, goal ->

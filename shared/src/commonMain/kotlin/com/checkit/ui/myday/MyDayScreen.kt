@@ -524,12 +524,7 @@ private fun GoalReminder(
         Period.Month -> "this month's"
         else -> period.name.lowercase()
     }
-    val color = when (period) {
-        Period.Day -> MaterialTheme.colorScheme.secondary
-        Period.Week -> MaterialTheme.colorScheme.tertiary
-        Period.Month -> MaterialTheme.colorScheme.primary
-        else -> MaterialTheme.colorScheme.error
-    }
+    val color = period.color()
 
     Row(
         modifier = modifier
@@ -592,7 +587,7 @@ private fun DayGoalBanner(
     modifier: Modifier = Modifier,
     onLongClick: () -> Unit,
 ) {
-    val color = goal.color()
+    val color = goal.period.color()
     var expanded by remember { mutableStateOf(false) }
     var bannerSize by remember { mutableStateOf(IntSize.Zero) }
 

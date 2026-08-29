@@ -396,9 +396,9 @@ fun MetricItem.toPlainString(): String {
 }
 
 @Composable
-fun PeriodGoal.color() = when (this.period) {
+fun Period.color() = when (this) {
     Period.Day -> MaterialTheme.colorScheme.secondary
     Period.Week -> MaterialTheme.colorScheme.tertiary
     Period.Month -> MaterialTheme.colorScheme.primary
-    else -> MaterialTheme.colorScheme.secondary
+    else -> MaterialTheme.colorScheme.primary
 }

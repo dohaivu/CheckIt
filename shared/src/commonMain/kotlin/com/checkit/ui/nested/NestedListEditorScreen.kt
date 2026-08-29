@@ -1658,17 +1658,17 @@ private fun EditorToolbar(
                 onDismissRequest = { showMore = false }
             ) {
                 ToolbarMenuItem("Details", hasSelection, onManageDetails)
-                ToolbarMenuItem("Add to daily plan", hasSelection) {
-                    showMore = false; onAddToDailyPlan()
-                }
-                ToolbarMenuItem("Copy to Task", hasSelection) {
-                    showMore = false; onCopyToTask()
-                }
                 ToolbarMenuItem("Add root item", true) {
                     showMore = false; onAddRoot()
                 }
                 ToolbarMenuItem("Select items", true) {
                     showMore = false; onEnterSelection()
+                }
+                ToolbarMenuItem("Add to daily plan", hasSelection) {
+                    showMore = false; onAddToDailyPlan()
+                }
+                ToolbarMenuItem("Copy to Task", hasSelection) {
+                    showMore = false; onCopyToTask()
                 }
                 ToolbarMenuItem(stringResource(Res.string.nested_batch_delete), hasSelection) {
                     showMore = false; onDelete()

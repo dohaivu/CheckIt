@@ -245,7 +245,7 @@ private fun JournalAgendaGoalCard(
                 imageVector = goal.period.reviewIcon(),
                 contentDescription = null,
                 modifier = Modifier.size(16.dp),
-                tint = goal.color()
+                tint = goal.period.color()
             )
             Spacer(Modifier.width(6.dp))
             Text(
@@ -254,7 +254,7 @@ private fun JournalAgendaGoalCard(
                 fontWeight = FontWeight.SemiBold
             )
             Spacer(Modifier.weight(1f))
-            RatingBar(goal.rating, modifier = Modifier.width(80.dp), iconTint = goal.color())
+            RatingBar(goal.rating, modifier = Modifier.width(80.dp), iconTint = goal.period.color())
         }
         if (goal.review.isNotBlank()) {
             Text(
