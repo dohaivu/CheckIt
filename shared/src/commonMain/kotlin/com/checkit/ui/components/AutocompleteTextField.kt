@@ -64,7 +64,8 @@ fun AutocompleteTextField(
     ),
     minLines: Int = 1,
     maxLines: Int = 1,
-    contentPadding: PaddingValues = PaddingValues(12.dp),
+    trailingIcon: @Composable (() -> Unit)? = null,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 0.dp, vertical = 0.dp),
     isError: Boolean = false,
 ) {
     var isFocused by remember { mutableStateOf(false) }

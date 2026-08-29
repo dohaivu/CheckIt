@@ -339,7 +339,7 @@ private fun DailyPlanItemFormContent(
                 fontWeight = FontWeight.SemiBold
             ),
             minLines = 1,
-            maxLines = 3,
+            maxLines = 2,
             placeholder = displaySource.titlePlaceholder(),
             enabled = enabled,
             modifier = Modifier.fillMaxWidth(),
