@@ -37,7 +37,6 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.ExpandLess
@@ -47,16 +46,13 @@ import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.RateReview
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -93,7 +89,6 @@ import com.checkit.domain.TaskStatus
 import com.checkit.domain.hasEndTime
 import com.checkit.ui.components.MetricChip
 import com.checkit.ui.components.PeriodGoalRow
-import com.checkit.ui.components.RatingBar
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.journal.JournalListSheet
 import com.checkit.ui.journal.JournalSection
@@ -342,7 +337,8 @@ internal fun MyDayScreen(
             onStartSprintWithChoice = viewModel::startSprintWithChoice,
             onStartSprintWithTask = viewModel::startSprintWithTask,
             onNewTagClick = onNewTagClick,
-            onDismiss = viewModel::dismissQuickSprint
+            onDismiss = viewModel::dismissQuickSprint,
+            suggestions = state.goalSuggestions
         )
     }
 
@@ -359,7 +355,6 @@ internal fun MyDayScreen(
     }
 
     if (state.showSuggestions) {
-        state.periodGoals
         SuggestionsSheet(
             tasks = state.suggestedTasks,
             leftovers = state.pendingYesterdayLeftovers,
@@ -376,7 +371,8 @@ internal fun MyDayScreen(
                 viewModel.dismissSuggestions()
                 onCreateTask(true)
             },
-            onNewTagClick = onNewTagClick
+            onNewTagClick = onNewTagClick,
+            suggestions = state.goalSuggestions,
         )
     }
 

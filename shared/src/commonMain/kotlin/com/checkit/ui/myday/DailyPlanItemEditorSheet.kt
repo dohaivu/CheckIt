@@ -50,6 +50,7 @@ import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.TagItem
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
+import com.checkit.ui.components.AutocompleteTextField
 import com.checkit.ui.components.DeleteOverflowMenu
 import com.checkit.ui.components.LabelSuggestions
 import com.checkit.ui.components.MarkdownVisualTransformation
@@ -81,7 +82,8 @@ internal fun DailyPlanItemEditorSheet(
     onStartSprint: () -> Unit,
     onStartOngoingSprint: () -> Unit,
     onUpgradeToTask: () -> Unit,
-    recentLabels: List<String> = emptyList()
+    recentLabels: List<String> = emptyList(),
+    suggestions: List<String> = emptyList(),
 ) {
     val enabled = state.isEditableByDate()
 
@@ -109,6 +111,7 @@ internal fun DailyPlanItemEditorSheet(
                     state = state,
                     availableTags = availableTags,
                     recentLabels = recentLabels,
+                    suggestions = suggestions,
                     onTitleChange = onTitleChange,
                     onNoteChange = onNoteChange,
                     onLabelChange = onLabelChange,
@@ -270,6 +273,7 @@ private fun DailyPlanItemFormContent(
     state: DailyPlanItemEditorState,
     availableTags: List<TagItem>,
     recentLabels: List<String>,
+    suggestions: List<String> = emptyList(),
     onTitleChange: (String) -> Unit,
     onNoteChange: (String) -> Unit,
     onLabelChange: (String) -> Unit,
@@ -323,9 +327,10 @@ private fun DailyPlanItemFormContent(
             }
         }
 
-        AppOutlinedTextField(
+        AutocompleteTextField(
             value = state.title,
             onValueChange = onTitleChange,
+            suggestions = suggestions,
             textStyle = MaterialTheme.typography.titleLarge.copy(
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.SemiBold

@@ -46,7 +46,6 @@ import com.checkit.ui.journal.JournalHistorySheet
 import com.checkit.ui.myday.MyDayScreen
 import com.checkit.ui.nested.NestedListScreen
 import com.checkit.ui.reflect.PeriodGoalEditorSheet
-import com.checkit.ui.reflect.ReflectGoalEditorMode
 import com.checkit.ui.reflect.ReflectScreen
 import com.checkit.ui.settings.SettingsScreen
 import com.checkit.ui.tasks.TaskEditorActions
@@ -436,6 +435,7 @@ fun CheckItApp(
                             state = editor,
                             availableTags = myDayUiState.tags,
                             recentLabels = myDayUiState.recentLabels,
+                            suggestions = myDayUiState.goalSuggestions,
                             onDismiss = viewModels.myDay::dismissDailyPlanEditor,
                             onTitleChange = viewModels.myDay::updateTitle,
                             onNoteChange = viewModels.myDay::updateNote,

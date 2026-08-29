@@ -151,6 +151,15 @@ data class MyDayUiState(
     val dayBannerType: PeriodBannerType by lazy { bannerTypeForPeriod(Period.Day, dayGoal) }
     val weekBannerType: PeriodBannerType by lazy { bannerTypeForPeriod(Period.Week, weekGoal) }
     val monthBannerType: PeriodBannerType by lazy { bannerTypeForPeriod(Period.Month, monthGoal) }
+
+    /** Lines from today's goal, trimmed and non-blank, for quick-add suggestions. */
+    val goalSuggestions: List<String> by lazy {
+        dayGoal?.goal
+            ?.lines()
+            ?.map { it.trim().removePrefix("- ") }
+            ?.filter { it.isNotBlank() }
+            ?: emptyList()
+    }
 }
 
 enum class PeriodBannerType {
