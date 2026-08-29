@@ -824,6 +824,7 @@ interface CheckItDao {
     @Transaction
     suspend fun updateDailyPlanItemWithTags(
         itemId: Long,
+        dateEpochDays: Int,
         title: String,
         note: String?,
         source: String,
@@ -839,7 +840,7 @@ interface CheckItDao {
         val oldEntity = dailyPlanItemById(itemId) ?: return
         
         updateDailyPlanItem(
-            itemId, title, note, source, status, 
+            itemId, dateEpochDays, title, note, source, status, 
             startTimeMinutes, endTimeMinutes, completedAtMillis, label, nestedListItemId
         )
 
@@ -892,7 +893,8 @@ interface CheckItDao {
     @Query(
         """
         UPDATE daily_plan_items
-        SET title = :title,
+        SET dateEpochDays = :dateEpochDays,
+            title = :title,
             note = :note,
             source = :source,
             status = :status,
@@ -906,6 +908,7 @@ interface CheckItDao {
     )
     suspend fun updateDailyPlanItem(
         itemId: Long,
+        dateEpochDays: Int,
         title: String,
         note: String?,
         source: String,

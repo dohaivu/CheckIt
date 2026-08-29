@@ -295,7 +295,9 @@ fun CheckItApp(
                                             onTaskClick = viewModels.task::openTask,
                                             onNoteClick = viewModels.task::openNote,
                                             onNoteTimeChange = viewModels.task::updateNoteTime,
-                                            onCreateTask = viewModels.task::openNewTask,
+                                            onCreateTask = { addToMyDayOnSave ->
+                                                viewModels.task.openNewTask(today(), addToMyDayOnSave)
+                                            },
                                             onNewTagClick = viewModels.tag::openNewTag,
                                             onOpenNewGoalEditor = { date, period, mode ->
                                                 viewModels.reflect.openNewGoalEditor(date, period, mode)
@@ -445,6 +447,7 @@ fun CheckItApp(
                             onLabelChange = viewModels.myDay::updateLabel,
                             onStatusChange = viewModels.myDay::updateStatus,
                             onSourceChange = viewModels.myDay::updateEditorSource,
+                            onDateChange = viewModels.myDay::updateDate,
                             onTimeChange = viewModels.myDay::updateTime,
                             onTagToggle = viewModels.myDay::toggleTag,
                             onNewTagClick = viewModels.tag::openNewTag,

@@ -153,6 +153,7 @@ class MyDayViewModel(
     fun updateLabel(label: String) = dailyPlanEditor.updateLabel(label)
     fun updateStatus(isDone: Boolean) = dailyPlanEditor.updateStatus(isDone)
     fun updateEditorSource(source: DailyPlanItemSource) = dailyPlanEditor.updateEditorSource(source)
+    fun updateDate(date: LocalDate?) = dailyPlanEditor.updateDate(date)
     fun updateTime(startTimeMinutes: Int?, endTimeMinutes: Int?) = dailyPlanEditor.updateTime(startTimeMinutes, endTimeMinutes)
     fun toggleTag(tagId: Long) = dailyPlanEditor.toggleTag(tagId)
     fun deleteDailyPlan() = dailyPlanEditor.deleteDailyPlan()

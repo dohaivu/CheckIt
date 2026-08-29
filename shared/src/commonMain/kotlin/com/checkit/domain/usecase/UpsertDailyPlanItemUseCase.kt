@@ -42,6 +42,7 @@ class UpsertDailyPlanItemUseCase(
                 repository.updateDailyPlanItem(
                     editor.itemId,
                     DailyPlanItemWriteInput(
+                        date = editor.date,
                         title = title,
                         note = note.takeIf { it.isNotBlank() },
                         source = source,

@@ -204,10 +204,8 @@ class DayCloseUseCasesTest {
     @Test
     fun completeReviewTwiceDoesNotDuplicateCarryOrGoalRecord() = runTest {
         val repository = FakeCheckItRepository()
-        val settings = FakeSettingsRepository()
         val complete = CompleteDayCloseUseCase(
             repository = repository,
-            settingsRepository = settings,
             buildSummary = buildSummary,
             dispatcher = Dispatchers.Unconfined
         )
@@ -241,10 +239,8 @@ class DayCloseUseCasesTest {
     @Test
     fun completeReviewLeavesNoneItemsUntouched() = runTest {
         val repository = FakeCheckItRepository()
-        val settings = FakeSettingsRepository()
         val complete = CompleteDayCloseUseCase(
             repository = repository,
-            settingsRepository = settings,
             buildSummary = buildSummary,
             dispatcher = Dispatchers.Unconfined
         )
@@ -272,10 +268,8 @@ class DayCloseUseCasesTest {
     @Test
     fun completeReviewCanReDecideAlreadyCarriedItem() = runTest {
         val repository = FakeCheckItRepository()
-        val settings = FakeSettingsRepository()
         val complete = CompleteDayCloseUseCase(
             repository = repository,
-            settingsRepository = settings,
             buildSummary = buildSummary,
             dispatcher = Dispatchers.Unconfined
         )
@@ -304,10 +298,8 @@ class DayCloseUseCasesTest {
     @Test
     fun completeReviewClearsBlankWinNoteFromRecord() = runTest {
         val repository = FakeCheckItRepository()
-        val settings = FakeSettingsRepository()
         val complete = CompleteDayCloseUseCase(
             repository = repository,
-            settingsRepository = settings,
             buildSummary = buildSummary,
             dispatcher = Dispatchers.Unconfined
         )

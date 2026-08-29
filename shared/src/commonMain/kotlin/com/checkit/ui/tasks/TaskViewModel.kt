@@ -339,8 +339,8 @@ class TaskViewModel(
     }
 
 
-    fun openNewTask(addToMyDayOnSave: Boolean = false) {
-        openNewTaskOnDate(today(), addToMyDayOnSave)
+    fun openNewTask(date: LocalDate? = null, addToMyDayOnSave: Boolean = false) {
+        openNewTaskOnDate(date, addToMyDayOnSave)
     }
 
     fun openNewHabit() {
@@ -397,7 +397,7 @@ class TaskViewModel(
         }
     }
 
-    fun openNewTaskOnDate(date: LocalDate, addToMyDayOnSave: Boolean = false) {
+    fun openNewTaskOnDate(date: LocalDate?, addToMyDayOnSave: Boolean = false) {
         val listId = editableListId()
         cancelPendingTaskTextSave()
         _uiState.update {

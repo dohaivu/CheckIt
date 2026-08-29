@@ -237,6 +237,12 @@ internal class DailyPlanEditorController(
             error = null
         )
     }
+    fun updateDate(date: LocalDate?) = updateItemEditor {
+        it.copy(
+            date = date ?: today(),
+            error = null
+        )
+    }
     fun updateTime(startTimeMinutes: Int?, endTimeMinutes: Int?) = updateItemEditor {
         it.copy(
             startTimeMinutes = startTimeMinutes,

@@ -51,15 +51,15 @@ import com.checkit.domain.TagItem
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.AutocompleteTextField
+import com.checkit.ui.components.DatePicker
 import com.checkit.ui.components.DeleteOverflowMenu
 import com.checkit.ui.components.LabelSuggestions
 import com.checkit.ui.components.MarkdownVisualTransformation
 import com.checkit.ui.components.TagPicker
-import com.checkit.ui.components.TimePicker
-import com.checkit.ui.components.TimeRangePicker
 import com.checkit.ui.tasks.views.currentTimeMinutes
 import com.checkit.ui.today
 import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -73,6 +73,7 @@ internal fun DailyPlanItemEditorSheet(
     onLabelChange: (String) -> Unit,
     onStatusChange: (Boolean) -> Unit,
     onSourceChange: (DailyPlanItemSource) -> Unit,
+    onDateChange: (LocalDate?) -> Unit,
     onTimeChange: (Int?, Int?) -> Unit,
     onTagToggle: (Long) -> Unit,
     onNewTagClick: () -> Unit,
@@ -117,6 +118,7 @@ internal fun DailyPlanItemEditorSheet(
                     onLabelChange = onLabelChange,
                     onStatusChange = onStatusChange,
                     onSourceChange = onSourceChange,
+                    onDateChange = onDateChange,
                     onTimeChange = onTimeChange,
                     onTagToggle = onTagToggle,
                     onNewTagClick = onNewTagClick,
@@ -279,6 +281,7 @@ private fun DailyPlanItemFormContent(
     onLabelChange: (String) -> Unit,
     onStatusChange: (Boolean) -> Unit,
     onSourceChange: (DailyPlanItemSource) -> Unit,
+    onDateChange: (LocalDate?) -> Unit,
     onTimeChange: (Int?, Int?) -> Unit,
     onTagToggle: (Long) -> Unit,
     onNewTagClick: () -> Unit,
@@ -402,9 +405,11 @@ private fun DailyPlanItemFormContent(
 
         TimeSection(
             source = displaySource,
+            date = state.date,
             startTimeMinutes = state.startTimeMinutes,
             endTimeMinutes = state.endTimeMinutes,
             isOverdue = state.isOverdue,
+            onDateChange = onDateChange,
             onTimeChange = { startTime, endTime ->
                 onTimeChange(startTime, endTime)
                 if (!sourceLocked) {
@@ -487,9 +492,11 @@ private fun FixedTypeControls(
 @Composable
 private fun TimeSection(
     source: DailyPlanItemSource,
+    date: LocalDate?,
     startTimeMinutes: Int?,
     endTimeMinutes: Int?,
     isOverdue: Boolean,
+    onDateChange: (LocalDate?) -> Unit,
     onTimeChange: (Int?, Int?) -> Unit,
     enabled: Boolean
 ) {
@@ -500,24 +507,16 @@ private fun TimeSection(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = FontWeight.Medium
         )
-        if (source.usesTimePicker()) {
-            TimePicker(
-                label = "",
-                timeMinutes = startTimeMinutes,
-                initialTimeMinutes = currentTimeMinutes(),
-                onTimeChange = { start -> onTimeChange(start, endTimeMinutes) },
-                enabled = enabled,
-                isOverdue = isOverdue
-            )
-        } else {
-            TimeRangePicker(
-                startTimeMinutes = startTimeMinutes,
-                endTimeMinutes = endTimeMinutes,
-                onTimeChange = onTimeChange,
-                enabled = enabled,
-                isOverdue = isOverdue
-            )
-        }
+        DatePicker(
+            date = date,
+            startTimeMinutes = startTimeMinutes,
+            endTimeMinutes = endTimeMinutes,
+            onDateChange = onDateChange,
+            onTimeChange = onTimeChange,
+            supportsEndTime = source == DailyPlanItemSource.ExistingTask || source == DailyPlanItemSource.MyDayTask,
+            enabled = enabled,
+            isOverdue = isOverdue
+        )
     }
 }
 
@@ -647,9 +646,6 @@ private fun DailyPlanItemSource.supportingLabel(): String = when (this) {
 
 private fun DailyPlanItemSource.usesStatusControl(): Boolean =
     this != DailyPlanItemSource.MyDayNote
-
-private fun DailyPlanItemSource.usesTimePicker(): Boolean =
-    this == DailyPlanItemSource.MyDayNote || this == DailyPlanItemSource.MyDayReminder
 
 private fun DailyPlanItemSource.timeLabel(): String = "Time"
 

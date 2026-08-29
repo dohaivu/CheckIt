@@ -93,7 +93,6 @@ class MyDayViewModelTest {
             buildDayCloseSummary = buildSummary,
             completeDayClose = CompleteDayCloseUseCase(
                 repository = repository,
-                settingsRepository = settingsRepository,
                 buildSummary = buildSummary,
                 dispatcher = dispatcher
             ),
