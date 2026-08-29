@@ -97,6 +97,7 @@ import com.checkit.ui.journal.JournalThoughtCard
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.TimelineItem
 import com.checkit.ui.TimelineItemType
+import com.checkit.ui.color
 import com.checkit.ui.isOverdue
 import com.checkit.ui.reflect.ReflectGoalEditorMode
 import com.checkit.ui.tasks.views.AgendaView
@@ -591,12 +592,7 @@ private fun DayGoalBanner(
     modifier: Modifier = Modifier,
     onLongClick: () -> Unit,
 ) {
-    val color = when (goal.period) {
-        Period.Day -> MaterialTheme.colorScheme.secondary
-        Period.Week -> MaterialTheme.colorScheme.tertiary
-        Period.Month -> MaterialTheme.colorScheme.primary
-        else -> MaterialTheme.colorScheme.secondary
-    }
+    val color = goal.color()
     var expanded by remember { mutableStateOf(false) }
     var bannerSize by remember { mutableStateOf(IntSize.Zero) }
 

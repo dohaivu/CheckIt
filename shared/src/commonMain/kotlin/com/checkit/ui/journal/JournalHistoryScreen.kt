@@ -46,6 +46,8 @@ import com.checkit.ui.reflect.label
 import com.checkit.ui.reflect.reviewIcon
 import com.checkit.ui.TimelineItem
 import com.checkit.ui.TimelineItemType
+import com.checkit.ui.color
+import com.checkit.ui.components.RatingBar
 import com.checkit.ui.tasks.views.AgendaView
 import kotlinx.datetime.LocalDate
 
@@ -243,7 +245,7 @@ private fun JournalAgendaGoalCard(
                 imageVector = goal.period.reviewIcon(),
                 contentDescription = null,
                 modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.primary
+                tint = goal.color()
             )
             Spacer(Modifier.width(6.dp))
             Text(
@@ -251,6 +253,8 @@ private fun JournalAgendaGoalCard(
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold
             )
+            Spacer(Modifier.weight(1f))
+            RatingBar(goal.rating, modifier = Modifier.width(80.dp), iconTint = goal.color())
         }
         if (goal.review.isNotBlank()) {
             Text(

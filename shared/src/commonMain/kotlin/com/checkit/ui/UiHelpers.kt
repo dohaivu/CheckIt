@@ -47,6 +47,8 @@ import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.MetricItem
 import com.checkit.domain.MetricUnit
 import com.checkit.domain.NoteItem
+import com.checkit.domain.Period
+import com.checkit.domain.PeriodGoal
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
@@ -393,3 +395,10 @@ fun MetricItem.toPlainString(): String {
     }
 }
 
+@Composable
+fun PeriodGoal.color() = when (this.period) {
+    Period.Day -> MaterialTheme.colorScheme.secondary
+    Period.Week -> MaterialTheme.colorScheme.tertiary
+    Period.Month -> MaterialTheme.colorScheme.primary
+    else -> MaterialTheme.colorScheme.secondary
+}
