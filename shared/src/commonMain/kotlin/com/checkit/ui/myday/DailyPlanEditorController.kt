@@ -25,7 +25,7 @@ internal class DailyPlanEditorController(
 ) {
     private var pendingEditorTextSaveJob: Job? = null
 
-    fun openDailyPlan(
+    fun openNewDailyPlan(
         startTimeMinutes: Int? = null,
         endTimeMinutes: Int? = null,
         date: LocalDate = today()
@@ -43,7 +43,7 @@ internal class DailyPlanEditorController(
             )
         }
     }
-    fun openDailyPlan(title: String, tagIds: List<Long>, nestedListItemId: Long? = null) {
+    fun openNewDailyPlan(title: String, tagIds: List<Long>, nestedListItemId: Long? = null) {
         if (title.isBlank()) return
         cancelPendingEditorTextSave()
         val current = state.uiState.value

@@ -315,7 +315,7 @@ fun CheckItApp(
                                             onDateDoubleClick = { date -> viewModels.task.openNewTaskOnDate(date) },
                                             onDailyPlanItemClick = viewModels.myDay::openItemEditor,
                                             onOpenJournalHistory = { showJournalHistory = true },
-                                            onAddDailyPlanItem = { date -> viewModels.myDay.openDailyPlan(date = date) },
+                                            onAddDailyPlanItem = { date -> viewModels.myDay.openNewDailyPlan(date = date) },
                                             onTaskClick = viewModels.task::openTask,
                                             onNoteClick = viewModels.task::openNote,
                                             onNewTagClick = viewModels.tag::openNewTag,
@@ -346,7 +346,7 @@ fun CheckItApp(
                                             viewModel = viewModels.nested,
                                             onAddToDailyPlan = { title, tagIds, nestedListItemId ->
                                                 navState.resetTo(AppRoute.MyDay)
-                                                viewModels.myDay.openDailyPlan(title, tagIds, nestedListItemId)
+                                                viewModels.myDay.openNewDailyPlan(title, tagIds, nestedListItemId)
                                             },
                                             onCopyToTask = { title, note, subtaskTexts ->
                                                 viewModels.task.openNewTaskFromNestedItem(title, note, subtaskTexts)

@@ -142,8 +142,8 @@ class MyDayViewModel(
 
     // Daily plan item editor
     fun updateItemTime(item: DailyPlanItem, startTimeMinutes: Int, endTimeMinutes: Int) = dailyPlanEditor.updateItemTime(item, startTimeMinutes, endTimeMinutes)
-    fun openDailyPlan(title: String, tagIds: List<Long>, nestedListItemId: Long? = null) = dailyPlanEditor.openDailyPlan(title, tagIds, nestedListItemId)
-    fun openDailyPlan(startTimeMinutes: Int? = null, endTimeMinutes: Int? = null, date: LocalDate = today()) = dailyPlanEditor.openDailyPlan(startTimeMinutes, endTimeMinutes, date)
+    fun openNewDailyPlan(title: String, tagIds: List<Long>, nestedListItemId: Long? = null) = dailyPlanEditor.openNewDailyPlan(title, tagIds, nestedListItemId)
+    fun openNewDailyPlan(startTimeMinutes: Int? = null, endTimeMinutes: Int? = null, date: LocalDate = today()) = dailyPlanEditor.openNewDailyPlan(startTimeMinutes, endTimeMinutes, date)
     fun dismissDailyPlanEditor() = dailyPlanEditor.dismissDailyPlanEditor()
     fun addDailyPlan() = dailyPlanEditor.addDailyPlan()
     fun saveDailyPlan(editor: DailyPlanItemEditorState): Boolean = dailyPlanEditor.saveDailyPlan(editor)
@@ -184,7 +184,7 @@ class MyDayViewModel(
 
     fun createFromTimelineRange(startTimeMinutes: Int, endTimeMinutes: Int) {
         if (startTimeMinutes < currentMyDayTimeMinutes()) {
-            dailyPlanEditor.openDailyPlan(startTimeMinutes, endTimeMinutes)
+            dailyPlanEditor.openNewDailyPlan(startTimeMinutes, endTimeMinutes)
         } else {
             planAssist.openSuggestions(startTimeMinutes, endTimeMinutes)
         }

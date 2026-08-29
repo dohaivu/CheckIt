@@ -132,11 +132,8 @@ internal fun CalendarScreen(
     var showJournalList by remember { mutableStateOf(false) }
 
     val handleDateDoubleClick: (LocalDate) -> Unit = { date ->
-        calendarViewModel.selectDate(date)
-        if (date <= today) {
+        if (date > today.minus(3, DateTimeUnit.DAY) ) {
             onAddDailyPlanItem(date)
-        } else {
-            onDateDoubleClick(date)
         }
     }
 

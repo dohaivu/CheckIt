@@ -159,7 +159,7 @@ internal fun MyDayScreen(
                     IconButton(onClick = viewModel::openSuggestions) {
                         Icon(Icons.Default.Lightbulb, contentDescription = "Add to My Day")
                     }
-                    IconButton(onClick = viewModel::openDailyPlan) {
+                    IconButton(onClick = viewModel::openNewDailyPlan) {
                         Icon(Icons.Default.AddTask, contentDescription = null)
                     }
                 }

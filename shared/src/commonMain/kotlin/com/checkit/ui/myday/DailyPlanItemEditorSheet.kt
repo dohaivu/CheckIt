@@ -621,7 +621,7 @@ private fun DailyPlanItemEditorState.sheetTitle(): String = when {
 }
 
 private fun DailyPlanItemEditorState.isEditableByDate(): Boolean =
-    date > today().minus(2, DateTimeUnit.DAY)
+    date > today().minus(3, DateTimeUnit.DAY)
 
 private fun DailyPlanItemSource.titlePlaceholder(): String = when (this) {
     DailyPlanItemSource.ExistingTask,
