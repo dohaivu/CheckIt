@@ -107,13 +107,27 @@ data class MyDayUiState(
         ?: sprintSuggestedYesterday.firstOrNull()
         ?: sprintSuggestedTasks.firstOrNull()?.let { SprintChoice.Task(it) }
 
-    fun goalFor(period: Period): PeriodGoal? {
-        val startEpoch = period.startOf(today).toEpochDays().toInt()
-        return periodGoals.firstOrNull { it.period == period && it.startEpochDays == startEpoch }
+    private val periodGoalIndex: Map<Pair<Period, Int>, PeriodGoal> by lazy {
+        periodGoals.associateBy { it.period to it.startEpochDays }
     }
 
-    fun bannerTypeFor(period: Period): PeriodBannerType {
-        val goal = goalFor(period)
+    fun goalFor(period: Period, date: LocalDate): PeriodGoal? {
+        val startEpoch = period.startOf(date).toEpochDays().toInt()
+        return periodGoalIndex[period to startEpoch]
+    }
+
+    val dayGoal: PeriodGoal? by lazy { goalFor(Period.Day, today) }
+    val weekGoal: PeriodGoal? by lazy { goalFor(Period.Week, today) }
+    val monthGoal: PeriodGoal? by lazy { goalFor(Period.Month, today) }
+
+    fun goalFor(period: Period): PeriodGoal? = when (period) {
+        Period.Day -> dayGoal
+        Period.Week -> weekGoal
+        Period.Month -> monthGoal
+        else -> goalFor(period, today)
+    }
+
+    private fun bannerTypeForPeriod(period: Period, goal: PeriodGoal?): PeriodBannerType {
         val isReviewMissing = goal == null || goal.review.isBlank()
         val isGoalMissing = goal == null || (goal.goal.isNullOrBlank() && goal.metrics.isEmpty())
 
@@ -130,6 +144,13 @@ data class MyDayUiState(
             else -> PeriodBannerType.ActiveGoal
         }
     }
+
+    fun bannerTypeFor(period: Period): PeriodBannerType =
+        bannerTypeForPeriod(period, goalFor(period))
+
+    val dayBannerType: PeriodBannerType by lazy { bannerTypeForPeriod(Period.Day, dayGoal) }
+    val weekBannerType: PeriodBannerType by lazy { bannerTypeForPeriod(Period.Week, weekGoal) }
+    val monthBannerType: PeriodBannerType by lazy { bannerTypeForPeriod(Period.Month, monthGoal) }
 }
 
 enum class PeriodBannerType {

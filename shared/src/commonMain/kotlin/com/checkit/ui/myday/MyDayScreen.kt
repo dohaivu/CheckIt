@@ -210,18 +210,20 @@ internal fun MyDayScreen(
                     onViewClick = viewModel::openJournalList
                 )
 
-                val dayBannerType = state.bannerTypeFor(Period.Day)
-                val weekBannerType = state.bannerTypeFor(Period.Week)
-                val monthBannerType = state.bannerTypeFor(Period.Month)
+                val dayBannerType = state.dayBannerType
+                val weekBannerType = state.weekBannerType
+                val monthBannerType = state.monthBannerType
 
-                // Period banners
+                // Period banners - use cached goals/banners to avoid repeated goalFor() scans
                 if (!state.isLoading) {
+                    val dayGoal = state.dayGoal
+                    val weekGoal = state.weekGoal
+                    val monthGoal = state.monthGoal
                     listOf(
-                        Period.Day to dayBannerType,
-                        Period.Week to weekBannerType,
-                        Period.Month to monthBannerType
-                    ).forEach { (period, type) ->
-                        val goal = state.goalFor(period)
+                        Triple(Period.Day, dayBannerType, dayGoal),
+                        Triple(Period.Week, weekBannerType, weekGoal),
+                        Triple(Period.Month, monthBannerType, monthGoal)
+                    ).forEach { (period, type, goal) ->
                         when (type) {
                             PeriodBannerType.ReviewPending -> {
                                 ReviewReminder(
@@ -249,8 +251,8 @@ internal fun MyDayScreen(
                                 if (period == Period.Day) {
                                     DayGoalBanner(
                                         goal = goal!!,
-                                        weekGoal = if (weekBannerType == PeriodBannerType.ActiveGoal) state.goalFor(Period.Week) else null,
-                                        monthGoal = if (monthBannerType == PeriodBannerType.ActiveGoal) state.goalFor(Period.Month) else null
+                                        weekGoal = if (weekBannerType == PeriodBannerType.ActiveGoal) weekGoal else null,
+                                        monthGoal = if (monthBannerType == PeriodBannerType.ActiveGoal) monthGoal else null
                                     )
                                 }
                             }
@@ -357,6 +359,7 @@ internal fun MyDayScreen(
     }
 
     if (state.showSuggestions) {
+        state.periodGoals
         SuggestionsSheet(
             tasks = state.suggestedTasks,
             leftovers = state.pendingYesterdayLeftovers,
