@@ -4,9 +4,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -18,16 +21,19 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -81,7 +87,8 @@ fun AutocompleteTextField(
                 .onFocusChanged {
                     isFocused = it.isFocused
                     if (it.isFocused) popupDismissed = false
-                },
+                }
+                .clearFocusOnKeyboardDismiss(),
             textStyle = textStyle,
             minLines = minLines,
             maxLines = maxLines,
@@ -141,6 +148,38 @@ fun AutocompleteTextField(
                     }
                 }
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+fun Modifier.clearFocusOnKeyboardDismiss(): Modifier = composed {
+    val focusManager = LocalFocusManager.current
+    val density = LocalDensity.current
+
+    // 1. Check if the keyboard is physically taking up space on the screen
+    val isKeyboardVisible = WindowInsets.ime.getBottom(density) > 0
+
+    var isFocused by remember { mutableStateOf(false) }
+    var keyboardOpenedWhileFocused by remember { mutableStateOf(false) }
+
+    // 2. Monitor keyboard visibility shifts
+    LaunchedEffect(isKeyboardVisible) {
+        if (isKeyboardVisible && isFocused) {
+            // Flag that the keyboard successfully opened for this text field
+            keyboardOpenedWhileFocused = true
+        } else if (!isKeyboardVisible && keyboardOpenedWhileFocused) {
+            // The keyboard was closed (via system back button or swipe gesture)
+            focusManager.clearFocus()
+            keyboardOpenedWhileFocused = false
+        }
+    }
+
+    // 3. Track the element's inner focus state
+    this.onFocusEvent { state ->
+        isFocused = state.isFocused
+        if (!isFocused) {
+            keyboardOpenedWhileFocused = false
         }
     }
 }
