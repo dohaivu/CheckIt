@@ -117,28 +117,31 @@ internal fun HabitIcon(completed: Boolean, color: Color) {
 }
 
 @Composable
-internal fun TaskTypeIcon(task: TaskItem, completed: Boolean, color: Color) {
-    when (task.type) {
-        TaskType.Habit -> HabitIcon(completed, color)
-        TaskType.Task -> TaskIcon(completed, color)
-    }
-}
-
-@Composable
 internal fun DailyPlanIcon(source: DailyPlanItemSource, isDone: Boolean, isHabit: Boolean) {
-    val icon = when (source) {
-        DailyPlanItemSource.MyDayNote -> Icons.AutoMirrored.Filled.EventNote
-        DailyPlanItemSource.MyDayReminder -> Icons.Default.Schedule
-        else -> if (isHabit) Icons.Default.Repeat else Icons.Default.EventAvailable
-    }
-    if (source == DailyPlanItemSource.MyDayNote) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            modifier = Modifier.size(20.dp)
-        )
-    } else {
-        BadgedActionIcon(baseIcon = icon, isDone = isDone)
+    when (source) {
+        DailyPlanItemSource.MyDayNote -> {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.EventNote,
+                contentDescription = null,
+                tint = FallbackColor,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+        DailyPlanItemSource.MyDayReminder -> {
+            BadgedActionIcon(baseIcon = Icons.Default.Schedule, isDone = isDone)
+        }
+        else -> {
+            if (isHabit) {
+                BadgedActionIcon(baseIcon = Icons.Default.Repeat, isDone = isDone)
+            } else {
+                Icon(
+                    imageVector = if (isDone) Icons.Rounded.CheckBox else Icons.Rounded.CheckBoxOutlineBlank,
+                    contentDescription = null,
+                    tint = if (isDone) MaterialTheme.colorScheme.primary else FallbackColor,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
     }
 }
 
@@ -149,7 +152,7 @@ fun BadgedActionIcon(
     modifier: Modifier = Modifier,
     baseIconSize: Dp = 20.dp,
     badgeSize: Dp = 10.dp,
-    baseIconTint: Color = MaterialTheme.colorScheme.onSurface,
+    baseIconTint: Color = FallbackColor,
     doneColor: Color = MaterialTheme.colorScheme.primary
 ) {
     Box(
@@ -159,7 +162,7 @@ fun BadgedActionIcon(
         Icon(
             imageVector = baseIcon,
             contentDescription = null,
-            tint = baseIconTint,
+            tint = if (isDone) doneColor else baseIconTint,
             modifier = Modifier.size(baseIconSize)
         )
 
