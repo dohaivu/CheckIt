@@ -10,16 +10,17 @@ import com.checkit.domain.LeftoverAction
 import com.checkit.domain.NoteItem
 import com.checkit.domain.Period
 import com.checkit.domain.PeriodGoal
+import com.checkit.domain.TagItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
-import com.checkit.domain.TagItem
 import com.checkit.domain.defaultLeftoverAction
 import com.checkit.domain.endDateInclusive
 import com.checkit.domain.startOf
-import com.checkit.ui.tasks.EditorMode
-import com.checkit.ui.isOverdue
-import com.checkit.ui.today
 import com.checkit.ui.currentMyDayTimeMinutes
+import com.checkit.ui.isOverdue
+import com.checkit.ui.tasks.EditorMode
+import com.checkit.ui.toPlainString
+import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
 
 sealed class SprintChoice {
@@ -154,11 +155,13 @@ data class MyDayUiState(
 
     /** Lines from today's goal, trimmed and non-blank, for quick-add suggestions. */
     val goalSuggestions: List<String> by lazy {
-        dayGoal?.goal
-            ?.lines()
-            ?.map { it.trim().removePrefix("- ") }
-            ?.filter { it.isNotBlank() }
-            ?: emptyList()
+        buildList {
+            dayGoal?.goal?.lineSequence()
+                ?.map { it.trim().removePrefix("- ").trim() }
+                ?.filterTo(this) { it.isNotBlank() }
+
+            dayGoal?.metrics?.mapTo(this) { it.toPlainString() }
+        }
     }
 }
 

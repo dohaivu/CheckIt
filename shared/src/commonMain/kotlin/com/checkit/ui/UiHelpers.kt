@@ -25,6 +25,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
@@ -337,5 +341,52 @@ fun MetricItem.displayUnit(): String? = when (unit) {
     MetricUnit.VND -> "đ"
     MetricUnit.Lan -> "lần"
     MetricUnit.Km -> "km"
+}
+
+
+fun MetricItem.toAnnotatedString(valueColor: Color): androidx.compose.ui.text.AnnotatedString =
+    buildAnnotatedString {
+        if (name.isNotBlank()) {
+            append(name)
+            append(" ")
+        }
+        withStyle(
+            SpanStyle(
+                fontWeight = FontWeight.Bold,
+                color = valueColor
+            )
+        ) {
+            append(value)
+        }
+        if (!targetValue.isNullOrBlank()) {
+            append("/")
+            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                append(targetValue)
+            }
+        }
+        val unit = displayUnit()
+        if (unit != null) {
+            append(" ")
+            append(unit)
+        }
+    }
+
+fun MetricItem.toPlainString(): String {
+    return buildString {
+        if (name.isNotBlank()) {
+            append(name)
+            append(" ")
+        }
+        append(value)
+
+        if (!targetValue.isNullOrBlank()) {
+            append("/${targetValue}")
+        }
+        val unit = displayUnit()
+        if (unit != null) {
+            append(" ")
+            append(unit)
+        }
+    }
 }
 
