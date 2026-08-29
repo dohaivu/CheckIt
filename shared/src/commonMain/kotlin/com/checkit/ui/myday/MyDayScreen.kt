@@ -12,6 +12,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -119,7 +120,8 @@ internal fun MyDayScreen(
     onNoteClick: (NoteItem) -> Unit,
     onNoteTimeChange: (NoteItem, Int) -> Unit,
     onCreateTask: (addToMyDayOnSave: Boolean) -> Unit,
-    onOpenGoalEditor: (LocalDate, com.checkit.domain.Period, ReflectGoalEditorMode) -> Unit,
+    onOpenNewGoalEditor: (LocalDate, Period, ReflectGoalEditorMode) -> Unit,
+    onOpenGoalEditor: (PeriodGoal, ReflectGoalEditorMode) -> Unit,
     onNewTagClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -227,7 +229,7 @@ internal fun MyDayScreen(
                                         if (period == Period.Day) {
                                             viewModel.openDayClose()
                                         } else {
-                                            onOpenGoalEditor(state.today, period, ReflectGoalEditorMode.Full)
+                                            onOpenNewGoalEditor(state.today, period, ReflectGoalEditorMode.Full)
                                         }
                                     }
                                 )
@@ -237,7 +239,7 @@ internal fun MyDayScreen(
                                 GoalReminder(
                                     period = period,
                                     onClick = {
-                                        onOpenGoalEditor(state.today, period, ReflectGoalEditorMode.GoalOnly)
+                                        onOpenNewGoalEditor(state.today, period, ReflectGoalEditorMode.GoalOnly)
                                     }
                                 )
                             }
@@ -247,7 +249,10 @@ internal fun MyDayScreen(
                                     DayGoalBanner(
                                         goal = goal!!,
                                         weekGoal = if (weekBannerType == PeriodBannerType.ActiveGoal) weekGoal else null,
-                                        monthGoal = if (monthBannerType == PeriodBannerType.ActiveGoal) monthGoal else null
+                                        monthGoal = if (monthBannerType == PeriodBannerType.ActiveGoal) monthGoal else null,
+                                        onLongClick = {
+                                            onOpenGoalEditor(goal, ReflectGoalEditorMode.GoalOnly)
+                                        }
                                     )
                                 }
                             }
@@ -583,7 +588,8 @@ private fun DayGoalBanner(
     goal: PeriodGoal,
     weekGoal: PeriodGoal? = null,
     monthGoal: PeriodGoal? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onLongClick: () -> Unit,
 ) {
     val color = when (goal.period) {
         Period.Day -> MaterialTheme.colorScheme.secondary
@@ -605,7 +611,12 @@ private fun DayGoalBanner(
                 .onSizeChanged { bannerSize = it }
                 .clip(RoundedCornerShape(12.dp))
                 .background(color.copy(alpha = 0.08f))
-                .clickable { expanded = !expanded }
+                .combinedClickable(
+                    onClick = {
+                        expanded = !expanded
+                    },
+                    onLongClick = onLongClick
+                )
                 .padding(horizontal = 10.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {

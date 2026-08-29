@@ -297,8 +297,11 @@ fun CheckItApp(
                                             onNoteTimeChange = viewModels.task::updateNoteTime,
                                             onCreateTask = viewModels.task::openNewTask,
                                             onNewTagClick = viewModels.tag::openNewTag,
-                                            onOpenGoalEditor = { date, period, mode ->
+                                            onOpenNewGoalEditor = { date, period, mode ->
                                                 viewModels.reflect.openNewGoalEditor(date, period, mode)
+                                            },
+                                            onOpenGoalEditor = { goal, mode ->
+                                                viewModels.reflect.openGoal(goal, mode)
                                             }
                                         )
                                     }
