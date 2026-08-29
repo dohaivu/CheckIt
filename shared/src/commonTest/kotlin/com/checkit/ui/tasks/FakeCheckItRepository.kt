@@ -401,7 +401,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         carriedFromItemId: Long?
     ): Long {
         val id = nextDailyPlanItemId++
-        val input = DailyPlanItemWriteInput(title, note, source, status, startTimeMinutes, endTimeMinutes, tagIds, label, nestedListItemId)
+        val input = DailyPlanItemWriteInput(date, title, note, source, status, startTimeMinutes, endTimeMinutes, tagIds, label, nestedListItemId)
         addedManualDailyPlanItems.add(input)
         val newItem = DailyPlanItem(
             id = id,
@@ -462,6 +462,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         dailyPlansFlow.update { list ->
             list.map { plan ->
                 plan.copy(items = plan.items.map { if (it.id == itemId) it.copy(
+                    dateEpochDays = input.date.toEpochDays().toInt(),
                     title = input.title,
                     note = input.note,
                     source = input.source,

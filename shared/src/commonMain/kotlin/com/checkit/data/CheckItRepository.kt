@@ -235,6 +235,7 @@ data class NoteWriteInput(
 )
 
 data class DailyPlanItemWriteInput(
+    val date: LocalDate,
     val title: String,
     val note: String?,
     val source: DailyPlanItemSource,
@@ -827,6 +828,7 @@ class RoomCheckItRepository(
         val now = Clock.System.now().toEpochMilliseconds()
         dao.updateDailyPlanItemWithTags(
             itemId = itemId,
+            dateEpochDays = input.date.toEpochDays().toInt(),
             title = input.title,
             note = input.note,
             source = input.source.name,

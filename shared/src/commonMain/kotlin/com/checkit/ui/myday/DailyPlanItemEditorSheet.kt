@@ -50,15 +50,16 @@ import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.TagItem
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
+import com.checkit.ui.components.AutocompleteTextField
+import com.checkit.ui.components.DatePicker
 import com.checkit.ui.components.DeleteOverflowMenu
 import com.checkit.ui.components.LabelSuggestions
 import com.checkit.ui.components.MarkdownVisualTransformation
 import com.checkit.ui.components.TagPicker
-import com.checkit.ui.components.TimePicker
-import com.checkit.ui.components.TimeRangePicker
 import com.checkit.ui.tasks.views.currentTimeMinutes
 import com.checkit.ui.today
 import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -72,6 +73,7 @@ internal fun DailyPlanItemEditorSheet(
     onLabelChange: (String) -> Unit,
     onStatusChange: (Boolean) -> Unit,
     onSourceChange: (DailyPlanItemSource) -> Unit,
+    onDateChange: (LocalDate?) -> Unit,
     onTimeChange: (Int?, Int?) -> Unit,
     onTagToggle: (Long) -> Unit,
     onNewTagClick: () -> Unit,
@@ -81,7 +83,8 @@ internal fun DailyPlanItemEditorSheet(
     onStartSprint: () -> Unit,
     onStartOngoingSprint: () -> Unit,
     onUpgradeToTask: () -> Unit,
-    recentLabels: List<String> = emptyList()
+    recentLabels: List<String> = emptyList(),
+    suggestions: List<String> = emptyList(),
 ) {
     val enabled = state.isEditableByDate()
 
@@ -109,11 +112,13 @@ internal fun DailyPlanItemEditorSheet(
                     state = state,
                     availableTags = availableTags,
                     recentLabels = recentLabels,
+                    suggestions = suggestions,
                     onTitleChange = onTitleChange,
                     onNoteChange = onNoteChange,
                     onLabelChange = onLabelChange,
                     onStatusChange = onStatusChange,
                     onSourceChange = onSourceChange,
+                    onDateChange = onDateChange,
                     onTimeChange = onTimeChange,
                     onTagToggle = onTagToggle,
                     onNewTagClick = onNewTagClick,
@@ -270,11 +275,13 @@ private fun DailyPlanItemFormContent(
     state: DailyPlanItemEditorState,
     availableTags: List<TagItem>,
     recentLabels: List<String>,
+    suggestions: List<String> = emptyList(),
     onTitleChange: (String) -> Unit,
     onNoteChange: (String) -> Unit,
     onLabelChange: (String) -> Unit,
     onStatusChange: (Boolean) -> Unit,
     onSourceChange: (DailyPlanItemSource) -> Unit,
+    onDateChange: (LocalDate?) -> Unit,
     onTimeChange: (Int?, Int?) -> Unit,
     onTagToggle: (Long) -> Unit,
     onNewTagClick: () -> Unit,
@@ -323,18 +330,20 @@ private fun DailyPlanItemFormContent(
             }
         }
 
-        AppOutlinedTextField(
+        AutocompleteTextField(
             value = state.title,
             onValueChange = onTitleChange,
+            suggestions = suggestions,
             textStyle = MaterialTheme.typography.titleLarge.copy(
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.SemiBold
             ),
             minLines = 1,
-            maxLines = 3,
+            maxLines = 2,
             placeholder = displaySource.titlePlaceholder(),
             enabled = enabled,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            isError = state.error != null
         )
 
         AppOutlinedTextField(
@@ -349,8 +358,17 @@ private fun DailyPlanItemFormContent(
             placeholder = if (sourceLocked) null else "Add details",
             enabled = enabled,
             modifier = Modifier.fillMaxWidth(),
-            visualTransformation = remember { MarkdownVisualTransformation() }
+            visualTransformation = remember { MarkdownVisualTransformation() },
+            isError = state.error != null
         )
+        state.error?.let { error ->
+            Text(
+                text = error,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 4.dp)
+            )
+        }
 
         if (sourceLocked) {
             FixedTypeControls(
@@ -387,9 +405,11 @@ private fun DailyPlanItemFormContent(
 
         TimeSection(
             source = displaySource,
+            date = state.date,
             startTimeMinutes = state.startTimeMinutes,
             endTimeMinutes = state.endTimeMinutes,
             isOverdue = state.isOverdue,
+            onDateChange = onDateChange,
             onTimeChange = { startTime, endTime ->
                 onTimeChange(startTime, endTime)
                 if (!sourceLocked) {
@@ -472,9 +492,11 @@ private fun FixedTypeControls(
 @Composable
 private fun TimeSection(
     source: DailyPlanItemSource,
+    date: LocalDate?,
     startTimeMinutes: Int?,
     endTimeMinutes: Int?,
     isOverdue: Boolean,
+    onDateChange: (LocalDate?) -> Unit,
     onTimeChange: (Int?, Int?) -> Unit,
     enabled: Boolean
 ) {
@@ -485,24 +507,16 @@ private fun TimeSection(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = FontWeight.Medium
         )
-        if (source.usesTimePicker()) {
-            TimePicker(
-                label = "",
-                timeMinutes = startTimeMinutes,
-                initialTimeMinutes = currentTimeMinutes(),
-                onTimeChange = { start -> onTimeChange(start, endTimeMinutes) },
-                enabled = enabled,
-                isOverdue = isOverdue
-            )
-        } else {
-            TimeRangePicker(
-                startTimeMinutes = startTimeMinutes,
-                endTimeMinutes = endTimeMinutes,
-                onTimeChange = onTimeChange,
-                enabled = enabled,
-                isOverdue = isOverdue
-            )
-        }
+        DatePicker(
+            date = date,
+            startTimeMinutes = startTimeMinutes,
+            endTimeMinutes = endTimeMinutes,
+            onDateChange = onDateChange,
+            onTimeChange = onTimeChange,
+            supportsEndTime = source == DailyPlanItemSource.ExistingTask || source == DailyPlanItemSource.MyDayTask,
+            enabled = enabled,
+            isOverdue = isOverdue
+        )
     }
 }
 
@@ -607,7 +621,7 @@ private fun DailyPlanItemEditorState.sheetTitle(): String = when {
 }
 
 private fun DailyPlanItemEditorState.isEditableByDate(): Boolean =
-    date > today().minus(2, DateTimeUnit.DAY)
+    date > today().minus(3, DateTimeUnit.DAY)
 
 private fun DailyPlanItemSource.titlePlaceholder(): String = when (this) {
     DailyPlanItemSource.ExistingTask,
@@ -632,9 +646,6 @@ private fun DailyPlanItemSource.supportingLabel(): String = when (this) {
 
 private fun DailyPlanItemSource.usesStatusControl(): Boolean =
     this != DailyPlanItemSource.MyDayNote
-
-private fun DailyPlanItemSource.usesTimePicker(): Boolean =
-    this == DailyPlanItemSource.MyDayNote || this == DailyPlanItemSource.MyDayReminder
 
 private fun DailyPlanItemSource.timeLabel(): String = "Time"
 

@@ -46,7 +46,6 @@ import com.checkit.ui.journal.JournalHistorySheet
 import com.checkit.ui.myday.MyDayScreen
 import com.checkit.ui.nested.NestedListScreen
 import com.checkit.ui.reflect.PeriodGoalEditorSheet
-import com.checkit.ui.reflect.ReflectGoalEditorMode
 import com.checkit.ui.reflect.ReflectScreen
 import com.checkit.ui.settings.SettingsScreen
 import com.checkit.ui.tasks.TaskEditorActions
@@ -296,10 +295,15 @@ fun CheckItApp(
                                             onTaskClick = viewModels.task::openTask,
                                             onNoteClick = viewModels.task::openNote,
                                             onNoteTimeChange = viewModels.task::updateNoteTime,
-                                            onCreateTask = viewModels.task::openNewTask,
+                                            onCreateTask = { addToMyDayOnSave ->
+                                                viewModels.task.openNewTask(today(), addToMyDayOnSave)
+                                            },
                                             onNewTagClick = viewModels.tag::openNewTag,
-                                            onOpenGoalEditor = { date, period, mode ->
+                                            onOpenNewGoalEditor = { date, period, mode ->
                                                 viewModels.reflect.openNewGoalEditor(date, period, mode)
+                                            },
+                                            onOpenGoalEditor = { goal, mode ->
+                                                viewModels.reflect.openGoal(goal, mode)
                                             }
                                         )
                                     }
@@ -311,7 +315,7 @@ fun CheckItApp(
                                             onDateDoubleClick = { date -> viewModels.task.openNewTaskOnDate(date) },
                                             onDailyPlanItemClick = viewModels.myDay::openItemEditor,
                                             onOpenJournalHistory = { showJournalHistory = true },
-                                            onAddDailyPlanItem = { date -> viewModels.myDay.openDailyPlan(date = date) },
+                                            onAddDailyPlanItem = { date -> viewModels.myDay.openNewDailyPlan(date = date) },
                                             onTaskClick = viewModels.task::openTask,
                                             onNoteClick = viewModels.task::openNote,
                                             onNewTagClick = viewModels.tag::openNewTag,
@@ -342,7 +346,7 @@ fun CheckItApp(
                                             viewModel = viewModels.nested,
                                             onAddToDailyPlan = { title, tagIds, nestedListItemId ->
                                                 navState.resetTo(AppRoute.MyDay)
-                                                viewModels.myDay.openDailyPlan(title, tagIds, nestedListItemId)
+                                                viewModels.myDay.openNewDailyPlan(title, tagIds, nestedListItemId)
                                             },
                                             onCopyToTask = { title, note, subtaskTexts ->
                                                 viewModels.task.openNewTaskFromNestedItem(title, note, subtaskTexts)
@@ -436,12 +440,14 @@ fun CheckItApp(
                             state = editor,
                             availableTags = myDayUiState.tags,
                             recentLabels = myDayUiState.recentLabels,
+                            suggestions = myDayUiState.goalSuggestions,
                             onDismiss = viewModels.myDay::dismissDailyPlanEditor,
                             onTitleChange = viewModels.myDay::updateTitle,
                             onNoteChange = viewModels.myDay::updateNote,
                             onLabelChange = viewModels.myDay::updateLabel,
                             onStatusChange = viewModels.myDay::updateStatus,
                             onSourceChange = viewModels.myDay::updateEditorSource,
+                            onDateChange = viewModels.myDay::updateDate,
                             onTimeChange = viewModels.myDay::updateTime,
                             onTagToggle = viewModels.myDay::toggleTag,
                             onNewTagClick = viewModels.tag::openNewTag,

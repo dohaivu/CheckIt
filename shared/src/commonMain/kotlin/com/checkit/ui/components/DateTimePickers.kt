@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -44,12 +46,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import com.checkit.ui.MinutesPerDay
 import com.checkit.ui.TimeRangeShortcutDurations
 import com.checkit.ui.duration
@@ -131,13 +135,27 @@ internal fun DatePicker(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                DatePicker(
-                    state = datePickerState,
-                    title = null,
-                    headline = null,
-                    showModeToggle = false,
-                    colors = DatePickerDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
-                )
+                BoxWithConstraints(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    val minWidth = 360.dp
+                    val scale = if (maxWidth < minWidth) maxWidth / minWidth else 1f
+                    Box(
+                        modifier = Modifier
+                            .requiredWidth(minWidth)
+                            .scale(scale),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        DatePicker(
+                            state = datePickerState,
+                            title = null,
+                            headline = null,
+                            showModeToggle = false,
+                            colors = DatePickerDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+                        )
+                    }
+                }
 
                 TimeRangeSelectionRow(
                     startTime = startTime,
@@ -207,14 +225,26 @@ internal fun DateRangePicker(
                 showPicker = false
             }
         ) {
-            Box(modifier = Modifier.height(400.dp)) {
-                DateRangePicker(
-                    state = state,
-                    title = null,
-                    headline = null,
-                    showModeToggle = false,
-                    colors = DatePickerDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
-                )
+            BoxWithConstraints(
+                modifier = Modifier.fillMaxWidth().height(400.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                val minWidth = 360.dp
+                val scale = if (maxWidth < minWidth) maxWidth / minWidth else 1f
+                Box(
+                    modifier = Modifier
+                        .requiredWidth(minWidth)
+                        .scale(scale),
+                    contentAlignment = Alignment.Center
+                ) {
+                    DateRangePicker(
+                        state = state,
+                        title = null,
+                        headline = null,
+                        showModeToggle = false,
+                        colors = DatePickerDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+                    )
+                }
             }
         }
     }
@@ -377,7 +407,8 @@ private fun AppPickerDialog(
                 }
             }
         },
-        text = content
+        text = content,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
     )
 }
 
@@ -467,6 +498,13 @@ private fun TimeRangeSelectionRow(
                         }
                     )
                 }
+                PickerShortcut(
+                    text = "Now",
+                    onClick = {
+                        val end = currentTimeMinutes()
+                        onEndTimeChange(end)
+                    }
+                )
             }
         }
     }

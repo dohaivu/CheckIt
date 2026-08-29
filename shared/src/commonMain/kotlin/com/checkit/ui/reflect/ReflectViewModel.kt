@@ -3,14 +3,13 @@ package com.checkit.ui.reflect
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.checkit.data.CheckItRepository
-import com.checkit.domain.MetricItem
 import com.checkit.domain.DailyReflectStat
 import com.checkit.domain.DoneItemSummary
 import com.checkit.domain.FocusPeriod
 import com.checkit.domain.HabitDailyRollup
 import com.checkit.domain.JournalEntry
+import com.checkit.domain.MetricItem
 import com.checkit.domain.PeriodGoal
-
 import com.checkit.domain.usecase.ObservePeriodGoalsUseCase
 import com.checkit.domain.usecase.SavePeriodGoalUseCase
 import com.checkit.ui.UiEvent
@@ -19,8 +18,8 @@ import com.checkit.ui.firstDayOfMonth
 import com.checkit.ui.today
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -181,7 +180,8 @@ class ReflectViewModel(
         _uiState.update { it.copy(selectedPeriod = period) }
     }
 
-    fun openGoal(goal: PeriodGoal) {
+    fun openGoal(goal: PeriodGoal,
+                 mode: ReflectGoalEditorMode = ReflectGoalEditorMode.GoalOnly) {
         _uiState.update {
             it.copy(
                 selectedPeriod = goal.period.toReportPeriod(),
@@ -193,7 +193,7 @@ class ReflectViewModel(
         val focus = FocusPeriod(goal.period, goal.startDate)
         _editor.value = ReflectGoalEditorState(
             focus = focus,
-            mode = ReflectGoalEditorMode.Full,
+            mode = mode,
             existing = goal,
             review = goal.review,
             goal = goal.goal.orEmpty(),
@@ -262,7 +262,7 @@ class ReflectViewModel(
                     review = editor.review,
                     goal = editor.goal,
                     rating = editor.rating,
-                    metrics = editor.metrics
+                    metrics = editor.metrics.filter { it.value.isNotBlank() }
                 )
             }.onSuccess {
                 _editor.value = null

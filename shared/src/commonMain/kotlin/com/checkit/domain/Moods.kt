@@ -12,11 +12,11 @@ val MoodLovedEmojis = listOf("🥰", "😍", "😘", "💖", "🌹", "🧸", "�
 /** Coarse mood categories offered as journal-history filters. */
 enum class MoodFilter(val label: String, val emojis: List<String>) {
     Good(
-        "Good",
+        "😀",
         MoodHappyEmojis + MoodEnergeticEmojis + MoodCalmEmojis + MoodLovedEmojis
     ),
     Bad(
-        "Bad",
+        "😟",
         MoodSadEmojis + MoodTiredEmojis + MoodWorriedEmojis
     )
 }

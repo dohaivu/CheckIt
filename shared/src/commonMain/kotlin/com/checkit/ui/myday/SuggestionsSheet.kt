@@ -43,7 +43,7 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.ListItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TagItem
-import com.checkit.ui.components.AppOutlinedTextField
+import com.checkit.ui.components.AutocompleteTextField
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.isOverdue
@@ -66,7 +66,8 @@ internal fun SuggestionsSheet(
     onCarryLeftover: (DailyPlanItem) -> Unit,
     onCarryAllLeftovers: () -> Unit,
     onCreateTask: () -> Unit,
-    onNewTagClick: () -> Unit = {}
+    onNewTagClick: () -> Unit = {},
+    suggestions: List<String> = emptyList(),
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -76,7 +77,7 @@ internal fun SuggestionsSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        sheetGesturesEnabled = true
+        sheetGesturesEnabled = false
     ) {
         Column(
             modifier = Modifier
@@ -107,9 +108,10 @@ internal fun SuggestionsSheet(
                     .padding(vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                AppOutlinedTextField(
+                AutocompleteTextField(
                     value = quickAddText,
                     onValueChange = { quickAddText = it },
+                    suggestions = suggestions,
                     placeholder = "Quick add to plan...",
                     modifier = Modifier.fillMaxWidth(),
                     maxLines = 1,

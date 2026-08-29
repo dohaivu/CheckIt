@@ -10,16 +10,17 @@ import com.checkit.domain.LeftoverAction
 import com.checkit.domain.NoteItem
 import com.checkit.domain.Period
 import com.checkit.domain.PeriodGoal
+import com.checkit.domain.TagItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
-import com.checkit.domain.TagItem
 import com.checkit.domain.defaultLeftoverAction
 import com.checkit.domain.endDateInclusive
 import com.checkit.domain.startOf
-import com.checkit.ui.tasks.EditorMode
-import com.checkit.ui.isOverdue
-import com.checkit.ui.today
 import com.checkit.ui.currentMyDayTimeMinutes
+import com.checkit.ui.isOverdue
+import com.checkit.ui.tasks.EditorMode
+import com.checkit.ui.toPlainString
+import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
 
 sealed class SprintChoice {
@@ -107,13 +108,27 @@ data class MyDayUiState(
         ?: sprintSuggestedYesterday.firstOrNull()
         ?: sprintSuggestedTasks.firstOrNull()?.let { SprintChoice.Task(it) }
 
-    fun goalFor(period: Period): PeriodGoal? {
-        val startEpoch = period.startOf(today).toEpochDays().toInt()
-        return periodGoals.firstOrNull { it.period == period && it.startEpochDays == startEpoch }
+    private val periodGoalIndex: Map<Pair<Period, Int>, PeriodGoal> by lazy {
+        periodGoals.associateBy { it.period to it.startEpochDays }
     }
 
-    fun bannerTypeFor(period: Period): PeriodBannerType {
-        val goal = goalFor(period)
+    fun goalFor(period: Period, date: LocalDate): PeriodGoal? {
+        val startEpoch = period.startOf(date).toEpochDays().toInt()
+        return periodGoalIndex[period to startEpoch]
+    }
+
+    val dayGoal: PeriodGoal? by lazy { goalFor(Period.Day, today) }
+    val weekGoal: PeriodGoal? by lazy { goalFor(Period.Week, today) }
+    val monthGoal: PeriodGoal? by lazy { goalFor(Period.Month, today) }
+
+    fun goalFor(period: Period): PeriodGoal? = when (period) {
+        Period.Day -> dayGoal
+        Period.Week -> weekGoal
+        Period.Month -> monthGoal
+        else -> goalFor(period, today)
+    }
+
+    private fun bannerTypeForPeriod(period: Period, goal: PeriodGoal?): PeriodBannerType {
         val isReviewMissing = goal == null || goal.review.isBlank()
         val isGoalMissing = goal == null || (goal.goal.isNullOrBlank() && goal.metrics.isEmpty())
 
@@ -128,6 +143,24 @@ data class MyDayUiState(
             isReviewTime && isReviewMissing -> PeriodBannerType.ReviewPending
             isGoalMissing -> PeriodBannerType.MissingGoal
             else -> PeriodBannerType.ActiveGoal
+        }
+    }
+
+    fun bannerTypeFor(period: Period): PeriodBannerType =
+        bannerTypeForPeriod(period, goalFor(period))
+
+    val dayBannerType: PeriodBannerType by lazy { bannerTypeForPeriod(Period.Day, dayGoal) }
+    val weekBannerType: PeriodBannerType by lazy { bannerTypeForPeriod(Period.Week, weekGoal) }
+    val monthBannerType: PeriodBannerType by lazy { bannerTypeForPeriod(Period.Month, monthGoal) }
+
+    /** Lines from today's goal, trimmed and non-blank, for quick-add suggestions. */
+    val goalSuggestions: List<String> by lazy {
+        buildList {
+            dayGoal?.goal?.lineSequence()
+                ?.map { it.trim().removePrefix("- ").trim() }
+                ?.filterTo(this) { it.isNotBlank() }
+
+            dayGoal?.metrics?.mapTo(this) { it.toPlainString() }
         }
     }
 }
@@ -181,7 +214,8 @@ data class DailyPlanItemEditorState(
     val label: String? = null,
     val startTimeMinutes: Int? = null,
     val endTimeMinutes: Int? = null,
-    val selectedTagIds: Set<Long> = emptySet()
+    val selectedTagIds: Set<Long> = emptySet(),
+    val error: String? = null
 ) {
     val isAddMode: Boolean get() = mode == EditorMode.Add
     val isEditMode: Boolean get() = mode == EditorMode.Edit

@@ -70,7 +70,7 @@ import com.checkit.domain.SprintState
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TagItem
 import com.checkit.ui.components.AppEditorBottomSheet
-import com.checkit.ui.components.AppOutlinedTextField
+import com.checkit.ui.components.AutocompleteTextField
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.toClockLabel
@@ -321,7 +321,8 @@ fun QuickSprintSheet(
     onStartSprintWithChoice: (SprintChoice) -> Unit,
     onStartSprintWithTask: (TaskItem) -> Unit,
     onNewTagClick: () -> Unit = {},
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    suggestions: List<String> = emptyList(),
 ) {
     var text by remember { mutableStateOf("") }
     var selectedTagIds by remember { mutableStateOf(emptySet<Long>()) }
@@ -340,9 +341,10 @@ fun QuickSprintSheet(
                 fontWeight = FontWeight.Bold
             )
 
-            AppOutlinedTextField(
+            AutocompleteTextField(
                 value = text,
                 onValueChange = { text = it },
+                suggestions = suggestions,
                 textStyle = MaterialTheme.typography.bodyMedium.copy(
                     color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Normal

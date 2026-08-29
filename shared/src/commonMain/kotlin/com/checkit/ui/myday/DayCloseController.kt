@@ -28,11 +28,9 @@ internal class DayCloseController(
             if (loaded.dayClose != null) return@launch
             val date = loaded.today
             val summary = deps.buildDayCloseSummary(date, loaded.plan)
-            val record = loaded.periodGoals.firstOrNull { it.startDate == date && it.period == Period.Day }
+            val record = loaded.goalFor(Period.Day, date)
             // The tomorrow goal is stored as the next day's goal.
-            val tomorrowRecord = loaded.periodGoals.firstOrNull {
-                it.startDate == date.plus(1, DateTimeUnit.DAY) && it.period == Period.Day
-            }
+            val tomorrowRecord = loaded.goalFor(Period.Day, date.plus(1, DateTimeUnit.DAY))
             val allItems = summary.plannedItems + summary.alreadyCarriedItems
             val actions = allItems.associate { item ->
                 item.id to item.defaultReviewAction(loaded.dailyPlans)

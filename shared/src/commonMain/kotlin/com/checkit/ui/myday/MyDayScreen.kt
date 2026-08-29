@@ -12,6 +12,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,7 +38,6 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.ExpandLess
@@ -47,16 +47,13 @@ import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.RateReview
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -93,7 +90,6 @@ import com.checkit.domain.TaskStatus
 import com.checkit.domain.hasEndTime
 import com.checkit.ui.components.MetricChip
 import com.checkit.ui.components.PeriodGoalRow
-import com.checkit.ui.components.RatingBar
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.journal.JournalListSheet
 import com.checkit.ui.journal.JournalSection
@@ -101,6 +97,7 @@ import com.checkit.ui.journal.JournalThoughtCard
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.TimelineItem
 import com.checkit.ui.TimelineItemType
+import com.checkit.ui.color
 import com.checkit.ui.isOverdue
 import com.checkit.ui.reflect.ReflectGoalEditorMode
 import com.checkit.ui.tasks.views.AgendaView
@@ -124,7 +121,8 @@ internal fun MyDayScreen(
     onNoteClick: (NoteItem) -> Unit,
     onNoteTimeChange: (NoteItem, Int) -> Unit,
     onCreateTask: (addToMyDayOnSave: Boolean) -> Unit,
-    onOpenGoalEditor: (LocalDate, com.checkit.domain.Period, ReflectGoalEditorMode) -> Unit,
+    onOpenNewGoalEditor: (LocalDate, Period, ReflectGoalEditorMode) -> Unit,
+    onOpenGoalEditor: (PeriodGoal, ReflectGoalEditorMode) -> Unit,
     onNewTagClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -162,7 +160,7 @@ internal fun MyDayScreen(
                     IconButton(onClick = viewModel::openSuggestions) {
                         Icon(Icons.Default.Lightbulb, contentDescription = "Add to My Day")
                     }
-                    IconButton(onClick = viewModel::openDailyPlan) {
+                    IconButton(onClick = viewModel::openNewDailyPlan) {
                         Icon(Icons.Default.AddTask, contentDescription = null)
                     }
                 }
@@ -210,18 +208,20 @@ internal fun MyDayScreen(
                     onViewClick = viewModel::openJournalList
                 )
 
-                val dayBannerType = state.bannerTypeFor(Period.Day)
-                val weekBannerType = state.bannerTypeFor(Period.Week)
-                val monthBannerType = state.bannerTypeFor(Period.Month)
+                val dayBannerType = state.dayBannerType
+                val weekBannerType = state.weekBannerType
+                val monthBannerType = state.monthBannerType
 
-                // Period banners
+                // Period banners - use cached goals/banners to avoid repeated goalFor() scans
                 if (!state.isLoading) {
+                    val dayGoal = state.dayGoal
+                    val weekGoal = state.weekGoal
+                    val monthGoal = state.monthGoal
                     listOf(
-                        Period.Day to dayBannerType,
-                        Period.Week to weekBannerType,
-                        Period.Month to monthBannerType
-                    ).forEach { (period, type) ->
-                        val goal = state.goalFor(period)
+                        Triple(Period.Day, dayBannerType, dayGoal),
+                        Triple(Period.Week, weekBannerType, weekGoal),
+                        Triple(Period.Month, monthBannerType, monthGoal)
+                    ).forEach { (period, type, goal) ->
                         when (type) {
                             PeriodBannerType.ReviewPending -> {
                                 ReviewReminder(
@@ -230,7 +230,7 @@ internal fun MyDayScreen(
                                         if (period == Period.Day) {
                                             viewModel.openDayClose()
                                         } else {
-                                            onOpenGoalEditor(state.today, period, ReflectGoalEditorMode.Full)
+                                            onOpenNewGoalEditor(state.today, period, ReflectGoalEditorMode.Full)
                                         }
                                     }
                                 )
@@ -240,7 +240,7 @@ internal fun MyDayScreen(
                                 GoalReminder(
                                     period = period,
                                     onClick = {
-                                        onOpenGoalEditor(state.today, period, ReflectGoalEditorMode.GoalOnly)
+                                        onOpenNewGoalEditor(state.today, period, ReflectGoalEditorMode.GoalOnly)
                                     }
                                 )
                             }
@@ -249,8 +249,11 @@ internal fun MyDayScreen(
                                 if (period == Period.Day) {
                                     DayGoalBanner(
                                         goal = goal!!,
-                                        weekGoal = if (weekBannerType == PeriodBannerType.ActiveGoal) state.goalFor(Period.Week) else null,
-                                        monthGoal = if (monthBannerType == PeriodBannerType.ActiveGoal) state.goalFor(Period.Month) else null
+                                        weekGoal = if (weekBannerType == PeriodBannerType.ActiveGoal) weekGoal else null,
+                                        monthGoal = if (monthBannerType == PeriodBannerType.ActiveGoal) monthGoal else null,
+                                        onLongClick = {
+                                            onOpenGoalEditor(goal, ReflectGoalEditorMode.GoalOnly)
+                                        }
                                     )
                                 }
                             }
@@ -340,7 +343,8 @@ internal fun MyDayScreen(
             onStartSprintWithChoice = viewModel::startSprintWithChoice,
             onStartSprintWithTask = viewModel::startSprintWithTask,
             onNewTagClick = onNewTagClick,
-            onDismiss = viewModel::dismissQuickSprint
+            onDismiss = viewModel::dismissQuickSprint,
+            suggestions = state.goalSuggestions
         )
     }
 
@@ -373,7 +377,8 @@ internal fun MyDayScreen(
                 viewModel.dismissSuggestions()
                 onCreateTask(true)
             },
-            onNewTagClick = onNewTagClick
+            onNewTagClick = onNewTagClick,
+            suggestions = state.goalSuggestions,
         )
     }
 
@@ -519,12 +524,7 @@ private fun GoalReminder(
         Period.Month -> "this month's"
         else -> period.name.lowercase()
     }
-    val color = when (period) {
-        Period.Day -> MaterialTheme.colorScheme.secondary
-        Period.Week -> MaterialTheme.colorScheme.tertiary
-        Period.Month -> MaterialTheme.colorScheme.primary
-        else -> MaterialTheme.colorScheme.error
-    }
+    val color = period.color()
 
     Row(
         modifier = modifier
@@ -584,14 +584,10 @@ private fun DayGoalBanner(
     goal: PeriodGoal,
     weekGoal: PeriodGoal? = null,
     monthGoal: PeriodGoal? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onLongClick: () -> Unit,
 ) {
-    val color = when (goal.period) {
-        Period.Day -> MaterialTheme.colorScheme.secondary
-        Period.Week -> MaterialTheme.colorScheme.tertiary
-        Period.Month -> MaterialTheme.colorScheme.primary
-        else -> MaterialTheme.colorScheme.secondary
-    }
+    val color = goal.period.color()
     var expanded by remember { mutableStateOf(false) }
     var bannerSize by remember { mutableStateOf(IntSize.Zero) }
 
@@ -606,7 +602,12 @@ private fun DayGoalBanner(
                 .onSizeChanged { bannerSize = it }
                 .clip(RoundedCornerShape(12.dp))
                 .background(color.copy(alpha = 0.08f))
-                .clickable { expanded = !expanded }
+                .combinedClickable(
+                    onClick = {
+                        expanded = !expanded
+                    },
+                    onLongClick = onLongClick
+                )
                 .padding(horizontal = 10.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {

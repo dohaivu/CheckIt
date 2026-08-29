@@ -43,9 +43,7 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.plus
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -93,7 +91,6 @@ class MyDayViewModelTest {
             buildDayCloseSummary = buildSummary,
             completeDayClose = CompleteDayCloseUseCase(
                 repository = repository,
-                settingsRepository = settingsRepository,
                 buildSummary = buildSummary,
                 dispatcher = dispatcher
             ),
@@ -152,7 +149,7 @@ class MyDayViewModelTest {
 
     @Test
     fun addCheckInWithoutTimePersistsPlannedNote() = runTest(dispatcher) {
-        viewModel.openDailyPlan()
+        viewModel.openNewDailyPlan()
         viewModel.updateEditorSource(DailyPlanItemSource.MyDayNote)
         viewModel.updateTitle("Draft proposal")
 
@@ -168,7 +165,7 @@ class MyDayViewModelTest {
 
     @Test
     fun addNoteWithStartTimeDoesNotInferDoneItem() = runTest(dispatcher) {
-        viewModel.openDailyPlan(startTimeMinutes = 0, endTimeMinutes = 30)
+        viewModel.openNewDailyPlan(startTimeMinutes = 0, endTimeMinutes = 30)
         viewModel.updateEditorSource(DailyPlanItemSource.MyDayNote)
         viewModel.updateTitle("Morning thought")
 
@@ -184,7 +181,7 @@ class MyDayViewModelTest {
 
     @Test
     fun addReminderPersistsStartTimeOnlyAndPlannedStatus() = runTest(dispatcher) {
-        viewModel.openDailyPlan(startTimeMinutes = 23 * 60 + 59, endTimeMinutes = null)
+        viewModel.openNewDailyPlan(startTimeMinutes = 23 * 60 + 59, endTimeMinutes = null)
         viewModel.updateEditorSource(DailyPlanItemSource.MyDayReminder)
         viewModel.updateTitle("Send invoice")
 

@@ -108,7 +108,7 @@ internal fun HeroSummaryCard(
                     )
                 )
             )
-            .border(1.dp, Color.White.copy(alpha = 0.72f), RoundedCornerShape(24.dp))
+            .border(1.dp, Color.White.copy(alpha = 0.72f), RoundedCornerShape(20.dp))
             .padding(20.dp)
     ) {
         Row(
@@ -193,9 +193,9 @@ internal fun ActivityChart(
                         ReportPurple.copy(alpha = 0.03f)
                     )
                 ),
-                RoundedCornerShape(24.dp)
+                RoundedCornerShape(20.dp)
             )
-            .padding(16.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -353,15 +353,13 @@ internal fun CompletedHighlightsCard(
                         ReportBlue.copy(alpha = 0.03f)
                     )
                 ),
-                RoundedCornerShape(24.dp)
+                RoundedCornerShape(20.dp)
             )
-            .padding(vertical = 20.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -433,8 +431,8 @@ private fun CompletedHighlightRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -623,8 +621,8 @@ internal fun TopTagsCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(Brush.linearGradient(gradientColors), RoundedCornerShape(24.dp))
-            .padding(24.dp)
+            .background(Brush.linearGradient(gradientColors), RoundedCornerShape(20.dp))
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(16.dp)

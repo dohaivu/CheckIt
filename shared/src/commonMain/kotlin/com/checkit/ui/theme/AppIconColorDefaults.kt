@@ -6,9 +6,9 @@ import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.automirrored.filled.ViewList
+import androidx.compose.material.icons.filled.AcUnit
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.AccountBalanceWallet
-import androidx.compose.material.icons.filled.AcUnit
 import androidx.compose.material.icons.filled.AllInclusive
 import androidx.compose.material.icons.filled.Apartment
 import androidx.compose.material.icons.filled.Architecture
@@ -32,11 +32,11 @@ import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.DataObject
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.DesktopWindows
 import androidx.compose.material.icons.filled.Diamond
 import androidx.compose.material.icons.filled.DirectionsBoat
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Diversity3
-import androidx.compose.material.icons.filled.DesktopWindows
 import androidx.compose.material.icons.filled.Eco
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Email
