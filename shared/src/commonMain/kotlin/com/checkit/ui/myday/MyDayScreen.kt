@@ -388,6 +388,7 @@ internal fun MyDayScreen(
             onDismiss = viewModel::dismissDayClose,
             onLeftoverAction = viewModel::setLeftoverAction,
             onWinNoteChange = viewModel::updateWinNote,
+            onRatingChange = viewModel::updateDayRating,
             onTomorrowGoalChange = viewModel::updateTomorrowGoal,
             onConfirm = viewModel::confirmDayClose
         )

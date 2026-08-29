@@ -166,6 +166,7 @@ class CompleteDayCloseUseCase(
                 dropItemIds = resolution.dropIds,
                 winNote = input.winNote,
                 tomorrowGoal = input.tomorrowGoal,
+                rating = input.rating,
                 doneCount = summary.doneCount,
                 plannedCount = summary.plannedCount,
                 doneMinutes = summary.doneMinutes,

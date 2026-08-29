@@ -98,7 +98,7 @@ internal fun HeroSummaryCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(
                 Brush.linearGradient(
                     colors = listOf(
@@ -108,7 +108,11 @@ internal fun HeroSummaryCard(
                     )
                 )
             )
-            .border(1.dp, Color.White.copy(alpha = 0.72f), RoundedCornerShape(20.dp))
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.12f),
+                shape = RoundedCornerShape(20.dp)
+            )
             .padding(20.dp)
     ) {
         Row(

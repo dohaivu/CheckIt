@@ -41,7 +41,8 @@ internal class DayCloseController(
                         summary = summary,
                         leftoverActions = actions,
                         winNote = record?.review.orEmpty(),
-                        tomorrowGoal = tomorrowRecord?.goal.orEmpty()
+                        tomorrowGoal = tomorrowRecord?.goal.orEmpty(),
+                        rating = record?.rating ?: 0f
                     ),
                     showSuggestions = false,
                     itemEditor = null
@@ -79,6 +80,14 @@ internal class DayCloseController(
         }
     }
 
+    fun updateRating(rating: Float) {
+        val clamped = rating.coerceIn(0f, 5f)
+        state.update { current ->
+            val review = current.dayClose ?: return@update current
+            current.copy(dayClose = review.copy(rating = clamped))
+        }
+    }
+
     fun confirm() {
         val current = state.uiState.value
         val review = current.dayClose ?: return
@@ -91,7 +100,8 @@ internal class DayCloseController(
                     date = review.summary.date,
                     leftoverActions = review.leftoverActions,
                     winNote = review.winNote,
-                    tomorrowGoal = review.tomorrowGoal
+                    tomorrowGoal = review.tomorrowGoal,
+                    rating = review.rating
                 )
             ).onSuccess { result ->
                 state.update { it.copy(dayClose = null, showCelebration = true) }

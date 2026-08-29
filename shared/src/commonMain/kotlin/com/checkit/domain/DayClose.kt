@@ -70,7 +70,8 @@ data class DayCloseConfirmInput(
     val date: LocalDate,
     val leftoverActions: Map<Long, LeftoverAction>,
     val winNote: String? = null,
-    val tomorrowGoal: String? = null
+    val tomorrowGoal: String? = null,
+    val rating: Float = 0f
 )
 
 data class DayCloseConfirmResult(

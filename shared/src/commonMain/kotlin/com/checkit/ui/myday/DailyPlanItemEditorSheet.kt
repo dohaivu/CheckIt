@@ -204,7 +204,7 @@ private fun DailyPlanItemSheetFooter(
         } else {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 if (state.source == DailyPlanItemSource.MyDayTask) {
                     if (state.status == DailyPlanItemStatus.Planned && state.startTimeMinutes != null) {
@@ -353,8 +353,8 @@ private fun DailyPlanItemFormContent(
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Normal
             ),
-            minLines = 5,
-            maxLines = 10,
+            minLines = 3,
+            maxLines = 5,
             placeholder = if (sourceLocked) null else "Add details",
             enabled = enabled,
             modifier = Modifier.fillMaxWidth(),
