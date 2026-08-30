@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">CheckIt!</string>
+    <string name="app_function_description">CheckIt là ứng dụng quản lý lịch và công việc. Cung cấp các chức năng để tạo nhiệm vụ, đánh dấu hoàn thành và thêm nhật ký.</string>
+    <string name="app_function_display_description">Cung cấp các chức năng quản lý nhiệm vụ và nhật ký cho các tác nhân AI.</string>
+</resources>
