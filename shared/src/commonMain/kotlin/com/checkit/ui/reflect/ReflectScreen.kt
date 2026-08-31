@@ -502,9 +502,7 @@ private fun GoalRow(
                 style = MaterialTheme.typography.bodySmall.copy(
                     color = MaterialTheme.colorScheme.onSurface,
                     lineHeight = 18.sp
-                ),
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+                )
             )
         }
 
