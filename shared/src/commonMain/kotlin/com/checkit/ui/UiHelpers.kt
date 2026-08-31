@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
+import com.checkit.domain.FocusPeriod
 import com.checkit.domain.MetricItem
 import com.checkit.domain.MetricUnit
 import com.checkit.domain.NoteItem
@@ -60,6 +61,7 @@ import com.checkit.ui.theme.AppIconColorDefaults.FallbackColor
 import com.checkit.ui.theme.toColor
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.number
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalIsoWeekDate
 
@@ -409,7 +411,13 @@ fun Period.periodDetail(date: LocalDate): String = when (this) {
     Period.Day -> "${date.month.localizedShortName().uppercase()} ${date.day}"
     Period.Week -> "W${date.toLocalIsoWeekDate().isoWeekNumber}"
     Period.Month -> date.month.localizedName().uppercase()
-    else -> ""
+    Period.Quarter -> {
+        val quarter = ((date.month.number - 1) / 3) + 1
+        "Q$quarter"
+    }
+    Period.Year -> "${date.year}"
 }
 @Composable
 fun PeriodGoal.periodDetail(): String = this.period.periodDetail(this.startDate)
+@Composable
+fun FocusPeriod.periodDetail(): String = this.period.periodDetail(this.anchorDate)

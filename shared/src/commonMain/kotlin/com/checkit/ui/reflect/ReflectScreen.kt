@@ -32,6 +32,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -70,7 +71,11 @@ import com.checkit.ui.components.icons.Target
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.localizedMonthTitle
 import com.checkit.ui.localizedShortMonthName
+import com.checkit.ui.periodDetail
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
+import kotlin.time.Duration.Companion.milliseconds
 
 private val ReflectPeriods = listOf(
     ReportPeriod.Daily,
@@ -86,6 +91,9 @@ internal fun ReflectScreen(
     viewModel: ReflectViewModel,
     modifier: Modifier = Modifier
 ) {
+    val scrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
@@ -123,7 +131,7 @@ internal fun ReflectScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(scrollState)
                     .padding(bottom = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -179,7 +187,13 @@ internal fun ReflectScreen(
                         GoalsSection(
                             goals = state.goalsForSelectedPeriod,
                             selectedPeriod = state.selectedPeriod,
-                            onOpenGoal = viewModel::openGoal
+                            onGoalClick = {
+                                coroutineScope.launch {
+                                    viewModel.goToGoal(it)
+                                    delay(100.milliseconds)
+                                    scrollState.animateScrollTo(0)
+                                }
+                            }
                         )
                     }
                 }
@@ -194,7 +208,7 @@ private fun ReviewCard(
     onOpenEditor: () -> Unit
 ) {
     val goal = state.focusGoal
-    val periodLabel = state.focus.period.label()
+    val periodLabel = state.focus.periodDetail()
     val color = state.focus.period.color()
     
     val surfaceBase = MaterialTheme.colorScheme.surfaceContainerLow
@@ -276,7 +290,7 @@ private fun ReviewCard(
 
             if (goal == null || goal.review.isBlank()) {
                 Text(
-                    text = stringResource(Res.string.reflect_review_empty, periodLabel),
+                    text = stringResource(Res.string.reflect_review_empty),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
@@ -321,7 +335,7 @@ private fun ReviewCard(
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Icon(
                             imageVector = AppIcons.Target,
@@ -330,7 +344,7 @@ private fun ReviewCard(
                             tint = MaterialTheme.colorScheme.secondary
                         )
                         Text(
-                            text = "${periodLabel.uppercase()} FOCUS",
+                            text = "GOAL",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.ExtraBold,
                             letterSpacing = 1.sp,
@@ -354,7 +368,7 @@ private fun ReviewCard(
 private fun GoalsSection(
     goals: List<PeriodGoal>,
     selectedPeriod: ReportPeriod,
-    onOpenGoal: (PeriodGoal) -> Unit
+    onGoalClick: (PeriodGoal) -> Unit
 ) {
     val periodLabel = selectedPeriod.toPeriod().label()
     Column(
@@ -408,7 +422,7 @@ private fun GoalsSection(
                     )
             ) {
                 goals.forEachIndexed { index, goal ->
-                    GoalRow(goal = goal, onClick = { onOpenGoal(goal) })
+                    GoalRow(goal = goal, onClick = { onGoalClick(goal) })
                     if (index < goals.lastIndex) {
                         HorizontalDivider(
                             modifier = Modifier.padding(horizontal = 16.dp),
@@ -480,7 +494,7 @@ private fun GoalRow(
                 )
             }
             Text(
-                text = goal.rangeLabel(),
+                text = goal.periodDetail(),
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f),

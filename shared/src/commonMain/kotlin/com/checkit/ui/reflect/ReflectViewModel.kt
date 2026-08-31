@@ -180,6 +180,14 @@ class ReflectViewModel(
         _uiState.update { it.copy(selectedPeriod = period) }
     }
 
+    fun goToGoal(goal: PeriodGoal) {
+        _uiState.update {
+            it.copy(
+                selectedPeriod = goal.period.toReportPeriod(),
+                selectedDate = goal.startDate
+            )
+        }
+    }
     fun openGoal(goal: PeriodGoal,
                  mode: ReflectGoalEditorMode = ReflectGoalEditorMode.GoalOnly) {
         _uiState.update {

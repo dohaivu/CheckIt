@@ -100,6 +100,7 @@ import com.checkit.ui.localizedShortMonthName
 import com.checkit.ui.localizedWeekdayName
 import com.checkit.ui.myday.DayLinearTimeline
 import com.checkit.ui.myday.MyDayAgenda
+import com.checkit.ui.periodDetail
 import com.checkit.ui.shortName
 import com.checkit.ui.tasks.views.ContentContainerAlpha
 import com.checkit.ui.toDurationLabel
@@ -570,7 +571,7 @@ private fun SelectedDateHeader(
                             if (goal.hasContent()) {
                                 PeriodGoalRow(
                                     icon = Icons.Default.Flag,
-                                    label = "DAY",
+                                    label = goal.periodDetail(),
                                     goal = goal,
                                     color = MaterialTheme.colorScheme.secondary
                                 )
@@ -580,7 +581,7 @@ private fun SelectedDateHeader(
                             if (goal.hasContent()) {
                                 PeriodGoalRow(
                                     icon = Icons.Default.DateRange,
-                                    label = "WEEK",
+                                    label = goal.periodDetail(),
                                     goal = goal,
                                     color = MaterialTheme.colorScheme.tertiary
                                 )
@@ -590,7 +591,7 @@ private fun SelectedDateHeader(
                             if (goal.hasContent()) {
                                 PeriodGoalRow(
                                     icon = Icons.Default.CalendarMonth,
-                                    label = "MONTH",
+                                    label = goal.periodDetail(),
                                     goal = goal,
                                     color = MaterialTheme.colorScheme.primary
                                 )
