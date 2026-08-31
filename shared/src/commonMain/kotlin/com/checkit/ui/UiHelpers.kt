@@ -35,6 +35,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -404,6 +405,28 @@ fun Period.color() = when (this) {
     Period.Week -> MaterialTheme.colorScheme.tertiary
     Period.Month -> MaterialTheme.colorScheme.primary
     else -> MaterialTheme.colorScheme.primary
+}
+
+@Composable
+fun Period.gradient(): Brush {
+    val color = color()
+    val surfaceBase = MaterialTheme.colorScheme.surfaceContainerLow
+    val periodContainer = when (this) {
+        Period.Day -> MaterialTheme.colorScheme.secondaryContainer
+        Period.Week -> MaterialTheme.colorScheme.tertiaryContainer
+        else -> MaterialTheme.colorScheme.primaryContainer
+    }
+    return remember(color, periodContainer, surfaceBase) {
+        Brush.linearGradient(
+            colors = listOf(
+                periodContainer.copy(alpha = 0.58f),
+                color.copy(alpha = 0.14f),
+                surfaceBase
+            ),
+            start = Offset.Zero,
+            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+        )
+    }
 }
 
 @Composable

@@ -63,7 +63,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -99,6 +98,7 @@ import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.TimelineItem
 import com.checkit.ui.TimelineItemType
 import com.checkit.ui.color
+import com.checkit.ui.gradient
 import com.checkit.ui.isOverdue
 import com.checkit.ui.periodDetail
 import com.checkit.ui.reflect.ReflectGoalEditorMode
@@ -461,23 +461,7 @@ private fun ReviewReminder(
     }
     val periodDetail = period.periodDetail(date)
     val color = period.color()
-    val surfaceBase = MaterialTheme.colorScheme.surfaceContainerLow
-    val periodContainer = when (period) {
-        Period.Day -> MaterialTheme.colorScheme.secondaryContainer
-        Period.Week -> MaterialTheme.colorScheme.tertiaryContainer
-        else -> MaterialTheme.colorScheme.primaryContainer
-    }
-    val gradient = remember(color, periodContainer, surfaceBase) {
-        Brush.linearGradient(
-            colors = listOf(
-                periodContainer.copy(alpha = 0.58f),
-                color.copy(alpha = 0.14f),
-                surfaceBase
-            ),
-            start = Offset.Zero,
-            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-        )
-    }
+    val gradient = period.gradient()
 
     Row(
         modifier = modifier
@@ -546,24 +530,7 @@ private fun GoalReminder(
     }
     val periodDetail = period.periodDetail(date)
     val color = period.color()
-
-    val surfaceBase = MaterialTheme.colorScheme.surfaceContainerLow
-    val periodContainer = when (period) {
-        Period.Day -> MaterialTheme.colorScheme.secondaryContainer
-        Period.Week -> MaterialTheme.colorScheme.tertiaryContainer
-        else -> MaterialTheme.colorScheme.primaryContainer
-    }
-    val gradient = remember(color, periodContainer, surfaceBase) {
-        Brush.linearGradient(
-            colors = listOf(
-                periodContainer.copy(alpha = 0.58f),
-                color.copy(alpha = 0.14f),
-                surfaceBase
-            ),
-            start = Offset.Zero,
-            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-        )
-    }
+    val gradient = period.gradient()
 
     Row(
         modifier = modifier

@@ -31,13 +31,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -60,6 +57,7 @@ import checkit.shared.generated.resources.tab_reflect
 import com.checkit.domain.PeriodGoal
 import com.checkit.domain.Period
 import com.checkit.ui.color
+import com.checkit.ui.gradient
 import com.checkit.ui.components.MetricChip
 import com.checkit.ui.components.RatingBar
 import com.checkit.ui.components.ReportPeriod
@@ -210,24 +208,7 @@ private fun ReviewCard(
     val goal = state.focusGoal
     val periodLabel = state.focus.periodDetail()
     val color = state.focus.period.color()
-    
-    val surfaceBase = MaterialTheme.colorScheme.surfaceContainerLow
-    val periodContainer = when (state.focus.period) {
-        Period.Day -> MaterialTheme.colorScheme.secondaryContainer
-        Period.Week -> MaterialTheme.colorScheme.tertiaryContainer
-        else -> MaterialTheme.colorScheme.primaryContainer
-    }
-    val gradient = remember(color, periodContainer, surfaceBase) {
-        Brush.linearGradient(
-            colors = listOf(
-                periodContainer.copy(alpha = 0.58f),
-                color.copy(alpha = 0.14f),
-                surfaceBase
-            ),
-            start = Offset.Zero,
-            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-        )
-    }
+    val gradient = state.focus.period.gradient()
 
     Box(
         modifier = Modifier
