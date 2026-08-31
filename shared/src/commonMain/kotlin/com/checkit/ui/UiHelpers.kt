@@ -61,6 +61,7 @@ import com.checkit.ui.theme.toColor
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.plus
+import kotlinx.datetime.toLocalIsoWeekDate
 
 fun Modifier.noRippleClickable(
     enabled: Boolean = true,
@@ -402,3 +403,13 @@ fun Period.color() = when (this) {
     Period.Month -> MaterialTheme.colorScheme.primary
     else -> MaterialTheme.colorScheme.primary
 }
+
+@Composable
+fun Period.periodDetail(date: LocalDate): String = when (this) {
+    Period.Day -> "${date.month.localizedShortName().uppercase()} ${date.day}"
+    Period.Week -> "W${date.toLocalIsoWeekDate().isoWeekNumber}"
+    Period.Month -> date.month.localizedName().uppercase()
+    else -> ""
+}
+@Composable
+fun PeriodGoal.periodDetail(): String = this.period.periodDetail(this.startDate)

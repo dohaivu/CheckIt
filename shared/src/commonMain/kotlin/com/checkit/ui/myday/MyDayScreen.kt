@@ -99,6 +99,7 @@ import com.checkit.ui.TimelineItem
 import com.checkit.ui.TimelineItemType
 import com.checkit.ui.color
 import com.checkit.ui.isOverdue
+import com.checkit.ui.periodDetail
 import com.checkit.ui.reflect.ReflectGoalEditorMode
 import com.checkit.ui.tasks.views.AgendaView
 import com.checkit.ui.tasks.views.DailyPlanAllDayCard
@@ -226,6 +227,7 @@ internal fun MyDayScreen(
                             PeriodBannerType.ReviewPending -> {
                                 ReviewReminder(
                                     period = period,
+                                    date = state.today,
                                     onClick = {
                                         if (period == Period.Day) {
                                             viewModel.openDayClose()
@@ -239,6 +241,7 @@ internal fun MyDayScreen(
                             PeriodBannerType.MissingGoal -> {
                                 GoalReminder(
                                     period = period,
+                                    date = state.today,
                                     onClick = {
                                         onOpenNewGoalEditor(goal, state.today, period, ReflectGoalEditorMode.GoalOnly)
                                     }
@@ -249,8 +252,8 @@ internal fun MyDayScreen(
                                 if (period == Period.Day) {
                                     DayGoalBanner(
                                         goal = goal!!,
-                                        weekGoal = if (weekBannerType == PeriodBannerType.ActiveGoal) weekGoal else null,
-                                        monthGoal = if (monthBannerType == PeriodBannerType.ActiveGoal) monthGoal else null,
+                                        weekGoal = weekGoal,
+                                        monthGoal =monthGoal,
                                         onLongClick = {
                                             onOpenGoalEditor(goal, ReflectGoalEditorMode.GoalOnly)
                                         }
@@ -445,6 +448,7 @@ private fun CelebrationOverlay(visible: Boolean) {
 @Composable
 private fun ReviewReminder(
     period: Period,
+    date: LocalDate = today(),
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -454,6 +458,7 @@ private fun ReviewReminder(
         Period.Month -> "this month"
         else -> period.name.lowercase()
     }
+    val periodDetail = period.periodDetail(date)
     val gradient = Brush.horizontalGradient(
         colors = listOf(
             MaterialTheme.colorScheme.primary,
@@ -491,7 +496,7 @@ private fun ReviewReminder(
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "Time to Reflect".uppercase(),
+                text = if (periodDetail.isNotBlank()) "Time to Reflect · $periodDetail".uppercase() else "Time to Reflect".uppercase(),
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Black,
                 color = MaterialTheme.colorScheme.primary,
@@ -516,6 +521,7 @@ private fun ReviewReminder(
 @Composable
 private fun GoalReminder(
     period: Period,
+    date: LocalDate = today(),
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -525,6 +531,7 @@ private fun GoalReminder(
         Period.Month -> "this month's"
         else -> period.name.lowercase()
     }
+    val periodDetail = period.periodDetail(date)
     val color = period.color()
 
     Row(
@@ -558,7 +565,7 @@ private fun GoalReminder(
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "Missing Goal".uppercase(),
+                text = if (periodDetail.isNotBlank()) "Missing Goal · $periodDetail".uppercase() else "Missing Goal".uppercase(),
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Black,
                 color = color,
@@ -637,7 +644,7 @@ private fun DayGoalBanner(
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Text(
-                        text = "${goal.period.name.uppercase()} FOCUS",
+                        text = "${goal.periodDetail()} FOCUS",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.ExtraBold,
                         color = color,
@@ -697,7 +704,7 @@ private fun DayGoalBanner(
                             if (it.goal?.isNotBlank() == true || it.metrics.isNotEmpty()) {
                                 PeriodGoalRow(
                                     icon = Icons.Default.DateRange,
-                                    label = "WEEK",
+                                    label = it.periodDetail(),
                                     goal = it,
                                     color = MaterialTheme.colorScheme.tertiary
                                 )
@@ -707,7 +714,7 @@ private fun DayGoalBanner(
                             if (it.goal?.isNotBlank() == true || it.metrics.isNotEmpty()) {
                                 PeriodGoalRow(
                                     icon = Icons.Default.CalendarMonth,
-                                    label = "MONTH",
+                                    label = it.periodDetail(),
                                     goal = it,
                                     color = MaterialTheme.colorScheme.primary
                                 )
