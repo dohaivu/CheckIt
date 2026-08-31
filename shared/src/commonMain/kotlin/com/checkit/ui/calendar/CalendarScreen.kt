@@ -110,6 +110,7 @@ import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
+import kotlinx.datetime.toLocalIsoWeekDate
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -924,6 +925,7 @@ private fun LocalDate.localizedWeekRangeTitle(): String {
     val dates = remember(this) { weekDates(this) }
     val start = dates.first()
     val end = dates.last()
+    val weekLabel = start.toLocalIsoWeekDate().isoWeekNumber
     val startLabel = "${start.localizedShortMonthName()} ${start.day}"
     val endLabel = if (start.month == end.month && start.year == end.year) {
         "${end.localizedShortMonthName()} ${end.day}"
@@ -932,7 +934,7 @@ private fun LocalDate.localizedWeekRangeTitle(): String {
     } else {
         "${end.localizedShortMonthName()} ${end.day}, ${end.year}"
     }
-    return "$startLabel - $endLabel"
+    return "W$weekLabel $startLabel - $endLabel"
 }
 
 data class CalendarCellColors(

@@ -477,20 +477,20 @@ private fun ReviewReminder(
                 shape = RoundedCornerShape(12.dp)
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 12.dp),
+            .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(36.dp)
-                .background(gradient, RoundedCornerShape(10.dp)),
+                .size(32.dp)
+                .background(gradient, RoundedCornerShape(8.dp)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.Default.RateReview,
                 contentDescription = null,
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(18.dp),
                 tint = MaterialTheme.colorScheme.onPrimary
             )
         }
@@ -503,7 +503,7 @@ private fun ReviewReminder(
                 letterSpacing = 1.sp
             )
             Text(
-                text = "How was $periodLabel? Jot down your wins and lessons.",
+                text = "How was $periodLabel?",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Medium
