@@ -121,7 +121,7 @@ internal fun MyDayScreen(
     onNoteClick: (NoteItem) -> Unit,
     onNoteTimeChange: (NoteItem, Int) -> Unit,
     onCreateTask: (addToMyDayOnSave: Boolean) -> Unit,
-    onOpenNewGoalEditor: (LocalDate, Period, ReflectGoalEditorMode) -> Unit,
+    onOpenNewGoalEditor: (PeriodGoal?, LocalDate, Period, ReflectGoalEditorMode) -> Unit,
     onOpenGoalEditor: (PeriodGoal, ReflectGoalEditorMode) -> Unit,
     onNewTagClick: () -> Unit = {},
     modifier: Modifier = Modifier
@@ -230,7 +230,7 @@ internal fun MyDayScreen(
                                         if (period == Period.Day) {
                                             viewModel.openDayClose()
                                         } else {
-                                            onOpenNewGoalEditor(state.today, period, ReflectGoalEditorMode.Full)
+                                            onOpenNewGoalEditor(goal, state.today, period, ReflectGoalEditorMode.Full)
                                         }
                                     }
                                 )
@@ -240,7 +240,7 @@ internal fun MyDayScreen(
                                 GoalReminder(
                                     period = period,
                                     onClick = {
-                                        onOpenNewGoalEditor(state.today, period, ReflectGoalEditorMode.GoalOnly)
+                                        onOpenNewGoalEditor(goal, state.today, period, ReflectGoalEditorMode.GoalOnly)
                                     }
                                 )
                             }
