@@ -63,6 +63,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -459,21 +460,33 @@ private fun ReviewReminder(
         else -> period.name.lowercase()
     }
     val periodDetail = period.periodDetail(date)
-    val gradient = Brush.horizontalGradient(
-        colors = listOf(
-            MaterialTheme.colorScheme.primary,
-            MaterialTheme.colorScheme.tertiary
+    val color = period.color()
+    val surfaceBase = MaterialTheme.colorScheme.surfaceContainerLow
+    val periodContainer = when (period) {
+        Period.Day -> MaterialTheme.colorScheme.secondaryContainer
+        Period.Week -> MaterialTheme.colorScheme.tertiaryContainer
+        else -> MaterialTheme.colorScheme.primaryContainer
+    }
+    val gradient = remember(color, periodContainer, surfaceBase) {
+        Brush.linearGradient(
+            colors = listOf(
+                periodContainer.copy(alpha = 0.58f),
+                color.copy(alpha = 0.14f),
+                surfaceBase
+            ),
+            start = Offset.Zero,
+            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
         )
-    )
+    }
 
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surface)
+            .background(gradient)
             .border(
                 width = 1.5.dp,
-                brush = gradient,
+                color = color.copy(alpha = 0.12f),
                 shape = RoundedCornerShape(12.dp)
             )
             .clickable(onClick = onClick)
@@ -491,7 +504,7 @@ private fun ReviewReminder(
                 imageVector = Icons.Default.RateReview,
                 contentDescription = null,
                 modifier = Modifier.size(18.dp),
-                tint = MaterialTheme.colorScheme.onPrimary
+                tint = color
             )
         }
         Column(modifier = Modifier.weight(1f)) {
@@ -499,7 +512,7 @@ private fun ReviewReminder(
                 text = if (periodDetail.isNotBlank()) "Time to Reflect · $periodDetail".uppercase() else "Time to Reflect".uppercase(),
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Black,
-                color = MaterialTheme.colorScheme.primary,
+                color = color,
                 letterSpacing = 1.sp
             )
             Text(
@@ -534,11 +547,29 @@ private fun GoalReminder(
     val periodDetail = period.periodDetail(date)
     val color = period.color()
 
+    val surfaceBase = MaterialTheme.colorScheme.surfaceContainerLow
+    val periodContainer = when (period) {
+        Period.Day -> MaterialTheme.colorScheme.secondaryContainer
+        Period.Week -> MaterialTheme.colorScheme.tertiaryContainer
+        else -> MaterialTheme.colorScheme.primaryContainer
+    }
+    val gradient = remember(color, periodContainer, surfaceBase) {
+        Brush.linearGradient(
+            colors = listOf(
+                periodContainer.copy(alpha = 0.58f),
+                color.copy(alpha = 0.14f),
+                surfaceBase
+            ),
+            start = Offset.Zero,
+            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+        )
+    }
+
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(color.copy(alpha = 0.08f))
+            .background(gradient)
             .border(
                 width = 1.dp,
                 color = color.copy(alpha = 0.25f),
@@ -552,7 +583,7 @@ private fun GoalReminder(
         Box(
             modifier = Modifier
                 .size(32.dp)
-                .background(MaterialTheme.colorScheme.error.copy(alpha = 0.7f), RoundedCornerShape(8.dp)),
+                .background(gradient, RoundedCornerShape(8.dp)),
 
         contentAlignment = Alignment.Center
         ) {
@@ -560,7 +591,7 @@ private fun GoalReminder(
                 imageVector = Icons.Default.Warning,
                 contentDescription = null,
                 modifier = Modifier.size(18.dp),
-                tint = MaterialTheme.colorScheme.onError
+                tint = color
             )
         }
         Column(modifier = Modifier.weight(1f)) {
