@@ -20,22 +20,44 @@ internal class TaskVisibleItemsBuilder(
         today: LocalDate
     ): TaskVisibleItemsState {
         val selectedFilter = board.filters.firstOrNull { it.id == options.selectedFilterId }
+        val isTrashedFilter = selectedFilter?.includeTrashed == true
         val baseItems = when {
             selection.selectedTagId != null -> {
                 val tagId = selection.selectedTagId
-                SelectedTaskItems(
-                    tasks = board.tasks.filter { task -> !task.isTrashed && task.tags.any { it.id == tagId } },
-                    notes = board.notes.filter { note -> !note.isTrashed && note.tags.any { it.id == tagId } }
-                )
+                if (isTrashedFilter) {
+                    SelectedTaskItems(
+                        tasks = board.tasks.filter { task -> task.isTrashed && task.tags.any { it.id == tagId } },
+                        notes = board.notes.filter { note -> note.isTrashed && note.tags.any { it.id == tagId } }
+                    )
+                } else {
+                    SelectedTaskItems(
+                        tasks = board.tasks.filter { task -> !task.isTrashed && task.tags.any { it.id == tagId } },
+                        notes = board.notes.filter { note -> !note.isTrashed && note.tags.any { it.id == tagId } }
+                    )
+                }
             }
             selection.selectedListId != null -> {
-                selectTaskBoardItems(board, TaskBoardSelection.ListSelection(selection.selectedListId), today)
-                    .let { SelectedTaskItems(tasks = it.tasks, notes = it.notes) }
+                if (isTrashedFilter) {
+                    SelectedTaskItems(
+                        tasks = board.tasks.filter { task -> task.isTrashed && task.list?.id == selection.selectedListId },
+                        notes = board.notes.filter { note -> note.isTrashed && note.list?.id == selection.selectedListId }
+                    )
+                } else {
+                    selectTaskBoardItems(board, TaskBoardSelection.ListSelection(selection.selectedListId), today)
+                        .let { SelectedTaskItems(tasks = it.tasks, notes = it.notes) }
+                }
             }
-            else -> SelectedTaskItems(
-                tasks = board.tasks.filter { task -> !task.isTrashed },
-                notes = board.notes.filter { note -> !note.isTrashed }
-            )
+            else -> if (isTrashedFilter) {
+                SelectedTaskItems(
+                    tasks = board.tasks.filter { task -> task.isTrashed },
+                    notes = board.notes.filter { note -> note.isTrashed }
+                )
+            } else {
+                SelectedTaskItems(
+                    tasks = board.tasks.filter { task -> !task.isTrashed },
+                    notes = board.notes.filter { note -> !note.isTrashed }
+                )
+            }
         }
         val tagFilteredItems = if (options.selectedTagIds.isNotEmpty()) {
             SelectedTaskItems(

@@ -176,6 +176,7 @@ data class DayCloseUiState(
     val leftoverActions: Map<Long, LeftoverAction> = emptyMap(),
     val winNote: String = "",
     val tomorrowGoal: String = "",
+    val rating: Float = 0f,
     val isSubmitting: Boolean = false
 ) {
     fun actionFor(item: DailyPlanItem): LeftoverAction =

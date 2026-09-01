@@ -82,6 +82,7 @@ data class ReflectUiState(
                 it.period == selectedPeriod.childPeriod() &&
                     it.startEpochDays in startEpoch until endEpoch
             }
+            .filter { it.review.isNotBlank() || !it.goal.isNullOrBlank() }
             .sortedWith(
                 compareByDescending<PeriodGoal> { it.startEpochDays }
                     .thenByDescending { it.id }

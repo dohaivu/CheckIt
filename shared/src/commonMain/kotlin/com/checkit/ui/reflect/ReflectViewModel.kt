@@ -180,6 +180,14 @@ class ReflectViewModel(
         _uiState.update { it.copy(selectedPeriod = period) }
     }
 
+    fun goToGoal(goal: PeriodGoal) {
+        _uiState.update {
+            it.copy(
+                selectedPeriod = goal.period.toReportPeriod(),
+                selectedDate = goal.startDate
+            )
+        }
+    }
     fun openGoal(goal: PeriodGoal,
                  mode: ReflectGoalEditorMode = ReflectGoalEditorMode.GoalOnly) {
         _uiState.update {
@@ -202,7 +210,8 @@ class ReflectViewModel(
         )
     }
 
-    fun openNewGoalEditor(
+    fun openGoalEditor(
+        goal: PeriodGoal?,
         date: LocalDate,
         period: com.checkit.domain.Period,
         mode: ReflectGoalEditorMode = ReflectGoalEditorMode.GoalOnly
@@ -211,10 +220,11 @@ class ReflectViewModel(
         _editor.value = ReflectGoalEditorState(
             focus = focus,
             mode = mode,
-            review = "",
-            goal = "",
-            rating = 0f,
-            metrics = emptyList()
+            existing = goal,
+            review = goal?.review.orEmpty(),
+            goal = goal?.goal.orEmpty(),
+            rating = goal?.rating ?:0f,
+            metrics = goal?.metrics ?: emptyList()
         )
     }
 

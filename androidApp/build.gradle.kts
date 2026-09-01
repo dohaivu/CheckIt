@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.google.services)
     alias(libs.plugins.firebase.crashlytics)
     alias(libs.plugins.androidgitversion)
+    alias(libs.plugins.ksp)
 }
 androidGitVersion {
     baseCode = 1
@@ -88,6 +89,7 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.process)
     implementation(libs.kotlinx.coroutine.android)
+    implementation(libs.kotlinx.datetime)
 
     implementation(libs.compose.runtime)
     implementation(libs.compose.foundation)
@@ -103,6 +105,9 @@ dependencies {
     implementation(libs.koin.core.coroutines)
     implementation(libs.koin.android)
     implementation(libs.koin.android.workmanager)
+
+    implementation(libs.androidx.appfunctions)
+    ksp(libs.androidx.appfunctions.compiler)
 
     // Android instrumented UI tests
 //    androidTestImplementation(platform(libs.androidx.compose.bom))

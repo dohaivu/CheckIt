@@ -111,6 +111,7 @@ class MyDayViewModel(
     fun dismissDayClose() = dayClose.dismiss()
     fun setLeftoverAction(itemId: Long, action: LeftoverAction) = dayClose.setLeftoverAction(itemId, action)
     fun updateWinNote(note: String) = dayClose.updateWinNote(note)
+    fun updateDayRating(rating: Float) = dayClose.updateRating(rating)
     fun updateTomorrowGoal(goal: String) = dayClose.updateTomorrowGoal(goal)
     fun confirmDayClose() = dayClose.confirm()
 

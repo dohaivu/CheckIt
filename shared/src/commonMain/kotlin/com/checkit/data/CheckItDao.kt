@@ -728,6 +728,7 @@ interface CheckItDao {
         dropItemIds: List<Long>,
         winNote: String?,
         tomorrowGoal: String?,
+        rating: Float = 0f,
         doneCount: Int,
         plannedCount: Int,
         doneMinutes: Int,
@@ -786,8 +787,8 @@ interface CheckItDao {
             markDailyPlanItemsHandled(listOf(source.id), nowMillis)
         }
 
-        // Merge the win note into any existing record so its goal text and
-        // metrics are preserved.
+        // Merge the win note and rating into any existing record so its goal
+        // text and metrics are preserved.
         val existingToday = periodGoalFor(Period.Day.name, dateEpochDays)
         upsertPeriodGoal(
             (existingToday ?: PeriodGoalEntity(
@@ -796,6 +797,7 @@ interface CheckItDao {
                 endEpochDays = dateEpochDays + 1
             )).copy(
                 review = winNote?.trim().orEmpty(),
+                rating = rating.coerceIn(0f, 5f),
                 completedAtMillis = nowMillis,
                 editedAtMillis = nowMillis
             )

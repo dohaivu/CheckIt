@@ -98,7 +98,9 @@ import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.TimelineItem
 import com.checkit.ui.TimelineItemType
 import com.checkit.ui.color
+import com.checkit.ui.gradient
 import com.checkit.ui.isOverdue
+import com.checkit.ui.periodDetail
 import com.checkit.ui.reflect.ReflectGoalEditorMode
 import com.checkit.ui.tasks.views.AgendaView
 import com.checkit.ui.tasks.views.DailyPlanAllDayCard
@@ -121,7 +123,7 @@ internal fun MyDayScreen(
     onNoteClick: (NoteItem) -> Unit,
     onNoteTimeChange: (NoteItem, Int) -> Unit,
     onCreateTask: (addToMyDayOnSave: Boolean) -> Unit,
-    onOpenNewGoalEditor: (LocalDate, Period, ReflectGoalEditorMode) -> Unit,
+    onOpenNewGoalEditor: (PeriodGoal?, LocalDate, Period, ReflectGoalEditorMode) -> Unit,
     onOpenGoalEditor: (PeriodGoal, ReflectGoalEditorMode) -> Unit,
     onNewTagClick: () -> Unit = {},
     modifier: Modifier = Modifier
@@ -226,11 +228,12 @@ internal fun MyDayScreen(
                             PeriodBannerType.ReviewPending -> {
                                 ReviewReminder(
                                     period = period,
+                                    date = state.today,
                                     onClick = {
                                         if (period == Period.Day) {
                                             viewModel.openDayClose()
                                         } else {
-                                            onOpenNewGoalEditor(state.today, period, ReflectGoalEditorMode.Full)
+                                            onOpenNewGoalEditor(goal, state.today, period, ReflectGoalEditorMode.Full)
                                         }
                                     }
                                 )
@@ -239,8 +242,9 @@ internal fun MyDayScreen(
                             PeriodBannerType.MissingGoal -> {
                                 GoalReminder(
                                     period = period,
+                                    date = state.today,
                                     onClick = {
-                                        onOpenNewGoalEditor(state.today, period, ReflectGoalEditorMode.GoalOnly)
+                                        onOpenNewGoalEditor(goal, state.today, period, ReflectGoalEditorMode.GoalOnly)
                                     }
                                 )
                             }
@@ -249,8 +253,8 @@ internal fun MyDayScreen(
                                 if (period == Period.Day) {
                                     DayGoalBanner(
                                         goal = goal!!,
-                                        weekGoal = if (weekBannerType == PeriodBannerType.ActiveGoal) weekGoal else null,
-                                        monthGoal = if (monthBannerType == PeriodBannerType.ActiveGoal) monthGoal else null,
+                                        weekGoal = weekGoal,
+                                        monthGoal =monthGoal,
                                         onLongClick = {
                                             onOpenGoalEditor(goal, ReflectGoalEditorMode.GoalOnly)
                                         }
@@ -388,6 +392,7 @@ internal fun MyDayScreen(
             onDismiss = viewModel::dismissDayClose,
             onLeftoverAction = viewModel::setLeftoverAction,
             onWinNoteChange = viewModel::updateWinNote,
+            onRatingChange = viewModel::updateDayRating,
             onTomorrowGoalChange = viewModel::updateTomorrowGoal,
             onConfirm = viewModel::confirmDayClose
         )
@@ -444,6 +449,7 @@ private fun CelebrationOverlay(visible: Boolean) {
 @Composable
 private fun ReviewReminder(
     period: Period,
+    date: LocalDate = today(),
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -453,51 +459,48 @@ private fun ReviewReminder(
         Period.Month -> "this month"
         else -> period.name.lowercase()
     }
-    val gradient = Brush.horizontalGradient(
-        colors = listOf(
-            MaterialTheme.colorScheme.primary,
-            MaterialTheme.colorScheme.tertiary
-        )
-    )
+    val periodDetail = period.periodDetail(date)
+    val color = period.color()
+    val gradient = period.gradient()
 
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surface)
+            .background(gradient)
             .border(
                 width = 1.5.dp,
-                brush = gradient,
+                color = color.copy(alpha = 0.12f),
                 shape = RoundedCornerShape(12.dp)
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 12.dp),
+            .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(36.dp)
-                .background(gradient, RoundedCornerShape(10.dp)),
+                .size(32.dp)
+                .background(gradient, RoundedCornerShape(8.dp)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.Default.RateReview,
                 contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = MaterialTheme.colorScheme.onPrimary
+                modifier = Modifier.size(18.dp),
+                tint = color
             )
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "Time to Reflect".uppercase(),
+                text = if (periodDetail.isNotBlank()) "Time to Reflect · $periodDetail".uppercase() else "Time to Reflect".uppercase(),
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Black,
-                color = MaterialTheme.colorScheme.primary,
+                color = color,
                 letterSpacing = 1.sp
             )
             Text(
-                text = "How was $periodLabel? Jot down your wins and lessons.",
+                text = "How was $periodLabel?",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Medium
@@ -515,6 +518,7 @@ private fun ReviewReminder(
 @Composable
 private fun GoalReminder(
     period: Period,
+    date: LocalDate = today(),
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -524,13 +528,15 @@ private fun GoalReminder(
         Period.Month -> "this month's"
         else -> period.name.lowercase()
     }
+    val periodDetail = period.periodDetail(date)
     val color = period.color()
+    val gradient = period.gradient()
 
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(color.copy(alpha = 0.08f))
+            .background(gradient)
             .border(
                 width = 1.dp,
                 color = color.copy(alpha = 0.25f),
@@ -544,7 +550,7 @@ private fun GoalReminder(
         Box(
             modifier = Modifier
                 .size(32.dp)
-                .background(MaterialTheme.colorScheme.error.copy(alpha = 0.7f), RoundedCornerShape(8.dp)),
+                .background(gradient, RoundedCornerShape(8.dp)),
 
         contentAlignment = Alignment.Center
         ) {
@@ -552,12 +558,12 @@ private fun GoalReminder(
                 imageVector = Icons.Default.Warning,
                 contentDescription = null,
                 modifier = Modifier.size(18.dp),
-                tint = MaterialTheme.colorScheme.onError
+                tint = color
             )
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "Missing Goal".uppercase(),
+                text = if (periodDetail.isNotBlank()) "Missing Goal · $periodDetail".uppercase() else "Missing Goal".uppercase(),
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Black,
                 color = color,
@@ -636,7 +642,7 @@ private fun DayGoalBanner(
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Text(
-                        text = "${goal.period.name.uppercase()} FOCUS",
+                        text = "${goal.periodDetail()} FOCUS",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.ExtraBold,
                         color = color,
@@ -696,7 +702,7 @@ private fun DayGoalBanner(
                             if (it.goal?.isNotBlank() == true || it.metrics.isNotEmpty()) {
                                 PeriodGoalRow(
                                     icon = Icons.Default.DateRange,
-                                    label = "WEEK",
+                                    label = it.periodDetail(),
                                     goal = it,
                                     color = MaterialTheme.colorScheme.tertiary
                                 )
@@ -706,7 +712,7 @@ private fun DayGoalBanner(
                             if (it.goal?.isNotBlank() == true || it.metrics.isNotEmpty()) {
                                 PeriodGoalRow(
                                     icon = Icons.Default.CalendarMonth,
-                                    label = "MONTH",
+                                    label = it.periodDetail(),
                                     goal = it,
                                     color = MaterialTheme.colorScheme.primary
                                 )

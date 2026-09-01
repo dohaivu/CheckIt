@@ -299,8 +299,8 @@ fun CheckItApp(
                                                 viewModels.task.openNewTask(today(), addToMyDayOnSave)
                                             },
                                             onNewTagClick = viewModels.tag::openNewTag,
-                                            onOpenNewGoalEditor = { date, period, mode ->
-                                                viewModels.reflect.openNewGoalEditor(date, period, mode)
+                                            onOpenNewGoalEditor = { goal, date, period, mode ->
+                                                viewModels.reflect.openGoalEditor(goal, date, period, mode)
                                             },
                                             onOpenGoalEditor = { goal, mode ->
                                                 viewModels.reflect.openGoal(goal, mode)

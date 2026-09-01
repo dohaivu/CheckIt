@@ -694,6 +694,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         dropItemIds: List<Long>,
         winNote: String?,
         tomorrowGoal: String?,
+        rating: Float,
         doneCount: Int,
         plannedCount: Int,
         doneMinutes: Int,
@@ -727,8 +728,8 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
             if (newId != null) carriedCount++ else skippedCount++
         }
 
-        // Merge the win note into any existing record so its goal text and
-        // metrics are preserved, mirroring CheckItDao.
+        // Merge the win note and rating into any existing record so its goal
+        // text and metrics are preserved, mirroring CheckItDao.
         val existingToday = periodGoalFor(Period.Day, date)
         savePeriodGoal(
             (existingToday ?: PeriodGoal(
@@ -737,6 +738,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
                 endEpochDays = date.toEpochDays().toInt() + 1
             )).copy(
                 review = winNote?.trim().orEmpty(),
+                rating = rating.coerceIn(0f, 5f),
                 completedAtMillis = nowMillis,
                 editedAtMillis = nowMillis
             )

@@ -3,4 +3,6 @@
     <string name="widget_agenda_description">Shows Agenda</string>
     <string name="shortcut_new_task_short_label">New task</string>
     <string name="shortcut_new_task_long_label">Create new task</string>
+    <string name="app_function_description">CheckIt is a calendar and task management app. Exposes functions to create tasks, mark them as complete, and add journal entries.</string>
+    <string name="app_function_display_description">Exposes task and journal functions to AI agents.</string>
 </resources>

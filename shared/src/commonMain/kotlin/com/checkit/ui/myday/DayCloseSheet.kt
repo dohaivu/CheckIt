@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -55,6 +56,7 @@ import com.checkit.domain.LeftoverAction
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.MarkdownVisualTransformation
+import com.checkit.ui.components.RatingBar
 import com.checkit.ui.isOverdue
 import com.checkit.ui.toDurationLabel
 import com.checkit.ui.tasks.views.DailyPlanTimelineCard
@@ -69,6 +71,7 @@ internal fun DayCloseSheet(
     onDismiss: () -> Unit,
     onLeftoverAction: (Long, LeftoverAction) -> Unit,
     onWinNoteChange: (String) -> Unit,
+    onRatingChange: (Float) -> Unit,
     onTomorrowGoalChange: (String) -> Unit,
     onConfirm: () -> Unit
 ) {
@@ -108,7 +111,9 @@ internal fun DayCloseSheet(
                 item {
                     ReflectionSection(
                         value = state.winNote,
+                        rating = state.rating,
                         onValueChange = onWinNoteChange,
+                        onRatingChange = onRatingChange,
                         enabled = !state.isSubmitting
                     )
                 }
@@ -177,18 +182,34 @@ internal fun DayCloseSheet(
 @Composable
 private fun ReflectionSection(
     value: String,
+    rating: Float,
     onValueChange: (String) -> Unit,
+    onRatingChange: (Float) -> Unit,
     enabled: Boolean
 ) {
     val prompt = remember { WinNotePrompts.random() }
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(
-            text = stringResource(Res.string.day_close_win_note_label),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Black,
-            color = MaterialTheme.colorScheme.primary
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = stringResource(Res.string.day_close_win_note_label),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Black,
+                color = MaterialTheme.colorScheme.primary
+            )
+            RatingBar(
+                rating = rating,
+                onRatingChange = onRatingChange,
+                enabled = enabled,
+                modifier = Modifier
+                    .width(120.dp)
+                    .height(32.dp)
+            )
+        }
         Text(
             text = "Tip: $prompt",
             style = MaterialTheme.typography.bodySmall,

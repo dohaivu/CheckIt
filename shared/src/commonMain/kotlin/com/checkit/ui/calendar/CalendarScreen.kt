@@ -100,6 +100,7 @@ import com.checkit.ui.localizedShortMonthName
 import com.checkit.ui.localizedWeekdayName
 import com.checkit.ui.myday.DayLinearTimeline
 import com.checkit.ui.myday.MyDayAgenda
+import com.checkit.ui.periodDetail
 import com.checkit.ui.shortName
 import com.checkit.ui.tasks.views.ContentContainerAlpha
 import com.checkit.ui.toDurationLabel
@@ -109,6 +110,7 @@ import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
+import kotlinx.datetime.toLocalIsoWeekDate
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -570,7 +572,7 @@ private fun SelectedDateHeader(
                             if (goal.hasContent()) {
                                 PeriodGoalRow(
                                     icon = Icons.Default.Flag,
-                                    label = "DAY",
+                                    label = goal.periodDetail(),
                                     goal = goal,
                                     color = MaterialTheme.colorScheme.secondary
                                 )
@@ -580,7 +582,7 @@ private fun SelectedDateHeader(
                             if (goal.hasContent()) {
                                 PeriodGoalRow(
                                     icon = Icons.Default.DateRange,
-                                    label = "WEEK",
+                                    label = goal.periodDetail(),
                                     goal = goal,
                                     color = MaterialTheme.colorScheme.tertiary
                                 )
@@ -590,7 +592,7 @@ private fun SelectedDateHeader(
                             if (goal.hasContent()) {
                                 PeriodGoalRow(
                                     icon = Icons.Default.CalendarMonth,
-                                    label = "MONTH",
+                                    label = goal.periodDetail(),
                                     goal = goal,
                                     color = MaterialTheme.colorScheme.primary
                                 )
@@ -923,6 +925,7 @@ private fun LocalDate.localizedWeekRangeTitle(): String {
     val dates = remember(this) { weekDates(this) }
     val start = dates.first()
     val end = dates.last()
+    val weekLabel = start.toLocalIsoWeekDate().isoWeekNumber
     val startLabel = "${start.localizedShortMonthName()} ${start.day}"
     val endLabel = if (start.month == end.month && start.year == end.year) {
         "${end.localizedShortMonthName()} ${end.day}"
@@ -931,7 +934,7 @@ private fun LocalDate.localizedWeekRangeTitle(): String {
     } else {
         "${end.localizedShortMonthName()} ${end.day}, ${end.year}"
     }
-    return "$startLabel - $endLabel"
+    return "W$weekLabel $startLabel - $endLabel"
 }
 
 data class CalendarCellColors(
