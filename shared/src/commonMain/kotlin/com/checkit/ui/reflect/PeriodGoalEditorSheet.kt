@@ -60,6 +60,7 @@ import com.checkit.ui.components.MarkdownVisualTransformation
 import com.checkit.ui.components.icons.AppIcons
 import com.checkit.ui.components.icons.Target
 import com.checkit.ui.displayName
+import com.checkit.ui.periodDetail
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -73,7 +74,7 @@ internal fun PeriodGoalEditorSheet(
     onSave: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val periodLabel = editor.focus.period.label()
+    val periodLabel = editor.focus.periodDetail()
     AppEditorBottomSheet(
         onDismiss = onDismiss,
         sheetGesturesEnabled = false,
@@ -102,7 +103,7 @@ internal fun PeriodGoalEditorSheet(
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = if (editor.mode == ReflectGoalEditorMode.GoalOnly) {
-                            "${periodLabel.uppercase()} FOCUS"
+                            "${periodLabel.uppercase()} GOAL"
                         } else {
                             stringResource(Res.string.reflect_review_card_title, periodLabel).uppercase()
                         },
