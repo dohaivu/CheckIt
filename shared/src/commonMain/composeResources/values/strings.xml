@@ -119,7 +119,7 @@
     <string name="day_close_leftovers_empty">Nothing left planned — nice work.</string>
     <string name="day_close_action_done">Done</string>
     <string name="day_close_action_carry">Tomorrow</string>
-    <string name="day_close_action_drop">Leave</string>
+    <string name="day_close_action_drop">Drop</string>
     <string name="day_close_win_note_label">How did today go?</string>
     <string name="day_close_win_note_placeholder">What went well? What drained you?</string>
     <string name="day_close_finish">Finish</string>

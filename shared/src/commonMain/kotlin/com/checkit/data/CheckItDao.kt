@@ -750,7 +750,7 @@ interface CheckItDao {
         }
         updateDailyPlanItemsStatus(markDoneItemIds, DailyPlanItemStatus.Done.name, nowMillis)
         markDailyPlanItemsHandled(markDoneItemIds, nowMillis)
-        markDailyPlanItemsHandled(dropItemIds, nowMillis)
+        deleteDailyPlanItems(dropItemIds)
 
         var carriedCount = 0
         var skippedCount = 0
@@ -924,6 +924,9 @@ interface CheckItDao {
 
     @Query("DELETE FROM daily_plan_items WHERE id = :itemId")
     suspend fun deleteDailyPlanItem(itemId: Long)
+
+    @Query("DELETE FROM daily_plan_items WHERE id IN (:itemIds)")
+    suspend fun deleteDailyPlanItems(itemIds: List<Long>)
 
     @Query(
         """
