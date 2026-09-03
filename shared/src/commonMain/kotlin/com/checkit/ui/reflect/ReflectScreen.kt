@@ -151,9 +151,6 @@ internal fun ReflectScreen(
                         val digest = state.digestReport
                         HeroSummaryCard(
                             totalMinutes = digest.totalMinutes,
-                            previousTotalMinutes = digest.previousTotalMinutes,
-                            selectedPeriod = state.selectedPeriod,
-                            trendItems = digest.trendItems,
                             doneCount = digest.doneItemCount,
                             plannedCount = digest.plannedItemCount,
                             journalCount = digest.journalCount

@@ -237,11 +237,9 @@ data class DigestReportSummary(
     val startDate: LocalDate,
     val endDate: LocalDate,
     val totalMinutes: Int,
-    val previousTotalMinutes: Int,
     val doneItemCount: Int,
     val plannedItemCount: Int,
     val journalCount: Int,
-    val trendItems: List<TimeReportItem>,
     val activityItems: List<TimeReportItem>,
     val topTags: List<TagReportItem>,
     val highlights: List<DigestHighlight>
@@ -323,10 +321,6 @@ internal fun buildDigestReport(
         ReportPeriod.Annual -> monthBuckets(start.year)
         ReportPeriod.Habit -> emptyList()
     }
-    val trendItems = when (period) {
-        ReportPeriod.Daily -> lastDays(statsByDate, selectedDate, 7)
-        else -> inPeriodBuckets
-    }
     val activityItems = when (period) {
         ReportPeriod.Daily -> {
             val weekStart = ReportPeriod.Week.periodStart(selectedDate)
@@ -334,15 +328,6 @@ internal fun buildDigestReport(
         }
         else -> inPeriodBuckets
     }
-
-    val previousStart = when (period) {
-        ReportPeriod.Daily -> start.minus(1, DateTimeUnit.DAY)
-        ReportPeriod.Week -> start.minus(7, DateTimeUnit.DAY)
-        ReportPeriod.Month -> start.minus(1, DateTimeUnit.MONTH)
-        ReportPeriod.Annual -> start.minus(1, DateTimeUnit.YEAR)
-        ReportPeriod.Habit -> start
-    }
-    val previousTotalMinutes = minutesBetween(previousStart, start)
 
     val periodStats = statsByDate.asSequence()
         .filter { (epoch, _) -> epoch in startEpoch until endEpoch }
@@ -387,30 +372,14 @@ internal fun buildDigestReport(
         startDate = start,
         endDate = endExclusive.minus(1, DateTimeUnit.DAY),
         totalMinutes = minutesBetween(start, endExclusive),
-        previousTotalMinutes = previousTotalMinutes,
         doneItemCount = periodStats.sumOf { it.doneItemCount },
         plannedItemCount = periodStats.sumOf { it.plannedItemCount },
         journalCount = journalCount,
-        trendItems = trendItems,
         activityItems = activityItems,
         topTags = buildTopTags(tagRollups, startEpoch, endEpoch),
         highlights = highlights
     )
 }
-
-private fun lastDays(
-    statsByDate: Map<Int, DailyReflectStat>,
-    selectedDate: LocalDate,
-    count: Int
-): List<TimeReportItem> =
-    (0 until count).map { offset ->
-        val date = selectedDate.minus(count - 1 - offset, DateTimeUnit.DAY)
-        TimeReportItem(
-            startDate = date,
-            endDate = date,
-            totalMinutes = statsByDate[date.toEpochDays().toInt()]?.doneMinutes ?: 0
-        )
-    }
 
 private fun buildTopTags(
     tagRollups: List<DailyTagRollup>,

@@ -60,26 +60,16 @@ import com.checkit.ui.shortName
 import com.checkit.ui.toDurationLabel
 import com.checkit.ui.theme.toColor
 import kotlinx.datetime.LocalDate
-import kotlin.math.abs
 
 @Composable
 internal fun HeroSummaryCard(
     totalMinutes: Int,
-    previousTotalMinutes: Int,
-    selectedPeriod: ReportPeriod,
-    trendItems: List<TimeReportItem>,
     doneCount: Int,
     plannedCount: Int,
     journalCount: Int,
     modifier: Modifier = Modifier
 ) {
     val doneTotal = doneCount + plannedCount
-    val trend = remember(totalMinutes, previousTotalMinutes, selectedPeriod) {
-        totalMinutes.trendSummary(previousTotalMinutes, selectedPeriod)
-    }
-    val encouragement = remember(doneCount, plannedCount, selectedPeriod, journalCount) {
-        heroEncouragement(doneCount, plannedCount, selectedPeriod, journalCount)
-    }
     val progressSegments = remember(doneCount, plannedCount) {
         listOf(
             ProgressRingSegment(
@@ -102,75 +92,72 @@ internal fun HeroSummaryCard(
             .background(
                 Brush.linearGradient(
                     colors = listOf(
-                        ReportBlue.copy(alpha = 0.13f),
-                        ReportPink.copy(alpha = 0.11f),
-                        ReportGreen.copy(alpha = 0.13f)
+                        ReportBlue.copy(alpha = 0.12f),
+                        ReportPink.copy(alpha = 0.08f),
+                        ReportGreen.copy(alpha = 0.12f)
                     )
                 )
             )
             .border(
                 width = 1.dp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.12f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.10f),
                 shape = RoundedCornerShape(20.dp)
             )
-            .padding(20.dp)
+            .padding(horizontal = 20.dp, vertical = 18.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(18.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .heightIn(min = 142.dp),
-                verticalArrangement = Arrangement.SpaceBetween
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        text = "You invested",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = totalMinutes.toDurationLabel(),
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = encouragement,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        minLines = 3,
-                        maxLines = 5,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                Text(
+                    text = "TOTAL TIME",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.2.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                )
+                Text(
+                    text = totalMinutes.toDurationLabel(),
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                if (journalCount > 0) {
                     Surface(
-                        color = trend.color.copy(alpha = 0.13f),
+                        color = ReportPurple.copy(alpha = 0.12f),
                         shape = CircleShape
                     ) {
-                        Text(
-                            text = trend.label,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = trend.color
-                        )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Notes,
+                                contentDescription = null,
+                                modifier = Modifier.size(12.dp),
+                                tint = ReportPurple
+                            )
+                            Text(
+                                text = "$journalCount ${if (journalCount == 1) "check-in" else "check-ins"}",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = ReportPurple
+                            )
+                        }
                     }
                 }
-                MiniTrendLine(
-                    items = trendItems,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(44.dp)
-                )
             }
             ProgressRing(
                 segments = progressSegments,
                 totalCount = doneTotal,
-                centerText = "$doneCount/$doneTotal",
-                modifier = Modifier.size(118.dp)
+                centerText = if (doneTotal > 0) "$doneCount/$doneTotal" else "0",
+                modifier = Modifier.size(104.dp)
             )
         }
     }
@@ -503,7 +490,7 @@ private fun ProgressRing(
     totalCount: Int,
     centerText: String,
     modifier: Modifier = Modifier,
-    strokeWidth: Dp = 15.dp
+    strokeWidth: Dp = 13.dp
 ) {
     val trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f)
     val centerColor = segments.firstOrNull { it.completed }?.color ?: MaterialTheme.colorScheme.onSurface
@@ -544,66 +531,16 @@ private fun ProgressRing(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = centerText,
-                style = MaterialTheme.typography.headlineMedium,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = centerColor
             )
             Text(
                 text = "Done",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
             )
         }
-    }
-}
-
-@Composable
-private fun MiniTrendLine(
-    items: List<TimeReportItem>,
-    modifier: Modifier = Modifier
-) {
-    val totals = remember(items) {
-        items.map { it.totalMinutes }
-    }
-    val maxMinutes = remember(totals) {
-        totals.maxOrNull() ?: 0
-    }
-    val minMinutes = remember(totals) {
-        totals.minOrNull() ?: 0
-    }
-    val range = remember(maxMinutes, minMinutes) {
-        (maxMinutes - minMinutes).coerceAtLeast(1)
-    }
-
-    Canvas(modifier = modifier) {
-        if (totals.isEmpty()) return@Canvas
-
-        val horizontalStep = if (totals.size == 1) 0f else size.width / (totals.lastIndex).toFloat()
-        val points = totals.mapIndexed { index, minutes ->
-            val normalized = if (maxMinutes == minMinutes) {
-                0.5f
-            } else {
-                (minutes - minMinutes).toFloat() / range.toFloat()
-            }
-            Offset(
-                x = horizontalStep * index,
-                y = size.height * (0.82f - normalized * 0.66f)
-            )
-        }
-        for (index in 0 until points.lastIndex) {
-            drawLine(
-                color = ReportBlue,
-                start = points[index],
-                end = points[index + 1],
-                strokeWidth = 3.dp.toPx(),
-                cap = StrokeCap.Round
-            )
-        }
-        drawCircle(
-            color = ReportBlue,
-            radius = 7.dp.toPx(),
-            center = points.last()
-        )
     }
 }
 
@@ -717,46 +654,6 @@ private fun DigestHighlight.icon(): ImageVector = when (sourceName?.let { source
     null -> Icons.AutoMirrored.Filled.Notes
 }
 
-private fun heroEncouragement(
-    doneCount: Int,
-    plannedCount: Int,
-    selectedPeriod: ReportPeriod,
-    journalCount: Int
-): AnnotatedString {
-    val period = when (selectedPeriod) {
-        ReportPeriod.Daily -> "today"
-        ReportPeriod.Week -> "this week"
-        ReportPeriod.Month -> "this month"
-        ReportPeriod.Annual -> "this year"
-        ReportPeriod.Habit -> "today"
-    }
-    return buildAnnotatedString {
-        when {
-            doneCount > 0 -> {
-                append("You finished ")
-                highlight(doneCount.itemCountLabel(), ReportBlue)
-                if (journalCount > 0) {
-                    append(" and logged ")
-                    highlight("$journalCount ${if (journalCount == 1) "check-in" else "check-ins"}", ReportPurple)
-                }
-                append(" $period. ")
-                highlight("That is real progress.", ReportGreenDark, fontStyle = FontStyle.Italic)
-            }
-            plannedCount > 0 -> {
-                append("You made a ")
-                highlight("plan", ReportBlue)
-                append(" $period. ")
-                highlight("That is the first move.", ReportGreenDark, fontStyle = FontStyle.Italic)
-            }
-            else -> {
-                append("You gave your day ")
-                highlight("some shape", ReportBlue)
-                append(". ")
-                highlight("Keep going.", ReportGreenDark, fontStyle = FontStyle.Italic)
-            }
-        }
-    }
-}
 
 private fun sectionTitle(
     prefix: String,
@@ -805,53 +702,6 @@ private fun AnnotatedString.Builder.softEmphasis(text: String) {
         append(text)
     }
 }
-
-private fun Int.itemCountLabel(): String =
-    "$this ${if (this == 1) "thing" else "things"}"
-
-private fun Int.trendSummary(
-    previousTotalMinutes: Int,
-    selectedPeriod: ReportPeriod
-): TrendSummary {
-    val comparisonLabel = when (selectedPeriod) {
-        ReportPeriod.Daily -> "yesterday"
-        ReportPeriod.Week -> "last week"
-        ReportPeriod.Month -> "last month"
-        ReportPeriod.Annual -> "last year"
-        ReportPeriod.Habit -> "yesterday"
-    }
-    return when {
-        previousTotalMinutes == 0 && this == 0 -> TrendSummary(
-            label = "No change vs $comparisonLabel",
-            color = ReportMuted
-        )
-        previousTotalMinutes == 0 -> TrendSummary(
-            label = "New focus vs $comparisonLabel",
-            color = ReportGreenDark
-        )
-        else -> {
-            val change = ((this - previousTotalMinutes).toFloat() / previousTotalMinutes.toFloat() * 100f).toInt()
-            val prefix = when {
-                change > 0 -> "Up"
-                change < 0 -> "Down"
-                else -> "Even"
-            }
-            TrendSummary(
-                label = "$prefix ${abs(change)}% vs $comparisonLabel",
-                color = when {
-                    change > 0 -> ReportGreenDark
-                    change < 0 -> ReportPink
-                    else -> ReportMuted
-                }
-            )
-        }
-    }
-}
-
-private data class TrendSummary(
-    val label: String,
-    val color: Color
-)
 
 private data class ProgressRingSegment(
     val color: Color,

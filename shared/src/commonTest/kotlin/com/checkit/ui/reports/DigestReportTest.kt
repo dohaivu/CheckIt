@@ -110,26 +110,6 @@ class DigestReportTest {
     }
 
     @Test
-    fun monthDigestTracksPreviousMonth() {
-        val selectedDate = LocalDate(2026, 8, 15)
-        val plans = listOf(
-            DailyPlan(
-                date = LocalDate(2026, 8, 1),
-                items = listOf(doneTask(1L, "Current", 480, 540))
-            ),
-            DailyPlan(
-                date = LocalDate(2026, 7, 1),
-                items = listOf(doneTask(2L, "Last", 480, 600))
-            )
-        )
-
-        val digest = digestFor(ReportPeriod.Month, selectedDate, plans)
-
-        assertEquals(60, digest.totalMinutes)
-        assertEquals(120, digest.previousTotalMinutes)
-    }
-
-    @Test
     fun annualDigestAggregatesAcrossWholeYear() {
         val selectedDate = LocalDate(2026, 8, 15)
         val plans = listOf(
@@ -158,26 +138,6 @@ class DigestReportTest {
     }
 
     @Test
-    fun annualDigestTracksPreviousYear() {
-        val selectedDate = LocalDate(2026, 8, 15)
-        val plans = listOf(
-            DailyPlan(
-                date = LocalDate(2026, 1, 1),
-                items = listOf(doneTask(1L, "Current", 480, 540))
-            ),
-            DailyPlan(
-                date = LocalDate(2025, 1, 1),
-                items = listOf(doneTask(2L, "Last", 480, 600))
-            )
-        )
-
-        val digest = digestFor(ReportPeriod.Annual, selectedDate, plans)
-
-        assertEquals(60, digest.totalMinutes)
-        assertEquals(120, digest.previousTotalMinutes)
-    }
-
-    @Test
     fun weekDigestStillCoversSevenDays() {
         val selectedDate = LocalDate(2026, 8, 5)
         val plans = listOf(
@@ -199,7 +159,7 @@ class DigestReportTest {
     }
 
     @Test
-    fun dailyDigestUsesSingleDayWithSevenDayTrend() {
+    fun dailyDigestUsesSingleDay() {
         val selectedDate = LocalDate(2026, 8, 5)
         val plans = listOf(
             DailyPlan(
@@ -211,7 +171,6 @@ class DigestReportTest {
         val digest = digestFor(ReportPeriod.Daily, selectedDate, plans)
 
         assertEquals(60, digest.totalMinutes)
-        assertEquals(7, digest.trendItems.size)
         assertEquals(7, digest.activityItems.size)
         assertEquals(listOf("Today"), digest.highlights.map { it.title })
     }
