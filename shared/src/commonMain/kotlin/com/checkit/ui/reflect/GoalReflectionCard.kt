@@ -142,8 +142,6 @@ internal fun GoalReflectionCard(
                             fontWeight = FontWeight.Medium,
                             lineHeight = 20.sp
                         ),
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
                     )
                 }

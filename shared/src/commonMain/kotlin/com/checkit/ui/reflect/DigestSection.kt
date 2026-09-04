@@ -52,6 +52,7 @@ import com.checkit.ui.shortName
 import com.checkit.ui.toDurationLabel
 import com.checkit.ui.theme.toColor
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.toLocalIsoWeekDate
 
 @Composable
 internal fun HeroSummaryCard(
@@ -257,7 +258,7 @@ private fun activityChartSubtitle(selectedPeriod: ReportPeriod): AnnotatedString
 private fun LocalDate.activityLabel(selectedPeriod: ReportPeriod): String = when (selectedPeriod) {
     ReportPeriod.Daily,
     ReportPeriod.Week -> dayOfWeek.shortName()
-    ReportPeriod.Month -> day.toString()
+    ReportPeriod.Month -> "W${toLocalIsoWeekDate().isoWeekNumber}"
     ReportPeriod.Annual -> localizedShortMonthName()
     ReportPeriod.Habit -> ""
 }
