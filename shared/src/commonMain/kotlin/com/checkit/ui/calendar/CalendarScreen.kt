@@ -463,7 +463,7 @@ private fun SelectedDateHeader(
                             }
                         )
                         if (dayGoal != null && dayGoal.rating != 0f) {
-                            RatingBar(dayGoal.rating, modifier = Modifier.width(80.dp), iconTint = Color(0xFFEAB308))
+                            RatingBar(dayGoal.rating, modifier = Modifier.width(80.dp))
                         }
                     }
                     Text(
@@ -1072,7 +1072,7 @@ private fun MonthlyWinsGallery(
                     VerticalDivider(modifier = Modifier.height(32.dp), color = MaterialTheme.colorScheme.outlineVariant)
 
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        RatingBar(rating = rating, modifier = Modifier.width(80.dp), iconTint = Color(0xFFEAB308))
+                        RatingBar(rating = rating, modifier = Modifier.width(80.dp))
                         Text(
                             text = winNote,
                             style = MaterialTheme.typography.bodyMedium.copy(

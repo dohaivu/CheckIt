@@ -104,8 +104,7 @@ internal fun GoalReflectionCard(
                     if (goal != null && goal.rating > 0) {
                         RatingBar(
                             rating = goal.rating,
-                            modifier = Modifier.width(80.dp).height(16.dp),
-                            iconTint = color
+                            modifier = Modifier.width(80.dp).height(16.dp)
                         )
                     }
                     Icon(
