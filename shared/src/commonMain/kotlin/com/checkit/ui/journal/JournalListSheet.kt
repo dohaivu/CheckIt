@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -26,9 +27,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -149,7 +153,7 @@ internal fun JournalEntryCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(
-                if (hasMood && mc != null) mc.copy(alpha = 0.09f) else baseSurface
+                if (hasMood && mc != null) mc.copy(alpha = 0.11f) else baseSurface
             )
             .border(
                 width = 1.dp,
@@ -161,40 +165,68 @@ internal fun JournalEntryCard(
             }
     ) {
         // --- Atmosphere layer: mood wash + emoji watermark (compact) ---
+        // Size-aware so the glow lands relative to the card, not fixed pixels.
         if (hasMood && mc != null) {
-            Box(
+            val secondMoodColor = entry.moods.getOrNull(1)?.let { getMoodColorFromEmoji(it) }
+            BoxWithConstraints(
                 modifier = Modifier.matchParentSize()
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                mc.copy(alpha = 0.18f),
-                                mc.copy(alpha = 0.05f),
-                                Color.Transparent
-                            ),
-                            center = androidx.compose.ui.geometry.Offset(900f, 0f),
-                            radius = 420f
-                        )
-                    )
-            )
-            Box(
-                modifier = Modifier.matchParentSize()
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(
-                                mc.copy(alpha = 0.06f),
-                                Color.Transparent
+            ) {
+                val widthPx = with(LocalDensity.current) { maxWidth.toPx() }
+                val heightPx = with(LocalDensity.current) { maxHeight.toPx() }
+                val glowRadius = maxOf(widthPx, heightPx).takeIf { it > 0f } ?: 420f
+
+                // Primary mood glow, anchored top-end, melting into transparent.
+                Box(
+                    modifier = Modifier.matchParentSize()
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(
+                                    mc.copy(alpha = 0.24f),
+                                    mc.copy(alpha = 0.08f),
+                                    Color.Transparent
+                                ),
+                                center = Offset(widthPx * 0.88f, 0f),
+                                radius = glowRadius * 1.15f
                             )
                         )
+                )
+                // Vertical veil: mood settles from the top so body text stays readable.
+                Box(
+                    modifier = Modifier.matchParentSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    mc.copy(alpha = 0.10f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
+                // Second mood (when present) breathes from the bottom-start.
+                if (secondMoodColor != null) {
+                    Box(
+                        modifier = Modifier.matchParentSize()
+                            .background(
+                                Brush.radialGradient(
+                                    colors = listOf(
+                                        secondMoodColor.copy(alpha = 0.16f),
+                                        Color.Transparent
+                                    ),
+                                    center = Offset(widthPx * 0.08f, heightPx),
+                                    radius = glowRadius * 0.9f
+                                )
+                            )
                     )
-            )
+                }
+            }
 
             Text(
                 text = entry.moods.first(),
-                fontSize = 48.sp,
+                fontSize = 52.sp,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .offset(x = 8.dp, y = 6.dp)
-                    .alpha(0.13f),
+                    .alpha(0.14f),
             )
             if (entry.moods.size > 1) {
                 Text(
@@ -269,7 +301,13 @@ internal fun JournalEntryCard(
                         text = entry.label ?: "",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold,
-                        color = if (hasMood && mc != null) mc.copy(alpha = 0.88f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.76f),
+                        // Blend the mood color toward onSurface so the label keeps a
+                        // mood hint but stays readable on the mood-tinted background.
+                        color = if (hasMood && mc != null) {
+                            lerp(mc, MaterialTheme.colorScheme.onSurface, 0.55f)
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.76f)
+                        },
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false),
