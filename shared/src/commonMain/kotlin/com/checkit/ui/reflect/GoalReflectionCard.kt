@@ -7,8 +7,10 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -85,7 +87,7 @@ internal fun GoalReflectionCard(
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = stringResource(Res.string.reflect_review_card_title, periodLabel).uppercase(),
+                        text = periodLabel.uppercase(),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 1.2.sp,
@@ -122,13 +124,14 @@ internal fun GoalReflectionCard(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
                         .background(color.copy(alpha = 0.08f))
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                        .height(IntrinsicSize.Min),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
                         modifier = Modifier
                             .width(3.dp)
-                            .height(16.dp)
+                            .fillMaxHeight()
                             .background(
                                 color = color.copy(alpha = 0.65f),
                                 shape = RoundedCornerShape(1.5.dp)

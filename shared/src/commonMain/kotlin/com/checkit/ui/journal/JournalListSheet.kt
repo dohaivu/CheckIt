@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
@@ -54,7 +55,7 @@ internal fun JournalListSheet(
 ) {
     AppEditorBottomSheet(
         onDismiss = onDismiss,
-        modifier = Modifier.heightIn(min = 600.dp)
+        modifier = Modifier.fillMaxHeight(0.8f)
     ) {
         Row(
             modifier = Modifier
