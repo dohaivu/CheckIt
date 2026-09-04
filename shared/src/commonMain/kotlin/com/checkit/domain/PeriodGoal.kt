@@ -24,3 +24,12 @@ data class PeriodGoal(
     val startDate: LocalDate get() = LocalDate.fromEpochDays(startEpochDays)
     val endDateInclusive: LocalDate get() = LocalDate.fromEpochDays(endEpochDays - 1)
 }
+
+/**
+ * One entry of the paged "previous periods" history: a past goal/review with
+ * the minutes tracked inside its date range.
+ */
+data class PeriodGoalHistoryItem(
+    val goal: PeriodGoal,
+    val trackedMinutes: Int = 0
+)

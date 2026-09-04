@@ -1,12 +1,15 @@
 package com.checkit.data
 
 import androidx.room3.RoomRawQuery
+import androidx.paging.PagingSource
+import androidx.paging.PagingState
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.DayCloseCommitResult
 import com.checkit.domain.PeriodGoal
+import com.checkit.domain.PeriodGoalHistoryItem
 import com.checkit.domain.Period
 import com.checkit.domain.DailyReflectStat
 import com.checkit.domain.DailyTagRollup
@@ -114,6 +117,8 @@ interface CheckItRepository {
     suspend fun getNote(noteId: Long): NoteItem?
     fun observePeriodGoals(): Flow<List<PeriodGoal>>
     fun observePeriodGoalsInRange(startDate: LocalDate?, endDateInclusive: LocalDate?): Flow<List<PeriodGoal>>
+    /** Unlimited newest-first history of [period] before [beforeEpochDays] (epoch days, exclusive). */
+    fun pagingGoalHistory(period: Period, beforeEpochDays: Int): PagingSource<Int, PeriodGoalHistoryItem>
     suspend fun periodGoalFor(period: Period, date: LocalDate): PeriodGoal?
     suspend fun savePeriodGoal(goal: PeriodGoal)
     fun observeDailyReflectStats(startDate: LocalDate, endDateInclusive: LocalDate): Flow<List<DailyReflectStat>>
@@ -1021,6 +1026,9 @@ class RoomCheckItRepository(
             endDateInclusive?.toEpochDays()?.toInt()
         ).map { entities -> entities.map { it.toDomain() } }
 
+    override fun pagingGoalHistory(period: Period, beforeEpochDays: Int): PagingSource<Int, PeriodGoalHistoryItem> =
+        GoalHistoryPagingSource(dao, period, beforeEpochDays)
+
     override suspend fun periodGoalFor(period: Period, date: LocalDate): PeriodGoal? =
         dao.periodGoalFor(period.name, date.toEpochDays().toInt())?.toDomain()
 
@@ -1709,7 +1717,7 @@ private fun MetricItem.normalized() = copy(
     customUnit = customUnit?.trim()?.takeIf { it.isNotEmpty() }
 )
 
-private fun PeriodGoalEntity.toDomain() = PeriodGoal(
+internal fun PeriodGoalEntity.toDomain() = PeriodGoal(
     id = id,
     period = Period.valueOf(periodType),
     startEpochDays = startEpochDays,
@@ -1723,6 +1731,37 @@ private fun PeriodGoalEntity.toDomain() = PeriodGoal(
         metricsJsonFormat.decodeFromString<List<MetricItem>>(metricsJson)
     }.getOrDefault(emptyList())
 )
+
+/**
+ * Append-only Paging 3 source over [CheckItDao.goalHistoryPage]: pages past
+ * goals newest-first and enriches each with tracked minutes from the daily
+ * rollups. History rows are immutable while the sheet is open, so refresh
+ * restarts from the top.
+ */
+private class GoalHistoryPagingSource(
+    private val dao: CheckItDao,
+    private val period: Period,
+    private val beforeEpochDays: Int
+) : PagingSource<Int, PeriodGoalHistoryItem>() {
+    override fun getRefreshKey(state: PagingState<Int, PeriodGoalHistoryItem>): Int? = null
+
+    override suspend fun load(params: LoadParams<Int>): LoadResult<Int, PeriodGoalHistoryItem> =
+        runCatching {
+            val offset = params.key ?: 0
+            val entities = dao.goalHistoryPage(period.name, beforeEpochDays, params.loadSize, offset)
+            val items = entities.map { entity ->
+                PeriodGoalHistoryItem(
+                    goal = entity.toDomain(),
+                    trackedMinutes = dao.sumDoneMinutesBetween(entity.startEpochDays, entity.endEpochDays)
+                )
+            }
+            LoadResult.Page(
+                data = items,
+                prevKey = null,
+                nextKey = if (entities.size < params.loadSize) null else offset + entities.size
+            )
+        }.getOrElse { LoadResult.Error(it) }
+}
 
 private fun DailyReflectStatsEntity.toDomain(tagRollups: List<DailyTagRollup> = emptyList()) = DailyReflectStat(
     dateEpochDays = dateEpochDays,

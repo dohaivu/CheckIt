@@ -2,6 +2,8 @@ package com.checkit.ui.reflect
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import com.checkit.data.CheckItRepository
 import com.checkit.domain.DailyReflectStat
 import com.checkit.domain.DoneItemSummary
@@ -9,7 +11,10 @@ import com.checkit.domain.FocusPeriod
 import com.checkit.domain.HabitDailyRollup
 import com.checkit.domain.JournalEntry
 import com.checkit.domain.MetricItem
+import com.checkit.domain.Period
 import com.checkit.domain.PeriodGoal
+import com.checkit.domain.PeriodGoalHistoryItem
+import com.checkit.domain.usecase.ObserveGoalHistoryUseCase
 import com.checkit.domain.usecase.ObservePeriodGoalsUseCase
 import com.checkit.domain.usecase.SavePeriodGoalUseCase
 import com.checkit.ui.UiEvent
@@ -26,6 +31,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -36,15 +43,35 @@ import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.plus
 
+/** Anchor for the lazy "previous periods" history: period type + exclusive upper bound (epoch days). */
+data class GoalHistoryAnchor(
+    val period: Period,
+    val beforeEpochDays: Int
+)
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class ReflectViewModel(
     private val repository: CheckItRepository,
     private val observePeriodGoals: ObservePeriodGoalsUseCase,
+    private val observeGoalHistory: ObserveGoalHistoryUseCase,
     private val savePeriodGoal: SavePeriodGoalUseCase,
     private val dataDispatcher: CoroutineDispatcher = Dispatchers.Default
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ReflectUiState())
     val uiState: StateFlow<ReflectUiState> = _uiState.asStateFlow()
+
+    private val _historyAnchor = MutableStateFlow<GoalHistoryAnchor?>(null)
+    val historyAnchor: StateFlow<GoalHistoryAnchor?> = _historyAnchor.asStateFlow()
+
+    /**
+     * Unlimited newest-first history, collected only while the history sheet
+     * is open ([_historyAnchor] non-null): opening the sheet is the lazy-load
+     * trigger, dismissing it stops the query.
+     */
+    val historyPaging: Flow<PagingData<PeriodGoalHistoryItem>> =
+        _historyAnchor.filterNotNull().distinctUntilChanged().flatMapLatest { anchor ->
+            observeGoalHistory(anchor.period, anchor.beforeEpochDays)
+        }.cachedIn(viewModelScope)
 
     private val _editor = MutableStateFlow<ReflectGoalEditorState?>(null)
     val editor: StateFlow<ReflectGoalEditorState?> = _editor.asStateFlow()
@@ -239,6 +266,23 @@ class ReflectViewModel(
             rating = state.focusGoal?.rating ?: 0f,
             metrics = state.focusGoal?.metrics.orEmpty()
         )
+    }
+
+    /**
+     * Opens the "previous periods" history anchored at the current focus: the
+     * same period type (day/week/month/year) strictly before the focused
+     * period's start. Called on tap, so history data loads lazily.
+     */
+    fun openHistory() {
+        val focus = _uiState.value.focus
+        _historyAnchor.value = GoalHistoryAnchor(
+            period = focus.period,
+            beforeEpochDays = focus.start.toEpochDays().toInt()
+        )
+    }
+
+    fun dismissHistory() {
+        _historyAnchor.value = null
     }
 
     fun updateEditorReview(value: String) {

@@ -528,6 +528,36 @@ interface CheckItDao {
     )
     fun observePeriodGoalsBetween(startEpochDays: Int?, endEpochDays: Int?): Flow<List<PeriodGoalEntity>>
 
+    /**
+     * One page of the unlimited newest-first history of one period type before
+     * [beforeEpochDays] (the current focus start is excluded by the caller).
+     * No blank filtering: rows are shown with any data. Backs the Paging 3
+     * history source built in the repository.
+     */
+    @Query(
+        """
+        SELECT * FROM period_goals
+        WHERE periodType = :periodType AND startEpochDays < :beforeEpochDays
+        ORDER BY startEpochDays DESC
+        LIMIT :limit OFFSET :offset
+        """
+    )
+    suspend fun goalHistoryPage(
+        periodType: String,
+        beforeEpochDays: Int,
+        limit: Int,
+        offset: Int
+    ): List<PeriodGoalEntity>
+
+    /** Tracked minutes summed from daily rollups over a goal's date range. */
+    @Query(
+        """
+        SELECT COALESCE(SUM(doneMinutes), 0) FROM daily_reflect_stats
+        WHERE dateEpochDays >= :startEpochDays AND dateEpochDays < :endEpochDays
+        """
+    )
+    suspend fun sumDoneMinutesBetween(startEpochDays: Int, endEpochDays: Int): Int
+
     // ---------------- Reflect rollups (precomputed daily aggregates) ----------------
 
     @Query(

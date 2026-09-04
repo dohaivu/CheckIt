@@ -126,7 +126,7 @@ internal fun PastDaysChronicleSection(
 }
 
 @Composable
-private fun ChronicleRow(
+internal fun ChronicleRow(
     item: ChronicleItem,
     onClick: () -> Unit
 ) {

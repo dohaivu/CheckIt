@@ -3,6 +3,7 @@ package com.checkit.ui.tasks
 import com.checkit.data.CheckItRepository
 import com.checkit.data.DailyPlanItemTimeUpdate
 import com.checkit.data.DailyPlanItemWriteInput
+import com.checkit.domain.PeriodGoalHistoryItem
 import com.checkit.data.JournalEntryWriteInput
 import com.checkit.data.ListWriteInput
 import com.checkit.data.NoteWriteInput
@@ -43,6 +44,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
+import androidx.paging.PagingSource
+import androidx.paging.PagingState
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.plus
@@ -524,6 +527,37 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
 
     override suspend fun periodGoalFor(period: Period, date: LocalDate): PeriodGoal? =
         periodGoalsFlow.value.find { it.period == period && it.startEpochDays == date.toEpochDays().toInt() }
+
+    override fun pagingGoalHistory(period: Period, beforeEpochDays: Int): PagingSource<Int, PeriodGoalHistoryItem> =
+        object : PagingSource<Int, PeriodGoalHistoryItem>() {
+            override fun getRefreshKey(state: PagingState<Int, PeriodGoalHistoryItem>): Int? = null
+
+            override suspend fun load(params: LoadParams<Int>): LoadResult<Int, PeriodGoalHistoryItem> {
+                val plans = dailyPlansFlow.value
+                val all = periodGoalsFlow.value
+                    .filter { it.period == period && it.startEpochDays < beforeEpochDays }
+                    .sortedByDescending { it.startEpochDays }
+                val offset = params.key ?: 0
+                val page = all.drop(offset).take(params.loadSize)
+                val rows = page.map { goal ->
+                    PeriodGoalHistoryItem(
+                        goal = goal,
+                        trackedMinutes = plans.sumOf { plan ->
+                            val epoch = plan.date.toEpochDays().toInt()
+                            if (epoch in goal.startEpochDays until goal.endEpochDays) {
+                                plan.items
+                                    .filter { it.status == DailyPlanItemStatus.Done }
+                                    .sumOf { it.workMinutes() }
+                            } else {
+                                0
+                            }
+                        }
+                    )
+                }
+                val nextKey = if (offset + page.size >= all.size) null else offset + page.size
+                return LoadResult.Page(data = rows, prevKey = null, nextKey = nextKey)
+            }
+        }
 
     override suspend fun savePeriodGoal(goal: PeriodGoal) {
         periodGoalsFlow.update { list ->
