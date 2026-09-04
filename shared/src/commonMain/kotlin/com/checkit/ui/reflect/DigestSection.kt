@@ -19,11 +19,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.EventNote
 import androidx.compose.material.icons.automirrored.filled.Notes
-import androidx.compose.material.icons.filled.EventAvailable
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -39,7 +35,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -51,10 +46,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.checkit.domain.DailyPlanItemSource
 import com.checkit.ui.components.ReportPeriod
-import com.checkit.ui.components.getMoodColorFromEmoji
-import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.localizedShortMonthName
 import com.checkit.ui.shortName
 import com.checkit.ui.toDurationLabel
@@ -328,161 +320,7 @@ private fun ActivityBar(
     }
 }
 
-@Composable
-internal fun CompletedHighlightsCard(
-    highlights: List<DigestHighlight>,
-    selectedPeriod: ReportPeriod,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(
-                Brush.linearGradient(
-                    colors = listOf(
-                        ReportBlue.copy(alpha = 0.08f),
-                        ReportBlue.copy(alpha = 0.03f)
-                    )
-                ),
-                RoundedCornerShape(20.dp)
-            )
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-    ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = sectionTitle(
-                            prefix = "YOUR ",
-                            emphasis = "WINS",
-                            suffix = "",
-                            accent = ReportBlue
-                        ),
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 1.2.sp,
-                        color = ReportBlue
-                    )
-                    Text(
-                        text = highlightsSubtitle(selectedPeriod),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
-                }
-            }
-            Column(
-                modifier = Modifier.padding(top = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(0.dp)
-            ) {
-                highlights.forEach { highlight ->
-                    CompletedHighlightRow(
-                        highlight = highlight,
-                        selectedPeriod = selectedPeriod
-                    )
-                }
-            }
-        }
-    }
-}
 
-private fun highlightsSubtitle(selectedPeriod: ReportPeriod): AnnotatedString =
-    buildAnnotatedString {
-        append("A few ")
-        highlight("finished moments", ReportBlue)
-        append(" from ${periodRangeLabel(selectedPeriod)}.")
-    }
-
-private fun periodRangeLabel(selectedPeriod: ReportPeriod): String = when (selectedPeriod) {
-    ReportPeriod.Daily -> "today"
-    ReportPeriod.Week -> "this week"
-    ReportPeriod.Month -> "this month"
-    ReportPeriod.Annual -> "this year"
-    ReportPeriod.Habit -> "today"
-}
-
-@Composable
-private fun CompletedHighlightRow(
-    highlight: DigestHighlight,
-    selectedPeriod: ReportPeriod,
-    modifier: Modifier = Modifier
-) {
-    val accent = if (highlight.isJournal) {
-        highlight.moodEmoji?.let { getMoodColorFromEmoji(it) } ?: MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.primary
-    }
-
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(accent.copy(alpha = 0.15f)),
-            contentAlignment = Alignment.Center
-        ) {
-            val emoji = highlight.moodEmoji
-            if (emoji != null) {
-                Text(text = emoji, fontSize = 18.sp)
-            } else {
-                Icon(
-                    imageVector = highlight.icon(),
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                    tint = accent
-                )
-            }
-        }
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            Text(
-                text = highlight.title.ifBlank { if (highlight.isJournal) "Check-In" else "Done item" },
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            val detail = listOfNotNull(
-                highlight.date.localizedCompactDateWithDayName().takeIf { selectedPeriod != ReportPeriod.Daily && selectedPeriod != ReportPeriod.Habit },
-                highlight.note?.takeIf { it.isNotBlank() }?.takeIf { highlight.totalMinutes == 0 }
-            ).joinToString(" - ")
-            if (detail.isNotBlank()) {
-                Text(
-                    text = detail,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-        if (highlight.totalMinutes > 0) {
-            Text(
-                text = highlight.totalMinutes.toDurationLabel(),
-                modifier = Modifier.widthIn(min = 48.dp),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.End,
-                color = accent.copy(alpha = 0.8f)
-            )
-        }
-    }
-}
 
 @Composable
 private fun ProgressRing(
@@ -643,16 +481,6 @@ internal fun TagReportBarRow(
     }
 }
 
-
-private fun DigestHighlight.icon(): ImageVector = when (sourceName?.let { source ->
-    runCatching { DailyPlanItemSource.valueOf(source) }.getOrNull()
-}) {
-    DailyPlanItemSource.MyDayTask -> Icons.Default.EventAvailable
-    DailyPlanItemSource.MyDayNote -> Icons.AutoMirrored.Filled.EventNote
-    DailyPlanItemSource.MyDayReminder -> Icons.Default.Schedule
-    DailyPlanItemSource.ExistingTask -> Icons.Default.TaskAlt
-    null -> Icons.AutoMirrored.Filled.Notes
-}
 
 
 private fun sectionTitle(

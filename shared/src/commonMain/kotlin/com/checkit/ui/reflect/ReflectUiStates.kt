@@ -10,7 +10,6 @@ import com.checkit.domain.JournalEntry
 import com.checkit.domain.Period
 import com.checkit.domain.PeriodGoal
 
-import com.checkit.domain.isGoodMood
 import com.checkit.ui.components.ReportPeriod
 import com.checkit.ui.firstDayOfMonth
 import com.checkit.ui.today
@@ -104,6 +103,20 @@ data class ReflectUiState(
     /** Habit check-ins for the heatmap. */
     val habitCheckins: List<HabitCheckin> by lazy {
         buildHabitCheckins(habitRollups, today())
+    }
+
+    /** Chronicle items combining past goals/reviews with tracked minutes for the period. */
+    val chronicleItems: List<ChronicleItem> by lazy {
+        val statsMap = dailyStats.associateBy { it.dateEpochDays }
+        goalsForSelectedPeriod.map { goal ->
+            val minutes = (goal.startEpochDays until goal.endEpochDays).sumOf { epoch ->
+                statsMap[epoch]?.doneMinutes ?: 0
+            }
+            ChronicleItem(
+                goal = goal,
+                totalMinutes = minutes
+            )
+        }
     }
 }
 
@@ -233,6 +246,11 @@ data class TimeReportItem(
     val totalMinutes: Int
 )
 
+data class ChronicleItem(
+    val goal: PeriodGoal,
+    val totalMinutes: Int
+)
+
 data class DigestReportSummary(
     val startDate: LocalDate,
     val endDate: LocalDate,
@@ -241,24 +259,8 @@ data class DigestReportSummary(
     val plannedItemCount: Int,
     val journalCount: Int,
     val activityItems: List<TimeReportItem>,
-    val topTags: List<TagReportItem>,
-    val highlights: List<DigestHighlight>
+    val topTags: List<TagReportItem>
 )
-
-data class DigestHighlight(
-    val date: LocalDate,
-    val title: String,
-    val note: String?,
-    val totalMinutes: Int,
-    /** Source enum name of the underlying plan item, null for journal entries. */
-    val sourceName: String? = null,
-    /** First mood emoji when the highlight comes from a journal entry. */
-    val moodEmoji: String? = null,
-    /** Whether a journal highlight carries a positive mood (ranking only). */
-    val isGoodMood: Boolean = false
-) {
-    val isJournal: Boolean get() = sourceName == null
-}
 
 internal fun buildDigestReport(
     statsByDate: Map<Int, DailyReflectStat>,
@@ -335,39 +337,6 @@ internal fun buildDigestReport(
         .toList()
     val journalCount = periodStats.sumOf { it.journalCount }
 
-    val highlights = (
-        doneItems.asSequence()
-            .filter { it.dateEpochDays in startEpoch until endEpoch }
-            .map { item ->
-                DigestHighlight(
-                    date = item.date,
-                    title = item.title.ifBlank { "Done item" },
-                    note = item.note,
-                    totalMinutes = item.minutes,
-                    sourceName = item.sourceName
-                )
-            } +
-            journalEntries.asSequence()
-                .filter { entry -> entry.dateEpochDays in startEpoch until endEpoch }
-                .map { entry ->
-                    DigestHighlight(
-                        date = LocalDate.fromEpochDays(entry.dateEpochDays),
-                        title = entry.content.ifBlank { entry.label.orEmpty() },
-                        note = entry.label,
-                        totalMinutes = 0,
-                        moodEmoji = entry.moods.firstOrNull(),
-                        isGoodMood = entry.isGoodMood()
-                    )
-                }
-        )
-        .sortedWith(
-            compareByDescending<DigestHighlight> { it.isGoodMood }
-                .thenByDescending { it.totalMinutes }
-                .thenByDescending { it.date }
-        )
-        .take(8)
-        .toList()
-
     return DigestReportSummary(
         startDate = start,
         endDate = endExclusive.minus(1, DateTimeUnit.DAY),
@@ -376,8 +345,7 @@ internal fun buildDigestReport(
         plannedItemCount = periodStats.sumOf { it.plannedItemCount },
         journalCount = journalCount,
         activityItems = activityItems,
-        topTags = buildTopTags(tagRollups, startEpoch, endEpoch),
-        highlights = highlights
+        topTags = buildTopTags(tagRollups, startEpoch, endEpoch)
     )
 }
 

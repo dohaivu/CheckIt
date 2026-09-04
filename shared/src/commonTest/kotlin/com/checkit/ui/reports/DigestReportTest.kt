@@ -104,7 +104,6 @@ class DigestReportTest {
         assertEquals(LocalDate(2026, 8, 31), digest.endDate)
         assertEquals(120, digest.totalMinutes)
         assertEquals(2, digest.doneItemCount)
-        assertEquals(listOf("Beta", "Alpha"), digest.highlights.map { it.title })
         assertTrue(digest.activityItems.isNotEmpty())
         assertEquals(120, digest.activityItems.sumOf { it.totalMinutes })
     }
@@ -155,7 +154,6 @@ class DigestReportTest {
 
         assertEquals(120, digest.totalMinutes)
         assertEquals(7, digest.activityItems.size)
-        assertEquals(listOf("Sun", "Mon"), digest.highlights.map { it.title })
     }
 
     @Test
@@ -172,7 +170,6 @@ class DigestReportTest {
 
         assertEquals(60, digest.totalMinutes)
         assertEquals(7, digest.activityItems.size)
-        assertEquals(listOf("Today"), digest.highlights.map { it.title })
     }
 
     @Test
@@ -192,6 +189,5 @@ class DigestReportTest {
         val digest = digestFor(ReportPeriod.Week, selectedDate, plans)
 
         assertEquals(60, digest.totalMinutes)
-        assertEquals(listOf("InWeek"), digest.highlights.map { it.title })
     }
 }
