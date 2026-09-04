@@ -45,9 +45,7 @@ data class CalendarUiState(
 
     /** Goal record (review + goal) for the currently selected date. */
     val selectedDatePeriodGoal: PeriodGoal? by lazy {
-        periodGoals.firstOrNull {
-            it.period == Period.Day && it.startDate == selectedDate
-        }
+        periodGoalByDate[selectedDate]
     }
 
     /** Goal recorded on the week containing the selected date, if any. */
@@ -82,6 +80,7 @@ data class CalendarUiState(
     }
 
     val dailyPlanByDate: Map<LocalDate, DailyPlan> = filteredDailyPlans.associateBy { it.date }
+    val periodGoalByDate: Map<LocalDate, PeriodGoal> = periodGoals.filter { it.period == Period.Day }.associateBy { it.startDate }
 
     /**
      * Markers for past days (< today) from the precomputed stats table. When
@@ -93,7 +92,7 @@ data class CalendarUiState(
         dailyStatsByDate
             .filterKeys { it < today }
             .mapValues { (date, stat) ->
-                val rating = periodGoals.firstOrNull { it.period == Period.Day && it.startDate == date}?.rating
+                val rating = periodGoalByDate[date]?.rating
                 if (selectedTagIds.isEmpty()) {
                     CalendarDateMarkers(totalCount = stat.doneItemCount + stat.plannedItemCount, rating = rating)
                 } else {
