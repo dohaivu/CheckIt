@@ -92,14 +92,16 @@ data class CalendarUiState(
         val today = today()
         dailyStatsByDate
             .filterKeys { it < today }
-            .mapValues { (_, stat) ->
+            .mapValues { (date, stat) ->
+                val rating = periodGoals.firstOrNull { it.period == Period.Day && it.startDate == date}?.rating
                 if (selectedTagIds.isEmpty()) {
-                    CalendarDateMarkers(totalCount = stat.doneItemCount + stat.plannedItemCount)
+                    CalendarDateMarkers(totalCount = stat.doneItemCount + stat.plannedItemCount, rating = rating)
                 } else {
                     CalendarDateMarkers(
                         totalCount = stat.tagRollups
                             .filter { it.tagId in selectedTagIds }
-                            .sumOf { it.doneCount }
+                            .sumOf { it.doneCount },
+                        rating = rating
                     )
                 }
             }
@@ -144,7 +146,8 @@ data class CalendarUiState(
             val planCount = todayAndFutureMarkersByDate[date]?.totalCount ?: 0
             val boardCount = board.tasksByDate[date].orEmpty().filter { matchesSelectedTags(it.tags) }.size +
                 board.notesByDate[date].orEmpty().filter { matchesSelectedTags(it.tags) }.size
-            CalendarDateMarkers(totalCount = planCount + boardCount)
+            val rating = periodGoals.firstOrNull { it.period == Period.Day && it.startDate == date}?.rating
+            CalendarDateMarkers(totalCount = planCount + boardCount, rating = rating)
         }
 
     fun doneMinutesForDate(date: LocalDate): Int =
@@ -157,7 +160,8 @@ private fun DailyPlanItem.hasAnyTag(tagIds: Set<Long>): Boolean =
     tags.any { it.id in tagIds }
 
 data class CalendarDateMarkers(
-    val totalCount: Int = 0
+    val totalCount: Int = 0,
+    val rating: Float? = null
 ) {
     val hasMarkers: Boolean get() = totalCount > 0
 

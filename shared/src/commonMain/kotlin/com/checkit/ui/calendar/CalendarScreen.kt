@@ -8,7 +8,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,7 +22,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -41,8 +39,6 @@ import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material.icons.outlined.ViewDay
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -70,7 +66,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import checkit.shared.generated.resources.Res
@@ -86,9 +81,9 @@ import com.checkit.domain.PeriodGoal
 import com.checkit.domain.TagItem
 import com.checkit.domain.TaskBoard
 import com.checkit.domain.TaskItem
-import com.checkit.ui.components.MetricChip
 import com.checkit.ui.components.PeriodGoalRow
 import com.checkit.ui.components.RatingBar
+import com.checkit.ui.components.RatingStar
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.components.parseMarkdownToAnnotatedString
@@ -819,7 +814,7 @@ private fun CalendarDayCell(
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Start,
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
@@ -829,6 +824,12 @@ private fun CalendarDayCell(
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                     textAlign = TextAlign.Start
                 )
+                if (markers.rating != null) {
+                    RatingStar(
+                        rating = markers.rating,
+                        modifier = Modifier.size(10.dp)
+                    )
+                }
             }
             if (isEnabled && (markers.hasMarkers || workMinutes > 0)) {
                 DateCellMetadata(

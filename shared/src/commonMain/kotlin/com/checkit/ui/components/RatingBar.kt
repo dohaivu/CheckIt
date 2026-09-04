@@ -16,8 +16,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.takeOrElse
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 
 object RatingBarDefaults {
@@ -114,4 +114,28 @@ fun RatingBar(
             }
         }
     }
+}
+
+/**
+ * A single star icon that uses the same color logic as [RatingBar].
+ */
+@Composable
+fun RatingStar(
+    rating: Float,
+    modifier: Modifier = Modifier,
+    iconTint: Color = Color.Unspecified
+) {
+    val themeSecondary = MaterialTheme.colorScheme.secondary
+    val color = when {
+        iconTint != Color.Unspecified -> iconTint
+        rating > 0f -> RatingBarDefaults.getRatingColor(rating).takeOrElse { themeSecondary }
+        else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+    }
+
+    Icon(
+        imageVector = if (rating > 0f) Icons.Filled.Star else Icons.Filled.StarBorder,
+        contentDescription = null,
+        tint = color,
+        modifier = modifier
+    )
 }
