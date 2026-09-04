@@ -59,11 +59,7 @@ data class CalendarUiState(
     }
 
     private fun periodGoalFor(period: Period): PeriodGoal? =
-        periodGoals
-            .firstOrNull {
-                it.period == period &&
-                    it.startEpochDays == period.startOf(selectedDate).toEpochDays().toInt()
-            }
+        periodGoals.firstOrNull { it.period == period && it.startEpochDays == period.startOf(selectedDate).toEpochDays().toInt() }
 
     private val filteredDailyPlans: List<DailyPlan> by lazy {
         // Live plans cover today forward; selectedDayPlan back-fills a past
@@ -145,7 +141,7 @@ data class CalendarUiState(
             val planCount = todayAndFutureMarkersByDate[date]?.totalCount ?: 0
             val boardCount = board.tasksByDate[date].orEmpty().filter { matchesSelectedTags(it.tags) }.size +
                 board.notesByDate[date].orEmpty().filter { matchesSelectedTags(it.tags) }.size
-            val rating = periodGoals.firstOrNull { it.period == Period.Day && it.startDate == date}?.rating
+            val rating = periodGoalByDate[date]?.rating
             CalendarDateMarkers(totalCount = planCount + boardCount, rating = rating)
         }
 

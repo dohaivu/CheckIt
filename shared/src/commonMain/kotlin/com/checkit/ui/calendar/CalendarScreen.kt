@@ -531,12 +531,7 @@ private fun SelectedDateHeader(
                                         .background(Color(0xFFEAB308).copy(alpha = 0.16f), RoundedCornerShape(5.dp)),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Star,
-                                        contentDescription = "Win of the day",
-                                        modifier = Modifier.size(13.dp),
-                                        tint = Color(0xFFEAB308)
-                                    )
+                                    RatingStar(dayGoal.rating, modifier = Modifier.size(13.dp))
                                 }
                                 Text(
                                     modifier = Modifier.weight(1f),
