@@ -55,6 +55,7 @@ import com.checkit.domain.usecase.ObserveNestedTagsUseCase
 import com.checkit.domain.usecase.ObserveNotesForDateUseCase
 import com.checkit.domain.usecase.ObserveNotesInRangeUseCase
 import com.checkit.domain.usecase.ObservePeriodGoalsUseCase
+import com.checkit.domain.usecase.ObserveGoalHistoryUseCase
 import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.ObserveTagUsageCountsUseCase
 import com.checkit.domain.usecase.ObserveTasksForDateUseCase
@@ -194,6 +195,7 @@ val provideInteractorModule = module {
     single { BuildDayCloseSummaryUseCase(get()) }
     single { CarryOverDailyPlanItemsUseCase(get(), get()) }
     single { ObservePeriodGoalsUseCase(get()) }
+    single { ObserveGoalHistoryUseCase(get()) }
     single { SavePeriodGoalUseCase(get()) }
     single { RebuildReflectStatsUseCase(get()) }
     single { CompleteDayCloseUseCase(get(), get(), get()) }
@@ -310,6 +312,7 @@ val provideViewModelModule = module {
         ReflectViewModel(
             repository = get(),
             observePeriodGoals = get(),
+            observeGoalHistory = get(),
             savePeriodGoal = get()
         )
     }

@@ -254,7 +254,7 @@ private fun JournalAgendaGoalCard(
                 fontWeight = FontWeight.SemiBold
             )
             Spacer(Modifier.weight(1f))
-            RatingBar(goal.rating, modifier = Modifier.width(80.dp), iconTint = goal.period.color())
+            RatingBar(goal.rating, modifier = Modifier.width(80.dp))
         }
         if (goal.review.isNotBlank()) {
             Text(

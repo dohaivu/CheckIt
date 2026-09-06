@@ -1,5 +1,7 @@
 package com.checkit.ui.reflect
 
+import androidx.paging.PagingSource
+import com.checkit.domain.PeriodGoalHistoryItem
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
@@ -8,9 +10,9 @@ import com.checkit.domain.JournalEntry
 import com.checkit.domain.PeriodGoal
 import com.checkit.domain.Period
 
-
 import com.checkit.domain.TagItem
 import com.checkit.domain.endExclusive
+import com.checkit.domain.usecase.ObserveGoalHistoryUseCase
 import com.checkit.domain.usecase.ObservePeriodGoalsUseCase
 import com.checkit.domain.usecase.SavePeriodGoalUseCase
 import com.checkit.ui.UiEvent
@@ -34,6 +36,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -61,6 +64,7 @@ class ReflectViewModelTest {
         ReflectViewModel(
             repository = repository,
             observePeriodGoals = ObservePeriodGoalsUseCase(repository),
+            observeGoalHistory = ObserveGoalHistoryUseCase(repository),
             savePeriodGoal = SavePeriodGoalUseCase(repository),
             dataDispatcher = dispatcher
         )
@@ -267,8 +271,7 @@ class ReflectViewModelTest {
     }
 
     @Test
-    fun statsDeriveDoneMinutesAndJournalsForFocusedWeek() = runTest(dispatcher) {
-        val weekStart = today().minus(today().dayOfWeek.ordinal, DateTimeUnit.DAY)
+    fun statsDeriveDoneMinutesAndJournalsForFocusedWeek() = runTest(dispatcher) {        val weekStart = today().minus(today().dayOfWeek.ordinal, DateTimeUnit.DAY)
         repository.setDailyPlans(
             listOf(
                 DailyPlan(
@@ -304,6 +307,154 @@ class ReflectViewModelTest {
         assertEquals(60, digest.totalMinutes)
         assertEquals(1, digest.journalCount)
     }
+
+    @Test
+    fun historyAnchorStartsNullOpensBeforeFocusAndDismisses() = runTest(dispatcher) {
+        assertNull(viewModel.historyAnchor.value)
+
+        viewModel.openHistory()
+        advanceUntilIdle()
+
+        val weekStart = today().minus(today().dayOfWeek.ordinal, DateTimeUnit.DAY)
+        val anchor = assertNotNull(viewModel.historyAnchor.value)
+        assertEquals(Period.Week, anchor.period)
+        assertEquals(weekStart.toEpochDays().toInt(), anchor.beforeEpochDays)
+
+        viewModel.dismissHistory()
+        assertNull(viewModel.historyAnchor.value)
+    }
+
+    @Test
+    fun openHistoryAnchorsDayPeriodForDaily() {
+        viewModel.selectPeriod(ReportPeriod.Daily)
+        viewModel.openHistory()
+
+        val anchor = assertNotNull(viewModel.historyAnchor.value)
+        assertEquals(Period.Day, anchor.period)
+        assertEquals(today().toEpochDays().toInt(), anchor.beforeEpochDays)
+    }
+
+    @Test
+    fun historyPagingExcludesCurrentOrdersNewestFirstAndShowsAnyData() = runTest(dispatcher) {
+        val weekStart = today().minus(today().dayOfWeek.ordinal, DateTimeUnit.DAY)
+        val current = review(period = Period.Week, start = weekStart, content = "Current")
+        val lastWeek = review(period = Period.Week, start = weekStart.minus(7, DateTimeUnit.DAY), content = "Last")
+        val blankOlder = review(
+            period = Period.Week,
+            start = weekStart.minus(14, DateTimeUnit.DAY),
+            content = "",
+            periodIntent = null
+        )
+        val dayGoal = review(period = Period.Day, start = weekStart, content = "Day type excluded")
+        repository.savePeriodGoal(current)
+        repository.savePeriodGoal(lastWeek)
+        repository.savePeriodGoal(blankOlder)
+        repository.savePeriodGoal(dayGoal)
+        advanceUntilIdle()
+
+        val result = repository.pagingGoalHistory(
+            period = Period.Week,
+            beforeEpochDays = weekStart.toEpochDays().toInt()
+        ).load(refreshParams(loadSize = 20))
+        val page = assertIs<PagingSource.LoadResult.Page<Int, PeriodGoalHistoryItem>>(result)
+        val rows = page.data
+        // Current week excluded, other period type excluded, blank entry kept (any data).
+        assertEquals(
+            listOf(lastWeek.startEpochDays, blankOlder.startEpochDays),
+            rows.map { it.goal.startEpochDays }
+        )
+        assertNull(page.nextKey)
+    }
+
+    @Test
+    fun historyPagingCarriesTrackedMinutes() = runTest(dispatcher) {
+        val weekStart = today().minus(today().dayOfWeek.ordinal, DateTimeUnit.DAY)
+        val lastWeekStart = weekStart.minus(7, DateTimeUnit.DAY)
+        repository.savePeriodGoal(
+            review(period = Period.Week, start = lastWeekStart, content = "Last week")
+        )
+        repository.setDailyPlans(
+            listOf(
+                DailyPlan(
+                    date = lastWeekStart,
+                    items = listOf(
+                        item(
+                            id = 1L,
+                            title = "Deep work",
+                            status = DailyPlanItemStatus.Done,
+                            startTimeMinutes = 9 * 60,
+                            endTimeMinutes = 10 * 60
+                        )
+                    )
+                )
+            )
+        )
+        advanceUntilIdle()
+
+        val result = repository.pagingGoalHistory(
+            period = Period.Week,
+            beforeEpochDays = weekStart.toEpochDays().toInt()
+        ).load(refreshParams(loadSize = 20))
+        val rows = assertIs<PagingSource.LoadResult.Page<Int, PeriodGoalHistoryItem>>(result).data
+        assertEquals(1, rows.size)
+        assertEquals(60, rows.single().trackedMinutes)
+    }
+
+    @Test
+    fun historyPagingPaginatesWithKeys() = runTest(dispatcher) {
+        val weekStart = today().minus(today().dayOfWeek.ordinal, DateTimeUnit.DAY)
+        repeat(5) { index ->
+            repository.savePeriodGoal(
+                review(
+                    period = Period.Week,
+                    start = weekStart.minus((index + 1) * 7, DateTimeUnit.DAY),
+                    content = "Week ${index + 1}"
+                )
+            )
+        }
+        advanceUntilIdle()
+        val source = repository.pagingGoalHistory(
+            period = Period.Week,
+            beforeEpochDays = weekStart.toEpochDays().toInt()
+        )
+
+        val first = assertIs<PagingSource.LoadResult.Page<Int, PeriodGoalHistoryItem>>(
+            source.load(refreshParams(loadSize = 2))
+        )
+        assertEquals(2, first.data.size)
+        assertEquals(2, first.nextKey)
+
+        val second = assertIs<PagingSource.LoadResult.Page<Int, PeriodGoalHistoryItem>>(
+            source.load(
+                PagingSource.LoadParams.Append(
+                    key = 2,
+                    loadSize = 2,
+                    placeholdersEnabled = false
+                )
+            )
+        )
+        assertEquals(2, second.data.size)
+        assertEquals(4, second.nextKey)
+
+        val last = assertIs<PagingSource.LoadResult.Page<Int, PeriodGoalHistoryItem>>(
+            source.load(
+                PagingSource.LoadParams.Append(
+                    key = 4,
+                    loadSize = 2,
+                    placeholdersEnabled = false
+                )
+            )
+        )
+        assertEquals(1, last.data.size)
+        assertNull(last.nextKey)
+    }
+
+    private fun refreshParams(loadSize: Int): PagingSource.LoadParams<Int> =
+        PagingSource.LoadParams.Refresh(
+            key = null,
+            loadSize = loadSize,
+            placeholdersEnabled = false
+        )
 
     private fun review(
         period: Period,

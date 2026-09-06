@@ -141,7 +141,7 @@ data class MyDayUiState(
 
         return when {
             isReviewTime && isReviewMissing -> PeriodBannerType.ReviewPending
-            isGoalMissing -> PeriodBannerType.MissingGoal
+            isGoalMissing && isReviewMissing -> PeriodBannerType.MissingGoal
             else -> PeriodBannerType.ActiveGoal
         }
     }

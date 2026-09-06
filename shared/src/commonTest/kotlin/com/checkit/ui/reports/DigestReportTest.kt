@@ -104,29 +104,8 @@ class DigestReportTest {
         assertEquals(LocalDate(2026, 8, 31), digest.endDate)
         assertEquals(120, digest.totalMinutes)
         assertEquals(2, digest.doneItemCount)
-        assertEquals(listOf("Beta", "Alpha"), digest.highlights.map { it.title })
         assertTrue(digest.activityItems.isNotEmpty())
         assertEquals(120, digest.activityItems.sumOf { it.totalMinutes })
-    }
-
-    @Test
-    fun monthDigestTracksPreviousMonth() {
-        val selectedDate = LocalDate(2026, 8, 15)
-        val plans = listOf(
-            DailyPlan(
-                date = LocalDate(2026, 8, 1),
-                items = listOf(doneTask(1L, "Current", 480, 540))
-            ),
-            DailyPlan(
-                date = LocalDate(2026, 7, 1),
-                items = listOf(doneTask(2L, "Last", 480, 600))
-            )
-        )
-
-        val digest = digestFor(ReportPeriod.Month, selectedDate, plans)
-
-        assertEquals(60, digest.totalMinutes)
-        assertEquals(120, digest.previousTotalMinutes)
     }
 
     @Test
@@ -158,26 +137,6 @@ class DigestReportTest {
     }
 
     @Test
-    fun annualDigestTracksPreviousYear() {
-        val selectedDate = LocalDate(2026, 8, 15)
-        val plans = listOf(
-            DailyPlan(
-                date = LocalDate(2026, 1, 1),
-                items = listOf(doneTask(1L, "Current", 480, 540))
-            ),
-            DailyPlan(
-                date = LocalDate(2025, 1, 1),
-                items = listOf(doneTask(2L, "Last", 480, 600))
-            )
-        )
-
-        val digest = digestFor(ReportPeriod.Annual, selectedDate, plans)
-
-        assertEquals(60, digest.totalMinutes)
-        assertEquals(120, digest.previousTotalMinutes)
-    }
-
-    @Test
     fun weekDigestStillCoversSevenDays() {
         val selectedDate = LocalDate(2026, 8, 5)
         val plans = listOf(
@@ -195,11 +154,10 @@ class DigestReportTest {
 
         assertEquals(120, digest.totalMinutes)
         assertEquals(7, digest.activityItems.size)
-        assertEquals(listOf("Sun", "Mon"), digest.highlights.map { it.title })
     }
 
     @Test
-    fun dailyDigestUsesSingleDayWithSevenDayTrend() {
+    fun dailyDigestUsesSingleDay() {
         val selectedDate = LocalDate(2026, 8, 5)
         val plans = listOf(
             DailyPlan(
@@ -211,9 +169,7 @@ class DigestReportTest {
         val digest = digestFor(ReportPeriod.Daily, selectedDate, plans)
 
         assertEquals(60, digest.totalMinutes)
-        assertEquals(7, digest.trendItems.size)
         assertEquals(7, digest.activityItems.size)
-        assertEquals(listOf("Today"), digest.highlights.map { it.title })
     }
 
     @Test
@@ -233,6 +189,5 @@ class DigestReportTest {
         val digest = digestFor(ReportPeriod.Week, selectedDate, plans)
 
         assertEquals(60, digest.totalMinutes)
-        assertEquals(listOf("InWeek"), digest.highlights.map { it.title })
     }
 }

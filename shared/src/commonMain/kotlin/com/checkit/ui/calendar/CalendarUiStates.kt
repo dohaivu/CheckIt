@@ -45,9 +45,7 @@ data class CalendarUiState(
 
     /** Goal record (review + goal) for the currently selected date. */
     val selectedDatePeriodGoal: PeriodGoal? by lazy {
-        periodGoals.firstOrNull {
-            it.period == Period.Day && it.startDate == selectedDate
-        }
+        periodGoalByDate[selectedDate]
     }
 
     /** Goal recorded on the week containing the selected date, if any. */
@@ -61,11 +59,7 @@ data class CalendarUiState(
     }
 
     private fun periodGoalFor(period: Period): PeriodGoal? =
-        periodGoals
-            .firstOrNull {
-                it.period == period &&
-                    it.startEpochDays == period.startOf(selectedDate).toEpochDays().toInt()
-            }
+        periodGoals.firstOrNull { it.period == period && it.startEpochDays == period.startOf(selectedDate).toEpochDays().toInt() }
 
     private val filteredDailyPlans: List<DailyPlan> by lazy {
         // Live plans cover today forward; selectedDayPlan back-fills a past
@@ -82,6 +76,7 @@ data class CalendarUiState(
     }
 
     val dailyPlanByDate: Map<LocalDate, DailyPlan> = filteredDailyPlans.associateBy { it.date }
+    val periodGoalByDate: Map<LocalDate, PeriodGoal> = periodGoals.filter { it.period == Period.Day }.associateBy { it.startDate }
 
     /**
      * Markers for past days (< today) from the precomputed stats table. When
@@ -92,14 +87,16 @@ data class CalendarUiState(
         val today = today()
         dailyStatsByDate
             .filterKeys { it < today }
-            .mapValues { (_, stat) ->
+            .mapValues { (date, stat) ->
+                val rating = periodGoalByDate[date]?.rating
                 if (selectedTagIds.isEmpty()) {
-                    CalendarDateMarkers(totalCount = stat.doneItemCount + stat.plannedItemCount)
+                    CalendarDateMarkers(totalCount = stat.doneItemCount + stat.plannedItemCount, rating = rating)
                 } else {
                     CalendarDateMarkers(
                         totalCount = stat.tagRollups
                             .filter { it.tagId in selectedTagIds }
-                            .sumOf { it.doneCount }
+                            .sumOf { it.doneCount },
+                        rating = rating
                     )
                 }
             }
@@ -144,7 +141,8 @@ data class CalendarUiState(
             val planCount = todayAndFutureMarkersByDate[date]?.totalCount ?: 0
             val boardCount = board.tasksByDate[date].orEmpty().filter { matchesSelectedTags(it.tags) }.size +
                 board.notesByDate[date].orEmpty().filter { matchesSelectedTags(it.tags) }.size
-            CalendarDateMarkers(totalCount = planCount + boardCount)
+            val rating = periodGoalByDate[date]?.rating
+            CalendarDateMarkers(totalCount = planCount + boardCount, rating = rating)
         }
 
     fun doneMinutesForDate(date: LocalDate): Int =
@@ -157,7 +155,8 @@ private fun DailyPlanItem.hasAnyTag(tagIds: Set<Long>): Boolean =
     tags.any { it.id in tagIds }
 
 data class CalendarDateMarkers(
-    val totalCount: Int = 0
+    val totalCount: Int = 0,
+    val rating: Float? = null
 ) {
     val hasMarkers: Boolean get() = totalCount > 0
 

@@ -16,8 +16,34 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+
+object RatingBarDefaults {
+    /** 5 Stars: Excellent */
+    val ExcellentColor = Color(0xFF16A34A)
+    /** 4 Stars: Above expectations */
+    val AboveExpectationsColor = Color(0xFF65A30D)
+    /** 3 Stars: Meets basic expectations */
+    val MeetsExpectationsColor = Color(0xFFCA8A04)
+    /** 2 Stars: Needs improvement */
+    val NeedsImprovementColor = Color(0xFFEA580C)
+    /** 1 Star: Failed expectations */
+    val FailedExpectationsColor = Color(0xFFDC2626)
+
+    /**
+     * Returns a color based on the rating value.
+     */
+    fun getRatingColor(rating: Float): Color = when {
+        rating >= 4.5f -> ExcellentColor
+        rating >= 3.5f -> AboveExpectationsColor
+        rating >= 2.5f -> MeetsExpectationsColor
+        rating >= 1.5f -> NeedsImprovementColor
+        rating > 0f -> FailedExpectationsColor
+        else -> Color.Unspecified
+    }
+}
 
 @Composable
 fun RatingBar(
@@ -25,8 +51,16 @@ fun RatingBar(
     onRatingChange: ((Float) -> Unit)? = null,
     modifier: Modifier = Modifier.Companion,
     enabled: Boolean = true,
-    iconTint: Color = MaterialTheme.colorScheme.secondary
+    useRatingColors: Boolean = true,
+    iconTint: Color = Color.Unspecified
 ) {
+    val themeSecondary = MaterialTheme.colorScheme.secondary
+    val activeColor = when {
+        iconTint != Color.Unspecified -> iconTint
+        useRatingColors -> RatingBarDefaults.getRatingColor(rating).takeOrElse { themeSecondary }
+        else -> themeSecondary
+    }
+
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(2.dp),
@@ -44,7 +78,7 @@ fun RatingBar(
             }
 
             val tint = if (isFull || isHalf) {
-                iconTint
+                activeColor
             } else {
                 MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
             }
@@ -80,4 +114,28 @@ fun RatingBar(
             }
         }
     }
+}
+
+/**
+ * A single star icon that uses the same color logic as [RatingBar].
+ */
+@Composable
+fun RatingStar(
+    rating: Float,
+    modifier: Modifier = Modifier,
+    iconTint: Color = Color.Unspecified
+) {
+    val themeSecondary = MaterialTheme.colorScheme.secondary
+    val color = when {
+        iconTint != Color.Unspecified -> iconTint
+        rating > 0f -> RatingBarDefaults.getRatingColor(rating).takeOrElse { themeSecondary }
+        else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+    }
+
+    Icon(
+        imageVector = if (rating > 0f) Icons.Filled.Star else Icons.Filled.StarBorder,
+        contentDescription = null,
+        tint = color,
+        modifier = modifier
+    )
 }

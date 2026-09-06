@@ -46,12 +46,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.util.fastJoinToString
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.cancel
 import checkit.shared.generated.resources.reflect_review_card_title
 import checkit.shared.generated.resources.reflect_review_save
 import com.checkit.domain.MetricItem
 import com.checkit.domain.MetricUnit
+import com.checkit.domain.Period
 import com.checkit.ui.components.RatingBar
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
@@ -117,7 +119,7 @@ internal fun PeriodGoalEditorSheet(
 
             if (editor.mode == ReflectGoalEditorMode.Full) {
                 Text(
-                    text = "What are your wins? frictions? lessons?",
+                    text = ReflectionPrompts.get(editor.focus.period).reviewText,
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -181,7 +183,7 @@ internal fun PeriodGoalEditorSheet(
                 }
             }
             Text(
-                text = "What are the 3 non-negotiable priority tasks",
+                text = ReflectionPrompts.get(editor.focus.period).goalPrompt,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(bottom = 8.dp)
@@ -229,6 +231,55 @@ internal fun PeriodGoalEditorSheet(
             }
             Spacer(Modifier.height(16.dp))
         }
+    }
+}
+
+internal data class ReflectionPrompt(
+    val reviewSections: List<String>,
+    val goalPrompt: String
+) {
+    val reviewText: String get() = reviewSections.fastJoinToString("\n")
+}
+
+internal object ReflectionPrompts {
+    fun get(period: Period): ReflectionPrompt = when (period) {
+        Period.Day -> ReflectionPrompt(
+            reviewSections = listOf(
+                "What were your wins?",
+                "Where did you feel friction? What distracted you? How can I prevent it tomorrow?",
+            ),
+            goalPrompt = "What are your 3 non-negotiable tasks for today?"
+        )
+        Period.Week -> ReflectionPrompt(
+            reviewSections = listOf(
+                "What was completed vs. planned this week?",
+                "Which tactics worked well? What didn't work?",
+                "What needs to change next week?"
+            ),
+            goalPrompt = "What are the 3 primary objectives for this week?"
+        )
+        Period.Month -> ReflectionPrompt(
+            reviewSections = listOf(
+                "What significant goals met or personal highlights achieved this month?",
+                "How is your big-picture progress? Review active quarterly/yearly goals.",
+                "What macro trends are you noticing? What recurring friction or bottlenecks appeared?"
+            ),
+            goalPrompt = "What are the 3 key milestones for this month?"
+        )
+        Period.Quarter -> ReflectionPrompt(
+            reviewSections = listOf(
+                "What are the quarterly trends?",
+                "How is the macro progress?"
+            ),
+            goalPrompt = "What are the 3 key results for this quarter?"
+        )
+        Period.Year -> ReflectionPrompt(
+            reviewSections = listOf(
+                "What are your biggest annual achievements?",
+                "How have you progressed toward your long-term vision?"
+            ),
+            goalPrompt = "What are the 3 most important goals for the coming year?"
+        )
     }
 }
 
