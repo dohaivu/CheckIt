@@ -87,9 +87,7 @@ internal fun TaskEditorSheet(
 ) {
     AppEditorBottomSheet(
         onDismiss = actions.common.onDismiss,
-        modifier = Modifier
-            .fillMaxHeight(0.9f)
-            .windowInsetsPadding(WindowInsets.ime)
+        modifier = Modifier.fillMaxHeight(0.9f)
     ) {
         TrashedStatusSection(
             isTrashed = editor.isTrashed(),

@@ -93,7 +93,6 @@ internal fun DailyPlanItemEditorSheet(
         modifier = Modifier
             .fillMaxHeight(0.9f)
             .padding(bottom = 24.dp)
-            .windowInsetsPadding(WindowInsets.ime)
     ) {
         DailyPlanItemSheetHeader(
             state = state,
