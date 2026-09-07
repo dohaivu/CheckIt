@@ -260,8 +260,10 @@ private fun ReminderSettingsScreen(
             item {
                 CheckInReminderRow(
                     enabled = state.checkInEnabled,
+                    idleThresholdMinutes = state.idleThresholdMinutes,
                     lastShownAtMillis = state.checkInLastShownAtMillis,
-                    onEnabledChange = viewModel::setCheckInReminderEnabled
+                    onEnabledChange = viewModel::setCheckInReminderEnabled,
+                    onThresholdChange = viewModel::setIdleCheckInThresholdMinutes
                 )
             }
         }
@@ -411,15 +413,25 @@ private fun ScheduleReminderRow(
 @Composable
 private fun CheckInReminderRow(
     enabled: Boolean,
+    idleThresholdMinutes: Int,
     lastShownAtMillis: Long?,
-    onEnabledChange: (Boolean) -> Unit
+    onEnabledChange: (Boolean) -> Unit,
+    onThresholdChange: (Int) -> Unit
 ) {
+    var showThresholdPicker by remember { mutableStateOf(false) }
     SwitchSettingsRow(
         title = "CheckIn",
-        subtitle = "Checks every 30 minutes when My Day has nothing near now",
+        subtitle = "Checks every 30 minutes when nothing is Done for a while and My Day has nothing near now",
         enabled = enabled,
         onEnabledChange = onEnabledChange
     ) {
+        Text(
+            text = "Nudge after ${idleThresholdMinutes}m idle",
+            modifier = Modifier.padding(top = 4.dp).clickable(enabled = enabled) { showThresholdPicker = true },
+            color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium
+        )
         Text(
             text = lastShownAtMillis?.let { "Last shown ${formatLastShown(it)}" } ?: "Last shown never",
             modifier = Modifier.padding(top = 4.dp),
@@ -427,6 +439,47 @@ private fun CheckInReminderRow(
             style = MaterialTheme.typography.bodySmall
         )
     }
+
+    if (showThresholdPicker) {
+        IdleThresholdPickerDialog(
+            initialMinutes = idleThresholdMinutes,
+            onDismiss = { showThresholdPicker = false },
+            onConfirm = { minutes ->
+                onThresholdChange(minutes)
+                showThresholdPicker = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun IdleThresholdPickerDialog(
+    initialMinutes: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit
+) {
+    val options = listOf(30, 45, 60, 90, 120)
+    var selected by remember(initialMinutes) { mutableStateOf(initialMinutes) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Idle threshold") },
+        text = {
+            Column {
+                options.forEach { option ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable { selected = option }.padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = selected == option, onClick = { selected = option })
+                        Spacer(Modifier.size(8.dp))
+                        Text("After ${option}m with no Done")
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { onConfirm(selected) }) { Text("OK") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(Res.string.cancel)) } }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -582,7 +635,7 @@ private fun reminderSummary(state: ReminderSettingsUiState): String {
     val enabledCount = listOf(state.planEnabled, state.reviewEnabled, state.checkInEnabled, state.scheduleEnabled).count { it }
     return when (enabledCount) {
         0 -> "All reminders off"
-        4 -> "Plan ${formatTime(state.planTimeMinutes)}, Review ${formatTime(state.reviewTimeMinutes)}, Schedule on"
+        4 -> "Plan ${formatTime(state.planTimeMinutes)}, Review ${formatTime(state.reviewTimeMinutes)}, CheckIn ${state.idleThresholdMinutes}m idle, Schedule on"
         else -> "$enabledCount reminders on"
     }
 }

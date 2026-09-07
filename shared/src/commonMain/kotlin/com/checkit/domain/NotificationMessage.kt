@@ -52,5 +52,25 @@ data class NotificationMessage(
 
         fun randomCheckIn(random: Random = Random.Default): NotificationMessage =
             CheckInMessages[random.nextInt(CheckInMessages.size)]
+
+        fun idleCheckIn(
+            idleMinutes: Long?,
+            random: Random = Random.Default
+        ): NotificationMessage {
+            val base = randomCheckIn(random)
+            if (idleMinutes == null || idleMinutes <= 0L) return base
+            val gap = formatGap(idleMinutes)
+            return base.copy(body = "${base.body} No Done in the last $gap.")
+        }
+
+        private fun formatGap(idleMinutes: Long): String {
+            val hours = idleMinutes / 60
+            val minutes = idleMinutes % 60
+            return when {
+                hours <= 0L -> "${minutes}m"
+                minutes == 0L -> "${hours}h"
+                else -> "${hours}h ${minutes}m"
+            }
+        }
     }
 }

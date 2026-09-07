@@ -92,6 +92,165 @@ class CheckInReminderPolicyTest {
     }
 
     @Test
+    fun shouldNotShowWhenRecentDoneActivityIsWithinIdleThreshold() {
+        val nowMillis = 1_000_000L
+        val items = listOf(
+            CheckInReminderPlanItem(
+                startTimeMinutes = null,
+                endTimeMinutes = null,
+                isDone = true,
+                completedAtMillis = nowMillis - 30L * 60_000L
+            )
+        )
+
+        val shouldShow = CheckInReminderPolicy.shouldShowReminder(
+            items = items,
+            nowMinutes = 12 * 60,
+            nowMillis = nowMillis,
+            lastShownAtMillis = null,
+            idleThresholdMinutes = 60
+        )
+
+        assertFalse(shouldShow)
+    }
+
+    @Test
+    fun shouldShowWhenLastDoneActivityExceedsIdleThreshold() {
+        val nowMillis = 1_000_000L
+        val items = listOf(
+            CheckInReminderPlanItem(
+                startTimeMinutes = null,
+                endTimeMinutes = null,
+                isDone = true,
+                completedAtMillis = nowMillis - 90L * 60_000L
+            )
+        )
+
+        val shouldShow = CheckInReminderPolicy.shouldShowReminder(
+            items = items,
+            nowMinutes = 12 * 60,
+            nowMillis = nowMillis,
+            lastShownAtMillis = null,
+            idleThresholdMinutes = 60
+        )
+
+        assertTrue(shouldShow)
+    }
+
+    @Test
+    fun shouldRespectCustomIdleThreshold() {
+        val nowMillis = 1_000_000L
+        val items = listOf(
+            CheckInReminderPlanItem(
+                startTimeMinutes = null,
+                endTimeMinutes = null,
+                isDone = true,
+                completedAtMillis = nowMillis - 40L * 60_000L
+            )
+        )
+
+        assertFalse(
+            CheckInReminderPolicy.shouldShowReminder(
+                items = items,
+                nowMinutes = 12 * 60,
+                nowMillis = nowMillis,
+                lastShownAtMillis = null,
+                idleThresholdMinutes = 60
+            )
+        )
+        assertTrue(
+            CheckInReminderPolicy.shouldShowReminder(
+                items = items,
+                nowMinutes = 12 * 60,
+                nowMillis = nowMillis,
+                lastShownAtMillis = null,
+                idleThresholdMinutes = 30
+            )
+        )
+    }
+
+    @Test
+    fun shouldNotShowInEarlyMorningWhenNothingDoneYet() {
+        val shouldShow = CheckInReminderPolicy.shouldShowReminder(
+            items = emptyList(),
+            nowMinutes = 8 * 60,
+            nowMillis = 10_000L,
+            lastShownAtMillis = null
+        )
+
+        assertFalse(shouldShow)
+    }
+
+    @Test
+    fun shouldShowAfterMorningGuardWhenNothingDoneYet() {
+        val shouldShow = CheckInReminderPolicy.shouldShowReminder(
+            items = emptyList(),
+            nowMinutes = 10 * 60,
+            nowMillis = 10_000L,
+            lastShownAtMillis = null
+        )
+
+        assertTrue(shouldShow)
+    }
+
+    @Test
+    fun shouldNotShowWhenNearbyItemExistsEvenIfIdle() {
+        val nowMillis = 1_000_000L
+        val items = listOf(
+            CheckInReminderPlanItem(
+                startTimeMinutes = 12 * 60 + 10,
+                endTimeMinutes = 12 * 60 + 40,
+                isDone = true,
+                completedAtMillis = nowMillis - 180L * 60_000L
+            )
+        )
+
+        val shouldShow = CheckInReminderPolicy.shouldShowReminder(
+            items = items,
+            nowMinutes = 12 * 60,
+            nowMillis = nowMillis,
+            lastShownAtMillis = null,
+            idleThresholdMinutes = 60
+        )
+
+        assertFalse(shouldShow)
+    }
+
+    @Test
+    fun lastDonePrefersCompletedAtOverHandledAt() {
+        val items = listOf(
+            CheckInReminderPlanItem(
+                startTimeMinutes = null,
+                endTimeMinutes = null,
+                isDone = true,
+                completedAtMillis = 5_000L,
+                handledAtMillis = 9_000L
+            ),
+            CheckInReminderPlanItem(
+                startTimeMinutes = null,
+                endTimeMinutes = null,
+                isDone = false,
+                completedAtMillis = 99_000L
+            )
+        )
+
+        assertEquals(5_000L, CheckInReminderPolicy.lastDoneAtMillis(items))
+        assertEquals(4L, CheckInReminderPolicy.idleMinutesSinceLastDone(items, 5_000L + 4L * 60_000L))
+    }
+
+    @Test
+    fun idleCheckInMessageAppendsGap() {
+        val base = NotificationMessage.idleCheckIn(null)
+        assertFalse(base.body.contains("No Done"))
+
+        val withGap = NotificationMessage.idleCheckIn(90L)
+        assertTrue(withGap.body.contains("No Done in the last 1h 30m."))
+
+        val shortGap = NotificationMessage.idleCheckIn(45L)
+        assertTrue(shortGap.body.contains("No Done in the last 45m."))
+    }
+
+    @Test
     fun doNotDisturbBlocksNotificationsFromTenPmToSixAm() {
         assertTrue(NotificationDoNotDisturbPolicy.canNotifyAt(6 * 60))
         assertTrue(NotificationDoNotDisturbPolicy.canNotifyAt(21 * 60 + 59))

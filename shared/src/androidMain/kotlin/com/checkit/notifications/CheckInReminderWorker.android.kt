@@ -22,14 +22,16 @@ class CheckInReminderWorker(
             val now = Clock.System.now().toEpochMilliseconds()
             val time = LocalTime.now()
             val nowMinutes = time.hour * 60 + time.minute
+            val dateEpochDays = LocalDate.now().toEpochDay().toInt()
             if (
                 checkInReminderPolicy.shouldShowReminder(
-                    dateEpochDays = LocalDate.now().toEpochDay().toInt(),
+                    dateEpochDays = dateEpochDays,
                     nowMinutes = nowMinutes,
                     nowMillis = now
                 )
             ) {
-                val message = NotificationMessage.randomCheckIn()
+                val idleMinutes = checkInReminderPolicy.idleMinutesForDate(dateEpochDays, now)
+                val message = NotificationMessage.idleCheckIn(idleMinutes)
                 CheckItNotificationCenter(applicationContext).showAppReminder(
                     notificationId = NotificationIds.CheckInReminder,
                     title = message.title,
