@@ -7,6 +7,7 @@ data class NotificationMessage(
     val body: String
 ) {
     companion object {
+        private const val MaxItemTitleLength = 40
         private val CheckInMessages = listOf(
             NotificationMessage(
                 title = "A tiny step counts",
@@ -59,8 +60,23 @@ data class NotificationMessage(
         ): NotificationMessage {
             val base = randomCheckIn(random)
             if (idleMinutes == null || idleMinutes <= 0L) return base
-            val gap = formatGap(idleMinutes)
-            return base.copy(body = "${base.body} No Done in the last $gap.")
+            return base.copy(title = "No Done in the last ${formatGap(idleMinutes)}")
+        }
+
+        fun currentItemCheckIn(
+            itemTitle: String,
+            idleMinutes: Long?
+        ): NotificationMessage {
+            val trimmed = itemTitle.trim().take(MaxItemTitleLength)
+            val gapSuffix = if (idleMinutes != null && idleMinutes > 0L) {
+                " No Done in the last ${formatGap(idleMinutes)}."
+            } else {
+                ""
+            }
+            return NotificationMessage(
+                title = "Still on \"$trimmed\"?",
+                body = "You planned this for right now — are you working on it? Tap to check in.\n$gapSuffix"
+            )
         }
 
         private fun formatGap(idleMinutes: Long): String {

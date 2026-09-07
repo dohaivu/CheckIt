@@ -72,6 +72,7 @@ import com.checkit.ui.AppThemeMode
 import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.domain.usecase.RebuildReflectStatsUseCase
+import com.checkit.notifications.CheckInReminderForceRunner
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -136,6 +137,7 @@ internal fun SettingsScreen(
                     SettingsRoute.DevOptions -> {
                         DevOptionsScreen(
                             rebuildReflectStats = koinInject(),
+                            checkInForceRunner = koinInject(),
                             onBack = { pop() }
                         )
                     }
@@ -273,11 +275,14 @@ private fun ReminderSettingsScreen(
 @Composable
 private fun DevOptionsScreen(
     rebuildReflectStats: RebuildReflectStatsUseCase,
+    checkInForceRunner: CheckInReminderForceRunner,
     onBack: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
     var isRebuilding by remember { mutableStateOf(false) }
     var lastResult by remember { mutableStateOf<String?>(null) }
+    var isForcingCheckIn by remember { mutableStateOf(false) }
+    var lastForceResult by remember { mutableStateOf<String?>(null) }
 
     SettingsScaffold(
         title = "Dev options",
@@ -291,41 +296,79 @@ private fun DevOptionsScreen(
             modifier = contentModifier.fillMaxSize().padding(horizontal = 16.dp),
         ) {
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Rebuild reflect stats", fontWeight = FontWeight.SemiBold)
-                        Text(
-                            text = lastResult ?: "Recompute daily rollups from source data",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.bodySmall
-                        )
+                DevActionRow(
+                    title = "Rebuild reflect stats",
+                    subtitle = lastResult ?: "Recompute daily rollups from source data",
+                    actionLabel = if (isRebuilding) "Rebuilding…" else "Rebuild",
+                    actionEnabled = !isRebuilding,
+                    onAction = {
+                        scope.launch {
+                            isRebuilding = true
+                            runCatching { rebuildReflectStats() }
+                                .onSuccess {
+                                    lastResult = "Last rebuilt ${formatLastShown(Clock.System.now().toEpochMilliseconds())}"
+                                }
+                                .onFailure { error ->
+                                    lastResult = "Failed: ${error.message ?: "unknown error"}"
+                                }
+                            isRebuilding = false
+                        }
                     }
-                    TextButton(
-                        onClick = {
-                            scope.launch {
-                                isRebuilding = true
-                                runCatching { rebuildReflectStats() }
-                                    .onSuccess {
-                                        lastResult = "Last rebuilt ${formatLastShown(Clock.System.now().toEpochMilliseconds())}"
-                                    }
-                                    .onFailure { error ->
-                                        lastResult = "Failed: ${error.message ?: "unknown error"}"
-                                    }
-                                isRebuilding = false
-                            }
-                        },
-                        enabled = !isRebuilding
-                    ) {
-                        Text(if (isRebuilding) "Rebuilding…" else "Rebuild")
+                )
+            }
+            item {
+                DevActionRow(
+                    title = "Force check-in reminder",
+                    subtitle = lastForceResult ?: "Bypass quiet hours + cooldown and run now",
+                    actionLabel = if (isForcingCheckIn) "Running…" else "Run",
+                    actionEnabled = !isForcingCheckIn,
+                    onAction = {
+                        scope.launch {
+                            isForcingCheckIn = true
+                            runCatching { checkInForceRunner.forceRun() }
+                                .onSuccess { outcome ->
+                                    lastForceResult = "Last run $outcome"
+                                }
+                                .onFailure { error ->
+                                    lastForceResult = "Failed: ${error.message ?: "unknown error"}"
+                                }
+                            isForcingCheckIn = false
+                        }
                     }
-                }
-                AppHorizontalDivider()
+                )
             }
         }
     }
+}
+
+@Composable
+private fun DevActionRow(
+    title: String,
+    subtitle: String,
+    actionLabel: String,
+    actionEnabled: Boolean,
+    onAction: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, fontWeight = FontWeight.SemiBold)
+            Text(
+                text = subtitle,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+        TextButton(
+            onClick = onAction,
+            enabled = actionEnabled
+        ) {
+            Text(actionLabel)
+        }
+    }
+    AppHorizontalDivider()
 }
 
 @Composable
@@ -421,7 +464,7 @@ private fun CheckInReminderRow(
     var showThresholdPicker by remember { mutableStateOf(false) }
     SwitchSettingsRow(
         title = "CheckIn",
-        subtitle = "Checks every 30 minutes when nothing is Done for a while and My Day has nothing near now",
+        subtitle = "Checks every 30 minutes when nothing is Done for a while",
         enabled = enabled,
         onEnabledChange = onEnabledChange
     ) {
@@ -452,20 +495,21 @@ private fun CheckInReminderRow(
     }
 }
 
+private val IdleThresholdOptions = listOf(30, 45, 60, 90, 120)
+
 @Composable
 private fun IdleThresholdPickerDialog(
     initialMinutes: Int,
     onDismiss: () -> Unit,
     onConfirm: (Int) -> Unit
 ) {
-    val options = listOf(30, 45, 60, 90, 120)
     var selected by remember(initialMinutes) { mutableStateOf(initialMinutes) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Idle threshold") },
         text = {
             Column {
-                options.forEach { option ->
+                IdleThresholdOptions.forEach { option ->
                     Row(
                         modifier = Modifier.fillMaxWidth().clickable { selected = option }.padding(vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically

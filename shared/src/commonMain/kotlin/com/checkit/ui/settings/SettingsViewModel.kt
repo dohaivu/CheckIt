@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.checkit.data.CheckItRepository
 import com.checkit.domain.AppConfig
+import com.checkit.domain.CheckInReminderPolicy
 import com.checkit.data.SettingsRepository
 import com.checkit.data.UserSettings
 import com.checkit.notifications.AppReminderScheduler
@@ -109,7 +110,10 @@ class SettingsViewModel(
     }
 
     fun setIdleCheckInThresholdMinutes(minutes: Int) {
-        val normalized = minutes.coerceIn(15, 240)
+        val normalized = minutes.coerceIn(
+            CheckInReminderPolicy.MinIdleThresholdMinutes,
+            CheckInReminderPolicy.MaxIdleThresholdMinutes
+        )
         _uiState.update { it.copy(reminders = it.reminders.copy(idleThresholdMinutes = normalized)) }
         viewModelScope.launch {
             settingsRepository.setIdleCheckInThresholdMinutes(normalized)

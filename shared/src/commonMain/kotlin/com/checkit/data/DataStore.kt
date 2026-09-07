@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.checkit.ui.MinutesPerDay
+import com.checkit.domain.CheckInReminderPolicy
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -93,7 +94,12 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
     }
 
     suspend fun setIdleCheckInThresholdMinutes(minutes: Int) {
-        dataStore.edit { it[KEY_IDLE_CHECK_IN_THRESHOLD] = minutes.coerceIn(15, 240) }
+        dataStore.edit {
+            it[KEY_IDLE_CHECK_IN_THRESHOLD] = minutes.coerceIn(
+                CheckInReminderPolicy.MinIdleThresholdMinutes,
+                CheckInReminderPolicy.MaxIdleThresholdMinutes
+            )
+        }
     }
 
     suspend fun setScheduleReminderEnabled(enabled: Boolean) {
