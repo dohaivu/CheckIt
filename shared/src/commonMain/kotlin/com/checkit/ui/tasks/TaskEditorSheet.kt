@@ -492,6 +492,10 @@ private fun DailyPlanSection(
             onValueChange = onLabelChange,
             recentLabels = recentLabels,
             placeholder = "☀️ MY DAY",
+            placeholderStyle = MaterialTheme.typography.labelSmall.copy(
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            ),
             enabled = enabled,
             maxWidth = 120.dp,
             contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
@@ -596,7 +600,7 @@ private fun DailyPlanSection(
                     onValueChange = onTitleChange,
                     textStyle = MaterialTheme.typography.bodyMedium.copy(
                         color = colorScheme.onSurface.copy(alpha = ContentContainerAlpha),
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.Normal
                     ),
                     maxLines = 2,
                     enabled = enabled,

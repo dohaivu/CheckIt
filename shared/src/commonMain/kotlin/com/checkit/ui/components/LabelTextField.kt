@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import com.checkit.ui.tasks.PredefinedLabels
+import com.checkit.ui.tasks.views.ContentContainerAlpha
 
 /**
  * A specialized text field for labels that shows suggestions in a [Popup] when focused.
@@ -66,7 +67,7 @@ fun LabelTextField(
             textStyle = textStyle,
             maxLines = 1,
             placeholder = placeholder,
-            placeholderStyle = placeholderStyle ?: textStyle,
+            placeholderStyle = placeholderStyle ?: textStyle.copy(color = MaterialTheme.colorScheme.onSurface.copy(alpha = ContentContainerAlpha)),
             enabled = enabled,
             contentPadding = contentPadding
         )
