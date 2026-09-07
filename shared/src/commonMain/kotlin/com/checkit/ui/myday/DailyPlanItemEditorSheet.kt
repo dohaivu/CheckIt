@@ -53,7 +53,7 @@ import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.AutocompleteTextField
 import com.checkit.ui.components.DatePicker
 import com.checkit.ui.components.DeleteOverflowMenu
-import com.checkit.ui.components.LabelSuggestions
+import com.checkit.ui.components.LabelTextField
 import com.checkit.ui.components.MarkdownVisualTransformation
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.tasks.views.currentTimeMinutes
@@ -293,37 +293,20 @@ private fun DailyPlanItemFormContent(
     val doneTypeChecked = state.source == DailyPlanItemSource.MyDayTask
     val reminderChecked = state.source == DailyPlanItemSource.MyDayReminder
 
-    var labelFocused by remember { mutableStateOf(false) }
-
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(0.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            AppOutlinedTextField(
+            LabelTextField(
                 value = state.label.orEmpty(),
                 onValueChange = onLabelChange,
-                modifier = Modifier
-                    .widthIn(max = 80.dp)
-                    .onFocusChanged { labelFocused = it.isFocused },
-                textStyle = MaterialTheme.typography.labelSmall.copy(
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                ),
-                maxLines = 1,
+                recentLabels = recentLabels,
                 placeholder = "Add label",
                 enabled = enabled,
-                contentPadding = PaddingValues(horizontal = 0.dp, vertical = 2.dp)
+                maxWidth = 80.dp
             )
-            if (labelFocused) {
-                LabelSuggestions(
-                    currentLabel = state.label.orEmpty(),
-                    recentLabels = recentLabels,
-                    onLabelSelect = onLabelChange,
-                    modifier = Modifier.padding(horizontal = 4.dp)
-                )
-            }
             state.nestedListItemId?.let {
                 Spacer(Modifier.weight(1f))
                 Icon(Icons.Default.Link, contentDescription = "item link", modifier = Modifier.size(20.dp))

@@ -327,14 +327,6 @@ private fun PeriodMetricsSection(
             }
         }
 
-        if (metrics.isEmpty()) {
-            Text(
-                text = "No custom metrics added.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-            )
-        }
-
         metrics.forEachIndexed { index, metric ->
             Column(
                 modifier = Modifier

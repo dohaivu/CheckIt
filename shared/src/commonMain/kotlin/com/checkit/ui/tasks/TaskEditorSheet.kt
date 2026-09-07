@@ -64,7 +64,7 @@ import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DatePicker
 import com.checkit.ui.components.EditorOverflowMenu
-import com.checkit.ui.components.LabelSuggestions
+import com.checkit.ui.components.LabelTextField
 import com.checkit.ui.components.ListPicker
 import com.checkit.ui.components.MarkdownVisualTransformation
 import com.checkit.ui.components.PriorityPicker
@@ -350,39 +350,17 @@ private fun TaskFormContent(
         TaskType.Task -> "What would you like to do?"
         TaskType.Habit -> "What habit do you want to build?"
     }
-    var labelFocused by remember { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(0.dp)
-        ) {
-            AppOutlinedTextField(
-                value = form.label.orEmpty(),
-                onValueChange = onLabelChange,
-                modifier = Modifier
-                    .padding(start = 4.dp)
-                    .widthIn(max = 80.dp)
-                    .onFocusChanged { labelFocused = it.isFocused },
-                textStyle = MaterialTheme.typography.labelSmall.copy(
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                ),
-                maxLines = 1,
-                placeholder = "Add label",
-                enabled = enabled,
-                contentPadding = PaddingValues(horizontal = 0.dp, vertical = 2.dp)
-            )
-
-            if (labelFocused) {
-                LabelSuggestions(
-                    currentLabel = form.label.orEmpty(),
-                    recentLabels = recentLabels,
-                    onLabelSelect = onLabelChange,
-                    modifier = Modifier.padding(horizontal = 4.dp)
-                )
-            }
-        }
+        LabelTextField(
+            value = form.label.orEmpty(),
+            onValueChange = onLabelChange,
+            recentLabels = recentLabels,
+            modifier = Modifier.padding(start = 4.dp),
+            placeholder = "Add label",
+            enabled = enabled,
+            maxWidth = 80.dp
+        )
 
         if (isHabit) {
             Row(
@@ -507,40 +485,17 @@ private fun DailyPlanSection(
 ) {
     if (item == null) return
     val colorScheme = MaterialTheme.colorScheme
-    var labelFocused by remember { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(0.dp)
-        ) {
-            AppOutlinedTextField(
-                value = item.label.orEmpty(),
-                onValueChange = onLabelChange,
-                modifier = Modifier.widthIn(max = 120.dp).onFocusChanged { labelFocused = it.isFocused },
-                textStyle = MaterialTheme.typography.labelSmall.copy(
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                ),
-                placeholder = "☀️ MY DAY",
-                placeholderStyle = MaterialTheme.typography.labelSmall.copy(
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                ),
-                maxLines = 1,
-                enabled = enabled,
-                contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
-            )
-
-            if (labelFocused) {
-                LabelSuggestions(
-                    currentLabel = item.label.orEmpty(),
-                    recentLabels = recentLabels,
-                    onLabelSelect = onLabelChange,
-                    modifier = Modifier.padding(horizontal = 4.dp)
-                )
-            }
-        }
+        LabelTextField(
+            value = item.label.orEmpty(),
+            onValueChange = onLabelChange,
+            recentLabels = recentLabels,
+            placeholder = "☀️ MY DAY",
+            enabled = enabled,
+            maxWidth = 120.dp,
+            contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+        )
 
         Box(
             modifier = Modifier
@@ -680,37 +635,15 @@ private fun NoteFormContent(
     recentLabels: List<String>,
     enabled: Boolean = true
 ) {
-    var labelFocused by remember { mutableStateOf(false) }
-
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(0.dp)
-            ) {
-                AppOutlinedTextField(
-                    value = form.label.orEmpty(),
-                    onValueChange = onLabelChange,
-                    modifier = Modifier.widthIn(max = 120.dp).onFocusChanged { labelFocused = it.isFocused },
-                    textStyle = MaterialTheme.typography.labelSmall.copy(
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    ),
-                    maxLines = 1,
-                    placeholder = "Add label",
-                    enabled = enabled,
-                    contentPadding = PaddingValues(horizontal = 0.dp, vertical = 2.dp)
-                )
-                if (labelFocused) {
-                    LabelSuggestions(
-                        currentLabel = form.label.orEmpty(),
-                        recentLabels = recentLabels,
-                        onLabelSelect = onLabelChange,
-                        modifier = Modifier.padding(horizontal = 4.dp)
-                    )
-                }
-            }
-        }
+        LabelTextField(
+            value = form.label.orEmpty(),
+            onValueChange = onLabelChange,
+            recentLabels = recentLabels,
+            placeholder = "Add label",
+            enabled = enabled,
+            maxWidth = 120.dp
+        )
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
