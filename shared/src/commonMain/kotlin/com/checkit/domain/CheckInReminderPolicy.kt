@@ -3,30 +3,17 @@ package com.checkit.domain
 import com.checkit.data.CheckItDao
 import com.checkit.data.SettingsRepository
 import kotlinx.coroutines.flow.first
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.LocalTime
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toInstant
 
 data class CheckInReminderPlanItem(
     val startTimeMinutes: Int?,
     val endTimeMinutes: Int?,
     val isDone: Boolean = false,
-    val completedAtMillis: Long? = null,
-    val handledAtMillis: Long? = null,
-    val title: String = "",
-    /**
-     * Planned end of a timed item as epoch millis. Preferred recency signal:
-     * tap timestamps drift from real work (late or batch marking), while the
-     * planned end says when the time block was over.
-     */
-    val scheduledEndMillis: Long? = null
+    val title: String = ""
 )
 
 data class CheckInDecision(
     val shouldShow: Boolean,
-    val idleMinutes: Long?,
+    val idleMinutes: Int?,
     val currentItem: CheckInReminderPlanItem?
 )
 
@@ -53,17 +40,10 @@ class CheckInReminderPolicy(
                 startTimeMinutes = item.startTimeMinutes,
                 endTimeMinutes = item.endTimeMinutes,
                 isDone = item.status == DailyPlanItemStatus.Done.name,
-                completedAtMillis = item.completedAtMillis,
-                handledAtMillis = item.handledAtMillis,
-                title = item.title,
-                scheduledEndMillis = scheduledEndMillis(
-                    dateEpochDays = dateEpochDays,
-                    endTimeMinutes = item.endTimeMinutes,
-                    startTimeMinutes = item.startTimeMinutes
-                )
+                title = item.title
             )
         }
-        return decide(items, nowMinutes, nowMillis, settings.idleCheckInThresholdMinutes)
+        return decide(items, nowMinutes, settings.idleCheckInThresholdMinutes)
     }
 
     suspend fun markReminderShown(shownAtMillis: Long) {
@@ -89,8 +69,7 @@ class CheckInReminderPolicy(
                 if (!NotificationDoNotDisturbPolicy.canNotifyAt(nowMinutes)) return false
                 if (isInsideCooldown(nowMillis, lastShownAtMillis)) return false
             }
-            val items = loadItems()
-            return isIdle(items, nowMinutes, nowMillis, idleThresholdMinutes)
+            return isIdle(loadItems(), nowMinutes, idleThresholdMinutes)
         }
 
         fun shouldShowReminder(
@@ -105,25 +84,22 @@ class CheckInReminderPolicy(
                 if (!NotificationDoNotDisturbPolicy.canNotifyAt(nowMinutes)) return false
                 if (isInsideCooldown(nowMillis, lastShownAtMillis)) return false
             }
-            return isIdle(items, nowMinutes, nowMillis, idleThresholdMinutes)
+            return isIdle(items, nowMinutes, idleThresholdMinutes)
         }
 
         fun decide(
             items: List<CheckInReminderPlanItem>,
             nowMinutes: Int,
-            nowMillis: Long,
             idleThresholdMinutes: Int = DefaultIdleThresholdMinutes
         ): CheckInDecision {
-            val lastDone = lastDoneAtMillis(items)
-            val idleMinutes = lastDone?.let { doneAt ->
-                if (nowMillis < doneAt) 0L else (nowMillis - doneAt) / 60_000L
-            }
+            val lastDone = lastDoneEndMinutes(items)
+            val idleMinutes = lastDone?.let { (nowMinutes - it).coerceAtLeast(0) }
             val idle = if (lastDone == null) {
-                // No usable Done signal yet; avoid nagging in the early morning
+                // No finished block yet; avoid nagging in the early morning
                 // when the plan reminder owns the nudge.
                 nowMinutes >= MorningGuardMinutes
             } else {
-                nowMillis - lastDone >= idleThresholdMinutes.coerceAtLeast(1) * 60_000L
+                nowMinutes - lastDone >= idleThresholdMinutes.coerceAtLeast(1)
             }
             if (!idle) return CheckInDecision(false, idleMinutes, null)
             return CheckInDecision(true, idleMinutes, currentTimedItem(items, nowMinutes))
@@ -132,46 +108,29 @@ class CheckInReminderPolicy(
         private fun isInsideCooldown(nowMillis: Long, lastShownAtMillis: Long?): Boolean =
             lastShownAtMillis != null && nowMillis - lastShownAtMillis < MinimumRepeatIntervalMillis
 
-        fun lastDoneAtMillis(items: List<CheckInReminderPlanItem>): Long? =
-            items.filter { it.isDone }
-                .mapNotNull { it.scheduledEndMillis ?: it.completedAtMillis ?: it.handledAtMillis }
-                .maxOrNull()
-
         /**
-         * Converts a timed item's planned end (or start for point items) to epoch
-         * millis on [dateEpochDays]. Null for untimed items — those fall back to
-         * tap timestamps in [lastDoneAtMillis]. Resolved via LocalDateTime so DST
-         * transitions don't skew the result.
+         * End of the most recently finished time block, in minutes of day.
+         * Point items (start only) count by their start. Untimed Done items
+         * carry no time signal and are ignored.
          */
-        fun scheduledEndMillis(
-            dateEpochDays: Int,
-            endTimeMinutes: Int?,
-            startTimeMinutes: Int?,
-            timeZone: TimeZone = TimeZone.currentSystemDefault()
-        ): Long? {
-            val endMinutes = endTimeMinutes ?: startTimeMinutes ?: return null
-            val dateTime = LocalDateTime(
-                LocalDate.fromEpochDays(dateEpochDays),
-                LocalTime((endMinutes / 60).coerceIn(0, 23), (endMinutes % 60).coerceIn(0, 59))
-            )
-            return dateTime.toInstant(timeZone).toEpochMilliseconds()
-        }
+        fun lastDoneEndMinutes(items: List<CheckInReminderPlanItem>): Int? =
+            items.filter { it.isDone }
+                .mapNotNull { it.endTimeMinutes ?: it.startTimeMinutes }
+                .maxOrNull()
 
         fun idleMinutesSinceLastDone(
             items: List<CheckInReminderPlanItem>,
-            nowMillis: Long
-        ): Long? {
-            val lastDone = lastDoneAtMillis(items) ?: return null
-            if (nowMillis < lastDone) return 0L
-            return (nowMillis - lastDone) / 60_000L
+            nowMinutes: Int
+        ): Int? {
+            val lastDone = lastDoneEndMinutes(items) ?: return null
+            return (nowMinutes - lastDone).coerceAtLeast(0)
         }
 
         fun isIdle(
             items: List<CheckInReminderPlanItem>,
             nowMinutes: Int,
-            nowMillis: Long,
             idleThresholdMinutes: Int = DefaultIdleThresholdMinutes
-        ): Boolean = decide(items, nowMinutes, nowMillis, idleThresholdMinutes).shouldShow
+        ): Boolean = decide(items, nowMinutes, idleThresholdMinutes).shouldShow
 
         /**
          * The unfinished timed item happening right now, if any.

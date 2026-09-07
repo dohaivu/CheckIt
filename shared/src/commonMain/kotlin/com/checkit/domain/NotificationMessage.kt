@@ -55,20 +55,20 @@ data class NotificationMessage(
             CheckInMessages[random.nextInt(CheckInMessages.size)]
 
         fun idleCheckIn(
-            idleMinutes: Long?,
+            idleMinutes: Int?,
             random: Random = Random.Default
         ): NotificationMessage {
             val base = randomCheckIn(random)
-            if (idleMinutes == null || idleMinutes <= 0L) return base
+            if (idleMinutes == null || idleMinutes <= 0) return base
             return base.copy(title = "No Done in the last ${formatGap(idleMinutes)}")
         }
 
         fun currentItemCheckIn(
             itemTitle: String,
-            idleMinutes: Long?
+            idleMinutes: Int?
         ): NotificationMessage {
             val trimmed = itemTitle.trim().take(MaxItemTitleLength)
-            val gapSuffix = if (idleMinutes != null && idleMinutes > 0L) {
+            val gapSuffix = if (idleMinutes != null && idleMinutes > 0) {
                 " No Done in the last ${formatGap(idleMinutes)}."
             } else {
                 ""
@@ -79,12 +79,12 @@ data class NotificationMessage(
             )
         }
 
-        private fun formatGap(idleMinutes: Long): String {
+        private fun formatGap(idleMinutes: Int): String {
             val hours = idleMinutes / 60
             val minutes = idleMinutes % 60
             return when {
-                hours <= 0L -> "${minutes}m"
-                minutes == 0L -> "${hours}h"
+                hours <= 0 -> "${minutes}m"
+                minutes == 0 -> "${hours}h"
                 else -> "${hours}h ${minutes}m"
             }
         }
