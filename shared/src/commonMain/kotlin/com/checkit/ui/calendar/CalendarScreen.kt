@@ -819,7 +819,7 @@ private fun CalendarDayCell(
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                     textAlign = TextAlign.Start
                 )
-                if (markers.rating != null) {
+                if (markers.rating != null && markers.rating > 0) {
                     RatingStar(
                         rating = markers.rating,
                         modifier = Modifier.size(10.dp)
