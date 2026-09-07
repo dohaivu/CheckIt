@@ -5,6 +5,7 @@ import com.checkit.data.SettingsRepository
 import kotlinx.coroutines.flow.first
 
 data class CheckInReminderPlanItem(
+    val id: Long? = null,
     val startTimeMinutes: Int?,
     val endTimeMinutes: Int?,
     val isDone: Boolean = false,
@@ -37,6 +38,7 @@ class CheckInReminderPolicy(
         }
         val items = dao.dailyPlanItemsForDate(dateEpochDays).map { item ->
             CheckInReminderPlanItem(
+                id = item.id,
                 startTimeMinutes = item.startTimeMinutes,
                 endTimeMinutes = item.endTimeMinutes,
                 isDone = item.status == DailyPlanItemStatus.Done.name,
@@ -51,7 +53,7 @@ class CheckInReminderPolicy(
     }
 
     companion object {
-        const val MinimumRepeatIntervalMillis = 1L * 60L * 60L * 1000L
+        const val MinimumRepeatIntervalMillis = 60L * 60L * 1000L // 1 hour
         const val DefaultIdleThresholdMinutes = 60
         const val MinIdleThresholdMinutes = 15
         const val MaxIdleThresholdMinutes = 240

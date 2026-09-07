@@ -20,5 +20,5 @@ actual fun platformModule() = module {
     }
     single<AppReminderScheduler> { AndroidAppReminderScheduler(androidContext(), get()) }
     single<SprintNotificationScheduler> { AndroidSprintNotificationScheduler(androidContext()) }
-    single<CheckInReminderForceRunner> { AndroidCheckInReminderForceRunner(androidContext(), get()) }
+    single<CheckInReminderForceRunner> { AndroidCheckInReminderForceRunner(androidContext(), get(), get()) }
 }

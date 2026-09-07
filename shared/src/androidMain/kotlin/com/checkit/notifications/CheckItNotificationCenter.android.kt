@@ -18,6 +18,8 @@ import com.checkit.widget.ExtraDailyPlanItemId
 import com.checkit.widget.ExtraOpenCheckIn
 import com.checkit.widget.ExtraOpenDayClose
 import com.checkit.widget.ExtraOpenPlanAssist
+import com.checkit.widget.ExtraQuickSprintItemId
+import com.checkit.widget.ExtraStartQuickSprint
 import com.checkit.widget.ExtraStartSprintForItemId
 import java.time.LocalTime
 
@@ -77,6 +79,78 @@ class CheckItNotificationCenter(
 
     fun dismissDailyPlanScheduleReminder(itemId: Long) {
         notificationManager.cancel(NotificationIds.dailyPlanSchedule(itemId))
+    }
+
+    fun showCheckInReminder(title: String, body: String, dailyPlanItemId: Long?) {
+        if (!canPostNotifications()) return
+        // Quiet-hours gate already applied by CheckInReminderPolicy; force-runs bypass it here too.
+        ensureChannels()
+        val contentIntent = PendingIntent.getActivity(
+            context,
+            NotificationIds.CheckInReminder,
+            Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra(ExtraOpenCheckIn, true)
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val iconRes = context.applicationInfo.icon
+        val builder = NotificationCompat.Builder(context, NotificationChannels.ReminderId)
+            .setSmallIcon(if (iconRes != 0) iconRes else R.mipmap.ic_launcher_round)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setSubText(AppReminderType.CheckIn.subText)
+            .setContentIntent(contentIntent)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+
+        if (dailyPlanItemId != null) {
+            builder.addAction(0, "Done ✓", broadcastAction(ACTION_REQUEST_CODE_DONE, CheckInReminderActionReceiver.ACTION_MARK_DONE, dailyPlanItemId))
+        }
+        builder.addAction(0, "Sprint", sprintAction(dailyPlanItemId))
+        builder.addAction(0, "Snooze 1h", broadcastAction(ACTION_REQUEST_CODE_SNOOZE, CheckInReminderActionReceiver.ACTION_SNOOZE, dailyPlanItemId))
+
+        notificationManager.notify(NotificationIds.CheckInReminder, builder.build())
+    }
+
+    fun dismissCheckInReminder() {
+        notificationManager.cancel(NotificationIds.CheckInReminder)
+    }
+
+    private fun broadcastAction(requestCode: Int, action: String, dailyPlanItemId: Long?): PendingIntent {
+        val intent = Intent(context, CheckInReminderActionReceiver::class.java).apply {
+            setAction(action)
+            dailyPlanItemId?.let { putExtra(ExtraDailyPlanItemId, it) }
+        }
+        return PendingIntent.getBroadcast(
+            context,
+            requestCode,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+
+    private fun sprintAction(dailyPlanItemId: Long?): PendingIntent {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(ExtraStartQuickSprint, true)
+            dailyPlanItemId?.let { putExtra(ExtraQuickSprintItemId, it) }
+        }
+        return PendingIntent.getActivity(
+            context,
+            ACTION_REQUEST_CODE_SPRINT,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+
+    companion object {
+        private const val ACTION_REQUEST_CODE_DONE = NotificationIds.CheckInReminder + 101
+        private const val ACTION_REQUEST_CODE_SPRINT = NotificationIds.CheckInReminder + 102
+        private const val ACTION_REQUEST_CODE_SNOOZE = NotificationIds.CheckInReminder + 103
     }
 
     private fun showReminder(

@@ -6,6 +6,8 @@ import androidx.work.WorkerParameters
 import com.checkit.domain.CheckInDecision
 import com.checkit.domain.CheckInReminderPolicy
 import com.checkit.domain.NotificationMessage
+import com.checkit.domain.SprintManager
+import com.checkit.domain.SprintState
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.time.LocalDate
@@ -17,12 +19,14 @@ class CheckInReminderWorker(
     workerParams: WorkerParameters
 ) : CoroutineWorker(appContext, workerParams), KoinComponent {
     private val checkInReminderPolicy: CheckInReminderPolicy by inject()
+    private val sprintManager: SprintManager by inject()
 
     override suspend fun doWork(): Result {
         return try {
             executeCheckInReminder(
                 appContext = applicationContext,
                 policy = checkInReminderPolicy,
+                sprintActive = sprintManager.state.value is SprintState.Running,
                 force = inputData.getBoolean(InputForceRun, false)
             )
             Result.success()
@@ -39,12 +43,18 @@ class CheckInReminderWorker(
 
 class AndroidCheckInReminderForceRunner(
     context: Context,
-    private val policy: CheckInReminderPolicy
+    private val policy: CheckInReminderPolicy,
+    private val sprintManager: SprintManager
 ) : CheckInReminderForceRunner {
     private val appContext = context.applicationContext
 
     override suspend fun forceRun(): String =
-        executeCheckInReminder(appContext, policy, force = true)
+        executeCheckInReminder(
+            appContext = appContext,
+            policy = policy,
+            sprintActive = sprintManager.state.value is SprintState.Running,
+            force = true
+        )
 }
 
 /**
@@ -55,8 +65,12 @@ class AndroidCheckInReminderForceRunner(
 internal suspend fun executeCheckInReminder(
     appContext: Context,
     policy: CheckInReminderPolicy,
+    sprintActive: Boolean,
     force: Boolean
 ): String {
+    if (!force && sprintActive) {
+        return "Suppressed: sprint in progress"
+    }
     val now = Clock.System.now().toEpochMilliseconds()
     val time = LocalTime.now()
     val nowMinutes = time.hour * 60 + time.minute
@@ -70,17 +84,16 @@ internal suspend fun executeCheckInReminder(
     if (!decision.shouldShow) {
         return describeSuppressed(decision)
     }
-    val currentTitle = decision.currentItem?.title?.takeIf { it.isNotBlank() }
-    val message = if (currentTitle != null) {
-        NotificationMessage.currentItemCheckIn(currentTitle, decision.idleMinutes)
+    val currentItem = decision.currentItem?.takeIf { it.title.isNotBlank() }
+    val message = if (currentItem != null) {
+        NotificationMessage.currentItemCheckIn(currentItem.title, decision.idleMinutes)
     } else {
         NotificationMessage.idleCheckIn(decision.idleMinutes)
     }
-    CheckItNotificationCenter(appContext).showAppReminder(
-        notificationId = NotificationIds.CheckInReminder,
+    CheckItNotificationCenter(appContext).showCheckInReminder(
         title = message.title,
         body = message.body,
-        type = AppReminderType.CheckIn
+        dailyPlanItemId = currentItem?.id
     )
     policy.markReminderShown(now)
     return "Shown: ${message.title}"

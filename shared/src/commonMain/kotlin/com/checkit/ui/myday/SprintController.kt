@@ -47,16 +47,19 @@ internal class SprintController(
         }
     }
 
-    fun startSprintByItemId(itemId: Long) {
-        val item = state.uiState.value.items.firstOrNull { it.id == itemId }
-        if (item != null) {
-            startSprint(
-                taskId = item.taskId,
-                dailyPlanItemId = item.id,
-                description = item.title,
-                tagIds = item.tags.map { it.id }
-            )
-        }
+    /**
+     * Starts a 5-minute sprint from a notification action or widget — no sheet.
+     * Links to the item when it is still unfinished, otherwise generic.
+     * Unknown ids fall back to a generic sprint rather than staying silent.
+     */
+    fun startSprintByItemId(itemId: Long? = null) {
+        val item = itemId?.let { id -> state.uiState.value.items.firstOrNull { it.id == id } }
+        startSprint(
+            taskId = item?.taskId,
+            dailyPlanItemId = item?.takeIf { it.status != DailyPlanItemStatus.Done }?.id,
+            description = item?.title.orEmpty(),
+            tagIds = item?.tags?.map { it.id }.orEmpty()
+        )
     }
 
     fun startSprintWithTask(task: TaskItem) {

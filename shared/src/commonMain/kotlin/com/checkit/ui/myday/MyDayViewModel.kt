@@ -164,7 +164,7 @@ class MyDayViewModel(
     // Sprints
     fun executeFabAction(action: FabAction) = sprints.executeFabAction(action)
     fun startSprint(taskId: Long? = null, dailyPlanItemId: Long? = null, description: String = "", tagIds: List<Long> = emptyList()) = sprints.startSprint(taskId, dailyPlanItemId, description, tagIds)
-    fun startSprintByItemId(itemId: Long) = sprints.startSprintByItemId(itemId)
+    fun startSprintByItemId(itemId: Long? = null) = sprints.startSprintByItemId(itemId)
     fun startSprintWithTask(task: TaskItem) = sprints.startSprintWithTask(task)
     fun startSprintWithChoice(choice: SprintChoice) = sprints.startSprintWithChoice(choice)
     fun startSprintForItem(item: DailyPlanItem) = sprints.startSprintForItem(item)

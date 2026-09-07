@@ -22,6 +22,8 @@ import com.checkit.widget.ExtraOpenNewJournalEntry
 import com.checkit.widget.ExtraOpenNewTask
 import com.checkit.widget.ExtraOpenPlanAssist
 import com.checkit.widget.ExtraOpenQuickSprint
+import com.checkit.widget.ExtraQuickSprintItemId
+import com.checkit.widget.ExtraStartQuickSprint
 import com.checkit.widget.ExtraStartSprintForItemId
 import com.checkit.widget.ExtraTaskId
 
@@ -38,6 +40,8 @@ class MainActivity : ComponentActivity() {
     private val openQuickSprintLaunch = mutableStateOf(false)
     private val openNewTaskLaunch = mutableStateOf(false)
     private val startSprintItemIdLaunch = mutableStateOf<Long?>(null)
+    private val startQuickSprintLaunch = mutableStateOf(false)
+    private val quickSprintItemIdLaunch = mutableStateOf<Long?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -65,6 +69,8 @@ class MainActivity : ComponentActivity() {
                 openQuickSprintLaunch = openQuickSprintLaunch.value,
                 openNewTaskLaunch = openNewTaskLaunch.value,
                 startSprintItemIdLaunch = startSprintItemIdLaunch.value,
+                startQuickSprintLaunch = startQuickSprintLaunch.value,
+                quickSprintItemIdLaunch = quickSprintItemIdLaunch.value,
                 onWidgetLaunchConsumed = ::clearWidgetLaunch
             )
         }
@@ -106,10 +112,18 @@ class MainActivity : ComponentActivity() {
         val startSprintItemId = intent.longExtraOrNull(ExtraStartSprintForItemId)
         startSprintItemIdLaunch.value = startSprintItemId
 
+        val startQuickSprint = intent.getBooleanExtra(ExtraStartQuickSprint, false)
+        startQuickSprintLaunch.value = startQuickSprint
+        quickSprintItemIdLaunch.value =
+            if (startQuickSprint) intent.longExtraOrNull(ExtraQuickSprintItemId) else null
+
         if (dailyPlanItemId != null || startSprintItemId != null) {
             val center = CheckItNotificationCenter(this)
             dailyPlanItemId?.let { center.dismissDailyPlanScheduleReminder(it) }
             startSprintItemId?.let { center.dismissDailyPlanScheduleReminder(it) }
+        }
+        if (startQuickSprint) {
+            CheckItNotificationCenter(this).dismissCheckInReminder()
         }
     }
 
@@ -125,6 +139,8 @@ class MainActivity : ComponentActivity() {
         openQuickSprintLaunch.value = false
         openNewTaskLaunch.value = false
         startSprintItemIdLaunch.value = null
+        startQuickSprintLaunch.value = false
+        quickSprintItemIdLaunch.value = null
     }
 }
 
