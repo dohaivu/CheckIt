@@ -380,58 +380,71 @@ fun CheckItApp(
                             availableTags = taskUiState.board.tags,
                             recentLabels = taskUiState.recentLabels,
                             actions = TaskEditorActions(
-                                onDismiss = viewModels.task::dismissEditor,
-                                onSave = viewModels.task::saveEditor,
-                                onDelete = viewModels.task::deleteEditorItem,
-                                onRestore = viewModels.task::restoreCurrentItem,
-                                onComplete = viewModels.task::completeCurrentItem,
-                                onReopen = viewModels.task::reopenCurrentItem,
-                                onAddToMyDay = {
-                                    val taskId = (editor as? TaskEditorState.TaskForm)?.taskId
-                                    val task = taskUiState.board.tasks.firstOrNull { it.id == taskId }
-                                    task?.let { selectedTask ->
-                                        viewModels.myDay.addTaskToMyDay(selectedTask)
+                                common = TaskEditorActions.Common(
+                                    onDismiss = viewModels.task::dismissEditor,
+                                    onSave = viewModels.task::saveEditor,
+                                    onDelete = viewModels.task::deleteEditorItem,
+                                    onRestore = viewModels.task::restoreCurrentItem,
+                                    onComplete = viewModels.task::completeCurrentItem,
+                                    onReopen = viewModels.task::reopenCurrentItem,
+                                    onPinToggle = viewModels.task::togglePin,
+                                    onNewTagClick = viewModels.tag::openNewTag,
+                                    onAddToMyDay = {
+                                        val taskId = (editor as? TaskEditorState.TaskForm)?.taskId
+                                        val task = taskUiState.board.tasks.firstOrNull { it.id == taskId }
+                                        task?.let { selectedTask ->
+                                            viewModels.myDay.addTaskToMyDay(selectedTask)
+                                            viewModels.task.dismissEditor()
+                                        }
+                                    }
+                                ),
+                                task = TaskEditorActions.Task(
+                                    onNameChange = viewModels.task::updateTaskName,
+                                    onListChange = viewModels.task::updateTaskListId,
+                                    onDescriptionChange = viewModels.task::updateTaskDescription,
+                                    onDoDateChange = viewModels.task::updateTaskDoDate,
+                                    onTimeChange = viewModels.task::updateTaskTime,
+                                    onRepeatChange = viewModels.task::updateTaskRepeat,
+                                    onPriorityChange = viewModels.task::updateTaskPriority,
+                                    onReminderToggle = viewModels.task::toggleTaskReminder,
+                                    onTagToggle = viewModels.task::toggleTaskTag,
+                                    onLabelChange = viewModels.task::updateTaskLabel
+                                ),
+                                dailyPlan = TaskEditorActions.DailyPlan(
+                                    onTimeChange = viewModels.task::updateDailyPlanTime,
+                                    onTitleChange = viewModels.task::updateDailyPlanTitle,
+                                    onNoteChange = viewModels.task::updateDailyPlanNote,
+                                    onLabelChange = viewModels.task::updateDailyPlanLabel,
+                                    onStatus = viewModels.task::updateDailyPlanStatus,
+                                    onDelete = { itemId ->
+                                        viewModels.myDay.deleteDailyPlanItem(itemId)
+                                        viewModels.task.removeDailyPlanItemFromEditor(itemId)
+                                    },
+                                    onStartSprint = { item ->
+                                        viewModels.myDay.startSprintForItem(item)
+                                        viewModels.task.dismissEditor()
+                                    },
+                                    onStartOngoingSprint = { item ->
+                                        viewModels.myDay.startOngoingSprintForItem(item)
                                         viewModels.task.dismissEditor()
                                     }
-                                },
-                                onTaskNameChange = viewModels.task::updateTaskName,
-                                onTaskListChange = viewModels.task::updateTaskListId,
-                                onTaskDescriptionChange = viewModels.task::updateTaskDescription,
-                                onTaskDoDateChange = viewModels.task::updateTaskDoDate,
-                                onTaskTimeChange = viewModels.task::updateTaskTime,
-                                onDailyPlanTimeChange = viewModels.task::updateDailyPlanTime,
-                                onDailyPlanStatus = viewModels.task::updateDailyPlanStatus,
-                                onDailyPlanDelete = { itemId ->
-                                    viewModels.myDay.deleteDailyPlanItem(itemId)
-                                    viewModels.task.removeDailyPlanItemFromEditor(itemId)
-                                },
-                                onDailyPlanStartSprint = { item ->
-                                    viewModels.myDay.startSprintForItem(item)
-                                    viewModels.task.dismissEditor()
-                                },
-                                onDailyPlanStartOngoingSprint = { item ->
-                                    viewModels.myDay.startOngoingSprintForItem(item)
-                                    viewModels.task.dismissEditor()
-                                },
-                                onTaskRepeatChange = viewModels.task::updateTaskRepeat,
-                                onTaskPriorityChange = viewModels.task::updateTaskPriority,
-                                onTaskReminderToggle = viewModels.task::toggleTaskReminder,
-                                onSubTaskToggle = viewModels.task::toggleSubTask,
-                                onSubTaskAdd = viewModels.task::addSubTask,
-                                onSubTaskNameChange = viewModels.task::updateSubTaskName,
-                                onSubTaskRemove = viewModels.task::removeSubTask,
-                                onSubTaskMove = viewModels.task::moveSubTask,
-                                onTaskTagToggle = viewModels.task::toggleTaskTag,
-                                onNoteTitleChange = viewModels.task::updateNoteTitle,
-                                onNoteContentChange = viewModels.task::updateNoteContent,
-                                onNoteListChange = viewModels.task::updateNoteListId,
-                                onNoteDateChange = viewModels.task::updateNoteDate,
-                                onNoteStartTimeChange = viewModels.task::updateNoteStartTime,
-                                onNoteTagToggle = viewModels.task::toggleNoteTag,
-                                onPinToggle = viewModels.task::togglePin,
-                                onTaskLabelChange = viewModels.task::updateTaskLabel,
-                                onNoteLabelChange = viewModels.task::updateNoteLabel,
-                                onNewTagClick = viewModels.tag::openNewTag,
+                                ),
+                                subTask = TaskEditorActions.SubTask(
+                                    onToggle = viewModels.task::toggleSubTask,
+                                    onAdd = viewModels.task::addSubTask,
+                                    onNameChange = viewModels.task::updateSubTaskName,
+                                    onRemove = viewModels.task::removeSubTask,
+                                    onMove = viewModels.task::moveSubTask
+                                ),
+                                note = TaskEditorActions.Note(
+                                    onTitleChange = viewModels.task::updateNoteTitle,
+                                    onContentChange = viewModels.task::updateNoteContent,
+                                    onListChange = viewModels.task::updateNoteListId,
+                                    onDateChange = viewModels.task::updateNoteDate,
+                                    onStartTimeChange = viewModels.task::updateNoteStartTime,
+                                    onTagToggle = viewModels.task::toggleNoteTag,
+                                    onLabelChange = viewModels.task::updateNoteLabel
+                                )
                             )
                         )
                     }

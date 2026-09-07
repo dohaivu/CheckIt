@@ -24,6 +24,7 @@ import com.checkit.domain.usecase.ObserveTaskBoardUseCase
 import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTagUseCase
+import com.checkit.domain.usecase.UpdateDailyPlanItemUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.domain.usecase.UpdateNoteUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
@@ -73,6 +74,7 @@ class TaskTimelineViewModelTest {
             updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository),
             updateDailyPlanItemStatus = UpdateDailyPlanItemStatusUseCase(repository),
             updateDailyPlanItemTag = UpdateDailyPlanItemTagUseCase(repository),
+            updateDailyPlanItem = UpdateDailyPlanItemUseCase(repository),
             linkDailyPlanItemToTask = LinkDailyPlanItemToTaskUseCase(repository),
             settingsRepository = FakeSettingsRepository()
         )
