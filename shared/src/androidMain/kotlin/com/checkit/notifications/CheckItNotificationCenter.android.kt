@@ -18,6 +18,8 @@ import com.checkit.widget.ExtraDailyPlanItemId
 import com.checkit.widget.ExtraOpenCheckIn
 import com.checkit.widget.ExtraOpenDayClose
 import com.checkit.widget.ExtraOpenPlanAssist
+import com.checkit.widget.ExtraQuickSprintItemId
+import com.checkit.widget.ExtraStartQuickSprint
 import com.checkit.widget.ExtraStartSprintForItemId
 import java.time.LocalTime
 
@@ -33,32 +35,24 @@ class CheckItNotificationCenter(
             title = taskName.ifBlank { "Task reminder" },
             body = label,
             subText = null,
-            bypassDnd = true // User specifically set this reminder, show it regardless of DND
+            dailyPlanItemId = null,
+            openPlanAssist = false,
+            openDayClose = false,
+            bypassDnd = true
         )
     }
 
-    fun showAppReminder(notificationId: Int, title: String, body: String) {
-        showReminder(
-            notificationId = notificationId,
-            requestCode = notificationId,
-            title = title,
-            body = body,
-            subText = null,
-            bypassDnd = false // App reminders respect DND
-        )
-    }
-
-    fun showAppReminder(notificationId: Int, title: String, body: String, type: AppReminderType) {
+    fun showPlanReviewReminder(notificationId: Int, title: String, body: String, type: AppReminderType) {
         showReminder(
             notificationId = notificationId,
             requestCode = notificationId,
             title = title,
             body = body,
             subText = type.subText,
+            dailyPlanItemId = null,
             openPlanAssist = type == AppReminderType.Plan,
             openDayClose = type == AppReminderType.Review,
-            openCheckIn = type == AppReminderType.CheckIn,
-            bypassDnd = false // App reminders respect DND
+            bypassDnd = false
         )
     }
 
@@ -68,9 +62,11 @@ class CheckItNotificationCenter(
             requestCode = NotificationIds.dailyPlanSchedule(itemId),
             title = title.ifBlank { "My Day" },
             body = NotificationText.withActionQuote("Starting now"),
-            subText = AppReminderType.Schedule.subText,
+            subText = "Schedule",
             dailyPlanItemId = itemId,
             startSprintItemId = itemId,
+            openPlanAssist = false,
+            openDayClose = false,
             bypassDnd = false
         )
     }
@@ -79,76 +75,76 @@ class CheckItNotificationCenter(
         notificationManager.cancel(NotificationIds.dailyPlanSchedule(itemId))
     }
 
-    private fun showReminder(
-        notificationId: Int,
-        requestCode: Int,
-        title: String,
-        body: String,
-        subText: String?,
-        bypassDnd: Boolean
-    ) {
-        showReminder(
-            notificationId = notificationId,
-            requestCode = requestCode,
-            title = title,
-            body = body,
-            subText = subText,
-            dailyPlanItemId = null,
-            openPlanAssist = false,
-            openDayClose = false,
-            openCheckIn = false,
-            bypassDnd = bypassDnd
+    fun showCheckInReminder(title: String, body: String, dailyPlanItemId: Long?) {
+        if (!canPostNotifications()) return
+        // Quiet-hours gate already applied by CheckInReminderPolicy; force-runs bypass it here too.
+        ensureChannels()
+        val contentIntent = PendingIntent.getActivity(
+            context,
+            NotificationIds.CheckInReminder,
+            Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra(ExtraOpenCheckIn, true)
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val iconRes = context.applicationInfo.icon
+        val builder = NotificationCompat.Builder(context, NotificationChannels.ReminderId)
+            .setSmallIcon(if (iconRes != 0) iconRes else R.mipmap.ic_launcher_round)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setSubText("CheckIn")
+            .setContentIntent(contentIntent)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+
+        if (dailyPlanItemId != null) {
+            builder.addAction(0, "Done ✓", broadcastAction(ACTION_REQUEST_CODE_DONE, CheckInReminderActionReceiver.ACTION_MARK_DONE, dailyPlanItemId))
+        }
+        builder.addAction(0, "Sprint", sprintAction(dailyPlanItemId))
+        builder.addAction(0, "Snooze 1h", broadcastAction(ACTION_REQUEST_CODE_SNOOZE, CheckInReminderActionReceiver.ACTION_SNOOZE, dailyPlanItemId))
+
+        notificationManager.notify(NotificationIds.CheckInReminder, builder.build())
+    }
+
+    fun dismissCheckInReminder() {
+        notificationManager.cancel(NotificationIds.CheckInReminder)
+    }
+
+    private fun broadcastAction(requestCode: Int, action: String, dailyPlanItemId: Long?): PendingIntent {
+        val intent = Intent(context, CheckInReminderActionReceiver::class.java).apply {
+            setAction(action)
+            dailyPlanItemId?.let { putExtra(ExtraDailyPlanItemId, it) }
+        }
+        return PendingIntent.getBroadcast(
+            context,
+            requestCode,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
     }
 
-    private fun showReminder(
-        notificationId: Int,
-        requestCode: Int,
-        title: String,
-        body: String,
-        subText: String?,
-        openPlanAssist: Boolean,
-        openDayClose: Boolean,
-        openCheckIn: Boolean,
-        bypassDnd: Boolean
-    ) {
-        showReminder(
-            notificationId = notificationId,
-            requestCode = requestCode,
-            title = title,
-            body = body,
-            subText = subText,
-            dailyPlanItemId = null,
-            openPlanAssist = openPlanAssist,
-            openDayClose = openDayClose,
-            openCheckIn = openCheckIn,
-            bypassDnd = bypassDnd
+    private fun sprintAction(dailyPlanItemId: Long?): PendingIntent {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(ExtraStartQuickSprint, true)
+            dailyPlanItemId?.let { putExtra(ExtraQuickSprintItemId, it) }
+        }
+        return PendingIntent.getActivity(
+            context,
+            ACTION_REQUEST_CODE_SPRINT,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
     }
 
-    private fun showReminder(
-        notificationId: Int,
-        requestCode: Int,
-        title: String,
-        body: String,
-        subText: String?,
-        dailyPlanItemId: Long?,
-        startSprintItemId: Long? = null,
-        bypassDnd: Boolean
-    ) {
-        showReminder(
-            notificationId = notificationId,
-            requestCode = requestCode,
-            title = title,
-            body = body,
-            subText = subText,
-            dailyPlanItemId = dailyPlanItemId,
-            startSprintItemId = startSprintItemId,
-            openPlanAssist = false,
-            openDayClose = false,
-            openCheckIn = false,
-            bypassDnd = bypassDnd
-        )
+    companion object {
+        private const val ACTION_REQUEST_CODE_DONE = NotificationIds.CheckInReminder + 101
+        private const val ACTION_REQUEST_CODE_SPRINT = NotificationIds.CheckInReminder + 102
+        private const val ACTION_REQUEST_CODE_SNOOZE = NotificationIds.CheckInReminder + 103
     }
 
     private fun showReminder(
@@ -161,7 +157,6 @@ class CheckItNotificationCenter(
         startSprintItemId: Long? = null,
         openPlanAssist: Boolean = false,
         openDayClose: Boolean = false,
-        openCheckIn: Boolean = false,
         bypassDnd: Boolean
     ) {
         if (!canPostNotifications()) return
@@ -173,7 +168,6 @@ class CheckItNotificationCenter(
             dailyPlanItemId?.let { putExtra(ExtraDailyPlanItemId, it) }
             if (openPlanAssist) putExtra(ExtraOpenPlanAssist, true)
             if (openDayClose) putExtra(ExtraOpenDayClose, true)
-            if (openCheckIn) putExtra(ExtraOpenCheckIn, true)
         }
         val pendingIntent = PendingIntent.getActivity(
             context,

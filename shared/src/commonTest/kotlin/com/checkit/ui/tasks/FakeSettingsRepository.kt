@@ -61,6 +61,10 @@ class FakeSettingsRepository(initialSettings: UserSettings = UserSettings()) : S
         settingsFlow.update { it.copy(checkInReminderEnabled = enabled) }
     }
 
+    override suspend fun setIdleCheckInThresholdMinutes(minutes: Int) {
+        settingsFlow.update { it.copy(idleCheckInThresholdMinutes = minutes) }
+    }
+
     override suspend fun setScheduleReminderEnabled(enabled: Boolean) {
         settingsFlow.update { it.copy(scheduleReminderEnabled = enabled) }
     }

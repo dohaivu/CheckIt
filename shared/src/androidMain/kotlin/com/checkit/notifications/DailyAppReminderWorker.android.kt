@@ -34,7 +34,7 @@ class DailyAppReminderWorker(
         Logger.d("DailyAppReminderWorker starting: type=$type, time=$timeMinutes, title='$title'")
 
         return try {
-            CheckItNotificationCenter(applicationContext).showAppReminder(
+            CheckItNotificationCenter(applicationContext).showPlanReviewReminder(
                 notificationId = NotificationIds.appReminder(type),
                 title = title,
                 body = body,

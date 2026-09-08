@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.checkit.ui.MinutesPerDay
+import com.checkit.domain.CheckInReminderPolicy
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -33,6 +34,7 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
                 reviewReminderEnabled = prefs[KEY_REVIEW_REMINDER_ENABLED] ?: UserSettings().reviewReminderEnabled,
                 reviewReminderTimeMinutes = prefs[KEY_REVIEW_REMINDER_TIME] ?: UserSettings().reviewReminderTimeMinutes,
                 checkInReminderEnabled = prefs[KEY_CHECK_IN_REMINDER_ENABLED] ?: UserSettings().checkInReminderEnabled,
+                idleCheckInThresholdMinutes = prefs[KEY_IDLE_CHECK_IN_THRESHOLD] ?: UserSettings().idleCheckInThresholdMinutes,
                 scheduleReminderEnabled = prefs[KEY_SCHEDULE_REMINDER_ENABLED] ?: UserSettings().scheduleReminderEnabled,
                 checkInReminderLastShownAtMillis = prefs[KEY_CHECK_IN_REMINDER_LAST_SHOWN],
                 autoMyDayLastRunEpochDay = prefs[KEY_AUTO_MY_DAY_LAST_RUN_EPOCH_DAY],
@@ -91,6 +93,15 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { it[KEY_CHECK_IN_REMINDER_ENABLED] = enabled }
     }
 
+    suspend fun setIdleCheckInThresholdMinutes(minutes: Int) {
+        dataStore.edit {
+            it[KEY_IDLE_CHECK_IN_THRESHOLD] = minutes.coerceIn(
+                CheckInReminderPolicy.MinIdleThresholdMinutes,
+                CheckInReminderPolicy.MaxIdleThresholdMinutes
+            )
+        }
+    }
+
     suspend fun setScheduleReminderEnabled(enabled: Boolean) {
         dataStore.edit { it[KEY_SCHEDULE_REMINDER_ENABLED] = enabled }
     }
@@ -147,6 +158,7 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
         val KEY_REVIEW_REMINDER_ENABLED = booleanPreferencesKey("review_reminder_enabled")
         val KEY_REVIEW_REMINDER_TIME = intPreferencesKey("review_reminder_time_minutes")
         val KEY_CHECK_IN_REMINDER_ENABLED = booleanPreferencesKey("check_in_reminder_enabled")
+        val KEY_IDLE_CHECK_IN_THRESHOLD = intPreferencesKey("idle_check_in_threshold_minutes")
         val KEY_SCHEDULE_REMINDER_ENABLED = booleanPreferencesKey("schedule_reminder_enabled")
         val KEY_CHECK_IN_REMINDER_LAST_SHOWN = longPreferencesKey("check_in_reminder_last_shown_at_millis")
         val KEY_AUTO_MY_DAY_LAST_RUN_EPOCH_DAY = intPreferencesKey("auto_my_day_last_run_epoch_day")

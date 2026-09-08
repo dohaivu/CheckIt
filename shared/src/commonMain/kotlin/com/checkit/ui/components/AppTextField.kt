@@ -44,6 +44,7 @@ fun AppOutlinedTextField(
         color = MaterialTheme.colorScheme.onSurface
     ),
     placeholder: String? = null,
+    placeholderStyle: TextStyle = textStyle.copy(color = MaterialTheme.colorScheme.onSurface.copy(alpha = ContentContainerAlpha)),
     minLines: Int = 1,
     maxLines: Int = Int.MAX_VALUE,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
@@ -94,10 +95,7 @@ fun AppOutlinedTextField(
                         {
                             Text(
                                 text = placeholder,
-                                fontStyle = textStyle.fontStyle,
-                                fontWeight = textStyle.fontWeight,
-                                fontSize = textStyle.fontSize,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = ContentContainerAlpha),
+                                style = placeholderStyle
                             )
                         }
                     } else null,

@@ -2,6 +2,7 @@ package com.checkit.ui.tasks
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.checkit.data.DailyPlanItemWriteInput
 import com.checkit.data.NoteWriteInput
 import com.checkit.data.SettingsRepository
 import com.checkit.data.SubTaskWriteInput
@@ -37,6 +38,7 @@ import com.checkit.domain.usecase.SelectTaskBoardItemsUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTagUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
+import com.checkit.domain.usecase.UpdateDailyPlanItemUseCase
 import com.checkit.domain.usecase.UpdateNoteUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
 import com.checkit.ui.MinutesPerDay
@@ -84,6 +86,7 @@ class TaskViewModel(
     private val updateDailyPlanItemTime: UpdateDailyPlanItemTimeUseCase,
     private val updateDailyPlanItemStatus: UpdateDailyPlanItemStatusUseCase,
     private val updateDailyPlanItemTag: UpdateDailyPlanItemTagUseCase,
+    private val updateDailyPlanItem: UpdateDailyPlanItemUseCase,
     private val linkDailyPlanItemToTask: LinkDailyPlanItemToTaskUseCase,
     private val settingsRepository: SettingsRepository
 ) : ViewModel() {
@@ -686,6 +689,10 @@ class TaskViewModel(
         )
     }
 
+    fun updateDailyPlanTitle(title: String) = updateTaskDailyPlanItem { it.copy(title = title) }
+    fun updateDailyPlanNote(note: String) = updateTaskDailyPlanItem { it.copy(note = note.takeIf { it.isNotBlank() }) }
+    fun updateDailyPlanLabel(label: String) = updateTaskDailyPlanItem { it.copy(label = label.takeIf { it.isNotBlank() }) }
+
     private fun updateTaskDailyPlanItem(transform: (DailyPlanItem) -> DailyPlanItem) {
         val updatedItem = (_uiState.value.editor as? TaskEditorState.TaskForm)
             ?.dailyPlanItem
@@ -696,8 +703,26 @@ class TaskViewModel(
             state.copy(editor = form.copy(dailyPlanItem = updatedItem))
         }
         viewModelScope.launch {
-            updateDailyPlanItemTime(updatedItem.id, updatedItem.startTimeMinutes, updatedItem.endTimeMinutes)
+            persistDailyPlanItem(updatedItem)
         }
+    }
+
+    private suspend fun persistDailyPlanItem(item: DailyPlanItem) {
+        updateDailyPlanItem(
+            item.id,
+            DailyPlanItemWriteInput(
+                date = LocalDate.fromEpochDays(item.dateEpochDays),
+                title = item.title,
+                note = item.note,
+                source = item.source,
+                status = item.status,
+                startTimeMinutes = item.startTimeMinutes,
+                endTimeMinutes = item.endTimeMinutes,
+                tagIds = item.tags.map { it.id },
+                label = item.label,
+                nestedListItemId = item.nestedListItemId
+            )
+        )
     }
 
     fun updateDailyPlanStatus() {

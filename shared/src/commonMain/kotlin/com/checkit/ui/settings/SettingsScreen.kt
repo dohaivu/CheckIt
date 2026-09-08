@@ -72,6 +72,7 @@ import com.checkit.ui.AppThemeMode
 import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.domain.usecase.RebuildReflectStatsUseCase
+import com.checkit.notifications.CheckInReminderForceRunner
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -136,6 +137,7 @@ internal fun SettingsScreen(
                     SettingsRoute.DevOptions -> {
                         DevOptionsScreen(
                             rebuildReflectStats = koinInject(),
+                            checkInForceRunner = koinInject(),
                             onBack = { pop() }
                         )
                     }
@@ -260,8 +262,10 @@ private fun ReminderSettingsScreen(
             item {
                 CheckInReminderRow(
                     enabled = state.checkInEnabled,
+                    idleThresholdMinutes = state.idleThresholdMinutes,
                     lastShownAtMillis = state.checkInLastShownAtMillis,
-                    onEnabledChange = viewModel::setCheckInReminderEnabled
+                    onEnabledChange = viewModel::setCheckInReminderEnabled,
+                    onThresholdChange = viewModel::setIdleCheckInThresholdMinutes
                 )
             }
         }
@@ -271,11 +275,14 @@ private fun ReminderSettingsScreen(
 @Composable
 private fun DevOptionsScreen(
     rebuildReflectStats: RebuildReflectStatsUseCase,
+    checkInForceRunner: CheckInReminderForceRunner,
     onBack: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
     var isRebuilding by remember { mutableStateOf(false) }
     var lastResult by remember { mutableStateOf<String?>(null) }
+    var isForcingCheckIn by remember { mutableStateOf(false) }
+    var lastForceResult by remember { mutableStateOf<String?>(null) }
 
     SettingsScaffold(
         title = "Dev options",
@@ -289,41 +296,79 @@ private fun DevOptionsScreen(
             modifier = contentModifier.fillMaxSize().padding(horizontal = 16.dp),
         ) {
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Rebuild reflect stats", fontWeight = FontWeight.SemiBold)
-                        Text(
-                            text = lastResult ?: "Recompute daily rollups from source data",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.bodySmall
-                        )
+                DevActionRow(
+                    title = "Rebuild reflect stats",
+                    subtitle = lastResult ?: "Recompute daily rollups from source data",
+                    actionLabel = if (isRebuilding) "Rebuilding…" else "Rebuild",
+                    actionEnabled = !isRebuilding,
+                    onAction = {
+                        scope.launch {
+                            isRebuilding = true
+                            runCatching { rebuildReflectStats() }
+                                .onSuccess {
+                                    lastResult = "Last rebuilt ${formatLastShown(Clock.System.now().toEpochMilliseconds())}"
+                                }
+                                .onFailure { error ->
+                                    lastResult = "Failed: ${error.message ?: "unknown error"}"
+                                }
+                            isRebuilding = false
+                        }
                     }
-                    TextButton(
-                        onClick = {
-                            scope.launch {
-                                isRebuilding = true
-                                runCatching { rebuildReflectStats() }
-                                    .onSuccess {
-                                        lastResult = "Last rebuilt ${formatLastShown(Clock.System.now().toEpochMilliseconds())}"
-                                    }
-                                    .onFailure { error ->
-                                        lastResult = "Failed: ${error.message ?: "unknown error"}"
-                                    }
-                                isRebuilding = false
-                            }
-                        },
-                        enabled = !isRebuilding
-                    ) {
-                        Text(if (isRebuilding) "Rebuilding…" else "Rebuild")
+                )
+            }
+            item {
+                DevActionRow(
+                    title = "Force check-in reminder",
+                    subtitle = lastForceResult ?: "Bypass quiet hours + cooldown and run now",
+                    actionLabel = if (isForcingCheckIn) "Running…" else "Run",
+                    actionEnabled = !isForcingCheckIn,
+                    onAction = {
+                        scope.launch {
+                            isForcingCheckIn = true
+                            runCatching { checkInForceRunner.forceRun() }
+                                .onSuccess { outcome ->
+                                    lastForceResult = "Last run $outcome"
+                                }
+                                .onFailure { error ->
+                                    lastForceResult = "Failed: ${error.message ?: "unknown error"}"
+                                }
+                            isForcingCheckIn = false
+                        }
                     }
-                }
-                AppHorizontalDivider()
+                )
             }
         }
     }
+}
+
+@Composable
+private fun DevActionRow(
+    title: String,
+    subtitle: String,
+    actionLabel: String,
+    actionEnabled: Boolean,
+    onAction: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, fontWeight = FontWeight.SemiBold)
+            Text(
+                text = subtitle,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+        TextButton(
+            onClick = onAction,
+            enabled = actionEnabled
+        ) {
+            Text(actionLabel)
+        }
+    }
+    AppHorizontalDivider()
 }
 
 @Composable
@@ -411,15 +456,25 @@ private fun ScheduleReminderRow(
 @Composable
 private fun CheckInReminderRow(
     enabled: Boolean,
+    idleThresholdMinutes: Int,
     lastShownAtMillis: Long?,
-    onEnabledChange: (Boolean) -> Unit
+    onEnabledChange: (Boolean) -> Unit,
+    onThresholdChange: (Int) -> Unit
 ) {
+    var showThresholdPicker by remember { mutableStateOf(false) }
     SwitchSettingsRow(
         title = "CheckIn",
-        subtitle = "Checks every 30 minutes when My Day has nothing near now",
+        subtitle = "Checks every 30 minutes when nothing is Done for a while",
         enabled = enabled,
         onEnabledChange = onEnabledChange
     ) {
+        Text(
+            text = "Nudge after ${idleThresholdMinutes}m idle",
+            modifier = Modifier.padding(top = 4.dp).clickable(enabled = enabled) { showThresholdPicker = true },
+            color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium
+        )
         Text(
             text = lastShownAtMillis?.let { "Last shown ${formatLastShown(it)}" } ?: "Last shown never",
             modifier = Modifier.padding(top = 4.dp),
@@ -427,6 +482,48 @@ private fun CheckInReminderRow(
             style = MaterialTheme.typography.bodySmall
         )
     }
+
+    if (showThresholdPicker) {
+        IdleThresholdPickerDialog(
+            initialMinutes = idleThresholdMinutes,
+            onDismiss = { showThresholdPicker = false },
+            onConfirm = { minutes ->
+                onThresholdChange(minutes)
+                showThresholdPicker = false
+            }
+        )
+    }
+}
+
+private val IdleThresholdOptions = listOf(30, 45, 60, 90, 120)
+
+@Composable
+private fun IdleThresholdPickerDialog(
+    initialMinutes: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit
+) {
+    var selected by remember(initialMinutes) { mutableStateOf(initialMinutes) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Idle threshold") },
+        text = {
+            Column {
+                IdleThresholdOptions.forEach { option ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable { selected = option }.padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = selected == option, onClick = { selected = option })
+                        Spacer(Modifier.size(8.dp))
+                        Text("After ${option}m with no Done")
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { onConfirm(selected) }) { Text("OK") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(Res.string.cancel)) } }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -582,7 +679,7 @@ private fun reminderSummary(state: ReminderSettingsUiState): String {
     val enabledCount = listOf(state.planEnabled, state.reviewEnabled, state.checkInEnabled, state.scheduleEnabled).count { it }
     return when (enabledCount) {
         0 -> "All reminders off"
-        4 -> "Plan ${formatTime(state.planTimeMinutes)}, Review ${formatTime(state.reviewTimeMinutes)}, Schedule on"
+        4 -> "Plan ${formatTime(state.planTimeMinutes)}, Review ${formatTime(state.reviewTimeMinutes)}, CheckIn ${state.idleThresholdMinutes}m idle, Schedule on"
         else -> "$enabledCount reminders on"
     }
 }

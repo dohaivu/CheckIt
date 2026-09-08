@@ -64,7 +64,7 @@ import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DatePicker
 import com.checkit.ui.components.EditorOverflowMenu
-import com.checkit.ui.components.LabelSuggestions
+import com.checkit.ui.components.LabelTextField
 import com.checkit.ui.components.ListPicker
 import com.checkit.ui.components.MarkdownVisualTransformation
 import com.checkit.ui.components.PriorityPicker
@@ -72,6 +72,7 @@ import com.checkit.ui.components.TagPicker
 import com.checkit.ui.components.TimeRangePicker
 import com.checkit.ui.isOverdue
 import com.checkit.ui.priorityColor
+import com.checkit.ui.tasks.views.ContentContainerAlpha
 import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
 
@@ -84,50 +85,13 @@ internal fun TaskEditorSheet(
     actions: TaskEditorActions,
     recentLabels: List<String> = emptyList()
 ) {
-    val onDismiss = actions.onDismiss
-    val onSave = actions.onSave
-    val onDelete = actions.onDelete
-    val onRestore = actions.onRestore
-    val onComplete = actions.onComplete
-    val onReopen = actions.onReopen
-    val onAddToMyDay = actions.onAddToMyDay
-    val onTaskNameChange = actions.onTaskNameChange
-    val onTaskListChange = actions.onTaskListChange
-    val onTaskDescriptionChange = actions.onTaskDescriptionChange
-    val onTaskDoDateChange = actions.onTaskDoDateChange
-    val onTaskTimeChange = actions.onTaskTimeChange
-    val onDailyPlanTimeChange = actions.onDailyPlanTimeChange
-    val onDailyPlanStatus = actions.onDailyPlanStatus
-    val onDailyPlanDelete = actions.onDailyPlanDelete
-    val onDailyPlanStartSprint = actions.onDailyPlanStartSprint
-    val onDailyPlanStartOngoingSprint = actions.onDailyPlanStartOngoingSprint
-    val onTaskPriorityChange = actions.onTaskPriorityChange
-    val onSubTaskToggle = actions.onSubTaskToggle
-    val onSubTaskAdd = actions.onSubTaskAdd
-    val onSubTaskNameChange = actions.onSubTaskNameChange
-    val onSubTaskRemove = actions.onSubTaskRemove
-    val onSubTaskMove = actions.onSubTaskMove
-    val onTaskTagToggle = actions.onTaskTagToggle
-    val onNoteTagToggle = actions.onNoteTagToggle
-    val onNewTagClick = actions.onNewTagClick
-    val onNoteTitleChange = actions.onNoteTitleChange
-    val onNoteContentChange = actions.onNoteContentChange
-    val onNoteListChange = actions.onNoteListChange
-    val onNoteDateChange = actions.onNoteDateChange
-    val onNoteStartTimeChange = actions.onNoteStartTimeChange
-    val onPinToggle = actions.onPinToggle
-    val onTaskLabelChange = actions.onTaskLabelChange
-    val onNoteLabelChange = actions.onNoteLabelChange
-
     AppEditorBottomSheet(
-        onDismiss = onDismiss,
-        modifier = Modifier
-            .fillMaxHeight(0.9f)
-            .windowInsetsPadding(WindowInsets.ime)
+        onDismiss = actions.common.onDismiss,
+        modifier = Modifier.fillMaxHeight(0.9f)
     ) {
         TrashedStatusSection(
             isTrashed = editor.isTrashed(),
-            onRestore = onRestore,
+            onRestore = actions.common.onRestore,
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
         )
         LazyColumn(
@@ -144,11 +108,15 @@ internal fun TaskEditorSheet(
                         item {
                             DailyPlanSection(
                                 item = dailyPlanItem,
-                                onTimeChange = onDailyPlanTimeChange,
-                                onStatusChange = onDailyPlanStatus,
-                                onDelete = onDailyPlanDelete,
-                                onStartSprint = onDailyPlanStartSprint,
-                                onStartOngoingSprint = onDailyPlanStartOngoingSprint,
+                                onTimeChange = actions.dailyPlan.onTimeChange,
+                                onTitleChange = actions.dailyPlan.onTitleChange,
+                                onNoteChange = actions.dailyPlan.onNoteChange,
+                                onLabelChange = actions.dailyPlan.onLabelChange,
+                                onStatusChange = actions.dailyPlan.onStatus,
+                                onDelete = actions.dailyPlan.onDelete,
+                                onStartSprint = actions.dailyPlan.onStartSprint,
+                                onStartOngoingSprint = actions.dailyPlan.onStartOngoingSprint,
+                                recentLabels = recentLabels,
                                 enabled = editor.isFormEditable()
                             )
                             Spacer(modifier = Modifier.height(16.dp))
@@ -162,20 +130,20 @@ internal fun TaskEditorSheet(
                             availableLists = availableLists,
                             availableTags = availableTags,
                             recentLabels = recentLabels,
-                            onNameChange = onTaskNameChange,
-                            onListChange = onTaskListChange,
-                            onDescriptionChange = onTaskDescriptionChange,
-                            onDoDateChange = onTaskDoDateChange,
-                            onTimeChange = onTaskTimeChange,
-                            onPriorityChange = onTaskPriorityChange,
-                            onSubTaskToggle = onSubTaskToggle,
-                            onSubTaskAdd = onSubTaskAdd,
-                            onSubTaskNameChange = onSubTaskNameChange,
-                            onSubTaskRemove = onSubTaskRemove,
-                            onSubTaskMove = onSubTaskMove,
-                            onTagToggle = onTaskTagToggle,
-                            onLabelChange = onTaskLabelChange,
-                            onNewTagClick = onNewTagClick,
+                            onNameChange = actions.task.onNameChange,
+                            onListChange = actions.task.onListChange,
+                            onDescriptionChange = actions.task.onDescriptionChange,
+                            onDoDateChange = actions.task.onDoDateChange,
+                            onTimeChange = actions.task.onTimeChange,
+                            onPriorityChange = actions.task.onPriorityChange,
+                            onSubTaskToggle = actions.subTask.onToggle,
+                            onSubTaskAdd = actions.subTask.onAdd,
+                            onSubTaskNameChange = actions.subTask.onNameChange,
+                            onSubTaskRemove = actions.subTask.onRemove,
+                            onSubTaskMove = actions.subTask.onMove,
+                            onTagToggle = actions.task.onTagToggle,
+                            onLabelChange = actions.task.onLabelChange,
+                            onNewTagClick = actions.common.onNewTagClick,
                             enabled = editor.isFormEditable()
                         )
                     }
@@ -188,14 +156,14 @@ internal fun TaskEditorSheet(
                             availableLists = availableLists,
                             availableTags = availableTags,
                             recentLabels = recentLabels,
-                            onTitleChange = onNoteTitleChange,
-                            onContentChange = onNoteContentChange,
-                            onListChange = onNoteListChange,
-                            onDateChange = onNoteDateChange,
-                            onStartTimeChange = onNoteStartTimeChange,
-                            onTagToggle = onNoteTagToggle,
-                            onLabelChange = onNoteLabelChange,
-                            onNewTagClick = onNewTagClick,
+                            onTitleChange = actions.note.onTitleChange,
+                            onContentChange = actions.note.onContentChange,
+                            onListChange = actions.note.onListChange,
+                            onDateChange = actions.note.onDateChange,
+                            onStartTimeChange = actions.note.onStartTimeChange,
+                            onTagToggle = actions.note.onTagToggle,
+                            onLabelChange = actions.note.onLabelChange,
+                            onNewTagClick = actions.common.onNewTagClick,
                             enabled = editor.isFormEditable()
                         )
                     }
@@ -213,12 +181,12 @@ internal fun TaskEditorSheet(
             showAddToMyDay = editor.shouldShowAddToMyDay(),
             isCompletable = editor.isCompletableView(),
             isOpenable = editor.isOpenableView(),
-            onSave = onSave,
-            onAddToMyDay = onAddToMyDay,
-            onDelete = onDelete,
-            onComplete = onComplete,
-            onReopen = onReopen,
-            onPinToggle = onPinToggle,
+            onSave = actions.common.onSave,
+            onAddToMyDay = actions.common.onAddToMyDay,
+            onDelete = actions.common.onDelete,
+            onComplete = actions.common.onComplete,
+            onReopen = actions.common.onReopen,
+            onPinToggle = actions.common.onPinToggle,
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
         )
     }
@@ -380,39 +348,17 @@ private fun TaskFormContent(
         TaskType.Task -> "What would you like to do?"
         TaskType.Habit -> "What habit do you want to build?"
     }
-    var labelFocused by remember { mutableStateOf(false) }
 
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            AppOutlinedTextField(
-                value = form.label.orEmpty(),
-                onValueChange = onLabelChange,
-                modifier = Modifier
-                    .padding(start = 4.dp)
-                    .widthIn(max = 80.dp)
-                    .onFocusChanged { labelFocused = it.isFocused },
-                textStyle = MaterialTheme.typography.labelSmall.copy(
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                ),
-                maxLines = 1,
-                placeholder = "Add label",
-                enabled = enabled,
-                contentPadding = PaddingValues(horizontal = 0.dp, vertical = 2.dp)
-            )
-
-            if (labelFocused) {
-                LabelSuggestions(
-                    currentLabel = form.label.orEmpty(),
-                    recentLabels = recentLabels,
-                    onLabelSelect = onLabelChange,
-                    modifier = Modifier.padding(horizontal = 4.dp)
-                )
-            }
-        }
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        LabelTextField(
+            value = form.label.orEmpty(),
+            onValueChange = onLabelChange,
+            recentLabels = recentLabels,
+            modifier = Modifier.padding(start = 4.dp),
+            placeholder = "Add label",
+            enabled = enabled,
+            maxWidth = 80.dp
+        )
 
         if (isHabit) {
             Row(
@@ -525,34 +471,34 @@ private fun TaskFormContent(
 private fun DailyPlanSection(
     item: DailyPlanItem?,
     onTimeChange: (Int?, Int?) -> Unit,
+    onTitleChange: (String) -> Unit,
+    onNoteChange: (String) -> Unit,
+    onLabelChange: (String) -> Unit,
     onStatusChange: () -> Unit,
     onDelete: (Long) -> Unit,
     onStartSprint: (DailyPlanItem) -> Unit,
     onStartOngoingSprint: (DailyPlanItem) -> Unit,
+    recentLabels: List<String>,
     enabled: Boolean = true
 ) {
     if (item == null) return
     val colorScheme = MaterialTheme.colorScheme
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier.padding(horizontal = 4.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.WbSunny,
-                contentDescription = null,
-                modifier = Modifier.size(14.dp),
-                tint = colorScheme.primary
-            )
-            Text(
-                text = "MY DAY",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = colorScheme.primary,
-                letterSpacing = 0.5.sp
-            )
-        }
+
+    Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+        LabelTextField(
+            value = item.label.orEmpty(),
+            onValueChange = onLabelChange,
+            recentLabels = recentLabels,
+            placeholder = "☀️ MY DAY",
+            placeholderStyle = MaterialTheme.typography.labelSmall.copy(
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            ),
+            enabled = enabled,
+            maxWidth = 120.dp,
+            contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+        )
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -565,83 +511,111 @@ private fun DailyPlanSection(
                 )
                 .padding(horizontal = 12.dp, vertical = 8.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                TimeRangePicker(
-                    startTimeMinutes = item.startTimeMinutes,
-                    endTimeMinutes = item.endTimeMinutes,
-                    onTimeChange = onTimeChange,
-                    modifier = Modifier.weight(1f),
-                    enabled = enabled,
-                    isOverdue = item.isOverdue(today()),
-                    clearEnabled = true
-                )
+            Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+
 
                 Row(
-                    modifier = Modifier.padding(start = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (enabled) {
-                        if (item.status == DailyPlanItemStatus.Planned && item.startTimeMinutes != null) {
-                            IconButton(
-                                onClick = { onStartOngoingSprint(item) },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Bolt,
-                                    contentDescription = "Focus ongoing",
-                                    modifier = Modifier.size(18.dp),
-                                    tint = colorScheme.primary
-                                )
-                            }
-                        }
+                    TimeRangePicker(
+                        startTimeMinutes = item.startTimeMinutes,
+                        endTimeMinutes = item.endTimeMinutes,
+                        onTimeChange = onTimeChange,
+                        modifier = Modifier.weight(1f),
+                        enabled = enabled,
+                        isOverdue = item.isOverdue(today()),
+                        clearEnabled = true
+                    )
 
-                        if (item.status == DailyPlanItemStatus.Planned) {
-                            IconButton(
-                                onClick = { onStartSprint(item) },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Schedule,
-                                    contentDescription = "Start Focus",
-                                    modifier = Modifier.size(18.dp),
-                                    tint = colorScheme.primary
-                                )
-                            }
-                        }
-                    }
-
-
-                    IconButton(
-                        onClick = { onDelete(item.id) },
-                        modifier = Modifier.size(32.dp)
+                    Row(
+                        modifier = Modifier.padding(start = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Delete from My Day",
-                            modifier = Modifier.size(18.dp),
-                            tint = colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                        )
-                    }
+                        if (enabled) {
+                            if (item.status == DailyPlanItemStatus.Planned && item.startTimeMinutes != null) {
+                                IconButton(
+                                    onClick = { onStartOngoingSprint(item) },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Bolt,
+                                        contentDescription = "Focus ongoing",
+                                        modifier = Modifier.size(18.dp),
+                                        tint = colorScheme.primary
+                                    )
+                                }
+                            }
 
-                    if (enabled) {
+                            if (item.status == DailyPlanItemStatus.Planned) {
+                                IconButton(
+                                    onClick = { onStartSprint(item) },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Schedule,
+                                        contentDescription = "Start Focus",
+                                        modifier = Modifier.size(18.dp),
+                                        tint = colorScheme.primary
+                                    )
+                                }
+                            }
+                        }
+
+
                         IconButton(
-                            onClick = onStatusChange,
+                            onClick = { onDelete(item.id) },
                             modifier = Modifier.size(32.dp)
                         ) {
                             Icon(
-                                imageVector = if (item.status == DailyPlanItemStatus.Done) Icons.AutoMirrored.Filled.Undo else Icons.Default.Check,
-                                contentDescription = "Done from My Day",
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete from My Day",
                                 modifier = Modifier.size(18.dp),
-                                tint = colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                                tint = colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                             )
+                        }
+
+                        if (enabled) {
+                            IconButton(
+                                onClick = onStatusChange,
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (item.status == DailyPlanItemStatus.Done) Icons.AutoMirrored.Filled.Undo else Icons.Default.Check,
+                                    contentDescription = "Done from My Day",
+                                    modifier = Modifier.size(18.dp),
+                                    tint = colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                                )
+                            }
                         }
                     }
                 }
+
+                AppOutlinedTextField(
+                    value = item.title,
+                    onValueChange = onTitleChange,
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                        color = colorScheme.onSurface.copy(alpha = ContentContainerAlpha),
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    maxLines = 2,
+                    enabled = enabled,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                AppOutlinedTextField(
+                    value = item.note.orEmpty(),
+                    onValueChange = onNoteChange,
+                    textStyle = MaterialTheme.typography.bodySmall.copy(
+                        color = colorScheme.onSurface.copy(alpha = ContentContainerAlpha),
+                        fontWeight = FontWeight.Normal
+                    ),
+                    maxLines = 3,
+                    enabled = enabled,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
     }
@@ -663,39 +637,15 @@ private fun NoteFormContent(
     recentLabels: List<String>,
     enabled: Boolean = true
 ) {
-    var labelFocused by remember { mutableStateOf(false) }
-
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                AppOutlinedTextField(
-                    value = form.label.orEmpty(),
-                    onValueChange = onLabelChange,
-                    modifier = Modifier.widthIn(max = 120.dp).onFocusChanged { labelFocused = it.isFocused },
-                    textStyle = MaterialTheme.typography.labelSmall.copy(
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    ),
-                    maxLines = 1,
-                    placeholder = "Add label",
-                    enabled = enabled,
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
-                )
-                Spacer(Modifier.weight(1f))
-            }
-
-            if (labelFocused) {
-                LabelSuggestions(
-                    currentLabel = form.label.orEmpty(),
-                    recentLabels = recentLabels,
-                    onLabelSelect = onLabelChange,
-                    modifier = Modifier.padding(horizontal = 4.dp)
-                )
-            }
-        }
+        LabelTextField(
+            value = form.label.orEmpty(),
+            onValueChange = onLabelChange,
+            recentLabels = recentLabels,
+            placeholder = "Add label",
+            enabled = enabled,
+            maxWidth = 120.dp
+        )
 
         Row(
             verticalAlignment = Alignment.CenterVertically,

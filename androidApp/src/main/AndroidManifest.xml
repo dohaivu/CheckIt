@@ -93,5 +93,11 @@
                 <action android:name="com.checkit.ACTION_STOP" />
             </intent-filter>
         </receiver>
+        <receiver android:name="com.checkit.notifications.CheckInReminderActionReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="com.checkit.ACTION_CHECK_IN_MARK_DONE" />
+                <action android:name="com.checkit.ACTION_CHECK_IN_SNOOZE" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

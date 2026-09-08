@@ -361,7 +361,7 @@ private fun PeriodHeader(
                 .weight(1f)
                 .fillMaxHeight()
                 .pointerInput(onCurrentPeriod) {
-                    detectTapGestures(onDoubleTap = { onCurrentPeriod() })
+                    detectTapGestures(onTap = { onCurrentPeriod() })
                 },
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center

@@ -56,6 +56,10 @@ class DataStoreSettingsRepository(
         dataStore.setCheckInReminderEnabled(enabled)
     }
 
+    override suspend fun setIdleCheckInThresholdMinutes(minutes: Int) {
+        dataStore.setIdleCheckInThresholdMinutes(minutes)
+    }
+
     override suspend fun setScheduleReminderEnabled(enabled: Boolean) {
         dataStore.setScheduleReminderEnabled(enabled)
     }

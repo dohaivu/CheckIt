@@ -80,6 +80,7 @@ import com.checkit.domain.usecase.LinkDailyPlanItemToTaskUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTagUseCase
 import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
+import com.checkit.domain.usecase.UpdateDailyPlanItemUseCase
 import com.checkit.domain.usecase.UpdateJournalEntryUseCase
 import com.checkit.domain.usecase.UpdateListUseCase
 import com.checkit.domain.usecase.UpdateSectionUseCase
@@ -188,6 +189,7 @@ val provideInteractorModule = module {
     single { AddDailyPlanItemUseCase(get()) }
     single { LinkDailyPlanItemToTaskUseCase(get()) }
     single { UpdateDailyPlanItemTimeUseCase(get()) }
+    single { UpdateDailyPlanItemUseCase(get()) }
     single { SmartScheduleDailyPlanUseCase(get()) }
     single { UpdateDailyPlanItemStatusUseCase(get()) }
     single { UpdateDailyPlanItemTagUseCase(get()) }
@@ -264,6 +266,7 @@ val provideViewModelModule = module {
             updateDailyPlanItemTime = get(),
             updateDailyPlanItemStatus = get(),
             updateDailyPlanItemTag = get(),
+            updateDailyPlanItem = get(),
             linkDailyPlanItemToTask = get(),
             settingsRepository = get()
         )

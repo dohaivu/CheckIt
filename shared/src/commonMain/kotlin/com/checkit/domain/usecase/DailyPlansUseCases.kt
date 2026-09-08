@@ -93,6 +93,13 @@ class UpdateDailyPlanItemTimeUseCase(
         repository.updateDailyPlanItemTime(itemId, startTimeMinutes, endTimeMinutes)
 }
 
+class UpdateDailyPlanItemUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(itemId: Long, input: DailyPlanItemWriteInput) =
+        repository.updateDailyPlanItem(itemId, input)
+}
+
 class UpdateDailyPlanItemStatusUseCase(
     private val repository: CheckItRepository
 ) {
