@@ -598,7 +598,7 @@ private fun DailyPlanSection(
                     onValueChange = onTitleChange,
                     textStyle = MaterialTheme.typography.bodyMedium.copy(
                         color = colorScheme.onSurface.copy(alpha = ContentContainerAlpha),
-                        fontWeight = FontWeight.Normal
+                        fontWeight = FontWeight.SemiBold
                     ),
                     maxLines = 2,
                     enabled = enabled,
