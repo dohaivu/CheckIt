@@ -67,6 +67,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -75,7 +76,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.checkit.domain.QuickNote
-import com.checkit.ui.components.AppOutlinedTextField
+import com.checkit.ui.components.AiQuickAddBar
 import com.checkit.ui.components.SectionLabel
 import com.checkit.ui.components.TinyTopAppBar
 import kotlinx.coroutines.CoroutineScope
@@ -606,25 +607,32 @@ private fun QuickCaptureBar(
     onSubmit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val focusManager = LocalFocusManager.current
+
     Row(
         modifier = modifier.fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(horizontal = 8.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.weight(1f)) {
-            AppOutlinedTextField(
-                value = input,
-                onValueChange = onInputChange,
-                placeholder = "+ Capture a thought",
-                maxLines = 3,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                keyboardActions = KeyboardActions(onSend = { onSubmit() }),
-            )
-        }
-        Spacer(Modifier.width(8.dp))
+        AiQuickAddBar(
+            value = input,
+            onValueChange = onInputChange,
+            placeholder = "Capture a thought...",
+            modifier = Modifier.weight(1f),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+            keyboardActions = KeyboardActions(onSend = {
+                onSubmit()
+                focusManager.clearFocus()
+            }),
+            haloPadding = 6.dp
+        )
+        Spacer(Modifier.width(4.dp))
         IconButton(
-            onClick = onSubmit,
+            onClick = {
+                onSubmit()
+                focusManager.clearFocus()
+            },
             enabled = input.isNotBlank(),
         ) {
             Icon(Icons.Default.Add, contentDescription = "Capture")
