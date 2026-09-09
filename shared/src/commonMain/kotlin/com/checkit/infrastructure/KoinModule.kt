@@ -89,6 +89,7 @@ import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
 import com.checkit.domain.usecase.UpdateNestedItemMetricSettingsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemNoteUseCase
 import com.checkit.domain.usecase.UpdateNestedItemPriorityUseCase
+import com.checkit.domain.usecase.UpdateNestedItemProgressUseCase
 import com.checkit.domain.usecase.UpdateNestedItemTagsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemTextUseCase
 import com.checkit.domain.usecase.UpdateNoteUseCase
@@ -222,6 +223,7 @@ val provideInteractorModule = module {
     single { UpdateNestedItemDateRangeUseCase(get()) }
     single { UpdateNestedItemTagsUseCase(get()) }
     single { UpdateNestedItemMetricSettingsUseCase(get()) }
+    single { UpdateNestedItemProgressUseCase(get()) }
     single { ReplaceNestedManualMetricsUseCase(get()) }
     single { SetNestedItemCheckboxEnabledUseCase(get()) }
     single { SetNestedItemsCheckedUseCase(get()) }
@@ -336,6 +338,7 @@ val provideViewModelModule = module {
             updateItemPriorityUseCase = get(),
             updateItemTagsUseCase = get(),
             updateItemMetricSettingsUseCase = get(),
+            updateItemProgressUseCase = get(),
             replaceNestedManualMetricsUseCase = get(),
             setCheckboxEnabledUseCase = get(),
             setItemsCheckedUseCase = get(),

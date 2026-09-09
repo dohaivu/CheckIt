@@ -987,6 +987,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
     override suspend fun updateNestedItemDateRange(itemId: Long, startDate: LocalDate?, endDate: LocalDate?) {}
     override suspend fun updateNestedItemTags(itemId: Long, tagIds: List<Long>) {}
     override suspend fun updateNestedItemMetricSettings(itemId: Long, actualMinutes: Int, metricRollupPolicy: MetricRollupPolicy, showTrackedMinutes: Boolean) {}
+    override suspend fun updateNestedItemProgress(itemId: Long, progressPercent: Int?) {}
     override suspend fun replaceNestedManualMetrics(itemId: Long, metrics: List<MetricItem>) {}
     override suspend fun setNestedItemCheckboxEnabled(itemId: Long, checkboxEnabled: Boolean) {}
     override suspend fun setNestedItemsChecked(itemIds: List<Long>, checked: Boolean) {}

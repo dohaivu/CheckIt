@@ -32,6 +32,7 @@ import com.checkit.domain.usecase.UpdateNestedItemFormattingUseCase
 import com.checkit.domain.usecase.UpdateNestedItemMetricSettingsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemNoteUseCase
 import com.checkit.domain.usecase.UpdateNestedItemPriorityUseCase
+import com.checkit.domain.usecase.UpdateNestedItemProgressUseCase
 import com.checkit.domain.usecase.UpdateNestedItemTagsUseCase
 import com.checkit.domain.usecase.UpdateNestedItemTextUseCase
 import com.checkit.ui.UiEvent
@@ -127,6 +128,7 @@ class NestedListsViewModel(
     private val updateItemPriorityUseCase: UpdateNestedItemPriorityUseCase,
     private val updateItemTagsUseCase: UpdateNestedItemTagsUseCase,
     private val updateItemMetricSettingsUseCase: UpdateNestedItemMetricSettingsUseCase,
+    private val updateItemProgressUseCase: UpdateNestedItemProgressUseCase,
     private val replaceNestedManualMetricsUseCase: ReplaceNestedManualMetricsUseCase,
     private val setCheckboxEnabledUseCase: SetNestedItemCheckboxEnabledUseCase,
     private val setItemsCheckedUseCase: SetNestedItemsCheckedUseCase,
@@ -497,6 +499,10 @@ class NestedListsViewModel(
 
     fun updateItemMetricSettings(itemId: Long, min: Int, policy: MetricRollupPolicy, show: Boolean) {
         viewModelScope.launch { updateItemMetricSettingsUseCase(itemId, min, policy, show) }
+    }
+
+    fun updateItemProgress(itemId: Long, progressPercent: Int?) {
+        viewModelScope.launch { updateItemProgressUseCase(itemId, progressPercent) }
     }
 
     fun replaceManualMetrics(itemId: Long, metrics: List<MetricItem>) {

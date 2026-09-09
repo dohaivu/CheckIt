@@ -66,8 +66,11 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -559,8 +562,9 @@ internal fun NestedListScreen(
                 node = node,
                 summary = state.tree.metricSummaryById[itemId] ?: NestedMetricSummary(),
                 onDismiss = { detailsItemId = null },
-                onSave = { mins, pol, show, metrics ->
+                onSave = { mins, pol, show, progress, metrics ->
                     viewModel.updateItemMetricSettings(itemId, mins, pol, show)
+                    viewModel.updateItemProgress(itemId, progress)
                     viewModel.replaceManualMetrics(itemId, metrics)
                     detailsItemId = null
                 }
@@ -847,8 +851,27 @@ private fun NestedItemMetadataPreview(
     val hasNote = !item.note.isNullOrBlank()
     val hasTags = item.tags.isNotEmpty()
     val hasDateRange = item.startDate != null || item.endDate != null
+    val progress = item.progressPercent
     val showTracked = isLeaf || item.showTrackedMinutes
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        if (progress != null) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                LinearProgressIndicator(
+                    progress = { (progress.coerceIn(0, 100)) / 100f },
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    text = "${progress.coerceIn(0, 100)}%",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
         Row(
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -901,7 +924,7 @@ private fun NestedItemMetadataPreview(
                 }
             }
         }
-        if (!hasNote && !hasTags && !hasDateRange) return@Column
+        if (!hasNote && !hasTags && !hasDateRange && progress == null) return@Column
 
         if (hasNote) {
             Text(
@@ -974,13 +997,14 @@ private fun NestedItemDetailsDialog(
     node: NestedItemNode,
     summary: NestedMetricSummary,
     onDismiss: () -> Unit,
-    onSave: (Int, MetricRollupPolicy, Boolean, List<MetricItem>) -> Unit
+    onSave: (Int, MetricRollupPolicy, Boolean, Int?, List<MetricItem>) -> Unit
 ) {
     val item = node.item
     val isLeaf = !node.hasChildren
     var actualMinutes by remember(item.id) { mutableStateOf(if (item.actualMinutes > 0) item.actualMinutes.toString() else "") }
     var policy by remember(item.id) { mutableStateOf(item.metricRollupPolicy) }
     var showTrackedMinutes by remember(item.id) { mutableStateOf(item.showTrackedMinutes) }
+    var progress by remember(item.id) { mutableStateOf(item.progressPercent) }
     var metrics by remember(item.id) { mutableStateOf(item.manualMetrics) }
     var policyExpanded by remember { mutableStateOf(false) }
     var unitExpandedIndex by remember { mutableStateOf<Int?>(null) }
@@ -1139,6 +1163,80 @@ private fun NestedItemDetailsDialog(
                                 checked = showTrackedMinutes,
                                 onCheckedChange = { showTrackedMinutes = it },
                                 modifier = Modifier.scale(0.75f)
+                            )
+                        }
+                    }
+                }
+
+                // Section: Progress
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "PROGRESS",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        val showing = progress != null
+                        Icon(
+                            imageVector = if (showing) Icons.Rounded.CheckBox else Icons.Rounded.CheckBoxOutlineBlank,
+                            contentDescription = if (showing) "Hide progress" else "Show progress",
+                            tint = if (showing) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f)
+                            },
+                            modifier = Modifier
+                                .size(22.dp)
+                                .clickable {
+                                    progress = if (showing) null else progress ?: 0
+                                }
+                        )
+                        if (showing) {
+                            Slider(
+                                value = (progress ?: 0).toFloat(),
+                                onValueChange = { value ->
+                                    progress = value.roundToInt().coerceIn(0, 100)
+                                },
+                                valueRange = 0f..100f,
+                                steps = 99,
+                                colors = SliderDefaults.colors(
+                                    thumbColor = MaterialTheme.colorScheme.primary,
+                                    activeTrackColor = MaterialTheme.colorScheme.primary,
+                                    activeTickColor = Color.Transparent,
+                                    inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+                                    inactiveTickColor = Color.Transparent
+                                ),
+                                modifier = Modifier.weight(1f).height(28.dp)
+                            )
+                            Text(
+                                text = "${progress}%",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                textAlign = TextAlign.End,
+                                modifier = Modifier.width(44.dp)
+                            )
+                        } else {
+                            Text(
+                                text = "Show progress",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { progress = 0 }
                             )
                         }
                     }
@@ -1323,6 +1421,7 @@ private fun NestedItemDetailsDialog(
                         actualMinutes.toIntOrNull() ?: 0,
                         policy,
                         showTrackedMinutes,
+                        progress?.coerceIn(0, 100),
                         metrics.filter { it.value.isNotBlank() }
                     )
                 }

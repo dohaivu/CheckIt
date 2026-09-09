@@ -64,6 +64,8 @@ data class NestedListItem(
     val actualMinutes: Int = 0,
     val metricRollupPolicy: MetricRollupPolicy = MetricRollupPolicy.IncludeChildren,
     val showTrackedMinutes: Boolean = false,
+    /** Manual progress 0..100; null means progress UI is hidden. */
+    val progressPercent: Int? = null,
     val manualMetrics: List<MetricItem> = emptyList(),
     val createdAtMillis: Long,
     val updatedAtMillis: Long
