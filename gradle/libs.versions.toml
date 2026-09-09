@@ -25,7 +25,7 @@ kotlin = "2.4.20"
 room = "3.0.2"
 ksp = "2.3.11"
 sqlite = "2.7.0"
-coil = "3.6.1"
+coil = "3.6.2"
 ktor = "3.5.2"
 kotlinx-coroutine = "1.11.0"
 kotlinx-serialization = "1.11.0"
@@ -33,7 +33,7 @@ kotlinx-datetime = "0.8.0"
 kotlinx-atomicfu = "0.33.0"
 koin-bom = "4.2.2"
 koin-plugin = "1.1.0"
-kermit = "2.1.0"
+kermit = "2.2.0"
 vico = "3.2.3"
 calendar = "2.10.1"
 androidgitversion = "0.4.14"
@@ -50,9 +50,7 @@ paging = "3.5.1"
 glance = "1.2.0"
 google-services-plugin = "4.5.0"
 firebase-crashlytics-plugin = "3.0.8"
-firebase-crashlytics = "20.1.0"
 firebase-bom = "34.18.0"
-firebase-analytics = "23.2.0"
 play-services-auth = "22.0.0"
 
 [libraries]
@@ -146,8 +144,9 @@ koin-core-coroutines = { module = "io.insert-koin:koin-core-coroutines" }
 
 # Firebase
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebase-bom" }
-firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics", version.ref = "firebase-analytics" }
-firebase-crashlytics-lib = { group = "com.google.firebase", name = "firebase-crashlytics", version.ref = "firebase-crashlytics" }
+firebase-analytics = { module = "com.google.firebase:firebase-crashlytics" }
+firebase-crashlytics = { module = "com.google.firebase:firebase-analytics" }
+firebase-firestore = { module = "com.google.firebase:firebase-firestore" }
 play-services-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "play-services-auth" }
 
 [plugins]
