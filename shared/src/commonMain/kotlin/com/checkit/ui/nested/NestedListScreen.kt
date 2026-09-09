@@ -147,6 +147,7 @@ import com.checkit.ui.components.TagPill
 import com.checkit.ui.displayName
 import com.checkit.ui.displayUnit
 import com.checkit.ui.noRippleClickable
+import com.checkit.ui.progressRatio
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
@@ -1219,7 +1220,7 @@ private fun NestedItemDetailsDialog(
                                     inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
                                     inactiveTickColor = Color.Transparent
                                 ),
-                                modifier = Modifier.weight(1f).height(28.dp)
+                                modifier = Modifier.weight(1f).height(22.dp)
                             )
                             Text(
                                 text = "${progress}%",
@@ -1410,7 +1411,7 @@ private fun NestedItemDetailsDialog(
                                 )
                             }
 
-                            metricProgressRatio(metric)?.let { ratio ->
+                            metric.progressRatio()?.let { ratio ->
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically,
@@ -1496,17 +1497,6 @@ private fun countTotalDescendants(node: NestedItemNode): Int {
         count += countTotalDescendants(child)
     }
     return count
-}
-
-/**
- * Returns the value/target ratio in 0..1, or null when either side is not a
- * valid number or the target is not positive.
- */
-private fun metricProgressRatio(metric: MetricItem): Float? {
-    val value = metric.value.trim().replace(',', '.').toDoubleOrNull() ?: return null
-    val target = metric.targetValue?.trim()?.replace(',', '.')?.toDoubleOrNull() ?: return null
-    if (target <= 0) return null
-    return (value / target).toFloat().coerceIn(0f, 1f)
 }
 
 private fun policyLabel(policy: MetricRollupPolicy): String = when (policy) {
