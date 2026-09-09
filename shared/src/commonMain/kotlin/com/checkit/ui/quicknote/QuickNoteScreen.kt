@@ -1,10 +1,16 @@
 package com.checkit.ui.quicknote
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,6 +20,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
+import androidx.compose.foundation.lazy.LazyListItemInfo
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -25,7 +34,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.DeleteSweep
-import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -46,14 +54,22 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -61,7 +77,9 @@ import com.checkit.domain.QuickNote
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.SectionLabel
 import com.checkit.ui.components.TinyTopAppBar
-import kotlin.math.roundToInt
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.launch
 import kotlin.time.Clock
 
 @Composable
@@ -109,9 +127,45 @@ fun QuickNoteScreen(
             }
         } else {
             val listState = rememberLazyListState()
+            val haptic = LocalHapticFeedback.current
+            val currentOnMoveItem by rememberUpdatedState(viewModel::moveDragging)
+            val currentOnMoveComplete by rememberUpdatedState(viewModel::commitDrag)
+
+            val dragDropState = rememberQuickNoteDragDropState(listState) { from, to ->
+                // Notes start at index 1 due to "header-next". 
+                // Subtract 1 to pass correct relative indices to ViewModel.
+                currentOnMoveItem(from - 1, to - 1)
+            }
+
             LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 12.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 12.dp)
+                    .pointerInput(dragDropState) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = { offset ->
+                                dragDropState.onDragStart(offset)
+                                if (dragDropState.isDragging) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                }
+                            },
+                            onDragEnd = {
+                                dragDropState.onDragInterrupted()
+                                currentOnMoveComplete()
+                            },
+                            onDragCancel = {
+                                dragDropState.onDragInterrupted()
+                                viewModel.cancelDrag()
+                            },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                dragDropState.onDrag(dragAmount)
+                            }
+                        )
+                    },
+                contentPadding = PaddingValues(bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 item(key = "header-next") {
@@ -128,32 +182,17 @@ fun QuickNoteScreen(
                         )
                     }
                 }
-                itemsIndexed(state.visibleNext, key = { _, note -> "next-${note.id}" }) { index, note ->
-                    NextRow(
-                        note = note,
-                        index = index,
-                        itemCount = state.visibleNext.size,
-                        onDeleteSwipe = { viewModel.swipeRight(note.id) },
-                        onReminderSwipe = { viewModel.openReminderPicker(note.id) },
-                        onDragDelta = { deltaPx, itemHeightPx ->
-                            DragAccumulator.delta += deltaPx
-                            val steps = (DragAccumulator.delta / itemHeightPx).roundToInt()
-                            if (steps != 0) {
-                                DragAccumulator.delta = 0f
-                                val from = state.visibleNext.indexOfFirst { it.id == note.id }
-                                val to = (from + steps).coerceIn(0, state.visibleNext.lastIndex)
-                                if (from >= 0 && to != from) viewModel.moveDragging(from, to)
-                            }
-                        },
-                        onDragEnd = {
-                            DragAccumulator.delta = 0f
-                            viewModel.commitDrag()
-                        },
-                        onDragCancel = {
-                            DragAccumulator.delta = 0f
-                            viewModel.cancelDrag()
-                        },
-                    )
+                itemsIndexed(state.visibleNext, key = { _, note -> "next-${note.id}" }) { _, note ->
+                    DraggableQuickNoteRow(
+                        dragDropState = dragDropState,
+                        key = "next-${note.id}"
+                    ) {
+                        NextRow(
+                            note = note,
+                            onDeleteSwipe = { viewModel.swipeRight(note.id) },
+                            onReminderSwipe = { viewModel.openReminderPicker(note.id) },
+                        )
+                    }
                 }
                 item(key = "header-deleted") {
                     Spacer(Modifier.height(12.dp))
@@ -196,30 +235,202 @@ fun QuickNoteScreen(
     }
 }
 
-private object DragAccumulator {
-    var delta: Float = 0f
+@Composable
+private fun rememberQuickNoteDragDropState(
+    lazyListState: LazyListState,
+    onMove: (Int, Int) -> Unit
+): QuickNoteDragDropState {
+    val scope = rememberCoroutineScope()
+    val onMoveState = rememberUpdatedState(onMove)
+    val state = remember(lazyListState) {
+        QuickNoteDragDropState(
+            listState = lazyListState,
+            scope = scope,
+            onMove = { from, to -> onMoveState.value(from, to) }
+        )
+    }
+    LaunchedEffect(state) {
+        while (true) {
+            val diff = state.scrollChannel.receive()
+            lazyListState.scrollBy(diff)
+        }
+    }
+    return state
+}
+
+private class QuickNoteDragDropState(
+    private val listState: LazyListState,
+    private val scope: CoroutineScope,
+    private val onMove: (Int, Int) -> Unit
+) {
+    var draggingItemKey by mutableStateOf<String?>(null)
+        private set
+    var previousKeyOfDraggedItem by mutableStateOf<String?>(null)
+        private set
+
+    val isDragging: Boolean get() = draggingItemKey != null
+
+    val scrollChannel = Channel<Float>(Channel.CONFLATED)
+    val previousItemOffset = Animatable(0f)
+
+    private var draggingItemDraggedDelta by mutableFloatStateOf(0f)
+    private var draggingItemInitialOffset by mutableIntStateOf(0)
+
+    val draggingItemOffset: Float
+        get() = draggingItemLayoutInfo?.let { item ->
+            draggingItemInitialOffset + draggingItemDraggedDelta - item.offset
+        } ?: 0f
+
+    private val draggingItemLayoutInfo: LazyListItemInfo?
+        get() = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == draggingItemKey }
+
+    fun onDragStart(offset: Offset) {
+        val item = listState.layoutInfo.visibleItemsInfo.firstOrNull { info ->
+            offset.y.toInt() in info.offset until (info.offset + info.size)
+        } ?: return
+        val key = item.key as? String ?: return
+        if (!key.startsWith("next-")) return // Only allow dragging NEXT items
+
+        draggingItemKey = key
+        draggingItemInitialOffset = item.offset
+        draggingItemDraggedDelta = 0f
+        previousKeyOfDraggedItem = null
+        scope.launch { previousItemOffset.snapTo(0f) }
+    }
+
+    fun onDrag(offset: Offset) {
+        if (draggingItemKey == null) return
+        draggingItemDraggedDelta += offset.y
+
+        val draggingItem = draggingItemLayoutInfo ?: return
+        val startOffset = draggingItem.offset + draggingItemOffset
+        val endOffset = startOffset + draggingItem.size
+        val middleOffset = (startOffset + endOffset) / 2f
+
+        val targetItem = listState.layoutInfo.visibleItemsInfo.firstOrNull { item ->
+            middleOffset.toInt() in item.offset until (item.offset + item.size) &&
+                    item.index != draggingItem.index &&
+                    (item.key as? String)?.startsWith("next-") == true
+        }
+
+        if (targetItem != null) {
+            if (
+                draggingItem.index == listState.firstVisibleItemIndex ||
+                targetItem.index == listState.firstVisibleItemIndex
+            ) {
+                listState.requestScrollToItem(
+                    listState.firstVisibleItemIndex,
+                    listState.firstVisibleItemScrollOffset
+                )
+            }
+            onMove(draggingItem.index, targetItem.index)
+        } else {
+            val overscroll = when {
+                draggingItemDraggedDelta > 0 ->
+                    (endOffset - listState.layoutInfo.viewportEndOffset).coerceAtLeast(0f)
+                draggingItemDraggedDelta < 0 ->
+                    (startOffset - listState.layoutInfo.viewportStartOffset).coerceAtMost(0f)
+                else -> 0f
+            }
+            if (overscroll != 0f) {
+                scrollChannel.trySend(overscroll)
+            }
+        }
+    }
+
+    fun onDragInterrupted() {
+        val key = draggingItemKey
+        if (key != null) {
+            previousKeyOfDraggedItem = key
+            val startOffset = draggingItemOffset
+            scope.launch {
+                previousItemOffset.snapTo(startOffset)
+                previousItemOffset.animateTo(
+                    targetValue = 0f,
+                    animationSpec = spring(
+                        stiffness = Spring.StiffnessMediumLow,
+                        visibilityThreshold = 1f
+                    )
+                )
+                if (previousKeyOfDraggedItem == key) {
+                    previousKeyOfDraggedItem = null
+                }
+            }
+        }
+        draggingItemDraggedDelta = 0f
+        draggingItemKey = null
+        draggingItemInitialOffset = 0
+    }
+}
+
+@Composable
+private fun LazyItemScope.DraggableQuickNoteRow(
+    dragDropState: QuickNoteDragDropState,
+    key: String,
+    content: @Composable () -> Unit
+) {
+    val dragging = key == dragDropState.draggingItemKey
+    val settling = key == dragDropState.previousKeyOfDraggedItem
+
+    val lift by animateFloatAsState(
+        targetValue = if (dragging) 1.03f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "note-drag-lift"
+    )
+    val elevation by animateFloatAsState(
+        targetValue = if (dragging || settling) 8f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "note-drag-elevation"
+    )
+
+    val dragModifier = when {
+        dragging -> Modifier
+            .zIndex(1f)
+            .graphicsLayer {
+                translationY = dragDropState.draggingItemOffset
+                scaleX = lift
+                scaleY = lift
+                shadowElevation = elevation
+            }
+        settling -> Modifier
+            .zIndex(1f)
+            .graphicsLayer {
+                translationY = dragDropState.previousItemOffset.value
+                shadowElevation = elevation
+            }
+        else -> Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)
+    }
+
+    Box(modifier = dragModifier) {
+        content()
+    }
 }
 
 @Composable
 private fun NextRow(
     note: QuickNote,
-    index: Int,
-    itemCount: Int,
     onDeleteSwipe: () -> Unit,
     onReminderSwipe: () -> Unit,
-    onDragDelta: (deltaPx: Float, itemHeightPx: Float) -> Unit,
-    onDragEnd: () -> Unit,
-    onDragCancel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val haptic = LocalHapticFeedback.current
+
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
             when (value) {
                 SwipeToDismissBoxValue.StartToEnd -> {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     onDeleteSwipe()
                     true
                 }
                 SwipeToDismissBoxValue.EndToStart -> {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     onReminderSwipe()
                     false
                 }
@@ -263,28 +474,10 @@ private fun NextRow(
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                val density = LocalDensity.current
-                val itemHeightPx = remember(density) { with(density) { 72.dp.toPx() } }
-                Icon(
-                    Icons.Default.DragHandle,
-                    contentDescription = "Reorder",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(28.dp).pointerInput(note.id, index, itemCount) {
-                        detectDragGesturesAfterLongPress(
-                            onDrag = { change, dragAmount ->
-                                change.consume()
-                                onDragDelta(dragAmount.y, itemHeightPx)
-                            },
-                            onDragEnd = { onDragEnd() },
-                            onDragCancel = { onDragCancel() },
-                            onDragStart = { DragAccumulator.delta = 0f },
-                        )
-                    }.padding(4.dp),
-                )
-                Column(Modifier.weight(1f).padding(horizontal = 4.dp)) {
+                Column(Modifier.weight(1f)) {
                     Text(note.content, style = MaterialTheme.typography.bodyMedium)
                     if (note.remindAt != null) {
                         Text(
