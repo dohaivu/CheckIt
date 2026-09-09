@@ -73,6 +73,16 @@ object QuickNoteRules {
     fun markDeleted(note: QuickNote, now: Long): QuickNote =
         note.copy(deleted = true, updatedAt = now)
 
+    fun restore(note: QuickNote, now: Long, bottomSortOrder: Double?): QuickNote =
+        note.copy(
+            status = QuickNoteStatus.NEXT,
+            deleteAt = null,
+            remindAt = null,
+            updatedAt = now,
+            sortOrder = (bottomSortOrder ?: 0.0) + SORT_GAP,
+            deleted = false
+        )
+
     fun clearReminder(note: QuickNote, now: Long): QuickNote =
         if (note.remindAt == null) note else note.copy(remindAt = null, updatedAt = now)
 

@@ -85,6 +85,9 @@ interface QuickNoteDao {
     @Query("UPDATE quick_notes SET deleted = 1, updatedAt = :updatedAt WHERE id = :id")
     suspend fun markDeleted(id: String, updatedAt: Long)
 
+    @Query("UPDATE quick_notes SET status = 'NEXT', deleteAt = NULL, remindAt = NULL, sortOrder = :sortOrder, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun restore(id: String, sortOrder: Double, updatedAt: Long)
+
     @Query("SELECT * FROM quick_notes WHERE status = 'TO_BE_DELETED' AND deleted = 0 AND deleteAt IS NOT NULL AND deleteAt <= :now")
     suspend fun getExpired(now: Long): List<QuickNoteEntity>
 

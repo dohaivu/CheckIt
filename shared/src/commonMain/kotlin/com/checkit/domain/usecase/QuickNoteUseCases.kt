@@ -33,6 +33,18 @@ class MoveQuickNoteToBeDeletedUseCase(
     suspend operator fun invoke(id: String) = repository.moveToBeDeleted(id)
 }
 
+class DeleteQuickNotePermanentlyUseCase(
+    private val repository: QuickNoteRepository,
+) {
+    suspend operator fun invoke(id: String) = repository.deletePermanently(id)
+}
+
+class RestoreQuickNoteUseCase(
+    private val repository: QuickNoteRepository,
+) {
+    suspend operator fun invoke(id: String) = repository.restore(id)
+}
+
 class SetQuickNoteReminderUseCase(
     private val repository: QuickNoteRepository,
 ) {

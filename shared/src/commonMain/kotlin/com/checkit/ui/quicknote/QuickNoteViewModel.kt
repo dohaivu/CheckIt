@@ -5,12 +5,14 @@ import androidx.lifecycle.viewModelScope
 import com.checkit.domain.QuickNote
 import com.checkit.domain.QuickNoteRules
 import com.checkit.domain.usecase.CreateQuickNoteUseCase
+import com.checkit.domain.usecase.DeleteQuickNotePermanentlyUseCase
 import com.checkit.domain.usecase.MoveQuickNoteToBeDeletedUseCase
 import com.checkit.domain.usecase.MoveQuickNoteUseCase
 import com.checkit.domain.usecase.ObserveQuickNextUseCase
 import com.checkit.domain.usecase.ObserveQuickToBeDeletedUseCase
 import com.checkit.domain.usecase.ProcessExpiredQuickNotesUseCase
 import com.checkit.domain.usecase.ReconcileQuickNoteRemindersUseCase
+import com.checkit.domain.usecase.RestoreQuickNoteUseCase
 import com.checkit.domain.usecase.SetQuickNoteReminderUseCase
 import com.checkit.ui.UiEvent
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -47,6 +49,8 @@ class QuickNoteViewModel(
     private val moveToBeDeleted: MoveQuickNoteToBeDeletedUseCase,
     private val setReminder: SetQuickNoteReminderUseCase,
     private val moveNote: MoveQuickNoteUseCase,
+    private val deletePermanentlyUseCase: DeleteQuickNotePermanentlyUseCase,
+    private val restoreUseCase: RestoreQuickNoteUseCase,
     private val processExpired: ProcessExpiredQuickNotesUseCase,
     private val reconcileReminders: ReconcileQuickNoteRemindersUseCase,
 ) : ViewModel() {
@@ -93,6 +97,24 @@ class QuickNoteViewModel(
             runCatching { moveToBeDeleted(id) }
                 .onFailure { error ->
                     _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to move note"))
+                }
+        }
+    }
+
+    fun deletePermanently(id: String) {
+        viewModelScope.launch {
+            runCatching { deletePermanentlyUseCase(id) }
+                .onFailure { error ->
+                    _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to delete note"))
+                }
+        }
+    }
+
+    fun restore(id: String) {
+        viewModelScope.launch {
+            runCatching { restoreUseCase(id) }
+                .onFailure { error ->
+                    _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to restore note"))
                 }
         }
     }

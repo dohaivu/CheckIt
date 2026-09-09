@@ -15,6 +15,8 @@ interface QuickNoteRepository {
 
     suspend fun create(content: String): QuickNote?
     suspend fun moveToBeDeleted(id: String)
+    suspend fun deletePermanently(id: String)
+    suspend fun restore(id: String)
     suspend fun setReminder(id: String, remindAt: Long?)
     suspend fun clearReminder(id: String)
     suspend fun move(id: String, beforeId: String?, afterId: String?)
@@ -52,6 +54,22 @@ class RoomQuickNoteRepository(
         val moved = QuickNoteRules.moveToBeDeleted(entity.toDomain(), now)
         dao.moveToBeDeleted(moved.id, moved.deleteAt ?: (now + QuickNoteRules.DELETE_AFTER_MILLIS), now)
         reminderScheduler.cancel(id)
+        syncManager.requestSync()
+    }
+
+    override suspend fun deletePermanently(id: String) {
+        val now = Clock.System.now().toEpochMilliseconds()
+        dao.markDeleted(id, now)
+        reminderScheduler.cancel(id)
+        syncManager.requestSync()
+    }
+
+    override suspend fun restore(id: String) {
+        val entity = dao.getById(id) ?: return
+        val now = Clock.System.now().toEpochMilliseconds()
+        val bottom = dao.maxNextSortOrder()
+        val restored = QuickNoteRules.restore(entity.toDomain(), now, bottom)
+        dao.restore(restored.id, restored.sortOrder, now)
         syncManager.requestSync()
     }
 

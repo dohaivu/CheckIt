@@ -100,6 +100,7 @@ import com.checkit.domain.usecase.UpdateTagUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
 import com.checkit.domain.usecase.UpsertDailyPlanItemUseCase
 import com.checkit.domain.usecase.CreateQuickNoteUseCase
+import com.checkit.domain.usecase.DeleteQuickNotePermanentlyUseCase
 import com.checkit.domain.usecase.MaintainQuickNotesUseCase
 import com.checkit.domain.usecase.MoveQuickNoteToBeDeletedUseCase
 import com.checkit.domain.usecase.MoveQuickNoteUseCase
@@ -107,6 +108,7 @@ import com.checkit.domain.usecase.ObserveQuickNextUseCase
 import com.checkit.domain.usecase.ObserveQuickToBeDeletedUseCase
 import com.checkit.domain.usecase.ProcessExpiredQuickNotesUseCase
 import com.checkit.domain.usecase.ReconcileQuickNoteRemindersUseCase
+import com.checkit.domain.usecase.RestoreQuickNoteUseCase
 import com.checkit.domain.usecase.SetQuickNoteReminderUseCase
 import com.checkit.notifications.AppReminderScheduler
 import com.checkit.ui.calendar.CalendarViewModel
@@ -247,6 +249,8 @@ val provideInteractorModule = module {
     single { ObserveQuickToBeDeletedUseCase(get()) }
     single { CreateQuickNoteUseCase(get()) }
     single { MoveQuickNoteToBeDeletedUseCase(get()) }
+    single { DeleteQuickNotePermanentlyUseCase(get()) }
+    single { RestoreQuickNoteUseCase(get()) }
     single { SetQuickNoteReminderUseCase(get()) }
     single { MoveQuickNoteUseCase(get()) }
     single { ProcessExpiredQuickNotesUseCase(get()) }
@@ -379,6 +383,8 @@ val provideViewModelModule = module {
             moveToBeDeleted = get(),
             setReminder = get(),
             moveNote = get(),
+            deletePermanentlyUseCase = get(),
+            restoreUseCase = get(),
             processExpired = get(),
             reconcileReminders = get()
         )

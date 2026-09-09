@@ -34,7 +34,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.DeleteSweep
-import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.RestoreFromTrash
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -63,6 +63,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -210,7 +211,11 @@ fun QuickNoteScreen(
                     }
                 }
                 items(state.toBeDeleted, key = { "deleted-${it.id}" }) { note ->
-                    DeletedRow(note = note)
+                    DeletedRow(
+                        note = note,
+                        onDeleteSwipe = { viewModel.deletePermanently(note.id) },
+                        onRestoreSwipe = { viewModel.restore(note.id) }
+                    )
                 }
                 item(key = "bottom-spacer") { Spacer(Modifier.height(16.dp)) }
             }
@@ -397,12 +402,16 @@ private fun LazyItemScope.DraggableQuickNoteRow(
                 scaleX = lift
                 scaleY = lift
                 shadowElevation = elevation
+                shape = RoundedCornerShape(10.dp)
+                clip = false
             }
         settling -> Modifier
             .zIndex(1f)
             .graphicsLayer {
                 translationY = dragDropState.previousItemOffset.value
                 shadowElevation = elevation
+                shape = RoundedCornerShape(10.dp)
+                clip = false
             }
         else -> Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)
     }
@@ -434,7 +443,7 @@ private fun NextRow(
                     onReminderSwipe()
                     false
                 }
-                SwipeToDismissBoxValue.Settled -> false
+                else -> false
             }
         }
     )
@@ -444,48 +453,63 @@ private fun NextRow(
         enableDismissFromStartToEnd = true,
         enableDismissFromEndToStart = true,
         backgroundContent = {
-            val value = dismissState.dismissDirection
-            val color = when (value) {
+            val direction = dismissState.dismissDirection
+            val color = when (direction) {
                 SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.errorContainer
                 SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.primaryContainer
-                SwipeToDismissBoxValue.Settled -> MaterialTheme.colorScheme.surfaceVariant
+                else -> Color.Transparent
             }
-            val icon = when (value) {
+            val icon = when (direction) {
                 SwipeToDismissBoxValue.StartToEnd -> Icons.Default.DeleteSweep
                 SwipeToDismissBoxValue.EndToStart -> Icons.Default.Alarm
-                SwipeToDismissBoxValue.Settled -> Icons.Default.Notifications
+                else -> null
             }
-            val alignment = when (value) {
+            val alignment = when (direction) {
                 SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
                 else -> Alignment.CenterEnd
             }
             Box(
-                Modifier.fillMaxSize().background(color, RoundedCornerShape(10.dp)).padding(horizontal = 16.dp),
+                Modifier.fillMaxSize()
+                    .background(color, RoundedCornerShape(10.dp))
+                    .padding(horizontal = 16.dp),
                 contentAlignment = alignment,
             ) {
-                Icon(icon, contentDescription = null)
+                icon?.let { Icon(it, contentDescription = null) }
             }
         },
     ) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(10.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                    shape = RoundedCornerShape(10.dp)
+                )
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text(note.content, style = MaterialTheme.typography.bodyMedium)
-                    if (note.remindAt != null) {
-                        Text(
-                            "Reminder ${formatReminder(note.remindAt)}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
+            Text(
+                note.content,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f)
+            )
+            if (note.remindAt != null) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.padding(start = 8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Alarm,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = formatReminder(note.remindAt),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
                 }
             }
         }
@@ -493,29 +517,84 @@ private fun NextRow(
 }
 
 @Composable
-private fun DeletedRow(note: QuickNote, modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+private fun DeletedRow(
+    note: QuickNote,
+    onDeleteSwipe: () -> Unit,
+    onRestoreSwipe: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val haptic = LocalHapticFeedback.current
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            when (value) {
+                SwipeToDismissBoxValue.StartToEnd -> {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onDeleteSwipe()
+                    true
+                }
+                SwipeToDismissBoxValue.EndToStart -> {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onRestoreSwipe()
+                    true
+                }
+                else -> false
+            }
+        }
+    )
+    SwipeToDismissBox(
+        state = dismissState,
+        modifier = modifier,
+        enableDismissFromStartToEnd = true,
+        enableDismissFromEndToStart = true,
+        backgroundContent = {
+            val direction = dismissState.dismissDirection
+            val color = when (direction) {
+                SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.errorContainer
+                SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.primaryContainer
+                else -> Color.Transparent
+            }
+            val icon = when (direction) {
+                SwipeToDismissBoxValue.StartToEnd -> Icons.Default.DeleteSweep
+                SwipeToDismissBoxValue.EndToStart -> Icons.Default.RestoreFromTrash
+                else -> null
+            }
+            val alignment = when (direction) {
+                SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
+                else -> Alignment.CenterEnd
+            }
+            Box(
+                Modifier.fillMaxSize()
+                    .background(color, RoundedCornerShape(10.dp))
+                    .padding(horizontal = 16.dp),
+                contentAlignment = alignment,
+            ) {
+                icon?.let { Icon(it, contentDescription = null) }
+            }
+        }
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(10.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         ) {
-            Text(
-                note.content,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f),
-            )
-            Text(
-                formatRemaining(note.deleteAt),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 6.dp),
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    note.content,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    formatRemaining(note.deleteAt),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 6.dp),
+                )
+            }
         }
     }
 }
