@@ -1409,6 +1409,25 @@ private fun NestedItemDetailsDialog(
                                     modifier = Modifier.fillMaxWidth()
                                 )
                             }
+
+                            metricProgressRatio(metric)?.let { ratio ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    LinearProgressIndicator(
+                                        progress = { ratio },
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    Text(
+                                        text = "${(ratio * 100).roundToInt()}%",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -1477,6 +1496,17 @@ private fun countTotalDescendants(node: NestedItemNode): Int {
         count += countTotalDescendants(child)
     }
     return count
+}
+
+/**
+ * Returns the value/target ratio in 0..1, or null when either side is not a
+ * valid number or the target is not positive.
+ */
+private fun metricProgressRatio(metric: MetricItem): Float? {
+    val value = metric.value.trim().replace(',', '.').toDoubleOrNull() ?: return null
+    val target = metric.targetValue?.trim()?.replace(',', '.')?.toDoubleOrNull() ?: return null
+    if (target <= 0) return null
+    return (value / target).toFloat().coerceIn(0f, 1f)
 }
 
 private fun policyLabel(policy: MetricRollupPolicy): String = when (policy) {
