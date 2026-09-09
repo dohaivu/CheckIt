@@ -44,7 +44,7 @@ import com.checkit.ui.myday.DailyPlanItemEditorSheet
 import com.checkit.ui.journal.JournalEntryEditorSheet
 import com.checkit.ui.journal.JournalHistorySheet
 import com.checkit.ui.myday.MyDayScreen
-import com.checkit.ui.nested.NestedListScreen
+import com.checkit.ui.nested.NestedDocumentsScreen
 import com.checkit.ui.reflect.PeriodGoalEditorSheet
 import com.checkit.ui.reflect.ReflectScreen
 import com.checkit.ui.settings.SettingsScreen
@@ -351,7 +351,7 @@ fun CheckItApp(
                                                 viewModels.nested.openDocument(lastId)
                                             }
                                         }
-                                        NestedListScreen(
+                                        NestedDocumentsScreen(
                                             state = nestedUiState,
                                             viewModel = viewModels.nested,
                                             onAddToDailyPlan = { title, tagIds, nestedListItemId ->
