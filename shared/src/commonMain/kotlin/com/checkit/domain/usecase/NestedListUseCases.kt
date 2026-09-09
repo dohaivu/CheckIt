@@ -141,6 +141,13 @@ class ReplaceNestedManualMetricsUseCase(
         repository.replaceNestedManualMetrics(itemId, metrics)
 }
 
+class UpdateNestedItemProgressUseCase(
+    private val repository: CheckItRepository
+) {
+    suspend operator fun invoke(itemId: Long, progressPercent: Int?) =
+        repository.updateNestedItemProgress(itemId, progressPercent)
+}
+
 class SetNestedItemCheckboxEnabledUseCase(
     private val repository: CheckItRepository
 ) {

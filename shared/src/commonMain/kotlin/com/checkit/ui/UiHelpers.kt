@@ -399,6 +399,17 @@ fun MetricItem.toPlainString(): String {
     }
 }
 
+/**
+ * Returns the value/target ratio in 0..1, or null when either side is not a
+ * valid number or the target is not positive.
+ */
+fun MetricItem.progressRatio(): Float? {
+    val value = value.trim().replace(',', '.').toDoubleOrNull() ?: return null
+    val target = targetValue?.trim()?.replace(',', '.')?.toDoubleOrNull() ?: return null
+    if (target <= 0) return null
+    return (value / target).toFloat().coerceIn(0f, 1f)
+}
+
 @Composable
 fun Period.color() = when (this) {
     Period.Day -> MaterialTheme.colorScheme.secondary

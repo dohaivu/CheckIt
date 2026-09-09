@@ -178,6 +178,7 @@ interface CheckItRepository {
     suspend fun updateNestedItemDateRange(itemId: Long, startDate: LocalDate?, endDate: LocalDate?)
     suspend fun updateNestedItemTags(itemId: Long, tagIds: List<Long>)
     suspend fun updateNestedItemMetricSettings(itemId: Long, actualMinutes: Int, metricRollupPolicy: MetricRollupPolicy, showTrackedMinutes: Boolean)
+    suspend fun updateNestedItemProgress(itemId: Long, progressPercent: Int?)
     suspend fun replaceNestedManualMetrics(itemId: Long, metrics: List<MetricItem>)
     suspend fun setNestedItemCheckboxEnabled(itemId: Long, checkboxEnabled: Boolean)
     suspend fun setNestedItemsChecked(itemIds: List<Long>, checked: Boolean)
@@ -1493,6 +1494,14 @@ class RoomCheckItRepository(
         )
     }
 
+    override suspend fun updateNestedItemProgress(itemId: Long, progressPercent: Int?) {
+        dao.updateNestedItemProgress(
+            itemId,
+            progressPercent?.coerceIn(0, 100),
+            Clock.System.now().toEpochMilliseconds()
+        )
+    }
+
     override suspend fun replaceNestedManualMetrics(itemId: Long, metrics: List<MetricItem>) {
         dao.updateNestedItemManualMetrics(
             itemId = itemId,
@@ -1854,6 +1863,7 @@ private fun NestedListItemEntity.toNestedListItem(
     metricRollupPolicy = runCatching { MetricRollupPolicy.valueOf(metricRollupPolicy) }
         .getOrDefault(MetricRollupPolicy.IncludeChildren),
     showTrackedMinutes = showTrackedMinutes,
+    progressPercent = progressPercent,
     manualMetrics = runCatching {
         metricsJsonFormat.decodeFromString<List<MetricItem>>(manualMetricsJson)
     }.getOrDefault(emptyList()),

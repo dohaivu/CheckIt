@@ -2,6 +2,7 @@ package com.checkit.data
 
 import androidx.room3.ConstructedBy
 import androidx.room3.Database
+import androidx.room3.migration.Migration
 import androidx.room3.Entity
 import androidx.room3.ForeignKey
 import androidx.room3.Index
@@ -540,6 +541,8 @@ data class NestedListItemEntity(
     val actualMinutes: Int = 0,
     val metricRollupPolicy: String = "IncludeChildren",
     val showTrackedMinutes: Boolean = false,
+    /** Manual progress 0..100; null means progress UI is hidden. */
+    val progressPercent: Int? = null,
     val createdAtMillis: Long,
     val updatedAtMillis: Long,
     /** Custom metrics stored inline as JSON; always loaded/saved with the item. */
@@ -596,7 +599,7 @@ data class NestedItemTagEntity(
         DailyTagRollupEntity::class,
         HabitDailyRollupEntity::class
     ],
-    version = 12,
+    version = 13,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)
@@ -609,13 +612,19 @@ expect object CheckItDatabaseConstructor : RoomDatabaseConstructor<CheckItDataba
     override fun initialize(): CheckItDatabase
 }
 
+val MIGRATION_12_13 = object : Migration(12, 13) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE nested_list_items ADD COLUMN progressPercent INTEGER")
+    }
+}
+
 fun buildCheckItDatabase(
     builder: RoomDatabase.Builder<CheckItDatabase>
 ): CheckItDatabase {
     return builder
         .fallbackToDestructiveMigration(false)
         .fallbackToDestructiveMigrationOnDowngrade(false)
-        .addMigrations()
+        .addMigrations(MIGRATION_12_13)
         .setQueryCoroutineContext(Dispatchers.IO)
         .setDriver(BundledSQLiteDriver())
         .addCallback(object : RoomDatabase.Callback() {
