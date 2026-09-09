@@ -36,6 +36,7 @@ import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import com.checkit.data.SettingsRepository
 import com.checkit.domain.usecase.AutoAddTodayTasksToMyDayUseCase
+import com.checkit.domain.usecase.MaintainQuickNotesUseCase
 import com.checkit.domain.usecase.RebuildReflectStatsUseCase
 import com.checkit.ui.calendar.CalendarScreen
 import com.checkit.ui.components.LocalSnackbarHostState
@@ -45,6 +46,7 @@ import com.checkit.ui.journal.JournalEntryEditorSheet
 import com.checkit.ui.journal.JournalHistorySheet
 import com.checkit.ui.myday.MyDayScreen
 import com.checkit.ui.nested.NestedDocumentsScreen
+import com.checkit.ui.quicknote.QuickNoteScreen
 import com.checkit.ui.reflect.PeriodGoalEditorSheet
 import com.checkit.ui.reflect.ReflectScreen
 import com.checkit.ui.settings.SettingsScreen
@@ -68,6 +70,7 @@ fun CheckItApp(
     viewModels: CheckItViewModels = koinCheckItViewModels(),
     autoAddTodayTasksToMyDayUseCase: AutoAddTodayTasksToMyDayUseCase = koinInject(),
     rebuildReflectStatsUseCase: RebuildReflectStatsUseCase = koinInject(),
+    maintainQuickNotesUseCase: MaintainQuickNotesUseCase = koinInject(),
     settingsRepository: SettingsRepository = koinInject(),
     dailyPlanItemLaunchId: Long? = null,
     taskLaunchId: Long? = null,
@@ -103,7 +106,8 @@ fun CheckItApp(
             viewModels.myDay.events,
             viewModels.settings.events,
             viewModels.reflect.events,
-            viewModels.nested.events
+            viewModels.nested.events,
+            viewModels.quickNote.events
         ).collect { event ->
             when (event) {
                 is UiEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
@@ -284,6 +288,7 @@ fun CheckItApp(
                                             viewModel = viewModels.task,
                                             listViewModel = viewModels.list,
                                             onOpenTags = { navState.push(AppRoute.Tags) },
+                                            onOpenQuickNotes = { navState.push(AppRoute.QuickNote) },
                                             onOpenSections = { listId -> navState.push(AppRoute.ListSections(listId)) }
                                         )
                                     }
@@ -296,6 +301,12 @@ fun CheckItApp(
                                                 viewModels.task.selectTag(tagId)
                                                 navState.pop()
                                             },
+                                            onNavigateBack = { navState.pop() }
+                                        )
+                                    }
+                                    AppRoute.QuickNote -> {
+                                        QuickNoteScreen(
+                                            viewModel = viewModels.quickNote,
                                             onNavigateBack = { navState.pop() }
                                         )
                                     }

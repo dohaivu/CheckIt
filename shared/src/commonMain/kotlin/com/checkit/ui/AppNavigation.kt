@@ -38,6 +38,7 @@ sealed interface AppRoute : NavKey {
     @Serializable data object Reflect : AppRoute
     @Serializable data object Settings : AppRoute
     @Serializable data object NestedLists : AppRoute
+    @Serializable data object QuickNote : AppRoute
     @Serializable data class ListSections(val listId: Long) : AppRoute
 }
 
@@ -75,7 +76,7 @@ enum class CheckItTab {
     companion object {
         fun fromRoute(route: NavKey): CheckItTab? = when (route) {
             AppRoute.MyDay -> MyDay
-            AppRoute.Task, AppRoute.Tags -> Task
+            AppRoute.Task, AppRoute.Tags, AppRoute.QuickNote -> Task
             AppRoute.Calendar -> Calendar
             AppRoute.Reflect -> Reflect
             AppRoute.Settings -> Settings

@@ -597,14 +597,16 @@ data class NestedItemTagEntity(
         NestedItemTagEntity::class,
         DailyReflectStatsEntity::class,
         DailyTagRollupEntity::class,
-        HabitDailyRollupEntity::class
+        HabitDailyRollupEntity::class,
+        QuickNoteEntity::class
     ],
-    version = 13,
+    version = 14,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)
 abstract class CheckItDatabase : RoomDatabase() {
     abstract fun checkItDao(): CheckItDao
+    abstract fun quickNoteDao(): QuickNoteDao
 }
 
 @Suppress("KotlinNoActualForExpect")
@@ -618,13 +620,37 @@ val MIGRATION_12_13 = object : Migration(12, 13) {
     }
 }
 
+val MIGRATION_13_14 = object : Migration(13, 14) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `quick_notes` (
+                `id` TEXT NOT NULL,
+                `content` TEXT NOT NULL,
+                `status` TEXT NOT NULL,
+                `createdAt` INTEGER NOT NULL,
+                `updatedAt` INTEGER NOT NULL,
+                `sortOrder` REAL NOT NULL,
+                `remindAt` INTEGER,
+                `deleteAt` INTEGER,
+                `deleted` INTEGER NOT NULL,
+                PRIMARY KEY(`id`)
+            )
+            """.trimIndent()
+        )
+        connection.execSQL("CREATE INDEX IF NOT EXISTS `index_quick_notes_status` ON `quick_notes` (`status`)")
+        connection.execSQL("CREATE INDEX IF NOT EXISTS `index_quick_notes_updatedAt` ON `quick_notes` (`updatedAt`)")
+        connection.execSQL("CREATE INDEX IF NOT EXISTS `index_quick_notes_status_sortOrder` ON `quick_notes` (`status`, `sortOrder`)")
+    }
+}
+
 fun buildCheckItDatabase(
     builder: RoomDatabase.Builder<CheckItDatabase>
 ): CheckItDatabase {
     return builder
         .fallbackToDestructiveMigration(false)
         .fallbackToDestructiveMigrationOnDowngrade(false)
-        .addMigrations(MIGRATION_12_13)
+        .addMigrations(MIGRATION_12_13, MIGRATION_13_14)
         .setQueryCoroutineContext(Dispatchers.IO)
         .setDriver(BundledSQLiteDriver())
         .addCallback(object : RoomDatabase.Callback() {

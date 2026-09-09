@@ -187,4 +187,11 @@
     <string name="nested_zoom_in">Zoom in</string>
     <string name="nested_zoom_out">Zoom out</string>
     <string name="nested_edit_note">Note</string>
+    <string name="quick_notes_title">Quick notes</string>
+    <string name="quick_notes_next">NEXT</string>
+    <string name="quick_notes_to_be_deleted">TO BE DELETED</string>
+    <string name="quick_capture_hint">+ Capture a thought</string>
+    <string name="quick_reminder_title">Remind me in</string>
+    <string name="quick_reminder_30m">30 minutes</string>
+    <string name="quick_reminder_1h">1 hour</string>
 </resources>

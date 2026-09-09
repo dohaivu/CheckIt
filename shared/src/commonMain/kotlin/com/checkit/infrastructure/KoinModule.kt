@@ -5,7 +5,9 @@ import com.checkit.data.AppDataStore
 import com.checkit.data.CheckItDatabase
 import com.checkit.data.CheckItRepository
 import com.checkit.data.DataStoreSettingsRepository
+import com.checkit.data.QuickNoteRepository
 import com.checkit.data.RoomCheckItRepository
+import com.checkit.data.RoomQuickNoteRepository
 import com.checkit.data.SettingsRepository
 import com.checkit.data.buildCheckItDatabase
 import com.checkit.data.createPreferencesDataStore
@@ -97,8 +99,18 @@ import com.checkit.domain.usecase.UpdateTagSortOrderUseCase
 import com.checkit.domain.usecase.UpdateTagUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
 import com.checkit.domain.usecase.UpsertDailyPlanItemUseCase
+import com.checkit.domain.usecase.CreateQuickNoteUseCase
+import com.checkit.domain.usecase.MaintainQuickNotesUseCase
+import com.checkit.domain.usecase.MoveQuickNoteToBeDeletedUseCase
+import com.checkit.domain.usecase.MoveQuickNoteUseCase
+import com.checkit.domain.usecase.ObserveQuickNextUseCase
+import com.checkit.domain.usecase.ObserveQuickToBeDeletedUseCase
+import com.checkit.domain.usecase.ProcessExpiredQuickNotesUseCase
+import com.checkit.domain.usecase.ReconcileQuickNoteRemindersUseCase
+import com.checkit.domain.usecase.SetQuickNoteReminderUseCase
 import com.checkit.notifications.AppReminderScheduler
 import com.checkit.ui.calendar.CalendarViewModel
+import com.checkit.ui.quicknote.QuickNoteViewModel
 import com.checkit.ui.myday.MyDayViewModel
 import com.checkit.ui.nested.NestedListsViewModel
 import com.checkit.ui.reflect.ReflectViewModel
@@ -230,12 +242,23 @@ val provideInteractorModule = module {
     single { ToggleNestedItemCollapsedUseCase(get()) }
     single { MoveNestedItemsUseCase(get()) }
     single { DeleteNestedItemsUseCase(get()) }
+    single<QuickNoteRepository> { RoomQuickNoteRepository(get(), get(), get()) }
+    single { ObserveQuickNextUseCase(get()) }
+    single { ObserveQuickToBeDeletedUseCase(get()) }
+    single { CreateQuickNoteUseCase(get()) }
+    single { MoveQuickNoteToBeDeletedUseCase(get()) }
+    single { SetQuickNoteReminderUseCase(get()) }
+    single { MoveQuickNoteUseCase(get()) }
+    single { ProcessExpiredQuickNotesUseCase(get()) }
+    single { ReconcileQuickNoteRemindersUseCase(get()) }
+    single { MaintainQuickNotesUseCase(get(), get()) }
 }
 
 val provideDatabaseModule = module {
     single<RoomDatabase.Builder<CheckItDatabase>> { provideDatabaseBuilder() }
     single { buildCheckItDatabase(get()) }
     single { get<CheckItDatabase>().checkItDao() }
+    single { get<CheckItDatabase>().quickNoteDao() }
 }
 
 val provideLocalServiceModule = module {
@@ -346,6 +369,18 @@ val provideViewModelModule = module {
             moveItemsUseCase = get(),
             deleteItemsUseCase = get(),
             settingsRepository = get()
+        )
+    }
+    viewModel {
+        QuickNoteViewModel(
+            observeNext = get(),
+            observeToBeDeleted = get(),
+            createNote = get(),
+            moveToBeDeleted = get(),
+            setReminder = get(),
+            moveNote = get(),
+            processExpired = get(),
+            reconcileReminders = get()
         )
     }
 }
