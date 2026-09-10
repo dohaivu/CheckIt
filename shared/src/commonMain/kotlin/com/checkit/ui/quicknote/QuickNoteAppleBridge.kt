@@ -145,4 +145,7 @@ object QuickNoteAppleBridge {
 
     fun menuHelper(): QuickNoteMenuHelper =
         koinApp?.koin?.get() ?: KoinPlatform.getKoin().get()
+
+    fun syncBridge(): com.checkit.data.QuickNoteSyncBridge =
+        koinApp?.koin?.get() ?: KoinPlatform.getKoin().get()
 }

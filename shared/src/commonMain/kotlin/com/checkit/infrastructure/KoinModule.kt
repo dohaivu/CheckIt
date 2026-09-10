@@ -261,6 +261,7 @@ val provideDatabaseModule = module {
     single { buildCheckItDatabase(get()) }
     single { get<CheckItDatabase>().checkItDao() }
     single { get<CheckItDatabase>().quickNoteDao() }
+    single { com.checkit.data.QuickNoteSyncBridge(get()) }
 }
 
 val provideLocalServiceModule = module {

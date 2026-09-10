@@ -131,34 +131,41 @@ final class QuickNoteMenuState: ObservableObject {
                 self?.isSaving = false
             }
         }
+        QuickNoteFirestoreSync.shared.requestSync()
     }
 
     func trash(_ note: QuickNote) {
         QuickNoteNotificationScheduler.cancel(noteId: note.id)
         helper.moveToTrash(id: note.id)
+        QuickNoteFirestoreSync.shared.requestSync()
     }
 
     func restore(_ note: QuickNote) {
         helper.restore(id: note.id)
+        QuickNoteFirestoreSync.shared.requestSync()
     }
 
     func deleteForever(_ note: QuickNote) {
         QuickNoteNotificationScheduler.cancel(noteId: note.id)
         helper.deletePermanently(id: note.id)
+        QuickNoteFirestoreSync.shared.requestSync()
     }
 
     func remind(_ note: QuickNote, preset: QuickNoteReminderPreset) {
         helper.setReminderIn(id: note.id, durationMillis: preset.durationMillis)
+        QuickNoteFirestoreSync.shared.requestSync()
     }
 
     func remind(_ note: QuickNote, at date: Date) {
         let millis = Int64(date.timeIntervalSince1970 * 1000)
         helper.setReminderAt(id: note.id, epochMillis: millis)
+        QuickNoteFirestoreSync.shared.requestSync()
     }
 
     func clearReminder(_ note: QuickNote) {
         QuickNoteNotificationScheduler.cancel(noteId: note.id)
         helper.clearReminder(id: note.id)
+        QuickNoteFirestoreSync.shared.requestSync()
     }
 
     deinit {
@@ -303,6 +310,7 @@ struct QuickNoteDeletedRow: View {
 
 struct QuickNoteMenuView: View {
     @StateObject private var state = QuickNoteMenuState()
+    @ObservedObject private var sync = QuickNoteFirestoreSync.shared
 
     var body: some View {
         VStack(spacing: 8) {
@@ -367,11 +375,39 @@ struct QuickNoteMenuView: View {
             Button("Quit") {
                 NSApplication.shared.terminate(nil)
             }
+
+            syncStatusLine
         }
         .padding()
         .frame(width: 380)
-        .onAppear { state.start() }
+        .onAppear {
+            state.start()
+            QuickNoteFirestoreSync.shared.requestSync()
+        }
         .onDisappear { state.stop() }
+    }
+
+    @ViewBuilder
+    private var syncStatusLine: some View {
+        switch sync.uiState.status {
+        case .idle:
+            EmptyView()
+        case .syncing:
+            Text("Syncing…").font(.caption).foregroundStyle(.secondary)
+        case .synced:
+            if let at = sync.uiState.lastSyncedAt {
+                Text("Synced \(at.formatted(date: .omitted, time: .shortened))")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else {
+                Text("Synced").font(.caption).foregroundStyle(.secondary)
+            }
+        case .offline:
+            Text("You're offline. Changes are saved on this device.")
+                .font(.caption).foregroundStyle(.secondary)
+        case .error:
+            Text(sync.uiState.message ?? "Sync failed. Will retry automatically.")
+                .font(.caption).foregroundStyle(.secondary)
+        }
     }
 
     private var listHeight: CGFloat {
