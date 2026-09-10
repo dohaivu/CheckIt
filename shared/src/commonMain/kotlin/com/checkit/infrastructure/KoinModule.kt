@@ -115,6 +115,7 @@ import com.checkit.ui.myday.MyDayViewModel
 import com.checkit.ui.nested.NestedListsViewModel
 import com.checkit.ui.reflect.ReflectViewModel
 import com.checkit.ui.journal.JournalHistoryViewModel
+import com.checkit.ui.quicknote.QuickNoteMenuHelper
 import com.checkit.ui.settings.SettingsViewModel
 import com.checkit.ui.tasks.TaskViewModel
 import com.checkit.ui.tasks.list.ListViewModel
@@ -252,6 +253,7 @@ val provideInteractorModule = module {
     single { SetQuickNoteReminderUseCase(get()) }
     single { MoveQuickNoteUseCase(get()) }
     single { MaintainQuickNotesUseCase(get(), get()) }
+    single { QuickNoteMenuHelper(get(), get(), get(), get(), get()) }
 }
 
 val provideDatabaseModule = module {

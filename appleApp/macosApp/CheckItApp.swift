@@ -6,13 +6,15 @@
 //
 
 import SwiftUI
+import Shared
 
 @main
 struct CheckItApp: App {
+    init() {
+        QuickNoteAppleBridge.shared.ensureKoin()
+    }
+
     var body: some Scene {
-//        WindowGroup {
-//            ContentView()
-//        }
         MenuBarExtra("QuickNote", systemImage: "note.text") {
             QuickNoteMenuView()
         }
