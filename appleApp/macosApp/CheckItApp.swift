@@ -12,6 +12,7 @@ import Shared
 struct CheckItApp: App {
     init() {
         QuickNoteAppleBridge.shared.ensureKoin()
+        QuickNoteNotificationScheduler.configure()
     }
 
     var body: some Scene {

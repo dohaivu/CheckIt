@@ -5,6 +5,7 @@ import com.checkit.domain.usecase.DeleteQuickNotePermanentlyUseCase
 import com.checkit.domain.usecase.MoveQuickNoteToBeDeletedUseCase
 import com.checkit.domain.usecase.ObserveQuickNextUseCase
 import com.checkit.domain.usecase.RestoreQuickNoteUseCase
+import com.checkit.domain.usecase.SetQuickNoteReminderUseCase
 import com.checkit.infrastructure.initKoin
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -36,6 +37,7 @@ class QuickNoteMenuHelper(
     private val moveToBeDeleted: MoveQuickNoteToBeDeletedUseCase,
     private val restoreNote: RestoreQuickNoteUseCase,
     private val deletePermanently: DeleteQuickNotePermanentlyUseCase,
+    private val setReminder: SetQuickNoteReminderUseCase,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
@@ -76,6 +78,30 @@ class QuickNoteMenuHelper(
     fun deletePermanently(id: String) {
         scope.launch {
             runCatching { deletePermanently(id) }
+        }
+    }
+
+    /** Mirrors QuickNoteViewModel presets: duration counted from now. */
+    fun setReminderIn(id: String, durationMillis: Long) {
+        scope.launch {
+            runCatching { setReminder(id, durationMillis) }
+        }
+    }
+
+    /** Absolute fire time as epoch millis; ignored when not in the future. */
+    fun setReminderAt(id: String, epochMillis: Long) {
+        scope.launch {
+            val now = kotlin.time.Clock.System.now().toEpochMilliseconds()
+            val duration = epochMillis - now
+            if (duration > 0) {
+                runCatching { setReminder(id, duration) }
+            }
+        }
+    }
+
+    fun clearReminder(id: String) {
+        scope.launch {
+            runCatching { setReminder.clear(id) }
         }
     }
 
