@@ -44,7 +44,6 @@ internal fun TaskSidebar(
     onBoardClick: () -> Unit,
     onListClick: (Long) -> Unit,
     onTagsClick: () -> Unit,
-    onQuickNotesClick: () -> Unit,
     onAddListClick: () -> Unit,
     onEditListClick: (ListItem) -> Unit
 ) {
@@ -93,13 +92,6 @@ internal fun TaskSidebar(
         }
         item {
             SidebarSectionDivider()
-            SidebarItem(
-                title = "Quick notes",
-                icon = materialIcon("Bolt"),
-                color = MaterialTheme.colorScheme.primary,
-                selected = false,
-                onClick = onQuickNotesClick
-            )
             SidebarItem(
                 title = "Tags",
                 icon = materialIcon("LocalOffer"),

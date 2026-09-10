@@ -33,13 +33,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.PhotoCamera
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RestoreFromTrash
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -50,7 +48,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -94,7 +91,6 @@ import com.checkit.domain.QuickNote
 import com.checkit.domain.QuickNoteType
 import com.checkit.ui.components.AiQuickAddBar
 import com.checkit.ui.components.SectionLabel
-import com.checkit.ui.components.TinyTopAppBar
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -102,10 +98,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.time.Clock
 
+/**
+ * QuickNote content (banner, list, capture, dialogs) hosted as the second
+ * segment of the My Day tab.
+ */
 @Composable
-fun QuickNoteScreen(
+fun QuickNoteContent(
     viewModel: QuickNoteViewModel,
-    onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -120,51 +119,18 @@ fun QuickNoteScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            TinyTopAppBar(
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                title = { Text("Quick notes", style = MaterialTheme.typography.titleMedium) },
-                actions = {
-                    if (state.syncState.status == QuickNoteSyncStatus.SYNCING) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(32.dp).padding(6.dp),
-                            strokeWidth = 2.dp,
-                        )
-                    } else {
-                        IconButton(onClick = viewModel::refresh) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Sync now")
-                        }
-                    }
-                },
-            )
-        },
-        bottomBar = {
-            QuickCaptureBar(
-                input = state.input,
-                onInputChange = viewModel::updateInput,
-                onSubmit = viewModel::submitInput,
-                onCameraClick = viewModel::onCameraClick,
-            )
-        }
-    ) { padding ->
+    Column(modifier.fillMaxSize()) {
         if (state.isLoading) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
-        } else {
-            Column(Modifier.fillMaxSize().padding(padding)) {
-                QuickNoteHeaderBanner(
-                    syncState = state.syncState,
-                    itemCount = state.next.size,
-                    onRetry = viewModel::refresh,
-                )
+            return
+        }
+        QuickNoteHeaderBanner(
+            syncState = state.syncState,
+            itemCount = state.next.size,
+            onRetry = { viewModel.refresh(force = true) },
+        )
             val listState = rememberLazyListState()
             val haptic = LocalHapticFeedback.current
             val currentOnMoveItem by rememberUpdatedState(viewModel::moveDragging)
@@ -267,8 +233,12 @@ fun QuickNoteScreen(
                 }
                 item(key = "bottom-spacer") { Spacer(Modifier.height(16.dp)) }
             }
-            }
-        }
+            QuickCaptureBar(
+                input = state.input,
+                onInputChange = viewModel::updateInput,
+                onSubmit = viewModel::submitInput,
+                onCameraClick = viewModel::onCameraClick,
+            )
     }
 
     if (state.reminderPickerId != null) {
@@ -870,7 +840,7 @@ private fun QuickNoteHeaderBanner(
             QuickNoteSyncStatus.SYNCING -> "Syncing…"
             QuickNoteSyncStatus.OFFLINE ->
                 "You're offline. Changes are saved on this device."
-            else -> syncState.message ?: ""
+            else -> syncState.message ?: "Synced"
         }
         Text(
             text,

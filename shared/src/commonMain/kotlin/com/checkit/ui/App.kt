@@ -46,7 +46,6 @@ import com.checkit.ui.journal.JournalEntryEditorSheet
 import com.checkit.ui.journal.JournalHistorySheet
 import com.checkit.ui.myday.MyDayScreen
 import com.checkit.ui.nested.NestedDocumentsScreen
-import com.checkit.ui.quicknote.QuickNoteScreen
 import com.checkit.ui.reflect.PeriodGoalEditorSheet
 import com.checkit.ui.reflect.ReflectScreen
 import com.checkit.ui.settings.SettingsScreen
@@ -287,7 +286,6 @@ fun CheckItApp(
                                             viewModel = viewModels.task,
                                             listViewModel = viewModels.list,
                                             onOpenTags = { navState.push(AppRoute.Tags) },
-                                            onOpenQuickNotes = { navState.push(AppRoute.QuickNote) },
                                             onOpenSections = { listId -> navState.push(AppRoute.ListSections(listId)) }
                                         )
                                     }
@@ -303,15 +301,10 @@ fun CheckItApp(
                                             onNavigateBack = { navState.pop() }
                                         )
                                     }
-                                    AppRoute.QuickNote -> {
-                                        QuickNoteScreen(
-                                            viewModel = viewModels.quickNote,
-                                            onNavigateBack = { navState.pop() }
-                                        )
-                                    }
                                     AppRoute.MyDay -> {
                                         MyDayScreen(
                                             viewModel = viewModels.myDay,
+                                            quickNoteViewModel = viewModels.quickNote,
                                             onTaskClick = viewModels.task::openTask,
                                             onNoteClick = viewModels.task::openNote,
                                             onNoteTimeChange = viewModels.task::updateNoteTime,

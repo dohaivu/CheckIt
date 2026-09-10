@@ -27,6 +27,13 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.time.Clock
+
+/** Minimum gap between automatic maintenance runs; manual refresh bypasses it. */
+internal const val QUICK_NOTE_REFRESH_MIN_INTERVAL_MILLIS = 5L * 60L * 1000L
+
+internal fun shouldRefreshNotes(now: Long, lastRefreshMillis: Long, force: Boolean): Boolean =
+    force || now - lastRefreshMillis >= QUICK_NOTE_REFRESH_MIN_INTERVAL_MILLIS
 
 data class QuickNoteUiState(
     val next: List<QuickNote> = emptyList(),
@@ -64,6 +71,8 @@ class QuickNoteViewModel(
 
     private val _uiState = MutableStateFlow(QuickNoteUiState())
     val uiState: StateFlow<QuickNoteUiState> = _uiState.asStateFlow()
+
+    private var lastRefreshMillis = 0L
 
     private val _events = MutableSharedFlow<UiEvent>(extraBufferCapacity = 1)
     val events: SharedFlow<UiEvent> = _events.asSharedFlow()
@@ -203,9 +212,15 @@ class QuickNoteViewModel(
 
     /**
      * Full maintenance: expire 24h items, reconcile alarms, and sync.
-     * Called on screen show, app resume, and manual refresh.
+     * Called on screen show, app resume, and manual refresh. Calls closer
+     * together than [QUICK_NOTE_REFRESH_MIN_INTERVAL_MILLIS] are ignored
+     * (pager tab switches recompose the content) unless [force] is true,
+     * which the manual refresh button uses.
      */
-    fun refresh() {
+    fun refresh(force: Boolean = false) {
+        val now = Clock.System.now().toEpochMilliseconds()
+        if (!shouldRefreshNotes(now, lastRefreshMillis, force)) return
+        lastRefreshMillis = now
         viewModelScope.launch {
             runCatching { maintain() }
         }

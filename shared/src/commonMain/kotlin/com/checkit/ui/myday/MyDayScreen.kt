@@ -14,6 +14,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,6 +29,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -59,6 +62,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -102,6 +106,9 @@ import com.checkit.ui.gradient
 import com.checkit.ui.isOverdue
 import com.checkit.ui.periodDetail
 import com.checkit.ui.reflect.ReflectGoalEditorMode
+import com.checkit.ui.quicknote.QuickNoteContent
+import com.checkit.ui.quicknote.QuickNoteViewModel
+import kotlinx.coroutines.launch
 import com.checkit.ui.tasks.views.AgendaView
 import com.checkit.ui.tasks.views.DailyPlanAllDayCard
 import com.checkit.ui.tasks.views.DailyPlanTimelineCard
@@ -115,10 +122,17 @@ import com.checkit.ui.today
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.stringResource
 
+/** Swipable top-level segments of the My Day tab. */
+private enum class MyDaySegments(val title: String) {
+    MyDay("My Day"),
+    QuickNotes("Notes"),
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun MyDayScreen(
     viewModel: MyDayViewModel,
+    quickNoteViewModel: QuickNoteViewModel,
     onTaskClick: (Long, DailyPlanItem?) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
     onNoteTimeChange: (NoteItem, Int) -> Unit,
@@ -130,6 +144,9 @@ internal fun MyDayScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val sprintState by viewModel.sprintManager.state.collectAsState()
+    val pagerState = rememberPagerState { MyDaySegments.entries.size }
+    val scope = rememberCoroutineScope()
+    val onQuickPage = pagerState.currentPage == MyDaySegments.QuickNotes.ordinal
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -137,39 +154,88 @@ internal fun MyDayScreen(
         topBar = {
             TinyTopAppBar(
                 title = {
-                    Column {
-                        Text("My Day", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
+                    Column(
+                        modifier = Modifier.height(56.dp),
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            MyDaySegments.entries.forEach { segment ->
+                                val selected = pagerState.currentPage == segment.ordinal
+                                Text(
+                                    text = segment.title,
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                                    color = if (selected) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                    ) {
+                                        scope.launch { pagerState.animateScrollToPage(segment.ordinal) }
+                                    },
+                                )
+                            }
+                        }
                         Text(
                             state.today.localizedCompactDateWithDayName(),
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = if (!onQuickPage) MaterialTheme.colorScheme.onSurfaceVariant
+                            else Color.Transparent,
+                            maxLines = 1,
                         )
                     }
                 },
                 actions = {
-                    IconButton(onClick = viewModel::smartSchedule) {
-                        Icon(
-                            Icons.Default.AutoAwesome,
-                            contentDescription = "Smart Schedule"
-                        )
-                    }
-                    IconButton(onClick = viewModel::openDayClose) {
-                        Icon(
-                            Icons.Default.RateReview,
-                            contentDescription = stringResource(Res.string.day_close_open)
-                        )
-                    }
-                    IconButton(onClick = viewModel::openSuggestions) {
-                        Icon(Icons.Default.Lightbulb, contentDescription = "Add to My Day")
-                    }
-                    IconButton(onClick = viewModel::openNewDailyPlan) {
-                        Icon(Icons.Default.AddTask, contentDescription = null)
+                    if (!onQuickPage) {
+                        IconButton(
+                            onClick = viewModel::smartSchedule,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.AutoAwesome,
+                                contentDescription = "Smart Schedule",
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                        IconButton(
+                            onClick = viewModel::openDayClose,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.RateReview,
+                                contentDescription = stringResource(Res.string.day_close_open),
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                        IconButton(
+                            onClick = viewModel::openSuggestions,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Lightbulb,
+                                contentDescription = "Add to My Day",
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                        IconButton(
+                            onClick = viewModel::openNewDailyPlan,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.AddTask,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
                     }
                 }
             )
         },
         floatingActionButton = {
-            if (sprintState is SprintState.Idle) {
+            if (sprintState is SprintState.Idle && !onQuickPage) {
                 SpeedSprintFab(
                     lastAction = state.lastFabAction,
                     recentTags = state.recentTags,
@@ -189,121 +255,150 @@ internal fun MyDayScreen(
                 .fillMaxSize()
                 .padding(top = padding.calculateTopPadding())
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                MyDayViewSelector(
-                    selectedView = state.selectedView,
-                    onSelect = viewModel::selectView
-                )
-                DayLinearTimeline(
-                    items = state.items,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                JournalSection(
-                    entries = state.journalEntries,
-                    onAddClick = viewModel::openNewJournalEntry,
-                    onViewClick = viewModel::openJournalList
-                )
+            Column(Modifier.fillMaxSize()) {
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                ) { page ->
+                    if (page == MyDaySegments.MyDay.ordinal) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            MyDayViewSelector(
+                                selectedView = state.selectedView,
+                                onSelect = viewModel::selectView
+                            )
+                            DayLinearTimeline(
+                                items = state.items,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            JournalSection(
+                                entries = state.journalEntries,
+                                onAddClick = viewModel::openNewJournalEntry,
+                                onViewClick = viewModel::openJournalList
+                            )
 
-                val dayBannerType = state.dayBannerType
-                val weekBannerType = state.weekBannerType
-                val monthBannerType = state.monthBannerType
+                            val dayBannerType = state.dayBannerType
+                            val weekBannerType = state.weekBannerType
+                            val monthBannerType = state.monthBannerType
 
-                // Period banners - use cached goals/banners to avoid repeated goalFor() scans
-                if (!state.isLoading) {
-                    val dayGoal = state.dayGoal
-                    val weekGoal = state.weekGoal
-                    val monthGoal = state.monthGoal
-                    listOf(
-                        Triple(Period.Day, dayBannerType, dayGoal),
-                        Triple(Period.Week, weekBannerType, weekGoal),
-                        Triple(Period.Month, monthBannerType, monthGoal)
-                    ).forEach { (period, type, goal) ->
-                        when (type) {
-                            PeriodBannerType.ReviewPending -> {
-                                ReviewReminder(
-                                    period = period,
-                                    date = state.today,
-                                    onClick = {
-                                        if (period == Period.Day) {
-                                            viewModel.openDayClose()
-                                        } else {
-                                            onOpenNewGoalEditor(goal, state.today, period, ReflectGoalEditorMode.Full)
+                            // Period banners - use cached goals/banners to avoid repeated goalFor() scans
+                            if (!state.isLoading) {
+                                val dayGoal = state.dayGoal
+                                val weekGoal = state.weekGoal
+                                val monthGoal = state.monthGoal
+                                listOf(
+                                    Triple(Period.Day, dayBannerType, dayGoal),
+                                    Triple(Period.Week, weekBannerType, weekGoal),
+                                    Triple(Period.Month, monthBannerType, monthGoal)
+                                ).forEach { (period, type, goal) ->
+                                    when (type) {
+                                        PeriodBannerType.ReviewPending -> {
+                                            ReviewReminder(
+                                                period = period,
+                                                date = state.today,
+                                                onClick = {
+                                                    if (period == Period.Day) {
+                                                        viewModel.openDayClose()
+                                                    } else {
+                                                        onOpenNewGoalEditor(
+                                                            goal,
+                                                            state.today,
+                                                            period,
+                                                            ReflectGoalEditorMode.Full
+                                                        )
+                                                    }
+                                                }
+                                            )
+                                        }
+
+                                        PeriodBannerType.MissingGoal -> {
+                                            GoalReminder(
+                                                period = period,
+                                                date = state.today,
+                                                onClick = {
+                                                    onOpenNewGoalEditor(
+                                                        goal,
+                                                        state.today,
+                                                        period,
+                                                        ReflectGoalEditorMode.GoalOnly
+                                                    )
+                                                }
+                                            )
+                                        }
+
+                                        PeriodBannerType.ActiveGoal -> {
+                                            if (period == Period.Day) {
+                                                DayGoalBanner(
+                                                    goal = goal!!,
+                                                    weekGoal = weekGoal,
+                                                    monthGoal = monthGoal,
+                                                    onLongClick = {
+                                                        onOpenGoalEditor(
+                                                            goal,
+                                                            ReflectGoalEditorMode.GoalOnly
+                                                        )
+                                                    }
+                                                )
+                                            }
                                         }
                                     }
-                                )
-                            }
-
-                            PeriodBannerType.MissingGoal -> {
-                                GoalReminder(
-                                    period = period,
-                                    date = state.today,
-                                    onClick = {
-                                        onOpenNewGoalEditor(goal, state.today, period, ReflectGoalEditorMode.GoalOnly)
-                                    }
-                                )
-                            }
-
-                            PeriodBannerType.ActiveGoal -> {
-                                if (period == Period.Day) {
-                                    DayGoalBanner(
-                                        goal = goal!!,
-                                        weekGoal = weekGoal,
-                                        monthGoal =monthGoal,
-                                        onLongClick = {
-                                            onOpenGoalEditor(goal, ReflectGoalEditorMode.GoalOnly)
-                                        }
-                                    )
                                 }
                             }
-                        }
-                    }
-                }
 
-                when (state.selectedView) {
-                    MyDayView.Agenda -> MyDayAgenda(
-                        items = state.items,
-                        notes = state.notes,
-                        date = state.today,
-                        activeSprint = activeSprint,
-                        journalEntries = state.journalEntries,
-                        onItemClick = { viewModel.openItemEditor(it, state.today) },
-                        onTaskClick = onTaskClick,
-                        onNoteClick = onNoteClick,
-                        onSprintClick = viewModel::startSprint,
-                        modifier = Modifier.weight(1f)
-                    )
-                    MyDayView.Timeline -> MyDayTimeline(
-                        items = state.items,
-                        notes = state.notes,
-                        date = state.today,
-                        activeSprint = activeSprint,
-                        onItemClick = { viewModel.openItemEditor(it, state.today) },
-                        onTaskClick = onTaskClick,
-                        onNoteClick = onNoteClick,
-                        onSprintClick = viewModel::startSprint,
-                        onCreateTask = viewModel::createFromTimelineRange,
-                        onItemTimeChange = viewModel::updateItemTime,
-                        onNoteTimeChange = onNoteTimeChange,
-                        modifier = Modifier.weight(1f)
-                    )
-                    MyDayView.Board -> MyDayBoard(
-                        state = state,
-                        activeSprint = activeSprint,
-                        onItemClick = { viewModel.openItemEditor(it, state.today) },
-                        onTaskClick = onTaskClick,
-                        onSprintClick = viewModel::startSprint,
-                        modifier = Modifier.weight(1f)
-                    )
+                            when (state.selectedView) {
+                                MyDayView.Agenda -> MyDayAgenda(
+                                    items = state.items,
+                                    notes = state.notes,
+                                    date = state.today,
+                                    activeSprint = activeSprint,
+                                    journalEntries = state.journalEntries,
+                                    onItemClick = { viewModel.openItemEditor(it, state.today) },
+                                    onTaskClick = onTaskClick,
+                                    onNoteClick = onNoteClick,
+                                    onSprintClick = viewModel::startSprint,
+                                    modifier = Modifier.weight(1f)
+                                )
+
+                                MyDayView.Timeline -> MyDayTimeline(
+                                    items = state.items,
+                                    notes = state.notes,
+                                    date = state.today,
+                                    activeSprint = activeSprint,
+                                    onItemClick = { viewModel.openItemEditor(it, state.today) },
+                                    onTaskClick = onTaskClick,
+                                    onNoteClick = onNoteClick,
+                                    onSprintClick = viewModel::startSprint,
+                                    onCreateTask = viewModel::createFromTimelineRange,
+                                    onItemTimeChange = viewModel::updateItemTime,
+                                    onNoteTimeChange = onNoteTimeChange,
+                                    modifier = Modifier.weight(1f)
+                                )
+
+                                MyDayView.Board -> MyDayBoard(
+                                    state = state,
+                                    activeSprint = activeSprint,
+                                    onItemClick = { viewModel.openItemEditor(it, state.today) },
+                                    onTaskClick = onTaskClick,
+                                    onSprintClick = viewModel::startSprint,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+                    } else {
+                        QuickNoteContent(
+                            viewModel = quickNoteViewModel,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
                 }
             }
 
-            if (activeSprint != null) {
+            if (activeSprint != null && !onQuickPage) {
                 SprintBar(
                     state = activeSprint,
                     isPaused = sprintState is SprintState.Paused,
@@ -317,7 +412,7 @@ internal fun MyDayScreen(
             }
 
             AnimatedVisibility(
-                visible = state.showFloatingQuickAdd && activeSprint == null,
+                visible = state.showFloatingQuickAdd && activeSprint == null && !onQuickPage,
                 enter = fadeIn() + slideInVertically(
                     animationSpec = spring(
                         dampingRatio = Spring.DampingRatioMediumBouncy,
@@ -329,7 +424,12 @@ internal fun MyDayScreen(
                     .align(Alignment.BottomCenter)
                     .padding(start = 12.dp, end = 70.dp, bottom = 24.dp)
             ) {
-                FloatingQuickAddBar(onSubmit = { title -> viewModel.addDailyPlanItem(title, emptyList()) })
+                FloatingQuickAddBar(onSubmit = { title ->
+                    viewModel.addDailyPlanItem(
+                        title,
+                        emptyList()
+                    )
+                })
             }
         }
     }
@@ -552,7 +652,7 @@ private fun GoalReminder(
                 .size(32.dp)
                 .background(gradient, RoundedCornerShape(8.dp)),
 
-        contentAlignment = Alignment.Center
+            contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.Default.Warning,
@@ -597,8 +697,10 @@ private fun DayGoalBanner(
     var expanded by remember { mutableStateOf(false) }
     var bannerSize by remember { mutableStateOf(IntSize.Zero) }
 
-    val hasWeekGoal = weekGoal?.goal?.isNotBlank() == true || weekGoal?.metrics?.isNotEmpty() == true
-    val hasMonthGoal = monthGoal?.goal?.isNotBlank() == true || monthGoal?.metrics?.isNotEmpty() == true
+    val hasWeekGoal =
+        weekGoal?.goal?.isNotBlank() == true || weekGoal?.metrics?.isNotEmpty() == true
+    val hasMonthGoal =
+        monthGoal?.goal?.isNotBlank() == true || monthGoal?.metrics?.isNotEmpty() == true
     val hasMoreGoals = hasWeekGoal || hasMonthGoal
 
     Box(modifier = modifier.fillMaxWidth()) {
@@ -801,7 +903,12 @@ internal fun MyDayAgenda(
     onSprintClick: ((Long?, Long?, String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    val projection = remember(items, notes, journalEntries) { items.toDayViewProjection(notes = notes, journalEntries = journalEntries) }
+    val projection = remember(items, notes, journalEntries) {
+        items.toDayViewProjection(
+            notes = notes,
+            journalEntries = journalEntries
+        )
+    }
     val timelineItems = remember(projection, tasks, date) {
         projection.toTimelineItems(tasks = tasks, date = date)
     }
@@ -817,6 +924,7 @@ internal fun MyDayAgenda(
                         onItemClick(tag)
                     }
                 }
+
                 is TaskItem -> onTaskClick(tag.id, null)
                 is NoteItem -> onNoteClick(tag)
             }
@@ -831,6 +939,7 @@ internal fun MyDayAgenda(
                 } else {
                     TaskTimelineCard(tag, completedOverlay = tag.status == TaskStatus.Completed)
                 }
+
                 is DailyPlanItem -> if (item.startTimeMinutes == null) {
                     DailyPlanAllDayCard(
                         item = tag,
@@ -847,7 +956,10 @@ internal fun MyDayAgenda(
                         }
                     )
                 }
-                is NoteItem -> if (item.startTimeMinutes == null) NoteAllDayCard(tag) else NoteTimelineCard(tag)
+
+                is NoteItem -> if (item.startTimeMinutes == null) NoteAllDayCard(tag) else NoteTimelineCard(
+                    tag
+                )
             }
         },
         modifier = modifier
@@ -887,6 +999,7 @@ private fun MyDayTimeline(
                         onItemClick(tag)
                     }
                 }
+
                 is NoteItem -> onNoteClick(tag)
             }
         },
@@ -905,6 +1018,7 @@ private fun MyDayTimeline(
                         { SprintTrailingContent(tag, activeSprint, it) }
                     }
                 )
+
                 is NoteItem -> NoteAllDayCard(tag)
             }
         },
@@ -920,7 +1034,12 @@ private fun MyDayTimeline(
                         { SprintTrailingContent(tag, activeSprint, it) }
                     }
                 )
-                is NoteItem -> NoteTimelineCard(tag, selected = isSelected, modifier = Modifier.matchParentSize())
+
+                is NoteItem -> NoteTimelineCard(
+                    tag,
+                    selected = isSelected,
+                    modifier = Modifier.matchParentSize()
+                )
             }
         },
         modifier = modifier

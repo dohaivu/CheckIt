@@ -43,7 +43,6 @@ internal fun TaskScreen(
     viewModel: TaskViewModel,
     listViewModel: ListViewModel,
     onOpenTags: () -> Unit,
-    onOpenQuickNotes: () -> Unit,
     onOpenSections: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -73,10 +72,6 @@ internal fun TaskScreen(
                     onTagsClick = {
                         scope.launch { drawerState.close() }
                         onOpenTags()
-                    },
-                    onQuickNotesClick = {
-                        scope.launch { drawerState.close() }
-                        onOpenQuickNotes()
                     },
                     onAddListClick = { listViewModel.openNewList() },
                     onEditListClick = { list -> listViewModel.openEditList(list) }
