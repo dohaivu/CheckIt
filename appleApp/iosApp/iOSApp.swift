@@ -1,5 +1,5 @@
 import SwiftUI
-import NudgeCMP
+import Shared
 import UIKit
 import WidgetKit
 
