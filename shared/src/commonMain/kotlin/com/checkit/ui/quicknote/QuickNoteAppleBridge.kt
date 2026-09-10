@@ -2,8 +2,10 @@ package com.checkit.ui.quicknote
 
 import com.checkit.domain.usecase.CreateQuickNoteUseCase
 import com.checkit.domain.usecase.DeleteQuickNotePermanentlyUseCase
+import com.checkit.domain.usecase.MaintainQuickNotesUseCase
 import com.checkit.domain.usecase.MoveQuickNoteToBeDeletedUseCase
 import com.checkit.domain.usecase.ObserveQuickNextUseCase
+import com.checkit.domain.usecase.ObserveQuickToBeDeletedUseCase
 import com.checkit.domain.usecase.RestoreQuickNoteUseCase
 import com.checkit.domain.usecase.SetQuickNoteReminderUseCase
 import com.checkit.infrastructure.initKoin
@@ -33,17 +35,28 @@ class QuickNoteSubscription internal constructor(
 
 class QuickNoteMenuHelper(
     private val observeNext: ObserveQuickNextUseCase,
+    private val observeToBeDeleted: ObserveQuickToBeDeletedUseCase,
     private val createNote: CreateQuickNoteUseCase,
     private val moveToBeDeleted: MoveQuickNoteToBeDeletedUseCase,
     private val restoreNote: RestoreQuickNoteUseCase,
     private val deletePermanently: DeleteQuickNotePermanentlyUseCase,
     private val setReminder: SetQuickNoteReminderUseCase,
+    private val maintain: MaintainQuickNotesUseCase,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     fun observeNotes(onUpdate: (List<com.checkit.domain.QuickNote>) -> Unit): QuickNoteSubscription {
         val job = scope.launch {
             observeNext().collect { notes ->
+                onUpdate(notes)
+            }
+        }
+        return QuickNoteSubscription(job)
+    }
+
+    fun observeDeletedNotes(onUpdate: (List<com.checkit.domain.QuickNote>) -> Unit): QuickNoteSubscription {
+        val job = scope.launch {
+            observeToBeDeleted().collect { notes ->
                 onUpdate(notes)
             }
         }
@@ -102,6 +115,17 @@ class QuickNoteMenuHelper(
     fun clearReminder(id: String) {
         scope.launch {
             runCatching { setReminder.clear(id) }
+        }
+    }
+
+    /**
+     * Full maintenance, mirroring QuickNoteViewModel.refresh():
+     * auto-trash inactive notes, expire 24h items, clear fired
+     * reminders, reconcile alarms, and sync.
+     */
+    fun refresh() {
+        scope.launch {
+            runCatching { maintain() }
         }
     }
 

@@ -253,7 +253,7 @@ val provideInteractorModule = module {
     single { SetQuickNoteReminderUseCase(get()) }
     single { MoveQuickNoteUseCase(get()) }
     single { MaintainQuickNotesUseCase(get(), get()) }
-    single { QuickNoteMenuHelper(get(), get(), get(), get(), get(), get()) }
+    single { QuickNoteMenuHelper(get(), get(), get(), get(), get(), get(), get(), get()) }
 }
 
 val provideDatabaseModule = module {

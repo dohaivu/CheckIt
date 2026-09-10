@@ -12,18 +12,39 @@ import UserNotifications
 import Shared
 
 /// Presents notifications even while the menu-bar app is frontmost.
+/// Mirrors Android's QuickNoteReminderReceiver: once the reminder is
+/// displayed, its callback clears the reminder from the shared database.
 final class QuickNoteNotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
+        if let noteId = QuickNoteNotificationScheduler.noteId(from: notification.request.identifier) {
+            QuickNoteNotificationScheduler.onReminderDelivered?(noteId)
+        }
         completionHandler([.banner, .sound])
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        if let noteId = QuickNoteNotificationScheduler.noteId(from: response.notification.request.identifier) {
+            QuickNoteNotificationScheduler.onReminderDelivered?(noteId)
+        }
+        completionHandler()
     }
 }
 
 enum QuickNoteNotificationScheduler {
     private static let delegate = QuickNoteNotificationDelegate()
+    private static let idPrefix = "quicknote-"
+
+    /// Called with the note id after one of its reminders is displayed,
+    /// so the reminder can be cleared like Android's receiver does.
+    static var onReminderDelivered: ((String) -> Void)?
 
     static func configure() {
         let center = UNUserNotificationCenter.current()
@@ -32,7 +53,12 @@ enum QuickNoteNotificationScheduler {
     }
 
     static func identifier(for noteId: String) -> String {
-        "quicknote-\(noteId)"
+        "\(idPrefix)\(noteId)"
+    }
+
+    static func noteId(from identifier: String) -> String? {
+        guard identifier.hasPrefix(idPrefix) else { return nil }
+        return String(identifier.dropFirst(idPrefix.count))
     }
 
     /// Reconcile pending notifications with the current NEXT notes.
@@ -67,11 +93,14 @@ enum QuickNoteNotificationScheduler {
             if !stale.isEmpty {
                 center.removePendingNotificationRequests(withIdentifiers: Array(stale))
             }
-            // Also drop delivered banners for reminders that no longer exist.
+            // Drop delivered banners only for notes that are gone (trashed).
+            // A just-fired reminder keeps its banner like on Android, while
+            // its remindAt is cleared from the database via onReminderDelivered.
+            let liveIds = Set(notes.map { identifier(for: $0.id) })
             center.getDeliveredNotifications { delivered in
-                let staleDelivered = delivered.map(\.request.identifier).filter { !wantedIds.contains($0) }
-                if !staleDelivered.isEmpty {
-                    center.removeDeliveredNotifications(withIdentifiers: staleDelivered)
+                let orphaned = delivered.map(\.request.identifier).filter { !liveIds.contains($0) }
+                if !orphaned.isEmpty {
+                    center.removeDeliveredNotifications(withIdentifiers: orphaned)
                 }
             }
             // (Re)schedule wanted reminders.
