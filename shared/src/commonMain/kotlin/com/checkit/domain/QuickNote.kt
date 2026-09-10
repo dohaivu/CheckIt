@@ -25,6 +25,7 @@ data class QuickNote(
 
 object QuickNoteRules {
     const val DELETE_AFTER_MILLIS = 24L * 60L * 60L * 1000L
+    const val REMINDER_15_MIN_MILLIS = 15L * 60L * 1000L
     const val REMINDER_30_MIN_MILLIS = 30L * 60L * 1000L
     const val REMINDER_1_HOUR_MILLIS = 60L * 60L * 1000L
     const val SORT_GAP = 1000.0

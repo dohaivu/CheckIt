@@ -134,6 +134,8 @@ class QuickNoteViewModel(
         _uiState.update { it.copy(reminderPickerId = null) }
     }
 
+    fun setReminder15Min() = setReminderWithDuration(QuickNoteRules.REMINDER_15_MIN_MILLIS)
+
     fun setReminder30Min() = setReminderWithDuration(QuickNoteRules.REMINDER_30_MIN_MILLIS)
 
     fun setReminder1Hour() = setReminderWithDuration(QuickNoteRules.REMINDER_1_HOUR_MILLIS)

@@ -29,6 +29,7 @@ import com.checkit.widget.ExtraTaskId
 
 class MainActivity : ComponentActivity() {
     private val NOTIFICATION_PERMISSION_REQUEST_CODE = 1001
+    private val ALARM_PERMISSION_REQUEST_CODE = 1002
     private val dailyPlanItemLaunchId = mutableStateOf<Long?>(null)
     private val taskLaunchId = mutableStateOf<Long?>(null)
     private val noteLaunchId = mutableStateOf<Long?>(null)
@@ -51,6 +52,9 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), NOTIFICATION_PERMISSION_REQUEST_CODE)
+            }
+            if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.SCHEDULE_EXACT_ALARM) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.SCHEDULE_EXACT_ALARM), ALARM_PERMISSION_REQUEST_CODE)
             }
         }
 

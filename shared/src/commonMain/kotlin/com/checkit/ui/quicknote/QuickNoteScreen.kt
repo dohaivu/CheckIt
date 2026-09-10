@@ -38,9 +38,11 @@ import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RestoreFromTrash
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,6 +51,7 @@ import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePickerDisplayMode
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -247,17 +250,58 @@ fun QuickNoteScreen(
     if (state.reminderPickerId != null) {
         AlertDialog(
             onDismissRequest = viewModel::dismissReminderPicker,
-            title = { Text("Remind me in") },
-            text = { Text("The note stays in Next.") },
-            confirmButton = {
-                TextButton(onClick = viewModel::setReminder30Min) { Text("30 minutes") }
+            title = {
+                Text(
+                    "Remind Me Later",
+                    style = MaterialTheme.typography.headlineSmall
+                )
             },
-            dismissButton = {
-                Row {
-                    TextButton(onClick = viewModel::setReminder1Hour) { Text("1 hour") }
-                    TextButton(onClick = viewModel::dismissReminderPicker) { Text("Cancel") }
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        "Note stays in Next and moves to top when reminded.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    FilledTonalButton(
+                        onClick = viewModel::setReminder15Min,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.Alarm, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("15 minutes")
+                    }
+
+                    FilledTonalButton(
+                        onClick = viewModel::setReminder30Min,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.Alarm, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("30 minutes")
+                    }
+
+                    FilledTonalButton(
+                        onClick = viewModel::setReminder1Hour,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.Alarm, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("1 hour")
+                    }
                 }
             },
+            confirmButton = {},
+            dismissButton = null,
         )
     }
 }
