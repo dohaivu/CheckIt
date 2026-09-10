@@ -26,5 +26,5 @@ actual fun platformModule() = module {
     single<SprintNotificationScheduler> { AndroidSprintNotificationScheduler(androidContext()) }
     single<CheckInReminderForceRunner> { AndroidCheckInReminderForceRunner(androidContext(), get(), get()) }
     single<QuickNoteReminderScheduler> { AlarmManagerQuickNoteReminderScheduler(androidContext()) }
-    single<QuickNoteSyncManager> { FirestoreQuickNoteSyncManager(get(), get()) }
+    single<QuickNoteSyncManager> { FirestoreQuickNoteSyncManager(androidContext(), get(), get()) }
 }

@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.Flow
         Index("status"),
         Index("updatedAt"),
         Index(value = ["status", "sortOrder"]),
+        Index("dirty", name = "index_quick_notes_dirty"),
     ]
 )
 data class QuickNoteEntity(
@@ -30,6 +31,8 @@ data class QuickNoteEntity(
     val remindAt: Long?,
     val deleteAt: Long?,
     val deleted: Boolean,
+    /** True when the row changed locally since the last successful upload. */
+    val dirty: Boolean = true,
 )
 
 fun QuickNoteEntity.toDomain(): QuickNote = QuickNote(
@@ -44,7 +47,7 @@ fun QuickNoteEntity.toDomain(): QuickNote = QuickNote(
     deleted = deleted,
 )
 
-fun QuickNote.toEntity(): QuickNoteEntity = QuickNoteEntity(
+fun QuickNote.toEntity(dirty: Boolean = true): QuickNoteEntity = QuickNoteEntity(
     id = id,
     content = content,
     status = status.name,
@@ -54,6 +57,7 @@ fun QuickNote.toEntity(): QuickNoteEntity = QuickNoteEntity(
     remindAt = remindAt,
     deleteAt = deleteAt,
     deleted = deleted,
+    dirty = dirty,
 )
 
 @Dao
@@ -73,19 +77,19 @@ interface QuickNoteDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(note: QuickNoteEntity)
 
-    @Query("UPDATE quick_notes SET status = 'TO_BE_DELETED', deleteAt = :deleteAt, remindAt = NULL, updatedAt = :updatedAt WHERE id = :id")
+    @Query("UPDATE quick_notes SET status = 'TO_BE_DELETED', deleteAt = :deleteAt, remindAt = NULL, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun moveToBeDeleted(id: String, deleteAt: Long, updatedAt: Long)
 
-    @Query("UPDATE quick_notes SET remindAt = :remindAt, updatedAt = :updatedAt WHERE id = :id")
+    @Query("UPDATE quick_notes SET remindAt = :remindAt, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun setReminder(id: String, remindAt: Long?, updatedAt: Long)
 
-    @Query("UPDATE quick_notes SET sortOrder = :sortOrder, updatedAt = :updatedAt WHERE id = :id")
+    @Query("UPDATE quick_notes SET sortOrder = :sortOrder, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun updateSortOrder(id: String, sortOrder: Double, updatedAt: Long)
 
-    @Query("UPDATE quick_notes SET deleted = 1, updatedAt = :updatedAt WHERE id = :id")
+    @Query("UPDATE quick_notes SET deleted = 1, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun markDeleted(id: String, updatedAt: Long)
 
-    @Query("UPDATE quick_notes SET status = 'NEXT', deleteAt = NULL, remindAt = NULL, sortOrder = :sortOrder, updatedAt = :updatedAt WHERE id = :id")
+    @Query("UPDATE quick_notes SET status = 'NEXT', deleteAt = NULL, remindAt = NULL, sortOrder = :sortOrder, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun restore(id: String, sortOrder: Double, updatedAt: Long)
 
     @Query("SELECT * FROM quick_notes WHERE status = 'TO_BE_DELETED' AND deleted = 0 AND deleteAt IS NOT NULL AND deleteAt <= :now")
@@ -105,4 +109,14 @@ interface QuickNoteDao {
 
     @Query("SELECT * FROM quick_notes ORDER BY updatedAt DESC")
     suspend fun getAllForSync(): List<QuickNoteEntity>
+
+    @Query("SELECT * FROM quick_notes WHERE dirty = 1 ORDER BY updatedAt ASC")
+    suspend fun getDirty(): List<QuickNoteEntity>
+
+    /**
+     * Clears the dirty flag only for rows unchanged since they were read for
+     * upload, so edits landing mid-push stay dirty and upload next time.
+     */
+    @Query("UPDATE quick_notes SET dirty = 0 WHERE id IN (:ids) AND updatedAt <= :maxUpdatedAt")
+    suspend fun markClean(ids: List<String>, maxUpdatedAt: Long)
 }

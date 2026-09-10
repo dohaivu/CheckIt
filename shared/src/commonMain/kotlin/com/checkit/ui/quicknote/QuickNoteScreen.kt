@@ -33,7 +33,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Alarm
+import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RestoreFromTrash
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -75,6 +77,7 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.checkit.data.QuickNoteSyncStatus
 import com.checkit.domain.QuickNote
 import com.checkit.ui.components.AiQuickAddBar
 import com.checkit.ui.components.SectionLabel
@@ -113,6 +116,18 @@ fun QuickNoteScreen(
                     }
                 },
                 title = { Text("Quick notes", style = MaterialTheme.typography.titleMedium) },
+                actions = {
+                    if (state.syncState.status == QuickNoteSyncStatus.SYNCING) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(32.dp).padding(6.dp),
+                            strokeWidth = 2.dp,
+                        )
+                    } else {
+                        IconButton(onClick = viewModel::refresh) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Sync now")
+                        }
+                    }
+                },
             )
         },
         bottomBar = {
@@ -128,6 +143,11 @@ fun QuickNoteScreen(
                 CircularProgressIndicator()
             }
         } else {
+            Column(Modifier.fillMaxSize().padding(padding)) {
+                QuickNoteSyncBanner(
+                    syncState = state.syncState,
+                    onRetry = viewModel::refresh,
+                )
             val listState = rememberLazyListState()
             val haptic = LocalHapticFeedback.current
             val currentOnMoveItem by rememberUpdatedState(viewModel::moveDragging)
@@ -143,7 +163,7 @@ fun QuickNoteScreen(
                 state = listState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding)
+                    .weight(1f)
                     .padding(horizontal = 12.dp)
                     .pointerInput(dragDropState) {
                         detectDragGesturesAfterLongPress(
@@ -219,6 +239,7 @@ fun QuickNoteScreen(
                     )
                 }
                 item(key = "bottom-spacer") { Spacer(Modifier.height(16.dp)) }
+            }
             }
         }
     }
@@ -636,6 +657,47 @@ private fun QuickCaptureBar(
             enabled = input.isNotBlank(),
         ) {
             Icon(Icons.Default.Add, contentDescription = "Capture")
+        }
+    }
+}
+
+@Composable
+private fun QuickNoteSyncBanner(
+    syncState: com.checkit.data.QuickNoteSyncState,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val status = syncState.status
+    if (status != QuickNoteSyncStatus.SYNCING &&
+        status != QuickNoteSyncStatus.OFFLINE &&
+        status != QuickNoteSyncStatus.ERROR
+    ) return
+    val (text, icon) = when (status) {
+        QuickNoteSyncStatus.SYNCING -> "Syncing…" to Icons.Default.Refresh
+        QuickNoteSyncStatus.OFFLINE ->
+            "You're offline. Changes are saved on this device." to Icons.Default.CloudOff
+        else -> (syncState.message ?: "Sync failed.") to Icons.Default.CloudOff
+    }
+    Row(
+        modifier = modifier.fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (status == QuickNoteSyncStatus.SYNCING) {
+            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+        } else {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
+        }
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        if (status != QuickNoteSyncStatus.SYNCING) {
+            TextButton(onClick = onRetry) { Text("Retry") }
         }
     }
 }

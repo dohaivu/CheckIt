@@ -600,7 +600,7 @@ data class NestedItemTagEntity(
         HabitDailyRollupEntity::class,
         QuickNoteEntity::class
     ],
-    version = 14,
+    version = 15,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)
@@ -644,13 +644,21 @@ val MIGRATION_13_14 = object : Migration(13, 14) {
     }
 }
 
+val MIGRATION_14_15 = object : Migration(14, 15) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        // Existing rows predate dirty tracking: upload them on next sync.
+        connection.execSQL("ALTER TABLE quick_notes ADD COLUMN dirty INTEGER NOT NULL DEFAULT 1")
+        connection.execSQL("CREATE INDEX IF NOT EXISTS `index_quick_notes_dirty` ON `quick_notes` (`dirty`)")
+    }
+}
+
 fun buildCheckItDatabase(
     builder: RoomDatabase.Builder<CheckItDatabase>
 ): CheckItDatabase {
     return builder
         .fallbackToDestructiveMigration(false)
         .fallbackToDestructiveMigrationOnDowngrade(false)
-        .addMigrations(MIGRATION_12_13, MIGRATION_13_14)
+        .addMigrations(MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
         .setQueryCoroutineContext(Dispatchers.IO)
         .setDriver(BundledSQLiteDriver())
         .addCallback(object : RoomDatabase.Callback() {

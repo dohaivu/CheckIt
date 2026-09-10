@@ -1,6 +1,12 @@
 package com.checkit.data
 
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
 import android.util.Log
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
 import com.checkit.notifications.QuickNoteReminderScheduler
 import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.FirebaseAuth
@@ -10,33 +16,74 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.coroutines.resumeWithException
+import kotlin.math.min
 import kotlin.time.Clock
+
+private val Context.quickNoteSyncDataStore by preferencesDataStore(name = "quick_note_sync")
 
 /**
  * Firestore sync for QuickNote on Android.
  *
  * Offline-first: every mutation is already in Room before [requestSync] is
- * called. Sync is debounced, idempotent, and safe to retry: local rows
- * (including tombstones) are uploaded, then remote documents are merged
- * back with last-write-wins on `updatedAt`. Failures (e.g. no network,
- * no signed-in user) are swallowed so the UI never waits on Firebase.
+ * called. Sync is incremental and never periodic:
+ * - push uploads only rows flagged dirty (batched), then clears the flag;
+ * - pull queries only documents newer than the last pull watermark;
+ * - triggers are local edits (debounced), app resume (via the maintenance
+ *   use case), network reconnect, and manual refresh.
+ *
+ * Failures back off exponentially and are surfaced through [syncState] so
+ * the UI can show a banner; the app stays fully usable offline.
  *
  * Auth is anonymous; the UID is stable per install and scopes the
  * `users/{userId}/quickNotes` collection. It can later be linked to a
  * permanent provider without changing note IDs.
  */
 class FirestoreQuickNoteSyncManager(
+    context: Context,
     private val dao: QuickNoteDao,
     private val reminderScheduler: QuickNoteReminderScheduler,
 ) : QuickNoteSyncManager {
+    private val appContext = context.applicationContext
+    private val dataStore = appContext.quickNoteSyncDataStore
+    private val connectivityManager =
+        appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val syncMutex = Mutex()
+    private val _syncState = MutableStateFlow(QuickNoteSyncState())
+    override val syncState: StateFlow<QuickNoteSyncState> = _syncState.asStateFlow()
     private var pendingJob: Job? = null
+    private var consecutiveFailures = 0
+    private var nextRetryAtMillis = 0L
+
+    init {
+        scope.launch {
+            val lastSyncedAt = dataStore.data.map { it[KEY_LAST_SYNCED_AT] }.first()
+            if (lastSyncedAt != null) {
+                _syncState.value = QuickNoteSyncState(QuickNoteSyncStatus.SYNCED, lastSyncedAt)
+            }
+        }
+        runCatching {
+            connectivityManager.registerDefaultNetworkCallback(
+                object : ConnectivityManager.NetworkCallback() {
+                    override fun onAvailable(network: Network) {
+                        requestSync()
+                    }
+                }
+            )
+        }.onFailure { e ->
+            Log.w(TAG, "Could not register connectivity callback; reconnect sync disabled", e)
+        }
+    }
 
     override fun requestSync() {
         pendingJob?.cancel()
@@ -48,49 +95,111 @@ class FirestoreQuickNoteSyncManager(
 
     override suspend fun sync() {
         syncMutex.withLock {
+            val now = Clock.System.now().toEpochMilliseconds()
+            if (now < nextRetryAtMillis) return
+            if (!isOnline()) {
+                _syncState.value = QuickNoteSyncState(
+                    QuickNoteSyncStatus.OFFLINE,
+                    _syncState.value.lastSyncedAt,
+                )
+                return
+            }
+            _syncState.value = QuickNoteSyncState(
+                QuickNoteSyncStatus.SYNCING,
+                _syncState.value.lastSyncedAt,
+            )
             try {
-                val userId = ensureUserId() ?: return
+                val userId = ensureUserId()
+                if (userId == null) {
+                    recordFailure("Sign-in failed. Sync will retry automatically.")
+                    return
+                }
                 Log.d(TAG, "Sync started (uid=${userId.take(6)}…)")
                 val notesRef = FirebaseFirestore.getInstance(DATABASE_ID)
                     .collection(USERS_COLLECTION)
                     .document(userId)
                     .collection(NOTES_COLLECTION)
 
-                // Push: all local rows, including tombstones so deletes propagate.
-                val local = dao.getAllForSync().map { it.toDomain() }
-                local.forEach { note ->
-                    notesRef.document(note.id).set(QuickNoteSyncDocument.toMap(note)).await()
+                // Push: only locally changed rows, including tombstones.
+                val dirty = dao.getDirty().map { it.toDomain() }
+                dirty.chunked(PUSH_BATCH_SIZE).forEach { chunk ->
+                    val batch = FirebaseFirestore.getInstance(DATABASE_ID).batch()
+                    chunk.forEach { note ->
+                        batch.set(notesRef.document(note.id), QuickNoteSyncDocument.toMap(note))
+                    }
+                    batch.commit().await()
                 }
-                Log.d(TAG, "Sync pushed ${local.size} note(s)")
+                if (dirty.isNotEmpty()) {
+                    dao.markClean(dirty.map { it.id }, dirty.maxOf { it.updatedAt })
+                }
 
-                // Pull + merge with last-write-wins.
-                val remote = notesRef.get().await().documents.mapNotNull { doc ->
-                    QuickNoteSyncDocument.fromMap(doc.id, doc.data)
-                }
+                // Pull: only documents newer than the last pull (with overlap
+                // margin for clock skew; LWW merge keeps re-pulls idempotent).
+                val lastPull = dataStore.data.map { it[KEY_LAST_PULL_MILLIS] ?: 0L }.first()
+                val pullStart = Clock.System.now().toEpochMilliseconds()
+                val remote = notesRef
+                    .whereGreaterThan(
+                        QuickNoteSyncDocument.FIELD_UPDATED_AT,
+                        lastPull - PULL_OVERLAP_MILLIS,
+                    )
+                    .get().await().documents.mapNotNull { doc ->
+                        QuickNoteSyncDocument.fromMap(doc.id, doc.data)
+                    }
                 var applied = 0
+                var maxRemoteUpdatedAt = lastPull
                 remote.forEach { remoteNote ->
+                    maxRemoteUpdatedAt = maxOf(maxRemoteUpdatedAt, remoteNote.updatedAt)
                     val existing = dao.getById(remoteNote.id)?.toDomain()
                     val winner = QuickNoteSyncDocument.resolveLocal(existing, remoteNote)
                     if (winner != null) {
-                        dao.upsert(winner.toEntity())
+                        dao.upsert(winner.toEntity(dirty = false))
                         applied++
                         if (winner.deleted) {
                             reminderScheduler.cancel(winner.id)
                         }
                     }
                 }
+                dataStore.edit { prefs ->
+                    prefs[KEY_LAST_PULL_MILLIS] = maxOf(lastPull, pullStart, maxRemoteUpdatedAt)
+                    prefs[KEY_LAST_SYNCED_AT] = pullStart
+                }
                 if (applied > 0) {
                     reconcileAlarms()
                 }
+                consecutiveFailures = 0
+                nextRetryAtMillis = 0L
+                _syncState.value = QuickNoteSyncState(QuickNoteSyncStatus.SYNCED, pullStart)
                 Log.i(
                     TAG,
-                    "Sync succeeded: pushed=${local.size} pulled=${remote.size} applied=$applied",
+                    "Sync succeeded: pushed=${dirty.size} pulled=${remote.size} applied=$applied",
                 )
             } catch (e: Exception) {
-                Log.w(TAG, "QuickNote sync failed; will retry on next request", e)
+                val offline = !isOnline()
+                recordFailure(
+                    if (offline) "You're offline. Changes are saved on this device."
+                    else "Sync failed (${e.message ?: "unknown error"}). Will retry automatically."
+                )
             }
         }
     }
+
+    private suspend fun recordFailure(message: String) {
+        consecutiveFailures++
+        val backoff = min(
+            BASE_BACKOFF_MILLIS * (1L shl min(consecutiveFailures - 1, 4)),
+            MAX_BACKOFF_MILLIS,
+        )
+        nextRetryAtMillis = Clock.System.now().toEpochMilliseconds() + backoff
+        _syncState.value = QuickNoteSyncState(
+            QuickNoteSyncStatus.ERROR,
+            _syncState.value.lastSyncedAt,
+            message,
+        )
+        Log.w(TAG, "QuickNote sync failed; retry in ${backoff}ms")
+    }
+
+    private fun isOnline(): Boolean =
+        runCatching { connectivityManager.activeNetwork != null }.getOrDefault(true)
 
     private suspend fun reconcileAlarms() {
         val now = Clock.System.now().toEpochMilliseconds()
@@ -134,6 +243,12 @@ class FirestoreQuickNoteSyncManager(
         private const val USERS_COLLECTION = "users"
         private const val NOTES_COLLECTION = "quickNotes"
         private const val SYNC_DEBOUNCE_MILLIS = 1_500L
+        private const val PUSH_BATCH_SIZE = 400
+        private const val PULL_OVERLAP_MILLIS = 60_000L
+        private const val BASE_BACKOFF_MILLIS = 30_000L
+        private const val MAX_BACKOFF_MILLIS = 300_000L
+        private val KEY_LAST_PULL_MILLIS = longPreferencesKey("last_pull_millis")
+        private val KEY_LAST_SYNCED_AT = longPreferencesKey("last_synced_at")
     }
 }
 

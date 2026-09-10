@@ -2,16 +2,17 @@ package com.checkit.ui.quicknote
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.checkit.data.QuickNoteSyncManager
+import com.checkit.data.QuickNoteSyncState
 import com.checkit.domain.QuickNote
 import com.checkit.domain.QuickNoteRules
 import com.checkit.domain.usecase.CreateQuickNoteUseCase
 import com.checkit.domain.usecase.DeleteQuickNotePermanentlyUseCase
+import com.checkit.domain.usecase.MaintainQuickNotesUseCase
 import com.checkit.domain.usecase.MoveQuickNoteToBeDeletedUseCase
 import com.checkit.domain.usecase.MoveQuickNoteUseCase
 import com.checkit.domain.usecase.ObserveQuickNextUseCase
 import com.checkit.domain.usecase.ObserveQuickToBeDeletedUseCase
-import com.checkit.domain.usecase.ProcessExpiredQuickNotesUseCase
-import com.checkit.domain.usecase.ReconcileQuickNoteRemindersUseCase
 import com.checkit.domain.usecase.RestoreQuickNoteUseCase
 import com.checkit.domain.usecase.SetQuickNoteReminderUseCase
 import com.checkit.ui.UiEvent
@@ -32,6 +33,7 @@ data class QuickNoteUiState(
     val input: String = "",
     val isLoading: Boolean = true,
     val reminderPickerId: String? = null,
+    val syncState: QuickNoteSyncState = QuickNoteSyncState(),
     /** In-drag visual order of NEXT ids; null when not dragging. */
     val dragOrder: List<String>? = null,
 ) {
@@ -51,8 +53,8 @@ class QuickNoteViewModel(
     private val moveNote: MoveQuickNoteUseCase,
     private val deletePermanentlyUseCase: DeleteQuickNotePermanentlyUseCase,
     private val restoreUseCase: RestoreQuickNoteUseCase,
-    private val processExpired: ProcessExpiredQuickNotesUseCase,
-    private val reconcileReminders: ReconcileQuickNoteRemindersUseCase,
+    private val maintain: MaintainQuickNotesUseCase,
+    private val syncManager: QuickNoteSyncManager,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(QuickNoteUiState())
@@ -71,6 +73,11 @@ class QuickNoteViewModel(
                 .collect { (next, deleted) ->
                     _uiState.update { it.copy(next = next, toBeDeleted = deleted, isLoading = false) }
                 }
+        }
+        viewModelScope.launch {
+            syncManager.syncState.collect { syncState ->
+                _uiState.update { it.copy(syncState = syncState) }
+            }
         }
         refresh()
     }
@@ -187,13 +194,13 @@ class QuickNoteViewModel(
         _uiState.update { it.copy(dragOrder = null) }
     }
 
-    /** Expire 24h items and reconcile alarms; call on screen show and app resume. */
+    /**
+     * Full maintenance: expire 24h items, reconcile alarms, and sync.
+     * Called on screen show, app resume, and manual refresh.
+     */
     fun refresh() {
         viewModelScope.launch {
-            runCatching {
-                processExpired()
-                reconcileReminders()
-            }
+            runCatching { maintain() }
         }
     }
 }

@@ -106,8 +106,6 @@ import com.checkit.domain.usecase.MoveQuickNoteToBeDeletedUseCase
 import com.checkit.domain.usecase.MoveQuickNoteUseCase
 import com.checkit.domain.usecase.ObserveQuickNextUseCase
 import com.checkit.domain.usecase.ObserveQuickToBeDeletedUseCase
-import com.checkit.domain.usecase.ProcessExpiredQuickNotesUseCase
-import com.checkit.domain.usecase.ReconcileQuickNoteRemindersUseCase
 import com.checkit.domain.usecase.RestoreQuickNoteUseCase
 import com.checkit.domain.usecase.SetQuickNoteReminderUseCase
 import com.checkit.notifications.AppReminderScheduler
@@ -253,8 +251,6 @@ val provideInteractorModule = module {
     single { RestoreQuickNoteUseCase(get()) }
     single { SetQuickNoteReminderUseCase(get()) }
     single { MoveQuickNoteUseCase(get()) }
-    single { ProcessExpiredQuickNotesUseCase(get()) }
-    single { ReconcileQuickNoteRemindersUseCase(get()) }
     single { MaintainQuickNotesUseCase(get(), get()) }
 }
 
@@ -385,8 +381,8 @@ val provideViewModelModule = module {
             moveNote = get(),
             deletePermanentlyUseCase = get(),
             restoreUseCase = get(),
-            processExpired = get(),
-            reconcileReminders = get()
+            maintain = get(),
+            syncManager = get()
         )
     }
 }
