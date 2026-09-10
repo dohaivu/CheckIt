@@ -33,7 +33,8 @@ kotlin {
 
     listOf(
         iosArm64(),
-        iosSimulatorArm64()
+        iosSimulatorArm64(),
+        macosArm64()
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
             baseName = "Shared"
@@ -114,7 +115,11 @@ kotlin {
             implementation(libs.adaptive.navigation)
 
         }
+
         iosMain.dependencies {
+            implementation(libs.ktor.client.darwin)
+        }
+        macosMain.dependencies {
             implementation(libs.ktor.client.darwin)
         }
 
@@ -136,5 +141,6 @@ dependencies {
     add("kspAndroid", libs.androidx.room.compiler)
     add("kspIosArm64", libs.androidx.room.compiler)
     add("kspIosSimulatorArm64", libs.androidx.room.compiler)
+    add("kspMacosArm64", libs.androidx.room.compiler)
     androidRuntimeClasspath(libs.compose.uiTooling)
 }

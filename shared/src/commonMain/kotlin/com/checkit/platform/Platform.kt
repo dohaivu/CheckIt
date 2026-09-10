@@ -5,6 +5,7 @@ import co.touchlab.kermit.LogWriter
 enum class Platforms {
     Android,
     iOS,
+    macOS,
     JVM
 }
 
