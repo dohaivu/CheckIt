@@ -4,6 +4,7 @@ import com.checkit.data.QuickNoteRepository
 import com.checkit.data.QuickNoteSyncManager
 import com.checkit.domain.QuickNote
 import com.checkit.domain.QuickNoteRules
+import com.checkit.domain.QuickNoteType
 import kotlinx.coroutines.flow.Flow
 
 class ObserveQuickNextUseCase(
@@ -24,6 +25,15 @@ class CreateQuickNoteUseCase(
     suspend operator fun invoke(content: String): QuickNote? {
         if (content.isBlank()) return null
         return repository.create(content)
+    }
+
+    suspend operator fun invoke(
+        content: String,
+        type: QuickNoteType,
+        attachmentLocalPath: String?,
+    ): QuickNote? {
+        if (content.isBlank()) return null
+        return repository.create(content, type, attachmentLocalPath)
     }
 }
 

@@ -3,6 +3,7 @@ package com.checkit.data
 import com.checkit.domain.QuickNote
 import com.checkit.domain.QuickNoteRules
 import com.checkit.domain.QuickNoteStatus
+import com.checkit.domain.QuickNoteType
 import com.checkit.notifications.NoOpQuickNoteReminderScheduler
 import com.checkit.notifications.QuickNoteReminderScheduler
 import kotlinx.coroutines.flow.Flow
@@ -14,6 +15,11 @@ interface QuickNoteRepository {
     fun observeToBeDeleted(): Flow<List<QuickNote>>
 
     suspend fun create(content: String): QuickNote?
+    suspend fun create(
+        content: String,
+        type: QuickNoteType,
+        attachmentLocalPath: String?,
+    ): QuickNote?
     suspend fun moveToBeDeleted(id: String)
     suspend fun deletePermanently(id: String)
     suspend fun restore(id: String)
@@ -37,11 +43,19 @@ class RoomQuickNoteRepository(
     override fun observeToBeDeleted(): Flow<List<QuickNote>> =
         dao.observeToBeDeleted().map { rows -> rows.map { it.toDomain() } }
 
-    override suspend fun create(content: String): QuickNote? {
+    override suspend fun create(content: String): QuickNote? =
+        create(content, QuickNoteType.TEXT, null)
+
+    override suspend fun create(
+        content: String,
+        type: QuickNoteType,
+        attachmentLocalPath: String?,
+    ): QuickNote? {
         if (content.isBlank()) return null
+        if (type != QuickNoteType.TEXT && attachmentLocalPath.isNullOrBlank()) return null
         val now = Clock.System.now().toEpochMilliseconds()
         val bottom = dao.maxNextSortOrder()
-        val note = QuickNoteRules.newNote(content, now, bottom)
+        val note = QuickNoteRules.newNote(content, now, bottom, type = type, attachmentLocalPath = attachmentLocalPath)
         dao.upsert(note.toEntity())
         syncManager.requestSync()
         return note

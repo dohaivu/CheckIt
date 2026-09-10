@@ -382,7 +382,8 @@ val provideViewModelModule = module {
             deletePermanentlyUseCase = get(),
             restoreUseCase = get(),
             maintain = get(),
-            syncManager = get()
+            syncManager = get(),
+            cameraCapture = get()
         )
     }
 }

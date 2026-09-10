@@ -10,6 +10,7 @@ import androidx.room3.Query
 import androidx.room3.Upsert
 import com.checkit.domain.QuickNote
 import com.checkit.domain.QuickNoteStatus
+import com.checkit.domain.QuickNoteType
 import kotlinx.coroutines.flow.Flow
 
 @Entity(
@@ -33,6 +34,11 @@ data class QuickNoteEntity(
     val deleted: Boolean,
     /** True when the row changed locally since the last successful upload. */
     val dirty: Boolean = true,
+    val type: String = "TEXT",
+    /** Device-local file path; never synced. */
+    val attachmentLocalPath: String? = null,
+    /** Remote download URL; synced. */
+    val attachmentUrl: String? = null,
 )
 
 fun QuickNoteEntity.toDomain(): QuickNote = QuickNote(
@@ -45,6 +51,9 @@ fun QuickNoteEntity.toDomain(): QuickNote = QuickNote(
     remindAt = remindAt,
     deleteAt = deleteAt,
     deleted = deleted,
+    type = runCatching { QuickNoteType.valueOf(type) }.getOrDefault(QuickNoteType.TEXT),
+    attachmentLocalPath = attachmentLocalPath,
+    attachmentUrl = attachmentUrl,
 )
 
 fun QuickNote.toEntity(dirty: Boolean = true): QuickNoteEntity = QuickNoteEntity(
@@ -58,6 +67,9 @@ fun QuickNote.toEntity(dirty: Boolean = true): QuickNoteEntity = QuickNoteEntity
     deleteAt = deleteAt,
     deleted = deleted,
     dirty = dirty,
+    type = type.name,
+    attachmentLocalPath = attachmentLocalPath,
+    attachmentUrl = attachmentUrl,
 )
 
 @Dao
@@ -119,4 +131,7 @@ interface QuickNoteDao {
      */
     @Query("UPDATE quick_notes SET dirty = 0 WHERE id IN (:ids) AND updatedAt <= :maxUpdatedAt")
     suspend fun markClean(ids: List<String>, maxUpdatedAt: Long)
+
+    @Query("UPDATE quick_notes SET attachmentUrl = :url, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
+    suspend fun setAttachmentUrl(id: String, url: String, updatedAt: Long)
 }

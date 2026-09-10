@@ -4,7 +4,9 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -31,14 +34,13 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RestoreFromTrash
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -46,6 +48,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
@@ -67,27 +70,34 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.checkit.data.QuickNoteSyncStatus
 import com.checkit.domain.QuickNote
+import com.checkit.domain.QuickNoteType
 import com.checkit.ui.components.AiQuickAddBar
 import com.checkit.ui.components.SectionLabel
 import com.checkit.ui.components.TinyTopAppBar
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.time.Clock
 
 @Composable
@@ -138,6 +148,7 @@ fun QuickNoteScreen(
                 input = state.input,
                 onInputChange = viewModel::updateInput,
                 onSubmit = viewModel::submitInput,
+                onCameraClick = viewModel::onCameraClick,
             )
         }
     ) { padding ->
@@ -194,7 +205,11 @@ fun QuickNoteScreen(
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 item(key = "header-next") {
-                    SectionLabel("NEXT")
+                    Text(
+                        text = "NEXT",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     Spacer(Modifier.height(4.dp))
                 }
                 if (state.visibleNext.isEmpty()) {
@@ -216,12 +231,17 @@ fun QuickNoteScreen(
                             note = note,
                             onDeleteSwipe = { viewModel.swipeRight(note.id) },
                             onReminderSwipe = { viewModel.openReminderPicker(note.id) },
+                            onImageClick = viewModel::openImagePreview,
                         )
                     }
                 }
                 item(key = "header-deleted") {
                     Spacer(Modifier.height(12.dp))
-                    SectionLabel("TO BE DELETED")
+                    Text(
+                        text = "TO BE DELETED",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     Spacer(Modifier.height(4.dp))
                 }
                 if (state.toBeDeleted.isEmpty()) {
@@ -238,7 +258,8 @@ fun QuickNoteScreen(
                     DeletedRow(
                         note = note,
                         onDeleteSwipe = { viewModel.deletePermanently(note.id) },
-                        onRestoreSwipe = { viewModel.restore(note.id) }
+                        onRestoreSwipe = { viewModel.restore(note.id) },
+                        onImageClick = viewModel::openImagePreview
                     )
                 }
                 item(key = "bottom-spacer") { Spacer(Modifier.height(16.dp)) }
@@ -302,6 +323,95 @@ fun QuickNoteScreen(
             },
             confirmButton = {},
             dismissButton = null,
+        )
+    }
+
+    val pendingImagePath = state.pendingImagePath
+    if (pendingImagePath != null) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissPendingImage,
+            title = { Text("Add photo") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val preview = rememberDecodedImage(pendingImagePath)
+                    if (preview != null) {
+                        Image(
+                            preview,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxWidth()
+                                .heightIn(max = 320.dp)
+                                .clip(RoundedCornerShape(12.dp)),
+                            contentScale = ContentScale.Crop,
+                        )
+                    }
+                    OutlinedTextField(
+                        value = state.pendingImageTitle,
+                        onValueChange = viewModel::updatePendingImageTitle,
+                        label = { Text("Title") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = viewModel::confirmPendingImage) { Text("Save") }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::dismissPendingImage) { Text("Cancel") }
+            },
+        )
+    }
+
+    val previewImagePath = state.previewImagePath
+    if (previewImagePath != null) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissImagePreview,
+            title = null,
+            text = {
+                val full = rememberDecodedImage(previewImagePath)
+                if (full != null) {
+                    Image(
+                        full,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxWidth()
+                            .heightIn(max = 480.dp)
+                            .clip(RoundedCornerShape(12.dp)),
+                        contentScale = ContentScale.Fit,
+                    )
+                }
+            },
+            confirmButton = {
+            },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        )
+    }
+}
+
+@Composable
+private fun rememberDecodedImage(path: String): ImageBitmap? {
+    var bitmap by remember(path) { mutableStateOf<ImageBitmap?>(null) }
+    LaunchedEffect(path) {
+        // Default (not IO: IO is unavailable on Kotlin/Native targets).
+        bitmap = withContext(Dispatchers.Default) { decodeQuickNoteImage(path) }
+    }
+    return bitmap
+}
+
+@Composable
+private fun QuickNoteThumbnail(
+    path: String,
+    onClick: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val bitmap = rememberDecodedImage(path)
+    if (bitmap != null) {
+        Image(
+            bitmap,
+            contentDescription = null,
+            modifier = modifier.size(56.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .clickable { onClick(path) },
+            contentScale = ContentScale.Crop,
         )
     }
 }
@@ -492,6 +602,7 @@ private fun NextRow(
     note: QuickNote,
     onDeleteSwipe: () -> Unit,
     onReminderSwipe: () -> Unit,
+    onImageClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val haptic = LocalHapticFeedback.current
@@ -553,12 +664,16 @@ private fun NextRow(
                 )
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-        ) {
+            ) {
             Text(
                 note.content,
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.weight(1f)
             )
+            if (note.type == QuickNoteType.IMAGE && note.attachmentLocalPath != null) {
+                Spacer(Modifier.width(8.dp))
+                QuickNoteThumbnail(note.attachmentLocalPath, onClick = onImageClick)
+            }
             if (note.remindAt != null) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -587,6 +702,7 @@ private fun DeletedRow(
     note: QuickNote,
     onDeleteSwipe: () -> Unit,
     onRestoreSwipe: () -> Unit,
+    onImageClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val haptic = LocalHapticFeedback.current
@@ -654,6 +770,9 @@ private fun DeletedRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),
                 )
+                if (note.type == QuickNoteType.IMAGE && note.attachmentLocalPath != null) {
+                    QuickNoteThumbnail(note.attachmentLocalPath, onClick = onImageClick)
+                }
                 Text(
                     formatRemaining(note.deleteAt),
                     style = MaterialTheme.typography.labelSmall,
@@ -670,6 +789,7 @@ private fun QuickCaptureBar(
     input: String,
     onInputChange: (String) -> Unit,
     onSubmit: () -> Unit,
+    onCameraClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val focusManager = LocalFocusManager.current
@@ -693,14 +813,8 @@ private fun QuickCaptureBar(
             haloPadding = 6.dp
         )
         Spacer(Modifier.width(4.dp))
-        IconButton(
-            onClick = {
-                onSubmit()
-                focusManager.clearFocus()
-            },
-            enabled = input.isNotBlank(),
-        ) {
-            Icon(Icons.Default.Add, contentDescription = "Capture")
+        IconButton(onClick = onCameraClick) {
+            Icon(Icons.Default.PhotoCamera, contentDescription = "Take photo")
         }
     }
 }

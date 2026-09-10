@@ -13,6 +13,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.core.app.ActivityCompat
 import com.checkit.notifications.CheckItNotificationCenter
 import com.checkit.ui.CheckItApp
+import com.checkit.ui.quicknote.QuickNoteCameraHolder
 import com.checkit.widget.ExtraDailyPlanItemId
 import com.checkit.widget.ExtraNoteId
 import com.checkit.widget.ExtraOpenCheckIn
@@ -47,6 +48,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        QuickNoteCameraHolder.init(this)
         handleLaunchIntent(intent)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

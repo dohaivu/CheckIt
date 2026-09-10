@@ -600,7 +600,7 @@ data class NestedItemTagEntity(
         HabitDailyRollupEntity::class,
         QuickNoteEntity::class
     ],
-    version = 15,
+    version = 16,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)
@@ -652,13 +652,21 @@ val MIGRATION_14_15 = object : Migration(14, 15) {
     }
 }
 
+val MIGRATION_15_16 = object : Migration(15, 16) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE quick_notes ADD COLUMN type TEXT NOT NULL DEFAULT 'TEXT'")
+        connection.execSQL("ALTER TABLE quick_notes ADD COLUMN attachmentLocalPath TEXT")
+        connection.execSQL("ALTER TABLE quick_notes ADD COLUMN attachmentUrl TEXT")
+    }
+}
+
 fun buildCheckItDatabase(
     builder: RoomDatabase.Builder<CheckItDatabase>
 ): CheckItDatabase {
     return builder
         .fallbackToDestructiveMigration(false)
         .fallbackToDestructiveMigrationOnDowngrade(false)
-        .addMigrations(MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
+        .addMigrations(MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16)
         .setQueryCoroutineContext(Dispatchers.IO)
         .setDriver(BundledSQLiteDriver())
         .addCallback(object : RoomDatabase.Callback() {

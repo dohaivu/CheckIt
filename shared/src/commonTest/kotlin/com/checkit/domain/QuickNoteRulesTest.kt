@@ -51,6 +51,29 @@ class QuickNoteRulesTest {
     }
 
     @Test
+    fun newImageNoteKeepsTypeAndLocalPath() {
+        val created = QuickNoteRules.newNote(
+            "Sunset",
+            now,
+            null,
+            id = "img",
+            type = QuickNoteType.IMAGE,
+            attachmentLocalPath = "/tmp/photo.webp",
+        )
+        assertEquals(QuickNoteType.IMAGE, created.type)
+        assertEquals("/tmp/photo.webp", created.attachmentLocalPath)
+        assertNull(created.attachmentUrl)
+    }
+
+    @Test
+    fun newNoteDefaultsToTextWithoutAttachment() {
+        val created = QuickNoteRules.newNote("hi", now, null, id = "x")
+        assertEquals(QuickNoteType.TEXT, created.type)
+        assertNull(created.attachmentLocalPath)
+        assertNull(created.attachmentUrl)
+    }
+
+    @Test
     fun blankTextIsRejected() {
         assertFailsWith<IllegalArgumentException> {
             QuickNoteRules.newNote("   ", now, null, id = "x")

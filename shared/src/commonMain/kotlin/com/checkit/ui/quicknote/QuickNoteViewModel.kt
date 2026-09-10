@@ -6,6 +6,7 @@ import com.checkit.data.QuickNoteSyncManager
 import com.checkit.data.QuickNoteSyncState
 import com.checkit.domain.QuickNote
 import com.checkit.domain.QuickNoteRules
+import com.checkit.domain.QuickNoteType
 import com.checkit.domain.usecase.CreateQuickNoteUseCase
 import com.checkit.domain.usecase.DeleteQuickNotePermanentlyUseCase
 import com.checkit.domain.usecase.MaintainQuickNotesUseCase
@@ -34,6 +35,9 @@ data class QuickNoteUiState(
     val isLoading: Boolean = true,
     val reminderPickerId: String? = null,
     val syncState: QuickNoteSyncState = QuickNoteSyncState(),
+    val pendingImagePath: String? = null,
+    val pendingImageTitle: String = "",
+    val previewImagePath: String? = null,
     /** In-drag visual order of NEXT ids; null when not dragging. */
     val dragOrder: List<String>? = null,
 ) {
@@ -55,6 +59,7 @@ class QuickNoteViewModel(
     private val restoreUseCase: RestoreQuickNoteUseCase,
     private val maintain: MaintainQuickNotesUseCase,
     private val syncManager: QuickNoteSyncManager,
+    private val cameraCapture: QuickNoteCameraCapture,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(QuickNoteUiState())
@@ -204,5 +209,49 @@ class QuickNoteViewModel(
         viewModelScope.launch {
             runCatching { maintain() }
         }
+    }
+
+    // --- Image capture ---
+
+    fun onCameraClick() {
+        cameraCapture.capture { path ->
+            if (path != null) {
+                _uiState.update { it.copy(pendingImagePath = path, pendingImageTitle = "") }
+            }
+        }
+    }
+
+    fun updatePendingImageTitle(title: String) {
+        _uiState.update { it.copy(pendingImageTitle = title) }
+    }
+
+    fun confirmPendingImage() {
+        val path = _uiState.value.pendingImagePath ?: return
+        val title = _uiState.value.pendingImageTitle.ifBlank { "Photo" }
+        _uiState.update { it.copy(pendingImagePath = null, pendingImageTitle = "") }
+        viewModelScope.launch {
+            runCatching {
+                createNote(title, QuickNoteType.IMAGE, path)
+            }.onFailure { error ->
+                cameraCapture.discard(path)
+                _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to save photo"))
+            }
+        }
+    }
+
+    fun dismissPendingImage() {
+        val path = _uiState.value.pendingImagePath ?: return
+        _uiState.update { it.copy(pendingImagePath = null, pendingImageTitle = "") }
+        cameraCapture.discard(path)
+    }
+
+    // --- Full-size image preview ---
+
+    fun openImagePreview(path: String) {
+        _uiState.update { it.copy(previewImagePath = path) }
+    }
+
+    fun dismissImagePreview() {
+        _uiState.update { it.copy(previewImagePath = null) }
     }
 }

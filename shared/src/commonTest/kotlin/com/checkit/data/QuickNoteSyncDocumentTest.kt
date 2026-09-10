@@ -2,6 +2,7 @@ package com.checkit.data
 
 import com.checkit.domain.QuickNote
 import com.checkit.domain.QuickNoteStatus
+import com.checkit.domain.QuickNoteType
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -43,6 +44,26 @@ class QuickNoteSyncDocumentTest {
         )
         val restored = QuickNoteSyncDocument.fromMap(original.id, QuickNoteSyncDocument.toMap(original))
         assertEquals(original, restored)
+    }
+
+    @Test
+    fun roundTripPreservesTypeAndAttachmentUrl() {
+        val original = note().copy(
+            type = QuickNoteType.IMAGE,
+            attachmentLocalPath = "/data/local/photo.webp",
+            attachmentUrl = "https://example.com/photo.webp",
+        )
+        val restored = QuickNoteSyncDocument.fromMap(original.id, QuickNoteSyncDocument.toMap(original))
+        assertEquals(QuickNoteType.IMAGE, restored?.type)
+        assertEquals("https://example.com/photo.webp", restored?.attachmentUrl)
+        // Local paths never leave the device.
+        assertNull(restored?.attachmentLocalPath)
+    }
+
+    @Test
+    fun fromMapFallsBackToTextForUnknownType() {
+        val map = QuickNoteSyncDocument.toMap(note()) + (QuickNoteSyncDocument.FIELD_TYPE to "HOLOGRAM")
+        assertEquals(QuickNoteType.TEXT, QuickNoteSyncDocument.fromMap("x", map)?.type)
     }
 
     @Test

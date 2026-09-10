@@ -2,6 +2,7 @@ package com.checkit.data
 
 import com.checkit.domain.QuickNote
 import com.checkit.domain.QuickNoteStatus
+import com.checkit.domain.QuickNoteType
 
 /**
  * Firestore document mapping for `users/{userId}/quickNotes/{quickNoteId}`.
@@ -20,6 +21,8 @@ object QuickNoteSyncDocument {
     const val FIELD_REMIND_AT = "remindAt"
     const val FIELD_DELETE_AT = "deleteAt"
     const val FIELD_DELETED = "deleted"
+    const val FIELD_TYPE = "type"
+    const val FIELD_ATTACHMENT_URL = "attachmentUrl"
 
     fun toMap(note: QuickNote): Map<String, Any?> = mapOf(
         FIELD_ID to note.id,
@@ -31,6 +34,8 @@ object QuickNoteSyncDocument {
         FIELD_REMIND_AT to note.remindAt,
         FIELD_DELETE_AT to note.deleteAt,
         FIELD_DELETED to note.deleted,
+        FIELD_TYPE to note.type.name,
+        FIELD_ATTACHMENT_URL to note.attachmentUrl,
     )
 
     /** Returns null when the document is missing required fields. */
@@ -43,6 +48,9 @@ object QuickNoteSyncDocument {
         val status = (map[FIELD_STATUS] as? String)
             ?.let { runCatching { QuickNoteStatus.valueOf(it) }.getOrNull() }
             ?: QuickNoteStatus.NEXT
+        val type = (map[FIELD_TYPE] as? String)
+            ?.let { runCatching { QuickNoteType.valueOf(it) }.getOrNull() }
+            ?: QuickNoteType.TEXT
         return QuickNote(
             id = (map[FIELD_ID] as? String)?.takeIf { it.isNotBlank() } ?: documentId,
             content = content,
@@ -53,6 +61,9 @@ object QuickNoteSyncDocument {
             remindAt = (map[FIELD_REMIND_AT] as? Number)?.toLong(),
             deleteAt = (map[FIELD_DELETE_AT] as? Number)?.toLong(),
             deleted = map[FIELD_DELETED] as? Boolean ?: false,
+            type = type,
+            attachmentLocalPath = null,
+            attachmentUrl = map[FIELD_ATTACHMENT_URL] as? String,
         )
     }
 

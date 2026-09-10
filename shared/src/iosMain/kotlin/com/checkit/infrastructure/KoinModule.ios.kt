@@ -12,6 +12,8 @@ import com.checkit.notifications.NoOpCheckInReminderForceRunner
 import com.checkit.notifications.NoOpDailyPlanScheduleReminderScheduler
 import com.checkit.notifications.QuickNoteReminderScheduler
 import com.checkit.notifications.TaskReminderNotificationScheduler
+import com.checkit.ui.quicknote.NoOpQuickNoteCameraCapture
+import com.checkit.ui.quicknote.QuickNoteCameraCapture
 import org.koin.dsl.module
 
 actual fun platformModule() = module {
@@ -21,4 +23,5 @@ actual fun platformModule() = module {
     single<CheckInReminderForceRunner> { NoOpCheckInReminderForceRunner() }
     single<QuickNoteReminderScheduler> { NoOpQuickNoteReminderScheduler() }
     single<QuickNoteSyncManager> { NoOpQuickNoteSyncManager() }
+    single<QuickNoteCameraCapture> { NoOpQuickNoteCameraCapture() }
 }

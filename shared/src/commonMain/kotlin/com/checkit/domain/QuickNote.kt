@@ -8,6 +8,13 @@ enum class QuickNoteStatus {
     TO_BE_DELETED,
 }
 
+enum class QuickNoteType {
+    TEXT,
+    IMAGE,
+    AUDIO,
+    VIDEO,
+}
+
 data class QuickNote(
     val id: String,
     val content: String,
@@ -18,6 +25,11 @@ data class QuickNote(
     val remindAt: Long?,
     val deleteAt: Long?,
     val deleted: Boolean,
+    val type: QuickNoteType = QuickNoteType.TEXT,
+    /** Device-local file path; never synced. */
+    val attachmentLocalPath: String? = null,
+    /** Remote download URL; synced via the sync document. */
+    val attachmentUrl: String? = null,
 ) {
     val isActive: Boolean get() = !deleted
     val isExpired: Boolean get() = QuickNoteRules.isExpired(this, Clock.System.now().toEpochMilliseconds())
@@ -31,7 +43,14 @@ object QuickNoteRules {
     const val SORT_GAP = 1000.0
     const val SORT_MIN_GAP = 1e-6
 
-    fun newNote(content: String, now: Long, bottomSortOrder: Double?, id: String = Uuid.random().toString()): QuickNote {
+    fun newNote(
+        content: String,
+        now: Long,
+        bottomSortOrder: Double?,
+        id: String = Uuid.random().toString(),
+        type: QuickNoteType = QuickNoteType.TEXT,
+        attachmentLocalPath: String? = null,
+    ): QuickNote {
         val trimmed = content.trim()
         require(trimmed.isNotBlank()) { "Quick note content must not be blank" }
         return QuickNote(
@@ -44,6 +63,9 @@ object QuickNoteRules {
             remindAt = null,
             deleteAt = null,
             deleted = false,
+            type = type,
+            attachmentLocalPath = attachmentLocalPath,
+            attachmentUrl = null,
         )
     }
 
