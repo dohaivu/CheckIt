@@ -70,7 +70,6 @@ fun CheckItApp(
     viewModels: CheckItViewModels = koinCheckItViewModels(),
     autoAddTodayTasksToMyDayUseCase: AutoAddTodayTasksToMyDayUseCase = koinInject(),
     rebuildReflectStatsUseCase: RebuildReflectStatsUseCase = koinInject(),
-    maintainQuickNotesUseCase: MaintainQuickNotesUseCase = koinInject(),
     settingsRepository: SettingsRepository = koinInject(),
     dailyPlanItemLaunchId: Long? = null,
     taskLaunchId: Long? = null,

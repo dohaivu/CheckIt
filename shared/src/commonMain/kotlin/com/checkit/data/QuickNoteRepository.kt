@@ -25,6 +25,7 @@ interface QuickNoteRepository {
     suspend fun restore(id: String)
     suspend fun setReminder(id: String, remindAt: Long?)
     suspend fun clearReminder(id: String)
+    suspend fun clearExpiredReminders(): Int
     suspend fun move(id: String, beforeId: String?, afterId: String?)
     suspend fun reorder(fromIndex: Int, toIndex: Int)
     suspend fun processExpired(): Int
@@ -108,6 +109,16 @@ class RoomQuickNoteRepository(
         val now = Clock.System.now().toEpochMilliseconds()
         dao.setReminder(id, null, now)
         syncManager.requestSync()
+    }
+
+    override suspend fun clearExpiredReminders(): Int {
+        val now = Clock.System.now().toEpochMilliseconds()
+        val expired = dao.getDueReminders(now)
+        if (expired.isEmpty()) return 0
+        expired.forEach { reminderScheduler.cancel(it.id) }
+        dao.clearExpiredReminders(now)
+        syncManager.requestSync()
+        return expired.size
     }
 
     override suspend fun move(id: String, beforeId: String?, afterId: String?) {

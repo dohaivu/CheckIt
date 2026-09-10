@@ -110,6 +110,14 @@ interface QuickNoteDao {
     @Query("SELECT * FROM quick_notes WHERE deleted = 0 AND remindAt IS NOT NULL AND remindAt <= :now")
     suspend fun getDueReminders(now: Long): List<QuickNoteEntity>
 
+    /**
+     * Drops reminder times that already passed without firing (missed while
+     * the device was off, alarm denied, etc.). Bumps updatedAt so the
+     * cleared state propagates on next sync.
+     */
+    @Query("UPDATE quick_notes SET remindAt = NULL, updatedAt = :now, dirty = 1 WHERE deleted = 0 AND remindAt IS NOT NULL AND remindAt <= :now")
+    suspend fun clearExpiredReminders(now: Long)
+
     @Query("SELECT * FROM quick_notes WHERE deleted = 0 AND remindAt IS NOT NULL")
     suspend fun getScheduledReminders(): List<QuickNoteEntity>
 

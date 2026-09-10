@@ -98,6 +98,7 @@ class MaintainQuickNotesUseCase(
 ) {
     suspend operator fun invoke(): Int {
         val expiredCount = repository.processExpired()
+        repository.clearExpiredReminders()
         repository.reconcileReminders()
         runCatching { syncManager.sync() }
         return expiredCount
