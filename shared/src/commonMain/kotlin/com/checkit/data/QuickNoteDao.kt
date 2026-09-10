@@ -102,4 +102,7 @@ interface QuickNoteDao {
 
     @Query("SELECT * FROM quick_notes WHERE deleted = 0 ORDER BY updatedAt DESC")
     suspend fun getAllActive(): List<QuickNoteEntity>
+
+    @Query("SELECT * FROM quick_notes ORDER BY updatedAt DESC")
+    suspend fun getAllForSync(): List<QuickNoteEntity>
 }

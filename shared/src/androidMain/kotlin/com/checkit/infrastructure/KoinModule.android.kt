@@ -1,6 +1,6 @@
 package com.checkit.infrastructure
 
-import com.checkit.data.NoOpQuickNoteSyncManager
+import com.checkit.data.FirestoreQuickNoteSyncManager
 import com.checkit.data.QuickNoteSyncManager
 import com.checkit.notifications.AlarmManagerQuickNoteReminderScheduler
 import com.checkit.notifications.AndroidCheckInReminderForceRunner
@@ -26,5 +26,5 @@ actual fun platformModule() = module {
     single<SprintNotificationScheduler> { AndroidSprintNotificationScheduler(androidContext()) }
     single<CheckInReminderForceRunner> { AndroidCheckInReminderForceRunner(androidContext(), get(), get()) }
     single<QuickNoteReminderScheduler> { AlarmManagerQuickNoteReminderScheduler(androidContext()) }
-    single<QuickNoteSyncManager> { NoOpQuickNoteSyncManager() }
+    single<QuickNoteSyncManager> { FirestoreQuickNoteSyncManager(get(), get()) }
 }

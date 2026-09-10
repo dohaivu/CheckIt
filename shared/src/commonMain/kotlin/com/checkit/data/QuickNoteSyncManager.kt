@@ -1,11 +1,12 @@
 package com.checkit.data
 
 /**
- * Reconciliation hook for Firestore sync (stub for V1).
+ * Reconciliation with Firestore (`users/{userId}/quickNotes/{quickNoteId}`).
  *
  * All QuickNote mutations commit to Room first; implementations upload
  * pending state asynchronously and merge remote changes back into Room
  * with last-write-wins on [com.checkit.domain.QuickNote.updatedAt].
+ * iOS uses the [NoOpQuickNoteSyncManager]; Android syncs via Firestore.
  */
 interface QuickNoteSyncManager {
     fun requestSync()
