@@ -97,6 +97,7 @@ class MaintainQuickNotesUseCase(
     private val syncManager: QuickNoteSyncManager,
 ) {
     suspend operator fun invoke(): Int {
+        repository.autoTrashInactive()
         val expiredCount = repository.processExpired()
         repository.clearExpiredReminders()
         repository.reconcileReminders()

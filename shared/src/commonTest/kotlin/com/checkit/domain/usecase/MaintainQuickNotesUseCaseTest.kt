@@ -3,6 +3,7 @@ package com.checkit.domain.usecase
 import com.checkit.data.NoOpQuickNoteSyncManager
 import com.checkit.data.QuickNoteRepository
 import com.checkit.domain.QuickNote
+import com.checkit.domain.QuickNoteRules
 import com.checkit.domain.QuickNoteStatus
 import com.checkit.domain.QuickNoteType
 import kotlinx.coroutines.flow.Flow
@@ -11,7 +12,9 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlin.time.Clock
 
 private class FakeQuickNoteRepository : QuickNoteRepository {
@@ -74,6 +77,25 @@ private class FakeQuickNoteRepository : QuickNoteRepository {
 
     override suspend fun reorder(fromIndex: Int, toIndex: Int) = Unit
 
+    override suspend fun autoTrashInactive(): Int {
+        val now = Clock.System.now().toEpochMilliseconds()
+        var count = 0
+        notes.forEach { (id, note) ->
+            if (note.status == QuickNoteStatus.NEXT && !note.deleted &&
+                note.remindAt == null &&
+                note.updatedAt <= now - QuickNoteRules.INACTIVITY_AFTER_MILLIS
+            ) {
+                notes[id] = note.copy(
+                    status = QuickNoteStatus.TO_BE_DELETED,
+                    deleteAt = now + QuickNoteRules.DELETE_AFTER_MILLIS,
+                    updatedAt = now,
+                )
+                count++
+            }
+        }
+        return count
+    }
+
     override suspend fun processExpired(): Int = 0
 
     override suspend fun reconcileReminders() {
@@ -84,12 +106,17 @@ private class FakeQuickNoteRepository : QuickNoteRepository {
 class MaintainQuickNotesUseCaseTest {
     private val now = Clock.System.now().toEpochMilliseconds()
 
-    private fun note(id: String, remindAt: Long?) = QuickNote(
+    private fun note(
+        id: String,
+        remindAt: Long?,
+        updatedAt: Long = now - 1000,
+        status: QuickNoteStatus = QuickNoteStatus.NEXT,
+    ) = QuickNote(
         id = id,
         content = id,
-        status = QuickNoteStatus.NEXT,
+        status = status,
         createdAt = now - 1000,
-        updatedAt = now - 1000,
+        updatedAt = updatedAt,
         sortOrder = 1000.0,
         remindAt = remindAt,
         deleteAt = null,
@@ -109,5 +136,36 @@ class MaintainQuickNotesUseCaseTest {
         assertEquals(now + 3_600_000L, repo.get("future")?.remindAt)
         assertNull(repo.get("none")?.remindAt)
         assertEquals(1, repo.reconciled)
+    }
+
+    @Test
+    fun autoTrashesUntouchedNextAfter24h() = runTest {
+        val old = now - QuickNoteRules.INACTIVITY_AFTER_MILLIS - 1000
+        val repo = FakeQuickNoteRepository().apply {
+            put(note("stale", null, updatedAt = old))
+        }
+        MaintainQuickNotesUseCase(repo, NoOpQuickNoteSyncManager())()
+
+        val moved = repo.get("stale")
+        assertEquals(QuickNoteStatus.TO_BE_DELETED, moved?.status)
+        assertNotNull(moved?.deleteAt)
+        assertTrue(moved.deleteAt > now)
+        assertTrue(moved.deleteAt <= now + QuickNoteRules.DELETE_AFTER_MILLIS + 60_000L)
+    }
+
+    @Test
+    fun keepsRecentlyTouchedAndRemindedNotesInNext() = runTest {
+        val old = now - QuickNoteRules.INACTIVITY_AFTER_MILLIS - 1000
+        val repo = FakeQuickNoteRepository().apply {
+            put(note("fresh", null, updatedAt = now))
+            put(note("reminded", now + 3_600_000L, updatedAt = old))
+            put(note("alreadyTrash", null, updatedAt = old, status = QuickNoteStatus.TO_BE_DELETED))
+        }
+        MaintainQuickNotesUseCase(repo, NoOpQuickNoteSyncManager())()
+
+        assertEquals(QuickNoteStatus.NEXT, repo.get("fresh")?.status)
+        assertEquals(QuickNoteStatus.NEXT, repo.get("reminded")?.status)
+        assertEquals(QuickNoteStatus.TO_BE_DELETED, repo.get("alreadyTrash")?.status)
+        assertNull(repo.get("alreadyTrash")?.deleteAt)
     }
 }

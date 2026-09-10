@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.checkit.domain.QuickNote
+import com.checkit.domain.QuickNoteRules
 import com.checkit.domain.QuickNoteType
 import com.checkit.notifications.QuickNoteReminderScheduler
 import com.google.android.gms.tasks.Task
@@ -43,6 +44,7 @@ private val Context.quickNoteSyncDataStore by preferencesDataStore(name = "quick
  * called. Sync is incremental and never periodic:
  * - push uploads only rows flagged dirty (batched), then clears the flag;
  * - pull queries only documents newer than the last pull watermark;
+ * - purge permanently deletes old uploaded tombstones (blob, doc, row);
  * - triggers are local edits (debounced), app resume (via the maintenance
  *   use case), network reconnect, and manual refresh.
  *
@@ -195,12 +197,14 @@ class FirestoreQuickNoteSyncManager(
                 if (applied > 0) {
                     reconcileAlarms()
                 }
+                val purged = purgeTombstones(storage, notesRef, pullStart)
                 consecutiveFailures = 0
                 nextRetryAtMillis = 0L
                 _syncState.value = QuickNoteSyncState(QuickNoteSyncStatus.SYNCED, pullStart)
                 Log.i(
                     TAG,
-                    "Sync succeeded: pushed=${toPush.size} pulled=${remote.size} applied=$applied",
+                    "Sync succeeded: pushed=${toPush.size} pulled=${remote.size} " +
+                        "applied=$applied purged=$purged",
                 )
             } catch (e: Exception) {
                 val offline = !isOnline()
@@ -225,6 +229,43 @@ class FirestoreQuickNoteSyncManager(
             message,
         )
         Log.w(TAG, "QuickNote sync failed; retry in ${backoff}ms")
+    }
+
+    /**
+     * Permanent deletion for old tombstones: Storage blob, Firestore
+     * document, then the local row — in that order, so a failure leaves the
+     * tombstone intact for the next run instead of resurrecting the note.
+     * Only tombstones confirmed uploaded (dirty = 0) are eligible, so every
+     * device had a chance to sync the deletion first.
+     */
+    private suspend fun purgeTombstones(
+        storage: FirebaseStorage,
+        notesRef: com.google.firebase.firestore.CollectionReference,
+        now: Long,
+    ): Int {
+        val purgeable = dao.getPurgeableTombstones(now - QuickNoteRules.PURGE_AFTER_MILLIS)
+        var purged = 0
+        purgeable.forEach { entity ->
+            val note = entity.toDomain()
+            try {
+                note.attachmentUrl?.let { url ->
+                    try {
+                        storage.getReferenceFromUrl(url).delete().await()
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Blob delete failed for ${note.id}, continuing purge", e)
+                    }
+                }
+                notesRef.document(note.id).delete().await()
+                dao.hardDelete(listOf(note.id))
+                purged++
+            } catch (e: Exception) {
+                Log.w(TAG, "Purge failed for ${note.id}; will retry next sync", e)
+            }
+        }
+        if (purged > 0) {
+            Log.i(TAG, "Purged $purged tombstone(s)")
+        }
+        return purged
     }
 
     private fun isOnline(): Boolean =

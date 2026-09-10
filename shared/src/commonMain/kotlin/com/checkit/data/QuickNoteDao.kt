@@ -118,6 +118,24 @@ interface QuickNoteDao {
     @Query("UPDATE quick_notes SET remindAt = NULL, updatedAt = :now, dirty = 1 WHERE deleted = 0 AND remindAt IS NOT NULL AND remindAt <= :now")
     suspend fun clearExpiredReminders(now: Long)
 
+    /**
+     * NEXT notes untouched since [cutoff] with no active reminder: candidates
+     * for automatic move to TO_BE_DELETED. Any local edit bumps updatedAt and
+     * restarts the clock; active reminders exempt the note.
+     */
+    @Query("SELECT * FROM quick_notes WHERE status = 'NEXT' AND deleted = 0 AND updatedAt <= :cutoff AND remindAt IS NULL ORDER BY updatedAt ASC")
+    suspend fun getInactiveNext(cutoff: Long): List<QuickNoteEntity>
+
+    /**
+     * Tombstones safe to purge: old enough that every device had a chance to
+     * sync them, and confirmed uploaded (dirty = 0).
+     */
+    @Query("SELECT * FROM quick_notes WHERE deleted = 1 AND dirty = 0 AND updatedAt <= :cutoff ORDER BY updatedAt ASC")
+    suspend fun getPurgeableTombstones(cutoff: Long): List<QuickNoteEntity>
+
+    @Query("DELETE FROM quick_notes WHERE id IN (:ids)")
+    suspend fun hardDelete(ids: List<String>)
+
     @Query("SELECT * FROM quick_notes WHERE deleted = 0 AND remindAt IS NOT NULL")
     suspend fun getScheduledReminders(): List<QuickNoteEntity>
 
