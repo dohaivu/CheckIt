@@ -36,6 +36,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Refresh
@@ -80,6 +81,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
@@ -158,8 +160,9 @@ fun QuickNoteScreen(
             }
         } else {
             Column(Modifier.fillMaxSize().padding(padding)) {
-                QuickNoteSyncBanner(
+                QuickNoteHeaderBanner(
                     syncState = state.syncState,
+                    itemCount = state.next.size,
                     onRetry = viewModel::refresh,
                 )
             val listState = rememberLazyListState()
@@ -820,43 +823,74 @@ private fun QuickCaptureBar(
 }
 
 @Composable
-private fun QuickNoteSyncBanner(
+private fun QuickNoteHeaderBanner(
     syncState: com.checkit.data.QuickNoteSyncState,
+    itemCount: Int,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Always composed with a fixed height so the list below never jumps
+    // when sync status changes.
     val status = syncState.status
-    if (status != QuickNoteSyncStatus.SYNCING &&
-        status != QuickNoteSyncStatus.OFFLINE &&
-        status != QuickNoteSyncStatus.ERROR
-    ) return
-    val (text, icon) = when (status) {
-        QuickNoteSyncStatus.SYNCING -> "Syncing…" to Icons.Default.Refresh
-        QuickNoteSyncStatus.OFFLINE ->
-            "You're offline. Changes are saved on this device." to Icons.Default.CloudOff
-        else -> (syncState.message ?: "Sync failed.") to Icons.Default.CloudOff
+    val containerColor = when (status) {
+        QuickNoteSyncStatus.OFFLINE, QuickNoteSyncStatus.ERROR ->
+            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.55f)
+        QuickNoteSyncStatus.SYNCING ->
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+    }
+    val contentColor = when (status) {
+        QuickNoteSyncStatus.OFFLINE, QuickNoteSyncStatus.ERROR ->
+            MaterialTheme.colorScheme.onErrorContainer
+        QuickNoteSyncStatus.SYNCING ->
+            MaterialTheme.colorScheme.onPrimaryContainer
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     Row(
         modifier = modifier.fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+            .height(52.dp)
+            .background(containerColor)
             .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (status == QuickNoteSyncStatus.SYNCING) {
-            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-        } else {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
+        when (status) {
+            QuickNoteSyncStatus.SYNCING ->
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                    color = contentColor,
+                )
+            QuickNoteSyncStatus.OFFLINE, QuickNoteSyncStatus.ERROR ->
+                Icon(Icons.Default.CloudOff, contentDescription = null, modifier = Modifier.size(18.dp))
+            else ->
+                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
         }
         Spacer(Modifier.width(8.dp))
+        val text = when (status) {
+            QuickNoteSyncStatus.SYNCING -> "Syncing…"
+            QuickNoteSyncStatus.OFFLINE ->
+                "You're offline. Changes are saved on this device."
+            else -> syncState.message ?: ""
+        }
         Text(
             text,
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = contentColor,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        if (status != QuickNoteSyncStatus.SYNCING) {
-            TextButton(onClick = onRetry) { Text("Retry") }
+        if (status == QuickNoteSyncStatus.OFFLINE || status == QuickNoteSyncStatus.ERROR) {
+            TextButton(onClick = onRetry) {
+                Text("Retry", color = contentColor)
+            }
         }
+        Text(
+            "$itemCount",
+            style = MaterialTheme.typography.titleMedium,
+            color = contentColor,
+            modifier = Modifier.padding(start = 8.dp),
+        )
     }
 }
 
