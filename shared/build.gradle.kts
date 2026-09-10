@@ -35,13 +35,17 @@ kotlin {
         iosArm64(),
         iosSimulatorArm64(),
         macosArm64()
-    ).forEach { iosTarget ->
-        iosTarget.binaries.framework {
+    ).forEach { target ->
+        target.binaries.framework {
             baseName = "Shared"
             isStatic = false
             linkerOpts("-lsqlite3")
         }
     }
+
+//    swiftExport {
+//        moduleName = "Shared"
+//    }
     
     sourceSets {
         androidMain.dependencies {
