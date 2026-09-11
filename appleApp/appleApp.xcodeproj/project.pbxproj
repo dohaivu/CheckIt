@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		120790D1B9B40CE4317CAF28 /* Pods_iosApp.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ECEC46E561E2E38AD6E70E90 /* Pods_iosApp.framework */; };
 		71EAA4A83052F28600B51246 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 71EAA4A73052F28600B51246 /* FirebaseAuth */; };
 		71EAA4AA3052F28600B51246 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 71EAA4A93052F28600B51246 /* FirebaseFirestore */; };
 		71EAA4AC3052F28600B51246 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 71EAA4AB3052F28600B51246 /* FirebaseStorage */; };
@@ -29,30 +28,27 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		02574375538E35535524F681 /* Pods-iosApp.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-iosApp.release.xcconfig"; path = "Target Support Files/Pods-iosApp/Pods-iosApp.release.xcconfig"; sourceTree = "<group>"; };
 		711284572F3C612000F973FC /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		711284592F3C612000F973FC /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		7148A15A2F5FCF6000A64A50 /* CheckIt.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CheckIt.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		71EAA46B3052D84100B51246 /* macosApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = macosApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		71EAA46B3052D84100B51246 /* CheckIt.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CheckIt.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		71EAA48D3052DE8700B51246 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk/System/Library/Frameworks/SwiftUI.framework; sourceTree = DEVELOPER_DIR; };
-		9A5CC32B33853A7B3D78BA28 /* Pods-iosApp.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-iosApp.debug.xcconfig"; path = "Target Support Files/Pods-iosApp/Pods-iosApp.debug.xcconfig"; sourceTree = "<group>"; };
-		ECEC46E561E2E38AD6E70E90 /* Pods_iosApp.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_iosApp.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		F94DCACA613C9367D60C7A1A /* Exceptions for "iosApp" folder in "iosApp" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = 38834493044252A2C4BFAD03 /* iosApp */;
-		};
 		71EAA4C03052F31000B51246 /* Exceptions for "macosApp" folder in "macosApp" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
 			target = 71EAA46A3052D84100B51246 /* macosApp */;
+		};
+		F94DCACA613C9367D60C7A1A /* Exceptions for "iosApp" folder in "iosApp" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 38834493044252A2C4BFAD03 /* iosApp */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -75,6 +71,8 @@
 		};
 		FC96EE3B9F525CF6769329B5 /* Configuration */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = Configuration;
 			sourceTree = "<group>";
 		};
@@ -97,7 +95,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				120790D1B9B40CE4317CAF28 /* Pods_iosApp.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -108,7 +105,7 @@
 			isa = PBXGroup;
 			children = (
 				7148A15A2F5FCF6000A64A50 /* CheckIt.app */,
-				71EAA46B3052D84100B51246 /* macosApp.app */,
+				71EAA46B3052D84100B51246 /* CheckIt.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -116,8 +113,6 @@
 		84B06F0B74DCDD8D818BF1E2 /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				9A5CC32B33853A7B3D78BA28 /* Pods-iosApp.debug.xcconfig */,
-				02574375538E35535524F681 /* Pods-iosApp.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -138,7 +133,6 @@
 			isa = PBXGroup;
 			children = (
 				71EAA48D3052DE8700B51246 /* SwiftUI.framework */,
-				ECEC46E561E2E38AD6E70E90 /* Pods_iosApp.framework */,
 				711284572F3C612000F973FC /* WidgetKit.framework */,
 				711284592F3C612000F973FC /* SwiftUI.framework */,
 			);
@@ -152,7 +146,6 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 25A25DD15E7347E8D75F20E7 /* Build configuration list for PBXNativeTarget "iosApp" */;
 			buildPhases = (
-				2A56E1305C31E35D6983A1BA /* [CP] Check Pods Manifest.lock */,
 				56D5315DCF035F08ED90E103 /* Compile Kotlin Framework */,
 				3913849CAA6F46BD106B2E88 /* Sources */,
 				F6D9A65DC0498BC4F8D6D694 /* Frameworks */,
@@ -196,7 +189,7 @@
 				71EAA4B33052F30000B51246 /* GoogleSignInSwift */,
 			);
 			productName = CheckIt;
-			productReference = 71EAA46B3052D84100B51246 /* macosApp.app */;
+			productReference = 71EAA46B3052D84100B51246 /* CheckIt.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -259,28 +252,6 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		2A56E1305C31E35D6983A1BA /* [CP] Check Pods Manifest.lock */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
-				"${PODS_ROOT}/Manifest.lock",
-			);
-			name = "[CP] Check Pods Manifest.lock";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-iosApp-checkManifestLockResult.txt",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
 		56D5315DCF035F08ED90E103 /* Compile Kotlin Framework */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
@@ -400,6 +371,7 @@
 		71EAA4743052D84200B51246 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = arm64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = macosApp/macosApp.entitlements;
@@ -423,7 +395,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.aimpact.app.checkit;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = CheckIt;
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = macosx;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -438,6 +410,7 @@
 		71EAA4753052D84200B51246 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = arm64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = macosApp/macosApp.entitlements;
@@ -461,7 +434,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.aimpact.app.checkit;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = CheckIt;
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = macosx;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -475,7 +448,6 @@
 		};
 		B44CE13FE34E46BAED107905 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 02574375538E35535524F681 /* Pods-iosApp.release.xcconfig */;
 			buildSettings = {
 				ARCHS = arm64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -574,7 +546,6 @@
 		};
 		D54670F7DFC738D9629D01CE /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 9A5CC32B33853A7B3D78BA28 /* Pods-iosApp.debug.xcconfig */;
 			buildSettings = {
 				ARCHS = arm64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
