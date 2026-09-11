@@ -40,7 +40,7 @@ class QuickNoteMenuHelper(
     private val createNote: CreateQuickNoteUseCase,
     private val moveToBeDeleted: MoveQuickNoteToBeDeletedUseCase,
     private val restoreNote: RestoreQuickNoteUseCase,
-    private val deletePermanently: DeleteQuickNotePermanentlyUseCase,
+    private val deletePermanentlyUseCase: DeleteQuickNotePermanentlyUseCase,
     private val setReminder: SetQuickNoteReminderUseCase,
     private val maintain: MaintainQuickNotesUseCase,
     private val moveNote: MoveQuickNoteUseCase,
@@ -92,7 +92,7 @@ class QuickNoteMenuHelper(
 
     fun deletePermanently(id: String) {
         scope.launch {
-            runCatching { deletePermanently(id) }
+            runCatching { deletePermanentlyUseCase(id) }
         }
     }
 
