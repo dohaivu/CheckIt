@@ -82,6 +82,17 @@ class ProcessExpiredQuickNotesUseCase(
     suspend operator fun invoke(): Int = repository.processExpired()
 }
 
+/**
+ * Drops reminder times that already fired without being cleared (delivered
+ * while the app was inactive, alarm denied, etc.). Bumps updatedAt so the
+ * cleared state propagates on next sync.
+ */
+class ClearExpiredQuickNoteRemindersUseCase(
+    private val repository: QuickNoteRepository,
+) {
+    suspend operator fun invoke(): Int = repository.clearExpiredReminders()
+}
+
 class ReconcileQuickNoteRemindersUseCase(
     private val repository: QuickNoteRepository,
 ) {

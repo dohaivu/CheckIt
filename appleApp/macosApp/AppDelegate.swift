@@ -13,6 +13,9 @@ import SwiftUI
 extension Notification.Name {
     /// Posted (main thread) with an Int object: the current NEXT-notes count.
     static let quickNoteHasItems = Notification.Name("checkit.quickNoteHasItems")
+    /// Posted (main thread) each time the menu popover is opened. The
+    /// popover content persists, so SwiftUI onAppear fires only at startup.
+    static let quickNoteMenuOpened = Notification.Name("checkit.quickNoteMenuOpened")
 }
 
 @MainActor
@@ -81,6 +84,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
+            NotificationCenter.default.post(name: .quickNoteMenuOpened, object: nil)
         }
     }
 

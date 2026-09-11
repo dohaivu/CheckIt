@@ -100,6 +100,7 @@ import com.checkit.domain.usecase.UpdateTagUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
 import com.checkit.domain.usecase.UpsertDailyPlanItemUseCase
 import com.checkit.domain.usecase.CreateQuickNoteUseCase
+import com.checkit.domain.usecase.ClearExpiredQuickNoteRemindersUseCase
 import com.checkit.domain.usecase.DeleteQuickNotePermanentlyUseCase
 import com.checkit.domain.usecase.MaintainQuickNotesUseCase
 import com.checkit.domain.usecase.MoveQuickNoteToBeDeletedUseCase
@@ -253,7 +254,8 @@ val provideInteractorModule = module {
     single { SetQuickNoteReminderUseCase(get()) }
     single { MoveQuickNoteUseCase(get()) }
     single { MaintainQuickNotesUseCase(get(), get()) }
-    single { QuickNoteMenuHelper(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    single { ClearExpiredQuickNoteRemindersUseCase(get()) }
+    single { QuickNoteMenuHelper(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
 }
 
 val provideDatabaseModule = module {

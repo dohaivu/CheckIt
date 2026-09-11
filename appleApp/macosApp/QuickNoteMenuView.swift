@@ -101,13 +101,18 @@ final class QuickNoteMenuState: ObservableObject {
                 }
             }
         }
-        // Fired reminders clear themselves via the scheduler's direct bridge
-        // call (works with the popover closed); the banner stays in
-        // Notification Center.
+        
         // Menu opens render local Room data only (pushed live by the flows
         // above). Maintenance stays throttled like QuickNoteViewModel, and
         // no Firestore sync is triggered here — syncs happen on local edits,
         // reconnect, app launch, or the header refresh button.
+        refresh()
+    }
+
+    /// Runs on every menu open: sweep fired reminders, then throttled
+    /// maintenance. Called from .quickNoteMenuOpened, not onAppear.
+    func menuOpened() {
+        helper.clearExpiredReminders()
         refresh()
     }
 
@@ -504,6 +509,9 @@ struct QuickNoteMenuView: View {
             state.start()
         }
         .onDisappear { state.stop() }
+        .onReceive(NotificationCenter.default.publisher(for: .quickNoteMenuOpened)) { _ in
+            state.menuOpened()
+        }
     }
 
     @ViewBuilder

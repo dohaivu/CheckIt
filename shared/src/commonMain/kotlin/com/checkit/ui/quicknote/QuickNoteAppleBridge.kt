@@ -1,6 +1,7 @@
 package com.checkit.ui.quicknote
 
 import com.checkit.domain.usecase.CreateQuickNoteUseCase
+import com.checkit.domain.usecase.ClearExpiredQuickNoteRemindersUseCase
 import com.checkit.domain.usecase.DeleteQuickNotePermanentlyUseCase
 import com.checkit.domain.usecase.MaintainQuickNotesUseCase
 import com.checkit.domain.usecase.MoveQuickNoteToBeDeletedUseCase
@@ -10,6 +11,7 @@ import com.checkit.domain.usecase.ObserveQuickToBeDeletedUseCase
 import com.checkit.domain.usecase.RestoreQuickNoteUseCase
 import com.checkit.domain.usecase.SetQuickNoteReminderUseCase
 import com.checkit.infrastructure.initKoin
+import co.touchlab.kermit.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -18,6 +20,8 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import org.koin.core.KoinApplication
 import org.koin.mp.KoinPlatform
+
+private const val TAG = "QuickNoteMenu"
 
 /**
  * Swift-friendly facade over the QuickNote use cases for the macOS
@@ -44,6 +48,7 @@ class QuickNoteMenuHelper(
     private val setReminder: SetQuickNoteReminderUseCase,
     private val maintain: MaintainQuickNotesUseCase,
     private val moveNote: MoveQuickNoteUseCase,
+    private val clearExpiredRemindersUseCase: ClearExpiredQuickNoteRemindersUseCase,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
@@ -117,6 +122,17 @@ class QuickNoteMenuHelper(
     fun clearReminder(id: String) {
         scope.launch {
             runCatching { setReminder.clear(id) }
+        }
+    }
+
+    /**
+     * Drops fired-but-unfired reminders. Cheap single query, safe to call on
+     * every menu open (unlike full [refresh], which stays throttled).
+     */
+    fun clearExpiredReminders() {
+        scope.launch {
+            runCatching { clearExpiredRemindersUseCase() }
+                .onFailure { Logger.w(TAG) { "clearExpiredReminders failed: ${it.message}" } }
         }
     }
 
