@@ -21,6 +21,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let popover = NSPopover()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Menu-bar apps are easy to launch twice (no dock icon); a second
+        // process crashes opening Firestore's LevelDB LOCK, so bail early.
+        if isAnotherInstanceRunning() {
+            print("[CheckIt] Another instance is already running; terminating this one.")
+            NSApplication.shared.terminate(nil)
+            return
+        }
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(itemsChanged(_:)),
@@ -43,6 +50,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     // MARK: - Clicks
+
+    private func isAnotherInstanceRunning() -> Bool {
+        let myPid = ProcessInfo.processInfo.processIdentifier
+        let bundleId = Bundle.main.bundleIdentifier
+        return NSWorkspace.shared.runningApplications.contains {
+            $0.bundleIdentifier == bundleId && $0.processIdentifier != myPid
+        }
+    }
 
     @objc private func statusClicked(_ sender: NSStatusBarButton) {
         guard let event = NSApp.currentEvent else { return }

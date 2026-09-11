@@ -21,7 +21,7 @@ final class QuickNoteNotificationDelegate: NSObject, UNUserNotificationCenterDel
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
         if let noteId = QuickNoteNotificationScheduler.noteId(from: notification.request.identifier) {
-            QuickNoteNotificationScheduler.onReminderDelivered?(noteId)
+            QuickNoteNotificationScheduler.clearDeliveredReminder(noteId: noteId)
         }
         completionHandler([.banner, .sound])
     }
@@ -32,7 +32,7 @@ final class QuickNoteNotificationDelegate: NSObject, UNUserNotificationCenterDel
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
         if let noteId = QuickNoteNotificationScheduler.noteId(from: response.notification.request.identifier) {
-            QuickNoteNotificationScheduler.onReminderDelivered?(noteId)
+            QuickNoteNotificationScheduler.clearDeliveredReminder(noteId: noteId)
         }
         completionHandler()
     }
@@ -48,9 +48,13 @@ enum QuickNoteNotificationScheduler {
     private static let lock = NSLock()
     private static var scheduledFireMillis: [String: Int64] = [:]
 
-    /// Called with the note id after one of its reminders is displayed,
-    /// so the reminder can be cleared like Android's receiver does.
-    static var onReminderDelivered: ((String) -> Void)?
+    /// Clears a fired reminder straight through the shared
+    /// SetQuickNoteReminderUseCase (via the bridge helper) — independent of
+    /// whether the menu popover (and its MenuState wiring) is alive.
+    static func clearDeliveredReminder(noteId: String) {
+        QuickNoteAppleBridge.shared.ensureKoin()
+        QuickNoteAppleBridge.shared.menuHelper().clearReminder(id: noteId)
+    }
 
     static func configure() {
         let center = UNUserNotificationCenter.current()
@@ -115,7 +119,7 @@ enum QuickNoteNotificationScheduler {
             }
             // Drop delivered banners only for notes that are gone (trashed).
             // A just-fired reminder keeps its banner like on Android, while
-            // its remindAt is cleared from the database via onReminderDelivered.
+            // its remindAt is cleared via clearDeliveredReminder.
             let liveIds = Set(notes.map { identifier(for: $0.id) })
             center.getDeliveredNotifications { delivered in
                 let orphaned = delivered.map(\.request.identifier).filter { !liveIds.contains($0) }

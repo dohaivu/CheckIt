@@ -30,6 +30,14 @@ enum QuickNoteReminderPreset: CaseIterable {
         case .hour1: "In 1 hour"
         }
     }
+
+    var shortLabel: String {
+        switch self {
+        case .min15: "15m"
+        case .min30: "30m"
+        case .hour1: "1h"
+        }
+    }
 }
 
 enum QuickNoteRowText {
@@ -93,11 +101,9 @@ final class QuickNoteMenuState: ObservableObject {
                 }
             }
         }
-        // Fired reminders clear their DB flag like Android's receiver;
-        // the banner itself stays in Notification Center.
-        QuickNoteNotificationScheduler.onReminderDelivered = { [weak self] id in
-            self?.helper.clearReminder(id: id)
-        }
+        // Fired reminders clear themselves via the scheduler's direct bridge
+        // call (works with the popover closed); the banner stays in
+        // Notification Center.
         // Menu opens render local Room data only (pushed live by the flows
         // above). Maintenance stays throttled like QuickNoteViewModel, and
         // no Firestore sync is triggered here — syncs happen on local edits,
@@ -110,7 +116,6 @@ final class QuickNoteMenuState: ObservableObject {
         notesSubscription = nil
         deletedSubscription?.cancel()
         deletedSubscription = nil
-        QuickNoteNotificationScheduler.onReminderDelivered = nil
     }
 
     /// Full maintenance (auto-trash, expiry, fired-reminder cleanup, sync),
@@ -308,19 +313,21 @@ struct QuickNoteRow: View {    @ObservedObject var state: QuickNoteMenuState
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            ForEach(QuickNoteReminderPreset.allCases, id: \.self) { preset in
-                Button(preset.label) {
-                    state.remind(note, preset: preset)
-                    showPicker = false
+            HStack(spacing: 8) {
+                ForEach(QuickNoteReminderPreset.allCases, id: \.self) { preset in
+                    Button(preset.shortLabel) {
+                        state.remind(note, preset: preset)
+                        showPicker = false
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
                 }
-                .buttonStyle(.link)
             }
-            Divider()
-            DatePicker("Custom time", selection: $customDate, in: Date()..., displayedComponents: [.date, .hourAndMinute])
-                .datePickerStyle(.compact)
             HStack {
-                Spacer()
-                Button("Set custom time") {
+                DatePicker("", selection: $customDate, in: Date()..., displayedComponents: [.date, .hourAndMinute])
+                    .labelsHidden()
+                    .datePickerStyle(.compact)
+                Button("Set") {
                     state.remind(note, at: customDate)
                     showPicker = false
                 }

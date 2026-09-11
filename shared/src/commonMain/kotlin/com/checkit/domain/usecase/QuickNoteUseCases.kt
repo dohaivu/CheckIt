@@ -64,7 +64,7 @@ class SetQuickNoteReminderUseCase(
         repository.setReminder(id, QuickNoteRules.reminderAt(now, durationMillis))
     }
 
-    suspend fun clear(id: String) = repository.setReminder(id, null)
+    suspend fun clear(id: String) = repository.clearReminder(id)
 }
 
 class MoveQuickNoteUseCase(

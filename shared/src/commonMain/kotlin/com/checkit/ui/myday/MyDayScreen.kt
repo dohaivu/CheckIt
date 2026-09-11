@@ -73,8 +73,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -145,6 +148,7 @@ internal fun MyDayScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val sprintState by viewModel.sprintManager.state.collectAsState()
+    val quickNotes by quickNoteViewModel.uiState.collectAsState()
     val pagerState = rememberPagerState { MyDaySegments.entries.size }
     val scope = rememberCoroutineScope()
     val onQuickPage = pagerState.currentPage == MyDaySegments.QuickNotes.ordinal
@@ -166,7 +170,19 @@ internal fun MyDayScreen(
                             MyDaySegments.entries.forEach { segment ->
                                 val selected = pagerState.currentPage == segment.ordinal
                                 Text(
-                                    text = segment.title,
+                                    text = buildAnnotatedString {
+                                        append(segment.title)
+                                        if (segment == MyDaySegments.QuickNotes && quickNotes.next.isNotEmpty()) {
+                                            withStyle(
+                                                SpanStyle(
+                                                    fontWeight = FontWeight.Normal,
+                                                    fontSize = MaterialTheme.typography.titleMedium.fontSize,
+                                                )
+                                            ) {
+                                                append(" ${quickNotes.next.size}")
+                                            }
+                                        }
+                                    },
                                     style = MaterialTheme.typography.headlineMedium,
                                     fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                                     color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
@@ -198,7 +214,7 @@ internal fun MyDayScreen(
                             Icon(
                                 Icons.Default.Refresh,
                                 contentDescription = "Refresh",
-                                modifier = Modifier.size(20.dp),
+                                modifier = Modifier.size(24.dp),
                             )
                         }
                     }
@@ -606,7 +622,15 @@ private fun ReviewReminder(
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = if (periodDetail.isNotBlank()) "Time to Reflect · $periodDetail".uppercase() else "Time to Reflect".uppercase(),
+                text = buildAnnotatedString {
+                    append("Time to Reflect".uppercase())
+                    if (periodDetail.isNotBlank()) {
+                        withStyle(SpanStyle(fontWeight = FontWeight.Normal, color = color.copy(alpha = 0.6f))) {
+                            append(" · ")
+                        }
+                        append(periodDetail.uppercase())
+                    }
+                },
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Black,
                 color = color,
@@ -676,7 +700,15 @@ private fun GoalReminder(
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = if (periodDetail.isNotBlank()) "Missing Goal · $periodDetail".uppercase() else "Missing Goal".uppercase(),
+                text = buildAnnotatedString {
+                    append("Missing Goal".uppercase())
+                    if (periodDetail.isNotBlank()) {
+                        withStyle(SpanStyle(fontWeight = FontWeight.Normal, color = color.copy(alpha = 0.6f))) {
+                            append(" · ")
+                        }
+                        append(periodDetail.uppercase())
+                    }
+                },
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Black,
                 color = color,
@@ -757,7 +789,12 @@ private fun DayGoalBanner(
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Text(
-                        text = "${goal.periodDetail()} FOCUS",
+                        text = buildAnnotatedString {
+                            append(goal.periodDetail().uppercase())
+                            withStyle(SpanStyle(fontWeight = FontWeight.Light)) {
+                                append(" FOCUS")
+                            }
+                        },
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.ExtraBold,
                         color = color,
