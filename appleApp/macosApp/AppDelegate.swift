@@ -10,13 +10,24 @@
 import AppKit
 import SwiftUI
 
+extension Notification.Name {
+    /// Posted (main thread) with an Int object: the current NEXT-notes count.
+    static let quickNoteHasItems = Notification.Name("checkit.quickNoteHasItems")
+}
+
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private let popover = NSPopover()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(itemsChanged(_:)),
+            name: .quickNoteHasItems,
+            object: nil
+        )
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = item.button {
             button.image = NSImage(systemSymbolName: "note.text", accessibilityDescription: "Quick Note")
             button.target = self
@@ -50,6 +61,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
         }
+    }
+
+    /// Menu-bar count next to the icon, in the system accent color.
+    /// Hidden when there is nothing to look at.
+    func setItemCount(_ count: Int) {
+        guard let button = statusItem?.button else { return }
+        if count > 0 {
+            button.attributedTitle = NSAttributedString(
+                string: "\(count)",
+                attributes: [.foregroundColor: NSColor.controlAccentColor]
+            )
+        } else {
+            button.attributedTitle = NSAttributedString(string: "")
+        }
+    }
+
+    @objc private func itemsChanged(_ notification: Notification) {
+        setItemCount((notification.object as? Int) ?? 0)
     }
 
     private func showRightClickMenu() {

@@ -78,6 +78,8 @@ final class QuickNoteMenuState: ObservableObject {
                 // Callbacks already arrive on Main, but stay safe.
                 DispatchQueue.main.async {
                     self?.notes = notes
+                    // Menu-bar count next to the icon.
+                    NotificationCenter.default.post(name: .quickNoteHasItems, object: notes.count)
                     // Shared scheduler is a no-op on Apple targets: reconcile
                     // macOS system notifications from the observed remindAt values.
                     QuickNoteNotificationScheduler.sync(with: notes)
@@ -252,10 +254,7 @@ struct QuickNoteRow: View {    @ObservedObject var state: QuickNoteMenuState
     private var remindAtMillis: Int64? { note.remindAt?.int64Value }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 8) {
-            Image(systemName: "line.3.horizontal")
-                .foregroundStyle(.tertiary)
-                .help("Drag to reorder")
+        HStack(alignment: .center, spacing: 8) {            
             Text(note.content)
                 .lineLimit(3)
                 .frame(maxWidth: .infinity, alignment: .leading)
