@@ -71,8 +71,6 @@
 		};
 		FC96EE3B9F525CF6769329B5 /* Configuration */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = Configuration;
 			sourceTree = "<group>";
 		};
@@ -110,13 +108,6 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		84B06F0B74DCDD8D818BF1E2 /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Pods;
-			sourceTree = "<group>";
-		};
 		BB20981DDDFDF6D04A217A8A = {
 			isa = PBXGroup;
 			children = (
@@ -124,7 +115,6 @@
 				2BC5D7696153CB0DFC4B6B4F /* iosApp */,
 				71EAA46C3052D84100B51246 /* macosApp */,
 				130C316EF7162D9A63162B0A /* Products */,
-				84B06F0B74DCDD8D818BF1E2 /* Pods */,
 				E7494A9EAAAB31F66B6827E6 /* Frameworks */,
 			);
 			sourceTree = "<group>";

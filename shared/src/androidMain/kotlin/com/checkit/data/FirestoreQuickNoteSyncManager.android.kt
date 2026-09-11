@@ -125,7 +125,7 @@ class FirestoreQuickNoteSyncManager(
                     recordFailure("Sign-in failed. Sync will retry automatically.")
                     return
                 }
-                Log.d(TAG, "Sync started (uid=${userId.take(6)}…)")
+                Log.d(TAG, "Sync started uid=$userId")
                 val firestore = FirebaseFirestore.getInstance(FIRESTORE_DATABASE_ID)
                 val storage = FirebaseStorage.getInstance(STORAGE_BUCKET)
                 val notesRef = firestore

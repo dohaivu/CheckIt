@@ -2,6 +2,7 @@ package com.checkit.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.checkit.auth.GoogleAccountManager
 import com.checkit.data.CheckItRepository
 import com.checkit.domain.AppConfig
 import com.checkit.domain.CheckInReminderPolicy
@@ -26,6 +27,7 @@ class SettingsViewModel(
     private val appConfig: AppConfig,
     private val settingsRepository: SettingsRepository,
     private val appReminderScheduler: AppReminderScheduler,
+    private val accountManager: GoogleAccountManager,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -47,6 +49,11 @@ class SettingsViewModel(
                     )
                 }
                 appReminderScheduler.applySettings(stored)
+            }
+        }
+        viewModelScope.launch {
+            accountManager.accountState.collect { account ->
+                _uiState.update { it.copy(account = account) }
             }
         }
     }
@@ -125,6 +132,18 @@ class SettingsViewModel(
         viewModelScope.launch {
             settingsRepository.setScheduleReminderEnabled(enabled)
         }
+    }
+
+    fun signInWithGoogle() {
+        viewModelScope.launch { accountManager.signIn() }
+    }
+
+    fun signOut() {
+        viewModelScope.launch { accountManager.signOut() }
+    }
+
+    fun clearAccountError() {
+        accountManager.clearError()
     }
 
     private fun sendEvent(event: UiEvent) {

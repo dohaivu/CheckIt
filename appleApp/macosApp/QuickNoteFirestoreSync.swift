@@ -140,6 +140,7 @@ final class QuickNoteFirestoreSync: ObservableObject {
                 recordFailure("Sign-in failed. Sync will retry automatically.")
                 return
             }
+            print("Sync started uid=\(userId)")
             let db = Firestore.firestore(database: Self.firestoreDatabaseId)
             let storage = Storage.storage(url: Self.storageBucket)
             let notesRef = db.collection(Self.usersCollection).document(userId)
