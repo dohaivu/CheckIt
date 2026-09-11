@@ -6,8 +6,8 @@
 //
 import SwiftUI
 import Combine
+import UniformTypeIdentifiers
 import Shared
-import GoogleSignInSwift
 
 /// Preset durations mirror QuickNoteRules in shared (15/30/60 min).
 enum QuickNoteReminderPreset: CaseIterable {
@@ -99,10 +99,11 @@ final class QuickNoteMenuState: ObservableObject {
         QuickNoteNotificationScheduler.onReminderDelivered = { [weak self] id in
             self?.helper.clearReminder(id: id)
         }
-        // Every menu open is an explicit user request: force maintenance so
-        // expiry, auto-trash, and fired-reminder cleanup apply immediately
-        // instead of waiting out the 5-minute throttle.
-        refresh(force: true)
+        // Menu opens render local Room data only (pushed live by the flows
+        // above). Maintenance stays throttled like QuickNoteViewModel, and
+        // no Firestore sync is triggered here — syncs happen on local edits,
+        // reconnect, app launch, or the header refresh button.
+        refresh()
     }
 
     func stop() {
@@ -166,6 +167,27 @@ final class QuickNoteMenuState: ObservableObject {
     func clearReminder(_ note: QuickNote) {
         QuickNoteNotificationScheduler.cancel(noteId: note.id)
         helper.clearReminder(id: note.id)
+        QuickNoteFirestoreSync.shared.requestSync()
+    }
+
+    /// Persist a drag-and-drop position change within NEXT. The list is
+    /// reordered optimistically (like Android's dragOrder) and the shared
+    /// flow corrects it once Room echoes the new sortOrder.
+    /// `from` is the dragged row's index at drag start, `ontoId` the drop
+    /// target row. A single write, like Android's commitDrag.
+    func drop(draggedId: String, from: Int, ontoId: String) {
+        guard draggedId != ontoId,
+              notes.indices.contains(from),
+              notes[from].id == draggedId,
+              let target = notes.firstIndex(where: { $0.id == ontoId })
+        else { return }
+        // Post-removal insertion offset (same convention as Array.move and
+        // RoomQuickNoteRepository.reorder): dropping onto a row inserts
+        // the dragged row before it.
+        let to = from < target ? target - 1 : target
+        guard from != to else { return }
+        notes.move(fromOffsets: IndexSet(integer: from), toOffset: to)
+        helper.reorder(fromIndex: Int32(from), toIndex: Int32(to))
         QuickNoteFirestoreSync.shared.requestSync()
     }
 
@@ -312,7 +334,6 @@ struct QuickNoteDeletedRow: View {
 struct QuickNoteMenuView: View {
     @StateObject private var state = QuickNoteMenuState()
     @ObservedObject private var sync = QuickNoteFirestoreSync.shared
-    @ObservedObject private var account = QuickNoteGoogleSignIn.shared
 
     var body: some View {
         VStack(spacing: 8) {
@@ -332,31 +353,65 @@ struct QuickNoteMenuView: View {
                 .help("Refresh")
             }
 
-            List {
-                Section("NEXT") {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("NEXT")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.secondary)
                     if state.notes.isEmpty {
                         Text("Nothing here. Capture a thought below.")
                             .foregroundStyle(.secondary)
                             .font(.callout)
                     } else {
-                        ForEach(state.notes, id: \.id) { note in
-                            QuickNoteRow(state: state, note: note)
+                        LazyVStack(spacing: 0) {
+                            ForEach(Array(state.notes.enumerated()), id: \.element.id) { index, note in
+                                QuickNoteRow(state: state, note: note)
+                                    .padding(.vertical, 4)
+                                    .contentShape(Rectangle())
+                                    .onDrag {
+                                        // Pure payload, no state mutation: mutating
+                                        // view state here tears down the rows and
+                                        // kills the drag session on macOS.
+                                        NSItemProvider(object: "\(index):\(note.id)" as NSString)
+                                    }
+                                    .onDrop(of: [.text], isTargeted: nil) { (providers: [NSItemProvider]) -> Bool in
+                                        guard let provider = providers.first else { return false }
+                                        _ = provider.loadObject(ofClass: NSString.self) { payload, _ in
+                                            guard let payload = payload as? String else { return }
+                                            let parts = payload.split(separator: ":", maxSplits: 1).map(String.init)
+                                            guard parts.count == 2, let from = Int(parts[0]) else { return }
+                                            DispatchQueue.main.async {
+                                                state.drop(draggedId: parts[1], from: from, ontoId: note.id)
+                                            }
+                                        }
+                                        return true
+                                    }
+                                Divider()
+                            }
                         }
                     }
-                }
-                Section("TO BE DELETED") {
+                    Text("TO BE DELETED")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 6)
                     if state.deletedNotes.isEmpty {
                         Text("Deleted notes disappear after 24 hours.")
                             .foregroundStyle(.secondary)
                             .font(.callout)
                     } else {
-                        ForEach(state.deletedNotes, id: \.id) { note in
-                            QuickNoteDeletedRow(state: state, note: note)
+                        LazyVStack(spacing: 0) {
+                            ForEach(state.deletedNotes, id: \.id) { note in
+                                QuickNoteDeletedRow(state: state, note: note)
+                                    .padding(.vertical, 4)
+                                Divider()
+                            }
                         }
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .listStyle(.plain)
             .frame(height: listHeight)
 
             Divider()
@@ -374,59 +429,14 @@ struct QuickNoteMenuView: View {
                 .keyboardShortcut(.return, modifiers: .command)
             }
 
-            Button("Quit") {
-                NSApplication.shared.terminate(nil)
-            }
-
-            accountSection
-
             syncStatusLine
         }
         .padding()
         .frame(width: 380)
         .onAppear {
             state.start()
-            QuickNoteFirestoreSync.shared.requestSync()
         }
         .onDisappear { state.stop() }
-        .onOpenURL { url in
-            _ = QuickNoteGoogleSignIn.shared.handle(url: url)
-        }
-    }
-
-    @ViewBuilder
-    private var accountSection: some View {
-        VStack(spacing: 4) {
-            if !account.isAnonymous, let email = account.email {
-                HStack {
-                    Text("Signed in as \(email)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                    Spacer()
-                    Button("Sign Out") {
-                        account.signOut()
-                    }
-                    .buttonStyle(.link)
-                    .font(.caption)
-                }
-            } else {
-                GoogleSignInButton {
-                    Task { await account.signIn() }
-                }
-                .frame(maxWidth: .infinity)
-                .disabled(account.busy)
-                if account.busy {
-                    Text("Signing in…").font(.caption).foregroundStyle(.secondary)
-                } else {
-                    Text("Sign in to sync notes across devices")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-            }
-            if let error = account.errorMessage {
-                Text(error).font(.caption).foregroundStyle(.red)
-            }
-        }
     }
 
     @ViewBuilder

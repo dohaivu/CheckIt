@@ -47,6 +47,13 @@
 			);
 			target = 38834493044252A2C4BFAD03 /* iosApp */;
 		};
+		71EAA4C03052F31000B51246 /* Exceptions for "macosApp" folder in "macosApp" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 71EAA46A3052D84100B51246 /* macosApp */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -60,6 +67,9 @@
 		};
 		71EAA46C3052D84100B51246 /* macosApp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				71EAA4C03052F31000B51246 /* Exceptions for "macosApp" folder in "macosApp" target */,
+			);
 			path = macosApp;
 			sourceTree = "<group>";
 		};

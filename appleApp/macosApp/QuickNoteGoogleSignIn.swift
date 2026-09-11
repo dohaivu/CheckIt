@@ -49,10 +49,20 @@ final class QuickNoteGoogleSignIn: ObservableObject {
                 throw SignInError.notConfigured
             }
             GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
-            guard let window = NSApp.keyWindow else {
+            // The popover may still be becoming key (e.g. sign-in launched
+            // from the right-click menu, which opens the popover first).
+            var presenting: NSWindow?
+            for _ in 0..<10 {
+                if let key = NSApp.keyWindow {
+                    presenting = key
+                    break
+                }
+                try await Task.sleep(nanoseconds: 50_000_000)
+            }
+            guard let presenting else {
                 throw SignInError.noWindow
             }
-            let gidResult = try await GIDSignIn.sharedInstance.signIn(withPresenting: window)
+            let gidResult = try await GIDSignIn.sharedInstance.signIn(withPresenting: presenting)
             guard let idToken = gidResult.user.idToken?.tokenString else {
                 throw SignInError.missingToken
             }

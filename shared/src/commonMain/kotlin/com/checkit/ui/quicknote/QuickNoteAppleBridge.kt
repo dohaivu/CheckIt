@@ -4,6 +4,7 @@ import com.checkit.domain.usecase.CreateQuickNoteUseCase
 import com.checkit.domain.usecase.DeleteQuickNotePermanentlyUseCase
 import com.checkit.domain.usecase.MaintainQuickNotesUseCase
 import com.checkit.domain.usecase.MoveQuickNoteToBeDeletedUseCase
+import com.checkit.domain.usecase.MoveQuickNoteUseCase
 import com.checkit.domain.usecase.ObserveQuickNextUseCase
 import com.checkit.domain.usecase.ObserveQuickToBeDeletedUseCase
 import com.checkit.domain.usecase.RestoreQuickNoteUseCase
@@ -42,6 +43,7 @@ class QuickNoteMenuHelper(
     private val deletePermanently: DeleteQuickNotePermanentlyUseCase,
     private val setReminder: SetQuickNoteReminderUseCase,
     private val maintain: MaintainQuickNotesUseCase,
+    private val moveNote: MoveQuickNoteUseCase,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
@@ -115,6 +117,17 @@ class QuickNoteMenuHelper(
     fun clearReminder(id: String) {
         scope.launch {
             runCatching { setReminder.clear(id) }
+        }
+    }
+
+    /**
+     * Persist a drag-and-drop position change within NEXT, mirroring
+     * QuickNoteViewModel's drag commit. Indices refer to the sortOrder-sorted
+     * NEXT list, which is what observeNotes() emits.
+     */
+    fun reorder(fromIndex: Int, toIndex: Int) {
+        scope.launch {
+            runCatching { moveNote.reorder(fromIndex, toIndex) }
         }
     }
 

@@ -11,6 +11,8 @@ import FirebaseCore
 
 @main
 struct CheckItApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     init() {
         QuickNoteAppleBridge.shared.ensureKoin()
         QuickNoteNotificationScheduler.configure()
@@ -19,11 +21,12 @@ struct CheckItApp: App {
         QuickNoteFirestoreSync.shared.start()
     }
 
+    // Menu-bar-only app (LSUIElement): AppDelegate owns the NSStatusItem.
+    // No window scenes here; the popover hosts QuickNoteMenuView.
     var body: some Scene {
-        MenuBarExtra("QuickNote", systemImage: "note.text") {
-            QuickNoteMenuView()
+        Settings {
+            EmptyView()
         }
-        .menuBarExtraStyle(.window)
     }
 
     /// Requires GoogleService-Info.plist in the macosApp target (Firebase
