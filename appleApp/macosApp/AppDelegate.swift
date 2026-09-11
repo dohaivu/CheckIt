@@ -36,7 +36,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = item.button {
-            button.image = NSImage(systemSymbolName: "note.text", accessibilityDescription: "Quick Note")
+            // App icon in the menu bar, scaled to status-item size.
+            // Falls back to the SF Symbol when no icon is bundled.
+            let icon = (NSApp.applicationIconImage?.copy() as? NSImage)
+                ?? NSImage(systemSymbolName: "note.text", accessibilityDescription: nil)
+            icon?.size = NSSize(width: 24, height: 24)
+            icon?.accessibilityDescription = "Quick Note"
+            button.image = icon
             button.target = self
             button.action = #selector(statusClicked(_:))
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
