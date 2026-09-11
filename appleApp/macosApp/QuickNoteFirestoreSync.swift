@@ -13,9 +13,10 @@
 //  - triggers are local edits (debounced), menu open, and network reconnect.
 //
 //  Room access goes through QuickNoteSyncBridge so the document mapping
-//  (QuickNoteSyncDocument) stays single-sourced in shared Kotlin.
-//  Field names below must match QuickNoteSyncDocument.
+//  (QuickNoteSyncDocument), sync topology (QuickNoteSyncConfig), and merge
+//  rules stay single-sourced in shared Kotlin.
 //
+
 import Foundation
 import Combine
 import Network
@@ -37,21 +38,12 @@ struct QuickNoteSyncUiState {
 final class QuickNoteFirestoreSync: ObservableObject {
     static let shared = QuickNoteFirestoreSync()
 
-    // MARK: - Constants (mirror Android companion)
+    // MARK: - Constants (topology from QuickNoteSyncConfig; timing stays local)
 
-    private static let firestoreDatabaseId = "checkit"
-    private static let storageBucket = "gs://aimpact-studio-872e7.firebasestorage.app"
-    private static let usersCollection = "users"
-    private static let notesCollection = "quickNotes"
-    private static let attachmentsDir = "quicknote_attachments"
-    private static let attachmentsSubdir = "quicknote_images"
-    private static let maxDownloadBytes: Int64 = 10 * 1024 * 1024
+    private static let config = QuickNoteSyncConfig.shared
+    private static let rules = QuickNoteRules.shared
+    private static let attachmentsSubdir = "QuickNoteImages"
     private static let syncDebounceNanos: UInt64 = 30_000_000_000 // 30s: no realtime sync, just cross-device availability
-    private static let pushBatchSize = 400
-    private static let pullOverlapMillis: Int64 = 60_000
-    private static let baseBackoffMillis: Int64 = 30_000
-    private static let maxBackoffMillis: Int64 = 300_000
-    private static let purgeAfterMillis: Int64 = 7 * 24 * 60 * 60 * 1000
     private static let lastPullKey = "quicknote.lastPullMillis"
     private static let lastSyncedAtKey = "quicknote.lastSyncedAt"
 
@@ -121,8 +113,10 @@ final class QuickNoteFirestoreSync: ObservableObject {
         defer {
             isSyncing = false
             if rerunRequested {
+                // Edits landed mid-sync: converge immediately instead of
+                // waiting out the debounce (sync itself leaves no dirt).
                 rerunRequested = false
-                requestSync()
+                Task { await sync() }
             }
         }
 
@@ -147,10 +141,10 @@ final class QuickNoteFirestoreSync: ObservableObject {
                 return
             }
             print("Sync started uid=\(userId)")
-            let db = Firestore.firestore(database: Self.firestoreDatabaseId)
-            let storage = Storage.storage(url: Self.storageBucket)
-            let notesRef = db.collection(Self.usersCollection).document(userId)
-                .collection(Self.notesCollection)
+            let db = Firestore.firestore(database: Self.config.DATABASE_ID)
+            let storage = Storage.storage(url: Self.config.STORAGE_BUCKET)
+            let notesRef = db.collection(Self.config.USERS_COLLECTION).document(userId)
+                .collection(Self.config.NOTES_COLLECTION)
 
             // Upload pending attachments first so their URLs are in the doc push.
             var dirty = try await bridgeDirtyNotes()
@@ -161,12 +155,18 @@ final class QuickNoteFirestoreSync: ObservableObject {
             }
 
             // Push: only locally changed rows, including tombstones.
+            // Documents come JSON-encoded from the bridge so field names
+            // stay single-sourced in QuickNoteSyncDocument.
             // Re-read after uploads: attachment URLs bumped updatedAt.
             dirty = try await bridgeDirtyNotes()
-            for chunk in dirty.chunked(into: Self.pushBatchSize) {
+            let documents = try await bridgeDirtyDocuments()
+            for chunk in documents.chunked(into: Int(Self.config.PUSH_BATCH_SIZE)) {
                 let batch = db.batch()
-                for note in chunk {
-                    batch.setData(Self.documentData(for: note), forDocument: notesRef.document(note.id))
+                for json in chunk {
+                    guard let doc = Self.documentDict(json: json),
+                          let id = doc["id"] as? String
+                    else { continue }
+                    batch.setData(doc, forDocument: notesRef.document(id))
                 }
                 try await batch.commit()
             }
@@ -183,7 +183,7 @@ final class QuickNoteFirestoreSync: ObservableObject {
             let lastPull = Int64(UserDefaults.standard.double(forKey: Self.lastPullKey))
             let pullStart = Self.nowMillis()
             let snapshot = try await notesRef
-                .whereField("updatedAt", isGreaterThan: lastPull - Self.pullOverlapMillis)
+                .whereField("updatedAt", isGreaterThan: lastPull - Self.config.PULL_OVERLAP_MILLIS)
                 .getDocuments()
             var applied = 0
             var maxRemoteUpdatedAt = lastPull
@@ -193,12 +193,14 @@ final class QuickNoteFirestoreSync: ObservableObject {
                     maxRemoteUpdatedAt = max(maxRemoteUpdatedAt, updated)
                 }
                 guard let json = Self.jsonString(for: data, documentId: doc.documentID) else { continue }
-                if try await bridgeApplyRemote(json: json) {
+                // Download first so a failed fetch keeps the existing cached
+                // file as fallback (Android parity); the path rides into
+                // the merge below.
+                let localPath = await downloadAttachment(storage: storage, documentId: doc.documentID, data: data)
+                if try await bridgeApplyRemote(json: json, localPath: localPath) {
                     applied += 1
                     if (data["deleted"] as? Bool) == true {
                         QuickNoteNotificationScheduler.cancel(noteId: doc.documentID)
-                    } else {
-                        await downloadAttachmentIfNeeded(storage: storage, documentId: doc.documentID, data: data)
                     }
                 }
             }
@@ -234,7 +236,7 @@ final class QuickNoteFirestoreSync: ObservableObject {
         let fileURL = URL(fileURLWithPath: localPath)
         guard FileManager.default.fileExists(atPath: fileURL.path) else { return nil }
         do {
-            let ref = storage.reference().child("\(Self.attachmentsDir)/\(userId)/\(note.id).webp")
+            let ref = storage.reference().child("\(Self.config.ATTACHMENTS_DIR)/\(userId)/\(note.id).webp")
             _ = try await ref.putFileAsync(from: fileURL)
             return try await ref.downloadURL().absoluteString
         } catch {
@@ -243,33 +245,38 @@ final class QuickNoteFirestoreSync: ObservableObject {
         }
     }
 
-    /// Fetches the remote attachment when we don't already have it locally.
-    private func downloadAttachmentIfNeeded(storage: Storage, documentId: String, data: [String: Any]) async {
+    /// Device-local path to record for this document's attachment: the cached
+    /// file when the URL is unchanged, a fresh download otherwise, nil when
+    /// there is nothing to show or the fetch failed (the merge then keeps
+    /// the previous path as fallback, like Android).
+    private func downloadAttachment(storage: Storage, documentId: String, data: [String: Any]) async -> String? {
         guard let urlString = data["attachmentUrl"] as? String,
-              let merged = try? await bridgeNote(id: documentId),
-              merged.type != QuickNoteType.text
-        else { return }
-        if let localPath = merged.attachmentLocalPath,
+              (data["type"] as? String) != "TEXT"
+        else { return nil }
+        if let existing = try? await bridgeNote(id: documentId),
+           let localPath = existing.attachmentLocalPath,
+           existing.attachmentUrl == urlString,
            FileManager.default.fileExists(atPath: localPath) {
-            return
+            return localPath
         }
         do {
             let ref = storage.reference(forURL: urlString)
-            let bytes = try await ref.data(maxSize: Self.maxDownloadBytes)
+            let bytes = try await ref.data(maxSize: Self.config.MAX_DOWNLOAD_BYTES)
             let dir = Self.attachmentDir()
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
             let fileURL = dir.appendingPathComponent("\(documentId).webp")
             try bytes.write(to: fileURL)
-            try await bridgeSetLocalPath(id: documentId, path: fileURL.path)
+            return fileURL.path
         } catch {
             print("[QuickNoteSync] Attachment download failed for \(documentId): \(error)")
+            return nil
         }
     }
 
     /// Permanent deletion for old tombstones: Storage blob, Firestore
     /// document, then the local row — in that order.
     private func purgeTombstones(storage: Storage, notesRef: CollectionReference, now: Int64) async throws -> Int {
-        let tombstones = try await bridgePurgeable(cutoff: now - Self.purgeAfterMillis)
+        let tombstones = try await bridgePurgeable(cutoff: now - Self.rules.PURGE_AFTER_MILLIS)
         var purged = 0
         var hardDeleteIds: [String] = []
         for note in tombstones {
@@ -297,29 +304,20 @@ final class QuickNoteFirestoreSync: ObservableObject {
     private func recordFailure(_ message: String) {
         consecutiveFailures += 1
         let shift = min(consecutiveFailures - 1, 4)
-        let backoff = min(Self.baseBackoffMillis * (Int64(1) << shift), Self.maxBackoffMillis)
+        let backoff = min(Self.config.BASE_BACKOFF_MILLIS * (Int64(1) << shift), Self.config.MAX_BACKOFF_MILLIS)
         nextRetryAtMillis = Self.nowMillis() + backoff
         uiState = QuickNoteSyncUiState(status: .error, lastSyncedAt: uiState.lastSyncedAt, message: message)
         print("[QuickNoteSync] \(message) retry in \(backoff)ms")
     }
 
-    // MARK: - Document mapping (field names match QuickNoteSyncDocument)
+    // MARK: - Document mapping (decoded with QuickNoteSyncDocument)
 
-    private static func documentData(for note: QuickNote) -> [String: Any] {
-        var data: [String: Any] = [
-            "id": note.id,
-            "content": note.content,
-            "status": note.status.name,
-            "createdAt": note.createdAt,
-            "updatedAt": note.updatedAt,
-            "sortOrder": note.sortOrder,
-            "deleted": note.deleted,
-            "type": note.type.name,
-        ]
-        data["remindAt"] = note.remindAt?.int64Value ?? NSNull()
-        data["deleteAt"] = note.deleteAt?.int64Value ?? NSNull()
-        data["attachmentUrl"] = note.attachmentUrl ?? NSNull()
-        return data
+    /// Parses a bridge-encoded push document back to a Firestore dictionary.
+    private static func documentDict(json: String) -> [String: Any]? {
+        guard let data = json.data(using: .utf8),
+              let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return nil }
+        return dict
     }
 
     private static func jsonString(for data: [String: Any], documentId: String) -> String? {
@@ -333,7 +331,7 @@ final class QuickNoteFirestoreSync: ObservableObject {
 
     private static func attachmentDir() -> URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("QuickNoteImages", isDirectory: true)
+            .appendingPathComponent(attachmentsSubdir, isDirectory: true)
     }
 
     private static func nowMillis() -> Int64 {
@@ -365,15 +363,6 @@ final class QuickNoteFirestoreSync: ObservableObject {
         }
     }
 
-    private func bridgeSetLocalPath(id: String, path: String) async throws {
-        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
-            bridge().setAttachmentLocalPath(id: id, path: path) { error in
-                if let error { cont.resume(throwing: error) }
-                else { cont.resume() }
-            }
-        }
-    }
-
     private func bridgeMarkClean(ids: [String], maxUpdatedAt: Int64) async throws {
         try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
             bridge().markClean(ids: ids, maxUpdatedAt: maxUpdatedAt) { error in
@@ -392,9 +381,18 @@ final class QuickNoteFirestoreSync: ObservableObject {
         }
     }
 
-    private func bridgeApplyRemote(json: String) async throws -> Bool {
+    private func bridgeDirtyDocuments() async throws -> [String] {
         try await withCheckedThrowingContinuation { cont in
-            bridge().applyRemoteJson(json: json) { applied, error in
+            bridge().dirtyNoteDocuments { documents, error in
+                if let error { cont.resume(throwing: error) }
+                else { cont.resume(returning: documents ?? []) }
+            }
+        }
+    }
+
+    private func bridgeApplyRemote(json: String, localPath: String?) async throws -> Bool {
+        try await withCheckedThrowingContinuation { cont in
+            bridge().applyRemoteJson(json: json, downloadedAttachmentPath: localPath) { applied, error in
                 if let error { cont.resume(throwing: error) }
                 else { cont.resume(returning: applied?.boolValue ?? false) }
             }

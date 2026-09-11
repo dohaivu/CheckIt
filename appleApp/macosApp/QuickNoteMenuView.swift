@@ -10,15 +10,16 @@ import UniformTypeIdentifiers
 import AppKit
 import Shared
 
-/// Preset durations mirror QuickNoteRules in shared (15/30/60 min).
+/// Reminder presets backed by QuickNoteRules durations in shared.
+/// Badge text comes from QuickNoteDisplayText so both platforms match.
 enum QuickNoteReminderPreset: CaseIterable {
     case min15, min30, hour1
 
     var durationMillis: Int64 {
         switch self {
-        case .min15: 15 * 60 * 1000
-        case .min30: 30 * 60 * 1000
-        case .hour1: 60 * 60 * 1000
+        case .min15: QuickNoteRules.shared.REMINDER_15_MIN_MILLIS
+        case .min30: QuickNoteRules.shared.REMINDER_30_MIN_MILLIS
+        case .hour1: QuickNoteRules.shared.REMINDER_1_HOUR_MILLIS
         }
     }
 
@@ -31,20 +32,15 @@ enum QuickNoteReminderPreset: CaseIterable {
     }
 }
 
-/// Text mirrors shared formatReminder/formatRemaining in QuickNoteScreen.kt.
 enum QuickNoteRowText {
+    private static let text = QuickNoteDisplayText.shared
+
     static func reminderText(remindAtMillis: Int64) -> String {
-        let remaining = max(0, remindAtMillis - nowMillis())
-        let minutes = remaining / 60_000
-        if minutes < 60 { return "in \(max(1, minutes))m" }
-        return "in \(minutes / 60)h"
+        text.reminderText(remindAt: remindAtMillis, now: nowMillis())
     }
 
-    static func remainingText(deleteAtMillis: Int64) -> String {
-        let remaining = max(0, deleteAtMillis - nowMillis())
-        let hours = remaining / 3_600_000
-        if hours >= 1 { return "\(hours)h" }
-        return "\(max(1, remaining / 60_000))m"
+    static func remainingText(deleteAt: KotlinLong?) -> String {
+        text.remainingText(deleteAt: deleteAt, now: nowMillis())
     }
 
     private static func nowMillis() -> Int64 {
@@ -369,8 +365,8 @@ struct QuickNoteDeletedRow: View {
                     remoteURL: note.attachmentUrl.flatMap(URL.init(string:))
                 )
             }
-            if let millis = note.deleteAt?.int64Value {
-                Text(QuickNoteRowText.remainingText(deleteAtMillis: millis))
+            if note.deleteAt != nil {
+                Text(QuickNoteRowText.remainingText(deleteAt: note.deleteAt))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

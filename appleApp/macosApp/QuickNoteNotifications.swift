@@ -42,6 +42,12 @@ enum QuickNoteNotificationScheduler {
     private static let delegate = QuickNoteNotificationDelegate()
     private static let idPrefix = "quicknote-"
 
+    /// Last scheduled fire time per request id. Lets sync() add only new or
+    /// changed reminders instead of re-arming every pending request on each
+    /// observed list emission.
+    private static let lock = NSLock()
+    private static var scheduledFireMillis: [String: Int64] = [:]
+
     /// Called with the note id after one of its reminders is displayed,
     /// so the reminder can be cleared like Android's receiver does.
     static var onReminderDelivered: ((String) -> Void)?
@@ -68,7 +74,7 @@ enum QuickNoteNotificationScheduler {
         let center = UNUserNotificationCenter.current()
         let nowMillis = Int64(Date().timeIntervalSince1970 * 1000)
 
-        var wanted: [String: UNNotificationRequest] = [:]
+        var wanted: [String: (request: UNNotificationRequest, fireMillis: Int64)] = [:]
         for note in notes {
             guard let fireMillis = note.remindAt?.int64Value, fireMillis > nowMillis else { continue }
             let interval = TimeInterval(fireMillis - nowMillis) / 1000.0
@@ -82,7 +88,7 @@ enum QuickNoteNotificationScheduler {
                 content: content,
                 trigger: trigger
             )
-            wanted[request.identifier] = request
+            wanted[request.identifier] = (request, fireMillis)
         }
 
         center.getPendingNotificationRequests { pending in
@@ -92,6 +98,20 @@ enum QuickNoteNotificationScheduler {
             let stale = pendingIds.subtracting(wantedIds)
             if !stale.isEmpty {
                 center.removePendingNotificationRequests(withIdentifiers: Array(stale))
+            }
+            lock.lock()
+            for id in stale {
+                scheduledFireMillis.removeValue(forKey: id)
+            }
+            // Arm only new or re-timed reminders; the rest already wait.
+            var toAdd: [UNNotificationRequest] = []
+            for (id, entry) in wanted where scheduledFireMillis[id] != entry.fireMillis {
+                toAdd.append(entry.request)
+                scheduledFireMillis[id] = entry.fireMillis
+            }
+            lock.unlock()
+            for request in toAdd {
+                center.add(request)
             }
             // Drop delivered banners only for notes that are gone (trashed).
             // A just-fired reminder keeps its banner like on Android, while
@@ -103,15 +123,14 @@ enum QuickNoteNotificationScheduler {
                     center.removeDeliveredNotifications(withIdentifiers: orphaned)
                 }
             }
-            // (Re)schedule wanted reminders.
-            for request in wanted.values {
-                center.add(request)
-            }
         }
     }
 
     static func cancel(noteId: String) {
         let id = identifier(for: noteId)
+        lock.lock()
+        scheduledFireMillis.removeValue(forKey: id)
+        lock.unlock()
         let center = UNUserNotificationCenter.current()
         center.removePendingNotificationRequests(withIdentifiers: [id])
         center.removeDeliveredNotifications(withIdentifiers: [id])

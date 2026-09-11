@@ -867,21 +867,17 @@ private fun QuickNoteHeaderBanner(
     }
 }
 
-internal fun formatRemaining(deleteAt: Long?): String {
-    if (deleteAt == null) return ""
-    val remaining = (deleteAt - Clock.System.now().toEpochMilliseconds()).coerceAtLeast(0L)
-    val hours = remaining / 3_600_000L
-    if (hours >= 1) return "${hours}h"
-    val minutes = (remaining / 60_000L).coerceAtLeast(1L)
-    return "${minutes}m"
-}
+internal fun formatRemaining(deleteAt: Long?): String =
+    com.checkit.domain.QuickNoteDisplayText.remainingText(
+        deleteAt,
+        Clock.System.now().toEpochMilliseconds()
+    )
 
-internal fun formatReminder(remindAt: Long): String {
-    val remaining = (remindAt - Clock.System.now().toEpochMilliseconds()).coerceAtLeast(0L)
-    val minutes = remaining / 60_000L
-    if (minutes < 60) return "in ${minutes.coerceAtLeast(1)}m"
-    return "in ${minutes / 60}h"
-}
+internal fun formatReminder(remindAt: Long): String =
+    com.checkit.domain.QuickNoteDisplayText.reminderText(
+        remindAt,
+        Clock.System.now().toEpochMilliseconds()
+    )
 
 /**
  * Mirrors the macOS menu footer ("Synced 14:32"): shows the last successful

@@ -6,11 +6,13 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
+import kotlinx.serialization.json.put
 import kotlin.time.Clock
 
 /**
@@ -27,6 +29,14 @@ class QuickNoteSyncBridge(
 ) {
     suspend fun dirtyNotes(): List<QuickNote> =
         dao.getDirty().map { it.toDomain() }
+
+    /**
+     * JSON-encoded push documents for dirty rows, mapped with
+     * [QuickNoteSyncDocument] so field names stay single-sourced.
+     * Platforms parse each element back to a native dictionary for upload.
+     */
+    suspend fun dirtyNoteDocuments(): List<String> =
+        dao.getDirty().map { toJson(QuickNoteSyncDocument.toMap(it.toDomain())) }
 
     suspend fun setAttachmentUrl(id: String, url: String) {
         dao.setAttachmentUrl(id, url, Clock.System.now().toEpochMilliseconds())
@@ -48,8 +58,14 @@ class QuickNoteSyncBridge(
      * Last-write-wins merge of one remote document (JSON-encoded
      * [QuickNoteSyncDocument]) into Room. Returns true when the remote won
      * and was applied with dirty = false.
+     *
+     * @param downloadedAttachmentPath device-local path the platform just
+     * downloaded for this document's attachment URL, or null when no fresh
+     * download happened. Passed through only when the winner carries an
+     * attachment URL; otherwise the existing cached path is kept when the
+     * URL is unchanged (display fallback, like Android's download logic).
      */
-    suspend fun applyRemoteJson(json: String): Boolean {
+    suspend fun applyRemoteJson(json: String, downloadedAttachmentPath: String?): Boolean {
         val element = runCatching { Json.parseToJsonElement(json) }
             .getOrNull()?.jsonObject ?: return false
         val remote = QuickNoteSyncDocument.fromMap(
@@ -59,10 +75,12 @@ class QuickNoteSyncBridge(
         ) ?: return false
         val existing = dao.getById(remote.id)?.toDomain()
         val winner = QuickNoteSyncDocument.resolveLocal(existing, remote) ?: return false
-        // Keep the local file when the URL is unchanged, like Android's
-        // download cache check (the bytes themselves arrive from Swift).
-        val localPath = existing?.attachmentLocalPath
-            ?.takeIf { it.isNotBlank() && existing.attachmentUrl == winner.attachmentUrl }
+        val localPath = when {
+            downloadedAttachmentPath != null && winner.attachmentUrl != null ->
+                downloadedAttachmentPath
+            else -> existing?.attachmentLocalPath
+                ?.takeIf { it.isNotBlank() && existing.attachmentUrl == winner.attachmentUrl }
+        }
         dao.upsert(winner.copy(attachmentLocalPath = localPath).toEntity(dirty = false))
         return true
     }
@@ -84,4 +102,18 @@ class QuickNoteSyncBridge(
         }
         else -> null
     }
+
+    private fun toJson(map: Map<String, Any?>): String = buildJsonObject {
+        map.forEach { (key, value) ->
+            when (value) {
+                null -> put(key, JsonNull)
+                is String -> put(key, value)
+                is Boolean -> put(key, value)
+                is Number ->
+                    if (value is Double || value is Float) put(key, value.toDouble())
+                    else put(key, value.toLong())
+                else -> put(key, value.toString())
+            }
+        }
+    }.toString()
 }

@@ -8,6 +8,7 @@ import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import com.checkit.data.QuickNoteSyncManager
+import com.checkit.util.awaitTask
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth
@@ -18,8 +19,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlin.coroutines.resumeWithException
 
 /**
  * Owns the foreground Activity, which CredentialManager needs to present
@@ -134,9 +133,3 @@ class AndroidGoogleAccountManager(
             "1046828436758-be04cbqhm4rb8ua5ohlfoe802o86tlg4.apps.googleusercontent.com"
     }
 }
-
-private suspend fun <T> com.google.android.gms.tasks.Task<T>.awaitTask(): T =
-    suspendCancellableCoroutine { cont ->
-        addOnSuccessListener { cont.resume(it, null) }
-        addOnFailureListener { cont.resumeWithException(it) }
-    }

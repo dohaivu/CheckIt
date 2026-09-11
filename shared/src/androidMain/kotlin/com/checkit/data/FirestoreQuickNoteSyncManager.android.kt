@@ -12,7 +12,7 @@ import com.checkit.domain.QuickNote
 import com.checkit.domain.QuickNoteRules
 import com.checkit.domain.QuickNoteType
 import com.checkit.notifications.QuickNoteReminderScheduler
-import com.google.android.gms.tasks.Task
+import com.checkit.util.awaitTask
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
@@ -27,11 +27,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.File
-import kotlin.coroutines.resumeWithException
 import kotlin.math.min
 import kotlin.time.Clock
 
@@ -126,12 +124,12 @@ class FirestoreQuickNoteSyncManager(
                     return
                 }
                 Log.d(TAG, "Sync started uid=$userId")
-                val firestore = FirebaseFirestore.getInstance(FIRESTORE_DATABASE_ID)
-                val storage = FirebaseStorage.getInstance(STORAGE_BUCKET)
+                val firestore = FirebaseFirestore.getInstance(QuickNoteSyncConfig.DATABASE_ID)
+                val storage = FirebaseStorage.getInstance(QuickNoteSyncConfig.STORAGE_BUCKET)
                 val notesRef = firestore
-                    .collection(USERS_COLLECTION)
+                    .collection(QuickNoteSyncConfig.USERS_COLLECTION)
                     .document(userId)
-                    .collection(NOTES_COLLECTION)
+                    .collection(QuickNoteSyncConfig.NOTES_COLLECTION)
 
                 // Upload pending attachments first so their URLs are in the doc push.
                 dao.getDirty().map { it.toDomain() }
@@ -150,12 +148,12 @@ class FirestoreQuickNoteSyncManager(
                 // Push: only locally changed rows, including tombstones.
                 // Re-read after uploads: attachment URLs bumped updatedAt.
                 val toPush = dao.getDirty().map { it.toDomain() }
-                toPush.chunked(PUSH_BATCH_SIZE).forEach { chunk ->
+                toPush.chunked(QuickNoteSyncConfig.PUSH_BATCH_SIZE).forEach { chunk ->
                     val batch = firestore.batch()
                     chunk.forEach { note ->
                         batch.set(notesRef.document(note.id), QuickNoteSyncDocument.toMap(note))
                     }
-                    batch.commit().await()
+                    batch.commit().awaitTask()
                 }
                 // Rows whose attachment upload failed stay dirty for next time.
                 val uploaded = toPush.filterNot { needsAttachmentUpload(it) }
@@ -170,9 +168,9 @@ class FirestoreQuickNoteSyncManager(
                 val remote = notesRef
                     .whereGreaterThan(
                         QuickNoteSyncDocument.FIELD_UPDATED_AT,
-                        lastPull - PULL_OVERLAP_MILLIS,
+                        lastPull - QuickNoteSyncConfig.PULL_OVERLAP_MILLIS,
                     )
-                    .get().await().documents.mapNotNull { doc ->
+                    .get().awaitTask().documents.mapNotNull { doc ->
                         QuickNoteSyncDocument.fromMap(doc.id, doc.data)
                     }
                 var applied = 0
@@ -219,8 +217,8 @@ class FirestoreQuickNoteSyncManager(
     private suspend fun recordFailure(message: String) {
         consecutiveFailures++
         val backoff = min(
-            BASE_BACKOFF_MILLIS * (1L shl min(consecutiveFailures - 1, 4)),
-            MAX_BACKOFF_MILLIS,
+            QuickNoteSyncConfig.BASE_BACKOFF_MILLIS * (1L shl min(consecutiveFailures - 1, 4)),
+            QuickNoteSyncConfig.MAX_BACKOFF_MILLIS,
         )
         nextRetryAtMillis = Clock.System.now().toEpochMilliseconds() + backoff
         _syncState.value = QuickNoteSyncState(
@@ -250,12 +248,12 @@ class FirestoreQuickNoteSyncManager(
             try {
                 note.attachmentUrl?.let { url ->
                     try {
-                        storage.getReferenceFromUrl(url).delete().await()
+                        storage.getReferenceFromUrl(url).delete().awaitTask()
                     } catch (e: Exception) {
                         Log.w(TAG, "Blob delete failed for ${note.id}, continuing purge", e)
                     }
                 }
-                notesRef.document(note.id).delete().await()
+                notesRef.document(note.id).delete().awaitTask()
                 dao.hardDelete(listOf(note.id))
                 purged++
             } catch (e: Exception) {
@@ -288,9 +286,9 @@ class FirestoreQuickNoteSyncManager(
                 Log.w(TAG, "Attachment missing for ${note.id}, skipping upload")
                 return null
             }
-            val ref = storage.reference.child("$ATTACHMENTS_DIR/$userId/${note.id}.webp")
-            ref.putFile(Uri.fromFile(file)).await()
-            ref.downloadUrl.await().toString()
+            val ref = storage.reference.child("${QuickNoteSyncConfig.ATTACHMENTS_DIR}/$userId/${note.id}.webp")
+            ref.putFile(Uri.fromFile(file)).awaitTask()
+            ref.downloadUrl.awaitTask().toString()
         } catch (e: Exception) {
             Log.w(TAG, "Attachment upload failed for ${note.id}", e)
             null
@@ -316,7 +314,7 @@ class FirestoreQuickNoteSyncManager(
             ?.let { path -> if (File(path).exists() && existing.attachmentUrl == url) path else null }
         if (cached != null) return winner.copy(attachmentLocalPath = cached)
         return try {
-            val bytes = storage.getReferenceFromUrl(url).getBytes(MAX_DOWNLOAD_BYTES).await()
+            val bytes = storage.getReferenceFromUrl(url).getBytes(QuickNoteSyncConfig.MAX_DOWNLOAD_BYTES).awaitTask()
             val file = File(attachmentDir(), "${winner.id}.webp")
             file.writeBytes(bytes)
             Log.d(TAG, "Downloaded attachment for ${winner.id} (${bytes.size} bytes)")
@@ -344,7 +342,7 @@ class FirestoreQuickNoteSyncManager(
         if (existing != null) {
             existing
         } else {
-            val uid = auth.signInAnonymously().await().user?.uid
+            val uid = auth.signInAnonymously().awaitTask().user?.uid
             if (uid != null) {
                 Log.d(TAG, "Anonymous sign-in succeeded (uid=${uid.take(6)}…)")
             }
@@ -368,24 +366,9 @@ class FirestoreQuickNoteSyncManager(
 
     companion object {
         private const val TAG = "QuickNoteSync"
-        private const val FIRESTORE_DATABASE_ID = "checkit"
-        private const val STORAGE_BUCKET = "gs://aimpact-studio-872e7.firebasestorage.app"
-        private const val USERS_COLLECTION = "users"
-        private const val NOTES_COLLECTION = "quickNotes"
-        private const val ATTACHMENTS_DIR = "quicknote_attachments"
         private const val ATTACHMENTS_SUBDIR = "quicknote_images"
-        private const val MAX_DOWNLOAD_BYTES = 10L * 1024L * 1024L
         private const val SYNC_DEBOUNCE_MILLIS = 30_000L
-        private const val PUSH_BATCH_SIZE = 400
-        private const val PULL_OVERLAP_MILLIS = 60_000L
-        private const val BASE_BACKOFF_MILLIS = 30_000L
-        private const val MAX_BACKOFF_MILLIS = 300_000L
         private val KEY_LAST_PULL_MILLIS = longPreferencesKey("last_pull_millis")
         private val KEY_LAST_SYNCED_AT = longPreferencesKey("last_synced_at")
     }
-}
-
-private suspend fun <T> Task<T>.await(): T = suspendCancellableCoroutine { cont ->
-    addOnSuccessListener { cont.resume(it, null) }
-    addOnFailureListener { cont.resumeWithException(it) }
 }
