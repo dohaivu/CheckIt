@@ -7,6 +7,7 @@
 import SwiftUI
 import Combine
 import Shared
+import GoogleSignInSwift
 
 /// Preset durations mirror QuickNoteRules in shared (15/30/60 min).
 enum QuickNoteReminderPreset: CaseIterable {
@@ -311,6 +312,7 @@ struct QuickNoteDeletedRow: View {
 struct QuickNoteMenuView: View {
     @StateObject private var state = QuickNoteMenuState()
     @ObservedObject private var sync = QuickNoteFirestoreSync.shared
+    @ObservedObject private var account = QuickNoteGoogleSignIn.shared
 
     var body: some View {
         VStack(spacing: 8) {
@@ -376,6 +378,8 @@ struct QuickNoteMenuView: View {
                 NSApplication.shared.terminate(nil)
             }
 
+            accountSection
+
             syncStatusLine
         }
         .padding()
@@ -385,6 +389,44 @@ struct QuickNoteMenuView: View {
             QuickNoteFirestoreSync.shared.requestSync()
         }
         .onDisappear { state.stop() }
+        .onOpenURL { url in
+            _ = QuickNoteGoogleSignIn.shared.handle(url: url)
+        }
+    }
+
+    @ViewBuilder
+    private var accountSection: some View {
+        VStack(spacing: 4) {
+            if !account.isAnonymous, let email = account.email {
+                HStack {
+                    Text("Signed in as \(email)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                    Spacer()
+                    Button("Sign Out") {
+                        account.signOut()
+                    }
+                    .buttonStyle(.link)
+                    .font(.caption)
+                }
+            } else {
+                GoogleSignInButton {
+                    Task { await account.signIn() }
+                }
+                .frame(maxWidth: .infinity)
+                .disabled(account.busy)
+                if account.busy {
+                    Text("Signing in…").font(.caption).foregroundStyle(.secondary)
+                } else {
+                    Text("Sign in to sync notes across devices")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            if let error = account.errorMessage {
+                Text(error).font(.caption).foregroundStyle(.red)
+            }
+        }
     }
 
     @ViewBuilder

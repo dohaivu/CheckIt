@@ -15,6 +15,7 @@ struct CheckItApp: App {
         QuickNoteAppleBridge.shared.ensureKoin()
         QuickNoteNotificationScheduler.configure()
         configureFirebase()
+        QuickNoteGoogleSignIn.shared.start()
         QuickNoteFirestoreSync.shared.start()
     }
 
