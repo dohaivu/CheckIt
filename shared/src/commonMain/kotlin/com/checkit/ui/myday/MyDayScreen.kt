@@ -421,6 +421,7 @@ internal fun MyDayScreen(
                     } else {
                         QuickNoteContent(
                             viewModel = quickNoteViewModel,
+                            onCopyToDailyPlan = { title -> viewModel.openNewDailyPlan(title, emptyList()) },
                             modifier = Modifier.fillMaxSize(),
                         )
                     }

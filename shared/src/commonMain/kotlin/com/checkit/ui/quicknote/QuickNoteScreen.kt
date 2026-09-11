@@ -7,6 +7,12 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.AnchoredDraggableDefaults
+import androidx.compose.foundation.gestures.AnchoredDraggableState
+import androidx.compose.foundation.gestures.DraggableAnchors
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.anchoredDraggable
+import androidx.compose.foundation.gestures.animateTo
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
@@ -34,6 +40,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
+import androidx.compose.material.icons.filled.AddTask
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DeleteSweep
@@ -49,6 +56,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxDefaults
+import androidx.compose.material3.SwipeToDismissBoxState
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -76,6 +85,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextOverflow
@@ -109,6 +120,7 @@ import kotlin.time.Instant
 fun QuickNoteContent(
     viewModel: QuickNoteViewModel,
     modifier: Modifier = Modifier,
+    onCopyToDailyPlan: (String) -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -199,6 +211,7 @@ fun QuickNoteContent(
                             note = note,
                             onDeleteSwipe = { viewModel.swipeRight(note.id) },
                             onReminderSwipe = { viewModel.openReminderPicker(note.id) },
+                            onCopyToDailyPlan = onCopyToDailyPlan,
                             onImageClick = viewModel::openImagePreview,
                         )
                     }
@@ -565,70 +578,146 @@ private fun LazyItemScope.DraggableQuickNoteRow(
     }
 }
 
+private enum class NextRowSwipeAction {
+    Delete,
+    Settled,
+    Reminder,
+    CopyToDailyPlan,
+}
+
 @Composable
 private fun NextRow(
     note: QuickNote,
     onDeleteSwipe: () -> Unit,
     onReminderSwipe: () -> Unit,
+    onCopyToDailyPlan: (String) -> Unit,
     onImageClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val haptic = LocalHapticFeedback.current
+    val density = LocalDensity.current
+    val reminderDetentPx = with(density) { 76.dp.toPx() }
+    val copyDetentPx = with(density) { 152.dp.toPx() }
 
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { value ->
-            when (value) {
-                SwipeToDismissBoxValue.StartToEnd -> {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onDeleteSwipe()
-                    true
-                }
-                SwipeToDismissBoxValue.EndToStart -> {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onReminderSwipe()
-                    false
-                }
-                else -> false
+    val currentOnDeleteSwipe by rememberUpdatedState(onDeleteSwipe)
+    val currentOnReminderSwipe by rememberUpdatedState(onReminderSwipe)
+    val currentOnCopyToDailyPlan by rememberUpdatedState(onCopyToDailyPlan)
+    val currentContent by rememberUpdatedState(note.content)
+
+    val state = remember {
+        AnchoredDraggableState(
+            initialValue = NextRowSwipeAction.Settled,
+        )
+    }
+
+    // Trigger haptic feedback when the targeted detent changes under the user's finger
+    var previousTarget by remember { mutableStateOf(state.targetValue) }
+    LaunchedEffect(state.targetValue) {
+        if (state.targetValue != previousTarget) {
+            if (state.targetValue != NextRowSwipeAction.Settled) {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
             }
+            previousTarget = state.targetValue
         }
-    )
-    SwipeToDismissBox(
-        state = dismissState,
-        modifier = modifier,
-        enableDismissFromStartToEnd = true,
-        enableDismissFromEndToStart = true,
-        backgroundContent = {
-            val direction = dismissState.dismissDirection
-            val color = when (direction) {
-                SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.errorContainer
-                SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.primaryContainer
-                else -> Color.Transparent
+    }
+
+    // Handle action and snap-back when settling at a target
+    LaunchedEffect(state.settledValue) {
+        when (state.settledValue) {
+            NextRowSwipeAction.Delete -> {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                currentOnDeleteSwipe()
             }
-            val icon = when (direction) {
-                SwipeToDismissBoxValue.StartToEnd -> Icons.Default.DeleteSweep
-                SwipeToDismissBoxValue.EndToStart -> Icons.Default.Alarm
-                else -> null
+            NextRowSwipeAction.Reminder -> {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                currentOnReminderSwipe()
+                state.animateTo(NextRowSwipeAction.Settled)
             }
-            val alignment = when (direction) {
-                SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
-                else -> Alignment.CenterEnd
+            NextRowSwipeAction.CopyToDailyPlan -> {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                currentOnCopyToDailyPlan(currentContent)
+                state.animateTo(NextRowSwipeAction.Settled)
             }
-            Box(
-                Modifier.fillMaxSize()
-                    .background(color, RoundedCornerShape(16.dp))
-                    .padding(horizontal = 16.dp),
-                contentAlignment = alignment,
-            ) {
-                icon?.let { Icon(it, contentDescription = null) }
-            }
+            NextRowSwipeAction.Settled -> {}
+        }
+    }
+
+    val offset = if (state.offset.isNaN()) 0f else state.offset
+    val isCopy = state.targetValue == NextRowSwipeAction.CopyToDailyPlan || offset <= -copyDetentPx * 0.75f
+
+    val color = when {
+        offset > 1f -> MaterialTheme.colorScheme.errorContainer
+        offset < -1f -> {
+            if (isCopy) MaterialTheme.colorScheme.tertiaryContainer
+            else MaterialTheme.colorScheme.primaryContainer
+        }
+        else -> Color.Transparent
+    }
+    val icon = when {
+        offset > 1f -> Icons.Default.DeleteSweep
+        offset < -1f -> {
+            if (isCopy) Icons.Default.AddTask
+            else Icons.Default.Alarm
+        }
+        else -> null
+    }
+    val alignment = if (offset > 0f) Alignment.CenterStart else Alignment.CenterEnd
+
+    val flingBehavior = AnchoredDraggableDefaults.flingBehavior(
+        state = state,
+        positionalThreshold = { totalDistance ->
+            minOf(totalDistance * 0.45f, with(density) { 56.dp.toPx() })
         },
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+    )
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .onSizeChanged { size ->
+                val width = size.width.toFloat()
+                if (width > 0f) {
+                    val newAnchors = DraggableAnchors {
+                        NextRowSwipeAction.Delete at width
+                        NextRowSwipeAction.Settled at 0f
+                        NextRowSwipeAction.Reminder at -reminderDetentPx
+                        NextRowSwipeAction.CopyToDailyPlan at -copyDetentPx
+                    }
+                    state.updateAnchors(newAnchors)
+                }
+            }
+            .anchoredDraggable(
+                state = state,
+                orientation = Orientation.Horizontal,
+                flingBehavior = flingBehavior,
+            ),
     ) {
+        // Background Action Layer
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(color, RoundedCornerShape(16.dp))
+                .padding(horizontal = 16.dp),
+            contentAlignment = alignment,
+        ) {
+            icon?.let { Icon(it, contentDescription = null) }
+        }
+
+        // Foreground Content Card
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .graphicsLayer {
+                    translationX = if (state.offset.isNaN()) 0f else state.offset
+                }
+                .background(
+                    color = MaterialTheme.colorScheme.surface,
+                    shape = RoundedCornerShape(16.dp),
+                )
                 .background(
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                    shape = RoundedCornerShape(16.dp)
+                    shape = RoundedCornerShape(16.dp),
                 )
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -675,27 +764,26 @@ private fun DeletedRow(
 ) {
     val haptic = LocalHapticFeedback.current
     val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { value ->
-            when (value) {
-                SwipeToDismissBoxValue.StartToEnd -> {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onDeleteSwipe()
-                    true
-                }
-                SwipeToDismissBoxValue.EndToStart -> {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onRestoreSwipe()
-                    true
-                }
-                else -> false
-            }
-        }
+        positionalThreshold = SwipeToDismissBoxDefaults.positionalThreshold
     )
     SwipeToDismissBox(
         state = dismissState,
         modifier = modifier,
         enableDismissFromStartToEnd = true,
         enableDismissFromEndToStart = true,
+        onDismiss = { value ->
+            when (value) {
+                SwipeToDismissBoxValue.StartToEnd -> {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onDeleteSwipe()
+                }
+                SwipeToDismissBoxValue.EndToStart -> {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onRestoreSwipe()
+                }
+                else -> {}
+            }
+        },
         backgroundContent = {
             val direction = dismissState.dismissDirection
             val color = when (direction) {
