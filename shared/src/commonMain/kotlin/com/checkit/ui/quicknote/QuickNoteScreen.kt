@@ -177,12 +177,8 @@ fun QuickNoteContent(
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 item(key = "header-next") {
-                    Text(
-                        text = "NEXT",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(4.dp))
+                    SectionLabel("NEXT")
+                    Spacer(Modifier.height(8.dp))
                 }
                 if (state.visibleNext.isEmpty()) {
                     item(key = "empty-next") {
@@ -208,13 +204,9 @@ fun QuickNoteContent(
                     }
                 }
                 item(key = "header-deleted") {
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        text = "TO BE DELETED",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(16.dp))
+                    SectionLabel("TO BE DELETED")
+                    Spacer(Modifier.height(8.dp))
                 }
                 if (state.toBeDeleted.isEmpty()) {
                     item(key = "empty-deleted") {
@@ -385,7 +377,7 @@ private fun QuickNoteThumbnail(
             bitmap,
             contentDescription = null,
             modifier = modifier.size(56.dp)
-                .clip(RoundedCornerShape(8.dp))
+                .clip(RoundedCornerShape(12.dp))
                 .clickable { onClick(path) },
             contentScale = ContentScale.Crop,
         )
@@ -530,10 +522,10 @@ private fun LazyItemScope.DraggableQuickNoteRow(
     val settling = key == dragDropState.previousKeyOfDraggedItem
 
     val lift by animateFloatAsState(
-        targetValue = if (dragging) 1.03f else 1f,
+        targetValue = if (dragging) 1.04f else 1f,
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMedium
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
         ),
         label = "note-drag-lift"
     )
@@ -554,7 +546,7 @@ private fun LazyItemScope.DraggableQuickNoteRow(
                 scaleX = lift
                 scaleY = lift
                 shadowElevation = elevation
-                shape = RoundedCornerShape(10.dp)
+                shape = RoundedCornerShape(16.dp)
                 clip = false
             }
         settling -> Modifier
@@ -562,7 +554,7 @@ private fun LazyItemScope.DraggableQuickNoteRow(
             .graphicsLayer {
                 translationY = dragDropState.previousItemOffset.value
                 shadowElevation = elevation
-                shape = RoundedCornerShape(10.dp)
+                shape = RoundedCornerShape(16.dp)
                 clip = false
             }
         else -> Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)
@@ -623,7 +615,7 @@ private fun NextRow(
             }
             Box(
                 Modifier.fillMaxSize()
-                    .background(color, RoundedCornerShape(10.dp))
+                    .background(color, RoundedCornerShape(16.dp))
                     .padding(horizontal = 16.dp),
                 contentAlignment = alignment,
             ) {
@@ -635,12 +627,12 @@ private fun NextRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-                    shape = RoundedCornerShape(10.dp)
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    shape = RoundedCornerShape(16.dp)
                 )
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            ) {
+        ) {
             Text(
                 note.content,
                 style = MaterialTheme.typography.bodyMedium,
@@ -722,7 +714,7 @@ private fun DeletedRow(
             }
             Box(
                 Modifier.fillMaxSize()
-                    .background(color, RoundedCornerShape(10.dp))
+                    .background(color, RoundedCornerShape(16.dp))
                     .padding(horizontal = 16.dp),
                 contentAlignment = alignment,
             ) {
@@ -732,12 +724,12 @@ private fun DeletedRow(
     ) {
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(10.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
@@ -770,27 +762,31 @@ private fun QuickCaptureBar(
 ) {
     val focusManager = LocalFocusManager.current
 
-    Row(
-        modifier = modifier.fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(horizontal = 8.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        AiQuickAddBar(
-            value = input,
-            onValueChange = onInputChange,
-            placeholder = "Capture a thought...",
-            modifier = Modifier.weight(1f),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-            keyboardActions = KeyboardActions(onSend = {
-                onSubmit()
-                focusManager.clearFocus()
-            }),
-            haloPadding = 6.dp
+    Column(modifier = modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)) {
+        Box(
+            modifier = Modifier.fillMaxWidth().height(1.dp)
+                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
         )
-        Spacer(Modifier.width(4.dp))
-        IconButton(onClick = onCameraClick) {
-            Icon(Icons.Default.PhotoCamera, contentDescription = "Take photo")
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            AiQuickAddBar(
+                value = input,
+                onValueChange = onInputChange,
+                placeholder = "Capture a thought...",
+                modifier = Modifier.weight(1f),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                keyboardActions = KeyboardActions(onSend = {
+                    onSubmit()
+                    focusManager.clearFocus()
+                }),
+                haloPadding = 6.dp
+            )
+            Spacer(Modifier.width(4.dp))
+            IconButton(onClick = onCameraClick) {
+                Icon(Icons.Default.PhotoCamera, contentDescription = "Take photo")
+            }
         }
     }
 }
@@ -802,15 +798,13 @@ private fun QuickNoteHeaderBanner(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Always composed with a fixed height so the list below never jumps
-    // when sync status changes.
     val status = syncState.status
     val containerColor = when (status) {
         QuickNoteSyncStatus.OFFLINE, QuickNoteSyncStatus.ERROR ->
-            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.55f)
+            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f)
         QuickNoteSyncStatus.SYNCING ->
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
-        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+        else -> MaterialTheme.colorScheme.surface
     }
     val contentColor = when (status) {
         QuickNoteSyncStatus.OFFLINE, QuickNoteSyncStatus.ERROR ->
@@ -819,50 +813,61 @@ private fun QuickNoteHeaderBanner(
             MaterialTheme.colorScheme.onPrimaryContainer
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
-    Row(
-        modifier = modifier.fillMaxWidth()
-            .height(52.dp)
-            .background(containerColor)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        when (status) {
-            QuickNoteSyncStatus.SYNCING ->
-                CircularProgressIndicator(
-                    modifier = Modifier.size(18.dp),
-                    strokeWidth = 2.dp,
-                    color = contentColor,
-                )
-            QuickNoteSyncStatus.OFFLINE, QuickNoteSyncStatus.ERROR ->
-                Icon(Icons.Default.CloudOff, contentDescription = null, modifier = Modifier.size(18.dp))
-            else ->
-                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
-        }
-        Spacer(Modifier.width(8.dp))
-        val text = when (status) {
-            QuickNoteSyncStatus.SYNCING -> "Syncing…"
-            QuickNoteSyncStatus.OFFLINE ->
-                "You're offline. Changes are saved on this device."
-            else -> syncState.message ?: formatSyncedAt(syncState.lastSyncedAt)
-        }
-        Text(
-            text,
-            style = MaterialTheme.typography.labelMedium,
-            color = contentColor,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
-        if (status == QuickNoteSyncStatus.OFFLINE || status == QuickNoteSyncStatus.ERROR) {
-            TextButton(onClick = onRetry) {
-                Text("Retry", color = contentColor)
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth()
+                .height(44.dp)
+                .background(containerColor)
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            when (status) {
+                QuickNoteSyncStatus.SYNCING ->
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = contentColor,
+                    )
+                QuickNoteSyncStatus.OFFLINE, QuickNoteSyncStatus.ERROR ->
+                    Icon(Icons.Default.CloudOff, contentDescription = null, modifier = Modifier.size(16.dp))
+                else ->
+                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
             }
+            Spacer(Modifier.width(12.dp))
+            val text = when (status) {
+                QuickNoteSyncStatus.SYNCING -> "Syncing…"
+                QuickNoteSyncStatus.OFFLINE ->
+                    "You're offline. Changes are saved on this device."
+                else -> syncState.message ?: formatSyncedAt(syncState.lastSyncedAt)
+            }
+            Text(
+                text,
+                style = MaterialTheme.typography.labelMedium,
+                color = contentColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            if (status == QuickNoteSyncStatus.OFFLINE || status == QuickNoteSyncStatus.ERROR) {
+                TextButton(
+                    onClick = onRetry,
+                    contentPadding = PaddingValues(horizontal = 8.dp),
+                    modifier = Modifier.height(32.dp)
+                ) {
+                    Text("Retry", style = MaterialTheme.typography.labelLarge, color = contentColor)
+                }
+            }
+            Text(
+                "$itemCount",
+                style = MaterialTheme.typography.labelLarge,
+                color = contentColor.copy(alpha = 0.7f),
+                modifier = Modifier.padding(start = 8.dp),
+            )
         }
-        Text(
-            "$itemCount",
-            style = MaterialTheme.typography.titleMedium,
-            color = contentColor,
-            modifier = Modifier.padding(start = 8.dp),
+        Box(
+            modifier = Modifier.fillMaxWidth().height(1.dp)
+                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
         )
     }
 }
