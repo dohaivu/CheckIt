@@ -46,7 +46,7 @@ final class QuickNoteFirestoreSync: ObservableObject {
     private static let attachmentsDir = "quicknote_attachments"
     private static let attachmentsSubdir = "quicknote_images"
     private static let maxDownloadBytes: Int64 = 10 * 1024 * 1024
-    private static let syncDebounceNanos: UInt64 = 1_500_000_000
+    private static let syncDebounceNanos: UInt64 = 30_000_000_000 // 30s: no realtime sync, just cross-device availability
     private static let pushBatchSize = 400
     private static let pullOverlapMillis: Int64 = 60_000
     private static let baseBackoffMillis: Int64 = 30_000
@@ -92,7 +92,7 @@ final class QuickNoteFirestoreSync: ObservableObject {
             }
         }
         monitor.start(queue: monitorQueue)
-        requestSync()
+        syncNow()
     }
 
     func requestSync() {
@@ -102,6 +102,12 @@ final class QuickNoteFirestoreSync: ObservableObject {
             guard !Task.isCancelled else { return }
             await self?.sync()
         }
+    }
+
+    /// Immediate sync, bypassing the debounce — for explicit user refresh.
+    func syncNow() {
+        debounceTask?.cancel()
+        Task { await sync() }
     }
 
     // MARK: - Sync

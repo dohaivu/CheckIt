@@ -257,6 +257,9 @@ struct QuickNoteRow: View {    @ObservedObject var state: QuickNoteMenuState
 
     var body: some View {
         HStack(alignment: .center, spacing: 8) {
+            Image(systemName: "line.3.horizontal")
+                .foregroundStyle(.tertiary)
+                .help("Drag to reorder")
             Text(note.content)
                 .lineLimit(3)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -406,7 +409,7 @@ struct QuickNoteMenuView: View {
                 Spacer()
                 Button {
                     state.refresh(force: true)
-                    QuickNoteFirestoreSync.shared.requestSync()
+                    QuickNoteFirestoreSync.shared.syncNow()
                 } label: {
                     Image(systemName: "arrow.clockwise")
                 }

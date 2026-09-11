@@ -375,7 +375,7 @@ class FirestoreQuickNoteSyncManager(
         private const val ATTACHMENTS_DIR = "quicknote_attachments"
         private const val ATTACHMENTS_SUBDIR = "quicknote_images"
         private const val MAX_DOWNLOAD_BYTES = 10L * 1024L * 1024L
-        private const val SYNC_DEBOUNCE_MILLIS = 1_500L
+        private const val SYNC_DEBOUNCE_MILLIS = 30_000L
         private const val PUSH_BATCH_SIZE = 400
         private const val PULL_OVERLAP_MILLIS = 60_000L
         private const val BASE_BACKOFF_MILLIS = 30_000L
