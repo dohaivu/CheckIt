@@ -96,7 +96,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
+import kotlin.time.Instant
 
 /**
  * QuickNote content (banner, list, capture, dialogs) hosted as the second
@@ -840,7 +843,7 @@ private fun QuickNoteHeaderBanner(
             QuickNoteSyncStatus.SYNCING -> "Syncing…"
             QuickNoteSyncStatus.OFFLINE ->
                 "You're offline. Changes are saved on this device."
-            else -> syncState.message ?: "Synced"
+            else -> syncState.message ?: formatSyncedAt(syncState.lastSyncedAt)
         }
         Text(
             text,
@@ -878,4 +881,17 @@ internal fun formatReminder(remindAt: Long): String {
     val minutes = remaining / 60_000L
     if (minutes < 60) return "in ${minutes.coerceAtLeast(1)}m"
     return "in ${minutes / 60}h"
+}
+
+/**
+ * Mirrors the macOS menu footer ("Synced 14:32"): shows the last successful
+ * sync time when known, plain "Synced" otherwise.
+ */
+internal fun formatSyncedAt(lastSyncedAt: Long?): String {
+    if (lastSyncedAt == null) return "Synced"
+    val local = Instant.fromEpochMilliseconds(lastSyncedAt)
+        .toLocalDateTime(TimeZone.currentSystemDefault())
+    val hours = local.hour.toString().padStart(2, '0')
+    val minutes = local.minute.toString().padStart(2, '0')
+    return "Synced $hours:$minutes"
 }

@@ -48,6 +48,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.RateReview
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -188,6 +189,19 @@ internal fun MyDayScreen(
                     }
                 },
                 actions = {
+                    if (onQuickPage) {
+                        // Force maintenance + Firestore sync for Quick Notes.
+                        IconButton(
+                            onClick = { quickNoteViewModel.refresh(force = true) },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Refresh,
+                                contentDescription = "Refresh",
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                    }
                     if (!onQuickPage) {
                         IconButton(
                             onClick = viewModel::smartSchedule,

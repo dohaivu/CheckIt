@@ -7,6 +7,7 @@
 import SwiftUI
 import Combine
 import UniformTypeIdentifiers
+import AppKit
 import Shared
 
 /// Preset durations mirror QuickNoteRules in shared (15/30/60 min).
@@ -197,10 +198,56 @@ final class QuickNoteMenuState: ObservableObject {
     }
 }
 
+/// Image attachment thumbnail, mirroring Android's QuickNoteThumbnail.
+/// Prefers the device-local file (populated by Firestore sync downloads);
+/// falls back to the remote URL. Nothing renders without either.
+struct QuickNoteThumbnail: View {
+    let localPath: String?
+    let remoteURL: URL?
+
+    @State private var localImage: NSImage?
+
+    var body: some View {
+        Group {
+            if let image = localImage {
+                Image(nsImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } else if let url = remoteURL {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image.resizable().aspectRatio(contentMode: .fill)
+                    case .failure, .empty:
+                        Color.secondary.opacity(0.15)
+                    @unknown default:
+                        Color.secondary.opacity(0.15)
+                    }
+                }
+            } else {
+                Color.secondary.opacity(0.15)
+            }
+        }
+        .frame(width: 40, height: 40)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .task(id: localPath) { loadLocal() }
+    }
+
+    private func loadLocal() {
+        guard let path = localPath, !path.isEmpty,
+              FileManager.default.fileExists(atPath: path),
+              let image = NSImage(contentsOfFile: path)
+        else {
+            localImage = nil
+            return
+        }
+        localImage = image
+    }
+}
+
 /// NEXT row: content plus an alarm badge showing the shared
 /// "in Xm"/"in Xh" format. Tapping the badge opens the time picker.
-struct QuickNoteRow: View {
-    @ObservedObject var state: QuickNoteMenuState
+struct QuickNoteRow: View {    @ObservedObject var state: QuickNoteMenuState
     let note: QuickNote
 
     @State private var showPicker = false
@@ -213,6 +260,13 @@ struct QuickNoteRow: View {
             Text(note.content)
                 .lineLimit(3)
                 .frame(maxWidth: .infinity, alignment: .leading)
+            if note.type != QuickNoteType.text,
+               note.attachmentLocalPath != nil || note.attachmentUrl != nil {
+                QuickNoteThumbnail(
+                    localPath: note.attachmentLocalPath,
+                    remoteURL: note.attachmentUrl.flatMap(URL.init(string:))
+                )
+            }
             Button {
                 let base = remindAtMillis
                     .map { Date(timeIntervalSince1970: TimeInterval($0) / 1000.0) } ?? Date()
@@ -305,6 +359,13 @@ struct QuickNoteDeletedRow: View {
                 .lineLimit(3)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
+            if note.type != QuickNoteType.text,
+               note.attachmentLocalPath != nil || note.attachmentUrl != nil {
+                QuickNoteThumbnail(
+                    localPath: note.attachmentLocalPath,
+                    remoteURL: note.attachmentUrl.flatMap(URL.init(string:))
+                )
+            }
             if let millis = note.deleteAt?.int64Value {
                 Text(QuickNoteRowText.remainingText(deleteAtMillis: millis))
                     .font(.caption)
@@ -345,6 +406,7 @@ struct QuickNoteMenuView: View {
                 Spacer()
                 Button {
                     state.refresh(force: true)
+                    QuickNoteFirestoreSync.shared.requestSync()
                 } label: {
                     Image(systemName: "arrow.clockwise")
                 }
