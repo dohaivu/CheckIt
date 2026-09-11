@@ -30,7 +30,7 @@ import kotlinx.coroutines.launch
 import kotlin.time.Clock
 
 /** Minimum gap between automatic maintenance runs; manual refresh bypasses it. */
-internal const val QUICK_NOTE_REFRESH_MIN_INTERVAL_MILLIS = 5L * 60L * 1000L
+internal const val QUICK_NOTE_REFRESH_MIN_INTERVAL_MILLIS = 60L * 60L * 1000L
 
 internal fun shouldRefreshNotes(now: Long, lastRefreshMillis: Long, force: Boolean): Boolean =
     force || now - lastRefreshMillis >= QUICK_NOTE_REFRESH_MIN_INTERVAL_MILLIS

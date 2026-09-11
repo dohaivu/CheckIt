@@ -59,7 +59,7 @@ enum QuickNoteRowText {
 @MainActor
 final class QuickNoteMenuState: ObservableObject {
     /// Same throttle as QuickNoteViewModel (QUICK_NOTE_REFRESH_MIN_INTERVAL_MILLIS).
-    private static let refreshMinIntervalMillis: Int64 = 5 * 60 * 1000
+    private static let refreshMinIntervalMillis: Int64 = 60 * 60 * 1000
 
     @Published var notes: [QuickNote] = []
     @Published var deletedNotes: [QuickNote] = []

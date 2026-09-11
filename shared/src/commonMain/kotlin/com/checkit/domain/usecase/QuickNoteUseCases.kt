@@ -1,5 +1,6 @@
 package com.checkit.domain.usecase
 
+import co.touchlab.kermit.Logger
 import com.checkit.data.QuickNoteRepository
 import com.checkit.data.QuickNoteSyncManager
 import com.checkit.domain.QuickNote
@@ -97,11 +98,17 @@ class MaintainQuickNotesUseCase(
     private val syncManager: QuickNoteSyncManager,
 ) {
     suspend operator fun invoke(): Int {
+        Logger.i(TAG) { "Maintenance started" }
         repository.autoTrashInactive()
         val expiredCount = repository.processExpired()
         repository.clearExpiredReminders()
         repository.reconcileReminders()
         runCatching { syncManager.sync() }
+        Logger.i(TAG) { "Maintenance finished (expired=$expiredCount)" }
         return expiredCount
+    }
+
+    private companion object {
+        const val TAG = "QuickNoteMaintain"
     }
 }
