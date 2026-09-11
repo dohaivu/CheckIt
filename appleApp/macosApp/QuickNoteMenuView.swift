@@ -59,6 +59,8 @@ enum QuickNoteRowText {
 /// Observable holder around the shared KMP QuickNote use cases.
 /// SwiftUI cannot consume suspend functions or Kotlin Flow directly,
 /// so all KMP interop goes through QuickNoteMenuHelper callbacks.
+/// Sync triggering is repository-owned (Android parity): mutations sync
+/// via AppleQuickNoteSyncManager, so this layer never requests syncs.
 /// Section layout mirrors QuickNoteContent in shared.
 @MainActor
 final class QuickNoteMenuState: ObservableObject {
@@ -142,41 +144,34 @@ final class QuickNoteMenuState: ObservableObject {
                 self?.isSaving = false
             }
         }
-        QuickNoteFirestoreSync.shared.requestSync()
     }
 
     func trash(_ note: QuickNote) {
         QuickNoteNotificationScheduler.cancel(noteId: note.id)
         helper.moveToTrash(id: note.id)
-        QuickNoteFirestoreSync.shared.requestSync()
     }
 
     func restore(_ note: QuickNote) {
         helper.restore(id: note.id)
-        QuickNoteFirestoreSync.shared.requestSync()
     }
 
     func deleteForever(_ note: QuickNote) {
         QuickNoteNotificationScheduler.cancel(noteId: note.id)
         helper.deletePermanently(id: note.id)
-        QuickNoteFirestoreSync.shared.requestSync()
     }
 
     func remind(_ note: QuickNote, preset: QuickNoteReminderPreset) {
         helper.setReminderIn(id: note.id, durationMillis: preset.durationMillis)
-        QuickNoteFirestoreSync.shared.requestSync()
     }
 
     func remind(_ note: QuickNote, at date: Date) {
         let millis = Int64(date.timeIntervalSince1970 * 1000)
         helper.setReminderAt(id: note.id, epochMillis: millis)
-        QuickNoteFirestoreSync.shared.requestSync()
     }
 
     func clearReminder(_ note: QuickNote) {
         QuickNoteNotificationScheduler.cancel(noteId: note.id)
         helper.clearReminder(id: note.id)
-        QuickNoteFirestoreSync.shared.requestSync()
     }
 
     /// Persist a drag-and-drop position change within NEXT. The list is
@@ -197,7 +192,6 @@ final class QuickNoteMenuState: ObservableObject {
         guard from != to else { return }
         notes.move(fromOffsets: IndexSet(integer: from), toOffset: to)
         helper.reorder(fromIndex: Int32(from), toIndex: Int32(to))
-        QuickNoteFirestoreSync.shared.requestSync()
     }
 
     deinit {

@@ -69,6 +69,13 @@ final class QuickNoteFirestoreSync: ObservableObject {
     func start() {
         guard !started else { return }
         started = true
+        // Repository-owned triggering (Android parity): every shared
+        // repository mutation calls QuickNoteSyncManager.requestSync(),
+        // which lands here via the macosMain AppleQuickNoteSyncManager.
+        // The Task hop is required: Kotlin may invoke from any thread.
+        AppleSyncHooks.shared.requestSync = { [weak self] in
+            Task { await self?.requestSync() }
+        }
         if let last = UserDefaults.standard.object(forKey: Self.lastSyncedAtKey) as? Double {
             uiState = QuickNoteSyncUiState(status: .synced, lastSyncedAt: Date(timeIntervalSince1970: last))
         }
