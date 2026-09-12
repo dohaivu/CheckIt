@@ -12,6 +12,7 @@
 		71EAA4AC3052F28600B51246 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 71EAA4AB3052F28600B51246 /* FirebaseStorage */; };
 		71EAA4B43052F30000B51246 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 71EAA4B23052F30000B51246 /* GoogleSignIn */; };
 		71EAA4B53052F30000B51246 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 71EAA4B33052F30000B51246 /* GoogleSignInSwift */; };
+		71EAA4C33052F31000B51246 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 71EAA4C23052F31000B51246 /* KeyboardShortcuts */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -85,6 +86,7 @@
 				71EAA4AA3052F28600B51246 /* FirebaseFirestore in Frameworks */,
 				71EAA4B43052F30000B51246 /* GoogleSignIn in Frameworks */,
 				71EAA4B53052F30000B51246 /* GoogleSignInSwift in Frameworks */,
+				71EAA4C33052F31000B51246 /* KeyboardShortcuts in Frameworks */,
 				71EAA4AC3052F28600B51246 /* FirebaseStorage in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -177,6 +179,7 @@
 				71EAA4AB3052F28600B51246 /* FirebaseStorage */,
 				71EAA4B23052F30000B51246 /* GoogleSignIn */,
 				71EAA4B33052F30000B51246 /* GoogleSignInSwift */,
+				71EAA4C23052F31000B51246 /* KeyboardShortcuts */,
 			);
 			productName = CheckIt;
 			productReference = 71EAA46B3052D84100B51246 /* CheckIt.app */;
@@ -212,6 +215,7 @@
 			packageReferences = (
 				71EAA4A63052F28500B51246 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				71EAA4B13052F30000B51246 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+				71EAA4C13052F31000B51246 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 130C316EF7162D9A63162B0A /* Products */;
@@ -616,6 +620,14 @@
 				minimumVersion = 8.0.0;
 			};
 		};
+		71EAA4C13052F31000B51246 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sindresorhus/KeyboardShortcuts";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -643,6 +655,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 71EAA4B13052F30000B51246 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
 			productName = GoogleSignInSwift;
+		};
+		71EAA4C23052F31000B51246 /* KeyboardShortcuts */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 71EAA4C13052F31000B51246 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */;
+			productName = KeyboardShortcuts;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

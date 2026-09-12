@@ -9,6 +9,13 @@
 //
 import AppKit
 import SwiftUI
+import KeyboardShortcuts
+
+extension KeyboardShortcuts.Name {
+    /// Global hotkey toggling the Quick Note menu. User-customizable via
+    /// Settings (KeyboardShortcuts.Recorder).
+    static let toggleQuickNote = Self("toggleQuickNote", default: .init(.n, modifiers: [.control, .option, .command]))
+}
 
 extension Notification.Name {
     /// Posted (main thread) with an Int object: the current NEXT-notes count.
@@ -58,6 +65,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.behavior = .transient
         popover.animates = true
         popover.contentViewController = NSHostingController(rootView: QuickNoteMenuView())
+
+        // Global hotkey (works from any app): toggles the menu open/closed.
+        KeyboardShortcuts.onKeyUp(for: .toggleQuickNote) { [weak self] in
+            Task { @MainActor [weak self] in self?.togglePopover() }
+        }
     }
 
     // MARK: - Clicks
@@ -79,15 +91,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func togglePopover() {
+    func togglePopover() {
         guard let button = statusItem?.button else { return }
         if popover.isShown {
             popover.performClose(nil)
+            uninstallEscCloser()
             NotificationCenter.default.post(name: .quickNoteMenuClosed, object: nil)
         } else {
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
+            installEscCloser()
             NotificationCenter.default.post(name: .quickNoteMenuOpened, object: nil)
+        }
+    }
+
+    // MARK: - Esc to close
+
+    private var escMonitor: Any?
+
+    /// Transient popovers don't reliably dismiss on Esc in LSUIElement apps;
+    /// watch key-downs locally while open (removed on close).
+    private func installEscCloser() {
+        uninstallEscCloser()
+        escMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            if event.keyCode == 53, self?.popover.isShown == true {
+                self?.togglePopover()
+                return nil
+            }
+            return event
+        }
+    }
+
+    private func uninstallEscCloser() {
+        if let monitor = escMonitor {
+            NSEvent.removeMonitor(monitor)
+            escMonitor = nil
         }
     }
 
@@ -128,6 +166,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             menu.addItem(signIn)
         }
         menu.addItem(.separator())
+        let settings = NSMenuItem(title: "Settings…", action: #selector(settingsClicked), keyEquivalent: ",")
+        settings.target = self
+        menu.addItem(settings)
+        menu.addItem(.separator())
         let quit = NSMenuItem(title: "Quit CheckIt", action: #selector(quitClicked), keyEquivalent: "q")
         quit.target = self
         menu.addItem(quit)
@@ -147,6 +189,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func signOutClicked() {
         QuickNoteGoogleSignIn.shared.signOut()
+    }
+
+    // MARK: - Settings window
+
+    private var settingsWindow: NSWindow?
+
+    @objc private func settingsClicked() {
+        if settingsWindow == nil {
+            let window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 380, height: 200),
+                styleMask: [.titled, .closable],
+                backing: .buffered,
+                defer: false
+            )
+            window.title = "CheckIt Settings"
+            window.contentViewController = NSHostingController(rootView: SettingsView())
+            window.center()
+            settingsWindow = window
+        }
+        NSApp.activate()
+        settingsWindow?.makeKeyAndOrderFront(nil)
     }
 
     @objc private func quitClicked() {

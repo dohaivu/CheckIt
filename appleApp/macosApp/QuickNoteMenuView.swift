@@ -413,6 +413,7 @@ struct QuickNoteMenuView: View {
     @StateObject private var state = QuickNoteMenuState()
     @ObservedObject private var sync = QuickNoteFirestoreSync.shared
     @State private var tickTimer: Timer?
+    @FocusState private var captureFocused: Bool
 
     var body: some View {
         VStack(spacing: 8) {
@@ -500,6 +501,7 @@ struct QuickNoteMenuView: View {
             HStack(spacing: 8) {
                 TextField("Capture a thought...", text: $state.input)
                     .textFieldStyle(.roundedBorder)
+                    .focused($captureFocused)
                     .onSubmit(state.add)
 
                 Button(state.isSaving ? "Saving..." : "Add") {
@@ -519,6 +521,8 @@ struct QuickNoteMenuView: View {
         .onDisappear { state.stop() }
         .onReceive(NotificationCenter.default.publisher(for: .quickNoteMenuOpened)) { _ in
             state.menuOpened()
+            // Cursor straight into capture so hotkey-open means type-and-go.
+            captureFocused = true
             // Slow tick while open so relative times stay fresh; stopped on close.
             tickTimer?.invalidate()
             tickTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { _ in
