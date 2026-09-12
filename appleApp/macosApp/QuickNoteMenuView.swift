@@ -43,16 +43,12 @@ enum QuickNoteReminderPreset: CaseIterable {
 enum QuickNoteRowText {
     private static let text = QuickNoteDisplayText.shared
 
-    static func reminderText(remindAtMillis: Int64) -> String {
-        text.reminderText(remindAt: remindAtMillis, now: nowMillis())
+    static func reminderText(remindAtMillis: Int64, nowMillis: Int64) -> String {
+        text.reminderText(remindAt: remindAtMillis, now: nowMillis)
     }
 
-    static func remainingText(deleteAt: KotlinLong?) -> String {
-        text.remainingText(deleteAt: deleteAt, now: nowMillis())
-    }
-
-    private static func nowMillis() -> Int64 {
-        Int64(Date().timeIntervalSince1970 * 1000)
+    static func remainingText(deleteAt: KotlinLong?, nowMillis: Int64) -> String {
+        text.remainingText(deleteAt: deleteAt, now: nowMillis)
     }
 }
 
@@ -71,6 +67,9 @@ final class QuickNoteMenuState: ObservableObject {
     @Published var deletedNotes: [QuickNote] = []
     @Published var input: String = ""
     @Published var isSaving = false
+    /// Ticks forward on menu open (and slowly while open) so time-derived
+    /// row text ("in 15m") recomputes even when the notes array is unchanged.
+    @Published var nowTickMillis: Int64 = 0
 
     private let helper: QuickNoteMenuHelper
     private var notesSubscription: QuickNoteSubscription?
@@ -80,6 +79,7 @@ final class QuickNoteMenuState: ObservableObject {
     init() {
         QuickNoteAppleBridge.shared.ensureKoin()
         helper = QuickNoteAppleBridge.shared.menuHelper()
+        nowTickMillis = Self.nowMillis()
     }
 
     func start() {
@@ -114,8 +114,18 @@ final class QuickNoteMenuState: ObservableObject {
     /// Runs on every menu open: sweep fired reminders, then throttled
     /// maintenance. Called from .quickNoteMenuOpened, not onAppear.
     func menuOpened() {
+        nowTickMillis = Self.nowMillis()
         helper.clearExpiredReminders()
         refresh()
+    }
+
+    /// Slow tick while the menu stays open, keeping relative times fresh.
+    func tick() {
+        nowTickMillis = Self.nowMillis()
+    }
+
+    private static func nowMillis() -> Int64 {
+        Int64(Date().timeIntervalSince1970 * 1000)
     }
 
     func stop() {
@@ -249,8 +259,10 @@ struct QuickNoteThumbnail: View {
 
 /// NEXT row: content plus an alarm badge showing the shared
 /// "in Xm"/"in Xh" format. Tapping the badge opens the time picker.
-struct QuickNoteRow: View {    @ObservedObject var state: QuickNoteMenuState
+struct QuickNoteRow: View {
+    @ObservedObject var state: QuickNoteMenuState
     let note: QuickNote
+    let nowMillis: Int64
 
     @State private var showPicker = false
     @State private var customDate = Date().addingTimeInterval(3600)
@@ -278,7 +290,7 @@ struct QuickNoteRow: View {    @ObservedObject var state: QuickNoteMenuState
                 if let millis = remindAtMillis {
                     HStack(spacing: 4) {
                         Image(systemName: "alarm.fill")
-                        Text(QuickNoteRowText.reminderText(remindAtMillis: millis))
+                        Text(QuickNoteRowText.reminderText(remindAtMillis: millis, nowMillis: nowMillis))
                             .font(.caption)
                     }
                     .foregroundStyle(Color.accentColor)
@@ -356,6 +368,7 @@ struct QuickNoteRow: View {    @ObservedObject var state: QuickNoteMenuState
 struct QuickNoteDeletedRow: View {
     @ObservedObject var state: QuickNoteMenuState
     let note: QuickNote
+    let nowMillis: Int64
 
     var body: some View {
         HStack(alignment: .center, spacing: 8) {
@@ -371,7 +384,7 @@ struct QuickNoteDeletedRow: View {
                 )
             }
             if note.deleteAt != nil {
-                Text(QuickNoteRowText.remainingText(deleteAt: note.deleteAt))
+                Text(QuickNoteRowText.remainingText(deleteAt: note.deleteAt, nowMillis: nowMillis))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -399,6 +412,7 @@ struct QuickNoteDeletedRow: View {
 struct QuickNoteMenuView: View {
     @StateObject private var state = QuickNoteMenuState()
     @ObservedObject private var sync = QuickNoteFirestoreSync.shared
+    @State private var tickTimer: Timer?
 
     var body: some View {
         VStack(spacing: 8) {
@@ -432,7 +446,7 @@ struct QuickNoteMenuView: View {
                     } else {
                         LazyVStack(spacing: 0) {
                             ForEach(Array(state.notes.enumerated()), id: \.element.id) { index, note in
-                                QuickNoteRow(state: state, note: note)
+                                QuickNoteRow(state: state, note: note, nowMillis: state.nowTickMillis)
                                     .padding(.vertical, 4)
                                     .contentShape(Rectangle())
                                     .onDrag {
@@ -469,7 +483,7 @@ struct QuickNoteMenuView: View {
                     } else {
                         LazyVStack(spacing: 0) {
                             ForEach(state.deletedNotes, id: \.id) { note in
-                                QuickNoteDeletedRow(state: state, note: note)
+                                QuickNoteDeletedRow(state: state, note: note, nowMillis: state.nowTickMillis)
                                     .padding(.vertical, 4)
                                 Divider()
                             }
@@ -505,6 +519,15 @@ struct QuickNoteMenuView: View {
         .onDisappear { state.stop() }
         .onReceive(NotificationCenter.default.publisher(for: .quickNoteMenuOpened)) { _ in
             state.menuOpened()
+            // Slow tick while open so relative times stay fresh; stopped on close.
+            tickTimer?.invalidate()
+            tickTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { _ in
+                state.tick()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .quickNoteMenuClosed)) { _ in
+            tickTimer?.invalidate()
+            tickTimer = nil
         }
     }
 
