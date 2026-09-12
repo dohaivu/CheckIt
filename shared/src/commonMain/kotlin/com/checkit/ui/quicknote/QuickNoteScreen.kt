@@ -46,6 +46,8 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.RestoreFromTrash
 import androidx.compose.material.icons.filled.Star
@@ -102,6 +104,7 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.checkit.data.QuickNoteSyncState
 import com.checkit.data.QuickNoteSyncStatus
 import com.checkit.domain.QuickNote
 import com.checkit.domain.QuickNoteType
@@ -149,138 +152,140 @@ fun QuickNoteContent(
         }
         QuickNoteHeaderBanner(
             syncState = state.syncState,
-            itemCount = state.next.size,
             onRetry = { viewModel.refresh(force = true) },
         )
-            val listState = rememberLazyListState()
-            val haptic = LocalHapticFeedback.current
-            val currentOnMoveItem by rememberUpdatedState(viewModel::moveDragging)
-            val currentOnMoveComplete by rememberUpdatedState(viewModel::commitDrag)
+        val listState = rememberLazyListState()
+        val haptic = LocalHapticFeedback.current
+        val currentOnMoveItem by rememberUpdatedState(viewModel::moveDragging)
+        val currentOnMoveComplete by rememberUpdatedState(viewModel::commitDrag)
 
-            val dragDropState = rememberQuickNoteDragDropState(listState) { from, to ->
-                // Notes start at index 1 due to "header-next". 
-                // Subtract 1 to pass correct relative indices to ViewModel.
-                currentOnMoveItem(from - 1, to - 1)
-            }
+        val dragDropState = rememberQuickNoteDragDropState(listState) { from, to ->
+            // Notes start at index 1 due to "header-next".
+            // Subtract 1 to pass correct relative indices to ViewModel.
+            currentOnMoveItem(from - 1, to - 1)
+        }
 
-            LazyColumn(
-                state = listState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .weight(1f)
-                    .padding(horizontal = 12.dp)
-                    .pointerInput(dragDropState) {
-                        detectDragGesturesAfterLongPress(
-                            onDragStart = { offset ->
-                                dragDropState.onDragStart(offset)
-                                if (dragDropState.isDragging) {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                }
-                            },
-                            onDragEnd = {
-                                dragDropState.onDragInterrupted()
-                                currentOnMoveComplete()
-                            },
-                            onDragCancel = {
-                                dragDropState.onDragInterrupted()
-                                viewModel.cancelDrag()
-                            },
-                            onDrag = { change, dragAmount ->
-                                change.consume()
-                                dragDropState.onDrag(dragAmount)
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .fillMaxSize()
+                .weight(1f)
+                .padding(horizontal = 12.dp)
+                .pointerInput(dragDropState) {
+                    detectDragGesturesAfterLongPress(
+                        onDragStart = { offset ->
+                            dragDropState.onDragStart(offset)
+                            if (dragDropState.isDragging) {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             }
-                        )
-                    },
-                contentPadding = PaddingValues(bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                item(key = "header-next") {
-                    SectionLabel("NEXT")
-                    Spacer(Modifier.height(8.dp))
+                        },
+                        onDragEnd = {
+                            dragDropState.onDragInterrupted()
+                            currentOnMoveComplete()
+                        },
+                        onDragCancel = {
+                            dragDropState.onDragInterrupted()
+                            viewModel.cancelDrag()
+                        },
+                        onDrag = { change, dragAmount ->
+                            change.consume()
+                            dragDropState.onDrag(dragAmount)
+                        }
+                    )
+                },
+            contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            if (state.visibleNext.isEmpty()) {
+                item(key = "empty-next") {
+                    Text(
+                        "Nothing here. Capture a thought below.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 8.dp),
+                    )
                 }
-                if (state.visibleNext.isEmpty()) {
-                    item(key = "empty-next") {
+            }
+            itemsIndexed(state.visibleNext, key = { _, note -> "next-${note.id}" }) { _, note ->
+                DraggableQuickNoteRow(
+                    dragDropState = dragDropState,
+                    key = "next-${note.id}"
+                ) {
+                    NextRow(
+                        note = note,
+                        selected = note.id == selectedNoteId,
+                        onSelect = {
+                            selectedNoteId = if (selectedNoteId == note.id) null else note.id
+                        },
+                        onDeleteSwipe = { viewModel.swipeRight(note.id) },
+                        onReminderSwipe = { viewModel.openReminderPicker(note.id) },
+                        onCopyToDailyPlan = onCopyToDailyPlan,
+                        onPriorityClick = { viewModel.togglePriority(note) },
+                        onImageClick = viewModel::openImagePreview,
+                    )
+                }
+            }
+            item(key = "header-deleted") {
+                Spacer(Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth()
+                        .clickable { deletedExpanded = !deletedExpanded }
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.DeleteSweep,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    )
+                    SectionLabel("TO BE DELETED")
+                    if (state.toBeDeleted.isNotEmpty()) {
                         Text(
-                            "Nothing here. Capture a thought below.",
+                            "(${state.toBeDeleted.size})",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Spacer(Modifier.weight(1f))
+                    Icon(
+                        imageVector = if (deletedExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                        contentDescription = "Toggle deleted notes",
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+            if (deletedExpanded) {
+                if (state.toBeDeleted.isEmpty()) {
+                    item(key = "empty-deleted") {
+                        Text(
+                            "Deleted notes disappear after 24 hours.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(vertical = 8.dp),
                         )
                     }
                 }
-                itemsIndexed(state.visibleNext, key = { _, note -> "next-${note.id}" }) { _, note ->
-                    DraggableQuickNoteRow(
-                        dragDropState = dragDropState,
-                        key = "next-${note.id}"
-                    ) {
-                        NextRow(
-                            note = note,
-                            selected = note.id == selectedNoteId,
-                            onSelect = {
-                                selectedNoteId = if (selectedNoteId == note.id) null else note.id
-                            },
-                            onDeleteSwipe = { viewModel.swipeRight(note.id) },
-                            onReminderSwipe = { viewModel.openReminderPicker(note.id) },
-                            onCopyToDailyPlan = onCopyToDailyPlan,
-                            onPriorityClick = { viewModel.togglePriority(note) },
-                            onImageClick = viewModel::openImagePreview,
-                        )
-                    }
+                items(state.toBeDeleted, key = { "deleted-${it.id}" }) { note ->
+                    DeletedRow(
+                        note = note,
+                        onDeleteSwipe = { viewModel.deletePermanently(note.id) },
+                        onRestoreSwipe = { viewModel.restore(note.id) },
+                        onImageClick = viewModel::openImagePreview
+                    )
                 }
-                item(key = "header-deleted") {
-                    Spacer(Modifier.height(16.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth()
-                            .clickable { deletedExpanded = !deletedExpanded }
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Icon(
-                            imageVector = if (deletedExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                            contentDescription = if (deletedExpanded) "Collapse deleted notes" else "Expand deleted notes",
-                            modifier = Modifier.size(18.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        SectionLabel("TO BE DELETED")
-                        if (state.toBeDeleted.isNotEmpty()) {
-                            Text(
-                                "(${state.toBeDeleted.size})",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                }
-                if (deletedExpanded) {
-                    if (state.toBeDeleted.isEmpty()) {
-                        item(key = "empty-deleted") {
-                            Text(
-                                "Deleted notes disappear after 24 hours.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(vertical = 8.dp),
-                            )
-                        }
-                    }
-                    items(state.toBeDeleted, key = { "deleted-${it.id}" }) { note ->
-                        DeletedRow(
-                            note = note,
-                            onDeleteSwipe = { viewModel.deletePermanently(note.id) },
-                            onRestoreSwipe = { viewModel.restore(note.id) },
-                            onImageClick = viewModel::openImagePreview
-                        )
-                    }
-                }
-                item(key = "bottom-spacer") { Spacer(Modifier.height(16.dp)) }
             }
-            QuickCaptureBar(
-                input = state.input,
-                onInputChange = viewModel::updateInput,
-                onSubmit = viewModel::submitInput,
-                onCameraClick = viewModel::onCameraClick,
-            )
+            item(key = "bottom-spacer") { Spacer(Modifier.height(16.dp)) }
+        }
+        QuickCaptureBar(
+            input = state.input,
+            onInputChange = viewModel::updateInput,
+            onSubmit = viewModel::submitInput,
+            onCameraClick = viewModel::onCameraClick,
+        )
     }
 
     if (state.reminderPickerId != null) {
@@ -302,7 +307,7 @@ fun QuickNoteContent(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    
+
                     Spacer(modifier = Modifier.height(4.dp))
 
                     FilledTonalButton(
@@ -310,7 +315,11 @@ fun QuickNoteContent(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Icon(Icons.Default.Alarm, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Alarm,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
                         Spacer(Modifier.width(8.dp))
                         Text("15 minutes")
                     }
@@ -320,7 +329,11 @@ fun QuickNoteContent(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Icon(Icons.Default.Alarm, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Alarm,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
                         Spacer(Modifier.width(8.dp))
                         Text("30 minutes")
                     }
@@ -330,7 +343,11 @@ fun QuickNoteContent(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Icon(Icons.Default.Alarm, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Alarm,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
                         Spacer(Modifier.width(8.dp))
                         Text("1 hour")
                     }
@@ -524,8 +541,10 @@ private class QuickNoteDragDropState(
             val overscroll = when {
                 draggingItemDraggedDelta > 0 ->
                     (endOffset - listState.layoutInfo.viewportEndOffset).coerceAtLeast(0f)
+
                 draggingItemDraggedDelta < 0 ->
                     (startOffset - listState.layoutInfo.viewportStartOffset).coerceAtMost(0f)
+
                 else -> 0f
             }
             if (overscroll != 0f) {
@@ -596,6 +615,7 @@ private fun LazyItemScope.DraggableQuickNoteRow(
                 shape = RoundedCornerShape(16.dp)
                 clip = false
             }
+
         settling -> Modifier
             .zIndex(1f)
             .graphicsLayer {
@@ -604,6 +624,7 @@ private fun LazyItemScope.DraggableQuickNoteRow(
                 shape = RoundedCornerShape(16.dp)
                 clip = false
             }
+
         else -> Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)
     }
 
@@ -665,23 +686,27 @@ private fun NextRow(
                 currentOnReminderSwipe()
                 state.animateTo(NextRowSwipeAction.Settled)
             }
+
             NextRowSwipeAction.CopyToDailyPlan -> {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 currentOnCopyToDailyPlan(currentContent)
                 state.animateTo(NextRowSwipeAction.Settled)
             }
+
             NextRowSwipeAction.Settled -> {}
         }
     }
 
     val offset = if (state.offset.isNaN()) 0f else state.offset
-    val isCopy = state.targetValue == NextRowSwipeAction.CopyToDailyPlan || offset <= -copyDetentPx * 0.75f
+    val isCopy =
+        state.targetValue == NextRowSwipeAction.CopyToDailyPlan || offset <= -copyDetentPx * 0.75f
 
     val color = when {
         offset < -1f -> {
             if (isCopy) MaterialTheme.colorScheme.tertiaryContainer
             else MaterialTheme.colorScheme.primaryContainer
         }
+
         else -> Color.Transparent
     }
     val icon = when {
@@ -689,6 +714,7 @@ private fun NextRow(
             if (isCopy) Icons.Default.AddTask
             else Icons.Default.Alarm
         }
+
         else -> null
     }
     val alignment = Alignment.CenterEnd
@@ -829,10 +855,12 @@ private fun DeletedRow(
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     onDeleteSwipe()
                 }
+
                 SwipeToDismissBoxValue.EndToStart -> {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     onRestoreSwipe()
                 }
+
                 else -> {}
             }
         },
@@ -865,7 +893,11 @@ private fun DeletedRow(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(
+                    alpha = 0.15f
+                )
+            ),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         ) {
             Row(
@@ -941,8 +973,7 @@ private fun QuickCaptureBar(
 
 @Composable
 private fun QuickNoteHeaderBanner(
-    syncState: com.checkit.data.QuickNoteSyncState,
-    itemCount: Int,
+    syncState: QuickNoteSyncState,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -950,15 +981,19 @@ private fun QuickNoteHeaderBanner(
     val containerColor = when (status) {
         QuickNoteSyncStatus.OFFLINE, QuickNoteSyncStatus.ERROR ->
             MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f)
+
         QuickNoteSyncStatus.SYNCING ->
             MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+
         else -> MaterialTheme.colorScheme.surface
     }
     val contentColor = when (status) {
         QuickNoteSyncStatus.OFFLINE, QuickNoteSyncStatus.ERROR ->
             MaterialTheme.colorScheme.onErrorContainer
+
         QuickNoteSyncStatus.SYNCING ->
             MaterialTheme.colorScheme.onPrimaryContainer
+
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
@@ -977,16 +1012,28 @@ private fun QuickNoteHeaderBanner(
                         strokeWidth = 2.dp,
                         color = contentColor,
                     )
+
                 QuickNoteSyncStatus.OFFLINE, QuickNoteSyncStatus.ERROR ->
-                    Icon(Icons.Default.CloudOff, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Icon(
+                        Icons.Default.CloudOff,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+
                 else ->
-                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                    Icon(
+                        Icons.Default.Check,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
             }
             Spacer(Modifier.width(12.dp))
             val text = when (status) {
                 QuickNoteSyncStatus.SYNCING -> "Syncing…"
                 QuickNoteSyncStatus.OFFLINE ->
                     "You're offline. Changes are saved on this device."
+
                 else -> syncState.message ?: formatSyncedAt(syncState.lastSyncedAt)
             }
             Text(
@@ -1006,12 +1053,6 @@ private fun QuickNoteHeaderBanner(
                     Text("Retry", style = MaterialTheme.typography.labelLarge, color = contentColor)
                 }
             }
-            Text(
-                "$itemCount",
-                style = MaterialTheme.typography.labelLarge,
-                color = contentColor.copy(alpha = 0.7f),
-                modifier = Modifier.padding(start = 8.dp),
-            )
         }
         Box(
             modifier = Modifier.fillMaxWidth().height(1.dp)
