@@ -40,6 +40,10 @@ final class QuickNoteFirestoreSync: ObservableObject {
 
     // MARK: - Constants (topology from QuickNoteSyncConfig; timing stays local)
 
+    /// Hardcoded switch: realtime listener pull vs watermarked polling pull.
+    /// Push, purge, backoff, and merge are identical in both modes.
+    private static let useRealtimeListener = true
+
     private static let config = QuickNoteSyncConfig.shared
     private static let rules = QuickNoteRules.shared
     private static let attachmentsSubdir = "QuickNoteImages"
@@ -58,6 +62,8 @@ final class QuickNoteFirestoreSync: ObservableObject {
     private var consecutiveFailures = 0
     private var nextRetryAtMillis: Int64 = 0
     private var started = false
+    private var listener: ListenerRegistration?
+    private var listeningUid: String?
 
     private func bridge() -> QuickNoteSyncBridge {
         QuickNoteAppleBridge.shared.ensureKoin()
@@ -185,46 +191,149 @@ final class QuickNoteFirestoreSync: ObservableObject {
                 try await bridgeMarkClean(ids: ids, maxUpdatedAt: maxUpdated)
             }
 
-            // Pull: only documents newer than the last pull (with overlap
-            // margin for clock skew; LWW merge keeps re-pulls idempotent).
-            let lastPull = Int64(UserDefaults.standard.double(forKey: Self.lastPullKey))
+            // Pull: realtime listener or watermarked polling (see flag).
+            // Listener resume tokens supersede the lastPull watermark; the
+            // polling branch keeps maintaining it for switching back.
             let pullStart = Self.nowMillis()
-            let snapshot = try await notesRef
-                .whereField("updatedAt", isGreaterThan: lastPull - Self.config.PULL_OVERLAP_MILLIS)
-                .getDocuments()
+            var pulled = 0
             var applied = 0
-            var maxRemoteUpdatedAt = lastPull
-            for doc in snapshot.documents {
-                let data = doc.data()
-                if let updated = (data["updatedAt"] as? NSNumber)?.int64Value {
-                    maxRemoteUpdatedAt = max(maxRemoteUpdatedAt, updated)
-                }
-                guard let json = Self.jsonString(for: data, documentId: doc.documentID) else { continue }
-                // Download first so a failed fetch keeps the existing cached
-                // file as fallback (Android parity); the path rides into
-                // the merge below.
-                let localPath = await downloadAttachment(storage: storage, documentId: doc.documentID, data: data)
-                if try await bridgeApplyRemote(json: json, localPath: localPath) {
-                    applied += 1
-                    if (data["deleted"] as? Bool) == true {
-                        QuickNoteNotificationScheduler.cancel(noteId: doc.documentID)
+            if Self.useRealtimeListener {
+                attachListenerIfNeeded(userId: userId, notesRef: notesRef)
+            } else {
+                // Polling: only documents newer than the last pull (with
+                // overlap margin for clock skew; LWW merge keeps re-pulls
+                // idempotent).
+                let lastPull = Int64(UserDefaults.standard.double(forKey: Self.lastPullKey))
+                let snapshot = try await notesRef
+                    .whereField("updatedAt", isGreaterThan: lastPull - Self.config.PULL_OVERLAP_MILLIS)
+                    .getDocuments()
+                pulled = snapshot.count
+                var maxRemoteUpdatedAt = lastPull
+                for doc in snapshot.documents {
+                    let data = doc.data()
+                    if let updated = (data["updatedAt"] as? NSNumber)?.int64Value {
+                        maxRemoteUpdatedAt = max(maxRemoteUpdatedAt, updated)
+                    }
+                    guard let json = Self.jsonString(for: data, documentId: doc.documentID) else { continue }
+                    // Download first so a failed fetch keeps the existing cached
+                    // file as fallback (Android parity); the path rides into
+                    // the merge below.
+                    let localPath = await downloadAttachment(storage: storage, documentId: doc.documentID, data: data)
+                    if try await bridgeApplyRemote(json: json, localPath: localPath) {
+                        applied += 1
+                        if (data["deleted"] as? Bool) == true {
+                            QuickNoteNotificationScheduler.cancel(noteId: doc.documentID)
+                        }
                     }
                 }
+                UserDefaults.standard.set(Double(max(max(lastPull, pullStart), maxRemoteUpdatedAt)), forKey: Self.lastPullKey)
             }
-            UserDefaults.standard.set(Double(max(max(lastPull, pullStart), maxRemoteUpdatedAt)), forKey: Self.lastPullKey)
             UserDefaults.standard.set(Double(pullStart) / 1000.0, forKey: Self.lastSyncedAtKey)
 
             let purged = try await purgeTombstones(storage: storage, notesRef: notesRef, now: pullStart)
             consecutiveFailures = 0
             nextRetryAtMillis = 0
             uiState = QuickNoteSyncUiState(status: .synced, lastSyncedAt: Date(timeIntervalSince1970: Double(pullStart) / 1000.0))
-            print("[QuickNoteSync] pushed=\(dirty.count) pulled=\(snapshot.count) applied=\(applied) purged=\(purged)")
+            print("[QuickNoteSync] pushed=\(dirty.count) pulled=\(pulled) applied=\(applied) purged=\(purged)")
         } catch {
             recordFailure("Sync failed (\(error.localizedDescription)). Will retry automatically.")
         }
     }
 
     // MARK: - Steps
+
+    // MARK: Realtime listener pull (flag-gated alternative to polling)
+
+    /// Attaches a full-collection snapshot listener, re-attaching when the
+    /// UID changes (sign-in/out switches collections). Resume tokens make
+    /// the lastPull watermark unnecessary in this mode.
+    private func attachListenerIfNeeded(userId: String, notesRef: CollectionReference) {
+        if listeningUid == userId, listener != nil { return }
+        detachListener()
+        listeningUid = userId
+        listener = notesRef.addSnapshotListener { [weak self] snapshot, error in
+            if let error {
+                Task { @MainActor [weak self] in self?.listenerError(error) }
+                return
+            }
+            guard let snapshot else { return }
+            Task { await self?.handleSnapshotChanges(snapshot) }
+        }
+    }
+
+    private func detachListener() {
+        listener?.remove()
+        listener = nil
+        listeningUid = nil
+    }
+
+    private func handleSnapshotChanges(_ snapshot: QuerySnapshot) async {
+        let storage = Storage.storage(url: Self.config.STORAGE_BUCKET)
+        var added = 0, modified = 0, removed = 0, applied = 0
+        for change in snapshot.documentChanges {
+            switch change.type {
+            case .added:
+                added += 1
+                if await applyChangedDocument(change.document, storage: storage) {
+                    applied += 1
+                }
+            case .modified:
+                modified += 1
+                if await applyChangedDocument(change.document, storage: storage) {
+                    applied += 1
+                }
+            case .removed:
+                removed += 1
+                await handleRemoteRemoval(documentId: change.document.documentID)
+            }
+        }
+        print("[QuickNoteSync] snapshot changed: added=\(added) modified=\(modified) removed=\(removed) applied=\(applied)")
+        if applied > 0 {
+            uiState = QuickNoteSyncUiState(
+                status: uiState.status, lastSyncedAt: Date(), message: uiState.message
+            )
+        }
+    }
+
+    /// Applies one added/modified document; returns true when the remote won.
+    /// Own unacknowledged writes are skipped (LWW would skip them anyway once
+    /// acknowledged, since timestamps are then equal).
+    private func applyChangedDocument(_ doc: QueryDocumentSnapshot, storage: Storage) async -> Bool {
+        if doc.metadata.hasPendingWrites { return false }
+        let data = doc.data()
+        guard let json = Self.jsonString(for: data, documentId: doc.documentID) else { return false }
+        let localPath = await downloadAttachment(storage: storage, documentId: doc.documentID, data: data)
+        do {
+            let won = try await bridgeApplyRemote(json: json, localPath: localPath)
+            if won {
+                print("[QuickNoteSync] snapshot applied \(doc.documentID) deleted=\((data["deleted"] as? Bool) == true)")
+                if (data["deleted"] as? Bool) == true {
+                    QuickNoteNotificationScheduler.cancel(noteId: doc.documentID)
+                }
+            }
+            return won
+        } catch {
+            print("[QuickNoteSync] listener apply failed for \(doc.documentID): \(error)")
+            return false
+        }
+    }
+
+    /// A remotely hard-deleted document (purged tombstone) removes the local
+    /// row too — but only when local state already agrees it's a tombstone,
+    /// so an active note can never vanish through this path.
+    private func handleRemoteRemoval(documentId: String) async {
+        guard let local = try? await bridgeNote(id: documentId), local.deleted else { return }
+        try? await bridgeHardDelete(ids: [documentId])
+        QuickNoteNotificationScheduler.cancel(noteId: documentId)
+    }
+
+    private func listenerError(_ error: Error) {
+        uiState = QuickNoteSyncUiState(
+            status: .error, lastSyncedAt: uiState.lastSyncedAt,
+            message: "Realtime sync issue (\(error.localizedDescription)). Will retry automatically."
+        )
+        print("[QuickNoteSync] listener error: \(error)")
+    }
 
     private func ensureUserId() async throws -> String? {
         if let uid = Auth.auth().currentUser?.uid { return uid }
