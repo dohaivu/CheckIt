@@ -44,6 +44,8 @@ import androidx.compose.material.icons.filled.AddTask
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.RestoreFromTrash
 import androidx.compose.material.icons.filled.Star
@@ -94,6 +96,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.min
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
@@ -127,6 +130,8 @@ fun QuickNoteContent(
 ) {
     val state by viewModel.uiState.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
+    var selectedNoteId by remember { mutableStateOf<String?>(null) }
+    var deletedExpanded by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { viewModel.refresh() }
     DisposableEffect(lifecycleOwner) {
@@ -212,6 +217,10 @@ fun QuickNoteContent(
                     ) {
                         NextRow(
                             note = note,
+                            selected = note.id == selectedNoteId,
+                            onSelect = {
+                                selectedNoteId = if (selectedNoteId == note.id) null else note.id
+                            },
                             onDeleteSwipe = { viewModel.swipeRight(note.id) },
                             onReminderSwipe = { viewModel.openReminderPicker(note.id) },
                             onCopyToDailyPlan = onCopyToDailyPlan,
@@ -222,26 +231,49 @@ fun QuickNoteContent(
                 }
                 item(key = "header-deleted") {
                     Spacer(Modifier.height(16.dp))
-                    SectionLabel("TO BE DELETED")
+                    Row(
+                        modifier = Modifier.fillMaxWidth()
+                            .clickable { deletedExpanded = !deletedExpanded }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Icon(
+                            imageVector = if (deletedExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = if (deletedExpanded) "Collapse deleted notes" else "Expand deleted notes",
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        SectionLabel("TO BE DELETED")
+                        if (state.toBeDeleted.isNotEmpty()) {
+                            Text(
+                                "(${state.toBeDeleted.size})",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
                     Spacer(Modifier.height(8.dp))
                 }
-                if (state.toBeDeleted.isEmpty()) {
-                    item(key = "empty-deleted") {
-                        Text(
-                            "Deleted notes disappear after 24 hours.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(vertical = 8.dp),
+                if (deletedExpanded) {
+                    if (state.toBeDeleted.isEmpty()) {
+                        item(key = "empty-deleted") {
+                            Text(
+                                "Deleted notes disappear after 24 hours.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(vertical = 8.dp),
+                            )
+                        }
+                    }
+                    items(state.toBeDeleted, key = { "deleted-${it.id}" }) { note ->
+                        DeletedRow(
+                            note = note,
+                            onDeleteSwipe = { viewModel.deletePermanently(note.id) },
+                            onRestoreSwipe = { viewModel.restore(note.id) },
+                            onImageClick = viewModel::openImagePreview
                         )
                     }
-                }
-                items(state.toBeDeleted, key = { "deleted-${it.id}" }) { note ->
-                    DeletedRow(
-                        note = note,
-                        onDeleteSwipe = { viewModel.deletePermanently(note.id) },
-                        onRestoreSwipe = { viewModel.restore(note.id) },
-                        onImageClick = viewModel::openImagePreview
-                    )
                 }
                 item(key = "bottom-spacer") { Spacer(Modifier.height(16.dp)) }
             }
@@ -592,6 +624,8 @@ private enum class NextRowSwipeAction {
 @Composable
 private fun NextRow(
     note: QuickNote,
+    selected: Boolean,
+    onSelect: () -> Unit,
     onDeleteSwipe: () -> Unit,
     onReminderSwipe: () -> Unit,
     onCopyToDailyPlan: (String) -> Unit,
@@ -709,7 +743,7 @@ private fun NextRow(
             icon?.let { Icon(it, contentDescription = null) }
         }
 
-        // Foreground Content Card
+        // Foreground Content Card (tap selects the row, revealing the star)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -721,10 +755,13 @@ private fun NextRow(
                     shape = RoundedCornerShape(16.dp),
                 )
                 .background(
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    color = if (note.priority == TaskPriority.High) Color(0xFFFFB300).copy(alpha = 0.14f)
+                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
                     shape = RoundedCornerShape(16.dp),
                 )
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .clickable(onClick = onSelect)
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .heightIn(min = if (note.attachmentLocalPath.isNullOrBlank()) 32.dp else 56.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
@@ -736,13 +773,15 @@ private fun NextRow(
                 Spacer(Modifier.width(8.dp))
                 QuickNoteThumbnail(note.attachmentLocalPath, onClick = onImageClick)
             }
-            IconButton(onClick = onPriorityClick, modifier = Modifier.size(28.dp)) {
-                Icon(
-                    imageVector = if (note.priority == TaskPriority.High) Icons.Default.Star else Icons.Default.StarBorder,
-                    contentDescription = if (note.priority == TaskPriority.High) "High priority" else "Mark high priority",
-                    modifier = Modifier.size(16.dp),
-                    tint = if (note.priority == TaskPriority.High) Color(0xFFFFB300) else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            if (note.priority == TaskPriority.High || selected) {
+                IconButton(onClick = onPriorityClick, modifier = Modifier.size(28.dp)) {
+                    Icon(
+                        imageVector = if (note.priority == TaskPriority.High) Icons.Default.Star else Icons.Default.StarBorder,
+                        contentDescription = if (note.priority == TaskPriority.High) "High priority" else "Mark high priority",
+                        modifier = Modifier.size(20.dp),
+                        tint = if (note.priority == TaskPriority.High) Color(0xFFFFB300) else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
             if (note.remindAt != null) {
                 Row(
