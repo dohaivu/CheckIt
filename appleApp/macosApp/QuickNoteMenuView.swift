@@ -290,6 +290,7 @@ struct QuickNoteRow: View {
 
     @State private var showPicker = false
     @State private var customDate = Date().addingTimeInterval(3600)
+    @State private var hovering = false
 
     private var remindAtMillis: Int64? { note.remindAt?.int64Value }
 
@@ -325,6 +326,8 @@ struct QuickNoteRow: View {
             }
             .buttonStyle(.plain)
             .help(remindAtMillis == nil ? "Set reminder" : "Change reminder")
+            // Set badge stays visible (status); plain alarm reveals on hover.
+            .opacity(remindAtMillis != nil || hovering ? 1 : 0)
             .popover(isPresented: $showPicker, arrowEdge: .trailing) {
                 reminderPicker
             }
@@ -336,8 +339,11 @@ struct QuickNoteRow: View {
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
             .help("Move to trash")
+            .opacity(hovering ? 1 : 0)
         }
         .padding(.vertical, 2)
+        .animation(.easeInOut(duration: 0.15), value: hovering)
+        .onHover { hovering = $0 }
     }
 
     private var reminderPicker: some View {
@@ -394,6 +400,8 @@ struct QuickNoteDeletedRow: View {
     let note: QuickNote
     let nowMillis: Int64
 
+    @State private var hovering = false
+
     var body: some View {
         HStack(alignment: .center, spacing: 8) {
             Text(note.content)
@@ -420,6 +428,7 @@ struct QuickNoteDeletedRow: View {
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
             .help("Restore")
+            .opacity(hovering ? 1 : 0)
             Button {
                 state.deleteForever(note)
             } label: {
@@ -428,8 +437,11 @@ struct QuickNoteDeletedRow: View {
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
             .help("Delete forever")
+            .opacity(hovering ? 1 : 0)
         }
         .padding(.vertical, 2)
+        .animation(.easeInOut(duration: 0.15), value: hovering)
+        .onHover { hovering = $0 }
     }
 }
 
@@ -438,6 +450,7 @@ struct QuickNoteMenuView: View {
     @ObservedObject private var sync = QuickNoteFirestoreSync.shared
     @State private var tickTimer: Timer?
     @FocusState private var captureFocused: Bool
+    @State private var showDeleted = false
 
     var body: some View {
         VStack(spacing: 8) {
@@ -496,21 +509,36 @@ struct QuickNoteMenuView: View {
                             }
                         }
                     }
-                    Text("TO BE DELETED")
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
+                    Button {
+                        withAnimation { showDeleted.toggle() }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: showDeleted ? "chevron.down" : "chevron.right")
+                                .font(.caption)
+                            Text("TO BE DELETED")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                            if !state.deletedNotes.isEmpty {
+                                Text("(\(state.deletedNotes.count))")
+                                    .font(.caption)
+                            }
+                        }
                         .foregroundStyle(.secondary)
-                        .padding(.top, 6)
-                    if state.deletedNotes.isEmpty {
-                        Text("Deleted notes disappear after 24 hours.")
-                            .foregroundStyle(.secondary)
-                            .font(.callout)
-                    } else {
-                        LazyVStack(spacing: 0) {
-                            ForEach(state.deletedNotes, id: \.id) { note in
-                                QuickNoteDeletedRow(state: state, note: note, nowMillis: state.nowTickMillis)
-                                    .padding(.vertical, 4)
-                                Divider()
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 6)
+                    if showDeleted {
+                        if state.deletedNotes.isEmpty {
+                            Text("Deleted notes disappear after 24 hours.")
+                                .foregroundStyle(.secondary)
+                                .font(.callout)
+                        } else {
+                            LazyVStack(spacing: 0) {
+                                ForEach(state.deletedNotes, id: \.id) { note in
+                                    QuickNoteDeletedRow(state: state, note: note, nowMillis: state.nowTickMillis)
+                                        .padding(.vertical, 4)
+                                    Divider()
+                                }
                             }
                         }
                     }
