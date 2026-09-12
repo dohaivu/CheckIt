@@ -296,6 +296,8 @@ struct QuickNoteRow: View {
     @State private var showPicker = false
     @State private var customDate = Date().addingTimeInterval(3600)
     @State private var hovering = false
+    @State private var showTimerPicker = false
+    @State private var customMinutes = ""
 
     private var remindAtMillis: Int64? { note.remindAt?.int64Value }
 
@@ -305,6 +307,20 @@ struct QuickNoteRow: View {
                 .lineLimit(3)
                 .frame(maxWidth: .infinity, alignment: .leading)
         
+            Button {
+                customMinutes = ""
+                showTimerPicker = true
+            } label: {
+                Image(systemName: "timer")
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .help("Start countdown")
+            .opacity(hovering ? 1 : 0)
+            .popover(isPresented: $showTimerPicker, arrowEdge: .trailing) {
+                timerPicker
+            }
+            
             Button {
                 let base = remindAtMillis
                     .map { Date(timeIntervalSince1970: TimeInterval($0) / 1000.0) } ?? Date()
@@ -405,6 +421,36 @@ struct QuickNoteRow: View {
         .frame(width: 240)
     }
 
+    private var timerPicker: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Countdown").font(.headline)
+            HStack(spacing: 8) {
+                ForEach([5, 15, 25, 60], id: \.self) { minutes in
+                    Button("\(minutes)m") {
+                        QuickNoteCountdown.shared.start(content: note.content, durationSeconds: minutes * 60)
+                        showTimerPicker = false
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+            }
+            HStack {
+                TextField("Minutes", text: $customMinutes)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 70)
+                Button("Set") {
+                    if let minutes = Int(customMinutes.trimmingCharacters(in: .whitespaces)), minutes > 0 {
+                        QuickNoteCountdown.shared.start(content: note.content, durationSeconds: minutes * 60)
+                    }
+                    showTimerPicker = false
+                }
+                .disabled((Int(customMinutes.trimmingCharacters(in: .whitespaces)) ?? 0) <= 0)
+            }
+        }
+        .padding()
+        .frame(width: 240)
+    }
+
     private func absoluteString(millis: Int64) -> String {
         Date(timeIntervalSince1970: TimeInterval(millis) / 1000.0)
             .formatted(date: .abbreviated, time: .shortened)
@@ -471,6 +517,7 @@ struct QuickNoteDeletedRow: View {
 struct QuickNoteMenuView: View {
     @StateObject private var state = QuickNoteMenuState()
     @ObservedObject private var sync = QuickNoteFirestoreSync.shared
+    @ObservedObject private var countdown = QuickNoteCountdown.shared
     @State private var tickTimer: Timer?
     @FocusState private var captureFocused: Bool
     @State private var showDeleted = false
@@ -492,6 +539,24 @@ struct QuickNoteMenuView: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
                 .help("Refresh")
+            }
+
+            if countdown.isRunning {
+                HStack(spacing: 8) {
+                    Image(systemName: "timer")
+                        .foregroundStyle(Color.accentColor)
+                    Text(countdown.displayText)
+                        .font(.callout)
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Button("Stop") {
+                        countdown.stop()
+                    }
+                    .buttonStyle(.link)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+                .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
             }
 
             ScrollView {

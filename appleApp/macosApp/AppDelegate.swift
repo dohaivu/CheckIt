@@ -32,6 +32,7 @@ extension Notification.Name {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private let popover = NSPopover()
+    private var lastNotes: [QuickNote] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Menu-bar apps are easy to launch twice (no dock icon); a second
@@ -45,6 +46,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self,
             selector: #selector(itemsChanged(_:)),
             name: .quickNoteHasItems,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(countdownChanged(_:)),
+            name: .quickNoteCountdownChanged,
             object: nil
         )
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -148,7 +155,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func itemsChanged(_ notification: Notification) {
-        let notes = notification.object as? [QuickNote] ?? []
+        lastNotes = notification.object as? [QuickNote] ?? []
+        renderStatus()
+    }
+
+    @objc private func countdownChanged(_ notification: Notification) {
+        renderStatus()
+    }
+
+    /// Menu-bar status: a running countdown takes over ("12:34 Buy milk"),
+    /// otherwise count + top item text. Hidden when idle and empty.
+    private func renderStatus() {
+        if QuickNoteCountdown.shared.isRunning {
+            let countdown = QuickNoteCountdown.shared
+            setCountdownText(time: countdown.timeLabel, text: countdown.noteText)
+            return
+        }
+        let notes = lastNotes
         let top = notes.sorted {
             let leftStar = $0.priority == TaskPriority.high
             let rightStar = $1.priority == TaskPriority.high
@@ -157,7 +180,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return $0.id < $1.id
         }.first
         let firstLine = top.map { String($0.content.split(separator: "\n", maxSplits: 1).first ?? "") } ?? ""
-        setStatusText(count: notes.count, text: String(firstLine.prefix(30)))
+        setStatusText(count: notes.count, text: String(firstLine.prefix(20)))
+    }
+
+    private func setCountdownText(time: String, text: String) {
+        guard let button = statusItem?.button else { return }
+        let digits = NSFont.monospacedDigitSystemFont(
+            ofSize: button.font?.pointSize ?? NSFont.systemFontSize,
+            weight: .regular
+        )
+        let status = NSMutableAttributedString(
+            string: "\(time) ",
+            attributes: [
+                .foregroundColor: NSColor.controlAccentColor,
+                .font: digits,
+            ]
+        )
+        status.append(NSAttributedString(string: text))
+        button.attributedTitle = status
     }
 
     private func showRightClickMenu() {

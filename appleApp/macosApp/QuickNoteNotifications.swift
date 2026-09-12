@@ -83,7 +83,7 @@ enum QuickNoteNotificationScheduler {
             guard let fireMillis = note.remindAt?.int64Value, fireMillis > nowMillis else { continue }
             let interval = TimeInterval(fireMillis - nowMillis) / 1000.0
             let content = UNMutableNotificationContent()
-            content.title = "Quick Note reminder"
+            content.title = "Quick Note"
             content.body = String(note.content.prefix(200))
             content.sound = .default
             let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(1, interval), repeats: false)
