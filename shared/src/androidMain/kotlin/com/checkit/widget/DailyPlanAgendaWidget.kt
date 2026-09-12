@@ -47,9 +47,12 @@ import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
 import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.NoteItem
+import com.checkit.domain.QuickNote
+import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveNotesForDateUseCase
+import com.checkit.domain.usecase.ObserveQuickNextUseCase
 import com.checkit.shared.R
 import com.checkit.ui.myday.DayViewProjection
 import com.checkit.ui.myday.doneWorkMinutes
@@ -71,6 +74,7 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
 
     private val observeNotesForDate: ObserveNotesForDateUseCase by inject()
     private val observeDailyPlans: ObserveDailyPlansUseCase by inject()
+    private val observeQuickNext: ObserveQuickNextUseCase by inject()
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val today = today()
@@ -78,6 +82,9 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
         val dailyPlans = observeDailyPlans(startDate = today, endDate = today).first()
         val todayPlan = dailyPlans.find { it.date == today }
         val items = todayPlan?.items ?: emptyList()
+        val quickNotes = observeQuickNext().first()
+            .sortedWith(compareByDescending<QuickNote> { it.priority }.thenBy { it.sortOrder })
+            .take(5)
 
         // Get current time for highlighting
         val now = kotlin.time.Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
@@ -218,7 +225,9 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                             )
                         }
                     }
-                    Spacer(modifier = GlanceModifier.height(12.dp))
+                    Spacer(modifier = GlanceModifier.height(6.dp))
+
+                    GlanceQuickNoteSection(quickNotes)
 
                     if (!hasAllDay && timedItems.isEmpty()) {
                         Box(
@@ -288,6 +297,46 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
     private fun openNewJournalEntryAction(): Action = actionStartActivity<MainActivity>(
         parameters = actionParametersOf(OpenNewJournalEntryParameterKey to true)
     )
+
+    @Composable
+    private fun GlanceQuickNoteSection(notes: List<QuickNote>) {
+        if (notes.isEmpty()) return
+        Column(modifier = GlanceModifier.fillMaxWidth().padding(bottom = 8.dp)) {
+            notes.forEach { note ->
+                GlanceQuickNoteCard(note)
+            }
+        }
+    }
+
+    @Composable
+    private fun GlanceQuickNoteCard(note: QuickNote) {
+        Row(
+            modifier = GlanceModifier
+                .fillMaxWidth()
+                .padding(vertical = 2.dp)
+                .clickable(actionStartActivity<MainActivity>()),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = note.content,
+                modifier = GlanceModifier.defaultWeight(),
+                style = TextStyle(
+                    fontSize = 12.sp,
+                    color = GlanceTheme.colors.onSurface
+                ),
+                maxLines = 1
+            )
+            if (note.priority == TaskPriority.High) {
+                Spacer(modifier = GlanceModifier.width(8.dp))
+                Image(
+                    provider = ImageProvider(R.drawable.star_24px),
+                    contentDescription = "High priority",
+                    modifier = GlanceModifier.size(14.dp),
+                    colorFilter = ColorFilter.tint(GlanceTheme.colors.error)
+                )
+            }
+        }
+    }
 
     @Composable
     private fun GlanceAgendaAxisRow(
