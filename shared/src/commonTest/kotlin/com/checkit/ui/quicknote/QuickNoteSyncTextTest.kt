@@ -14,13 +14,13 @@ class QuickNoteSyncTextTest {
     fun timestampShowsSyncedWithTime() {
         val text = formatSyncedAt(1_700_000_000_000L)
         assertTrue(text.startsWith("Synced "))
-        assertTrue(Regex("""Synced \d{2}:\d{2}""").matches(text))
+        assertTrue(Regex("""Synced \d{1,2}:\d{2} (AM|PM)""").matches(text))
     }
 
     @Test
     fun midnightPadsBothParts() {
         // Shape check only: exact wall time depends on device time zone.
         val text = formatSyncedAt(0L)
-        assertTrue(Regex("""Synced \d{2}:\d{2}""").matches(text))
+        assertTrue(Regex("""Synced \d{1,2}:\d{2} (AM|PM)""").matches(text))
     }
 }

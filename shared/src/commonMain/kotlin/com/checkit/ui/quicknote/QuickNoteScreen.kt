@@ -108,15 +108,13 @@ import com.checkit.domain.QuickNoteType
 import com.checkit.domain.TaskPriority
 import com.checkit.ui.components.AiQuickAddBar
 import com.checkit.ui.components.SectionLabel
+import com.checkit.ui.toClockLabel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
-import kotlin.time.Instant
 
 /**
  * QuickNote content (banner, list, capture, dialogs) hosted as the second
@@ -1033,14 +1031,10 @@ internal fun formatReminder(remindAt: Long): String =
     )
 
 /**
- * Mirrors the macOS menu footer ("Synced 14:32"): shows the last successful
+ * Mirrors the macOS menu footer ("Synced 2:32 PM"): shows the last successful
  * sync time when known, plain "Synced" otherwise.
  */
 internal fun formatSyncedAt(lastSyncedAt: Long?): String {
     if (lastSyncedAt == null) return "Synced"
-    val local = Instant.fromEpochMilliseconds(lastSyncedAt)
-        .toLocalDateTime(TimeZone.currentSystemDefault())
-    val hours = local.hour.toString().padStart(2, '0')
-    val minutes = local.minute.toString().padStart(2, '0')
-    return "Synced $hours:$minutes"
+    return "Synced ${lastSyncedAt.toClockLabel()}"
 }

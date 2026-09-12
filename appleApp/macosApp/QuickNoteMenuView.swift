@@ -311,15 +311,7 @@ struct QuickNoteRow: View {
                     remoteURL: note.attachmentUrl.flatMap(URL.init(string:))
                 )
             }
-            Button {
-                state.togglePriority(note)
-            } label: {
-                Image(systemName: note.priority == TaskPriority.high ? "star.fill" : "star")
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(note.priority == TaskPriority.high ? .yellow : .secondary)
-            .help(note.priority == TaskPriority.high ? "High priority" : "Mark high priority")
-            .opacity(note.priority == TaskPriority.high || hovering ? 1 : 0)
+        
             Button {
                 let base = remindAtMillis
                     .map { Date(timeIntervalSince1970: TimeInterval($0) / 1000.0) } ?? Date()
@@ -345,6 +337,7 @@ struct QuickNoteRow: View {
             .popover(isPresented: $showPicker, arrowEdge: .trailing) {
                 reminderPicker
             }
+            
             Button {
                 state.trash(note)
             } label: {
@@ -354,6 +347,16 @@ struct QuickNoteRow: View {
             .foregroundStyle(.secondary)
             .help("Move to trash")
             .opacity(hovering ? 1 : 0)
+            
+            Button {
+                state.togglePriority(note)
+            } label: {
+                Image(systemName: note.priority == TaskPriority.high ? "star.fill" : "star")
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(note.priority == TaskPriority.high ? .yellow : .secondary)
+            .help(note.priority == TaskPriority.high ? "High priority" : "Mark high priority")
+            .opacity(note.priority == TaskPriority.high || hovering ? 1 : 0)
         }
         .padding(.vertical, 2)
         .animation(.easeInOut(duration: 0.15), value: hovering)
