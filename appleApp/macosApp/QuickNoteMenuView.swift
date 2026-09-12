@@ -286,6 +286,43 @@ struct QuickNoteThumbnail: View {
     }
 }
 
+/// Countdown duration picker shared by rows (countdown for a saved note)
+/// and the capture bar (countdown for unsaved text). Calls onStart with
+/// seconds; the caller dismisses its own popover.
+struct CountdownPicker: View {
+    var onStart: (Int) -> Void
+
+    @State private var customMinutes = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Countdown").font(.headline)
+            HStack(spacing: 8) {
+                ForEach([5, 15, 25, 60], id: \.self) { minutes in
+                    Button("\(minutes)m") {
+                        onStart(minutes * 60)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+            }
+            HStack {
+                TextField("Minutes", text: $customMinutes)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 70)
+                Button("Set") {
+                    if let minutes = Int(customMinutes.trimmingCharacters(in: .whitespaces)), minutes > 0 {
+                        onStart(minutes * 60)
+                    }
+                }
+                .disabled((Int(customMinutes.trimmingCharacters(in: .whitespaces)) ?? 0) <= 0)
+            }
+        }
+        .padding()
+        .frame(width: 240)
+    }
+}
+
 /// NEXT row: content plus an alarm badge showing the shared
 /// "in Xm"/"in Xh" format. Tapping the badge opens the time picker.
 struct QuickNoteRow: View {
@@ -297,7 +334,6 @@ struct QuickNoteRow: View {
     @State private var customDate = Date().addingTimeInterval(3600)
     @State private var hovering = false
     @State private var showTimerPicker = false
-    @State private var customMinutes = ""
 
     private var remindAtMillis: Int64? { note.remindAt?.int64Value }
 
@@ -308,7 +344,6 @@ struct QuickNoteRow: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
         
             Button {
-                customMinutes = ""
                 showTimerPicker = true
             } label: {
                 Image(systemName: "timer")
@@ -318,7 +353,10 @@ struct QuickNoteRow: View {
             .help("Start countdown")
             .opacity(hovering ? 1 : 0)
             .popover(isPresented: $showTimerPicker, arrowEdge: .trailing) {
-                timerPicker
+                CountdownPicker { seconds in
+                    QuickNoteCountdown.shared.start(content: note.content, durationSeconds: seconds)
+                    showTimerPicker = false
+                }
             }
             
             Button {
@@ -421,36 +459,6 @@ struct QuickNoteRow: View {
         .frame(width: 240)
     }
 
-    private var timerPicker: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Countdown").font(.headline)
-            HStack(spacing: 8) {
-                ForEach([5, 15, 25, 60], id: \.self) { minutes in
-                    Button("\(minutes)m") {
-                        QuickNoteCountdown.shared.start(content: note.content, durationSeconds: minutes * 60)
-                        showTimerPicker = false
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                }
-            }
-            HStack {
-                TextField("Minutes", text: $customMinutes)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 70)
-                Button("Set") {
-                    if let minutes = Int(customMinutes.trimmingCharacters(in: .whitespaces)), minutes > 0 {
-                        QuickNoteCountdown.shared.start(content: note.content, durationSeconds: minutes * 60)
-                    }
-                    showTimerPicker = false
-                }
-                .disabled((Int(customMinutes.trimmingCharacters(in: .whitespaces)) ?? 0) <= 0)
-            }
-        }
-        .padding()
-        .frame(width: 240)
-    }
-
     private func absoluteString(millis: Int64) -> String {
         Date(timeIntervalSince1970: TimeInterval(millis) / 1000.0)
             .formatted(date: .abbreviated, time: .shortened)
@@ -521,6 +529,7 @@ struct QuickNoteMenuView: View {
     @State private var tickTimer: Timer?
     @FocusState private var captureFocused: Bool
     @State private var showDeleted = false
+    @State private var showCaptureTimer = false
 
     var body: some View {
         VStack(spacing: 8) {
@@ -661,11 +670,30 @@ struct QuickNoteMenuView: View {
                         }
                     }
 
-                Button(state.isSaving ? "Saving..." : "Add") {
-                    state.add()
+                VStack(spacing: 12) {
+                    Button {
+                        showCaptureTimer = true
+                    } label: {
+                        Image(systemName: "timer")
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .help("Countdown without saving")
+                    .disabled(state.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .popover(isPresented: $showCaptureTimer, arrowEdge: .trailing) {
+                        CountdownPicker { seconds in
+                            QuickNoteCountdown.shared.start(content: state.input, durationSeconds: seconds)
+                            state.input = ""
+                            showCaptureTimer = false
+                        }
+                    }
+                    
+                    Button(state.isSaving ? "Saving..." : "Add") {
+                        state.add()
+                    }
+                    .disabled(state.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || state.isSaving)
+                    .keyboardShortcut(.return, modifiers: .command)
                 }
-                .disabled(state.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || state.isSaving)
-                .keyboardShortcut(.return, modifiers: .command)
             }
 
             syncStatusLine

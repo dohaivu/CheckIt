@@ -49,6 +49,8 @@ final class QuickNoteCountdown: ObservableObject {
             Task { @MainActor [weak self] in self?.tick() }
         }
         notifyChanged()
+        // The countdown lives in the menu bar from here; dismiss the menu.
+        NotificationCenter.default.post(name: .quickNoteCloseMenu, object: nil)
     }
 
     func stop() {

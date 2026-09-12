@@ -26,6 +26,8 @@ extension Notification.Name {
     static let quickNoteMenuOpened = Notification.Name("checkit.quickNoteMenuOpened")
     /// Posted (main thread) each time the menu popover is closed.
     static let quickNoteMenuClosed = Notification.Name("checkit.quickNoteMenuClosed")
+    /// Posted to request closing the menu (e.g. after starting a countdown).
+    static let quickNoteCloseMenu = Notification.Name("checkit.quickNoteCloseMenu")
 }
 
 @MainActor
@@ -46,6 +48,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self,
             selector: #selector(itemsChanged(_:)),
             name: .quickNoteHasItems,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(closeMenuRequested(_:)),
+            name: .quickNoteCloseMenu,
             object: nil
         )
         NotificationCenter.default.addObserver(
@@ -102,7 +110,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func togglePopover() {
         guard let button = statusItem?.button else { return }
         if popover.isShown {
-            popover.performClose(nil)
+            // Note: performClose is an NSWindow API and a no-op on NSPopover.
+            popover.close()
             uninstallEscCloser()
             NotificationCenter.default.post(name: .quickNoteMenuClosed, object: nil)
         } else {
@@ -157,6 +166,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func itemsChanged(_ notification: Notification) {
         lastNotes = notification.object as? [QuickNote] ?? []
         renderStatus()
+    }
+
+    @objc private func closeMenuRequested(_ notification: Notification) {
+        if popover.isShown {
+            togglePopover()
+        }
     }
 
     @objc private func countdownChanged(_ notification: Notification) {
