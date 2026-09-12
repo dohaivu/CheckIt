@@ -225,7 +225,6 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
                             )
                         }
                     }
-                    Spacer(modifier = GlanceModifier.height(6.dp))
 
                     GlanceQuickNoteSection(quickNotes)
 

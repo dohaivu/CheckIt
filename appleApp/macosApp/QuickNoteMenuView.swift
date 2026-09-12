@@ -304,13 +304,6 @@ struct QuickNoteRow: View {
             Text(note.content)
                 .lineLimit(3)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            if note.type != QuickNoteType.text,
-               note.attachmentLocalPath != nil || note.attachmentUrl != nil {
-                QuickNoteThumbnail(
-                    localPath: note.attachmentLocalPath,
-                    remoteURL: note.attachmentUrl.flatMap(URL.init(string:))
-                )
-            }
         
             Button {
                 let base = remindAtMillis
@@ -357,6 +350,14 @@ struct QuickNoteRow: View {
             .foregroundStyle(note.priority == TaskPriority.high ? .yellow : .secondary)
             .help(note.priority == TaskPriority.high ? "High priority" : "Mark high priority")
             .opacity(note.priority == TaskPriority.high || hovering ? 1 : 0)
+            
+            if note.type != QuickNoteType.text,
+               note.attachmentLocalPath != nil || note.attachmentUrl != nil {
+                QuickNoteThumbnail(
+                    localPath: note.attachmentLocalPath,
+                    remoteURL: note.attachmentUrl.flatMap(URL.init(string:))
+                )
+            }
         }
         .padding(.vertical, 2)
         .animation(.easeInOut(duration: 0.15), value: hovering)
@@ -495,10 +496,6 @@ struct QuickNoteMenuView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("NEXT")
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.secondary)
                     if state.notes.isEmpty {
                         Text("Nothing here. Capture a thought below.")
                             .foregroundStyle(.secondary)
