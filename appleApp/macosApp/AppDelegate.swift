@@ -154,16 +154,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let header = NSMenuItem(title: "Signed in as \(email)", action: nil, keyEquivalent: "")
             header.isEnabled = false
             menu.addItem(header)
-            let signOut = NSMenuItem(title: "Sign Out", action: #selector(signOutClicked), keyEquivalent: "")
-            signOut.target = self
-            menu.addItem(signOut)
         } else {
-            let header = NSMenuItem(title: "Not signed in — notes stay on this Mac", action: nil, keyEquivalent: "")
+            let header = NSMenuItem(title: "Not signed in — see Settings to sync", action: nil, keyEquivalent: "")
             header.isEnabled = false
             menu.addItem(header)
-            let signIn = NSMenuItem(title: "Sign in with Google…", action: #selector(signInClicked), keyEquivalent: "")
-            signIn.target = self
-            menu.addItem(signIn)
         }
         menu.addItem(.separator())
         let settings = NSMenuItem(title: "Settings…", action: #selector(settingsClicked), keyEquivalent: ",")
@@ -178,17 +172,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem?.menu = menu
         statusItem?.button?.performClick(nil)
         statusItem?.menu = nil
-    }
-
-    @objc private func signInClicked() {
-        if !popover.isShown {
-            togglePopover()
-        }
-        Task { await QuickNoteGoogleSignIn.shared.signIn() }
-    }
-
-    @objc private func signOutClicked() {
-        QuickNoteGoogleSignIn.shared.signOut()
     }
 
     // MARK: - Settings window
