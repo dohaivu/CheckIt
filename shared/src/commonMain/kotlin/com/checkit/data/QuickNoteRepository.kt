@@ -4,6 +4,7 @@ import com.checkit.domain.QuickNote
 import com.checkit.domain.QuickNoteRules
 import com.checkit.domain.QuickNoteStatus
 import com.checkit.domain.QuickNoteType
+import com.checkit.domain.TaskPriority
 import com.checkit.notifications.NoOpQuickNoteReminderScheduler
 import com.checkit.notifications.QuickNoteReminderScheduler
 import kotlinx.coroutines.flow.Flow
@@ -24,6 +25,7 @@ interface QuickNoteRepository {
     suspend fun deletePermanently(id: String)
     suspend fun restore(id: String)
     suspend fun setReminder(id: String, remindAt: Long?)
+    suspend fun setPriority(id: String, priority: TaskPriority)
     suspend fun clearReminder(id: String)
     suspend fun clearExpiredReminders(): Int
     suspend fun autoTrashInactive(): Int
@@ -109,6 +111,15 @@ class RoomQuickNoteRepository(
         if (entity.remindAt == null) return
         val now = Clock.System.now().toEpochMilliseconds()
         dao.setReminder(id, null, now)
+        syncManager.requestSync()
+    }
+
+    override suspend fun setPriority(id: String, priority: TaskPriority) {
+        val entity = dao.getById(id) ?: return
+        if (entity.deleted) return
+        val coerced = QuickNoteRules.coercePriority(priority)
+        val now = Clock.System.now().toEpochMilliseconds()
+        dao.setPriority(id, coerced.name, now)
         syncManager.requestSync()
     }
 

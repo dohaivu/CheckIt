@@ -9,8 +9,10 @@ import androidx.room3.PrimaryKey
 import androidx.room3.Query
 import androidx.room3.Upsert
 import com.checkit.domain.QuickNote
+import com.checkit.domain.QuickNoteRules
 import com.checkit.domain.QuickNoteStatus
 import com.checkit.domain.QuickNoteType
+import com.checkit.domain.TaskPriority
 import kotlinx.coroutines.flow.Flow
 
 @Entity(
@@ -39,6 +41,8 @@ data class QuickNoteEntity(
     val attachmentLocalPath: String? = null,
     /** Remote download URL; synced. */
     val attachmentUrl: String? = null,
+    /** TaskPriority name; only None or High are used. */
+    val priority: String = "None",
 )
 
 fun QuickNoteEntity.toDomain(): QuickNote = QuickNote(
@@ -54,6 +58,9 @@ fun QuickNoteEntity.toDomain(): QuickNote = QuickNote(
     type = runCatching { QuickNoteType.valueOf(type) }.getOrDefault(QuickNoteType.TEXT),
     attachmentLocalPath = attachmentLocalPath,
     attachmentUrl = attachmentUrl,
+    priority = runCatching { TaskPriority.valueOf(priority) }.getOrNull()
+        ?.let { QuickNoteRules.coercePriority(it) }
+        ?: TaskPriority.None,
 )
 
 fun QuickNote.toEntity(dirty: Boolean = true): QuickNoteEntity = QuickNoteEntity(
@@ -70,6 +77,7 @@ fun QuickNote.toEntity(dirty: Boolean = true): QuickNoteEntity = QuickNoteEntity
     type = type.name,
     attachmentLocalPath = attachmentLocalPath,
     attachmentUrl = attachmentUrl,
+    priority = priority.name,
 )
 
 @Dao
@@ -160,4 +168,7 @@ interface QuickNoteDao {
 
     @Query("UPDATE quick_notes SET attachmentUrl = :url, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun setAttachmentUrl(id: String, url: String, updatedAt: Long)
+
+    @Query("UPDATE quick_notes SET priority = :priority, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
+    suspend fun setPriority(id: String, priority: String, updatedAt: Long)
 }

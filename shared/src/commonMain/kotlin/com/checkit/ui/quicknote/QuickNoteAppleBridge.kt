@@ -1,5 +1,6 @@
 package com.checkit.ui.quicknote
 
+import com.checkit.domain.TaskPriority
 import com.checkit.domain.usecase.CreateQuickNoteUseCase
 import com.checkit.domain.usecase.ClearExpiredQuickNoteRemindersUseCase
 import com.checkit.domain.usecase.DeleteQuickNotePermanentlyUseCase
@@ -9,6 +10,7 @@ import com.checkit.domain.usecase.MoveQuickNoteUseCase
 import com.checkit.domain.usecase.ObserveQuickNextUseCase
 import com.checkit.domain.usecase.ObserveQuickToBeDeletedUseCase
 import com.checkit.domain.usecase.RestoreQuickNoteUseCase
+import com.checkit.domain.usecase.SetQuickNotePriorityUseCase
 import com.checkit.domain.usecase.SetQuickNoteReminderUseCase
 import com.checkit.infrastructure.initKoin
 import co.touchlab.kermit.Logger
@@ -49,6 +51,7 @@ class QuickNoteMenuHelper(
     private val maintain: MaintainQuickNotesUseCase,
     private val moveNote: MoveQuickNoteUseCase,
     private val clearExpiredRemindersUseCase: ClearExpiredQuickNoteRemindersUseCase,
+    private val setPriorityUseCase: SetQuickNotePriorityUseCase,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
@@ -122,6 +125,12 @@ class QuickNoteMenuHelper(
     fun clearReminder(id: String) {
         scope.launch {
             runCatching { setReminder.clear(id) }
+        }
+    }
+
+    fun setPriority(id: String, priority: TaskPriority) {
+        scope.launch {
+            runCatching { setPriorityUseCase(id, priority) }
         }
     }
 

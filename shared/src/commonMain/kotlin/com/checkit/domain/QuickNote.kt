@@ -30,6 +30,8 @@ data class QuickNote(
     val attachmentLocalPath: String? = null,
     /** Remote download URL; synced via the sync document. */
     val attachmentUrl: String? = null,
+    /** Only None or High are used; other values normalize to None on read. */
+    val priority: TaskPriority = TaskPriority.None,
 ) {
     val isActive: Boolean get() = !deleted
     val isExpired: Boolean get() = QuickNoteRules.isExpired(this, Clock.System.now().toEpochMilliseconds())
@@ -87,6 +89,10 @@ object QuickNoteRules {
         }
         return note.copy(remindAt = remindAt, updatedAt = now)
     }
+
+    /** QuickNote only uses None/High; anything else normalizes to None. */
+    fun coercePriority(priority: TaskPriority): TaskPriority =
+        if (priority == TaskPriority.High) TaskPriority.High else TaskPriority.None
 
     fun reminderAt(now: Long, durationMillis: Long): Long = now + durationMillis
 

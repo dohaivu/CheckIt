@@ -108,6 +108,7 @@ import com.checkit.domain.usecase.MoveQuickNoteUseCase
 import com.checkit.domain.usecase.ObserveQuickNextUseCase
 import com.checkit.domain.usecase.ObserveQuickToBeDeletedUseCase
 import com.checkit.domain.usecase.RestoreQuickNoteUseCase
+import com.checkit.domain.usecase.SetQuickNotePriorityUseCase
 import com.checkit.domain.usecase.SetQuickNoteReminderUseCase
 import com.checkit.notifications.AppReminderScheduler
 import com.checkit.ui.calendar.CalendarViewModel
@@ -252,10 +253,11 @@ val provideInteractorModule = module {
     single { DeleteQuickNotePermanentlyUseCase(get()) }
     single { RestoreQuickNoteUseCase(get()) }
     single { SetQuickNoteReminderUseCase(get()) }
+    single { SetQuickNotePriorityUseCase(get()) }
     single { MoveQuickNoteUseCase(get()) }
     single { MaintainQuickNotesUseCase(get(), get()) }
     single { ClearExpiredQuickNoteRemindersUseCase(get()) }
-    single { QuickNoteMenuHelper(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    single { QuickNoteMenuHelper(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
 }
 
 val provideDatabaseModule = module {
@@ -388,7 +390,8 @@ val provideViewModelModule = module {
             restoreUseCase = get(),
             maintain = get(),
             syncManager = get(),
-            cameraCapture = get()
+            cameraCapture = get(),
+            setPriority = get()
         )
     }
 }

@@ -184,6 +184,11 @@ final class QuickNoteMenuState: ObservableObject {
         helper.clearReminder(id: note.id)
     }
 
+    func togglePriority(_ note: QuickNote) {
+        let next: TaskPriority = note.priority == TaskPriority.high ? TaskPriority.none : TaskPriority.high
+        helper.setPriority(id: note.id, priority: next)
+    }
+
     /// Persist a drag-and-drop position change within NEXT. The list is
     /// reordered optimistically (like Android's dragOrder) and the shared
     /// flow corrects it once Room echoes the new sortOrder.
@@ -307,6 +312,15 @@ struct QuickNoteRow: View {
                 )
             }
             Button {
+                state.togglePriority(note)
+            } label: {
+                Image(systemName: note.priority == TaskPriority.high ? "star.fill" : "star")
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(note.priority == TaskPriority.high ? .yellow : .secondary)
+            .help(note.priority == TaskPriority.high ? "High priority" : "Mark high priority")
+            .opacity(note.priority == TaskPriority.high || hovering ? 1 : 0)
+            Button {
                 let base = remindAtMillis
                     .map { Date(timeIntervalSince1970: TimeInterval($0) / 1000.0) } ?? Date()
                 customDate = base.addingTimeInterval(60)
@@ -419,6 +433,11 @@ struct QuickNoteDeletedRow: View {
                 Text(QuickNoteRowText.remainingText(deleteAt: note.deleteAt, nowMillis: nowMillis))
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            }
+            if note.priority == TaskPriority.high {
+                Image(systemName: "star.fill")
+                    .foregroundStyle(.yellow)
+                    .help("High priority")
             }
             Button {
                 state.restore(note)

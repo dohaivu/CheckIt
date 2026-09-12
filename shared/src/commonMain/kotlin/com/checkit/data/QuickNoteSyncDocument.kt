@@ -1,8 +1,10 @@
 package com.checkit.data
 
 import com.checkit.domain.QuickNote
+import com.checkit.domain.QuickNoteRules
 import com.checkit.domain.QuickNoteStatus
 import com.checkit.domain.QuickNoteType
+import com.checkit.domain.TaskPriority
 
 /**
  * Firestore document mapping for `users/{userId}/quickNotes/{quickNoteId}`.
@@ -23,6 +25,7 @@ object QuickNoteSyncDocument {
     const val FIELD_DELETED = "deleted"
     const val FIELD_TYPE = "type"
     const val FIELD_ATTACHMENT_URL = "attachmentUrl"
+    const val FIELD_PRIORITY = "priority"
 
     fun toMap(note: QuickNote): Map<String, Any?> = mapOf(
         FIELD_ID to note.id,
@@ -36,6 +39,7 @@ object QuickNoteSyncDocument {
         FIELD_DELETED to note.deleted,
         FIELD_TYPE to note.type.name,
         FIELD_ATTACHMENT_URL to note.attachmentUrl,
+        FIELD_PRIORITY to note.priority.name,
     )
 
     /** Returns null when the document is missing required fields. */
@@ -51,6 +55,10 @@ object QuickNoteSyncDocument {
         val type = (map[FIELD_TYPE] as? String)
             ?.let { runCatching { QuickNoteType.valueOf(it) }.getOrNull() }
             ?: QuickNoteType.TEXT
+        val priority = (map[FIELD_PRIORITY] as? String)
+            ?.let { runCatching { TaskPriority.valueOf(it) }.getOrNull() }
+            ?.let { QuickNoteRules.coercePriority(it) }
+            ?: TaskPriority.None
         return QuickNote(
             id = (map[FIELD_ID] as? String)?.takeIf { it.isNotBlank() } ?: documentId,
             content = content,
@@ -64,6 +72,7 @@ object QuickNoteSyncDocument {
             type = type,
             attachmentLocalPath = null,
             attachmentUrl = map[FIELD_ATTACHMENT_URL] as? String,
+            priority = priority,
         )
     }
 

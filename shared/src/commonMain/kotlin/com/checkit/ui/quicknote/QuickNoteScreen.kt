@@ -46,6 +46,8 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.RestoreFromTrash
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -100,6 +102,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.checkit.data.QuickNoteSyncStatus
 import com.checkit.domain.QuickNote
 import com.checkit.domain.QuickNoteType
+import com.checkit.domain.TaskPriority
 import com.checkit.ui.components.AiQuickAddBar
 import com.checkit.ui.components.SectionLabel
 import kotlinx.coroutines.CoroutineScope
@@ -212,6 +215,7 @@ fun QuickNoteContent(
                             onDeleteSwipe = { viewModel.swipeRight(note.id) },
                             onReminderSwipe = { viewModel.openReminderPicker(note.id) },
                             onCopyToDailyPlan = onCopyToDailyPlan,
+                            onPriorityClick = { viewModel.togglePriority(note) },
                             onImageClick = viewModel::openImagePreview,
                         )
                     }
@@ -591,6 +595,7 @@ private fun NextRow(
     onDeleteSwipe: () -> Unit,
     onReminderSwipe: () -> Unit,
     onCopyToDailyPlan: (String) -> Unit,
+    onPriorityClick: () -> Unit,
     onImageClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -731,6 +736,14 @@ private fun NextRow(
                 Spacer(Modifier.width(8.dp))
                 QuickNoteThumbnail(note.attachmentLocalPath, onClick = onImageClick)
             }
+            IconButton(onClick = onPriorityClick, modifier = Modifier.size(28.dp)) {
+                Icon(
+                    imageVector = if (note.priority == TaskPriority.High) Icons.Default.Star else Icons.Default.StarBorder,
+                    contentDescription = if (note.priority == TaskPriority.High) "High priority" else "Mark high priority",
+                    modifier = Modifier.size(16.dp),
+                    tint = if (note.priority == TaskPriority.High) Color(0xFFFFB300) else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             if (note.remindAt != null) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -828,6 +841,14 @@ private fun DeletedRow(
                 )
                 if (note.type == QuickNoteType.IMAGE && note.attachmentLocalPath != null) {
                     QuickNoteThumbnail(note.attachmentLocalPath, onClick = onImageClick)
+                }
+                if (note.priority == TaskPriority.High) {
+                    Icon(
+                        imageVector = Icons.Default.Star,
+                        contentDescription = "High priority",
+                        modifier = Modifier.size(14.dp),
+                        tint = Color(0xFFFFB300),
+                    )
                 }
                 Text(
                     formatRemaining(note.deleteAt),

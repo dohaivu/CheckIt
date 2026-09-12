@@ -7,6 +7,7 @@ import com.checkit.data.QuickNoteSyncState
 import com.checkit.domain.QuickNote
 import com.checkit.domain.QuickNoteRules
 import com.checkit.domain.QuickNoteType
+import com.checkit.domain.TaskPriority
 import com.checkit.domain.usecase.CreateQuickNoteUseCase
 import com.checkit.domain.usecase.DeleteQuickNotePermanentlyUseCase
 import com.checkit.domain.usecase.MaintainQuickNotesUseCase
@@ -15,6 +16,7 @@ import com.checkit.domain.usecase.MoveQuickNoteUseCase
 import com.checkit.domain.usecase.ObserveQuickNextUseCase
 import com.checkit.domain.usecase.ObserveQuickToBeDeletedUseCase
 import com.checkit.domain.usecase.RestoreQuickNoteUseCase
+import com.checkit.domain.usecase.SetQuickNotePriorityUseCase
 import com.checkit.domain.usecase.SetQuickNoteReminderUseCase
 import com.checkit.ui.UiEvent
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -67,6 +69,7 @@ class QuickNoteViewModel(
     private val maintain: MaintainQuickNotesUseCase,
     private val syncManager: QuickNoteSyncManager,
     private val cameraCapture: QuickNoteCameraCapture,
+    private val setPriority: SetQuickNotePriorityUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(QuickNoteUiState())
@@ -137,6 +140,17 @@ class QuickNoteViewModel(
                 .onFailure { error ->
                     _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to restore note"))
                 }
+        }
+    }
+
+    fun togglePriority(note: QuickNote) {
+        viewModelScope.launch {
+            runCatching {
+                val next = if (note.priority == TaskPriority.High) TaskPriority.None else TaskPriority.High
+                setPriority(note.id, next)
+            }.onFailure { error ->
+                _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to change priority"))
+            }
         }
     }
 

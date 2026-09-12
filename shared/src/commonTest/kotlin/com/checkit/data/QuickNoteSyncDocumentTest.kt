@@ -3,6 +3,7 @@ package com.checkit.data
 import com.checkit.domain.QuickNote
 import com.checkit.domain.QuickNoteStatus
 import com.checkit.domain.QuickNoteType
+import com.checkit.domain.TaskPriority
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -64,6 +65,23 @@ class QuickNoteSyncDocumentTest {
     fun fromMapFallsBackToTextForUnknownType() {
         val map = QuickNoteSyncDocument.toMap(note()) + (QuickNoteSyncDocument.FIELD_TYPE to "HOLOGRAM")
         assertEquals(QuickNoteType.TEXT, QuickNoteSyncDocument.fromMap("x", map)?.type)
+    }
+
+    @Test
+    fun roundTripPreservesHighPriority() {
+        val original = note().copy(priority = TaskPriority.High)
+        val restored = QuickNoteSyncDocument.fromMap(original.id, QuickNoteSyncDocument.toMap(original))
+        assertEquals(TaskPriority.High, restored?.priority)
+    }
+
+    @Test
+    fun fromMapCoercesNonHighPriorityToNone() {
+        for (raw in listOf("Low", "Medium", "HOLOGRAM")) {
+            val map = QuickNoteSyncDocument.toMap(note()) + (QuickNoteSyncDocument.FIELD_PRIORITY to raw)
+            assertEquals(TaskPriority.None, QuickNoteSyncDocument.fromMap("x", map)?.priority, raw)
+        }
+        val missing = QuickNoteSyncDocument.toMap(note()).minus(QuickNoteSyncDocument.FIELD_PRIORITY)
+        assertEquals(TaskPriority.None, QuickNoteSyncDocument.fromMap("x", missing)?.priority)
     }
 
     @Test

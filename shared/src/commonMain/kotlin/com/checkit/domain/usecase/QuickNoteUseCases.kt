@@ -6,6 +6,7 @@ import com.checkit.data.QuickNoteSyncManager
 import com.checkit.domain.QuickNote
 import com.checkit.domain.QuickNoteRules
 import com.checkit.domain.QuickNoteType
+import com.checkit.domain.TaskPriority
 import kotlinx.coroutines.flow.Flow
 
 class ObserveQuickNextUseCase(
@@ -65,6 +66,13 @@ class SetQuickNoteReminderUseCase(
     }
 
     suspend fun clear(id: String) = repository.clearReminder(id)
+}
+
+class SetQuickNotePriorityUseCase(
+    private val repository: QuickNoteRepository,
+) {
+    suspend operator fun invoke(id: String, priority: TaskPriority) =
+        repository.setPriority(id, priority)
 }
 
 class MoveQuickNoteUseCase(

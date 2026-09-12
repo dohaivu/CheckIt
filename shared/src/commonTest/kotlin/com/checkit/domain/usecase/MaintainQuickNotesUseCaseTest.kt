@@ -6,6 +6,7 @@ import com.checkit.domain.QuickNote
 import com.checkit.domain.QuickNoteRules
 import com.checkit.domain.QuickNoteStatus
 import com.checkit.domain.QuickNoteType
+import com.checkit.domain.TaskPriority
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
@@ -55,6 +56,10 @@ private class FakeQuickNoteRepository : QuickNoteRepository {
 
     override suspend fun setReminder(id: String, remindAt: Long?) {
         notes[id]?.let { notes[id] = it.copy(remindAt = remindAt) }
+    }
+
+    override suspend fun setPriority(id: String, priority: TaskPriority) {
+        notes[id]?.let { notes[id] = it.copy(priority = priority) }
     }
 
     override suspend fun clearReminder(id: String) {
