@@ -10,6 +10,7 @@
 import AppKit
 import SwiftUI
 import KeyboardShortcuts
+import Shared
 
 extension KeyboardShortcuts.Name {
     /// Global hotkey toggling the Quick Note menu. User-customizable via
@@ -18,7 +19,7 @@ extension KeyboardShortcuts.Name {
 }
 
 extension Notification.Name {
-    /// Posted (main thread) with an Int object: the current NEXT-notes count.
+    /// Posted (main thread) with the current NEXT-notes array whenever it changes.
     static let quickNoteHasItems = Notification.Name("checkit.quickNoteHasItems")
     /// Posted (main thread) each time the menu popover is opened. The
     /// popover content persists, so SwiftUI onAppear fires only at startup.
@@ -129,22 +130,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Menu-bar count next to the icon, in the system accent color.
+    /// Menu-bar status: accent-colored count plus the top note's text
+    /// (starred first, then sortOrder; first line, max 20 chars).
     /// Hidden when there is nothing to look at.
-    func setItemCount(_ count: Int) {
+    func setStatusText(count: Int, text: String) {
         guard let button = statusItem?.button else { return }
-        if count > 0 {
-            button.attributedTitle = NSAttributedString(
-                string: "\(count)",
-                attributes: [.foregroundColor: NSColor.controlAccentColor]
-            )
-        } else {
+        guard count > 0 else {
             button.attributedTitle = NSAttributedString(string: "")
+            return
         }
+        let status = NSMutableAttributedString(
+            string: "\(count) ",
+            attributes: [.foregroundColor: NSColor.controlAccentColor]
+        )
+        status.append(NSAttributedString(string: text))
+        button.attributedTitle = status
     }
 
     @objc private func itemsChanged(_ notification: Notification) {
-        setItemCount((notification.object as? Int) ?? 0)
+        let notes = notification.object as? [QuickNote] ?? []
+        let top = notes.sorted {
+            let leftStar = $0.priority == TaskPriority.high
+            let rightStar = $1.priority == TaskPriority.high
+            if leftStar != rightStar { return leftStar }
+            if $0.sortOrder != $1.sortOrder { return $0.sortOrder < $1.sortOrder }
+            return $0.id < $1.id
+        }.first
+        let firstLine = top.map { String($0.content.split(separator: "\n", maxSplits: 1).first ?? "") } ?? ""
+        setStatusText(count: notes.count, text: String(firstLine.prefix(30)))
     }
 
     private func showRightClickMenu() {

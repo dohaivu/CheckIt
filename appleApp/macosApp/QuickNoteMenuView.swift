@@ -88,8 +88,8 @@ final class QuickNoteMenuState: ObservableObject {
                 // Callbacks already arrive on Main, but stay safe.
                 DispatchQueue.main.async {
                     self?.notes = notes
-                    // Menu-bar count next to the icon.
-                    NotificationCenter.default.post(name: .quickNoteHasItems, object: notes.count)
+                    // Menu-bar status (count + top item text) next to the icon.
+                    NotificationCenter.default.post(name: .quickNoteHasItems, object: notes)
                     // Shared scheduler is a no-op on Apple targets: reconcile
                     // macOS system notifications from the observed remindAt values.
                     QuickNoteNotificationScheduler.sync(with: notes)
