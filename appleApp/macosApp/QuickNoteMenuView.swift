@@ -218,6 +218,7 @@ struct QuickNoteThumbnail: View {
     let remoteURL: URL?
 
     @State private var localImage: NSImage?
+    @State private var showPreview = false
 
     var body: some View {
         Group {
@@ -243,6 +244,29 @@ struct QuickNoteThumbnail: View {
         .frame(width: 40, height: 40)
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .task(id: localPath) { loadLocal() }
+        .onTapGesture { showPreview = true }
+        .popover(isPresented: $showPreview, arrowEdge: .trailing) {
+            Group {
+                if let image = localImage {
+                    Image(nsImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                } else if let url = remoteURL {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image.resizable().aspectRatio(contentMode: .fit)
+                        case .failure, .empty:
+                            Color.secondary.opacity(0.15)
+                        @unknown default:
+                            Color.secondary.opacity(0.15)
+                        }
+                    }
+                }
+            }
+            .frame(maxWidth: 320, maxHeight: 320)
+            .padding()
+        }
     }
 
     private func loadLocal() {
@@ -498,11 +522,32 @@ struct QuickNoteMenuView: View {
             Divider()
 
             // Capture bar (bottom, like QuickCaptureBar in QuickNoteContent).
-            HStack(spacing: 8) {
-                TextField("Capture a thought...", text: $state.input)
-                    .textFieldStyle(.roundedBorder)
+            // Multi-line: Return inserts a newline, Shift+Return saves.
+            HStack(alignment: .bottom, spacing: 8) {
+                TextEditor(text: $state.input)
+                    .frame(height: 56)
+                    .padding(4)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(Color.secondary.opacity(0.3))
+                    )
                     .focused($captureFocused)
-                    .onSubmit(state.add)
+                    .onKeyPress(keys: [.return]) { press in
+                        guard press.modifiers.contains(.shift) else { return .ignored }
+                        // Defer: publishing from inside the key-press
+                        // transaction warns ("within view updates").
+                        DispatchQueue.main.async { state.add() }
+                        return .handled
+                    }
+                    .overlay(alignment: .topLeading) {
+                        if state.input.isEmpty {
+                            Text("Capture a thought…")
+                                .foregroundStyle(.tertiary)
+                                .padding(.horizontal, 9)
+                                .padding(.vertical, 12)
+                                .allowsHitTesting(false)
+                        }
+                    }
 
                 Button(state.isSaving ? "Saving..." : "Add") {
                     state.add()
