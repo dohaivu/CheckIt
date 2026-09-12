@@ -613,7 +613,6 @@ private fun LazyItemScope.DraggableQuickNoteRow(
 }
 
 private enum class NextRowSwipeAction {
-    Delete,
     Settled,
     Reminder,
     CopyToDailyPlan,
@@ -636,10 +635,10 @@ private fun NextRow(
     val reminderDetentPx = with(density) { 76.dp.toPx() }
     val copyDetentPx = with(density) { 152.dp.toPx() }
 
-    val currentOnDeleteSwipe by rememberUpdatedState(onDeleteSwipe)
     val currentOnReminderSwipe by rememberUpdatedState(onReminderSwipe)
     val currentOnCopyToDailyPlan by rememberUpdatedState(onCopyToDailyPlan)
     val currentContent by rememberUpdatedState(note.content)
+    val currentOnDelete by rememberUpdatedState(onDeleteSwipe)
 
     val state = remember {
         AnchoredDraggableState(
@@ -661,10 +660,6 @@ private fun NextRow(
     // Handle action and snap-back when settling at a target
     LaunchedEffect(state.settledValue) {
         when (state.settledValue) {
-            NextRowSwipeAction.Delete -> {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                currentOnDeleteSwipe()
-            }
             NextRowSwipeAction.Reminder -> {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 currentOnReminderSwipe()
@@ -683,7 +678,6 @@ private fun NextRow(
     val isCopy = state.targetValue == NextRowSwipeAction.CopyToDailyPlan || offset <= -copyDetentPx * 0.75f
 
     val color = when {
-        offset > 1f -> MaterialTheme.colorScheme.errorContainer
         offset < -1f -> {
             if (isCopy) MaterialTheme.colorScheme.tertiaryContainer
             else MaterialTheme.colorScheme.primaryContainer
@@ -691,14 +685,13 @@ private fun NextRow(
         else -> Color.Transparent
     }
     val icon = when {
-        offset > 1f -> Icons.Default.DeleteSweep
         offset < -1f -> {
             if (isCopy) Icons.Default.AddTask
             else Icons.Default.Alarm
         }
         else -> null
     }
-    val alignment = if (offset > 0f) Alignment.CenterStart else Alignment.CenterEnd
+    val alignment = Alignment.CenterEnd
 
     val flingBehavior = AnchoredDraggableDefaults.flingBehavior(
         state = state,
@@ -716,7 +709,6 @@ private fun NextRow(
                 val width = size.width.toFloat()
                 if (width > 0f) {
                     val newAnchors = DraggableAnchors {
-                        NextRowSwipeAction.Delete at width
                         NextRowSwipeAction.Settled at 0f
                         NextRowSwipeAction.Reminder at -reminderDetentPx
                         NextRowSwipeAction.CopyToDailyPlan at -copyDetentPx
@@ -778,6 +770,16 @@ private fun NextRow(
                         contentDescription = if (note.priority == TaskPriority.High) "High priority" else "Mark high priority",
                         modifier = Modifier.size(20.dp),
                         tint = if (note.priority == TaskPriority.High) Color(0xFFFFB300) else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            if (selected) {
+                IconButton(onClick = currentOnDelete, modifier = Modifier.size(28.dp)) {
+                    Icon(
+                        imageVector = Icons.Default.DeleteSweep,
+                        contentDescription = "Delete note",
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
