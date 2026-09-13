@@ -2,6 +2,8 @@ package com.checkit.widget
 
 import android.content.Context
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -52,7 +54,7 @@ import com.checkit.domain.TaskPriority
 import com.checkit.domain.TaskStatus
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveNotesForDateUseCase
-import com.checkit.domain.usecase.ObserveQuickNextUseCase
+import com.checkit.domain.usecase.ObserveQuickNotesForWidgetUseCase
 import com.checkit.shared.R
 import com.checkit.ui.myday.DayViewProjection
 import com.checkit.ui.myday.doneWorkMinutes
@@ -74,7 +76,7 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
 
     private val observeNotesForDate: ObserveNotesForDateUseCase by inject()
     private val observeDailyPlans: ObserveDailyPlansUseCase by inject()
-    private val observeQuickNext: ObserveQuickNextUseCase by inject()
+    private val observeQuickNotesForWidget: ObserveQuickNotesForWidgetUseCase by inject()
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val today = today()
@@ -82,15 +84,13 @@ class DailyPlanAgendaWidget : GlanceAppWidget(), KoinComponent {
         val dailyPlans = observeDailyPlans(startDate = today, endDate = today).first()
         val todayPlan = dailyPlans.find { it.date == today }
         val items = todayPlan?.items ?: emptyList()
-        val quickNotes = observeQuickNext().first()
-            .sortedWith(compareByDescending<QuickNote> { it.priority }.thenBy { it.sortOrder })
-            .take(5)
 
         // Get current time for highlighting
         val now = kotlin.time.Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
         val nowMinutes = now.hour * 60 + now.minute
 
         provideContent {
+            val quickNotes by observeQuickNotesForWidget(limit = 5).collectAsState(initial = emptyList())
             val projection = remember(items, notes) { items.toDayViewProjection(notes, emptyList()) }
             val allDayItems = remember(projection) {
                 projection.toWidgetItems(timed = false)

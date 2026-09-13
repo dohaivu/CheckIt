@@ -1,6 +1,9 @@
 package com.checkit.widget
 
 import android.content.Context
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,10 +35,8 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import com.checkit.MainActivity
-import com.checkit.domain.QuickNote
-import com.checkit.domain.usecase.ObserveQuickNextUseCase
+import com.checkit.domain.usecase.ObserveQuickNotesForWidgetUseCase
 import com.checkit.shared.R
-import kotlinx.coroutines.flow.first
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.text.SimpleDateFormat
@@ -45,13 +46,9 @@ import androidx.glance.color.ColorProvider as DayNightColorProvider
 
 class QuickNoteSingleWidget : GlanceAppWidget(), KoinComponent {
 
-    private val observeQuickNext: ObserveQuickNextUseCase by inject()
+    private val observeQuickNotesForWidget: ObserveQuickNotesForWidgetUseCase by inject()
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val topNote = observeQuickNext().first()
-            .sortedWith(compareByDescending<QuickNote> { it.priority }.thenBy { it.sortOrder })
-            .firstOrNull()
-
         val dateFormatter = SimpleDateFormat("EEEE, MMM d", Locale.getDefault())
         val currentFormattedDate = dateFormatter.format(Date())
 
@@ -66,6 +63,9 @@ class QuickNoteSingleWidget : GlanceAppWidget(), KoinComponent {
         )
 
         provideContent {
+            val notes by observeQuickNotesForWidget(limit = 1).collectAsState(initial = emptyList())
+            val topNote = remember(notes) { notes.firstOrNull() }
+
             GlanceTheme {
                 Row(
                     modifier = GlanceModifier

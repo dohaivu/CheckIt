@@ -106,6 +106,7 @@ import com.checkit.domain.usecase.MaintainQuickNotesUseCase
 import com.checkit.domain.usecase.MoveQuickNoteToBeDeletedUseCase
 import com.checkit.domain.usecase.MoveQuickNoteUseCase
 import com.checkit.domain.usecase.ObserveQuickNextUseCase
+import com.checkit.domain.usecase.ObserveQuickNotesForWidgetUseCase
 import com.checkit.domain.usecase.ObserveQuickToBeDeletedUseCase
 import com.checkit.domain.usecase.RestoreQuickNoteUseCase
 import com.checkit.domain.usecase.SetQuickNotePriorityUseCase
@@ -247,6 +248,7 @@ val provideInteractorModule = module {
     single { DeleteNestedItemsUseCase(get()) }
     single<QuickNoteRepository> { RoomQuickNoteRepository(get(), get(), get()) }
     single { ObserveQuickNextUseCase(get()) }
+    single { ObserveQuickNotesForWidgetUseCase(get()) }
     single { ObserveQuickToBeDeletedUseCase(get()) }
     single { CreateQuickNoteUseCase(get()) }
     single { MoveQuickNoteToBeDeletedUseCase(get()) }

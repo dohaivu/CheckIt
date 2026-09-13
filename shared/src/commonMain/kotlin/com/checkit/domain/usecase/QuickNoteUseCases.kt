@@ -8,11 +8,22 @@ import com.checkit.domain.QuickNoteRules
 import com.checkit.domain.QuickNoteType
 import com.checkit.domain.TaskPriority
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 class ObserveQuickNextUseCase(
     private val repository: QuickNoteRepository,
 ) {
     operator fun invoke(): Flow<List<QuickNote>> = repository.observeNext()
+}
+
+class ObserveQuickNotesForWidgetUseCase(
+    private val repository: QuickNoteRepository,
+) {
+    operator fun invoke(limit: Int): Flow<List<QuickNote>> =
+        repository.observeNext().map { notes ->
+            notes.sortedWith(compareByDescending<QuickNote> { it.priority }.thenBy { it.sortOrder })
+                .take(limit)
+        }
 }
 
 class ObserveQuickToBeDeletedUseCase(
