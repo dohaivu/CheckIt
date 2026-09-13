@@ -4,18 +4,23 @@ import android.content.Context
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.glance.ColorFilter
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
+import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.action.ActionCallback
+import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
+import androidx.glance.layout.Box
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxWidth
@@ -53,6 +58,11 @@ class QuickNoteSingleWidget : GlanceAppWidget(), KoinComponent {
         val translucentBackground = DayNightColorProvider(
             day = Color(0x4DFFFFFF), 
             night = Color(0x3D1C1B1F)
+        )
+
+        val subtleIconTint = DayNightColorProvider(
+            day = Color(0x661C1B1F), 
+            night = Color(0x66E6E1E5)
         )
 
         provideContent {
@@ -99,9 +109,36 @@ class QuickNoteSingleWidget : GlanceAppWidget(), KoinComponent {
                             maxLines = 1
                         )
                     }
+
+                    Spacer(modifier = GlanceModifier.width(8.dp))
+                    Box(
+                        modifier = GlanceModifier
+                            .size(32.dp)
+                            .cornerRadius(16.dp)
+                            .background(Color.White.copy(alpha = 0.1f))
+                            .clickable(actionRunCallback<RefreshQuickNoteWidgetAction>()),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Image(
+                            provider = ImageProvider(R.drawable.refresh_24px),
+                            contentDescription = "Refresh",
+                            modifier = GlanceModifier.size(20.dp),
+                            colorFilter = ColorFilter.tint(subtleIconTint)
+                        )
+                    }
                 }
 
             }
         }
+    }
+}
+
+class RefreshQuickNoteWidgetAction : ActionCallback {
+    override suspend fun onAction(
+        context: Context,
+        glanceId: GlanceId,
+        parameters: ActionParameters
+    ) {
+        QuickNoteSingleWidget().update(context, glanceId)
     }
 }
