@@ -745,6 +745,6 @@ struct QuickNoteMenuView: View {
 
     private var listHeight: CGFloat {
         let rows = state.notes.count + state.deletedNotes.count
-        return min(CGFloat(rows * 52 + 130), 430)
+        return min(CGFloat(rows * 52 + 130), 330)
     }
 }

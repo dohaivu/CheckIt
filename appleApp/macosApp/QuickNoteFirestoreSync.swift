@@ -18,6 +18,7 @@
 //
 
 import Foundation
+import AppKit
 import Combine
 import Network
 import Shared
@@ -59,11 +60,13 @@ final class QuickNoteFirestoreSync: ObservableObject {
     private var debounceTask: Task<Void, Never>?
     private var isSyncing = false
     private var rerunRequested = false
+    private var rerunExplicit = false
     private var consecutiveFailures = 0
     private var nextRetryAtMillis: Int64 = 0
     private var started = false
     private var listener: ListenerRegistration?
     private var listeningUid: String?
+    private var wakeObserver: NSObjectProtocol?
 
     private func bridge() -> QuickNoteSyncBridge {
         QuickNoteAppleBridge.shared.ensureKoin()
@@ -97,6 +100,28 @@ final class QuickNoteFirestoreSync: ObservableObject {
             }
         }
         monitor.start(queue: monitorQueue)
+        // Sleep/wake: Firestore's Watch stream and NWPathMonitor can both go
+        // stale across sleep. Force a fresh listener + explicit pull on wake
+        // so manual refresh after wake converges without an app restart.
+        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.handleWake() }
+        }
+        syncNow()
+    }
+
+    /// Wake handler: clear backoff, refresh the cached online flag from the
+    /// current path (the monitor may not fire if the interface didn't
+    /// change), drop the possibly-dead listener so the next sync gets a
+    /// fresh initial snapshot, then run an explicit sync (push + full pull).
+    private func handleWake() {
+        print("[QuickNoteSync] system woke, forcing re-sync")
+        online = monitor.currentPath.status == .satisfied
+        nextRetryAtMillis = 0
+        detachListener()
         syncNow()
     }
 
@@ -105,21 +130,25 @@ final class QuickNoteFirestoreSync: ObservableObject {
         debounceTask = Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: Self.syncDebounceNanos)
             guard !Task.isCancelled else { return }
-            await self?.sync()
+            await self?.sync(explicit: false)
         }
     }
 
     /// Immediate sync, bypassing the debounce — for explicit user refresh.
+    /// Explicit syncs bypass the backoff gate and, in realtime-listener mode,
+    /// also perform a one-time full pull so they converge even when the
+    /// listener is stale (e.g. after sleep).
     func syncNow() {
         debounceTask?.cancel()
-        Task { await sync() }
+        Task { await sync(explicit: true) }
     }
 
     // MARK: - Sync
 
-    func sync() async {
+    func sync(explicit: Bool = false) async {
         if isSyncing {
             rerunRequested = true
+            rerunExplicit = rerunExplicit || explicit
             return
         }
         isSyncing = true
@@ -129,12 +158,22 @@ final class QuickNoteFirestoreSync: ObservableObject {
                 // Edits landed mid-sync: converge immediately instead of
                 // waiting out the debounce (sync itself leaves no dirt).
                 rerunRequested = false
-                Task { await sync() }
+                let runExplicit = rerunExplicit
+                rerunExplicit = false
+                Task { await sync(explicit: runExplicit) }
             }
         }
 
         let nowMillis = Self.nowMillis()
-        if nowMillis < nextRetryAtMillis { return }
+        if explicit {
+            // Manual refresh / wake must never silently no-op inside a
+            // backoff window left over from a sleep-transition failure.
+            nextRetryAtMillis = 0
+        } else if nowMillis < nextRetryAtMillis { return }
+        // The cached `online` flag can go stale across sleep when the
+        // interface didn't change (no path update fires). Refresh from the
+        // current path so a manual refresh after wake isn't stuck offline.
+        online = monitor.currentPath.status == .satisfied
         guard isFirebaseConfigured() else {
             uiState = QuickNoteSyncUiState(
                 status: .error, lastSyncedAt: uiState.lastSyncedAt,
@@ -194,11 +233,22 @@ final class QuickNoteFirestoreSync: ObservableObject {
             // Pull: realtime listener or watermarked polling (see flag).
             // Listener resume tokens supersede the lastPull watermark; the
             // polling branch keeps maintaining it for switching back.
+            // In listener mode an explicit sync (manual refresh, wake) also
+            // performs a one-time full pull: attachListenerIfNeeded() is a
+            // no-op when the listener already exists, so without this a
+            // stale post-sleep listener would leave manual refresh pushing
+            // only and never converging (restart worked because it forced a
+            // fresh listener with an initial snapshot).
             let pullStart = Self.nowMillis()
             var pulled = 0
             var applied = 0
             if Self.useRealtimeListener {
                 attachListenerIfNeeded(userId: userId, notesRef: notesRef)
+                if explicit {
+                    let result = try await pullFullCollection(notesRef: notesRef, storage: storage)
+                    pulled = result.pulled
+                    applied = result.applied
+                }
             } else {
                 // Polling: only documents newer than the last pull (with
                 // overlap margin for clock skew; LWW merge keeps re-pulls
@@ -328,11 +378,41 @@ final class QuickNoteFirestoreSync: ObservableObject {
     }
 
     private func listenerError(_ error: Error) {
+        // Drop the dead registration so the next sync() re-attaches and gets
+        // a fresh initial snapshot instead of staying stuck on a broken
+        // Watch stream that attachListenerIfNeeded() would otherwise reuse.
+        detachListener()
         uiState = QuickNoteSyncUiState(
             status: .error, lastSyncedAt: uiState.lastSyncedAt,
             message: "Realtime sync issue (\(error.localizedDescription)). Will retry automatically."
         )
         print("[QuickNoteSync] listener error: \(error)")
+    }
+
+    /// One-time full-collection pull used by explicit syncs in listener mode.
+    /// Ignores the lastPull watermark (stale while the listener owns pulls)
+    /// and relies on the LWW merge to stay idempotent — same guarantee as
+    /// the watermarked polling branch, but converges even when the listener
+    /// missed changes across sleep.
+    private func pullFullCollection(notesRef: CollectionReference, storage: Storage) async throws -> (pulled: Int, applied: Int) {
+        let snapshot = try await notesRef.getDocuments()
+        var applied = 0
+        for doc in snapshot.documents {
+            let data = doc.data()
+            guard let json = Self.jsonString(for: data, documentId: doc.documentID) else { continue }
+            let localPath = await downloadAttachment(storage: storage, documentId: doc.documentID, data: data)
+            if try await bridgeApplyRemote(json: json, localPath: localPath) {
+                applied += 1
+                if (data["deleted"] as? Bool) == true {
+                    QuickNoteNotificationScheduler.cancel(noteId: doc.documentID)
+                }
+            }
+        }
+        // Handle hard-deleted docs the listener would have reported as
+        // removed: covered on the next snapshot event; explicit pull focuses
+        // on added/modified convergence.
+        print("[QuickNoteSync] explicit pull: pulled=\(snapshot.count) applied=\(applied)")
+        return (snapshot.count, applied)
     }
 
     private func ensureUserId() async throws -> String? {
