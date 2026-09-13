@@ -155,9 +155,9 @@ fun QuickNoteContent(
         val currentOnMoveComplete by rememberUpdatedState(viewModel::commitDrag)
 
         val dragDropState = rememberQuickNoteDragDropState(listState) { from, to ->
-            // Notes start at index 1 due to "header-next".
-            // Subtract 1 to pass correct relative indices to ViewModel.
-            currentOnMoveItem(from - 1, to - 1)
+            // NEXT notes occupy LazyColumn indices 0..visibleNext.lastIndex
+            // (no leading header item), so Lazy indices map directly to ViewModel indices.
+            currentOnMoveItem(from, to)
         }
 
         LazyColumn(
