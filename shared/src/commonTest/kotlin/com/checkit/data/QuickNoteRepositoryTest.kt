@@ -3,6 +3,7 @@ package com.checkit.data
 import com.checkit.domain.QuickNote
 import com.checkit.domain.QuickNoteRules
 import com.checkit.domain.QuickNoteStatus
+import com.checkit.domain.TaskPriority
 import com.checkit.notifications.QuickNoteReminderScheduler
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -58,6 +59,11 @@ private class InMemoryQuickNoteRepository(
         syncRequests.add(Unit)
     }
 
+    suspend fun setPriority(id: String, priority: TaskPriority) {
+        val existing = notes[id] ?: return
+        notes[id] = existing.copy(priority = QuickNoteRules.coercePriority(priority))
+    }
+
     suspend fun processExpired(now: Long): Int {
         var count = 0
         notes.forEach { (id, note) ->
@@ -103,6 +109,15 @@ class QuickNoteRepositoryTest {
         assertEquals(QuickNoteStatus.TO_BE_DELETED, moved.status)
         assertNull(moved.remindAt)
         assertTrue(scheduler.cancelled.contains(created.id))
+    }
+
+    @Test
+    fun moveToBeDeletedResetsPriority() = runTest {
+        val repo = InMemoryQuickNoteRepository()
+        val created = repo.create("starred")!!
+        repo.setPriority(created.id, TaskPriority.High)
+        repo.moveToBeDeleted(created.id)
+        assertEquals(TaskPriority.None, repo.snapshot().first().priority)
     }
 
     @Test

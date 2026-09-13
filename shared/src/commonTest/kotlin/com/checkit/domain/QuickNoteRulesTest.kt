@@ -18,6 +18,7 @@ class QuickNoteRulesTest {
         deleteAt: Long? = null,
         deleted: Boolean = false,
         updatedAt: Long = now,
+        priority: TaskPriority = TaskPriority.None,
     ) = QuickNote(
         id = id,
         content = "hello",
@@ -28,6 +29,7 @@ class QuickNoteRulesTest {
         remindAt = remindAt,
         deleteAt = deleteAt,
         deleted = deleted,
+        priority = priority,
     )
 
     @Test
@@ -87,6 +89,12 @@ class QuickNoteRulesTest {
         assertEquals(now + QuickNoteRules.DELETE_AFTER_MILLIS, moved.deleteAt)
         assertNull(moved.remindAt)
         assertEquals(now, moved.updatedAt)
+    }
+
+    @Test
+    fun swipeRightResetsPriority() {
+        val moved = QuickNoteRules.moveToBeDeleted(note(priority = TaskPriority.High), now)
+        assertEquals(TaskPriority.None, moved.priority)
     }
 
     @Test

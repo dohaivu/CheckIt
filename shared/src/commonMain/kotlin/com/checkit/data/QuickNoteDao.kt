@@ -97,7 +97,7 @@ interface QuickNoteDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(note: QuickNoteEntity)
 
-    @Query("UPDATE quick_notes SET status = 'TO_BE_DELETED', deleteAt = :deleteAt, remindAt = NULL, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
+    @Query("UPDATE quick_notes SET status = 'TO_BE_DELETED', deleteAt = :deleteAt, remindAt = NULL, priority = 'None', updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun moveToBeDeleted(id: String, deleteAt: Long, updatedAt: Long)
 
     @Query("UPDATE quick_notes SET remindAt = :remindAt, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")

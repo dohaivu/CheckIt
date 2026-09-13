@@ -80,6 +80,7 @@ object QuickNoteRules {
             status = QuickNoteStatus.TO_BE_DELETED,
             deleteAt = now + DELETE_AFTER_MILLIS,
             remindAt = null,
+            priority = TaskPriority.None,
             updatedAt = now,
         )
 
