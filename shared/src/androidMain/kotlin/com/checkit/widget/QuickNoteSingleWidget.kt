@@ -1,6 +1,7 @@
 package com.checkit.widget
 
 import android.content.Context
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
@@ -17,10 +18,12 @@ import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
-import androidx.glance.layout.fillMaxSize
+import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.padding
 import androidx.glance.layout.size
 import androidx.glance.layout.width
+import androidx.glance.layout.wrapContentHeight
+import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import com.checkit.MainActivity
@@ -30,6 +33,10 @@ import com.checkit.shared.R
 import kotlinx.coroutines.flow.first
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import androidx.glance.color.ColorProvider as DayNightColorProvider
 
 class QuickNoteSingleWidget : GlanceAppWidget(), KoinComponent {
 
@@ -40,37 +47,60 @@ class QuickNoteSingleWidget : GlanceAppWidget(), KoinComponent {
             .sortedWith(compareByDescending<QuickNote> { it.priority }.thenBy { it.sortOrder })
             .firstOrNull()
 
+        val dateFormatter = SimpleDateFormat("EEEE, MMM d", Locale.getDefault())
+        val currentFormattedDate = dateFormatter.format(Date())
+
+        val translucentBackground = DayNightColorProvider(
+            day = Color(0x4DFFFFFF), 
+            night = Color(0x3D1C1B1F)
+        )
+
         provideContent {
             GlanceTheme {
                 Row(
                     modifier = GlanceModifier
-                        .fillMaxSize()
-                        .background(ImageProvider(R.drawable.quick_note_widget_background))
-                        .cornerRadius(32.dp)
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                        .fillMaxWidth()
+                        .wrapContentHeight()
+                        .cornerRadius(80.dp)
+                        .background(translucentBackground)
+                        .padding(horizontal = 12.dp, vertical = 12.dp)
                         .clickable(actionStartActivity<MainActivity>()),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Image(
                         provider = ImageProvider(R.mipmap.ic_launcher),
-                        contentDescription = null,
-                        modifier = GlanceModifier.size(48.dp)
+                        contentDescription = "App icon",
+                        modifier = GlanceModifier
+                            .size(56.dp)
+                            .cornerRadius(56.dp)
                     )
-                    Spacer(modifier = GlanceModifier.width(8.dp))
-                    Text(
-                        text = topNote?.content?.ifBlank { "Empty note" } ?: "No quick notes yet",
-                        modifier = GlanceModifier.defaultWeight(),
-                        style = TextStyle(
-                            fontSize = 14.sp,
-                            color = if (topNote == null) {
-                                GlanceTheme.colors.onSurfaceVariant
-                            } else {
-                                GlanceTheme.colors.onSurface
-                            }
-                        ),
-                        maxLines = 2
-                    )
+                    Spacer(modifier = GlanceModifier.width(12.dp))
+
+                    if (topNote != null) {
+                        Text(
+                            text = topNote.content.ifBlank { "Empty note" },
+                            modifier = GlanceModifier.defaultWeight(),
+                            style = TextStyle(
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 16.sp,
+                                color = GlanceTheme.colors.onSurface
+                            ),
+                            maxLines = 3
+                        )
+                    } else {
+                        Text(
+                            text = currentFormattedDate,
+                            modifier = GlanceModifier.defaultWeight(),
+                            style = TextStyle(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = GlanceTheme.colors.onSurface
+                            ),
+                            maxLines = 1
+                        )
+                    }
                 }
+
             }
         }
     }
