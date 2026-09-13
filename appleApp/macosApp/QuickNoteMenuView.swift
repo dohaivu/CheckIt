@@ -414,6 +414,7 @@ struct QuickNoteRow: View {
             }
         }
         .padding(.vertical, 2)
+        .contentShape(Rectangle())
         .animation(.easeInOut(duration: 0.15), value: hovering)
         .onHover { hovering = $0 }
     }
@@ -480,6 +481,27 @@ struct QuickNoteDeletedRow: View {
                 .lineLimit(3)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
+            
+            Button {
+                state.restore(note)
+            } label: {
+                Image(systemName: "arrow.uturn.backward")
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .help("Restore")
+            .opacity(hovering ? 1 : 0)
+            
+            Button {
+                state.deleteForever(note)
+            } label: {
+                Image(systemName: "trash.fill")
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .help("Delete forever")
+            .opacity(hovering ? 1 : 0)
+            
             if note.type != QuickNoteType.text,
                note.attachmentLocalPath != nil || note.attachmentUrl != nil {
                 QuickNoteThumbnail(
@@ -487,6 +509,7 @@ struct QuickNoteDeletedRow: View {
                     remoteURL: note.attachmentUrl.flatMap(URL.init(string:))
                 )
             }
+            
             if note.deleteAt != nil {
                 Text(QuickNoteRowText.remainingText(deleteAt: note.deleteAt, nowMillis: nowMillis))
                     .font(.caption)
@@ -497,26 +520,9 @@ struct QuickNoteDeletedRow: View {
                     .foregroundStyle(.yellow)
                     .help("High priority")
             }
-            Button {
-                state.restore(note)
-            } label: {
-                Image(systemName: "arrow.uturn.backward")
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
-            .help("Restore")
-            .opacity(hovering ? 1 : 0)
-            Button {
-                state.deleteForever(note)
-            } label: {
-                Image(systemName: "trash.fill")
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
-            .help("Delete forever")
-            .opacity(hovering ? 1 : 0)
         }
         .padding(.vertical, 2)
+        .contentShape(Rectangle())
         .animation(.easeInOut(duration: 0.15), value: hovering)
         .onHover { hovering = $0 }
     }
@@ -630,6 +636,7 @@ struct QuickNoteMenuView: View {
                                 ForEach(state.deletedNotes, id: \.id) { note in
                                     QuickNoteDeletedRow(state: state, note: note, nowMillis: state.nowTickMillis)
                                         .padding(.vertical, 4)
+                                        .contentShape(Rectangle())
                                     Divider()
                                 }
                             }
