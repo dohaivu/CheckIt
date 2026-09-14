@@ -102,6 +102,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.checkit.data.QuickNoteSyncState
 import com.checkit.data.QuickNoteSyncStatus
 import com.checkit.domain.QuickNote
+import com.checkit.domain.QuickNoteRules
 import com.checkit.domain.QuickNoteType
 import com.checkit.domain.TaskPriority
 import com.checkit.ui.components.AiQuickAddBar
@@ -786,7 +787,7 @@ private fun NextRow(
             }
             if (selected) {
                 Text(
-                    formatRemaining(note.createdAt),
+                    formatRemaining(note.createdAt.plus(QuickNoteRules.INACTIVITY_AFTER_MILLIS)),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 6.dp),

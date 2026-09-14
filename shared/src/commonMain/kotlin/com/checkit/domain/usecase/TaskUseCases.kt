@@ -123,7 +123,7 @@ class AutoAddTodayTasksToMyDayUseCase(
             repository.addTaskToDailyPlan(today, task)
         }
         if (tasksToAdd.isNotEmpty()) {
-            smartScheduleDailyPlan().getOrThrow()
+            smartScheduleDailyPlan(ignoreIfSamplesEmpty = true).getOrThrow()
         }
         tasksToAdd.size
     }

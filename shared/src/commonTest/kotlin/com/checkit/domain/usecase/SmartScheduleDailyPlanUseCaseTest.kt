@@ -142,6 +142,20 @@ class SmartScheduleDailyPlanUseCaseTest {
     }
 
     @Test
+    fun ignoresSchedulingIfSamplesEmptyAndParameterTrue() = runTest {
+        val repository = repositoryWithHistory(
+            pastPlans = emptyList(),
+            todayItems = listOf(item(1, today, workTag, Planned))
+        )
+        val useCase = useCase(repository, nowMinutes = 0)
+
+        val result = useCase(ignoreIfSamplesEmpty = true)
+
+        assertEquals(SmartScheduleResult(scheduledCount = 0, candidateCount = 1), result.getOrThrow())
+        assertEquals(emptyList(), repository.updatedDailyPlanItemTimes)
+    }
+
+    @Test
     fun fallsBackToDefaultDurationWhenHistoryHasNoEnd() = runTest {
         val repository = repositoryWithHistory(
             pastPlans = listOf(
