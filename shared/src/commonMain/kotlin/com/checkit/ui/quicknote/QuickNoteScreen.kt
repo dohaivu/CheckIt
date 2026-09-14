@@ -18,6 +18,7 @@ import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -52,10 +53,10 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -103,13 +104,14 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.checkit.data.QuickNoteSyncState
 import com.checkit.data.QuickNoteSyncStatus
 import com.checkit.domain.CountdownDisplay
-import com.checkit.domain.CountdownManager
 import com.checkit.domain.CountdownState
+import com.checkit.domain.DurationRules
 import com.checkit.domain.QuickNote
 import com.checkit.domain.QuickNoteRules
 import com.checkit.domain.QuickNoteType
 import com.checkit.domain.TaskPriority
 import com.checkit.ui.components.AiQuickAddBar
+import com.checkit.ui.components.DetailChip
 import com.checkit.ui.components.SectionLabel
 import com.checkit.ui.toClockLabel
 import kotlinx.coroutines.CoroutineScope
@@ -313,48 +315,14 @@ fun QuickNoteContent(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    FilledTonalButton(
-                        onClick = viewModel::setReminder15Min,
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Icon(
-                            Icons.Default.Alarm,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text("15 minutes")
-                    }
-
-                    FilledTonalButton(
-                        onClick = viewModel::setReminder30Min,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Alarm,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text("30 minutes")
-                    }
-
-                    FilledTonalButton(
-                        onClick = viewModel::setReminder1Hour,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Alarm,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text("1 hour")
+                        DurationPresetChip("15m", viewModel::setReminder15Min)
+                        DurationPresetChip("30m", viewModel::setReminder30Min)
+                        DurationPresetChip("1h", viewModel::setReminder1Hour)
                     }
                 }
             },
@@ -383,30 +351,27 @@ fun QuickNoteContent(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    @Composable
-                    fun CountdownPresetButton(label: String, durationMillis: Long) {
-                        FilledTonalButton(
-                            onClick = { viewModel.startCountdownWithDuration(durationMillis) },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Timer,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(label)
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        DurationPresetChip("5m") {
+                            viewModel.startCountdownWithDuration(DurationRules.MIN_5_MILLIS)
+                        }
+                        DurationPresetChip("10m") {
+                            viewModel.startCountdownWithDuration(DurationRules.MIN_10_MILLIS)
+                        }
+                        DurationPresetChip("15m") {
+                            viewModel.startCountdownWithDuration(DurationRules.MIN_15_MILLIS)
+                        }
+                        DurationPresetChip("30m") {
+                            viewModel.startCountdownWithDuration(DurationRules.MIN_30_MILLIS)
+                        }
+                        DurationPresetChip("1h") {
+                            viewModel.startCountdownWithDuration(DurationRules.HOUR_1_MILLIS)
                         }
                     }
-
-                    CountdownPresetButton("5 minutes", CountdownManager.COUNTDOWN_5_MIN_MILLIS)
-                    CountdownPresetButton("10 minutes", CountdownManager.COUNTDOWN_10_MIN_MILLIS)
-                    CountdownPresetButton("15 minutes", CountdownManager.COUNTDOWN_15_MIN_MILLIS)
-                    CountdownPresetButton("30 minutes", CountdownManager.COUNTDOWN_30_MIN_MILLIS)
-                    CountdownPresetButton("1 hour", CountdownManager.COUNTDOWN_1_HOUR_MILLIS)
                 }
             },
             confirmButton = {},
@@ -693,6 +658,17 @@ private enum class NextRowSwipeAction {
     Settled,
     Reminder,
     CopyToDailyPlan,
+}
+
+@Composable
+private fun DurationPresetChip(
+    label: String,
+    onClick: () -> Unit,
+) {
+    AssistChip(
+        onClick = onClick,
+        label = { Text(label) },
+    )
 }
 
 @Composable

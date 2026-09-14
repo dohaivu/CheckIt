@@ -155,12 +155,4 @@ class CountdownManager(
             notificationScheduler.showFinishedNotification(finished)
         }
     }
-
-    companion object {
-        const val COUNTDOWN_5_MIN_MILLIS = 5L * 60L * 1000L
-        const val COUNTDOWN_10_MIN_MILLIS = 10L * 60L * 1000L
-        const val COUNTDOWN_15_MIN_MILLIS = 15L * 60L * 1000L
-        const val COUNTDOWN_30_MIN_MILLIS = 30L * 60L * 1000L
-        const val COUNTDOWN_1_HOUR_MILLIS = 60L * 60L * 1000L
-    }
 }

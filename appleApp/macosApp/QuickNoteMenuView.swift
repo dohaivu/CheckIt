@@ -10,16 +10,16 @@ import UniformTypeIdentifiers
 import AppKit
 import Shared
 
-/// Reminder presets backed by QuickNoteRules durations in shared.
+/// Reminder presets backed by DurationRules durations in shared.
 /// Badge text comes from QuickNoteDisplayText so both platforms match.
 enum QuickNoteReminderPreset: CaseIterable {
     case min15, min30, hour1
 
     var durationMillis: Int64 {
         switch self {
-        case .min15: QuickNoteRules.shared.REMINDER_15_MIN_MILLIS
-        case .min30: QuickNoteRules.shared.REMINDER_30_MIN_MILLIS
-        case .hour1: QuickNoteRules.shared.REMINDER_1_HOUR_MILLIS
+        case .min15: DurationRules.shared.MIN_15_MILLIS
+        case .min30: DurationRules.shared.MIN_30_MILLIS
+        case .hour1: DurationRules.shared.HOUR_1_MILLIS
         }
     }
 

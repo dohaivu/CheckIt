@@ -6,8 +6,8 @@ import com.checkit.data.QuickNoteSyncManager
 import com.checkit.data.QuickNoteSyncState
 import com.checkit.domain.CountdownManager
 import com.checkit.domain.CountdownState
+import com.checkit.domain.DurationRules
 import com.checkit.domain.QuickNote
-import com.checkit.domain.QuickNoteRules
 import com.checkit.domain.QuickNoteType
 import com.checkit.domain.TaskPriority
 import com.checkit.domain.usecase.CreateQuickNoteUseCase
@@ -172,11 +172,11 @@ class QuickNoteViewModel(
         _uiState.update { it.copy(reminderPickerId = null) }
     }
 
-    fun setReminder15Min() = setReminderWithDuration(QuickNoteRules.REMINDER_15_MIN_MILLIS)
+    fun setReminder15Min() = setReminderWithDuration(DurationRules.MIN_15_MILLIS)
 
-    fun setReminder30Min() = setReminderWithDuration(QuickNoteRules.REMINDER_30_MIN_MILLIS)
+    fun setReminder30Min() = setReminderWithDuration(DurationRules.MIN_30_MILLIS)
 
-    fun setReminder1Hour() = setReminderWithDuration(QuickNoteRules.REMINDER_1_HOUR_MILLIS)
+    fun setReminder1Hour() = setReminderWithDuration(DurationRules.HOUR_1_MILLIS)
 
     private fun setReminderWithDuration(durationMillis: Long) {
         val id = _uiState.value.reminderPickerId ?: return
