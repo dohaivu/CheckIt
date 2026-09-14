@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.checkit.data.QuickNoteSyncManager
 import com.checkit.data.QuickNoteSyncState
+import com.checkit.domain.CountdownManager
+import com.checkit.domain.CountdownState
 import com.checkit.domain.QuickNote
 import com.checkit.domain.QuickNoteRules
 import com.checkit.domain.QuickNoteType
@@ -43,6 +45,8 @@ data class QuickNoteUiState(
     val input: String = "",
     val isLoading: Boolean = true,
     val reminderPickerId: String? = null,
+    val countdownPickerId: String? = null,
+    val countdown: CountdownState = CountdownState.Idle,
     val syncState: QuickNoteSyncState = QuickNoteSyncState(),
     val pendingImagePath: String? = null,
     val pendingImageTitle: String = "",
@@ -70,6 +74,7 @@ class QuickNoteViewModel(
     private val syncManager: QuickNoteSyncManager,
     private val cameraCapture: QuickNoteCameraCapture,
     private val setPriority: SetQuickNotePriorityUseCase,
+    private val countdownManager: CountdownManager,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(QuickNoteUiState())
@@ -94,6 +99,11 @@ class QuickNoteViewModel(
         viewModelScope.launch {
             syncManager.syncState.collect { syncState ->
                 _uiState.update { it.copy(syncState = syncState) }
+            }
+        }
+        viewModelScope.launch {
+            countdownManager.state.collect { countdown ->
+                _uiState.update { it.copy(countdown = countdown) }
             }
         }
         refresh()
@@ -177,6 +187,34 @@ class QuickNoteViewModel(
                     _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Unable to set reminder"))
                 }
         }
+    }
+
+    fun openCountdownPicker(id: String) {
+        _uiState.update { it.copy(countdownPickerId = id) }
+    }
+
+    fun dismissCountdownPicker() {
+        _uiState.update { it.copy(countdownPickerId = null) }
+    }
+
+    fun startCountdownWithDuration(durationMillis: Long) {
+        val id = _uiState.value.countdownPickerId ?: return
+        val content = _uiState.value.next.firstOrNull { it.id == id }?.content.orEmpty()
+        if (content.isBlank()) {
+            _uiState.update { it.copy(countdownPickerId = null) }
+            return
+        }
+        _uiState.update { it.copy(countdownPickerId = null) }
+        val started = countdownManager.start(content, (durationMillis / 1000L).toInt())
+        if (!started) {
+            viewModelScope.launch {
+                _events.tryEmit(UiEvent.ShowSnackbar("A countdown is already running"))
+            }
+        }
+    }
+
+    fun stopCountdown() {
+        countdownManager.stop()
     }
 
     // --- Drag-and-drop ordering (NEXT only) ---

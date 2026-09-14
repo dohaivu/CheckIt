@@ -13,6 +13,7 @@ import com.checkit.data.buildCheckItDatabase
 import com.checkit.data.createPreferencesDataStore
 import com.checkit.data.provideDatabaseBuilder
 import com.checkit.domain.CheckInReminderPolicy
+import com.checkit.domain.CountdownManager
 import com.checkit.domain.DailyPlanScheduleReminderPolicy
 import com.checkit.domain.SprintManager
 import com.checkit.domain.usecase.AddDailyPlanItemUseCase
@@ -159,6 +160,7 @@ val provideCommonModule = module {
 val provideInteractorModule = module {
     single { HttpClient() }
     single { SprintManager(get()) }
+    single { CountdownManager(get()) }
     single { SaveSprintAsWinUseCase(get(), get(), get(), get(), get()) }
     single { SprintTransitionUseCase(get(), get(), get()) }
     single { UpsertDailyPlanItemUseCase(get()) }
@@ -393,7 +395,8 @@ val provideViewModelModule = module {
             maintain = get(),
             syncManager = get(),
             cameraCapture = get(),
-            setPriority = get()
+            setPriority = get(),
+            countdownManager = get()
         )
     }
 }

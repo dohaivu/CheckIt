@@ -5,6 +5,8 @@ internal object NotificationIds {
     const val ReviewReminder = 70_002
     const val CheckInReminder = 70_003
     const val SprintFinished = 1002
+    const val CountdownOngoing = 1003
+    const val CountdownFinished = 1004
 
     fun taskReminder(taskId: Long): Int =
         taskId.stableIntId()

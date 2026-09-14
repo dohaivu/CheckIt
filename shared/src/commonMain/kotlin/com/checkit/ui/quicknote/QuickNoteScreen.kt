@@ -50,6 +50,7 @@ import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.RestoreFromTrash
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -101,6 +102,9 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.checkit.data.QuickNoteSyncState
 import com.checkit.data.QuickNoteSyncStatus
+import com.checkit.domain.CountdownDisplay
+import com.checkit.domain.CountdownManager
+import com.checkit.domain.CountdownState
 import com.checkit.domain.QuickNote
 import com.checkit.domain.QuickNoteRules
 import com.checkit.domain.QuickNoteType
@@ -210,11 +214,16 @@ fun QuickNoteContent(
                     NextRow(
                         note = note,
                         selected = note.id == selectedNoteId,
+                        countdown = state.countdown,
                         onSelect = {
                             selectedNoteId = if (selectedNoteId == note.id) null else note.id
                         },
                         onDeleteSwipe = { viewModel.swipeRight(note.id) },
                         onReminderSwipe = { viewModel.openReminderPicker(note.id) },
+                        onCountdownClick = {
+                            if (state.countdown is CountdownState.Running) viewModel.stopCountdown()
+                            else viewModel.openCountdownPicker(note.id)
+                        },
                         onCopyToDailyPlan = onCopyToDailyPlan,
                         onPriorityClick = { viewModel.togglePriority(note) },
                         onImageClick = viewModel::openImagePreview,
@@ -347,6 +356,57 @@ fun QuickNoteContent(
                         Spacer(Modifier.width(8.dp))
                         Text("1 hour")
                     }
+                }
+            },
+            confirmButton = {},
+            dismissButton = null,
+        )
+    }
+
+    if (state.countdownPickerId != null) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissCountdownPicker,
+            title = {
+                Text(
+                    "Start Countdown",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        "Shows a live timer in the notification.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    @Composable
+                    fun CountdownPresetButton(label: String, durationMillis: Long) {
+                        FilledTonalButton(
+                            onClick = { viewModel.startCountdownWithDuration(durationMillis) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Timer,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(label)
+                        }
+                    }
+
+                    CountdownPresetButton("5 minutes", CountdownManager.COUNTDOWN_5_MIN_MILLIS)
+                    CountdownPresetButton("10 minutes", CountdownManager.COUNTDOWN_10_MIN_MILLIS)
+                    CountdownPresetButton("15 minutes", CountdownManager.COUNTDOWN_15_MIN_MILLIS)
+                    CountdownPresetButton("30 minutes", CountdownManager.COUNTDOWN_30_MIN_MILLIS)
+                    CountdownPresetButton("1 hour", CountdownManager.COUNTDOWN_1_HOUR_MILLIS)
                 }
             },
             confirmButton = {},
@@ -639,9 +699,11 @@ private enum class NextRowSwipeAction {
 private fun NextRow(
     note: QuickNote,
     selected: Boolean,
+    countdown: CountdownState,
     onSelect: () -> Unit,
     onDeleteSwipe: () -> Unit,
     onReminderSwipe: () -> Unit,
+    onCountdownClick: () -> Unit,
     onCopyToDailyPlan: (String) -> Unit,
     onPriorityClick: () -> Unit,
     onImageClick: (String) -> Unit,
@@ -653,6 +715,7 @@ private fun NextRow(
     val copyDetentPx = with(density) { 152.dp.toPx() }
 
     val currentOnReminderSwipe by rememberUpdatedState(onReminderSwipe)
+    val currentOnCountdownClick by rememberUpdatedState(onCountdownClick)
     val currentOnCopyToDailyPlan by rememberUpdatedState(onCopyToDailyPlan)
     val currentContent by rememberUpdatedState(note.content)
     val currentOnDelete by rememberUpdatedState(onDeleteSwipe)
@@ -804,6 +867,16 @@ private fun NextRow(
                 }
             }
             if (selected) {
+                IconButton(onClick = currentOnCountdownClick, modifier = Modifier.size(28.dp)) {
+                    Icon(
+                        imageVector = Icons.Default.Timer,
+                        contentDescription = if (countdown is CountdownState.Running) "Stop countdown" else "Start countdown",
+                        modifier = Modifier.size(20.dp),
+                        tint = if (countdown is CountdownState.Running) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            if (selected) {
                 IconButton(onClick = currentOnDelete, modifier = Modifier.size(28.dp)) {
                     Icon(
                         imageVector = Icons.Default.DeleteSweep,
@@ -827,6 +900,26 @@ private fun NextRow(
                     )
                     Text(
                         text = formatReminder(note.remindAt),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
+            val runningCountdown = countdown as? CountdownState.Running
+            if (runningCountdown != null) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.padding(start = 8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Timer,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = CountdownDisplay.formatMmSs(runningCountdown.remainingSeconds),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                     )

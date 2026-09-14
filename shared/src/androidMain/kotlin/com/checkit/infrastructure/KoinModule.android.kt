@@ -8,10 +8,12 @@ import com.checkit.notifications.AlarmManagerQuickNoteReminderScheduler
 import com.checkit.notifications.AndroidCheckInReminderForceRunner
 import com.checkit.notifications.AndroidDailyPlanScheduleReminderScheduler
 import com.checkit.notifications.AndroidAppReminderScheduler
+import com.checkit.notifications.AndroidCountdownScheduler
 import com.checkit.notifications.AndroidSprintNotificationScheduler
 import com.checkit.notifications.AndroidTaskReminderNotificationScheduler
 import com.checkit.notifications.AppReminderScheduler
 import com.checkit.notifications.CheckInReminderForceRunner
+import com.checkit.notifications.CountdownScheduler
 import com.checkit.notifications.DailyPlanScheduleReminderScheduler
 import com.checkit.notifications.QuickNoteReminderScheduler
 import com.checkit.notifications.SprintNotificationScheduler
@@ -28,6 +30,7 @@ actual fun platformModule() = module {
     }
     single<AppReminderScheduler> { AndroidAppReminderScheduler(androidContext(), get()) }
     single<SprintNotificationScheduler> { AndroidSprintNotificationScheduler(androidContext()) }
+    single<CountdownScheduler> { AndroidCountdownScheduler(androidContext()) }
     single<CheckInReminderForceRunner> { AndroidCheckInReminderForceRunner(androidContext(), get(), get()) }
     single<QuickNoteReminderScheduler> { AlarmManagerQuickNoteReminderScheduler(androidContext()) }
     single<QuickNoteSyncManager> { FirestoreQuickNoteSyncManager(androidContext(), get(), get()) }
