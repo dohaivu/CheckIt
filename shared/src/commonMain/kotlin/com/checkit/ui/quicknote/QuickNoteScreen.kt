@@ -784,6 +784,14 @@ private fun NextRow(
                 Spacer(Modifier.width(8.dp))
                 QuickNoteThumbnail(note.attachmentLocalPath, onClick = onImageClick)
             }
+            if (selected) {
+                Text(
+                    formatRemaining(note.createdAt),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 6.dp),
+                )
+            }
             if (note.priority == TaskPriority.High || selected) {
                 IconButton(onClick = onPriorityClick, modifier = Modifier.size(28.dp)) {
                     Icon(

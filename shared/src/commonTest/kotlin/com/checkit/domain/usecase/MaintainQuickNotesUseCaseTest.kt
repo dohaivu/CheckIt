@@ -88,7 +88,7 @@ private class FakeQuickNoteRepository : QuickNoteRepository {
         notes.forEach { (id, note) ->
             if (note.status == QuickNoteStatus.NEXT && !note.deleted &&
                 note.remindAt == null &&
-                note.updatedAt <= now - QuickNoteRules.INACTIVITY_AFTER_MILLIS
+                note.createdAt <= now - QuickNoteRules.INACTIVITY_AFTER_MILLIS
             ) {
                 notes[id] = note.copy(
                     status = QuickNoteStatus.TO_BE_DELETED,
@@ -116,11 +116,12 @@ class MaintainQuickNotesUseCaseTest {
         remindAt: Long?,
         updatedAt: Long = now - 1000,
         status: QuickNoteStatus = QuickNoteStatus.NEXT,
+        createdAt: Long = now - 1000,
     ) = QuickNote(
         id = id,
         content = id,
         status = status,
-        createdAt = now - 1000,
+        createdAt = createdAt,
         updatedAt = updatedAt,
         sortOrder = 1000.0,
         remindAt = remindAt,
@@ -147,7 +148,7 @@ class MaintainQuickNotesUseCaseTest {
     fun autoTrashesUntouchedNextAfter24h() = runTest {
         val old = now - QuickNoteRules.INACTIVITY_AFTER_MILLIS - 1000
         val repo = FakeQuickNoteRepository().apply {
-            put(note("stale", null, updatedAt = old))
+            put(note("stale", null, createdAt = old))
         }
         MaintainQuickNotesUseCase(repo, NoOpQuickNoteSyncManager())()
 
@@ -159,12 +160,23 @@ class MaintainQuickNotesUseCaseTest {
     }
 
     @Test
-    fun keepsRecentlyTouchedAndRemindedNotesInNext() = runTest {
+    fun editsDoNotRestartAutoTrashClock() = runTest {
         val old = now - QuickNoteRules.INACTIVITY_AFTER_MILLIS - 1000
         val repo = FakeQuickNoteRepository().apply {
-            put(note("fresh", null, updatedAt = now))
-            put(note("reminded", now + 3_600_000L, updatedAt = old))
-            put(note("alreadyTrash", null, updatedAt = old, status = QuickNoteStatus.TO_BE_DELETED))
+            put(note("edited", null, createdAt = old, updatedAt = now))
+        }
+        MaintainQuickNotesUseCase(repo, NoOpQuickNoteSyncManager())()
+
+        assertEquals(QuickNoteStatus.TO_BE_DELETED, repo.get("edited")?.status)
+    }
+
+    @Test
+    fun keepsRecentlyCreatedAndRemindedNotesInNext() = runTest {
+        val old = now - QuickNoteRules.INACTIVITY_AFTER_MILLIS - 1000
+        val repo = FakeQuickNoteRepository().apply {
+            put(note("fresh", null, createdAt = now))
+            put(note("reminded", now + 3_600_000L, createdAt = old))
+            put(note("alreadyTrash", null, createdAt = old, status = QuickNoteStatus.TO_BE_DELETED))
         }
         MaintainQuickNotesUseCase(repo, NoOpQuickNoteSyncManager())()
 
