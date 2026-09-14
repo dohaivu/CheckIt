@@ -1,5 +1,7 @@
 package com.checkit.ui.tasks
 
+import com.checkit.data.SettingsRepository
+import com.checkit.data.UserSettings
 import com.checkit.domain.DailyPlan
 import com.checkit.domain.DailyPlanItem
 import com.checkit.domain.DailyPlanItemSource
@@ -184,6 +186,34 @@ class TaskViewModelViewsTest {
     }
 
     @Test
+    fun selectListPersistsLastSelectedListId() = runTest(dispatcher) {
+        val fakeSettings = FakeSettingsRepository()
+        val board = TaskBoard(
+            lists = listOf(ListItem(id = 42L, title = "List 42", color = "#123456", icon = "List", sortOrder = 0))
+        )
+        val testViewModel = createViewModel(board, fakeSettings)
+        dispatcher.scheduler.advanceUntilIdle()
+
+        testViewModel.selectList(42L)
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(42L, fakeSettings.currentSettings().lastSelectedListId)
+    }
+
+    @Test
+    fun initializationRestoresLastSelectedListId() = runTest(dispatcher) {
+        val initialSettings = UserSettings(lastSelectedListId = 100L)
+        val fakeSettings = FakeSettingsRepository(initialSettings)
+        val board = TaskBoard(
+            lists = listOf(ListItem(id = 100L, title = "List 100", color = "#123456", icon = "List", sortOrder = 0))
+        )
+        val testViewModel = createViewModel(board, fakeSettings)
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(100L, testViewModel.uiState.value.selectedListId)
+    }
+
+    @Test
     fun titleSortBuildsUnifiedTaskAndNoteListOrder() = runTest(dispatcher) {
         val inbox = ListItem(id = 1L, title = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
         viewModel = createViewModel(
@@ -343,7 +373,10 @@ class TaskViewModelViewsTest {
         assertEquals(setOf(workTag.id, homeTag.id), updatedItem?.tags?.map { it.id }?.toSet())
     }
 
-    private fun createViewModel(board: TaskBoard): TaskViewModel {
+    private fun createViewModel(
+        board: TaskBoard,
+        settingsRepository: SettingsRepository = FakeSettingsRepository()
+    ): TaskViewModel {
         repository = FakeCheckItRepository(initialBoard = board)
         return TaskViewModel(
             observeTaskBoard = ObserveTaskBoardUseCase(repository),
@@ -370,7 +403,7 @@ class TaskViewModelViewsTest {
             updateDailyPlanItemTag = UpdateDailyPlanItemTagUseCase(repository),
             updateDailyPlanItem = UpdateDailyPlanItemUseCase(repository),
             linkDailyPlanItemToTask = LinkDailyPlanItemToTaskUseCase(repository),
-            settingsRepository = FakeSettingsRepository()
+            settingsRepository = settingsRepository
         )
     }
 

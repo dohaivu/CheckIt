@@ -41,6 +41,7 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
                 lastFabActionType = prefs[KEY_LAST_FAB_ACTION_TYPE] ?: UserSettings().lastFabActionType,
                 lastFabActionId = prefs[KEY_LAST_FAB_ACTION_ID],
                 lastNestedDocumentId = prefs[KEY_LAST_NESTED_DOCUMENT_ID],
+                lastSelectedListId = prefs[KEY_LAST_SELECTED_LIST_ID],
                 recentLabels = prefs[KEY_RECENT_LABELS]?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
             )
         }
@@ -135,6 +136,16 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
         }
     }
 
+    suspend fun setLastSelectedListId(id: Long?) {
+        dataStore.edit { prefs ->
+            if (id != null) {
+                prefs[KEY_LAST_SELECTED_LIST_ID] = id
+            } else {
+                prefs.remove(KEY_LAST_SELECTED_LIST_ID)
+            }
+        }
+    }
+
     suspend fun addRecentLabel(label: String) {
         if (label.isBlank()) return
         dataStore.edit { prefs ->
@@ -165,6 +176,7 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
         val KEY_LAST_FAB_ACTION_TYPE = stringPreferencesKey("last_fab_action_type")
         val KEY_LAST_FAB_ACTION_ID = longPreferencesKey("last_fab_action_id")
         val KEY_LAST_NESTED_DOCUMENT_ID = longPreferencesKey("last_nested_document_id")
+        val KEY_LAST_SELECTED_LIST_ID = longPreferencesKey("last_selected_list_id")
         val KEY_RECENT_LABELS = stringPreferencesKey("recent_labels")
     }
 }
