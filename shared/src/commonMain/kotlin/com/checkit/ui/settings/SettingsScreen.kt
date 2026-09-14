@@ -20,8 +20,10 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -66,6 +68,7 @@ import checkit.shared.generated.resources.theme_dark
 import checkit.shared.generated.resources.theme_light
 import checkit.shared.generated.resources.theme_system
 import checkit.shared.generated.resources.version
+import com.checkit.auth.GoogleAccountState
 import com.checkit.ui.AppColorSchemeMode
 import com.checkit.ui.AppLanguage
 import com.checkit.ui.AppThemeMode
@@ -190,6 +193,7 @@ private fun SettingsHomeScreen(
                 item { LanguageSettings(state, viewModel) }
                 item { ThemeSettings(state, viewModel) }
                 item { ColorSchemeSettings(state, viewModel) }
+                item { AccountSettings(state.account, viewModel) }
                 item {
                     SettingsRow(
                         title = "Reminders",
@@ -609,6 +613,49 @@ private fun ColorSchemeSettings(state: SettingsUiState, viewModel: SettingsViewM
         label = { it.label() },
         onSelected = viewModel::setColorSchemeMode
     )
+}
+
+@Composable
+private fun AccountSettings(account: GoogleAccountState, viewModel: SettingsViewModel) {
+    val signedIn = !account.isAnonymous && account.email != null
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Account", fontWeight = FontWeight.SemiBold)
+                Text(
+                    if (signedIn) "Signed in as ${account.email}"
+                    else "Not signed in — notes stay on this device",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            if (account.busy) {
+                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+            } else if (signedIn) {
+                TextButton(onClick = viewModel::signOut) { Text("Sign out") }
+            } else {
+                Button(onClick = viewModel::signInWithGoogle) { Text("Sign in with Google") }
+            }
+        }
+        if (account.errorMessage != null) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    account.errorMessage,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.weight(1f)
+                )
+                TextButton(onClick = viewModel::clearAccountError) { Text("Dismiss") }
+            }
+        }
+        AppHorizontalDivider()
+    }
 }
 
 @Composable

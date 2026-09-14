@@ -75,6 +75,20 @@ class CheckItNotificationCenter(
         notificationManager.cancel(NotificationIds.dailyPlanSchedule(itemId))
     }
 
+    fun showQuickNoteReminder(noteId: String, content: String) {
+        showReminder(
+            notificationId = NotificationIds.quickNoteReminder(noteId),
+            requestCode = NotificationIds.quickNoteReminder(noteId),
+            title = content.ifBlank { "Quick note" }.take(60),
+            body = content.ifBlank { "Time to review your note" },
+            subText = "Quick note",
+            dailyPlanItemId = null,
+            openPlanAssist = false,
+            openDayClose = false,
+            bypassDnd = true
+        )
+    }
+
     fun showCheckInReminder(title: String, body: String, dailyPlanItemId: Long?) {
         if (!canPostNotifications()) return
         // Quiet-hours gate already applied by CheckInReminderPolicy; force-runs bypass it here too.

@@ -18,6 +18,9 @@ internal object NotificationIds {
     fun dailyPlanSchedule(itemId: Long): Int =
         80_000 + itemId.stableIntId().and(0x3fff)
 
+    fun quickNoteReminder(noteId: String): Int =
+        90_000 + (noteId.hashCode() and 0x3fff)
+
     private fun Long.stableIntId(): Int =
         (this xor (this ushr 32)).toInt()
 }

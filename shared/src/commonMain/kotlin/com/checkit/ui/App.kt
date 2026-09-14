@@ -36,6 +36,7 @@ import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import com.checkit.data.SettingsRepository
 import com.checkit.domain.usecase.AutoAddTodayTasksToMyDayUseCase
+import com.checkit.domain.usecase.MaintainQuickNotesUseCase
 import com.checkit.domain.usecase.RebuildReflectStatsUseCase
 import com.checkit.ui.calendar.CalendarScreen
 import com.checkit.ui.components.LocalSnackbarHostState
@@ -103,7 +104,8 @@ fun CheckItApp(
             viewModels.myDay.events,
             viewModels.settings.events,
             viewModels.reflect.events,
-            viewModels.nested.events
+            viewModels.nested.events,
+            viewModels.quickNote.events
         ).collect { event ->
             when (event) {
                 is UiEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
@@ -302,6 +304,7 @@ fun CheckItApp(
                                     AppRoute.MyDay -> {
                                         MyDayScreen(
                                             viewModel = viewModels.myDay,
+                                            quickNoteViewModel = viewModels.quickNote,
                                             onTaskClick = viewModels.task::openTask,
                                             onNoteClick = viewModels.task::openNote,
                                             onNoteTimeChange = viewModels.task::updateNoteTime,

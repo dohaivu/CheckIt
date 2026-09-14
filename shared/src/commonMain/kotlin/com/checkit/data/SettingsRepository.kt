@@ -22,6 +22,7 @@ data class UserSettings(
     val lastFabActionType: String = "QuickSprint",
     val lastFabActionId: Long? = null,
     val lastNestedDocumentId: Long? = null,
+    val lastSelectedListId: Long? = null,
     val recentLabels: List<String> = emptyList()
 )
 
@@ -45,5 +46,6 @@ interface SettingsRepository {
     suspend fun setAutoMyDayLastRunEpochDay(epochDay: Int)
     suspend fun setLastFabAction(type: String, id: Long?)
     suspend fun setLastNestedDocumentId(id: Long?)
+    suspend fun setLastSelectedListId(id: Long?)
     suspend fun addRecentLabel(label: String)
 }

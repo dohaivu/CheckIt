@@ -5,7 +5,9 @@ import com.checkit.data.AppDataStore
 import com.checkit.data.CheckItDatabase
 import com.checkit.data.CheckItRepository
 import com.checkit.data.DataStoreSettingsRepository
+import com.checkit.data.QuickNoteRepository
 import com.checkit.data.RoomCheckItRepository
+import com.checkit.data.RoomQuickNoteRepository
 import com.checkit.data.SettingsRepository
 import com.checkit.data.buildCheckItDatabase
 import com.checkit.data.createPreferencesDataStore
@@ -97,12 +99,26 @@ import com.checkit.domain.usecase.UpdateTagSortOrderUseCase
 import com.checkit.domain.usecase.UpdateTagUseCase
 import com.checkit.domain.usecase.UpdateTaskUseCase
 import com.checkit.domain.usecase.UpsertDailyPlanItemUseCase
+import com.checkit.domain.usecase.CreateQuickNoteUseCase
+import com.checkit.domain.usecase.ClearExpiredQuickNoteRemindersUseCase
+import com.checkit.domain.usecase.DeleteQuickNotePermanentlyUseCase
+import com.checkit.domain.usecase.MaintainQuickNotesUseCase
+import com.checkit.domain.usecase.MoveQuickNoteToBeDeletedUseCase
+import com.checkit.domain.usecase.MoveQuickNoteUseCase
+import com.checkit.domain.usecase.ObserveQuickNextUseCase
+import com.checkit.domain.usecase.ObserveQuickNotesForWidgetUseCase
+import com.checkit.domain.usecase.ObserveQuickToBeDeletedUseCase
+import com.checkit.domain.usecase.RestoreQuickNoteUseCase
+import com.checkit.domain.usecase.SetQuickNotePriorityUseCase
+import com.checkit.domain.usecase.SetQuickNoteReminderUseCase
 import com.checkit.notifications.AppReminderScheduler
 import com.checkit.ui.calendar.CalendarViewModel
+import com.checkit.ui.quicknote.QuickNoteViewModel
 import com.checkit.ui.myday.MyDayViewModel
 import com.checkit.ui.nested.NestedListsViewModel
 import com.checkit.ui.reflect.ReflectViewModel
 import com.checkit.ui.journal.JournalHistoryViewModel
+import com.checkit.ui.quicknote.QuickNoteMenuHelper
 import com.checkit.ui.settings.SettingsViewModel
 import com.checkit.ui.tasks.TaskViewModel
 import com.checkit.ui.tasks.list.ListViewModel
@@ -230,12 +246,28 @@ val provideInteractorModule = module {
     single { ToggleNestedItemCollapsedUseCase(get()) }
     single { MoveNestedItemsUseCase(get()) }
     single { DeleteNestedItemsUseCase(get()) }
+    single<QuickNoteRepository> { RoomQuickNoteRepository(get(), get(), get()) }
+    single { ObserveQuickNextUseCase(get()) }
+    single { ObserveQuickNotesForWidgetUseCase(get()) }
+    single { ObserveQuickToBeDeletedUseCase(get()) }
+    single { CreateQuickNoteUseCase(get()) }
+    single { MoveQuickNoteToBeDeletedUseCase(get()) }
+    single { DeleteQuickNotePermanentlyUseCase(get()) }
+    single { RestoreQuickNoteUseCase(get()) }
+    single { SetQuickNoteReminderUseCase(get()) }
+    single { SetQuickNotePriorityUseCase(get()) }
+    single { MoveQuickNoteUseCase(get()) }
+    single { MaintainQuickNotesUseCase(get(), get()) }
+    single { ClearExpiredQuickNoteRemindersUseCase(get()) }
+    single { QuickNoteMenuHelper(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
 }
 
 val provideDatabaseModule = module {
     single<RoomDatabase.Builder<CheckItDatabase>> { provideDatabaseBuilder() }
     single { buildCheckItDatabase(get()) }
     single { get<CheckItDatabase>().checkItDao() }
+    single { get<CheckItDatabase>().quickNoteDao() }
+    single { com.checkit.data.QuickNoteSyncBridge(get()) }
 }
 
 val provideLocalServiceModule = module {
@@ -321,7 +353,7 @@ val provideViewModelModule = module {
             savePeriodGoal = get()
         )
     }
-    viewModel { SettingsViewModel(get(), get(), get(), get<AppReminderScheduler>()) }
+    viewModel { SettingsViewModel(get(), get(), get(), get<AppReminderScheduler>(), get()) }
     viewModel {
         NestedListsViewModel(
             observeDocumentsUseCase = get(),
@@ -346,6 +378,22 @@ val provideViewModelModule = module {
             moveItemsUseCase = get(),
             deleteItemsUseCase = get(),
             settingsRepository = get()
+        )
+    }
+    viewModel {
+        QuickNoteViewModel(
+            observeNext = get(),
+            observeToBeDeleted = get(),
+            createNote = get(),
+            moveToBeDeleted = get(),
+            setReminder = get(),
+            moveNote = get(),
+            deletePermanentlyUseCase = get(),
+            restoreUseCase = get(),
+            maintain = get(),
+            syncManager = get(),
+            cameraCapture = get(),
+            setPriority = get()
         )
     }
 }

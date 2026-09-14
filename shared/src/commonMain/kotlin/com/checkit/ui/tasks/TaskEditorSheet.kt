@@ -1,5 +1,6 @@
 package com.checkit.ui.tasks
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
@@ -36,7 +38,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,6 +51,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -467,6 +473,7 @@ private fun TaskFormContent(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DailyPlanSection(
     item: DailyPlanItem?,
@@ -483,6 +490,22 @@ private fun DailyPlanSection(
 ) {
     if (item == null) return
     val colorScheme = MaterialTheme.colorScheme
+
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = {
+            when (it) {
+                SwipeToDismissBoxValue.StartToEnd -> {
+                    onDelete(item.id)
+                    true
+                }
+                SwipeToDismissBoxValue.EndToStart -> {
+                    onStatusChange()
+                    false
+                }
+                else -> false
+            }
+        }
+    )
 
     Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
         LabelTextField(
@@ -509,113 +532,137 @@ private fun DailyPlanSection(
                     color = colorScheme.primary.copy(alpha = 0.2f),
                     shape = RoundedCornerShape(16.dp)
                 )
-                .padding(horizontal = 12.dp, vertical = 8.dp)
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
-
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    TimeRangePicker(
-                        startTimeMinutes = item.startTimeMinutes,
-                        endTimeMinutes = item.endTimeMinutes,
-                        onTimeChange = onTimeChange,
-                        modifier = Modifier.weight(1f),
-                        enabled = enabled,
-                        isOverdue = item.isOverdue(today()),
-                        clearEnabled = true
-                    )
-
-                    Row(
-                        modifier = Modifier.padding(start = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(2.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        if (enabled) {
-                            if (item.status == DailyPlanItemStatus.Planned && item.startTimeMinutes != null) {
-                                IconButton(
-                                    onClick = { onStartOngoingSprint(item) },
-                                    modifier = Modifier.size(32.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Bolt,
-                                        contentDescription = "Focus ongoing",
-                                        modifier = Modifier.size(18.dp),
-                                        tint = colorScheme.primary
-                                    )
-                                }
+                SwipeToDismissBox(
+                    state = dismissState,
+                    enableDismissFromStartToEnd = enabled,
+                    enableDismissFromEndToStart = enabled,
+                    backgroundContent = {
+                        val direction = dismissState.dismissDirection
+                        val color by animateColorAsState(
+                            when (dismissState.targetValue) {
+                                SwipeToDismissBoxValue.StartToEnd -> Color.Red.copy(alpha = 0.5f)
+                                SwipeToDismissBoxValue.EndToStart -> colorScheme.primary.copy(alpha = 0.5f)
+                                else -> Color.Transparent
                             }
+                        )
 
-                            if (item.status == DailyPlanItemStatus.Planned) {
-                                IconButton(
-                                    onClick = { onStartSprint(item) },
-                                    modifier = Modifier.size(32.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Schedule,
-                                        contentDescription = "Start Focus",
-                                        modifier = Modifier.size(18.dp),
-                                        tint = colorScheme.primary
-                                    )
-                                }
+                        Box(
+                            Modifier
+                                .fillMaxSize()
+                                .background(color)
+                                .padding(horizontal = 16.dp),
+                            contentAlignment = when (direction) {
+                                SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
+                                SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
+                                else -> Alignment.Center
                             }
-                        }
-
-
-                        IconButton(
-                            onClick = { onDelete(item.id) },
-                            modifier = Modifier.size(32.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = "Delete from My Day",
-                                modifier = Modifier.size(18.dp),
-                                tint = colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                            )
-                        }
-
-                        if (enabled) {
-                            IconButton(
-                                onClick = onStatusChange,
-                                modifier = Modifier.size(32.dp)
-                            ) {
+                            val icon = when (direction) {
+                                SwipeToDismissBoxValue.StartToEnd -> Icons.Default.Delete
+                                SwipeToDismissBoxValue.EndToStart -> if (item.status == DailyPlanItemStatus.Done) Icons.AutoMirrored.Filled.Undo else Icons.Default.Check
+                                else -> null
+                            }
+                            if (icon != null) {
                                 Icon(
-                                    imageVector = if (item.status == DailyPlanItemStatus.Done) Icons.AutoMirrored.Filled.Undo else Icons.Default.Check,
-                                    contentDescription = "Done from My Day",
+                                    imageVector = icon,
+                                    contentDescription = null,
                                     modifier = Modifier.size(18.dp),
                                     tint = colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                                 )
                             }
                         }
+                    },
+                    modifier = Modifier.clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TimeRangePicker(
+                            startTimeMinutes = item.startTimeMinutes,
+                            endTimeMinutes = item.endTimeMinutes,
+                            onTimeChange = onTimeChange,
+                            modifier = Modifier.weight(1f),
+                            enabled = enabled,
+                            isOverdue = item.isOverdue(today()),
+                            clearEnabled = true
+                        )
+
+                        Row(
+                            modifier = Modifier.padding(start = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (enabled) {
+                                if (item.status == DailyPlanItemStatus.Planned && item.startTimeMinutes != null) {
+                                    IconButton(
+                                        onClick = { onStartOngoingSprint(item) },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Bolt,
+                                            contentDescription = "Focus ongoing",
+                                            modifier = Modifier.size(18.dp),
+                                            tint = colorScheme.primary
+                                        )
+                                    }
+                                }
+
+                                if (item.status == DailyPlanItemStatus.Planned) {
+                                    IconButton(
+                                        onClick = { onStartSprint(item) },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Schedule,
+                                            contentDescription = "Start Focus",
+                                            modifier = Modifier.size(18.dp),
+                                            tint = colorScheme.primary
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
-                AppOutlinedTextField(
-                    value = item.title,
-                    onValueChange = onTitleChange,
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(
-                        color = colorScheme.onSurface.copy(alpha = ContentContainerAlpha),
-                        fontWeight = FontWeight.SemiBold
-                    ),
-                    maxLines = 2,
-                    enabled = enabled,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                Column(
+                    modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(0.dp)
+                ) {
+                    if (enabled || item.title.isNotBlank()) {
+                        AppOutlinedTextField(
+                            value = item.title,
+                            onValueChange = onTitleChange,
+                            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                color = colorScheme.onSurface.copy(alpha = ContentContainerAlpha),
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            maxLines = 2,
+                            enabled = enabled,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
 
-                AppOutlinedTextField(
-                    value = item.note.orEmpty(),
-                    onValueChange = onNoteChange,
-                    textStyle = MaterialTheme.typography.bodySmall.copy(
-                        color = colorScheme.onSurface.copy(alpha = ContentContainerAlpha),
-                        fontWeight = FontWeight.Normal
-                    ),
-                    maxLines = 3,
-                    enabled = enabled,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                    if (enabled || !item.note.isNullOrBlank()) {
+                        AppOutlinedTextField(
+                            value = item.note.orEmpty(),
+                            onValueChange = onNoteChange,
+                            textStyle = MaterialTheme.typography.bodySmall.copy(
+                                color = colorScheme.onSurface.copy(alpha = ContentContainerAlpha),
+                                fontWeight = FontWeight.Normal
+                            ),
+                            maxLines = 3,
+                            enabled = enabled,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
             }
         }
     }

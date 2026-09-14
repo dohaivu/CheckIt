@@ -120,6 +120,7 @@ class TaskViewModel(
                 }
         }
         viewModelScope.launch {
+            var isFirstLoad = true
             settingsRepository.settings.collect { settings ->
                 _uiState.update { state ->
                     val persistedView = TaskWorkspaceView.fromCode(settings.taskWorkspaceViewCode)
@@ -129,12 +130,19 @@ class TaskViewModel(
                         showCompleted = settings.taskShowCompleted,
                         sortOption = TaskSortOption.fromCode(settings.taskSortOptionCode)
                     )
-                    val nextState = if (nextOptions == state.options) {
+                    val nextSelection = if (isFirstLoad && settings.lastSelectedListId != null) {
+                        state.selection.copy(selectedListId = settings.lastSelectedListId)
+                    } else {
+                        state.selection
+                    }
+                    isFirstLoad = false
+
+                    val nextState = if (nextOptions == state.options && nextSelection == state.selection) {
                         state
-                    } else if (nextOptions.hasSameVisibleItemsAs(state.options)) {
+                    } else if (nextOptions.hasSameVisibleItemsAs(state.options) && nextSelection == state.selection) {
                         state.copy(options = nextOptions).coerceViewToAvailable()
                     } else {
-                        state.copy(options = nextOptions)
+                        state.copy(options = nextOptions, selection = nextSelection)
                             .refreshVisibleItems()
                             .coerceViewToAvailable()
                     }
@@ -157,6 +165,9 @@ class TaskViewModel(
             it.copy(selection = TaskSelectionState(selectedListId = listId))
                 .refreshVisibleItems()
                 .coerceViewToAvailable()
+        }
+        viewModelScope.launch {
+            settingsRepository.setLastSelectedListId(listId)
         }
     }
 
@@ -435,7 +446,7 @@ class TaskViewModel(
         val listId = editableListId()
         cancelPendingTaskTextSave()
         _uiState.update {
-            it.copy(editor = TaskEditorState.NoteForm(mode = EditorMode.Add, listId = listId, date = today()))
+            it.copy(editor = TaskEditorState.NoteForm(mode = EditorMode.Add, listId = listId, date = null))
         }
     }
 

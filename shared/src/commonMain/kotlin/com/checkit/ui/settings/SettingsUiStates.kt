@@ -1,5 +1,6 @@
 package com.checkit.ui.settings
 
+import com.checkit.auth.GoogleAccountState
 import com.checkit.ui.AppColorSchemeMode
 import com.checkit.ui.AppLanguage
 import com.checkit.ui.AppThemeMode
@@ -21,7 +22,8 @@ data class SettingsUiState(
     val colorSchemeMode: AppColorSchemeMode = AppColorSchemeMode.SkyBlue,
     val lastNestedDocumentId: Long? = null,
     val reminders: ReminderSettingsUiState = ReminderSettingsUiState(),
-    val tagUsageSort: TagUsageSort = TagUsageSort.MostUsed
+    val tagUsageSort: TagUsageSort = TagUsageSort.MostUsed,
+    val account: GoogleAccountState = GoogleAccountState(),
 )
 
 enum class TagUsageSort {

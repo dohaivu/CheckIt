@@ -33,13 +33,19 @@ kotlin {
 
     listOf(
         iosArm64(),
-        iosSimulatorArm64()
-    ).forEach { iosTarget ->
-        iosTarget.binaries.framework {
+        iosSimulatorArm64(),
+        macosArm64()
+    ).forEach { target ->
+        target.binaries.framework {
             baseName = "Shared"
-            isStatic = true
+            isStatic = false
+            linkerOpts("-lsqlite3")
         }
     }
+
+//    swiftExport {
+//        moduleName = "Shared"
+//    }
     
     sourceSets {
         androidMain.dependencies {
@@ -51,12 +57,18 @@ kotlin {
             implementation(libs.koin.android.workmanager)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.androidx.work.runtime)
+            implementation(libs.androidx.credentials)
+            implementation(libs.androidx.credentials.play.services.auth)
+            implementation(libs.googleid)
             implementation(libs.androidx.glance.appwidget)
             implementation(libs.androidx.glance.material3)
 
             implementation(project.dependencies.platform(libs.firebase.bom))
             implementation(libs.firebase.analytics)
-            implementation(libs.firebase.crashlytics.lib)
+            implementation(libs.firebase.crashlytics)
+            implementation(libs.firebase.firestore)
+            implementation(libs.firebase.storage)
+            implementation(libs.firebase.auth)
             implementation(libs.play.services.auth)
         }
         commonMain.dependencies {
@@ -111,7 +123,11 @@ kotlin {
             implementation(libs.adaptive.navigation)
 
         }
+
         iosMain.dependencies {
+            implementation(libs.ktor.client.darwin)
+        }
+        macosMain.dependencies {
             implementation(libs.ktor.client.darwin)
         }
 
@@ -133,5 +149,6 @@ dependencies {
     add("kspAndroid", libs.androidx.room.compiler)
     add("kspIosArm64", libs.androidx.room.compiler)
     add("kspIosSimulatorArm64", libs.androidx.room.compiler)
+    add("kspMacosArm64", libs.androidx.room.compiler)
     androidRuntimeClasspath(libs.compose.uiTooling)
 }

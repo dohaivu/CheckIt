@@ -597,14 +597,16 @@ data class NestedItemTagEntity(
         NestedItemTagEntity::class,
         DailyReflectStatsEntity::class,
         DailyTagRollupEntity::class,
-        HabitDailyRollupEntity::class
+        HabitDailyRollupEntity::class,
+        QuickNoteEntity::class
     ],
-    version = 13,
+    version = 17,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)
 abstract class CheckItDatabase : RoomDatabase() {
     abstract fun checkItDao(): CheckItDao
+    abstract fun quickNoteDao(): QuickNoteDao
 }
 
 @Suppress("KotlinNoActualForExpect")
@@ -618,13 +620,59 @@ val MIGRATION_12_13 = object : Migration(12, 13) {
     }
 }
 
+val MIGRATION_13_14 = object : Migration(13, 14) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `quick_notes` (
+                `id` TEXT NOT NULL,
+                `content` TEXT NOT NULL,
+                `status` TEXT NOT NULL,
+                `createdAt` INTEGER NOT NULL,
+                `updatedAt` INTEGER NOT NULL,
+                `sortOrder` REAL NOT NULL,
+                `remindAt` INTEGER,
+                `deleteAt` INTEGER,
+                `deleted` INTEGER NOT NULL,
+                PRIMARY KEY(`id`)
+            )
+            """.trimIndent()
+        )
+        connection.execSQL("CREATE INDEX IF NOT EXISTS `index_quick_notes_status` ON `quick_notes` (`status`)")
+        connection.execSQL("CREATE INDEX IF NOT EXISTS `index_quick_notes_updatedAt` ON `quick_notes` (`updatedAt`)")
+        connection.execSQL("CREATE INDEX IF NOT EXISTS `index_quick_notes_status_sortOrder` ON `quick_notes` (`status`, `sortOrder`)")
+    }
+}
+
+val MIGRATION_14_15 = object : Migration(14, 15) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        // Existing rows predate dirty tracking: upload them on next sync.
+        connection.execSQL("ALTER TABLE quick_notes ADD COLUMN dirty INTEGER NOT NULL DEFAULT 1")
+        connection.execSQL("CREATE INDEX IF NOT EXISTS `index_quick_notes_dirty` ON `quick_notes` (`dirty`)")
+    }
+}
+
+val MIGRATION_15_16 = object : Migration(15, 16) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE quick_notes ADD COLUMN type TEXT NOT NULL DEFAULT 'TEXT'")
+        connection.execSQL("ALTER TABLE quick_notes ADD COLUMN attachmentLocalPath TEXT")
+        connection.execSQL("ALTER TABLE quick_notes ADD COLUMN attachmentUrl TEXT")
+    }
+}
+
+val MIGRATION_16_17 = object : Migration(16, 17) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE quick_notes ADD COLUMN priority TEXT NOT NULL DEFAULT 'None'")
+    }
+}
+
 fun buildCheckItDatabase(
     builder: RoomDatabase.Builder<CheckItDatabase>
 ): CheckItDatabase {
     return builder
         .fallbackToDestructiveMigration(false)
         .fallbackToDestructiveMigrationOnDowngrade(false)
-        .addMigrations(MIGRATION_12_13)
+        .addMigrations(MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17)
         .setQueryCoroutineContext(Dispatchers.IO)
         .setDriver(BundledSQLiteDriver())
         .addCallback(object : RoomDatabase.Callback() {

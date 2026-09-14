@@ -62,9 +62,12 @@ import com.checkit.ui.theme.AppIconColorDefaults.FallbackColor
 import com.checkit.ui.theme.toColor
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
 import kotlinx.datetime.number
 import kotlinx.datetime.plus
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.toLocalIsoWeekDate
+import kotlin.time.Instant
 
 fun Modifier.noRippleClickable(
     enabled: Boolean = true,
@@ -271,6 +274,13 @@ fun Int.toClockLabel(): String {
         else -> normalized
     }
     return "$displayHour:${minute.toString().padStart(2, '0')} $suffix"
+}
+
+/** Epoch millis rendered as a local-time clock label ("2:32 PM"). */
+fun Long.toClockLabel(): String {
+    val local = Instant.fromEpochMilliseconds(this)
+        .toLocalDateTime(TimeZone.currentSystemDefault())
+    return (local.hour * 60 + local.minute).toClockLabel()
 }
 
 enum class TimelineItemType { Task, Note, DailyPlan, Journal }

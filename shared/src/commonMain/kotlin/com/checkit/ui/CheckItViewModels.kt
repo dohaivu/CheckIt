@@ -4,6 +4,7 @@ import com.checkit.ui.calendar.CalendarViewModel
 import com.checkit.ui.journal.JournalHistoryViewModel
 import com.checkit.ui.myday.MyDayViewModel
 import com.checkit.ui.nested.NestedListsViewModel
+import com.checkit.ui.quicknote.QuickNoteViewModel
 import com.checkit.ui.reflect.ReflectViewModel
 import com.checkit.ui.settings.SettingsViewModel
 import com.checkit.ui.tasks.TaskViewModel
@@ -23,6 +24,7 @@ data class CheckItViewModels(
     val journalHistory: JournalHistoryViewModel,
     val reflect: ReflectViewModel,
     val nested: NestedListsViewModel,
+    val quickNote: QuickNoteViewModel,
     val settings: SettingsViewModel
 )
 
@@ -37,5 +39,6 @@ fun koinCheckItViewModels(): CheckItViewModels = CheckItViewModels(
     journalHistory = koinViewModel(),
     reflect = koinViewModel(),
     nested = koinViewModel(),
+    quickNote = koinViewModel(),
     settings = koinViewModel()
 )

@@ -1,0 +1,144 @@
+package com.checkit.domain.usecase
+
+import co.touchlab.kermit.Logger
+import com.checkit.data.QuickNoteRepository
+import com.checkit.data.QuickNoteSyncManager
+import com.checkit.domain.QuickNote
+import com.checkit.domain.QuickNoteRules
+import com.checkit.domain.QuickNoteType
+import com.checkit.domain.TaskPriority
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+
+class ObserveQuickNextUseCase(
+    private val repository: QuickNoteRepository,
+) {
+    operator fun invoke(): Flow<List<QuickNote>> = repository.observeNext()
+}
+
+class ObserveQuickNotesForWidgetUseCase(
+    private val repository: QuickNoteRepository,
+) {
+    operator fun invoke(limit: Int): Flow<List<QuickNote>> =
+        repository.observeNext().map { notes ->
+            notes.sortedWith(compareByDescending<QuickNote> { it.priority }.thenBy { it.sortOrder })
+                .take(limit)
+        }
+}
+
+class ObserveQuickToBeDeletedUseCase(
+    private val repository: QuickNoteRepository,
+) {
+    operator fun invoke(): Flow<List<QuickNote>> = repository.observeToBeDeleted()
+}
+
+class CreateQuickNoteUseCase(
+    private val repository: QuickNoteRepository,
+) {
+    suspend operator fun invoke(content: String): QuickNote? {
+        if (content.isBlank()) return null
+        return repository.create(content)
+    }
+
+    suspend operator fun invoke(
+        content: String,
+        type: QuickNoteType,
+        attachmentLocalPath: String?,
+    ): QuickNote? {
+        if (content.isBlank()) return null
+        return repository.create(content, type, attachmentLocalPath)
+    }
+}
+
+class MoveQuickNoteToBeDeletedUseCase(
+    private val repository: QuickNoteRepository,
+) {
+    suspend operator fun invoke(id: String) = repository.moveToBeDeleted(id)
+}
+
+class DeleteQuickNotePermanentlyUseCase(
+    private val repository: QuickNoteRepository,
+) {
+    suspend operator fun invoke(id: String) = repository.deletePermanently(id)
+}
+
+class RestoreQuickNoteUseCase(
+    private val repository: QuickNoteRepository,
+) {
+    suspend operator fun invoke(id: String) = repository.restore(id)
+}
+
+class SetQuickNoteReminderUseCase(
+    private val repository: QuickNoteRepository,
+) {
+    suspend operator fun invoke(id: String, durationMillis: Long) {
+        val now = kotlin.time.Clock.System.now().toEpochMilliseconds()
+        repository.setReminder(id, QuickNoteRules.reminderAt(now, durationMillis))
+    }
+
+    suspend fun clear(id: String) = repository.clearReminder(id)
+}
+
+class SetQuickNotePriorityUseCase(
+    private val repository: QuickNoteRepository,
+) {
+    suspend operator fun invoke(id: String, priority: TaskPriority) =
+        repository.setPriority(id, priority)
+}
+
+class MoveQuickNoteUseCase(
+    private val repository: QuickNoteRepository,
+) {
+    suspend operator fun invoke(id: String, beforeId: String?, afterId: String?) =
+        repository.move(id, beforeId, afterId)
+
+    suspend fun reorder(fromIndex: Int, toIndex: Int) = repository.reorder(fromIndex, toIndex)
+}
+
+class ProcessExpiredQuickNotesUseCase(
+    private val repository: QuickNoteRepository,
+) {
+    suspend operator fun invoke(): Int = repository.processExpired()
+}
+
+/**
+ * Drops reminder times that already fired without being cleared (delivered
+ * while the app was inactive, alarm denied, etc.). Bumps updatedAt so the
+ * cleared state propagates on next sync.
+ */
+class ClearExpiredQuickNoteRemindersUseCase(
+    private val repository: QuickNoteRepository,
+) {
+    suspend operator fun invoke(): Int = repository.clearExpiredReminders()
+}
+
+class ReconcileQuickNoteRemindersUseCase(
+    private val repository: QuickNoteRepository,
+) {
+    suspend operator fun invoke() = repository.reconcileReminders()
+}
+
+/**
+ * Periodic maintenance previously done by a WorkManager worker: expire
+ * 24h notes, reconcile alarms after restarts, and retry pending sync.
+ * Called from the app's startup/resume maintenance path.
+ */
+class MaintainQuickNotesUseCase(
+    private val repository: QuickNoteRepository,
+    private val syncManager: QuickNoteSyncManager,
+) {
+    suspend operator fun invoke(): Int {
+        Logger.i(TAG) { "Maintenance started" }
+        repository.autoTrashInactive()
+        val expiredCount = repository.processExpired()
+        repository.clearExpiredReminders()
+        repository.reconcileReminders()
+        runCatching { syncManager.sync() }
+        Logger.i(TAG) { "Maintenance finished (expired=$expiredCount)" }
+        return expiredCount
+    }
+
+    private companion object {
+        const val TAG = "QuickNoteMaintain"
+    }
+}
