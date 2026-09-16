@@ -22,7 +22,9 @@ struct SettingsView: View {
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
-                    KeyboardShortcuts.Recorder(for: .toggleQuickNote)
+                    KeyboardShortcuts.Recorder(for: .toggleQuickNote) {
+                        QuickNoteShortcutStore.save($0)
+                    }
                 }
             }
 
