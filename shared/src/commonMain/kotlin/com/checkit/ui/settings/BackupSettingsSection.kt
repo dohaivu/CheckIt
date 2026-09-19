@@ -1,8 +1,10 @@
 package com.checkit.ui.settings
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
@@ -70,12 +72,57 @@ internal fun BackupSettingsContent(
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
-                if (backupFolderUri != null && onClearBackupFolder != null) {
-                    TextButton(onClick = onClearBackupFolder, enabled = !busy) { Text("Clear") }
+                Column(horizontalAlignment = Alignment.End) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (backupFolderUri != null && onClearBackupFolder != null) {
+                            TextButton(
+                                onClick = onClearBackupFolder,
+                                enabled = !busy,
+                                contentPadding = PaddingValues(horizontal = 8.dp),
+                                modifier = Modifier.height(32.dp)
+                            ) { Text("Clear") }
+                        }
+                        TextButton(
+                            onClick = onSelectBackupFolder,
+                            enabled = !busy,
+                            contentPadding = PaddingValues(horizontal = 8.dp),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            Text(if (backupFolderUri != null) "Change" else "Select")
+                        }
+                    }
+                    if (backupFolderUri != null && onBackupToFolder != null) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(
+                                onClick = {
+                                    scope.launch {
+                                        busy = true
+                                        runCatching {
+                                            val fileName = onBackupToFolder(exportBackup())
+                                            onBackupRecorded?.invoke()
+                                            status = "Saved $fileName to backup folder"
+                                        }.onFailure { error ->
+                                            status = "Backup failed: ${error.message ?: "unknown error"}"
+                                        }
+                                        busy = false
+                                    }
+                                },
+                                enabled = !busy,
+                                contentPadding = PaddingValues(horizontal = 8.dp),
+                                modifier = Modifier.height(32.dp)
+                            ) {
+                                Text(if (busy) "Working…" else "Back up now")
+                            }
+                        }
+                    }
                 }
-                TextButton(onClick = onSelectBackupFolder, enabled = !busy) {
-                    Text(if (backupFolderUri != null) "Change" else "Select")
-                }
+            }
+            status?.let {
+                Text(
+                    it,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
             AppHorizontalDivider()
         }
@@ -92,41 +139,12 @@ internal fun BackupSettingsContent(
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
-                TextButton(onClick = onRestoreFromFolder, enabled = !busy) { Text("Restore") }
-            }
-            AppHorizontalDivider()
-        }
-        if (backupFolderUri != null && onBackupToFolder != null) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Manual backup", fontWeight = FontWeight.SemiBold)
-                    Text(
-                        status ?: "Save a JSON backup to the folder now",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
                 TextButton(
-                    onClick = {
-                        scope.launch {
-                            busy = true
-                            runCatching {
-                                val fileName = onBackupToFolder(exportBackup())
-                                onBackupRecorded?.invoke()
-                                status = "Saved $fileName to backup folder"
-                            }.onFailure { error ->
-                                status = "Backup failed: ${error.message ?: "unknown error"}"
-                            }
-                            busy = false
-                        }
-                    },
-                    enabled = !busy
-                ) {
-                    Text(if (busy) "Working…" else "Back up now")
-                }
+                    onClick = onRestoreFromFolder,
+                    enabled = !busy,
+                    contentPadding = PaddingValues(horizontal = 8.dp),
+                    modifier = Modifier.height(32.dp)
+                ) { Text("Restore") }
             }
             AppHorizontalDivider()
         }

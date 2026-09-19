@@ -7,10 +7,12 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -201,6 +203,7 @@ private fun SettingsHomeScreen(
                         onClick = onOpenReminders
                     )
                 }
+                item { BackupSettingsSection() }
                 item {
                     SettingsRow(
                         title = "Dev options",
@@ -208,7 +211,6 @@ private fun SettingsHomeScreen(
                         onClick = onOpenDevOptions
                     )
                 }
-                item { BackupSettingsSection() }
             }
             Text(
                 text = stringResource(Res.string.version, viewModel.versionName),
@@ -368,7 +370,9 @@ private fun DevActionRow(
         }
         TextButton(
             onClick = onAction,
-            enabled = actionEnabled
+            enabled = actionEnabled,
+            contentPadding = PaddingValues(horizontal = 8.dp),
+            modifier = Modifier.height(32.dp)
         ) {
             Text(actionLabel)
         }
@@ -636,7 +640,11 @@ private fun AccountSettings(account: GoogleAccountState, viewModel: SettingsView
             if (account.busy) {
                 CircularProgressIndicator(modifier = Modifier.size(24.dp))
             } else if (signedIn) {
-                TextButton(onClick = viewModel::signOut) { Text("Sign out") }
+                TextButton(
+                    onClick = viewModel::signOut,
+                    contentPadding = PaddingValues(horizontal = 8.dp),
+                    modifier = Modifier.height(32.dp)
+                ) { Text("Sign out") }
             } else {
                 Button(onClick = viewModel::signInWithGoogle) { Text("Sign in with Google") }
             }
@@ -652,7 +660,11 @@ private fun AccountSettings(account: GoogleAccountState, viewModel: SettingsView
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.weight(1f)
                 )
-                TextButton(onClick = viewModel::clearAccountError) { Text("Dismiss") }
+                TextButton(
+                    onClick = viewModel::clearAccountError,
+                    contentPadding = PaddingValues(horizontal = 8.dp),
+                    modifier = Modifier.height(32.dp)
+                ) { Text("Dismiss") }
             }
         }
         AppHorizontalDivider()
