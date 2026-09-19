@@ -25,7 +25,7 @@ import kotlinx.coroutines.launch
 import kotlin.time.Clock
 
 class SettingsViewModel(
-    @Suppress("unused") private val repository: CheckItRepository,
+    private val repository: CheckItRepository,
     private val appConfig: AppConfig,
     private val settingsRepository: SettingsRepository,
     private val appReminderScheduler: AppReminderScheduler,
@@ -169,10 +169,15 @@ class SettingsViewModel(
         }
     }
 
-    fun restoreFromBackup(json: String) {
+    fun restoreFromBackup(json: String, folderUri: String? = null, folderName: String? = null) {
         viewModelScope.launch {
             runCatching { repository.importBackupJson(json) }
-                .onSuccess { showMessage("Backup restored") }
+                .onSuccess {
+                    if (folderUri != null) {
+                        settingsRepository.setBackupFolder(folderUri, folderName)
+                    }
+                    showMessage("Backup restored")
+                }
                 .onFailure { error ->
                     showMessage("Restore failed: ${error.message ?: "unknown error"}")
                 }

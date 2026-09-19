@@ -1586,8 +1586,8 @@ class RoomCheckItRepository(
             "Unsupported backup version ${backup.version}"
         }
         dao.restoreBackup(backup)
+        quickNoteDao?.clearAll()
         if (backup.quickNotes.isNotEmpty()) {
-            quickNoteDao?.clearAll()
             quickNoteDao?.insertAll(backup.quickNotes)
         }
         settingsRepository?.let { repository ->

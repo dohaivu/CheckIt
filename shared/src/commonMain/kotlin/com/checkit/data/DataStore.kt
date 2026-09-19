@@ -149,7 +149,8 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
         }
     }
 
-    suspend fun addRecentLabel(label: String) {        if (label.isBlank()) return
+    suspend fun addRecentLabel(label: String) {
+        if (label.isBlank()) return
         dataStore.edit { prefs ->
             val current = prefs[KEY_RECENT_LABELS]?.split(",")?.filter { it.isNotBlank() }?.toMutableList() ?: mutableListOf()
             current.remove(label)

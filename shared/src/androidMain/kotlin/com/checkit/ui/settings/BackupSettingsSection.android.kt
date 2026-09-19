@@ -1,6 +1,7 @@
 package com.checkit.ui.settings
 
 import android.content.Intent
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -13,14 +14,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import com.checkit.data.AndroidBackupStorage
 import com.checkit.domain.usecase.ExportBackupUseCase
-import com.checkit.domain.usecase.ImportBackupUseCase
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
- * Android backup section: local app-storage backups plus a user-selected
- * SAF folder (mirroring SpendWise's backup folder / restore rows).
+ * Android backup section: user-selected SAF folder backup/restore
+ * (mirroring SpendWise's backup folder / restore rows).
  */
 @Composable
 actual fun BackupSettingsSection() {
@@ -28,35 +28,35 @@ actual fun BackupSettingsSection() {
     val state by viewModel.uiState.collectAsState()
     val storage: AndroidBackupStorage = koinInject()
     val exportBackup: ExportBackupUseCase = koinInject()
-    val importBackup: ImportBackupUseCase = koinInject()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var folderRestore by remember { mutableStateOf<FolderRestoreCandidate?>(null) }
 
+    fun persistFolderAccess(uri: Uri) {
+        context.contentResolver.takePersistableUriPermission(
+            uri,
+            Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        )
+    }
+
     val folderLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) {
-            context.contentResolver.takePersistableUriPermission(
-                uri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-            )
+            persistFolderAccess(uri)
             viewModel.setBackupFolderUri(uri.toString(), storage.folderDisplayName(uri.toString()))
         }
     }
     val restoreLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) {
-            context.contentResolver.takePersistableUriPermission(
-                uri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-            )
+            persistFolderAccess(uri)
             scope.launch {
                 val folderUri = uri.toString()
-                val newest = runCatching { storage.readBackupFromFolder(folderUri) }.getOrNull()
-                if (newest != null) {
+                val backup = runCatching { storage.readBackupFromFolder(folderUri) }.getOrNull()
+                if (backup != null) {
                     folderRestore = FolderRestoreCandidate(
                         folderUri = folderUri,
                         folderName = storage.folderDisplayName(folderUri),
-                        fileName = newest.first,
-                        json = newest.second
+                        fileName = backup.first,
+                        json = backup.second
                     )
                 } else {
                     viewModel.showMessage("No CheckIt backup found in selected folder")
@@ -83,16 +83,7 @@ actual fun BackupSettingsSection() {
             val candidate = folderRestore
             folderRestore = null
             if (candidate != null) {
-                scope.launch {
-                    runCatching { importBackup(candidate.json) }
-                        .onSuccess {
-                            viewModel.setBackupFolderUri(candidate.folderUri, candidate.folderName)
-                            viewModel.showMessage("Restored ${candidate.fileName}")
-                        }
-                        .onFailure { error ->
-                            viewModel.showMessage("Restore failed: ${error.message ?: "unknown error"}")
-                        }
-                }
+                viewModel.restoreFromBackup(candidate.json, candidate.folderUri, candidate.folderName)
             }
         },
         onDismissFolderRestore = { folderRestore = null }

@@ -34,12 +34,12 @@ class BackupWorker(
             return Result.failure()
         }
 
-        val lastBackup = settings.lastBackupAtMillis ?: 0L
+        val lastBackupAtMillis = settings.lastBackupAtMillis
         val now = System.currentTimeMillis()
 
-        // Skip if last backup was successful within the last 23 hours to avoid redundancy
+        // Skip if last backup was successful within the skip window to avoid redundancy
         // (using 23h instead of 24h to allow for small scheduling drifts)
-        if (settings.lastBackupAtMillis != null && (now - lastBackup) < 23 * 60 * 60 * 1000L) {
+        if (lastBackupAtMillis != null && (now - lastBackupAtMillis) < SKIP_WINDOW_MILLIS) {
             Log.d(TAG, "Backup skipped: Last backup was less than 23h ago")
             return Result.success()
         }
@@ -60,5 +60,6 @@ class BackupWorker(
 
     companion object {
         private const val TAG = "BackupWorker"
+        private const val SKIP_WINDOW_MILLIS = 23 * 60 * 60 * 1000L
     }
 }
