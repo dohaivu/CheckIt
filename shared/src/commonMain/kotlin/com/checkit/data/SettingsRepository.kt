@@ -25,7 +25,10 @@ data class UserSettings(
     val lastFabActionId: Long? = null,
     val lastNestedDocumentId: Long? = null,
     val lastSelectedListId: Long? = null,
-    val recentLabels: List<String> = emptyList()
+    val recentLabels: List<String> = emptyList(),
+    val backupFolderUri: String? = null,
+    val backupFolderName: String? = null,
+    val lastBackupAtMillis: Long? = null
 )
 
 interface SettingsRepository {
@@ -50,4 +53,6 @@ interface SettingsRepository {
     suspend fun setLastNestedDocumentId(id: Long?)
     suspend fun setLastSelectedListId(id: Long?)
     suspend fun addRecentLabel(label: String)
+    suspend fun setBackupFolder(uri: String?, name: String?)
+    suspend fun setLastBackupAtMillis(millis: Long)
 }

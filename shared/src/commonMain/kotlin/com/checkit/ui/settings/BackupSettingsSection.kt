@@ -41,6 +41,17 @@ internal fun BackupSettingsContent(
     storage: BackupStorage,
     exportBackup: ExportBackupUseCase,
     importBackup: ImportBackupUseCase,
+    backupFolderUri: String? = null,
+    backupFolderName: String? = null,
+    lastBackupAtMillis: Long? = null,
+    onSelectBackupFolder: (() -> Unit)? = null,
+    onClearBackupFolder: (() -> Unit)? = null,
+    onBackupToFolder: (suspend (json: String) -> String)? = null,
+    onBackupRecorded: (() -> Unit)? = null,
+    onRestoreFromFolder: (() -> Unit)? = null,
+    folderRestore: FolderRestoreCandidate? = null,
+    onConfirmFolderRestore: (() -> Unit)? = null,
+    onDismissFolderRestore: (() -> Unit)? = null,
 ) {
     val scope = rememberCoroutineScope()
     var backups by remember { mutableStateOf<List<BackupFileInfo>>(emptyList()) }
@@ -60,6 +71,50 @@ internal fun BackupSettingsContent(
     LaunchedEffect(Unit) { refresh() }
 
     Column {
+        if (onSelectBackupFolder != null) {
+            val lastBackup = lastBackupAtMillis?.let {
+                "Last success: ${formatBackupDate(it)}"
+            } ?: "Never run"
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Backup folder", fontWeight = FontWeight.SemiBold)
+                    Text(
+                        backupFolderName?.let { "Syncing to \"$it\"\n$lastBackup" }
+                            ?: backupFolderUri?.let { "Syncing to selected folder\n$lastBackup" }
+                            ?: "Not set (backups stay in app storage)",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                if (backupFolderUri != null && onClearBackupFolder != null) {
+                    TextButton(onClick = onClearBackupFolder, enabled = !busy) { Text("Clear") }
+                }
+                TextButton(onClick = onSelectBackupFolder, enabled = !busy) {
+                    Text(if (backupFolderUri != null) "Change" else "Select")
+                }
+            }
+            AppHorizontalDivider()
+        }
+        if (onRestoreFromFolder != null) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Restore from folder", fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "Pick a folder to restore its newest backup",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                TextButton(onClick = onRestoreFromFolder, enabled = !busy) { Text("Restore") }
+            }
+            AppHorizontalDivider()
+        }
         Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -82,10 +137,15 @@ internal fun BackupSettingsContent(
                         busy = true
                         runCatching {
                             val json = exportBackup()
-                            storage.createBackup(json)
-                        }.onSuccess { created ->
-                            status = "Saved ${created.name}"
-                            refresh()
+                            if (backupFolderUri != null && onBackupToFolder != null) {
+                                val fileName = onBackupToFolder(json)
+                                onBackupRecorded?.invoke()
+                                status = "Saved $fileName to backup folder"
+                            } else {
+                                val created = storage.createBackup(json)
+                                status = "Saved ${created.name}"
+                                refresh()
+                            }
                         }.onFailure { error ->
                             status = "Backup failed: ${error.message ?: "unknown error"}"
                         }
@@ -151,6 +211,20 @@ internal fun BackupSettingsContent(
         )
     }
 
+    folderRestore?.let { candidate ->
+        AlertDialog(
+            onDismissRequest = { onDismissFolderRestore?.invoke() },
+            title = { Text("Restore backup?") },
+            text = { Text("This replaces all current data with ${candidate.fileName}. This cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = { onConfirmFolderRestore?.invoke() }) { Text("Restore") }
+            },
+            dismissButton = {
+                TextButton(onClick = { onDismissFolderRestore?.invoke() }) { Text("Cancel") }
+            }
+        )
+    }
+
     pendingDelete?.let { backup ->
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
@@ -174,6 +248,14 @@ internal fun BackupSettingsContent(
         )
     }
 }
+
+/** A backup JSON read from a user-selected folder, awaiting restore confirmation. */
+data class FolderRestoreCandidate(
+    val folderUri: String,
+    val folderName: String?,
+    val fileName: String,
+    val json: String,
+)
 
 private fun formatBackupDate(millis: Long): String {
     val dateTime = Instant.fromEpochMilliseconds(millis).toLocalDateTime(TimeZone.currentSystemDefault())

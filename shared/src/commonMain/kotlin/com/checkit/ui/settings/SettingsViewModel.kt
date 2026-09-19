@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.time.Clock
 
 class SettingsViewModel(
     @Suppress("unused") private val repository: CheckItRepository,
@@ -46,6 +47,9 @@ class SettingsViewModel(
                         colorSchemeMode = AppColorSchemeMode.fromCode(stored.colorSchemeModeCode),
                         lastNestedDocumentId = stored.lastNestedDocumentId,
                         reminders = stored.toReminderSettingsUiState(),
+                        backupFolderUri = stored.backupFolderUri,
+                        backupFolderName = stored.backupFolderName,
+                        lastBackupAtMillis = stored.lastBackupAtMillis,
                     )
                 }
                 appReminderScheduler.applySettings(stored)
@@ -136,6 +140,36 @@ class SettingsViewModel(
 
     fun signInWithGoogle() {
         viewModelScope.launch { accountManager.signIn() }
+    }
+
+    fun setBackupFolderUri(uri: String?, name: String?) {
+        viewModelScope.launch {
+            settingsRepository.setBackupFolder(uri, name)
+        }
+    }
+
+    fun clearBackupFolder() {
+        setBackupFolderUri(null, null)
+    }
+
+    fun markBackupCompleted() {
+        viewModelScope.launch {
+            settingsRepository.setLastBackupAtMillis(Clock.System.now().toEpochMilliseconds())
+        }
+    }
+
+    fun restoreFromBackup(json: String) {
+        viewModelScope.launch {
+            runCatching { repository.importBackupJson(json) }
+                .onSuccess { showMessage("Backup restored") }
+                .onFailure { error ->
+                    showMessage("Restore failed: ${error.message ?: "unknown error"}")
+                }
+        }
+    }
+
+    fun showMessage(message: String) {
+        sendEvent(UiEvent.ShowSnackbar(message))
     }
 
     fun signOut() {

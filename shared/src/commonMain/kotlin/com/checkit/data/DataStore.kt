@@ -42,7 +42,10 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
                 lastFabActionId = prefs[KEY_LAST_FAB_ACTION_ID],
                 lastNestedDocumentId = prefs[KEY_LAST_NESTED_DOCUMENT_ID],
                 lastSelectedListId = prefs[KEY_LAST_SELECTED_LIST_ID],
-                recentLabels = prefs[KEY_RECENT_LABELS]?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
+                recentLabels = prefs[KEY_RECENT_LABELS]?.split(",")?.filter { it.isNotBlank() } ?: emptyList(),
+                backupFolderUri = prefs[KEY_BACKUP_FOLDER_URI],
+                backupFolderName = prefs[KEY_BACKUP_FOLDER_NAME],
+                lastBackupAtMillis = prefs[KEY_LAST_BACKUP_AT]
             )
         }
 
@@ -146,13 +149,31 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
         }
     }
 
-    suspend fun addRecentLabel(label: String) {
-        if (label.isBlank()) return
+    suspend fun addRecentLabel(label: String) {        if (label.isBlank()) return
         dataStore.edit { prefs ->
             val current = prefs[KEY_RECENT_LABELS]?.split(",")?.filter { it.isNotBlank() }?.toMutableList() ?: mutableListOf()
             current.remove(label)
             current.add(0, label)
             prefs[KEY_RECENT_LABELS] = current.take(15).joinToString(",")
+        }
+    }
+
+    suspend fun setLastBackupAtMillis(millis: Long) {
+        dataStore.edit { it[KEY_LAST_BACKUP_AT] = millis }
+    }
+
+    suspend fun setBackupFolder(uri: String?, name: String?) {
+        dataStore.edit { prefs ->
+            if (uri != null) {
+                prefs[KEY_BACKUP_FOLDER_URI] = uri
+            } else {
+                prefs.remove(KEY_BACKUP_FOLDER_URI)
+            }
+            if (name != null) {
+                prefs[KEY_BACKUP_FOLDER_NAME] = name
+            } else {
+                prefs.remove(KEY_BACKUP_FOLDER_NAME)
+            }
         }
     }
 
@@ -178,6 +199,9 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
         val KEY_LAST_NESTED_DOCUMENT_ID = longPreferencesKey("last_nested_document_id")
         val KEY_LAST_SELECTED_LIST_ID = longPreferencesKey("last_selected_list_id")
         val KEY_RECENT_LABELS = stringPreferencesKey("recent_labels")
+        val KEY_BACKUP_FOLDER_URI = stringPreferencesKey("backup_folder_uri")
+        val KEY_BACKUP_FOLDER_NAME = stringPreferencesKey("backup_folder_name")
+        val KEY_LAST_BACKUP_AT = longPreferencesKey("last_backup_at_millis")
     }
 }
 

@@ -87,4 +87,12 @@ class DataStoreSettingsRepository(
     override suspend fun addRecentLabel(label: String) {
         dataStore.addRecentLabel(label)
     }
+
+    override suspend fun setBackupFolder(uri: String?, name: String?) {
+        dataStore.setBackupFolder(uri, name)
+    }
+
+    override suspend fun setLastBackupAtMillis(millis: Long) {
+        dataStore.setLastBackupAtMillis(millis)
+    }
 }
