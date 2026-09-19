@@ -359,7 +359,7 @@ val provideViewModelModule = module {
             savePeriodGoal = get()
         )
     }
-    viewModel { SettingsViewModel(get(), get(), get(), get<AppReminderScheduler>(), get()) }
+    viewModel { SettingsViewModel(get(), get(), get(), get<AppReminderScheduler>(), get(), get()) }
     viewModel {
         NestedListsViewModel(
             observeDocumentsUseCase = get(),

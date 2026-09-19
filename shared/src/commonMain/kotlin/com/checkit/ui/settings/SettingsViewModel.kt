@@ -9,6 +9,7 @@ import com.checkit.domain.CheckInReminderPolicy
 import com.checkit.data.SettingsRepository
 import com.checkit.data.UserSettings
 import com.checkit.notifications.AppReminderScheduler
+import com.checkit.platform.BackupScheduler
 import com.checkit.ui.AppColorSchemeMode
 import com.checkit.ui.AppLanguage
 import com.checkit.ui.AppThemeMode
@@ -29,6 +30,7 @@ class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
     private val appReminderScheduler: AppReminderScheduler,
     private val accountManager: GoogleAccountManager,
+    private val backupScheduler: BackupScheduler,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -39,6 +41,7 @@ class SettingsViewModel(
 
     init {
         viewModelScope.launch {
+            var lastBackupFolderUri: String? = null
             settingsRepository.settings.collect { stored ->
                 _uiState.update { current ->
                     current.copy(
@@ -53,6 +56,14 @@ class SettingsViewModel(
                     )
                 }
                 appReminderScheduler.applySettings(stored)
+                if (lastBackupFolderUri != stored.backupFolderUri) {
+                    lastBackupFolderUri = stored.backupFolderUri
+                    if (lastBackupFolderUri != null) {
+                        backupScheduler.scheduleDailyBackup()
+                    } else {
+                        backupScheduler.cancelDailyBackup()
+                    }
+                }
             }
         }
         viewModelScope.launch {
