@@ -39,6 +39,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AddTask
@@ -46,6 +47,7 @@ import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.RestoreFromTrash
@@ -111,7 +113,6 @@ import com.checkit.domain.QuickNoteRules
 import com.checkit.domain.QuickNoteType
 import com.checkit.domain.TaskPriority
 import com.checkit.ui.components.AiQuickAddBar
-import com.checkit.ui.components.DetailChip
 import com.checkit.ui.components.SectionLabel
 import com.checkit.ui.toClockLabel
 import kotlinx.coroutines.CoroutineScope
@@ -173,10 +174,10 @@ fun QuickNoteContent(
                 .fillMaxSize()
                 .weight(1f)
                 .padding(horizontal = 12.dp)
-                .pointerInput(dragDropState) {
+                .pointerInput(dragDropState, selectedNoteId) {
                     detectDragGesturesAfterLongPress(
                         onDragStart = { offset ->
-                            dragDropState.onDragStart(offset)
+                            dragDropState.onDragStart(offset, selectedNoteId)
                             if (dragDropState.isDragging) {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             }
@@ -476,11 +477,15 @@ private fun rememberQuickNoteDragDropState(
 ): QuickNoteDragDropState {
     val scope = rememberCoroutineScope()
     val onMoveState = rememberUpdatedState(onMove)
+    val density = LocalDensity.current
+    val dragHandleThresholdPx = with(density) { 56.dp.toPx() }
+
     val state = remember(lazyListState) {
         QuickNoteDragDropState(
             listState = lazyListState,
             scope = scope,
-            onMove = { from, to -> onMoveState.value(from, to) }
+            onMove = { from, to -> onMoveState.value(from, to) },
+            dragHandleThresholdPx = dragHandleThresholdPx
         )
     }
     LaunchedEffect(state) {
@@ -495,7 +500,8 @@ private fun rememberQuickNoteDragDropState(
 private class QuickNoteDragDropState(
     private val listState: LazyListState,
     private val scope: CoroutineScope,
-    private val onMove: (Int, Int) -> Unit
+    private val onMove: (Int, Int) -> Unit,
+    private val dragHandleThresholdPx: Float,
 ) {
     var draggingItemKey by mutableStateOf<String?>(null)
         private set
@@ -518,12 +524,18 @@ private class QuickNoteDragDropState(
     private val draggingItemLayoutInfo: LazyListItemInfo?
         get() = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == draggingItemKey }
 
-    fun onDragStart(offset: Offset) {
+    fun onDragStart(offset: Offset, selectedNoteId: String?) {
+        if (offset.x > dragHandleThresholdPx) return
+
         val item = listState.layoutInfo.visibleItemsInfo.firstOrNull { info ->
             offset.y.toInt() in info.offset until (info.offset + info.size)
         } ?: return
         val key = item.key as? String ?: return
         if (!key.startsWith("next-")) return // Only allow dragging NEXT items
+
+        // Only allow dragging if the item is selected (handle is visible)
+        val noteId = key.removePrefix("next-")
+        if (noteId != selectedNoteId) return
 
         draggingItemKey = key
         draggingItemInitialOffset = item.offset
@@ -759,7 +771,7 @@ private fun NextRow(
         positionalThreshold = { totalDistance ->
             minOf(totalDistance * 0.45f, with(density) { 56.dp.toPx() })
         },
-        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        animationSpec = spring(stiffness = Spring.StiffnessMedium),
     )
 
     Box(
@@ -811,15 +823,31 @@ private fun NextRow(
                     shape = RoundedCornerShape(16.dp),
                 )
                 .clickable(onClick = onSelect)
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .padding(horizontal = 2.dp, vertical = 8.dp)
                 .heightIn(min = if (note.attachmentLocalPath.isNullOrBlank()) 32.dp else 56.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                note.content,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f)
-            )
+            Box(
+                modifier = Modifier
+                    .width(18.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                if (selected) {
+                    Icon(
+                        imageVector = Icons.Default.DragIndicator,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            SelectionContainer(modifier = Modifier.weight(1f)) {
+                Text(
+                    note.content,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
             if (note.type == QuickNoteType.IMAGE && note.attachmentLocalPath != null) {
                 Spacer(Modifier.width(8.dp))
                 QuickNoteThumbnail(note.attachmentLocalPath, onClick = onImageClick)
@@ -828,8 +856,7 @@ private fun NextRow(
                 Text(
                     formatRemaining(note.createdAt.plus(QuickNoteRules.INACTIVITY_AFTER_MILLIS)),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 6.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             if (note.priority == TaskPriority.High || selected) {
@@ -977,12 +1004,13 @@ private fun DeletedRow(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    note.content,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f),
-                )
+                SelectionContainer(modifier = Modifier.weight(1f)) {
+                    Text(
+                        note.content,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 if (note.type == QuickNoteType.IMAGE && note.attachmentLocalPath != null) {
                     QuickNoteThumbnail(note.attachmentLocalPath, onClick = onImageClick)
                 }
