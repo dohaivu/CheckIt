@@ -1,6 +1,5 @@
 package com.checkit.ui.journal
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,11 +20,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,9 +38,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.checkit.domain.TagItem
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
@@ -44,6 +53,8 @@ import com.checkit.ui.components.DeleteOverflowMenu
 import com.checkit.ui.components.MarkdownVisualTransformation
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.myday.JournalEntryEditorState
+
+private enum class JournalEditorMode { Write, Details }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -53,7 +64,10 @@ internal fun JournalEntryEditorSheet(
     onDismiss: () -> Unit,
     onLabelChange: (String) -> Unit,
     onContentChange: (String) -> Unit,
-    onPresetSelected: (JournalLabelPreset) -> Unit,
+    onLabelSelected: (String) -> Unit,
+    onPromptSelected: (JournalPrompt) -> Unit,
+    onPromptCleared: () -> Unit,
+    onDiscardDraft: () -> Unit,
     onMoodToggle: (String) -> Unit,
     onTagToggle: (Long) -> Unit,
     onNewTagClick: () -> Unit,
@@ -67,132 +81,310 @@ internal fun JournalEntryEditorSheet(
             .windowInsetsPadding(WindowInsets.ime),
         sheetGesturesEnabled = false
     ) {
+        var mode by remember { mutableStateOf(JournalEditorMode.Write) }
         var labelFocused by remember { mutableStateOf(false) }
+        val contentFocusRequester = remember { FocusRequester() }
 
+        // Cursor-aware content state. Tracks selection locally so the toolbar
+        // can insert at the cursor instead of appending at the end.
+        var contentValue by remember(state.entryId) {
+            mutableStateOf(TextFieldValue(state.content, TextRange(state.content.length)))
+        }
+        var lastExternalContent by remember(state.entryId) { mutableStateOf(state.content) }
+        if (state.content != lastExternalContent && state.content != contentValue.text) {
+            contentValue = TextFieldValue(state.content, TextRange(state.content.length))
+            lastExternalContent = state.content
+        }
+
+        val wordCount = remember(state.content) { countJournalWords(state.content) }
+        val readMinutes = remember(wordCount) { journalReadMinutes(wordCount) }
+
+        // Header: draft status + save
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 0.dp),
+                .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.End
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Button(
-                onClick = onSave
-            ) {
-                Text(if (state.isEditMode) "Save" else "Add Entry")
+            if (state.isDraftResume && !state.isEditMode) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Draft resumed",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    TextButton(onClick = onDiscardDraft) {
+                        Text("Discard")
+                    }
+                }
+            } else {
+                ModeToggle(mode = mode, onModeChange = { mode = it })
             }
-            if (state.isEditMode) {
-                DeleteOverflowMenu(onDelete = onDelete)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Button(onClick = onSave) {
+                    Text(if (state.isEditMode) "Save" else "Add Entry")
+                }
+                if (state.isEditMode) {
+                    DeleteOverflowMenu(onDelete = onDelete)
+                }
             }
         }
 
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp),
-            contentPadding = PaddingValues(top = 10.dp, bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            item {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
-                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
-                ) {
-                    AppOutlinedTextField(
-                        value = state.label,
-                        onValueChange = onLabelChange,
-                        textStyle = MaterialTheme.typography.bodyLarge.copy(
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontWeight = FontWeight.SemiBold
-                        ),
-                        placeholder = "Add label",
-                        maxLines = 1,
+        if (state.isDraftResume && !state.isEditMode) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                ModeToggle(mode = mode, onModeChange = { mode = it })
+            }
+        }
+
+        if (mode == JournalEditorMode.Write) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false)
+                    .padding(horizontal = 12.dp),
+                contentPadding = PaddingValues(top = 10.dp, bottom = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                item {
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .onFocusChanged { labelFocused = it.isFocused }
-                    )
-                    if (labelFocused) {
-                        Spacer(Modifier.height(8.dp))
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            JournalLabelPresets.forEach { preset ->
-                                PresetChip(
-                                    label = preset.type,
-                                    onClick = {
-                                        onPresetSelected(preset)
-                                        labelFocused = false
-                                    }
-                                )
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                    ) {
+                        AppOutlinedTextField(
+                            value = state.label,
+                            onValueChange = onLabelChange,
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            placeholder = "Add label",
+                            maxLines = 1,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .onFocusChanged { labelFocused = it.isFocused }
+                        )
+                        if (labelFocused) {
+                            Spacer(Modifier.height(8.dp))
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                JournalLabels.forEach { label ->
+                                    LabelChip(
+                                        label = label,
+                                        selected = state.label == label,
+                                        onClick = {
+                                            onLabelSelected(label)
+                                            labelFocused = false
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
                 }
-            }
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f))
-                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
-                ) {
-                    Column {
-                        if (state.prompt.isNotBlank()) {
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        PromptPicker(
+                            selectedPromptId = state.promptId,
+                            onPromptSelected = onPromptSelected,
+                            onClear = onPromptCleared
+                        )
+                        if (state.content.isBlank() && state.promptId == null) {
                             Text(
-                                text = state.prompt,
+                                text = "Pick a prompt to get started",
                                 style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(bottom = 8.dp)
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                modifier = Modifier.weight(1f)
                             )
                         }
-                        AppOutlinedTextField(
-                            value = state.content,
-                            onValueChange = onContentChange,
-                            textStyle = MaterialTheme.typography.bodyMedium.copy(
-                                color = MaterialTheme.colorScheme.onSurface
-                            ),
-                            placeholder = "What's on your mind? Share your thoughts...",
-                            minLines = 5,
-                            modifier = Modifier.fillMaxWidth(),
-                            visualTransformation = remember { MarkdownVisualTransformation() }
-                        )
-
-                        val wordCount = remember(state.content) {
-                            state.content.split(Regex("\\s+")).filter { it.isNotBlank() }.size
-                        }
-                        if (wordCount > 0) {
-                            Text(
-                                text = "$wordCount words",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    }
+                }
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f))
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                    ) {
+                        Column {
+                            if (state.prompt.isNotBlank()) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = state.prompt,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    IconButton(onClick = onPromptCleared, modifier = Modifier.padding(start = 4.dp)) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "Clear prompt",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                            AppOutlinedTextField(
+                                value = contentValue,
+                                onValueChange = { next ->
+                                    contentValue = next
+                                    if (next.text != state.content) {
+                                        lastExternalContent = next.text
+                                        onContentChange(next.text)
+                                    }
+                                },
+                                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    lineHeight = 26.sp,
+                                    fontSize = 17.sp
+                                ),
+                                placeholder = if (state.promptId != null) {
+                                    "Follow the prompt above, write freely…"
+                                } else {
+                                    "What's on your mind? Write freely — you can resume later…"
+                                },
+                                minLines = 12,
                                 modifier = Modifier
-                                    .align(Alignment.End)
-                                    .padding(top = 8.dp)
+                                    .fillMaxWidth()
+                                    .focusRequester(contentFocusRequester),
+                                visualTransformation = remember { MarkdownVisualTransformation() }
                             )
                         }
                     }
                 }
             }
-            item {
-                MoodRow(
-                    moods = state.moods.toSet(),
-                    onToggle = onMoodToggle,
-                    isEditMode = state.isEditMode
+
+            // Static toolbar above footer: stays pinned while content scrolls
+            MarkdownToolbar(
+                onAction = { action ->
+                    val edit = applyJournalToolbarAction(
+                        text = contentValue.text,
+                        selectionStart = contentValue.selection.start,
+                        selectionEnd = contentValue.selection.end,
+                        action = action
+                    )
+                    contentValue = contentValue.copy(
+                        text = edit.text,
+                        selection = TextRange(edit.selectionStart, edit.selectionEnd)
+                    )
+                    lastExternalContent = edit.text
+                    onContentChange(edit.text)
+                    contentFocusRequester.requestFocus()
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
+            )
+
+            // Sticky footer: word count + reading time
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = when {
+                        wordCount == 0 -> "0 words — start writing"
+                        readMinutes <= 1 -> "$wordCount words"
+                        else -> "$wordCount words • ~$readMinutes min"
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 )
+                if (wordCount in 1..49) {
+                    Text(
+                        text = "Keep going…",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                    )
+                }
             }
-            item {
-                TagPicker(
-                    availableTags = availableTags,
-                    selectedTagIds = state.selectedTagIds,
-                    onTagToggle = onTagToggle,
-                    onNewTagClick = onNewTagClick
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false)
+                    .padding(horizontal = 12.dp),
+                contentPadding = PaddingValues(top = 10.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                item {
+                    MoodRow(
+                        moods = state.moods.toSet(),
+                        onToggle = onMoodToggle,
+                        isEditMode = state.isEditMode
+                    )
+                }
+                item {
+                    TagPicker(
+                        availableTags = availableTags,
+                        selectedTagIds = state.selectedTagIds,
+                        onTagToggle = onTagToggle,
+                        onNewTagClick = onNewTagClick
+                    )
+                }
+                item {
+                    Text(
+                        text = "$wordCount words" + if (readMinutes > 1) " • ~$readMinutes min" else "",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ModeToggle(
+    mode: JournalEditorMode,
+    onModeChange: (JournalEditorMode) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .padding(2.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        JournalEditorMode.entries.forEach { entry ->
+            val selected = entry == mode
+            Surface(
+                color = if (selected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.0f),
+                contentColor = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.clickable { onModeChange(entry) }
+            ) {
+                Text(
+                    text = entry.name,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                 )
             }
         }
@@ -200,16 +392,20 @@ internal fun JournalEntryEditorSheet(
 }
 
 @Composable
-private fun PresetChip(
+private fun LabelChip(
     label: String,
+    selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Surface(
-        color = MaterialTheme.colorScheme.surface,
-        contentColor = MaterialTheme.colorScheme.primary,
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+        contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary,
         shape = RoundedCornerShape(8.dp),
-        border = BorderStroke(width = 1.dp, color = MaterialTheme.colorScheme.outlineVariant),
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.dp,
+            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+        ),
         modifier = modifier
     ) {
         Text(
@@ -222,4 +418,49 @@ private fun PresetChip(
                 .padding(horizontal = 10.dp, vertical = 6.dp)
         )
     }
+}
+
+@Composable
+private fun MarkdownToolbar(
+    onAction: (JournalToolbarAction) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = modifier.fillMaxWidth()
+    ) {
+        listOf(
+            "B" to JournalToolbarAction.Bold,
+            "H" to JournalToolbarAction.Heading,
+            "• List" to JournalToolbarAction.Bullet,
+            "1. List" to JournalToolbarAction.Numbered,
+            "Quote" to JournalToolbarAction.Quote
+        ).forEach { (label, action) ->
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                shape = RoundedCornerShape(8.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+                modifier = Modifier.clickable { onAction(action) }
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                )
+            }
+        }
+    }
+}
+
+internal fun insertJournalSnippet(content: String, snippet: String): String {
+    if (snippet.isEmpty()) return content
+    if (content.isEmpty()) return snippet.trimStart('\n')
+    // Block snippets already carry a leading newline.
+    if (snippet.startsWith("\n")) {
+        return if (content.endsWith("\n")) content + snippet.trimStart('\n') else content + snippet
+    }
+    return content + snippet
 }

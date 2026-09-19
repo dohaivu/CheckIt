@@ -68,84 +68,20 @@ import com.checkit.ui.components.asAnnotatedString
 import com.checkit.ui.components.getMoodColorFromEmoji
 import kotlinx.coroutines.launch
 
-/** Quick label presets shown as tappable chips in the entry editor. */
-data class JournalLabelPreset(
-    val type: String,
-    val prompt: String,
-    val template: String
-)
-
-internal val JournalLabelPresets = listOf(
-    JournalLabelPreset(
-        type = "gratitude",
-        prompt = "What are you thankful for today?",
-        template =
-""":
-1. 
-2. 
-3. 
-""".trimMargin()
-    ),
-    JournalLabelPreset(
-        type = "growth log",
-        prompt = "How did today go? Any wins or lessons?",
-        template =
-"""
-- **Win**: 
-- **Friction**:
-- **Insight**: 
-""".trimMargin()
-    ),
-    JournalLabelPreset(
-        type = "deep thoughts",
-        prompt = "What's on your mind right now?",
-        template = ""
-    ),
-    JournalLabelPreset(
-        type = "idea",
-        prompt = "Got a new idea? Jot it down.",
-        template = ""
-    ),
-    JournalLabelPreset(
-        type = "random",
-        prompt = "Anything else you want to record?",
-        template = ""
-    ),
-    JournalLabelPreset(
-        type = "lazying",
-        prompt = "How's your rest going?",
-        template = ""
-    ),
-    JournalLabelPreset(
-        type = "biking",
-        prompt = "How was the ride?",
-        template = ""
-    ),
-    JournalLabelPreset(
-        type = "coding",
-        prompt = "What are you working on?",
-        template = ""
-    ),
-    JournalLabelPreset(
-        type = "reading",
-        prompt = "What are you reading about?",
-        template = ""
-    ),
-    JournalLabelPreset(
-        type = "learning",
-        prompt = "What's something new you learned?",
-        template = ""
-    ),
-    JournalLabelPreset(
-        type = "event",
-        prompt = "How was the event?",
-        template = ""
-    ),
-    JournalLabelPreset(
-        type = "at home",
-        prompt = "How's the vibe at home?",
-        template = ""
-    )
+/** Short labels for the entry label field. Prompts live in JournalPrompts. */
+internal val JournalLabels = listOf(
+    "gratitude",
+    "growth log",
+    "deep thoughts",
+    "idea",
+    "random",
+    "lazying",
+    "biking",
+    "coding",
+    "reading",
+    "learning",
+    "event",
+    "at home"
 )
 
 private val MoodCategories = listOf(
