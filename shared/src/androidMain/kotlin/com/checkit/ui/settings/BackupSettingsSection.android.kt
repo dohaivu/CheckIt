@@ -50,7 +50,7 @@ actual fun BackupSettingsSection() {
             )
             scope.launch {
                 val folderUri = uri.toString()
-                val newest = runCatching { storage.readNewestFromFolder(folderUri) }.getOrNull()
+                val newest = runCatching { storage.readBackupFromFolder(folderUri) }.getOrNull()
                 if (newest != null) {
                     folderRestore = FolderRestoreCandidate(
                         folderUri = folderUri,

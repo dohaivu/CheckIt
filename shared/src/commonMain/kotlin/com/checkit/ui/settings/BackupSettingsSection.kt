@@ -134,7 +134,7 @@ internal fun BackupSettingsContent(
                 Column(modifier = Modifier.weight(1f)) {
                     Text("Restore from folder", fontWeight = FontWeight.SemiBold)
                     Text(
-                        "Pick a folder to restore its newest backup",
+                        "Pick a folder to restore its backup",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall
                     )

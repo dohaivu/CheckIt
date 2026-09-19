@@ -6,15 +6,13 @@ import android.provider.DocumentsContract
 import androidx.documentfile.provider.DocumentFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 /**
  * Android-only SAF folder storage for JSON backups.
  *
  * Backups live in the user-selected folder (mirroring SpendWise's
- * cloud-folder backup), written as timestamped `CheckIt_Backup_*.json` files.
+ * cloud-folder backup), stored as a single `CheckIt_Backup.json` file
+ * that is overwritten on every backup.
  */
 class AndroidBackupStorage(
     private val context: Context,
@@ -34,37 +32,34 @@ class AndroidBackupStorage(
         }
     }
 
-    /** Writes a timestamped JSON backup into the SAF folder, returning the file name. */
+    /** Writes the JSON backup to the single backup file in the SAF folder, overwriting it. */
     suspend fun writeToFolder(folderUri: String, json: String): String = withContext(Dispatchers.IO) {
         val folder = DocumentFile.fromTreeUri(context, Uri.parse(folderUri))
             ?: error("Cannot access backup folder")
-        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-        val file = folder.createFile("application/json", "$BACKUP_PREFIX$timestamp$BACKUP_EXTENSION")
+        val file = folder.findFile(BACKUP_FILE_NAME)
+            ?: folder.createFile("application/json", BACKUP_FILE_NAME)
             ?: error("Cannot create backup file")
         context.contentResolver.openOutputStream(file.uri)?.use { output ->
             output.write(json.toByteArray())
         } ?: error("Cannot write backup file")
-        file.name ?: "$BACKUP_PREFIX$timestamp$BACKUP_EXTENSION"
+        BACKUP_FILE_NAME
     }
 
-    /** Reads the newest timestamped JSON backup from the SAF folder, if any. */
-    suspend fun readNewestFromFolder(folderUri: String): Pair<String, String>? =
+    /** Reads the backup file from the SAF folder, if any. */
+    suspend fun readBackupFromFolder(folderUri: String): Pair<String, String>? =
         withContext(Dispatchers.IO) {
             val folder = DocumentFile.fromTreeUri(context, Uri.parse(folderUri))
                 ?: return@withContext null
-            val newest = folder.listFiles()
-                .filter { it.isFile && it.name.orEmpty().startsWith(BACKUP_PREFIX) }
-                .maxByOrNull { it.lastModified() }
+            val file = folder.findFile(BACKUP_FILE_NAME)
+                ?.takeIf { it.isFile }
                 ?: return@withContext null
-            val name = newest.name ?: return@withContext null
-            val json = context.contentResolver.openInputStream(newest.uri)?.use { input ->
+            val json = context.contentResolver.openInputStream(file.uri)?.use { input ->
                 input.bufferedReader().use { it.readText() }
             } ?: return@withContext null
-            name to json
+            BACKUP_FILE_NAME to json
         }
 
     companion object {
-        const val BACKUP_PREFIX = "CheckIt_Backup_"
-        const val BACKUP_EXTENSION = ".json"
+        const val BACKUP_FILE_NAME = "CheckIt_Backup.json"
     }
 }
