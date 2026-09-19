@@ -1138,6 +1138,233 @@ interface CheckItDao {
             )
         }
     }
+
+    // ---------------- JSON backup / restore ----------------
+
+    @Query("SELECT * FROM lists")
+    suspend fun getAllListsOnce(): List<ListEntity>
+
+    @Query("SELECT * FROM list_sections")
+    suspend fun getAllListSectionsOnce(): List<ListSectionEntity>
+
+    @Query("SELECT * FROM tags")
+    suspend fun getAllTagsOnce(): List<TagEntity>
+
+    @Query("SELECT * FROM tasks")
+    suspend fun getAllTasksOnce(): List<TaskEntity>
+
+    @Query("SELECT * FROM sub_tasks")
+    suspend fun getAllSubTasksOnce(): List<SubTaskEntity>
+
+    @Query("SELECT * FROM task_reminders")
+    suspend fun getAllTaskRemindersOnce(): List<TaskReminderEntity>
+
+    @Query("SELECT * FROM task_tags")
+    suspend fun getAllTaskTagsOnce(): List<TaskTagEntity>
+
+    @Query("SELECT * FROM task_list")
+    suspend fun getAllTaskListsOnce(): List<TaskListEntity>
+
+    @Query("SELECT * FROM notes")
+    suspend fun getAllNotesOnce(): List<NoteEntity>
+
+    @Query("SELECT * FROM note_tags")
+    suspend fun getAllNoteTagsOnce(): List<NoteTagEntity>
+
+    @Query("SELECT * FROM note_list")
+    suspend fun getAllNoteListsOnce(): List<NoteListEntity>
+
+    @Query("SELECT * FROM daily_plan_items")
+    suspend fun getAllDailyPlanItemsOnce(): List<DailyPlanItemEntity>
+
+    @Query("SELECT * FROM daily_plan_item_tags")
+    suspend fun getAllDailyPlanItemTagsOnce(): List<DailyPlanItemTagEntity>
+
+    @Query("SELECT * FROM journal_entries")
+    suspend fun getAllJournalEntriesOnce(): List<JournalEntryEntity>
+
+    @Query("SELECT * FROM journal_entry_tags")
+    suspend fun getAllJournalEntryTagsOnce(): List<JournalEntryTagEntity>
+
+    @Query("SELECT * FROM task_filters")
+    suspend fun getAllTaskFiltersOnce(): List<TaskFilterEntity>
+
+    @Query("SELECT * FROM period_goals")
+    suspend fun getAllPeriodGoalsOnce(): List<PeriodGoalEntity>
+
+    @Query("SELECT * FROM nested_documents")
+    suspend fun getAllNestedDocumentsOnce(): List<NestedDocumentEntity>
+
+    @Query("SELECT * FROM nested_list_items")
+    suspend fun getAllNestedListItemsOnce(): List<NestedListItemEntity>
+
+    @Query("SELECT * FROM nested_item_tags")
+    suspend fun getAllNestedItemTagsOnce(): List<NestedItemTagEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTaskTags(rows: List<TaskTagEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNoteTags(rows: List<NoteTagEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertDailyPlanItemTags(rows: List<DailyPlanItemTagEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertJournalEntryTags(rows: List<JournalEntryTagEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTaskFilters(rows: List<TaskFilterEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPeriodGoals(rows: List<PeriodGoalEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNestedItemTags(rows: List<NestedItemTagEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertLists(rows: List<ListEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertListSections(rows: List<ListSectionEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTags(rows: List<TagEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTasks(rows: List<TaskEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSubTasks(rows: List<SubTaskEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTaskReminders(rows: List<TaskReminderEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNotes(rows: List<NoteEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertDailyPlanItems(rows: List<DailyPlanItemEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertJournalEntries(rows: List<JournalEntryEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNestedDocuments(rows: List<NestedDocumentEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNestedListItems(rows: List<NestedListItemEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTaskLists(rows: List<TaskListEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNoteLists(rows: List<NoteListEntity>)
+
+    @Query("DELETE FROM nested_item_tags")
+    suspend fun clearNestedItemTags()
+
+    @Query("DELETE FROM daily_plan_item_tags")
+    suspend fun clearDailyPlanItemTags()
+
+    @Query("DELETE FROM note_tags")
+    suspend fun clearNoteTags()
+
+    @Query("DELETE FROM task_tags")
+    suspend fun clearTaskTags()
+
+    @Query("DELETE FROM journal_entry_tags")
+    suspend fun clearJournalEntryTags()
+
+    @Query("DELETE FROM task_list")
+    suspend fun clearTaskLists()
+
+    @Query("DELETE FROM note_list")
+    suspend fun clearNoteLists()
+
+    @Query("DELETE FROM task_reminders")
+    suspend fun clearTaskReminders()
+
+    @Query("DELETE FROM sub_tasks")
+    suspend fun clearSubTasks()
+
+    @Query("DELETE FROM daily_plan_items")
+    suspend fun clearDailyPlanItems()
+
+    @Query("DELETE FROM notes")
+    suspend fun clearNotes()
+
+    @Query("DELETE FROM tasks")
+    suspend fun clearTasks()
+
+    @Query("DELETE FROM list_sections")
+    suspend fun clearListSections()
+
+    @Query("DELETE FROM task_filters")
+    suspend fun clearTaskFilters()
+
+    @Query("DELETE FROM journal_entries")
+    suspend fun clearJournalEntries()
+
+    @Query("DELETE FROM period_goals")
+    suspend fun clearPeriodGoals()
+
+    @Query("DELETE FROM nested_list_items")
+    suspend fun clearNestedListItems()
+
+    @Query("DELETE FROM nested_documents")
+    suspend fun clearNestedDocuments()
+
+    @Query("DELETE FROM lists")
+    suspend fun clearLists()
+
+    @Query("DELETE FROM tags")
+    suspend fun clearTags()
+
+    @Transaction
+    suspend fun restoreBackup(backup: CheckItBackup) {
+        clearNestedItemTags()
+        clearDailyPlanItemTags()
+        clearNoteTags()
+        clearTaskTags()
+        clearJournalEntryTags()
+        clearTaskLists()
+        clearNoteLists()
+        clearTaskReminders()
+        clearSubTasks()
+        clearDailyPlanItems()
+        clearNotes()
+        clearTasks()
+        clearListSections()
+        clearTaskFilters()
+        clearJournalEntries()
+        clearPeriodGoals()
+        clearNestedListItems()
+        clearNestedDocuments()
+        clearLists()
+        clearTags()
+
+        if (backup.lists.isNotEmpty()) insertLists(backup.lists)
+        if (backup.tags.isNotEmpty()) insertTags(backup.tags)
+        if (backup.listSections.isNotEmpty()) insertListSections(backup.listSections)
+        if (backup.tasks.isNotEmpty()) insertTasks(backup.tasks)
+        if (backup.notes.isNotEmpty()) insertNotes(backup.notes)
+        if (backup.subTasks.isNotEmpty()) insertSubTasks(backup.subTasks)
+        if (backup.taskReminders.isNotEmpty()) insertTaskReminders(backup.taskReminders)
+        if (backup.taskFilters.isNotEmpty()) insertTaskFilters(backup.taskFilters)
+        if (backup.journalEntries.isNotEmpty()) insertJournalEntries(backup.journalEntries)
+        if (backup.periodGoals.isNotEmpty()) insertPeriodGoals(backup.periodGoals)
+        if (backup.nestedDocuments.isNotEmpty()) insertNestedDocuments(backup.nestedDocuments)
+        if (backup.nestedListItems.isNotEmpty()) insertNestedListItems(backup.nestedListItems)
+        if (backup.dailyPlanItems.isNotEmpty()) insertDailyPlanItems(backup.dailyPlanItems)
+        if (backup.taskTags.isNotEmpty()) insertTaskTags(backup.taskTags)
+        if (backup.noteTags.isNotEmpty()) insertNoteTags(backup.noteTags)
+        if (backup.dailyPlanItemTags.isNotEmpty()) insertDailyPlanItemTags(backup.dailyPlanItemTags)
+        if (backup.journalEntryTags.isNotEmpty()) insertJournalEntryTags(backup.journalEntryTags)
+        if (backup.taskLists.isNotEmpty()) insertTaskLists(backup.taskLists)
+        if (backup.noteLists.isNotEmpty()) insertNoteLists(backup.noteLists)
+        if (backup.nestedItemTags.isNotEmpty()) insertNestedItemTags(backup.nestedItemTags)
+    }
 }
 
 data class NestedMoveRow(

@@ -14,7 +14,9 @@ import com.checkit.domain.QuickNoteStatus
 import com.checkit.domain.QuickNoteType
 import com.checkit.domain.TaskPriority
 import kotlinx.coroutines.flow.Flow
+import kotlinx.serialization.Serializable
 
+@Serializable
 @Entity(
     tableName = "quick_notes",
     indices = [
@@ -85,7 +87,7 @@ interface QuickNoteDao {
     @Query("SELECT * FROM quick_notes WHERE status = 'NEXT' AND deleted = 0 ORDER BY sortOrder ASC")
     fun observeNext(): Flow<List<QuickNoteEntity>>
 
-    @Query("SELECT * FROM quick_notes WHERE status = 'TO_BE_DELETED' AND deleted = 0 ORDER BY deleteAt ASC")
+    @Query("SELECT * FROM quick_notes WHERE status = 'TO_BE_DELETED' AND deleted = 0 ORDER BY deleteAt DESC")
     fun observeToBeDeleted(): Flow<List<QuickNoteEntity>>
 
     @Query("SELECT * FROM quick_notes WHERE id = :id LIMIT 1")
@@ -181,4 +183,15 @@ interface QuickNoteDao {
 
     @Query("UPDATE quick_notes SET priority = :priority, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun setPriority(id: String, priority: String, updatedAt: Long)
+
+    // ---------------- JSON backup / restore ----------------
+
+    @Query("SELECT * FROM quick_notes")
+    suspend fun getAllOnce(): List<QuickNoteEntity>
+
+    @Query("DELETE FROM quick_notes")
+    suspend fun clearAll()
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(rows: List<QuickNoteEntity>)
 }

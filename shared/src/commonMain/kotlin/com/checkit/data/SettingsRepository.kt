@@ -1,7 +1,9 @@
 package com.checkit.data
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class UserSettings(
     val languageCode: String = "en",
     val themeModeCode: String = "system",

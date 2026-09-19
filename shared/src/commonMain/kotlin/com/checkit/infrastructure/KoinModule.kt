@@ -38,6 +38,8 @@ import com.checkit.domain.usecase.CompleteTaskUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.DeleteJournalEntryUseCase
 import com.checkit.domain.usecase.DeleteListUseCase
+import com.checkit.domain.usecase.ExportBackupUseCase
+import com.checkit.domain.usecase.ImportBackupUseCase
 import com.checkit.domain.usecase.DeleteSectionUseCase
 import com.checkit.domain.usecase.DeleteNestedDocumentUseCase
 import com.checkit.domain.usecase.DeleteNestedItemsUseCase
@@ -165,7 +167,7 @@ val provideInteractorModule = module {
     single { SprintTransitionUseCase(get(), get(), get()) }
     single { UpsertDailyPlanItemUseCase(get()) }
     single { AddSuggestedTaskToMyDayUseCase(get(), get(), get()) }
-    single { RoomCheckItRepository(get(), get(), get()) as CheckItRepository }
+    single { RoomCheckItRepository(get(), get(), get(), get(), get()) as CheckItRepository }
     single { ObserveTaskBoardUseCase(get()) }
     single { ObserveTagUsageCountsUseCase(get()) }
     single { GetTaskUseCase(get()) }
@@ -225,6 +227,8 @@ val provideInteractorModule = module {
     single { DeleteNoteUseCase(get()) }
     single { RestoreNoteUseCase(get()) }
     single { SelectTaskBoardItemsUseCase() }
+    single { ExportBackupUseCase(get()) }
+    single { ImportBackupUseCase(get()) }
     single { CheckInReminderPolicy(get(), get()) }
     single { DailyPlanScheduleReminderPolicy(get(), get()) }
     single { ObserveNestedDocumentsUseCase(get()) }

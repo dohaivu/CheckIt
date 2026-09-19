@@ -185,6 +185,8 @@ interface CheckItRepository {
     suspend fun toggleNestedItemCollapsed(itemId: Long)
     suspend fun moveNestedItems(moves: List<NestedItemMove>)
     suspend fun deleteNestedItems(itemIds: List<Long>)
+    suspend fun exportBackupJson(): String
+    suspend fun importBackupJson(json: String)
 }
 
 data class DailyPlanItemTimeUpdate(
@@ -267,7 +269,9 @@ class RoomCheckItRepository(
     private val dao: CheckItDao,
     private val reminderNotificationScheduler: TaskReminderNotificationScheduler = NoOpTaskReminderNotificationScheduler(),
     private val dailyPlanScheduleReminderScheduler: DailyPlanScheduleReminderScheduler =
-        NoOpDailyPlanScheduleReminderScheduler()
+        NoOpDailyPlanScheduleReminderScheduler(),
+    private val quickNoteDao: QuickNoteDao? = null,
+    private val settingsRepository: SettingsRepository? = null,
 ) : CheckItRepository {
 
     private val dailyPlanItemCache = mutableMapOf<Long, DailyPlanItem>()
@@ -1547,6 +1551,69 @@ class RoomCheckItRepository(
         dao.deleteNestedItems(itemIds)
     }
 
+    override suspend fun exportBackupJson(): String {
+        val backup = CheckItBackup(
+            exportedAtMillis = Clock.System.now().toEpochMilliseconds(),
+            settings = settingsRepository?.settings?.first() ?: UserSettings(),
+            lists = dao.getAllListsOnce(),
+            listSections = dao.getAllListSectionsOnce(),
+            tags = dao.getAllTagsOnce(),
+            tasks = dao.getAllTasksOnce(),
+            subTasks = dao.getAllSubTasksOnce(),
+            taskReminders = dao.getAllTaskRemindersOnce(),
+            taskTags = dao.getAllTaskTagsOnce(),
+            taskLists = dao.getAllTaskListsOnce(),
+            notes = dao.getAllNotesOnce(),
+            noteTags = dao.getAllNoteTagsOnce(),
+            noteLists = dao.getAllNoteListsOnce(),
+            dailyPlanItems = dao.getAllDailyPlanItemsOnce(),
+            dailyPlanItemTags = dao.getAllDailyPlanItemTagsOnce(),
+            journalEntries = dao.getAllJournalEntriesOnce(),
+            journalEntryTags = dao.getAllJournalEntryTagsOnce(),
+            taskFilters = dao.getAllTaskFiltersOnce(),
+            periodGoals = dao.getAllPeriodGoalsOnce(),
+            nestedDocuments = dao.getAllNestedDocumentsOnce(),
+            nestedListItems = dao.getAllNestedListItemsOnce(),
+            nestedItemTags = dao.getAllNestedItemTagsOnce(),
+            quickNotes = quickNoteDao?.getAllOnce().orEmpty(),
+        )
+        return backupJson.encodeToString(CheckItBackup.serializer(), backup)
+    }
+
+    override suspend fun importBackupJson(json: String) {
+        val backup = backupJson.decodeFromString(CheckItBackup.serializer(), json)
+        require(backup.version == CheckItBackup.BACKUP_VERSION) {
+            "Unsupported backup version ${backup.version}"
+        }
+        dao.restoreBackup(backup)
+        if (backup.quickNotes.isNotEmpty()) {
+            quickNoteDao?.clearAll()
+            quickNoteDao?.insertAll(backup.quickNotes)
+        }
+        settingsRepository?.let { repository ->
+            val settings = backup.settings
+            repository.setLanguageCode(settings.languageCode)
+            repository.setThemeModeCode(settings.themeModeCode)
+            repository.setColorSchemeModeCode(settings.colorSchemeModeCode)
+            repository.setTaskWorkspaceViewCode(settings.taskWorkspaceViewCode)
+            repository.setTaskListDisplayTypeCode(settings.taskListDisplayTypeCode)
+            repository.setTaskShowCompleted(settings.taskShowCompleted)
+            repository.setTaskSortOptionCode(settings.taskSortOptionCode)
+            repository.setPlanReminderEnabled(settings.planReminderEnabled)
+            repository.setPlanReminderTimeMinutes(settings.planReminderTimeMinutes)
+            repository.setReviewReminderEnabled(settings.reviewReminderEnabled)
+            repository.setReviewReminderTimeMinutes(settings.reviewReminderTimeMinutes)
+            repository.setCheckInReminderEnabled(settings.checkInReminderEnabled)
+            repository.setIdleCheckInThresholdMinutes(settings.idleCheckInThresholdMinutes)
+            repository.setScheduleReminderEnabled(settings.scheduleReminderEnabled)
+        }
+        dailyPlanItemCache.clear()
+        dailyPlanCache.clear()
+        taskItemCache.clear()
+        noteItemCache.clear()
+        rebuildReflectStats()
+    }
+
     private suspend fun addTaskTag(taskId: Long, tagId: Long) {
         dao.insertTaskTagIfParentsExist(taskId, tagId)
         dao.updateTagLastUsedAtMillis(tagId, Clock.System.now().toEpochMilliseconds())
@@ -1600,6 +1667,12 @@ class RoomCheckItRepository(
             }
         )
     }
+}
+
+private val backupJson = Json {
+    prettyPrint = true
+    encodeDefaults = true
+    ignoreUnknownKeys = true
 }
 
 private data class TaskBoardRows(

@@ -208,6 +208,7 @@ private fun SettingsHomeScreen(
                         onClick = onOpenDevOptions
                     )
                 }
+                item { BackupSettingsSection() }
             }
             Text(
                 text = stringResource(Res.string.version, viewModel.versionName),

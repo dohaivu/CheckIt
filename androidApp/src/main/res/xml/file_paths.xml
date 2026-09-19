@@ -2,4 +2,5 @@
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
     <files-path name="logs" path="logs/"/>
     <files-path name="quicknote_images" path="quicknote_images/"/>
+    <files-path name="backups" path="backups/"/>
 </paths>
