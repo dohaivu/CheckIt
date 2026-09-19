@@ -92,4 +92,12 @@ class FakeSettingsRepository(initialSettings: UserSettings = UserSettings()) : S
     override suspend fun addRecentLabel(label: String) {
         settingsFlow.update { it.copy(recentLabels = (listOf(label) + it.recentLabels).distinct().take(15)) }
     }
+
+    override suspend fun setBackupFolder(uri: String?, name: String?) {
+        settingsFlow.update { it.copy(backupFolderUri = uri, backupFolderName = name) }
+    }
+
+    override suspend fun setLastBackupAtMillis(millis: Long) {
+        settingsFlow.update { it.copy(lastBackupAtMillis = millis) }
+    }
 }

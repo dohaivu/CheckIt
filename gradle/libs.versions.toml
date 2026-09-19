@@ -44,6 +44,7 @@ markdownRenderer = "0.45.0"
 colorpicker = "1.3.0"
 emoji-kt="2.5.0"
 androidx-appfunctions = "1.0.0-alpha11"
+androidx-documentfile = "1.1.0"
 
 mockk = "1.14.11"
 turbine = "1.2.1"
@@ -111,6 +112,7 @@ markdown-renderer = { module = "com.mikepenz:multiplatform-markdown-renderer-m3"
 compose-colorpicker = { module = "com.github.skydoves:colorpicker-compose", version.ref = "colorpicker" }
 emoji-kt = { module = "org.kodein.emoji:emoji-kt", version.ref = "emoji-kt" }
 androidx-appfunctions = { module = "androidx.appfunctions:appfunctions", version.ref = "androidx-appfunctions" }
+androidx-documentfile = { module = "androidx.documentfile:documentfile", version.ref = "androidx-documentfile" }
 androidx-appfunctions-compiler = { module = "androidx.appfunctions:appfunctions-compiler", version.ref = "androidx-appfunctions" }
 
 # compose multiplatform

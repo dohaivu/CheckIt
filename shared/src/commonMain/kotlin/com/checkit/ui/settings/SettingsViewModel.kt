@@ -9,6 +9,7 @@ import com.checkit.domain.CheckInReminderPolicy
 import com.checkit.data.SettingsRepository
 import com.checkit.data.UserSettings
 import com.checkit.notifications.AppReminderScheduler
+import com.checkit.platform.BackupScheduler
 import com.checkit.ui.AppColorSchemeMode
 import com.checkit.ui.AppLanguage
 import com.checkit.ui.AppThemeMode
@@ -21,13 +22,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.time.Clock
 
 class SettingsViewModel(
-    @Suppress("unused") private val repository: CheckItRepository,
+    private val repository: CheckItRepository,
     private val appConfig: AppConfig,
     private val settingsRepository: SettingsRepository,
     private val appReminderScheduler: AppReminderScheduler,
     private val accountManager: GoogleAccountManager,
+    private val backupScheduler: BackupScheduler,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -38,6 +41,7 @@ class SettingsViewModel(
 
     init {
         viewModelScope.launch {
+            var lastBackupFolderUri: String? = null
             settingsRepository.settings.collect { stored ->
                 _uiState.update { current ->
                     current.copy(
@@ -46,9 +50,20 @@ class SettingsViewModel(
                         colorSchemeMode = AppColorSchemeMode.fromCode(stored.colorSchemeModeCode),
                         lastNestedDocumentId = stored.lastNestedDocumentId,
                         reminders = stored.toReminderSettingsUiState(),
+                        backupFolderUri = stored.backupFolderUri,
+                        backupFolderName = stored.backupFolderName,
+                        lastBackupAtMillis = stored.lastBackupAtMillis,
                     )
                 }
                 appReminderScheduler.applySettings(stored)
+                if (lastBackupFolderUri != stored.backupFolderUri) {
+                    lastBackupFolderUri = stored.backupFolderUri
+                    if (lastBackupFolderUri != null) {
+                        backupScheduler.scheduleDailyBackup()
+                    } else {
+                        backupScheduler.cancelDailyBackup()
+                    }
+                }
             }
         }
         viewModelScope.launch {
@@ -136,6 +151,41 @@ class SettingsViewModel(
 
     fun signInWithGoogle() {
         viewModelScope.launch { accountManager.signIn() }
+    }
+
+    fun setBackupFolderUri(uri: String?, name: String?) {
+        viewModelScope.launch {
+            settingsRepository.setBackupFolder(uri, name)
+        }
+    }
+
+    fun clearBackupFolder() {
+        setBackupFolderUri(null, null)
+    }
+
+    fun markBackupCompleted() {
+        viewModelScope.launch {
+            settingsRepository.setLastBackupAtMillis(Clock.System.now().toEpochMilliseconds())
+        }
+    }
+
+    fun restoreFromBackup(json: String, folderUri: String? = null, folderName: String? = null) {
+        viewModelScope.launch {
+            runCatching { repository.importBackupJson(json) }
+                .onSuccess {
+                    if (folderUri != null) {
+                        settingsRepository.setBackupFolder(folderUri, folderName)
+                    }
+                    showMessage("Backup restored")
+                }
+                .onFailure { error ->
+                    showMessage("Restore failed: ${error.message ?: "unknown error"}")
+                }
+        }
+    }
+
+    fun showMessage(message: String) {
+        sendEvent(UiEvent.ShowSnackbar(message))
     }
 
     fun signOut() {

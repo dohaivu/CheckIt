@@ -62,6 +62,7 @@ kotlin {
             implementation(libs.googleid)
             implementation(libs.androidx.glance.appwidget)
             implementation(libs.androidx.glance.material3)
+            implementation(libs.androidx.documentfile)
 
             implementation(project.dependencies.platform(libs.firebase.bom))
             implementation(libs.firebase.analytics)

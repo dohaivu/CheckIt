@@ -15,7 +15,9 @@ import androidx.sqlite.SQLiteConnection
 import com.checkit.domain.TaskType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.serialization.Serializable
 
+@Serializable
 @Entity(tableName = "lists")
 data class ListEntity(
     @PrimaryKey(autoGenerate = true)
@@ -27,6 +29,7 @@ data class ListEntity(
     val isArchived: Boolean = false
 )
 
+@Serializable
 @Entity(
     tableName = "tags",
     indices = [Index(value = ["name"], unique = true)]
@@ -40,6 +43,7 @@ data class TagEntity(
     val lastUsedAtMillis: Long = 0L
 )
 
+@Serializable
 @Entity(
     tableName = "tasks",
     indices = [
@@ -67,6 +71,7 @@ data class TaskEntity(
     val trashedAtMillis: Long? = null
 )
 
+@Serializable
 @Entity(
     tableName = "sub_tasks",
     foreignKeys = [
@@ -88,6 +93,7 @@ data class SubTaskEntity(
     val sortOrder: Int
 )
 
+@Serializable
 @Entity(
     tableName = "notes",
     indices = []
@@ -106,6 +112,7 @@ data class NoteEntity(
     val trashedAtMillis: Long? = null
 )
 
+@Serializable
 @Entity(
     tableName = "daily_plan_items",
     foreignKeys = [
@@ -147,6 +154,7 @@ data class DailyPlanItemEntity(
     val handledAtMillis: Long? = null
 )
 
+@Serializable
 @Entity(
     tableName = "period_goals",
     indices = [Index(value = ["periodType", "startEpochDays"], unique = true)]
@@ -244,6 +252,7 @@ data class DoneItemSummaryEntity(
     val completedAtMillis: Long?
 )
 
+@Serializable
 @Entity(
     tableName = "task_tags",
     primaryKeys = ["taskId", "tagId"],
@@ -268,6 +277,7 @@ data class TaskTagEntity(
     val tagId: Long
 )
 
+@Serializable
 @Entity(
     tableName = "note_tags",
     primaryKeys = ["noteId", "tagId"],
@@ -298,6 +308,7 @@ data class TagUsageCountEntity(
     val usageCount: Int
 )
 
+@Serializable
 @Entity(
     tableName = "daily_plan_item_tags",
     primaryKeys = ["itemId", "tagId"],
@@ -322,6 +333,7 @@ data class DailyPlanItemTagEntity(
     val tagId: Long
 )
 
+@Serializable
 @Entity(
     tableName = "journal_entries",
     indices = [Index("dateEpochDays")]
@@ -337,6 +349,7 @@ data class JournalEntryEntity(
     val attachments: String = ""
 )
 
+@Serializable
 @Entity(
     tableName = "journal_entry_tags",
     primaryKeys = ["entryId", "tagId"],
@@ -361,6 +374,7 @@ data class JournalEntryTagEntity(
     val tagId: Long
 )
 
+@Serializable
 @Entity(
     tableName = "task_reminders",
     foreignKeys = [
@@ -381,6 +395,7 @@ data class TaskReminderEntity(
     val label: String = ""
 )
 
+@Serializable
 @Entity(
     tableName = "task_filters",
     foreignKeys = [
@@ -407,6 +422,7 @@ data class TaskFilterEntity(
     val sortOrder: Int
 )
 
+@Serializable
 @Entity(
     tableName = "list_sections",
     foreignKeys = [
@@ -428,6 +444,7 @@ data class ListSectionEntity(
     val sortOrder: Int
 )
 
+@Serializable
 @Entity(
     tableName = "task_list",
     primaryKeys = ["taskId", "listId"],
@@ -461,6 +478,7 @@ data class TaskListEntity(
     val sectionId: Long? = null
 )
 
+@Serializable
 @Entity(
     tableName = "note_list",
     primaryKeys = ["noteId", "listId"],
@@ -494,6 +512,7 @@ data class NoteListEntity(
     val sectionId: Long? = null
 )
 
+@Serializable
 @Entity(tableName = "nested_documents")
 data class NestedDocumentEntity(
     @PrimaryKey(autoGenerate = true)
@@ -503,6 +522,7 @@ data class NestedDocumentEntity(
     val updatedAtMillis: Long
 )
 
+@Serializable
 @Entity(
     tableName = "nested_list_items",
     foreignKeys = [
@@ -549,6 +569,7 @@ data class NestedListItemEntity(
     val manualMetricsJson: String = "[]"
 )
 
+@Serializable
 @Entity(
     tableName = "nested_item_tags",
     primaryKeys = ["itemId", "tagId"],

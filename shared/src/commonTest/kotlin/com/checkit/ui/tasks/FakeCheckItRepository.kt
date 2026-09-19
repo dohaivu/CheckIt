@@ -994,6 +994,12 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
     override suspend fun toggleNestedItemCollapsed(itemId: Long) {}
     override suspend fun moveNestedItems(moves: List<NestedItemMove>) {}
     override suspend fun deleteNestedItems(itemIds: List<Long>) {}
+
+    var lastBackupJson: String? = null
+    override suspend fun exportBackupJson(): String = lastBackupJson ?: "{}"
+    override suspend fun importBackupJson(json: String) {
+        lastBackupJson = json
+    }
 }
 
 private fun DailyPlanItemSource.isActionableDigestSource(): Boolean =

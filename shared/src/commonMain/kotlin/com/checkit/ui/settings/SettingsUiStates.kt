@@ -24,6 +24,9 @@ data class SettingsUiState(
     val reminders: ReminderSettingsUiState = ReminderSettingsUiState(),
     val tagUsageSort: TagUsageSort = TagUsageSort.MostUsed,
     val account: GoogleAccountState = GoogleAccountState(),
+    val backupFolderUri: String? = null,
+    val backupFolderName: String? = null,
+    val lastBackupAtMillis: Long? = null,
 )
 
 enum class TagUsageSort {
