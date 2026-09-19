@@ -66,9 +66,7 @@ actual fun BackupSettingsSection() {
     }
 
     BackupSettingsContent(
-        storage = storage,
         exportBackup = exportBackup,
-        importBackup = importBackup,
         backupFolderUri = state.backupFolderUri,
         backupFolderName = state.backupFolderName,
         lastBackupAtMillis = state.lastBackupAtMillis,

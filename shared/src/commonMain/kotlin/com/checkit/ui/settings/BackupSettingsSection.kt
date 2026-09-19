@@ -9,7 +9,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -19,10 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.checkit.data.BackupFileInfo
-import com.checkit.data.BackupStorage
 import com.checkit.domain.usecase.ExportBackupUseCase
-import com.checkit.domain.usecase.ImportBackupUseCase
 import com.checkit.ui.components.AppHorizontalDivider
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
@@ -38,9 +34,7 @@ expect fun BackupSettingsSection()
 
 @Composable
 internal fun BackupSettingsContent(
-    storage: BackupStorage,
     exportBackup: ExportBackupUseCase,
-    importBackup: ImportBackupUseCase,
     backupFolderUri: String? = null,
     backupFolderName: String? = null,
     lastBackupAtMillis: Long? = null,
@@ -54,21 +48,8 @@ internal fun BackupSettingsContent(
     onDismissFolderRestore: (() -> Unit)? = null,
 ) {
     val scope = rememberCoroutineScope()
-    var backups by remember { mutableStateOf<List<BackupFileInfo>>(emptyList()) }
     var busy by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
-    var pendingRestore by remember { mutableStateOf<BackupFileInfo?>(null) }
-    var pendingDelete by remember { mutableStateOf<BackupFileInfo?>(null) }
-
-    fun refresh() {
-        scope.launch {
-            runCatching { storage.listBackups() }
-                .onSuccess { backups = it }
-                .onFailure { status = "Could not list backups: ${it.message ?: "unknown error"}" }
-        }
-    }
-
-    LaunchedEffect(Unit) { refresh() }
 
     Column {
         if (onSelectBackupFolder != null) {
@@ -84,7 +65,7 @@ internal fun BackupSettingsContent(
                     Text(
                         backupFolderName?.let { "Syncing to \"$it\"\n$lastBackup" }
                             ?: backupFolderUri?.let { "Syncing to selected folder\n$lastBackup" }
-                            ?: "Not set (backups stay in app storage)",
+                            ?: "Not set (select a folder to enable backups)",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall
                     )
@@ -115,100 +96,40 @@ internal fun BackupSettingsContent(
             }
             AppHorizontalDivider()
         }
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text("Local backup", fontWeight = FontWeight.SemiBold)
-                Text(
-                    status ?: if (backups.isEmpty()) {
-                        "No backups yet — JSON files stay in this app's folder"
-                    } else {
-                        "${backups.size} backup${if (backups.size == 1) "" else "s"} in app storage"
-                    },
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-            TextButton(
-                onClick = {
-                    scope.launch {
-                        busy = true
-                        runCatching {
-                            val json = exportBackup()
-                            if (backupFolderUri != null && onBackupToFolder != null) {
-                                val fileName = onBackupToFolder(json)
-                                onBackupRecorded?.invoke()
-                                status = "Saved $fileName to backup folder"
-                            } else {
-                                val created = storage.createBackup(json)
-                                status = "Saved ${created.name}"
-                                refresh()
-                            }
-                        }.onFailure { error ->
-                            status = "Backup failed: ${error.message ?: "unknown error"}"
-                        }
-                        busy = false
-                    }
-                },
-                enabled = !busy
-            ) {
-                Text(if (busy) "Working…" else "Back up now")
-            }
-        }
-        backups.forEach { backup ->
+        if (backupFolderUri != null && onBackupToFolder != null) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(backup.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                    Text("Manual backup", fontWeight = FontWeight.SemiBold)
                     Text(
-                        "${formatBackupDate(backup.lastModifiedMillis)} • ${formatBackupSize(backup.sizeBytes)}",
+                        status ?: "Save a JSON backup to the folder now",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
                 TextButton(
-                    onClick = { pendingRestore = backup },
-                    enabled = !busy
-                ) { Text("Restore") }
-                TextButton(
-                    onClick = { pendingDelete = backup },
-                    enabled = !busy
-                ) { Text("Delete") }
-            }
-        }
-        AppHorizontalDivider()
-    }
-
-    pendingRestore?.let { backup ->
-        AlertDialog(
-            onDismissRequest = { pendingRestore = null },
-            title = { Text("Restore backup?") },
-            text = { Text("This replaces all current data with ${backup.name}. This cannot be undone.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    pendingRestore = null
-                    scope.launch {
-                        busy = true
-                        runCatching {
-                            val json = storage.readBackup(backup.name)
-                            importBackup(json)
-                        }.onSuccess {
-                            status = "Restored ${backup.name}"
-                        }.onFailure { error ->
-                            status = "Restore failed: ${error.message ?: "unknown error"}"
+                    onClick = {
+                        scope.launch {
+                            busy = true
+                            runCatching {
+                                val fileName = onBackupToFolder(exportBackup())
+                                onBackupRecorded?.invoke()
+                                status = "Saved $fileName to backup folder"
+                            }.onFailure { error ->
+                                status = "Backup failed: ${error.message ?: "unknown error"}"
+                            }
+                            busy = false
                         }
-                        busy = false
-                    }
-                }) { Text("Restore") }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingRestore = null }) { Text("Cancel") }
+                    },
+                    enabled = !busy
+                ) {
+                    Text(if (busy) "Working…" else "Back up now")
+                }
             }
-        )
+            AppHorizontalDivider()
+        }
     }
 
     folderRestore?.let { candidate ->
@@ -221,29 +142,6 @@ internal fun BackupSettingsContent(
             },
             dismissButton = {
                 TextButton(onClick = { onDismissFolderRestore?.invoke() }) { Text("Cancel") }
-            }
-        )
-    }
-
-    pendingDelete?.let { backup ->
-        AlertDialog(
-            onDismissRequest = { pendingDelete = null },
-            title = { Text("Delete backup?") },
-            text = { Text("Delete ${backup.name}? This cannot be undone.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    pendingDelete = null
-                    scope.launch {
-                        runCatching { storage.deleteBackup(backup.name) }
-                            .onSuccess { refresh() }
-                            .onFailure { error ->
-                                status = "Delete failed: ${error.message ?: "unknown error"}"
-                            }
-                    }
-                }) { Text("Delete") }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingDelete = null }) { Text("Cancel") }
             }
         )
     }
@@ -266,13 +164,4 @@ private fun formatBackupDate(millis: Long): String {
     }
     val suffix = if (dateTime.hour < 12) "AM" else "PM"
     return "$month ${dateTime.day}, ${dateTime.year} $hour12:${dateTime.minute.toString().padStart(2, '0')} $suffix"
-}
-
-private fun formatBackupSize(bytes: Long): String = when {
-    bytes < 1_024L -> "$bytes B"
-    bytes < 1_024L * 1_024L -> "${bytes / 1_024L} KB"
-    else -> {
-        val tenths = bytes * 10 / (1_024L * 1_024L)
-        "${tenths / 10}.${tenths % 10} MB"
-    }
 }
