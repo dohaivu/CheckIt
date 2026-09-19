@@ -334,15 +334,45 @@ struct QuickNoteRow: View {
     @State private var customDate = Date().addingTimeInterval(3600)
     @State private var hovering = false
     @State private var showTimerPicker = false
+    @State private var expanded = false
 
     private var remindAtMillis: Int64? { note.remindAt?.int64Value }
 
+    /// Heuristic for "more than 3 lines": explicit newlines, or long
+    /// enough text to wrap past 3 lines at menu width (~35 chars/line).
+    private var isLongNote: Bool {
+        note.content.components(separatedBy: .newlines).count > 3
+            || note.content.count > 105
+    }
+
+    private func copyContent() {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(note.content, forType: .string)
+    }
+
     var body: some View {
-        HStack(alignment: .center, spacing: 8) {            
-            Text(note.content)
-                .lineLimit(3)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        
+        HStack(alignment: expanded ? .top : .center, spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(note.content)
+                    .lineLimit(expanded ? nil : 3)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contextMenu {
+                        Button("Copy") { copyContent() }
+                    }
+
+                if isLongNote {
+                    Button(expanded ? "Show less" : "Show more") {
+                        expanded.toggle()
+                    }
+                    .buttonStyle(.link)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
             Button {
                 showTimerPicker = true
             } label: {
@@ -417,6 +447,7 @@ struct QuickNoteRow: View {
         .contentShape(Rectangle())
         .animation(.easeInOut(duration: 0.15), value: hovering)
         .onHover { hovering = $0 }
+        .onChange(of: note.id) { _, _ in expanded = false }
     }
 
     private var reminderPicker: some View {
@@ -647,14 +678,13 @@ struct QuickNoteMenuView: View {
             }
             .frame(height: listHeight)
 
-            Divider()
-
             // Capture bar (bottom, like QuickCaptureBar in QuickNoteContent).
             // Multi-line: Return inserts a newline, Shift+Return saves.
             HStack(alignment: .bottom, spacing: 8) {
                 TextEditor(text: $state.input)
                     .frame(height: 56)
-                    .padding(4)
+                    .scrollContentBackground(.hidden)
+                    .padding(.all, 6)
                     .overlay(
                         RoundedRectangle(cornerRadius: 6)
                             .stroke(Color.secondary.opacity(0.3))
@@ -671,11 +701,12 @@ struct QuickNoteMenuView: View {
                         if state.input.isEmpty {
                             Text("Capture a thought…")
                                 .foregroundStyle(.tertiary)
-                                .padding(.horizontal, 9)
-                                .padding(.vertical, 12)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 4)
                                 .allowsHitTesting(false)
                         }
                     }
+                    .writingToolsBehavior(.complete)
 
                 VStack(spacing: 12) {
                     Button {
