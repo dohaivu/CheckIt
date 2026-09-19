@@ -41,7 +41,7 @@ class SmartScheduleDailyPlanUseCase(
     private val todayDate: () -> LocalDate = { today() },
     private val nowMinutes: () -> Int = { currentMyDayTimeMinutes() }
 ) {
-    suspend operator fun invoke(): Result<SmartScheduleResult> = runCatching {
+    suspend operator fun invoke(ignoreIfSamplesEmpty: Boolean = false): Result<SmartScheduleResult> = runCatching {
         val plans = repository.observeDailyPlans().first()
         val date = todayDate()
         val todayItems = plans.firstOrNull { it.date == date }?.items.orEmpty()
@@ -57,8 +57,11 @@ class SmartScheduleDailyPlanUseCase(
         val now = nowMinutes()
         val targetIds = candidates.mapTo(HashSet()) { it.id }
         val fixedItems = todayItems.filterNot { it.id in targetIds }
-        val requests = candidates.map { item ->
+        val requests = candidates.mapNotNull { item ->
             val samples = history[item.tags.first().id].orEmpty()
+            if (ignoreIfSamplesEmpty && samples.isEmpty()) {
+                return@mapNotNull null
+            }
             val (preferredStart, durationMinutes) = if (samples.isEmpty()) {
                 now to DefaultTaskDurationMinutes
             } else {

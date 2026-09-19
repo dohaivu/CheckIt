@@ -112,8 +112,18 @@ interface QuickNoteDao {
     @Query("UPDATE quick_notes SET status = 'NEXT', deleteAt = NULL, remindAt = NULL, sortOrder = :sortOrder, updatedAt = :updatedAt, dirty = 1 WHERE id = :id")
     suspend fun restore(id: String, sortOrder: Double, updatedAt: Long)
 
+    /**
+     * Trash notes whose retention has lapsed ([deleteAt] reached) and are due
+     * to become tombstones: still listed under TO_BE_DELETED with
+     * deleted = 0. The caller marks them deleted = 1 (dirty = 1) so the
+     * deletion syncs; the rows themselves are hard-deleted much later via
+     * [getPurgeableTombstones].
+     *
+     * Not to be confused with [getDueReminders] (fired reminder times) or
+     * [getInactiveNext] (NEXT notes old enough to auto-move to trash).
+     */
     @Query("SELECT * FROM quick_notes WHERE status = 'TO_BE_DELETED' AND deleted = 0 AND deleteAt IS NOT NULL AND deleteAt <= :now")
-    suspend fun getExpired(now: Long): List<QuickNoteEntity>
+    suspend fun getTrashDueForDeletion(now: Long): List<QuickNoteEntity>
 
     @Query("SELECT * FROM quick_notes WHERE deleted = 0 AND remindAt IS NOT NULL AND remindAt <= :now")
     suspend fun getDueReminders(now: Long): List<QuickNoteEntity>
@@ -127,11 +137,11 @@ interface QuickNoteDao {
     suspend fun clearExpiredReminders(now: Long)
 
     /**
-     * NEXT notes untouched since [cutoff] with no active reminder: candidates
-     * for automatic move to TO_BE_DELETED. Any local edit bumps updatedAt and
-     * restarts the clock; active reminders exempt the note.
+     * NEXT notes created before [cutoff] with no active reminder: candidates
+     * for automatic move to TO_BE_DELETED. Age is measured from createdAt so
+     * later edits don't restart the clock; active reminders exempt the note.
      */
-    @Query("SELECT * FROM quick_notes WHERE status = 'NEXT' AND deleted = 0 AND updatedAt <= :cutoff AND remindAt IS NULL ORDER BY updatedAt ASC")
+    @Query("SELECT * FROM quick_notes WHERE status = 'NEXT' AND deleted = 0 AND createdAt <= :cutoff AND remindAt IS NULL ORDER BY createdAt ASC")
     suspend fun getInactiveNext(cutoff: Long): List<QuickNoteEntity>
 
     /**

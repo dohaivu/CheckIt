@@ -43,9 +43,6 @@ object QuickNoteRules {
     const val INACTIVITY_AFTER_MILLIS = 24L * 60L * 60L * 1000L
     /** Tombstones older than this (and confirmed uploaded) are purged for good. */
     const val PURGE_AFTER_MILLIS = 7L * 24L * 60L * 60L * 1000L
-    const val REMINDER_15_MIN_MILLIS = 15L * 60L * 1000L
-    const val REMINDER_30_MIN_MILLIS = 30L * 60L * 1000L
-    const val REMINDER_1_HOUR_MILLIS = 60L * 60L * 1000L
     const val SORT_GAP = 1000.0
     const val SORT_MIN_GAP = 1e-6
 

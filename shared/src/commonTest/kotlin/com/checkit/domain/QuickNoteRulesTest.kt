@@ -99,7 +99,7 @@ class QuickNoteRulesTest {
 
     @Test
     fun reminder30MinSetsRemindAt() {
-        val at = QuickNoteRules.reminderAt(now, QuickNoteRules.REMINDER_30_MIN_MILLIS)
+        val at = QuickNoteRules.reminderAt(now, DurationRules.MIN_30_MILLIS)
         assertEquals(now + 30L * 60L * 1000L, at)
         val updated = QuickNoteRules.setReminder(note(), at, now)
         assertEquals(at, updated.remindAt)
@@ -108,7 +108,7 @@ class QuickNoteRulesTest {
 
     @Test
     fun reminder1HourSetsRemindAt() {
-        val at = QuickNoteRules.reminderAt(now, QuickNoteRules.REMINDER_1_HOUR_MILLIS)
+        val at = QuickNoteRules.reminderAt(now, DurationRules.HOUR_1_MILLIS)
         val updated = QuickNoteRules.setReminder(note(), at, now)
         assertEquals(now + 3_600_000L, updated.remindAt)
         assertEquals(QuickNoteStatus.NEXT, updated.status)

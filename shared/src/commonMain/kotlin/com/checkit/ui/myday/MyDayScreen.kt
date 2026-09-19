@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -52,6 +53,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FabPosition
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -268,10 +270,12 @@ internal fun MyDayScreen(
                 SpeedSprintFab(
                     lastAction = state.lastFabAction,
                     recentTags = state.recentTags,
-                    onExecuteAction = viewModel::executeFabAction
+                    onExecuteAction = viewModel::executeFabAction,
+                    modifier = Modifier.offset(y = 20.dp)
                 )
             }
-        }
+        },
+        floatingActionButtonPosition = FabPosition.EndOverlay
     ) { padding ->
         val activeSprint = when (val s = sprintState) {
             is SprintState.Running -> s
@@ -437,7 +441,7 @@ internal fun MyDayScreen(
                     onStop = viewModel::completeSprint,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(horizontal = 16.dp, vertical = 24.dp)
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
                 )
             }
 
@@ -452,7 +456,7 @@ internal fun MyDayScreen(
                 exit = fadeOut() + slideOutVertically { it },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(start = 12.dp, end = 70.dp, bottom = 24.dp)
+                    .padding(start = 12.dp, end = 70.dp, bottom = 6.dp)
             ) {
                 FloatingQuickAddBar(onSubmit = { title ->
                     viewModel.addDailyPlanItem(

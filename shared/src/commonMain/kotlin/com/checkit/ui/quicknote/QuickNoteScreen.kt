@@ -18,6 +18,7 @@ import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -38,6 +39,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AddTask
@@ -45,16 +47,18 @@ import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.RestoreFromTrash
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -101,7 +105,11 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.checkit.data.QuickNoteSyncState
 import com.checkit.data.QuickNoteSyncStatus
+import com.checkit.domain.CountdownDisplay
+import com.checkit.domain.CountdownState
+import com.checkit.domain.DurationRules
 import com.checkit.domain.QuickNote
+import com.checkit.domain.QuickNoteRules
 import com.checkit.domain.QuickNoteType
 import com.checkit.domain.TaskPriority
 import com.checkit.ui.components.AiQuickAddBar
@@ -166,10 +174,10 @@ fun QuickNoteContent(
                 .fillMaxSize()
                 .weight(1f)
                 .padding(horizontal = 12.dp)
-                .pointerInput(dragDropState) {
+                .pointerInput(dragDropState, selectedNoteId) {
                     detectDragGesturesAfterLongPress(
                         onDragStart = { offset ->
-                            dragDropState.onDragStart(offset)
+                            dragDropState.onDragStart(offset, selectedNoteId)
                             if (dragDropState.isDragging) {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             }
@@ -209,11 +217,16 @@ fun QuickNoteContent(
                     NextRow(
                         note = note,
                         selected = note.id == selectedNoteId,
+                        countdown = state.countdown,
                         onSelect = {
                             selectedNoteId = if (selectedNoteId == note.id) null else note.id
                         },
                         onDeleteSwipe = { viewModel.swipeRight(note.id) },
                         onReminderSwipe = { viewModel.openReminderPicker(note.id) },
+                        onCountdownClick = {
+                            if (state.countdown is CountdownState.Running) viewModel.stopCountdown()
+                            else viewModel.openCountdownPicker(note.id)
+                        },
                         onCopyToDailyPlan = onCopyToDailyPlan,
                         onPriorityClick = { viewModel.togglePriority(note) },
                         onImageClick = viewModel::openImagePreview,
@@ -303,48 +316,62 @@ fun QuickNoteContent(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    FilledTonalButton(
-                        onClick = viewModel::setReminder15Min,
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Icon(
-                            Icons.Default.Alarm,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text("15 minutes")
+                        DurationPresetChip("15m", viewModel::setReminder15Min)
+                        DurationPresetChip("30m", viewModel::setReminder30Min)
+                        DurationPresetChip("1h", viewModel::setReminder1Hour)
                     }
+                }
+            },
+            confirmButton = {},
+            dismissButton = null,
+        )
+    }
 
-                    FilledTonalButton(
-                        onClick = viewModel::setReminder30Min,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Alarm,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text("30 minutes")
-                    }
+    if (state.countdownPickerId != null) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissCountdownPicker,
+            title = {
+                Text(
+                    "Start Countdown",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        "Shows a live timer in the notification.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
 
-                    FilledTonalButton(
-                        onClick = viewModel::setReminder1Hour,
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Icon(
-                            Icons.Default.Alarm,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text("1 hour")
+                        DurationPresetChip("5m") {
+                            viewModel.startCountdownWithDuration(DurationRules.MIN_5_MILLIS)
+                        }
+                        DurationPresetChip("10m") {
+                            viewModel.startCountdownWithDuration(DurationRules.MIN_10_MILLIS)
+                        }
+                        DurationPresetChip("15m") {
+                            viewModel.startCountdownWithDuration(DurationRules.MIN_15_MILLIS)
+                        }
+                        DurationPresetChip("30m") {
+                            viewModel.startCountdownWithDuration(DurationRules.MIN_30_MILLIS)
+                        }
+                        DurationPresetChip("1h") {
+                            viewModel.startCountdownWithDuration(DurationRules.HOUR_1_MILLIS)
+                        }
                     }
                 }
             },
@@ -450,11 +477,15 @@ private fun rememberQuickNoteDragDropState(
 ): QuickNoteDragDropState {
     val scope = rememberCoroutineScope()
     val onMoveState = rememberUpdatedState(onMove)
+    val density = LocalDensity.current
+    val dragHandleThresholdPx = with(density) { 56.dp.toPx() }
+
     val state = remember(lazyListState) {
         QuickNoteDragDropState(
             listState = lazyListState,
             scope = scope,
-            onMove = { from, to -> onMoveState.value(from, to) }
+            onMove = { from, to -> onMoveState.value(from, to) },
+            dragHandleThresholdPx = dragHandleThresholdPx
         )
     }
     LaunchedEffect(state) {
@@ -469,7 +500,8 @@ private fun rememberQuickNoteDragDropState(
 private class QuickNoteDragDropState(
     private val listState: LazyListState,
     private val scope: CoroutineScope,
-    private val onMove: (Int, Int) -> Unit
+    private val onMove: (Int, Int) -> Unit,
+    private val dragHandleThresholdPx: Float,
 ) {
     var draggingItemKey by mutableStateOf<String?>(null)
         private set
@@ -492,12 +524,18 @@ private class QuickNoteDragDropState(
     private val draggingItemLayoutInfo: LazyListItemInfo?
         get() = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == draggingItemKey }
 
-    fun onDragStart(offset: Offset) {
+    fun onDragStart(offset: Offset, selectedNoteId: String?) {
+        if (offset.x > dragHandleThresholdPx) return
+
         val item = listState.layoutInfo.visibleItemsInfo.firstOrNull { info ->
             offset.y.toInt() in info.offset until (info.offset + info.size)
         } ?: return
         val key = item.key as? String ?: return
         if (!key.startsWith("next-")) return // Only allow dragging NEXT items
+
+        // Only allow dragging if the item is selected (handle is visible)
+        val noteId = key.removePrefix("next-")
+        if (noteId != selectedNoteId) return
 
         draggingItemKey = key
         draggingItemInitialOffset = item.offset
@@ -635,12 +673,25 @@ private enum class NextRowSwipeAction {
 }
 
 @Composable
+private fun DurationPresetChip(
+    label: String,
+    onClick: () -> Unit,
+) {
+    AssistChip(
+        onClick = onClick,
+        label = { Text(label) },
+    )
+}
+
+@Composable
 private fun NextRow(
     note: QuickNote,
     selected: Boolean,
+    countdown: CountdownState,
     onSelect: () -> Unit,
     onDeleteSwipe: () -> Unit,
     onReminderSwipe: () -> Unit,
+    onCountdownClick: () -> Unit,
     onCopyToDailyPlan: (String) -> Unit,
     onPriorityClick: () -> Unit,
     onImageClick: (String) -> Unit,
@@ -652,6 +703,7 @@ private fun NextRow(
     val copyDetentPx = with(density) { 152.dp.toPx() }
 
     val currentOnReminderSwipe by rememberUpdatedState(onReminderSwipe)
+    val currentOnCountdownClick by rememberUpdatedState(onCountdownClick)
     val currentOnCopyToDailyPlan by rememberUpdatedState(onCopyToDailyPlan)
     val currentContent by rememberUpdatedState(note.content)
     val currentOnDelete by rememberUpdatedState(onDeleteSwipe)
@@ -719,7 +771,7 @@ private fun NextRow(
         positionalThreshold = { totalDistance ->
             minOf(totalDistance * 0.45f, with(density) { 56.dp.toPx() })
         },
-        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        animationSpec = spring(stiffness = Spring.StiffnessMedium),
     )
 
     Box(
@@ -771,18 +823,41 @@ private fun NextRow(
                     shape = RoundedCornerShape(16.dp),
                 )
                 .clickable(onClick = onSelect)
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .padding(horizontal = 2.dp, vertical = 8.dp)
                 .heightIn(min = if (note.attachmentLocalPath.isNullOrBlank()) 32.dp else 56.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                note.content,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f)
-            )
+            Box(
+                modifier = Modifier
+                    .width(18.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                if (selected) {
+                    Icon(
+                        imageVector = Icons.Default.DragIndicator,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            SelectionContainer(modifier = Modifier.weight(1f)) {
+                Text(
+                    note.content,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
             if (note.type == QuickNoteType.IMAGE && note.attachmentLocalPath != null) {
                 Spacer(Modifier.width(8.dp))
                 QuickNoteThumbnail(note.attachmentLocalPath, onClick = onImageClick)
+            }
+            if (selected) {
+                Text(
+                    formatRemaining(note.createdAt.plus(QuickNoteRules.INACTIVITY_AFTER_MILLIS)),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
             if (note.priority == TaskPriority.High || selected) {
                 IconButton(onClick = onPriorityClick, modifier = Modifier.size(28.dp)) {
@@ -791,6 +866,16 @@ private fun NextRow(
                         contentDescription = if (note.priority == TaskPriority.High) "High priority" else "Mark high priority",
                         modifier = Modifier.size(20.dp),
                         tint = if (note.priority == TaskPriority.High) Color(0xFFFFB300) else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            if (selected) {
+                IconButton(onClick = currentOnCountdownClick, modifier = Modifier.size(28.dp)) {
+                    Icon(
+                        imageVector = Icons.Default.Timer,
+                        contentDescription = if (countdown is CountdownState.Running) "Stop countdown" else "Start countdown",
+                        modifier = Modifier.size(20.dp),
+                        tint = if (countdown is CountdownState.Running) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -818,6 +903,26 @@ private fun NextRow(
                     )
                     Text(
                         text = formatReminder(note.remindAt),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
+            val runningCountdown = countdown as? CountdownState.Running
+            if (runningCountdown != null) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.padding(start = 8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Timer,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = CountdownDisplay.formatMmSs(runningCountdown.remainingSeconds),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                     )
@@ -899,12 +1004,13 @@ private fun DeletedRow(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    note.content,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f),
-                )
+                SelectionContainer(modifier = Modifier.weight(1f)) {
+                    Text(
+                        note.content,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 if (note.type == QuickNoteType.IMAGE && note.attachmentLocalPath != null) {
                     QuickNoteThumbnail(note.attachmentLocalPath, onClick = onImageClick)
                 }

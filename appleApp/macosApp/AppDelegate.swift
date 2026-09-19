@@ -83,6 +83,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.contentViewController = NSHostingController(rootView: QuickNoteMenuView())
 
         // Global hotkey (works from any app): toggles the menu open/closed.
+        // Restore the locally saved shortcut first so a customization
+        // survives app restarts.
+        QuickNoteShortcutStore.restore()
         KeyboardShortcuts.onKeyUp(for: .toggleQuickNote) { [weak self] in
             Task { @MainActor [weak self] in self?.togglePopover() }
         }

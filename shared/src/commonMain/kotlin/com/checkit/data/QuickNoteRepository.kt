@@ -186,13 +186,13 @@ class RoomQuickNoteRepository(
 
     override suspend fun processExpired(): Int {
         val now = Clock.System.now().toEpochMilliseconds()
-        val expired = dao.getExpired(now)
-        expired.forEach { entity ->
+        val dueForDeletion = dao.getTrashDueForDeletion(now)
+        dueForDeletion.forEach { entity ->
             dao.markDeleted(entity.id, now)
             reminderScheduler.cancel(entity.id)
         }
-        if (expired.isNotEmpty()) syncManager.requestSync()
-        return expired.size
+        if (dueForDeletion.isNotEmpty()) syncManager.requestSync()
+        return dueForDeletion.size
     }
 
     override suspend fun reconcileReminders() {

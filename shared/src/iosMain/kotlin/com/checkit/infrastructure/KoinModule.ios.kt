@@ -6,9 +6,11 @@ import com.checkit.notifications.NoOpQuickNoteReminderScheduler
 import com.checkit.notifications.NoOpTaskReminderNotificationScheduler
 import com.checkit.notifications.AppReminderScheduler
 import com.checkit.notifications.CheckInReminderForceRunner
+import com.checkit.notifications.CountdownScheduler
 import com.checkit.notifications.DailyPlanScheduleReminderScheduler
 import com.checkit.notifications.NoOpAppReminderScheduler
 import com.checkit.notifications.NoOpCheckInReminderForceRunner
+import com.checkit.notifications.NoOpCountdownScheduler
 import com.checkit.notifications.NoOpDailyPlanScheduleReminderScheduler
 import com.checkit.notifications.QuickNoteReminderScheduler
 import com.checkit.notifications.TaskReminderNotificationScheduler
@@ -21,6 +23,7 @@ actual fun platformModule() = module {
     single<DailyPlanScheduleReminderScheduler> { NoOpDailyPlanScheduleReminderScheduler() }
     single<AppReminderScheduler> { NoOpAppReminderScheduler() }
     single<CheckInReminderForceRunner> { NoOpCheckInReminderForceRunner() }
+    single<CountdownScheduler> { NoOpCountdownScheduler() }
     single<QuickNoteReminderScheduler> { NoOpQuickNoteReminderScheduler() }
     single<QuickNoteSyncManager> { NoOpQuickNoteSyncManager() }
     single<QuickNoteCameraCapture> { NoOpQuickNoteCameraCapture() }
