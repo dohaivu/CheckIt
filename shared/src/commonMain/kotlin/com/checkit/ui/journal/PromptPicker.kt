@@ -36,11 +36,13 @@ internal fun PromptPicker(
     onPromptSelected: (JournalPrompt) -> Unit,
     onClear: () -> Unit,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    selectedMoods: Collection<String> = emptyList()
 ) {
     var expanded by remember { mutableStateOf(false) }
     val selected = remember(selectedPromptId) { findJournalPrompt(selectedPromptId) }
-    val ordered = remember(nowMinutes) { orderedJournalPrompts(nowMinutes) }
+    val ordered = remember(nowMinutes, selectedMoods) { orderedJournalPrompts(nowMinutes, selectedMoods) }
+    val moodIds = remember(selectedMoods) { moodRelevantPromptIds(selectedMoods).toSet() }
     val suggestedIds = remember(ordered) { ordered.take(2).map { it.id }.toSet() }
 
     AppleStylePopup(
@@ -111,7 +113,7 @@ internal fun PromptPicker(
                                     )
                             ) {
                                 Text(
-                                    text = "Suggested now",
+                                    text = if (prompt.id in moodIds) "Matches mood" else "Suggested now",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                                     fontWeight = FontWeight.Medium,

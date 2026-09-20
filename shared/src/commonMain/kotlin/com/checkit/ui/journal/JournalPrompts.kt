@@ -94,6 +94,30 @@ internal val JournalPrompts = listOf(
         suitablePeriods = setOf(JournalPeriod.Afternoon, JournalPeriod.Evening)
     ),
     JournalPrompt(
+        id = "golden_moment",
+        title = "Golden moment",
+        guidingQuestion = "What small good moment deserves a second look?",
+        template = "Moment:\n\nWhy it mattered:\n\nHow to keep it:\n",
+        category = JournalPromptCategory.StateOfMind,
+        suitablePeriods = setOf(JournalPeriod.Morning, JournalPeriod.Afternoon)
+    ),
+    JournalPrompt(
+        id = "kind_voice",
+        title = "Kind voice",
+        guidingQuestion = "What would you say to a friend in your shoes?",
+        template = "What I tell myself:\n\nWhat I'd tell a friend:\n\nKinder version:\n",
+        category = JournalPromptCategory.StateOfMind,
+        suitablePeriods = setOf(JournalPeriod.Morning, JournalPeriod.Evening)
+    ),
+    JournalPrompt(
+        id = "worry_underneath",
+        title = "Underneath the worry",
+        guidingQuestion = "What's the worst story? Most likely? What steadies you?",
+        template = "Worry:\n\nWorst story:\n\nMost likely:\n\nOne steadying step:\n",
+        category = JournalPromptCategory.StateOfMind,
+        suitablePeriods = setOf(JournalPeriod.Afternoon, JournalPeriod.Evening)
+    ),
+    JournalPrompt(
         id = "idea",
         title = "Idea",
         guidingQuestion = "Capture the idea before it fades. What, for whom, next?",
@@ -112,6 +136,45 @@ internal fun orderedJournalPrompts(nowMinutes: Int): List<JournalPrompt> {
     val (suitable, rest) = JournalPrompts.partition { period in it.suitablePeriods }
     return suitable + rest
 }
+
+/** Mood-to-prompt relevance, ordered by priority. Emoji inputs, bucket logic inside. */
+internal fun moodRelevantPromptIds(moods: Collection<String>): List<String> {
+    if (moods.isEmpty()) return emptyList()
+    val emojiToBucket = MoodCategories.flatMap { (bucket, emojis) -> emojis.map { it to bucket } }.toMap()
+    val buckets = moods.mapNotNull { emojiToBucket[it] }.distinct().toSet()
+    if (buckets.isEmpty()) return emptyList()
+    val ordered = mutableListOf<String>()
+    fun add(vararg ids: String) {
+        ids.forEach { if (it !in ordered) ordered.add(it) }
+    }
+    if ("Worried" in buckets) add("worry_underneath", "name_it", "kind_voice")
+    if ("Sad" in buckets) add("kind_voice", "unsent_letter", "name_it")
+    if ("Tired" in buckets) add("what_i_need", "kind_voice", "free_write")
+    if ("Happy" in buckets) add("gratitude", "golden_moment")
+    if ("Loved" in buckets) add("gratitude", "golden_moment", "unsent_letter")
+    if ("Calm" in buckets) add("free_write", "golden_moment", "gratitude")
+    if ("Energetic" in buckets) add("morning_intention", "idea", "free_write")
+    if ("Focused" in buckets) add("morning_intention", "idea", "evening_review")
+    return ordered.filter { id -> JournalPrompts.any { it.id == id } }
+}
+
+/** Period ordering with mood-relevant prompts boosted to the front. */
+internal fun orderedJournalPrompts(nowMinutes: Int, moods: Collection<String>): List<JournalPrompt> {
+    val base = orderedJournalPrompts(nowMinutes)
+    if (moods.isEmpty()) return base
+    val relevant = moodRelevantPromptIds(moods)
+    if (relevant.isEmpty()) return base
+    val byId = base.associateBy { it.id }
+    val moodOrdered = relevant.mapNotNull { byId[it] }
+    val moodIds = moodOrdered.map { it.id }.toSet()
+    return moodOrdered + base.filter { it.id !in moodIds }
+}
+
+internal fun suggestedPromptIds(
+    nowMinutes: Int,
+    moods: Collection<String> = emptyList(),
+    limit: Int = 2
+): Set<String> = orderedJournalPrompts(nowMinutes, moods).take(limit).map { it.id }.toSet()
 
 internal fun suggestedPrompt(nowMinutes: Int, hasEntryToday: Boolean): JournalPrompt? =
     orderedJournalPrompts(nowMinutes).firstOrNull()

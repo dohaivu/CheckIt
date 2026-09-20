@@ -35,7 +35,7 @@ class JournalPromptsTest {
     fun promptsAreSeparateFromLabels() {
         // Labels stay short; prompts carry guidance + templates.
         assertEquals(12, JournalLabels.size)
-        assertEquals(10, JournalPrompts.size)
+        assertEquals(13, JournalPrompts.size)
         JournalPrompts.forEach {
             assertEquals(true, it.title.isNotBlank())
             assertEquals(true, it.guidingQuestion.isNotBlank())
@@ -48,6 +48,20 @@ class JournalPromptsTest {
         assertEquals(true, morning.indexOf("morning_intention") < morning.indexOf("evening_review"))
         val evening = orderedJournalPrompts(21 * 60).map { it.id }
         assertEquals(true, evening.indexOf("evening_review") < evening.indexOf("morning_intention"))
+    }
+
+    @Test
+    fun moodBoostsRelevantPromptsToFront() {
+        val worriedEmoji = MoodCategories.first { it.first == "Worried" }.second.first()
+        val ordered = orderedJournalPrompts(8 * 60, listOf(worriedEmoji)).map { it.id }
+        assertEquals("worry_underneath", ordered.first())
+        assertEquals(true, suggestedPromptIds(8 * 60, listOf(worriedEmoji)).contains("worry_underneath"))
+
+        val happyEmoji = MoodCategories.first { it.first == "Happy" }.second.first()
+        val happyOrdered = orderedJournalPrompts(21 * 60, listOf(happyEmoji)).map { it.id }
+        assertEquals(true, happyOrdered.indexOf("gratitude") < happyOrdered.indexOf("evening_review"))
+
+        assertEquals(true, moodRelevantPromptIds(emptyList()).isEmpty())
     }
 
     @Test

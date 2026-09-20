@@ -145,7 +145,8 @@ internal fun JournalEntryEditorSheet(
                             selectedPromptId = state.promptId,
                             nowMinutes = nowMinutes,
                             onPromptSelected = onPromptSelected,
-                            onClear = onPromptCleared
+                            onClear = onPromptCleared,
+                            selectedMoods = state.moods
                         )
                         if (state.content.isBlank() && state.promptId == null) {
                             Text(
