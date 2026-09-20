@@ -188,10 +188,7 @@ class ReflectViewModelTest {
         val record = repository.observePeriodGoals().first().single()
         viewModel.openGoal(record)
         advanceUntilIdle()
-
-        val state = viewModel.uiState.value
-        assertEquals(ReportPeriod.Month, state.selectedPeriod)
-        assertEquals(monthStart, state.selectedDate)
+        
         val editor = assertNotNull(viewModel.editor.value)
         assertEquals("Monthly recap", editor.review)
     }
@@ -213,20 +210,32 @@ class ReflectViewModelTest {
         )
         advanceUntilIdle()
 
-        // Week view shows only this week's Day reviews, newest first.
-        val weekDates = viewModel.uiState.value.goalsForSelectedPeriod.map { it.startDate }
-        assertEquals(listOf(weekStart.plus(1, DateTimeUnit.DAY), weekStart), weekDates)
+        // Week view shows the full week's Day slots, newest first, with
+        // missing days synthesized as empty placeholders.
+        val weekGoals = viewModel.uiState.value.goalsForSelectedPeriod
+        val expectedWeek = (6 downTo 0).map { weekStart.plus(it, DateTimeUnit.DAY) }
+        assertEquals(expectedWeek, weekGoals.map { it.startDate })
+        assertEquals("Tue", weekGoals.first { it.startDate == weekStart.plus(1, DateTimeUnit.DAY) }.review)
+        assertEquals("Mon", weekGoals.first { it.startDate == weekStart }.review)
+        weekGoals
+            .filter { it.startDate != weekStart && it.startDate != weekStart.plus(1, DateTimeUnit.DAY) }
+            .forEach {
+                assertEquals("", it.review)
+                assertEquals(0L, it.id)
+                assertEquals(Period.Day, it.period)
+            }
 
-        // Daily behaves like Week: the same week's Day reviews.
+        // Daily behaves like Week: the same week's Day slots.
         viewModel.selectPeriod(ReportPeriod.Daily)
-        assertEquals(weekDates, viewModel.uiState.value.goalsForSelectedPeriod.map { it.startDate })
+        assertEquals(expectedWeek, viewModel.uiState.value.goalsForSelectedPeriod.map { it.startDate })
     }
 
     @Test
     fun monthViewShowsWeekReviewsWithinMonth() = runTest(dispatcher) {
         val monthStart = today().firstDayOfMonth()
-        val inside = monthStart
-        val outside = monthStart.minus(1, DateTimeUnit.DAY)
+        val offset = (7 - monthStart.dayOfWeek.ordinal) % 7
+        val inside = monthStart.plus(offset, DateTimeUnit.DAY)
+        val outside = inside.minus(7, DateTimeUnit.DAY)
         repository.savePeriodGoal(
             review(period = Period.Week, start = inside, content = "Week inside")
         )
@@ -240,8 +249,21 @@ class ReflectViewModelTest {
 
         viewModel.selectPeriod(ReportPeriod.Month)
         advanceUntilIdle()
-        val dates = viewModel.uiState.value.goalsForSelectedPeriod.map { it.startDate }
-        assertEquals(listOf(inside), dates)
+        val monthGoals = viewModel.uiState.value.goalsForSelectedPeriod
+        val expected = generateSequence(inside) { it.plus(7, DateTimeUnit.DAY) }
+            .takeWhile { it.month == monthStart.month && it.year == monthStart.year }
+            .toList()
+            .sortedDescending()
+        assertEquals(expected, monthGoals.map { it.startDate })
+        assertEquals("Week inside", monthGoals.first { it.startDate == inside }.review)
+        monthGoals
+            .filter { it.startDate != inside }
+            .forEach {
+                assertEquals("", it.review)
+                assertEquals(0L, it.id)
+                assertEquals(Period.Week, it.period)
+            }
+        assertTrue(monthGoals.none { it.startDate == outside })
     }
 
     @Test

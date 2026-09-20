@@ -98,7 +98,7 @@ private fun DayTagTotals(items: List<DailyPlanItem>) {
 
 @Composable
 private fun TagTimeChip(tag: TagItem, minutes: Int) {
-    val tagColor = remember(tag) { tag.color.toColor() }
+    val tagColor = remember(tag) { tag.color.toColor().copy(alpha = 0.9f) }
     Text(
         text = "${tag.name} ${minutes.shortcutDurationLabel()}",
         style = MaterialTheme.typography.labelSmall,

@@ -46,6 +46,7 @@ import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.localizedMonthTitle
 import com.checkit.ui.localizedShortMonthName
+import com.checkit.ui.today
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
@@ -154,9 +155,13 @@ internal fun ReflectScreen(
                             selectedPeriod = state.selectedPeriod,
                             onItemClick = {
                                 coroutineScope.launch {
-                                    viewModel.goToGoal(it)
-                                    delay(100.milliseconds)
-                                    scrollState.animateScrollTo(0)
+                                    if (it.goal.isNullOrBlank()) {
+                                        viewModel.openGoal(it)
+                                    } else {
+                                        viewModel.goToGoal(it)
+                                        delay(100.milliseconds)
+                                        scrollState.animateScrollTo(0)
+                                    }
                                 }
                             }
                         )

@@ -71,21 +71,49 @@ data class ReflectUiState(
      * Goals of the child zoom level within the current window, newest first.
      * Week shows that week's Day goals, Month shows that month's Week goals,
      * Annual shows that year's Month goals; Daily behaves like Week.
+     *
+     * Missing children are synthesized as empty [PeriodGoal] placeholders so
+     * the UI can display the full range of the focus (one row per child
+     * slot, even when nothing was written yet). Placeholders carry id = 0
+     * and empty content; tapping one still navigates via [PeriodGoal.startDate].
      */
     val goalsForSelectedPeriod: List<PeriodGoal> by lazy {
         val rangeFocus = if (selectedPeriod == ReportPeriod.Daily) focus.zoomOut() else focus
+        val child = selectedPeriod.childPeriod()
         val startEpoch = rangeFocus.start.toEpochDays().toInt()
         val endEpoch = rangeFocus.endExclusive.toEpochDays().toInt()
-        goals
+        val byStart = goals
             .filter {
-                it.period == selectedPeriod.childPeriod() &&
+                it.period == child &&
                     it.startEpochDays in startEpoch until endEpoch
             }
-            .filter { it.review.isNotBlank() || !it.goal.isNullOrBlank() }
-            .sortedWith(
-                compareByDescending<PeriodGoal> { it.startEpochDays }
-                    .thenByDescending { it.id }
+            .groupBy { it.startEpochDays }
+            .mapValues { (_, same) ->
+                same.maxWithOrNull(
+                    compareBy<PeriodGoal> { it.review.isNotBlank() || !it.goal.isNullOrBlank() }
+                        .thenBy { it.id }
+                )!!
+            }
+        val seen = mutableSetOf<Int>()
+        val filled = childSlotStarts(rangeFocus, child).map { slot ->
+            val epoch = slot.toEpochDays().toInt()
+            seen.add(epoch)
+            byStart[epoch] ?: PeriodGoal(
+                period = child,
+                startEpochDays = epoch,
+                endEpochDays = FocusPeriod(child, slot).endExclusive.toEpochDays().toInt()
             )
+        }
+        // Keep stored goals that fall in range but off the canonical slots
+        // (e.g. misaligned legacy rows) instead of dropping them.
+        val extras = byStart
+            .filterKeys { it !in seen }
+            .values
+            .filter { it.review.isNotBlank() || !it.goal.isNullOrBlank() }
+        (filled + extras).sortedWith(
+            compareByDescending<PeriodGoal> { it.startEpochDays }
+                .thenByDescending { it.id }
+        )
     }
 
     /** Digest (progress/trend/tags/highlights) for the focused period. */
@@ -135,6 +163,30 @@ internal fun ReportPeriod.childPeriod(): Period = when (this) {
     ReportPeriod.Month -> Period.Week
     ReportPeriod.Annual -> Period.Month
     ReportPeriod.Habit -> Period.Day
+}
+
+/**
+ * Canonical child slot starts covering [rangeFocus]: every Day in the range,
+ * every Monday-starting Week in the range, or every month-start in the range.
+ */
+private fun childSlotStarts(rangeFocus: FocusPeriod, child: Period): List<LocalDate> {
+    val start = rangeFocus.start
+    val endExclusive = rangeFocus.endExclusive
+    return when (child) {
+        Period.Day ->
+            (0 until start.daysUntil(endExclusive)).map { start.plus(it, DateTimeUnit.DAY) }
+        Period.Week -> {
+            val offset = (7 - start.dayOfWeek.ordinal) % 7
+            generateSequence(start.plus(offset, DateTimeUnit.DAY)) { it.plus(7, DateTimeUnit.DAY) }
+                .takeWhile { it < endExclusive }
+                .toList()
+        }
+        Period.Month ->
+            generateSequence(start) { it.plus(1, DateTimeUnit.MONTH) }
+                .takeWhile { it < endExclusive }
+                .toList()
+        else -> emptyList()
+    }
 }
 
 internal fun Period.toReportPeriod(): ReportPeriod = when (this) {

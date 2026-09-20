@@ -215,16 +215,9 @@ class ReflectViewModel(
             )
         }
     }
+
     fun openGoal(goal: PeriodGoal,
                  mode: ReflectGoalEditorMode = ReflectGoalEditorMode.GoalOnly) {
-        _uiState.update {
-            it.copy(
-                selectedPeriod = goal.period.toReportPeriod(),
-                selectedDate = goal.startDate
-            )
-        }
-        // Seed the editor from the tapped goal itself; the matching window
-        // loads asynchronously and openEditor() would otherwise miss it.
         val focus = FocusPeriod(goal.period, goal.startDate)
         _editor.value = ReflectGoalEditorState(
             focus = focus,
@@ -240,7 +233,7 @@ class ReflectViewModel(
     fun openGoalEditor(
         goal: PeriodGoal?,
         date: LocalDate,
-        period: com.checkit.domain.Period,
+        period: Period,
         mode: ReflectGoalEditorMode = ReflectGoalEditorMode.GoalOnly
     ) {
         val focus = FocusPeriod(period, date)
