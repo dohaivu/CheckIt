@@ -111,38 +111,19 @@ internal fun JournalEntryEditorSheet(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            if (state.isDraftResume && !state.isEditMode) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "Draft resumed",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    TextButton(onClick = onDiscardDraft) {
-                        Text("Discard")
-                    }
-                }
-            } else {
-                ModeToggle(mode = mode, onModeChange = { mode = it })
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Button(onClick = onSave) {
-                    Text(if (state.isEditMode) "Save" else "Add Entry")
-                }
-                if (state.isEditMode) {
-                    DeleteOverflowMenu(onDelete = onDelete)
-                }
-            }
-        }
+            ModeToggle(mode = mode, onModeChange = { mode = it })
 
-        if (state.isDraftResume && !state.isEditMode) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                ModeToggle(mode = mode, onModeChange = { mode = it })
+            if (state.isDraftResume && !state.isEditMode) {
+                TextButton(onClick = onDiscardDraft) {
+                    Text("Discard Draft")
+                }
+
+            }
+            Button(onClick = onSave) {
+                Text(if (state.isEditMode) "Save" else "Add Entry")
+            }
+            if (state.isEditMode) {
+                DeleteOverflowMenu(onDelete = onDelete)
             }
         }
 
@@ -155,48 +136,6 @@ internal fun JournalEntryEditorSheet(
                 contentPadding = PaddingValues(top = 10.dp, bottom = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
-                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
-                            .padding(horizontal = 16.dp, vertical = 12.dp)
-                    ) {
-                        AppOutlinedTextField(
-                            value = state.label,
-                            onValueChange = onLabelChange,
-                            textStyle = MaterialTheme.typography.bodyLarge.copy(
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontWeight = FontWeight.SemiBold
-                            ),
-                            placeholder = "Add label",
-                            maxLines = 1,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .onFocusChanged { labelFocused = it.isFocused }
-                        )
-                        if (labelFocused) {
-                            Spacer(Modifier.height(8.dp))
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                verticalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                JournalLabels.forEach { label ->
-                                    LabelChip(
-                                        label = label,
-                                        selected = state.label == label,
-                                        onClick = {
-                                            onLabelSelected(label)
-                                            labelFocused = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
                 item {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -263,8 +202,8 @@ internal fun JournalEntryEditorSheet(
                                 },
                                 textStyle = MaterialTheme.typography.bodyLarge.copy(
                                     color = MaterialTheme.colorScheme.onSurface,
-                                    lineHeight = 26.sp,
-                                    fontSize = 17.sp
+                                    lineHeight = 24.sp,
+                                    fontSize = 16.sp
                                 ),
                                 placeholder = if (state.promptId != null) {
                                     if (isFeelingPrompt) "How are you, really? Take your time…" else "Follow the prompt above, write freely…"
@@ -338,6 +277,48 @@ internal fun JournalEntryEditorSheet(
                 contentPadding = PaddingValues(top = 10.dp, bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                    ) {
+                        AppOutlinedTextField(
+                            value = state.label,
+                            onValueChange = onLabelChange,
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            placeholder = "Add label",
+                            maxLines = 1,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .onFocusChanged { labelFocused = it.isFocused }
+                        )
+                        if (labelFocused) {
+                            Spacer(Modifier.height(8.dp))
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                JournalLabels.forEach { label ->
+                                    LabelChip(
+                                        label = label,
+                                        selected = state.label == label,
+                                        onClick = {
+                                            onLabelSelected(label)
+                                            labelFocused = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
                 item {
                     MoodRow(
                         moods = state.moods.toSet(),
