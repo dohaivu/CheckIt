@@ -35,10 +35,44 @@ class JournalPromptsTest {
     fun promptsAreSeparateFromLabels() {
         // Labels stay short; prompts carry guidance + templates.
         assertEquals(12, JournalLabels.size)
-        assertEquals(6, JournalPrompts.size)
+        assertEquals(10, JournalPrompts.size)
         JournalPrompts.forEach {
             assertEquals(true, it.title.isNotBlank())
             assertEquals(true, it.guidingQuestion.isNotBlank())
         }
+    }
+
+    @Test
+    fun orderingPrefersSuitablePeriod() {
+        val morning = orderedJournalPrompts(8 * 60).map { it.id }
+        assertEquals(true, morning.indexOf("morning_intention") < morning.indexOf("evening_review"))
+        val evening = orderedJournalPrompts(21 * 60).map { it.id }
+        assertEquals(true, evening.indexOf("evening_review") < evening.indexOf("morning_intention"))
+    }
+
+    @Test
+    fun followUpNudgesEscalate() {
+        assertEquals(null, followUpForWords(0))
+        assertEquals("Where do you feel that in your body?", followUpForWords(10))
+        assertEquals("What triggered this today?", followUpForWords(50))
+        assertEquals("What do you need right now?", followUpForWords(100))
+        assertEquals(null, followUpForWords(200))
+    }
+
+    @Test
+    fun feelingWordsResolveFromMoods() {
+        val worriedEmoji = MoodCategories.first { it.first == "Worried" }.second.first()
+        val words = feelingWordsForMoods(listOf(worriedEmoji))
+        assertEquals(true, "anxious" in words)
+        assertEquals(true, words.isNotEmpty())
+        assertEquals(0, feelingWordsForMoods(emptyList()).size)
+    }
+
+    @Test
+    fun suggestionCtaUsesPeriodTone() {
+        val morning = suggestedPrompt(8 * 60, false)!!
+        assertEquals(true, suggestionCtaLabel(8 * 60, false, morning).contains(morning.title))
+        val evening = suggestedPrompt(21 * 60, true)!!
+        assertEquals(true, suggestionCtaLabel(21 * 60, true, evening).contains(evening.title))
     }
 }

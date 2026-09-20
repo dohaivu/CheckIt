@@ -7,10 +7,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -20,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.checkit.ui.components.AppleStylePopup
@@ -28,6 +31,7 @@ import com.checkit.ui.components.DetailChip
 @Composable
 internal fun PromptPicker(
     selectedPromptId: String?,
+    nowMinutes: Int,
     onPromptSelected: (JournalPrompt) -> Unit,
     onClear: () -> Unit,
     modifier: Modifier = Modifier,
@@ -35,6 +39,8 @@ internal fun PromptPicker(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val selected = remember(selectedPromptId) { findJournalPrompt(selectedPromptId) }
+    val ordered = remember(nowMinutes) { orderedJournalPrompts(nowMinutes) }
+    val suggestedIds = remember(ordered) { ordered.take(2).map { it.id }.toSet() }
 
     AppleStylePopup(
         isExpanded = expanded,
@@ -74,7 +80,7 @@ internal fun PromptPicker(
                 }
                 HorizontalDivider(color = Color.LightGray.copy(alpha = 0.4f), thickness = 0.5.dp)
             }
-            JournalPrompts.forEachIndexed { index, prompt ->
+            ordered.forEachIndexed { index, prompt ->
                 Column(
                     modifier = Modifier
                         .clickable {
@@ -84,12 +90,32 @@ internal fun PromptPicker(
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    Text(
-                        text = prompt.title,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = prompt.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        if (prompt.id in suggestedIds && prompt.id != selectedPromptId) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Text(
+                                    text = "Suggested now",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
                     Text(
                         text = prompt.guidingQuestion,
                         style = MaterialTheme.typography.bodySmall,
@@ -98,7 +124,7 @@ internal fun PromptPicker(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                if (index < JournalPrompts.lastIndex) {
+                if (index < ordered.lastIndex) {
                     HorizontalDivider(color = Color.LightGray.copy(alpha = 0.4f), thickness = 0.5.dp)
                 }
             }

@@ -501,6 +501,7 @@ fun CheckItApp(
                         JournalEntryEditorSheet(
                             state = editor,
                             availableTags = myDayUiState.tags,
+                            nowMinutes = myDayUiState.nowMinutes,
                             onDismiss = viewModels.myDay::dismissJournalEditor,
                             onLabelChange = viewModels.myDay::updateJournalEditorLabel,
                             onContentChange = viewModels.myDay::updateJournalEditorContent,

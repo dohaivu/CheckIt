@@ -40,6 +40,30 @@ internal class JournalController(
         }
     }
 
+    fun openNewJournalEntryWithPrompt(promptId: String, date: LocalDate = today()) {
+        val prompt = findJournalPrompt(promptId)
+        state.update {
+            val draft = it.journalDraft
+            // Draft wins over a suggested prompt to avoid data loss.
+            val editor = if (draft != null && draft.date == date) {
+                draft.copy(isDraftResume = true)
+            } else if (prompt != null) {
+                JournalEntryEditorState(
+                    date = date,
+                    promptId = prompt.id,
+                    prompt = prompt.guidingQuestion,
+                    content = prompt.template
+                )
+            } else {
+                JournalEntryEditorState(date = date)
+            }
+            it.copy(
+                showJournalList = false,
+                journalEditor = editor
+            )
+        }
+    }
+
     fun openJournalEditor(entry: JournalEntry) {
         state.update {
             it.copy(

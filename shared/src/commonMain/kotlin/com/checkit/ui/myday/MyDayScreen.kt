@@ -311,7 +311,9 @@ internal fun MyDayScreen(
                             )
                             JournalSection(
                                 entries = state.journalEntries,
+                                nowMinutes = state.nowMinutes,
                                 onAddClick = viewModel::openNewJournalEntry,
+                                onAddWithPrompt = viewModel::openNewJournalEntryWithPrompt,
                                 onViewClick = viewModel::openJournalList
                             )
 

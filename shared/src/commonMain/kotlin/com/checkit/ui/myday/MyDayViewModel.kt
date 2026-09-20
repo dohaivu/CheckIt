@@ -131,6 +131,7 @@ class MyDayViewModel(
     fun openJournalList() = journal.openJournalList()
     fun dismissJournalList() = journal.dismissJournalList()
     fun openNewJournalEntry() = journal.openNewJournalEntry()
+    fun openNewJournalEntryWithPrompt(promptId: String) = journal.openNewJournalEntryWithPrompt(promptId)
     fun openJournalEditor(entry: JournalEntry) = journal.openJournalEditor(entry)
     fun dismissJournalEditor() = journal.dismissJournalEditor()
     fun updateJournalEditorLabel(value: String) = journal.updateJournalEditorLabel(value)

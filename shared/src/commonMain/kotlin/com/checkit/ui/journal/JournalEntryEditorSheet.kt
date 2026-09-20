@@ -61,6 +61,7 @@ private enum class JournalEditorMode { Write, Details }
 internal fun JournalEntryEditorSheet(
     state: JournalEntryEditorState,
     availableTags: List<TagItem>,
+    nowMinutes: Int,
     onDismiss: () -> Unit,
     onLabelChange: (String) -> Unit,
     onContentChange: (String) -> Unit,
@@ -98,6 +99,9 @@ internal fun JournalEntryEditorSheet(
 
         val wordCount = remember(state.content) { countJournalWords(state.content) }
         val readMinutes = remember(wordCount) { journalReadMinutes(wordCount) }
+        val followUp = remember(wordCount) { followUpForWords(wordCount) }
+        val activePrompt = remember(state.promptId) { findJournalPrompt(state.promptId) }
+        val isFeelingPrompt = activePrompt?.category == JournalPromptCategory.StateOfMind
 
         // Header: draft status + save
         Row(
@@ -201,6 +205,7 @@ internal fun JournalEntryEditorSheet(
                     ) {
                         PromptPicker(
                             selectedPromptId = state.promptId,
+                            nowMinutes = nowMinutes,
                             onPromptSelected = onPromptSelected,
                             onClear = onPromptCleared
                         )
@@ -262,9 +267,9 @@ internal fun JournalEntryEditorSheet(
                                     fontSize = 17.sp
                                 ),
                                 placeholder = if (state.promptId != null) {
-                                    "Follow the prompt above, write freely…"
+                                    if (isFeelingPrompt) "How are you, really? Take your time…" else "Follow the prompt above, write freely…"
                                 } else {
-                                    "What's on your mind? Write freely — you can resume later…"
+                                    "How are you, really? Write freely — you can resume later…"
                                 },
                                 minLines = 12,
                                 modifier = Modifier
@@ -316,9 +321,9 @@ internal fun JournalEntryEditorSheet(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 )
-                if (wordCount in 1..49) {
+                if (followUp != null) {
                     Text(
-                        text = "Keep going…",
+                        text = followUp,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
                     )
@@ -338,6 +343,25 @@ internal fun JournalEntryEditorSheet(
                         moods = state.moods.toSet(),
                         onToggle = onMoodToggle,
                         isEditMode = state.isEditMode
+                    )
+                }
+                item {
+                    FeelingChips(
+                        moods = state.moods,
+                        contentBlank = contentValue.text.isBlank(),
+                        onFeelingSelected = { word ->
+                            val starter = "I feel $word because… "
+                            val base = contentValue.text
+                            val newText = if (base.isBlank()) starter else {
+                                if (base.endsWith("\n") || base.endsWith(" ")) base + starter else "$base\n$starter"
+                            }
+                            contentValue = contentValue.copy(
+                                text = newText,
+                                selection = TextRange(newText.length)
+                            )
+                            lastExternalContent = newText
+                            onContentChange(newText)
+                        }
                     )
                 }
                 item {
@@ -417,6 +441,34 @@ private fun LabelChip(
                 .clickable(onClick = onClick)
                 .padding(horizontal = 10.dp, vertical = 6.dp)
         )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FeelingChips(
+    moods: List<String>,
+    contentBlank: Boolean,
+    onFeelingSelected: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val words = remember(moods) { feelingWordsForMoods(moods) }
+    if (words.isEmpty()) return
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            text = if (contentBlank) "Put it into words:" else "Refine it:",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            words.take(12).forEach { word ->
+                LabelChip(label = word, selected = false, onClick = { onFeelingSelected(word) })
+            }
+        }
     }
 }
 
