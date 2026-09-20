@@ -1,7 +1,13 @@
 package com.checkit.ui.journal
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -15,6 +21,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -38,7 +45,9 @@ import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -68,6 +77,7 @@ import com.checkit.domain.MoodWorriedEmojis
 import com.checkit.ui.components.EmojiPicker
 import com.checkit.ui.components.asAnnotatedString
 import com.checkit.ui.components.getMoodColorFromEmoji
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** Short labels for the entry label field. Prompts live in JournalPrompts. */
@@ -111,6 +121,40 @@ fun Int.toJournalPeriod(): JournalPeriod {
     }
 }
 
+/** Feeling-first rotating greetings per period. Short, single-line, invitation tone. */
+internal fun greetingsForPeriod(period: JournalPeriod): List<String> = when (period) {
+    JournalPeriod.Morning -> listOf(
+        "Good morning — how are you arriving today?",
+        "Morning — what's alive in you right now?",
+        "Good morning — how are you, really?",
+        "A new page — what needs air today?",
+        "Morning light — what do you notice first?",
+        "Good morning — what feels tender today?",
+        "Waking up — what dreams linger?",
+        "Morning — what would feel kind today?"
+    )
+    JournalPeriod.Afternoon -> listOf(
+        "Good afternoon — how's your heart doing?",
+        "Pause — what are you carrying?",
+        "Afternoon — what does your body say?",
+        "Halfway — what needs softening?",
+        "Afternoon — where is your energy now?",
+        "A small pause — how's your breath?",
+        "Midday — what needs your attention?",
+        "Afternoon sun — what feels heavy?"
+    )
+    JournalPeriod.Evening -> listOf(
+        "Good evening — how are you, really?",
+        "Unwind — what stays with you tonight?",
+        "Evening — what can you set down?",
+        "Today is done — how do you feel?",
+        "Night falls — what are you grateful for?",
+        "Evening — who made you feel seen?",
+        "Quiet hour — what wants to be said?",
+        "Good night — what eases your mind?"
+    )
+}
+
 /** Compact inviting journal entry point: period greeting, suggested prompt, entry count. */
 @Composable
 internal fun JournalSection(
@@ -125,11 +169,12 @@ internal fun JournalSection(
         suggestedPrompt(nowMinutes, entries.isNotEmpty())
     }
     val period = remember(nowMinutes) { nowMinutes.toJournalPeriod() }
-    val greeting = remember(period) {
-        when (period) {
-            JournalPeriod.Morning -> "Good morning"
-            JournalPeriod.Afternoon -> "Good afternoon"
-            JournalPeriod.Evening -> "Good evening"
+    val greetings = remember(period) { greetingsForPeriod(period) }
+    var greetingIndex by remember(period) { mutableIntStateOf(0) }
+    LaunchedEffect(period) {
+        while (true) {
+            delay(3500)
+            greetingIndex = (greetingIndex + 1) % greetings.size
         }
     }
     Row(
@@ -140,14 +185,24 @@ internal fun JournalSection(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(0.dp)) {
-            Text(
-                text = "$greeting — how are you, really?",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            AnimatedContent(
+                targetState = greetings[greetingIndex],
+                transitionSpec = {
+                    (slideInVertically { height -> height } + fadeIn()) togetherWith
+                        (slideOutVertically { height -> -height } + fadeOut())
+                },
+                label = "journal-greeting",
+                modifier = Modifier.heightIn(min = 20.dp)
+            ) { greeting ->
+                Text(
+                    text = greeting,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),

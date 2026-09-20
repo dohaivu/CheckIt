@@ -75,4 +75,14 @@ class JournalPromptsTest {
         val evening = suggestedPrompt(21 * 60, true)!!
         assertEquals(true, suggestionCtaLabel(21 * 60, true, evening).contains(evening.title))
     }
+
+    @Test
+    fun greetingsAreVariedAndShort() {
+        JournalPeriod.entries.forEach { period ->
+            val greetings = greetingsForPeriod(period)
+            assertEquals(true, greetings.size >= 3)
+            assertEquals(greetings.size, greetings.distinct().size)
+            greetings.forEach { assertEquals(true, it.length <= 60) }
+        }
+    }
 }
