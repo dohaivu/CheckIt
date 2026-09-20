@@ -177,6 +177,8 @@ data class DayCloseUiState(
     val leftoverActions: Map<Long, LeftoverAction> = emptyMap(),
     val winNote: String = "",
     val tomorrowGoal: String = "",
+    /** Today's planned goal, shown for context while reflecting. */
+    val todayGoal: String = "",
     val rating: Float = 0f,
     val isSubmitting: Boolean = false
 ) {

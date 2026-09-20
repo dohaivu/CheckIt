@@ -42,6 +42,7 @@ internal class DayCloseController(
                         leftoverActions = actions,
                         winNote = record?.review.orEmpty(),
                         tomorrowGoal = tomorrowRecord?.goal.orEmpty(),
+                        todayGoal = record?.goal.orEmpty(),
                         rating = record?.rating ?: 0f
                     ),
                     showSuggestions = false,
