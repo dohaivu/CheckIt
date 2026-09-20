@@ -29,6 +29,8 @@ data class ReflectGoalEditorState(
     val mode: ReflectGoalEditorMode = ReflectGoalEditorMode.Full,
     /** The persisted goal being edited, if any. */
     val existing: PeriodGoal? = null,
+    /** The parent period's goal, for top-down planning context in GoalOnly mode. */
+    val parentGoal: PeriodGoal? = null,
     val review: String = "",
     /** This period's own goal (written while reviewing the previous period). */
     val goal: String = "",

@@ -160,6 +160,17 @@ class ReflectViewModel(
         return rangeFocus.start to rangeFocus.endInclusive
     }
 
+    /**
+     * The parent period's goal for top-down planning context (Day → Week →
+     * Month → Year), or null when there is no parent or no stored goal.
+     */
+    private fun findParentGoal(focus: FocusPeriod, goals: List<PeriodGoal>): PeriodGoal? {
+        val parentPeriod = focus.parentPeriod() ?: return null
+        val parent = FocusPeriod(parentPeriod, focus.anchorDate)
+        val parentStartEpoch = parent.start.toEpochDays().toInt()
+        return goals.firstOrNull { it.period == parentPeriod && it.startEpochDays == parentStartEpoch }
+    }
+
     fun selectPeriod(period: ReportPeriod) {
         _uiState.update { it.copy(selectedPeriod = period) }
     }
@@ -223,6 +234,7 @@ class ReflectViewModel(
             focus = focus,
             mode = mode,
             existing = goal,
+            parentGoal = findParentGoal(focus, _uiState.value.goals),
             review = goal.review,
             goal = goal.goal.orEmpty(),
             rating = goal.rating,
@@ -241,6 +253,7 @@ class ReflectViewModel(
             focus = focus,
             mode = mode,
             existing = goal,
+            parentGoal = findParentGoal(focus, _uiState.value.goals),
             review = goal?.review.orEmpty(),
             goal = goal?.goal.orEmpty(),
             rating = goal?.rating ?:0f,

@@ -188,9 +188,34 @@ class ReflectViewModelTest {
         val record = repository.observePeriodGoals().first().single()
         viewModel.openGoal(record)
         advanceUntilIdle()
-        
+
         val editor = assertNotNull(viewModel.editor.value)
         assertEquals("Monthly recap", editor.review)
+    }
+
+    @Test
+    fun openGoalResolvesParentGoalForPlanningContext() = runTest(dispatcher) {
+        val weekStart = today().minus(today().dayOfWeek.ordinal, DateTimeUnit.DAY)
+        repository.savePeriodGoal(
+            review(
+                period = Period.Week,
+                start = weekStart,
+                content = "Week review",
+                periodIntent = "Ship the release"
+            )
+        )
+        repository.savePeriodGoal(
+            review(period = Period.Day, start = weekStart, content = "Mon review")
+        )
+        advanceUntilIdle()
+
+        val dayRecord = repository.observePeriodGoals().first().first { it.period == Period.Day }
+        viewModel.openGoal(dayRecord)
+        advanceUntilIdle()
+
+        val editor = assertNotNull(viewModel.editor.value)
+        assertEquals(Period.Week, editor.parentGoal?.period)
+        assertEquals("Ship the release", editor.parentGoal?.goal)
     }
 
     @Test

@@ -452,7 +452,7 @@ fun Period.gradient(): Brush {
 
 @Composable
 fun Period.periodDetail(date: LocalDate): String = when (this) {
-    Period.Day -> "${date.month.localizedShortName().uppercase()} ${date.day} ${date.dayOfWeek.localizedShortName().uppercase()}"
+    Period.Day -> "${date.dayOfWeek.localizedShortName().uppercase()} · ${date.month.localizedShortName().uppercase()} ${date.day}"
     Period.Week -> "W${date.toLocalIsoWeekDate().isoWeekNumber}"
     Period.Month -> date.month.localizedName().uppercase()
     Period.Quarter -> {

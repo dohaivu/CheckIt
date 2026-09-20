@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -124,8 +125,7 @@ internal fun PeriodGoalEditorSheet(
                 Text(
                     text = ReflectionPrompts.get(editor.focus.period).reviewText,
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    color = MaterialTheme.colorScheme.primary
                 )
                 AppOutlinedTextField(
                     value = editor.review,
@@ -185,11 +185,57 @@ internal fun PeriodGoalEditorSheet(
                     )
                 }
             }
+
+            if (editor.mode == ReflectGoalEditorMode.GoalOnly) {
+                editor.parentGoal?.goal?.takeIf { it.isNotBlank() }?.let { parentGoalText ->
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "PARENT GOAL · ${editor.parentGoal.periodDetail().uppercase()}",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.8.sp,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                                .height(IntrinsicSize.Min),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .width(2.5.dp)
+                                    .fillMaxHeight()
+                                    .background(
+                                        color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.6f),
+                                        shape = RoundedCornerShape(1.dp)
+                                    )
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = parentGoalText,
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = FontWeight.Medium
+                                ),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                    Spacer(Modifier.width(8.dp))
+                }
+            }
+
             Text(
                 text = ReflectionPrompts.get(editor.focus.period).goalPrompt,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 8.dp)
             )
             AppOutlinedTextField(
                 value = editor.goal,
