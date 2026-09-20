@@ -4,6 +4,7 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -14,7 +15,6 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -36,14 +37,13 @@ import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import com.checkit.data.SettingsRepository
 import com.checkit.domain.usecase.AutoAddTodayTasksToMyDayUseCase
-import com.checkit.domain.usecase.MaintainQuickNotesUseCase
 import com.checkit.domain.usecase.RebuildReflectStatsUseCase
 import com.checkit.ui.calendar.CalendarScreen
 import com.checkit.ui.components.LocalSnackbarHostState
-import com.checkit.ui.localization.AppLocaleProvider
-import com.checkit.ui.myday.DailyPlanItemEditorSheet
 import com.checkit.ui.journal.JournalEntryEditorSheet
 import com.checkit.ui.journal.JournalHistorySheet
+import com.checkit.ui.localization.AppLocaleProvider
+import com.checkit.ui.myday.DailyPlanItemEditorSheet
 import com.checkit.ui.myday.MyDayScreen
 import com.checkit.ui.nested.NestedDocumentsScreen
 import com.checkit.ui.reflect.PeriodGoalEditorSheet
@@ -249,6 +249,7 @@ fun CheckItApp(
                     snackbarHost = { SnackbarHost(snackbarHostState) },
                     bottomBar = {
                         NavigationBar(
+                            modifier = Modifier.height(64.dp),
                             containerColor = MaterialTheme.colorScheme.surface,
                             tonalElevation = NavigationBarDefaults.Elevation
                         ) {
@@ -257,7 +258,7 @@ fun CheckItApp(
                                     selected = selectedTab == tab,
                                     onClick = { navState.resetTo(tab.route()) },
                                     icon = { Icon(tab.icon(), contentDescription = tab.label()) },
-                                    label = { Text(tab.label()) },
+                                    alwaysShowLabel = false,
                                     colors = NavigationBarItemDefaults.colors(
                                         selectedIconColor = MaterialTheme.colorScheme.primary,
                                         selectedTextColor = MaterialTheme.colorScheme.primary,
