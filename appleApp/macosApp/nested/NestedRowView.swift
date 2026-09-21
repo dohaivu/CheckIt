@@ -285,13 +285,16 @@ struct NestedRowView: View {
                         }
                         let tags: [TagItem] = item.tags
                         ForEach(tags, id: \.id) { tag in
-                            Text(tag.name)
-                                .font(.caption)
-                                .padding(.horizontal, 6).padding(.vertical, 1)
-                                .background(
-                                    (Color(nestedHex: tag.color) ?? .secondary).opacity(0.2),
-                                    in: RoundedRectangle(cornerRadius: 5)
-                                )
+                            // Android parity (compact TagPill): tinted label
+                            // icon plus name instead of a filled pill.
+                            HStack(spacing: 2) {
+                                Image(systemName: "tag.fill")
+                                    .font(.caption2)
+                                    .foregroundStyle(Color(nestedHex: tag.color) ?? .secondary)
+                                Text(tag.name)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
                 }
