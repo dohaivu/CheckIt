@@ -80,7 +80,6 @@ func nestedDateLabel(startDays: Int64?, endDays: Int64?) -> String? {
 struct NestedRowView: View {
     @ObservedObject var state: NestedEditorState
     let row: NestedRow
-    let isSelected: Bool
     let isEditing: Bool
 
     @State private var editText = ""
@@ -212,7 +211,6 @@ struct NestedRowView: View {
     }
 
     private var rowBackground: Color {
-        if isSelected { return Color.accentColor.opacity(0.25) }
         if isEditing { return Color.secondary.opacity(0.12) }
         if item.backgroundColor.name != "Default" {
             return nestedTokenColor(item.backgroundColor.name).opacity(0.16)

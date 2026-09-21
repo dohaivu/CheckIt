@@ -295,7 +295,6 @@ struct NestedListsWindowView: View {
                             NestedRowView(
                                 state: state,
                                 row: row,
-                                isSelected: state.selectedId == row.id,
                                 isEditing: state.editingId == row.id
                             )
                             if state.draft?.anchorId == row.id, let d = state.draft {
@@ -444,7 +443,7 @@ struct NestedListsWindowView: View {
     private var bottomBar: some View {
         if let id = state.selectedId, let node = state.indexById[id] {
             NestedFormattingBar(state: state, item: node.item)
-                .id(id)
+                .id("\(id)-\(node.item.updatedAtMillis)")
         }
     }
 }

@@ -238,11 +238,12 @@ struct NestedFormattingBar: View {
     ) -> some View {
         Button(action: action) {
             Image(systemName: system)
-                .font(.system(size: 14))
+                .imageScale(.medium)
                 .foregroundStyle(tint)
+                .frame(width: 28, height: 28)
         }
-        .buttonStyle(.bordered)
-        .frame(minWidth: 36, minHeight: 30)
+        .buttonStyle(.borderless)
+        .accessibilityLabel(help)
         .help(help)
     }
 
@@ -250,7 +251,7 @@ struct NestedFormattingBar: View {
         HStack(spacing: 6) {
             // Text style
             Menu {
-                ForEach(["Body", "Header", "Subheader"], id: \.self) { s in
+                ForEach(["Header", "Subheader", "Body"], id: \.self) { s in
                     Button(s) {
                         state.updateFormatting(id: item.id, style: s, textColor: item.textColor.name, background: item.backgroundColor.name)
                     }
@@ -261,10 +262,10 @@ struct NestedFormattingBar: View {
                 }
             } label: {
                 Image(systemName: "textformat.size")
-                    .font(.system(size: 14))
             }
-            .menuStyle(.button)
-            .frame(minHeight: 30)
+            .menuStyle(.borderlessButton)
+            .frame(width: 28, height: 28)
+            .accessibilityLabel("Text style")
             .help("Text style")
             // Text color
             Menu {
@@ -275,11 +276,11 @@ struct NestedFormattingBar: View {
                 }
             } label: {
                 Image(systemName: "paintbrush")
-                    .font(.system(size: 14))
                     .foregroundStyle(item.textColor.name == "Default" ? .secondary : nestedTokenColor(item.textColor.name))
             }
-            .menuStyle(.button)
-            .frame(minHeight: 30)
+            .menuStyle(.borderlessButton)
+            .frame(width: 28, height: 28)
+            .accessibilityLabel("Text color")
             .help("Text color")
             // Background
             Menu {
@@ -290,11 +291,11 @@ struct NestedFormattingBar: View {
                 }
             } label: {
                 Image(systemName: "paintpalette")
-                    .font(.system(size: 14))
                     .foregroundStyle(item.backgroundColor.name == "Default" ? .secondary : nestedTokenColor(item.backgroundColor.name))
             }
-            .menuStyle(.button)
-            .frame(minHeight: 30)
+            .menuStyle(.borderlessButton)
+            .frame(width: 28, height: 28)
+            .accessibilityLabel("Background color")
             .help("Background color")
             // Priority
             Menu {
@@ -303,11 +304,11 @@ struct NestedFormattingBar: View {
                 }
             } label: {
                 Image(systemName: "flag")
-                    .font(.system(size: 14))
                     .foregroundStyle(nestedPriorityColor(item.priority.name))
             }
-            .menuStyle(.button)
-            .frame(minHeight: 30)
+            .menuStyle(.borderlessButton)
+            .frame(width: 28, height: 28)
+            .accessibilityLabel("Priority")
             .help("Priority")
             // Dates
             barBtn(
@@ -349,31 +350,6 @@ struct NestedFormattingBar: View {
                 .padding()
                 .frame(width: 240)
             }
-            // Tags (read-only)
-            HStack(spacing: 4) {
-                Image(systemName: "tag")
-                    .font(.system(size: 14))
-                    .foregroundStyle(.secondary)
-                let tags: [TagItem] = item.tags
-                if tags.isEmpty {
-                    Text("No tags")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                } else {
-                    ForEach(tags, id: \.id) { tag in
-                        Text(tag.name)
-                            .font(.caption)
-                            .padding(.horizontal, 6).padding(.vertical, 1)
-                            .background(
-                                (Color(nestedHex: tag.color) ?? .secondary).opacity(0.2),
-                                in: RoundedRectangle(cornerRadius: 5)
-                            )
-                    }
-                }
-            }
-            .padding(.horizontal, 8)
-            .frame(minHeight: 30)
-            .help("Tags (read-only)")
             // Note
             barBtn(
                 "note.text",
@@ -397,6 +373,7 @@ struct NestedFormattingBar: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
+        .background(Color(nsColor: .windowBackgroundColor))
         .sheet(isPresented: $showNote) { NestedNoteSheet(state: state, item: item) }
         .sheet(isPresented: $showDetails) { NestedDetailsSheet(state: state, item: item) }
     }

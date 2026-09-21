@@ -23,7 +23,9 @@ struct NestedRow: Identifiable, Equatable {
     let node: NestedItemNode
 
     static func == (lhs: NestedRow, rhs: NestedRow) -> Bool {
-        lhs.id == rhs.id && lhs.depth == rhs.depth
+        lhs.id == rhs.id
+            && lhs.depth == rhs.depth
+            && lhs.node.item.updatedAtMillis == rhs.node.item.updatedAtMillis
     }
 }
 
@@ -67,6 +69,8 @@ final class NestedEditorState: ObservableObject {
     private var treeSub: NestedAppleSubscription?
     private var hostWindow: NSWindow?
     private var tabMonitor: Any?
+    /// Rebuilt once per tree emission instead of for every render and action.
+    private var nodeIndex: [Int64: NestedItemNode] = [:]
 
     init() {
         NestedAppleBridge.shared.ensureKoin()
@@ -147,7 +151,7 @@ final class NestedEditorState: ObservableObject {
     func openDocument(id: Int64) {
         if selectedDocId == id, tree != nil { return }
         treeSub?.cancel()
-        tree = nil
+        clearTree()
         zoomPath = []
         selectedId = nil
         editingId = nil
@@ -155,13 +159,13 @@ final class NestedEditorState: ObservableObject {
         selectedDocId = id
         UserDefaults.standard.set(String(id), forKey: "nested.lastDoc")
         treeSub = helper.observeDocumentTree(documentId: id) { [weak self] tree in
-            DispatchQueue.main.async { self?.tree = tree }
+            DispatchQueue.main.async { self?.replaceTree(tree) }
         }
     }
 
     func closeDocument() {
         treeSub?.cancel(); treeSub = nil
-        tree = nil
+        clearTree()
         selectedDocId = -1
         zoomPath = []
         selectedId = nil
@@ -213,7 +217,7 @@ final class NestedEditorState: ObservableObject {
     var visibleRows: [NestedRow] {
         guard let tree else { return [] }
         let roots: [NestedItemNode]
-        if let zid = zoomPath.last, let focused = findNode(zid, in: tree.rootNodes) {
+        if let zid = zoomPath.last, let focused = nodeIndex[zid] {
             roots = [focused]
         } else {
             roots = tree.rootNodes
@@ -232,14 +236,23 @@ final class NestedEditorState: ObservableObject {
     }
 
     var indexById: [Int64: NestedItemNode] {
-        guard let tree else { return [:] }
+        nodeIndex
+    }
+
+    private func replaceTree(_ newTree: NestedDocumentTree) {
         var map: [Int64: NestedItemNode] = [:]
-        var stack: [NestedItemNode] = tree.rootNodes
+        var stack: [NestedItemNode] = newTree.rootNodes
         while let node = stack.popLast() {
             map[node.item.id] = node
             stack.append(contentsOf: node.children)
         }
-        return map
+        nodeIndex = map
+        tree = newTree
+    }
+
+    private func clearTree() {
+        nodeIndex = [:]
+        tree = nil
     }
 
     func summary(for id: Int64) -> NestedMetricSummary? {
