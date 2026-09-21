@@ -1,7 +1,13 @@
 package com.checkit.ui.journal
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,9 +16,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -36,7 +45,9 @@ import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -66,89 +77,26 @@ import com.checkit.domain.MoodWorriedEmojis
 import com.checkit.ui.components.EmojiPicker
 import com.checkit.ui.components.asAnnotatedString
 import com.checkit.ui.components.getMoodColorFromEmoji
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/** Quick label presets shown as tappable chips in the entry editor. */
-data class JournalLabelPreset(
-    val type: String,
-    val prompt: String,
-    val template: String
+/** Short labels for the entry label field. Prompts live in JournalPrompts. */
+internal val JournalLabels = listOf(
+    "gratitude",
+    "growth log",
+    "deep thoughts",
+    "idea",
+    "random",
+    "lazying",
+    "biking",
+    "coding",
+    "reading",
+    "learning",
+    "event",
+    "at home"
 )
 
-internal val JournalLabelPresets = listOf(
-    JournalLabelPreset(
-        type = "gratitude",
-        prompt = "What are you thankful for today?",
-        template =
-""":
-1. 
-2. 
-3. 
-""".trimMargin()
-    ),
-    JournalLabelPreset(
-        type = "growth log",
-        prompt = "How did today go? Any wins or lessons?",
-        template =
-"""
-- **Win**: 
-- **Friction**:
-- **Insight**: 
-""".trimMargin()
-    ),
-    JournalLabelPreset(
-        type = "deep thoughts",
-        prompt = "What's on your mind right now?",
-        template = ""
-    ),
-    JournalLabelPreset(
-        type = "idea",
-        prompt = "Got a new idea? Jot it down.",
-        template = ""
-    ),
-    JournalLabelPreset(
-        type = "random",
-        prompt = "Anything else you want to record?",
-        template = ""
-    ),
-    JournalLabelPreset(
-        type = "lazying",
-        prompt = "How's your rest going?",
-        template = ""
-    ),
-    JournalLabelPreset(
-        type = "biking",
-        prompt = "How was the ride?",
-        template = ""
-    ),
-    JournalLabelPreset(
-        type = "coding",
-        prompt = "What are you working on?",
-        template = ""
-    ),
-    JournalLabelPreset(
-        type = "reading",
-        prompt = "What are you reading about?",
-        template = ""
-    ),
-    JournalLabelPreset(
-        type = "learning",
-        prompt = "What's something new you learned?",
-        template = ""
-    ),
-    JournalLabelPreset(
-        type = "event",
-        prompt = "How was the event?",
-        template = ""
-    ),
-    JournalLabelPreset(
-        type = "at home",
-        prompt = "How's the vibe at home?",
-        template = ""
-    )
-)
-
-private val MoodCategories = listOf(
+internal val MoodCategories = listOf(
     "Happy" to MoodHappyEmojis,
     "Energetic" to MoodEnergeticEmojis,
     "Calm" to MoodCalmEmojis,
@@ -159,13 +107,13 @@ private val MoodCategories = listOf(
     "Sad" to MoodSadEmojis,
 )
 
-internal enum class JournalPeriod(val label: String) {
+enum class JournalPeriod(val label: String) {
     Morning("Morning"),
     Afternoon("Afternoon"),
     Evening("Evening")
 }
 
-internal fun Int.toJournalPeriod(): JournalPeriod {
+fun Int.toJournalPeriod(): JournalPeriod {
     return when {
         this < 12 * 60 -> JournalPeriod.Morning
         this < 18 * 60 -> JournalPeriod.Afternoon
@@ -173,55 +121,156 @@ internal fun Int.toJournalPeriod(): JournalPeriod {
     }
 }
 
-/** Compact single-line header for today's journal: name, entry count, and add/view actions. */
+/** Feeling-first rotating greetings per period. Short, single-line, invitation tone. */
+internal fun greetingsForPeriod(period: JournalPeriod): List<String> = when (period) {
+    JournalPeriod.Morning -> listOf(
+        "Good morning — how are you arriving today?",
+        "Morning — what's alive in you right now?",
+        "Good morning — how are you, really?",
+        "A new page — what needs air today?",
+        "Morning light — what do you notice first?",
+        "Good morning — what feels tender today?",
+        "Waking up — what dreams linger?",
+        "Morning — what would feel kind today?"
+    )
+    JournalPeriod.Afternoon -> listOf(
+        "Good afternoon — how's your heart doing?",
+        "Pause — what are you carrying?",
+        "Afternoon — what does your body say?",
+        "Halfway — what needs softening?",
+        "Afternoon — where is your energy now?",
+        "A small pause — how's your breath?",
+        "Midday — what needs your attention?",
+        "Afternoon sun — what feels heavy?"
+    )
+    JournalPeriod.Evening -> listOf(
+        "Good evening — how are you, really?",
+        "Unwind — what stays with you tonight?",
+        "Evening — what can you set down?",
+        "Today is done — how do you feel?",
+        "Night falls — what are you grateful for?",
+        "Evening — who made you feel seen?",
+        "Quiet hour — what wants to be said?",
+        "Good night — what eases your mind?"
+    )
+}
+
+/** Compact inviting journal entry point: period greeting, suggested prompt, entry count. */
 @Composable
 internal fun JournalSection(
     entries: List<JournalEntry>,
+    nowMinutes: Int,
     onAddClick: () -> Unit,
+    onAddWithPrompt: (String) -> Unit,
     onViewClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val suggestion = remember(nowMinutes, entries.size) {
+        suggestedPrompt(nowMinutes, entries.isNotEmpty())
+    }
+    val period = remember(nowMinutes) { nowMinutes.toJournalPeriod() }
+    val greetings = remember(period) { greetingsForPeriod(period) }
+    var greetingIndex by remember(period) { mutableIntStateOf(0) }
+    LaunchedEffect(period) {
+        while (true) {
+            delay(3500)
+            greetingIndex = (greetingIndex + 1) % greetings.size
+        }
+    }
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.Notes,
-            contentDescription = null,
-            modifier = Modifier.size(18.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
-        Text(
-            text = "Check-Ins",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        if (entries.isNotEmpty()) {
-            Text(
-                text = "${entries.size}",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier
-                    .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(8.dp))
-                    .padding(horizontal = 8.dp, vertical = 2.dp)
-                    .clickable {
-                        onViewClick()
-                    }
-            )
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+            AnimatedContent(
+                targetState = greetings[greetingIndex],
+                transitionSpec = {
+                    (slideInVertically { height -> height } + fadeIn()) togetherWith
+                        (slideOutVertically { height -> -height } + fadeOut())
+                },
+                label = "journal-greeting",
+                modifier = Modifier.heightIn(min = 20.dp)
+            ) { greeting ->
+                Text(
+                    text = greeting,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (suggestion != null) {
+                    Text(
+                        text = "Try ${suggestion.title}",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.clickable { onAddWithPrompt(suggestion.id) }
+                    )
+                }
+                if (entries.isNotEmpty()) {
+                    Text(
+                        text = "· ${entries.size} today ·",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
+                    )
+                    Text(
+                        text = "View",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        modifier = Modifier.clickable { onViewClick() }
+                    )
+                } else {
+                    Text(
+                        text = "· put today into words",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
         }
-        Spacer(Modifier.weight(1f))
-        IconButton(onClick = onAddClick, modifier = Modifier.size(24.dp)) {
+        androidx.compose.material3.FilledTonalButton(
+            onClick = {
+                val id = suggestion?.id
+                if (id != null) onAddWithPrompt(id) else onAddClick()
+            },
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+            modifier = Modifier.height(36.dp)
+        ) {
             Icon(
                 imageVector = Icons.Default.Add,
-                contentDescription = "Add check-in",
-                modifier = Modifier.size(20.dp),
-                tint = MaterialTheme.colorScheme.primary
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
             )
+            Spacer(Modifier.size(4.dp))
+            Text("Write")
         }
     }
+}
+
+internal fun suggestionCtaLabel(nowMinutes: Int, hasEntryToday: Boolean, suggestion: JournalPrompt): String {
+    val prefix = when (nowMinutes.toJournalPeriod()) {
+        JournalPeriod.Morning -> if (hasEntryToday) "More room? Try" else "Arriving today? Try"
+        JournalPeriod.Afternoon -> "Pause for a moment? Try"
+        JournalPeriod.Evening -> if (hasEntryToday) "Unwind further? Try" else "Unwind? Try"
+    }
+    return "$prefix ${suggestion.title}"
 }
 
 @OptIn(ExperimentalLayoutApi::class)

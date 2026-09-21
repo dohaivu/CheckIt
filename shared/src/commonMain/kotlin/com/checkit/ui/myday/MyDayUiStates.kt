@@ -53,6 +53,7 @@ data class MyDayUiState(
     /** Journal entries for today. */
     val journalEntries: List<JournalEntry> = emptyList(),
     val journalEditor: JournalEntryEditorState? = null,
+    val journalDraft: JournalEntryEditorState? = null,
     val showJournalList: Boolean = false,
     val recentLabels: List<String> = emptyList(),
     val nowMinutes: Int = 0,
@@ -176,6 +177,8 @@ data class DayCloseUiState(
     val leftoverActions: Map<Long, LeftoverAction> = emptyMap(),
     val winNote: String = "",
     val tomorrowGoal: String = "",
+    /** Today's planned goal, shown for context while reflecting. */
+    val todayGoal: String = "",
     val rating: Float = 0f,
     val isSubmitting: Boolean = false
 ) {
@@ -196,10 +199,15 @@ data class JournalEntryEditorState(
     val label: String = "",
     val content: String = "",
     val prompt: String = "",
+    val promptId: String? = null,
+    val isDraftResume: Boolean = false,
     val moods: List<String> = emptyList(),
     val selectedTagIds: Set<Long> = emptySet()
 ) {
     val isEditMode: Boolean get() = entryId != null
+    val isDirty: Boolean get() =
+        label.isNotBlank() || content.isNotBlank() || prompt.isNotBlank() ||
+            moods.isNotEmpty() || selectedTagIds.isNotEmpty()
 }
 
 data class DailyPlanItemEditorState(

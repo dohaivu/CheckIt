@@ -27,9 +27,39 @@ internal class JournalController(
     // Editor sheet
     fun openNewJournalEntry(date: LocalDate = today()) {
         state.update {
+            val draft = it.journalDraft
+            val editor = if (draft != null && draft.date == date) {
+                draft.copy(isDraftResume = true)
+            } else {
+                JournalEntryEditorState(date = date)
+            }
             it.copy(
                 showJournalList = false,
-                journalEditor = JournalEntryEditorState(date = date)
+                journalEditor = editor
+            )
+        }
+    }
+
+    fun openNewJournalEntryWithPrompt(promptId: String, date: LocalDate = today()) {
+        val prompt = findJournalPrompt(promptId)
+        state.update {
+            val draft = it.journalDraft
+            // Draft wins over a suggested prompt to avoid data loss.
+            val editor = if (draft != null && draft.date == date) {
+                draft.copy(isDraftResume = true)
+            } else if (prompt != null) {
+                JournalEntryEditorState(
+                    date = date,
+                    promptId = prompt.id,
+                    prompt = prompt.guidingQuestion,
+                    content = prompt.template
+                )
+            } else {
+                JournalEntryEditorState(date = date)
+            }
+            it.copy(
+                showJournalList = false,
+                journalEditor = editor
             )
         }
     }
@@ -50,13 +80,32 @@ internal class JournalController(
         }
     }
 
-    fun dismissJournalEditor() = state.update { it.copy(journalEditor = null) }
+    fun dismissJournalEditor() {
+        val editor = state.uiState.value.journalEditor
+        state.update {
+            if (editor != null && !editor.isEditMode && editor.isDirty) {
+                it.copy(journalEditor = null, journalDraft = editor.copy(isDraftResume = false))
+            } else {
+                it.copy(journalEditor = null)
+            }
+        }
+    }
+
+    fun discardJournalDraft() {
+        state.update { it.copy(journalDraft = null, journalEditor = null) }
+    }
 
     fun updateJournalEditorLabel(value: String) = updateEditor { it.copy(label = value) }
     fun updateJournalEditorContent(value: String) = updateEditor { it.copy(content = value) }
-    fun applyJournalLabelPreset(preset: JournalLabelPreset) = updateEditor {
-        it.copy(label = preset.type, content = it.content.ifEmpty { preset.template }, prompt = preset.prompt)
+    fun applyJournalLabel(label: String) = updateEditor { it.copy(label = label) }
+    fun applyJournalPrompt(prompt: JournalPrompt) = updateEditor {
+        it.copy(
+            promptId = prompt.id,
+            prompt = prompt.guidingQuestion,
+            content = it.content.ifBlank { prompt.template }
+        )
     }
+    fun clearJournalPrompt() = updateEditor { it.copy(promptId = null, prompt = "") }
     fun toggleJournalEditorMood(mood: String) = updateEditor {
         val next = if (mood in it.moods) it.moods - mood else it.moods + mood
         it.copy(moods = next)
@@ -91,7 +140,7 @@ internal class JournalController(
                 }
             } else {
                 deps.addJournalEntry(input).onSuccess {
-                    state.update { it.copy(journalEditor = null) }
+                    state.update { it.copy(journalEditor = null, journalDraft = null) }
                     state.sendEvent(UiEvent.ShowSnackbar("Saved"))
                 }.onFailure { error ->
                     state.sendEvent(UiEvent.ShowSnackbar(error.message ?: "Unable to save"))
@@ -103,7 +152,7 @@ internal class JournalController(
     fun deleteJournalEntry(entryId: Long) {
         scope.launch {
             deps.deleteJournalEntry(entryId)
-            state.update { it.copy(journalEditor = null) }
+            state.update { it.copy(journalEditor = null, journalDraft = null) }
             state.sendEvent(UiEvent.ShowSnackbar("Deleted"))
         }
     }

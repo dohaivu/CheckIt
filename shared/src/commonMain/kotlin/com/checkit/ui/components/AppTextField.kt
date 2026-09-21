@@ -26,6 +26,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
@@ -115,6 +116,76 @@ fun AppOutlinedTextField(
                         }
                     }
                 } else null,
+                visualTransformation = VisualTransformation.None,
+                interactionSource = interactionSource,
+                contentPadding = contentPadding,
+                colors = colors,
+            )
+        }
+    )
+}
+
+@Composable
+fun AppOutlinedTextField(
+    value: TextFieldValue,
+    onValueChange: (TextFieldValue) -> Unit,
+    textStyle: TextStyle = MaterialTheme.typography.bodyMedium.copy(
+        color = MaterialTheme.colorScheme.onSurface
+    ),
+    placeholder: String? = null,
+    placeholderStyle: TextStyle = textStyle.copy(color = MaterialTheme.colorScheme.onSurface.copy(alpha = ContentContainerAlpha)),
+    minLines: Int = 1,
+    maxLines: Int = Int.MAX_VALUE,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    modifier: Modifier = Modifier.fillMaxWidth(),
+    enabled: Boolean = true,
+    readOnly: Boolean = false,
+    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 0.dp, vertical = 0.dp),
+    isError: Boolean = false
+) {
+    val colors = OutlinedTextFieldDefaults.colors(
+        focusedContainerColor = Color.Transparent,
+        unfocusedContainerColor = Color.Transparent,
+        disabledContainerColor = Color.Transparent,
+        focusedBorderColor = Color.Transparent,
+        unfocusedBorderColor = Color.Transparent,
+        disabledBorderColor = Color.Transparent,
+        errorBorderColor = MaterialTheme.colorScheme.error,
+        errorContainerColor = Color.Transparent,
+        cursorColor = MaterialTheme.colorScheme.primary
+    )
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = modifier,
+        enabled = enabled,
+        readOnly = readOnly,
+        interactionSource = interactionSource,
+        textStyle = textStyle,
+        minLines = minLines,
+        maxLines = maxLines,
+        keyboardOptions = keyboardOptions,
+        keyboardActions = keyboardActions,
+        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+        visualTransformation = visualTransformation,
+        decorationBox = { innerTextField ->
+            OutlinedTextFieldDefaults.DecorationBox(
+                value = value.text,
+                innerTextField = innerTextField,
+                enabled = enabled,
+                singleLine = maxLines == 1,
+                isError = isError,
+                placeholder = if (placeholder != null) {
+                        {
+                            Text(
+                                text = placeholder,
+                                style = placeholderStyle
+                            )
+                        }
+                    } else null,
                 visualTransformation = VisualTransformation.None,
                 interactionSource = interactionSource,
                 contentPadding = contentPadding,

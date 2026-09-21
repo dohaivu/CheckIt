@@ -28,12 +28,15 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.DailyPlanItem
+import com.checkit.domain.DailyPlanItemStatus
 import com.checkit.domain.TagItem
 import com.checkit.ui.components.statusBreathingGlow
 import com.checkit.ui.shortcutDurationLabel
@@ -95,7 +98,7 @@ private fun DayTagTotals(items: List<DailyPlanItem>) {
 
 @Composable
 private fun TagTimeChip(tag: TagItem, minutes: Int) {
-    val tagColor = remember(tag) { tag.color.toColor() }
+    val tagColor = remember(tag) { tag.color.toColor().copy(alpha = 0.9f) }
     Text(
         text = "${tag.name} ${minutes.shortcutDurationLabel()}",
         style = MaterialTheme.typography.labelSmall,
@@ -206,12 +209,36 @@ private fun DayTrack(blocks: List<DayTimelineBlock>) {
                 )
             }
             blocks.forEach { block ->
-                drawRoundRect(
-                    color = block.color,
-                    topLeft = Offset(x = size.width * block.startFraction, y = 0f),
-                    size = Size(width = size.width * block.widthFraction, height = size.height),
-                    cornerRadius = CornerRadius(corner, corner)
-                )
+                if (block.isDone) {
+                    drawRoundRect(
+                        color = block.color,
+                        topLeft = Offset(x = size.width * block.startFraction, y = 0f),
+                        size = Size(width = size.width * block.widthFraction, height = size.height),
+                        cornerRadius = CornerRadius(corner, corner)
+                    )
+                } else {
+                    drawRoundRect(
+                        color = block.color.copy(alpha = 0.35f),
+                        topLeft = Offset(x = size.width * block.startFraction, y = 0f),
+                        size = Size(width = size.width * block.widthFraction, height = size.height),
+                        cornerRadius = CornerRadius(corner, corner)
+                    )
+                    val strokeWidth = 1.dp.toPx()
+                    val inset = strokeWidth / 2f
+                    drawRoundRect(
+                        color = block.color.copy(alpha = 0.9f),
+                        topLeft = Offset(x = size.width * block.startFraction + inset, y = inset),
+                        size = Size(
+                            width = (size.width * block.widthFraction - strokeWidth).coerceAtLeast(0f),
+                            height = (size.height - strokeWidth).coerceAtLeast(0f)
+                        ),
+                        cornerRadius = CornerRadius(corner, corner),
+                        style = Stroke(
+                            width = strokeWidth,
+                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx()))
+                        )
+                    )
+                }
             }
         }
     }
@@ -248,10 +275,11 @@ private fun DayTimelineLabels(modifier: Modifier = Modifier) {
     }
 }
 
-private data class DayTimelineBlock(
+internal data class DayTimelineBlock(
     val startMinutes: Int,
     val endMinutes: Int,
-    val color: Color
+    val color: Color,
+    val isDone: Boolean
 ) {
     val startFraction: Float =
         (startMinutes - DayTimelineStartMinutes).toFloat() / DayTimelineTotalMinutes
@@ -287,7 +315,7 @@ private data class DayTimelineTick(
         ((minutes - DayTimelineStartMinutes).toFloat() / DayTimelineTotalMinutes).coerceIn(0f, 1f)
 }
 
-private fun List<DailyPlanItem>.toDayTimelineBlocks(): List<DayTimelineBlock> {
+internal fun List<DailyPlanItem>.toDayTimelineBlocks(): List<DayTimelineBlock> {
     return mapNotNull { item ->
         val start = item.startTimeMinutes ?: return@mapNotNull null
         val end = item.endTimeMinutes ?: return@mapNotNull null
@@ -299,7 +327,8 @@ private fun List<DailyPlanItem>.toDayTimelineBlocks(): List<DayTimelineBlock> {
             DayTimelineBlock(
                 startMinutes = clippedStart,
                 endMinutes = clippedEnd,
-                color = item.cardColor()
+                color = item.cardColor(),
+                isDone = item.status == DailyPlanItemStatus.Done
             )
         }
     }

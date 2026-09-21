@@ -87,8 +87,9 @@ internal fun PastDaysChronicleSection(
                 )
             }
             if (items.isNotEmpty()) {
+                val writtenCount = items.count { it.goal.review.isNotBlank() || !it.goal.goal.isNullOrBlank() }
                 Text(
-                    text = stringResource(Res.string.reflect_reviews_written, items.size),
+                    text = stringResource(Res.string.reflect_reviews_written, writtenCount),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)

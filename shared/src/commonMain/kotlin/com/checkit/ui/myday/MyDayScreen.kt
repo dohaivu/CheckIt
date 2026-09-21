@@ -297,7 +297,7 @@ internal fun MyDayScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                                .padding(horizontal = 12.dp, vertical = 0.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
@@ -311,7 +311,9 @@ internal fun MyDayScreen(
                             )
                             JournalSection(
                                 entries = state.journalEntries,
+                                nowMinutes = state.nowMinutes,
                                 onAddClick = viewModel::openNewJournalEntry,
+                                onAddWithPrompt = viewModel::openNewJournalEntryWithPrompt,
                                 onViewClick = viewModel::openJournalList
                             )
 

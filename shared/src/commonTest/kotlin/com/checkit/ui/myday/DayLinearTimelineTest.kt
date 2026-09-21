@@ -15,13 +15,14 @@ class DayLinearTimelineTest {
         id: Long,
         tags: List<TagItem>,
         startTimeMinutes: Int?,
-        endTimeMinutes: Int?
+        endTimeMinutes: Int?,
+        status: DailyPlanItemStatus = DailyPlanItemStatus.Planned
     ) = DailyPlanItem(
         id = id,
         dateEpochDays = 0,
         title = "Item $id",
         source = DailyPlanItemSource.MyDayTask,
-        status = DailyPlanItemStatus.Planned,
+        status = status,
         tags = tags,
         sortOrder = 0,
         startTimeMinutes = startTimeMinutes,
@@ -67,5 +68,17 @@ class DayLinearTimelineTest {
         val totals = items.tagTimeTotals()
 
         assertEquals(listOf(workTag.id, deepTag.id, lowTag.id), totals.map { it.tag.id })
+    }
+
+    @Test
+    fun timelineBlocksCarryDoneStatus() {
+        val items = listOf(
+            item(1L, listOf(workTag), 6 * 60, 7 * 60, DailyPlanItemStatus.Done),
+            item(2L, listOf(workTag), 8 * 60, 9 * 60, DailyPlanItemStatus.Planned)
+        )
+
+        val blocks = items.toDayTimelineBlocks()
+
+        assertEquals(listOf(true, false), blocks.map { it.isDone })
     }
 }

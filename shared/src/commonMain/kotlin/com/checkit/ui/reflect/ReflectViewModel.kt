@@ -160,6 +160,17 @@ class ReflectViewModel(
         return rangeFocus.start to rangeFocus.endInclusive
     }
 
+    /**
+     * The parent period's goal for top-down planning context (Day → Week →
+     * Month → Year), or null when there is no parent or no stored goal.
+     */
+    private fun findParentGoal(focus: FocusPeriod, goals: List<PeriodGoal>): PeriodGoal? {
+        val parentPeriod = focus.parentPeriod() ?: return null
+        val parent = FocusPeriod(parentPeriod, focus.anchorDate)
+        val parentStartEpoch = parent.start.toEpochDays().toInt()
+        return goals.firstOrNull { it.period == parentPeriod && it.startEpochDays == parentStartEpoch }
+    }
+
     fun selectPeriod(period: ReportPeriod) {
         _uiState.update { it.copy(selectedPeriod = period) }
     }
@@ -215,21 +226,15 @@ class ReflectViewModel(
             )
         }
     }
+
     fun openGoal(goal: PeriodGoal,
                  mode: ReflectGoalEditorMode = ReflectGoalEditorMode.GoalOnly) {
-        _uiState.update {
-            it.copy(
-                selectedPeriod = goal.period.toReportPeriod(),
-                selectedDate = goal.startDate
-            )
-        }
-        // Seed the editor from the tapped goal itself; the matching window
-        // loads asynchronously and openEditor() would otherwise miss it.
         val focus = FocusPeriod(goal.period, goal.startDate)
         _editor.value = ReflectGoalEditorState(
             focus = focus,
             mode = mode,
             existing = goal,
+            parentGoal = findParentGoal(focus, _uiState.value.goals),
             review = goal.review,
             goal = goal.goal.orEmpty(),
             rating = goal.rating,
@@ -240,7 +245,7 @@ class ReflectViewModel(
     fun openGoalEditor(
         goal: PeriodGoal?,
         date: LocalDate,
-        period: com.checkit.domain.Period,
+        period: Period,
         mode: ReflectGoalEditorMode = ReflectGoalEditorMode.GoalOnly
     ) {
         val focus = FocusPeriod(period, date)
@@ -248,6 +253,7 @@ class ReflectViewModel(
             focus = focus,
             mode = mode,
             existing = goal,
+            parentGoal = findParentGoal(focus, _uiState.value.goals),
             review = goal?.review.orEmpty(),
             goal = goal?.goal.orEmpty(),
             rating = goal?.rating ?:0f,
