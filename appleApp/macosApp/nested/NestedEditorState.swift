@@ -18,7 +18,7 @@ import Shared
 
 /// One visible outline row: node + indent depth.
 struct NestedRow: Identifiable, Equatable {
-    let id: Int64
+    let id: String
     let depth: Int
     let node: NestedItemNode
 
@@ -31,10 +31,10 @@ struct NestedRow: Identifiable, Equatable {
 
 /// Draft for the inline "new item" row.
 struct NestedDraft: Equatable {
-    /// Anchor row id below which the draft sits; -1 inserts at root head.
-    var anchorId: Int64 = -1
-    /// Parent id; -1 means document root.
-    var parentId: Int64 = -1
+    /// Anchor row id below which the draft sits; blank inserts at root head.
+    var anchorId: String = ""
+    /// Parent id; blank means document root.
+    var parentId: String = ""
     var depth: Int = 0
     var text: String = ""
 }
@@ -55,10 +55,10 @@ final class NestedEditorState: ObservableObject {
     @Published var documents: [NestedDocument] = []
     @Published var availableTags: [TagItem] = []
     @Published var tree: NestedDocumentTree?
-    @Published var selectedDocId: Int64 = -1
-    @Published var zoomPath: [Int64] = []
-    @Published var selectedId: Int64? = nil
-    @Published var editingId: Int64? = nil
+    @Published var selectedDocId: String = ""
+    @Published var zoomPath: [String] = []
+    @Published var selectedId: String? = nil
+    @Published var editingId: String? = nil
     @Published var draft: NestedDraft? = nil
     @Published var showDeleteConfirm = false
     @Published var lastError: String? = nil
@@ -70,7 +70,7 @@ final class NestedEditorState: ObservableObject {
     private var hostWindow: NSWindow?
     private var tabMonitor: Any?
     /// Rebuilt once per tree emission instead of for every render and action.
-    private var nodeIndex: [Int64: NestedItemNode] = [:]
+    private var nodeIndex: [String: NestedItemNode] = [:]
 
     init() {
         NestedAppleBridge.shared.ensureKoin()
@@ -83,8 +83,8 @@ final class NestedEditorState: ObservableObject {
                 DispatchQueue.main.async {
                     self?.documents = docs
                     // Auto-select last opened doc, else first.
-                    if let self, self.selectedDocId < 0, let first = docs.first {
-                        let saved = UserDefaults.standard.string(forKey: "nested.lastDoc").flatMap(Int64.init)
+                    if let self, self.selectedDocId.isEmpty, let first = docs.first {
+                        let saved = UserDefaults.standard.string(forKey: "nested.lastDoc")
                         let target = saved.flatMap { id in docs.first(where: { $0.id == id }) } ?? first
                         self.openDocument(id: target.id)
                     } else if let self, !docs.contains(where: { $0.id == self.selectedDocId }) {
@@ -148,7 +148,7 @@ final class NestedEditorState: ObservableObject {
         documents.first(where: { $0.id == selectedDocId })
     }
 
-    func openDocument(id: Int64) {
+    func openDocument(id: String) {
         if selectedDocId == id, tree != nil { return }
         treeSub?.cancel()
         clearTree()
@@ -157,7 +157,7 @@ final class NestedEditorState: ObservableObject {
         editingId = nil
         draft = nil
         selectedDocId = id
-        UserDefaults.standard.set(String(id), forKey: "nested.lastDoc")
+        UserDefaults.standard.set(id, forKey: "nested.lastDoc")
         treeSub = helper.observeDocumentTree(documentId: id) { [weak self] tree in
             DispatchQueue.main.async { self?.replaceTree(tree) }
         }
@@ -166,7 +166,7 @@ final class NestedEditorState: ObservableObject {
     func closeDocument() {
         treeSub?.cancel(); treeSub = nil
         clearTree()
-        selectedDocId = -1
+        selectedDocId = ""
         zoomPath = []
         selectedId = nil
         editingId = nil
@@ -176,23 +176,22 @@ final class NestedEditorState: ObservableObject {
     func createDocument(title: String) {
         helper.createDocument(title: title) { [weak self] newId in
             DispatchQueue.main.async {
-                let id = newId.int64Value
-                if id >= 0 { self?.openDocument(id: id) }
+                if !newId.isEmpty { self?.openDocument(id: newId) }
             }
         }
     }
 
-    func renameDocument(id: Int64, title: String) {
+    func renameDocument(id: String, title: String) {
         helper.renameDocument(documentId: id, title: title)
     }
 
-    func deleteDocument(id: Int64) {
+    func deleteDocument(id: String) {
         helper.removeDocument(documentId: id)
     }
 
     // MARK: - Tree traversal (local; mirrors flattenVisibleNodes)
 
-    private func findNode(_ id: Int64, in nodes: [NestedItemNode]) -> NestedItemNode? {
+    private func findNode(_ id: String, in nodes: [NestedItemNode]) -> NestedItemNode? {
         for node in nodes {
             if node.item.id == id { return node }
             if let found = findNode(id, in: node.children) { return found }
@@ -201,12 +200,12 @@ final class NestedEditorState: ObservableObject {
     }
 
     /// Chain from a root down to id (for breadcrumbs), or nil.
-    func chain(to id: Int64) -> [NestedItemNode]? {
+    func chain(to id: String) -> [NestedItemNode]? {
         guard let tree else { return nil }
         return chain(to: id, in: tree.rootNodes)
     }
 
-    private func chain(to id: Int64, in nodes: [NestedItemNode]) -> [NestedItemNode]? {
+    private func chain(to id: String, in nodes: [NestedItemNode]) -> [NestedItemNode]? {
         for node in nodes {
             if node.item.id == id { return [node] }
             if let sub = chain(to: id, in: node.children) { return [node] + sub }
@@ -235,12 +234,12 @@ final class NestedEditorState: ObservableObject {
         return out
     }
 
-    var indexById: [Int64: NestedItemNode] {
+    var indexById: [String: NestedItemNode] {
         nodeIndex
     }
 
     private func replaceTree(_ newTree: NestedDocumentTree) {
-        var map: [Int64: NestedItemNode] = [:]
+        var map: [String: NestedItemNode] = [:]
         var stack: [NestedItemNode] = newTree.rootNodes
         while let node = stack.popLast() {
             map[node.item.id] = node
@@ -255,26 +254,26 @@ final class NestedEditorState: ObservableObject {
         tree = nil
     }
 
-    func summary(for id: Int64) -> NestedMetricSummary? {
+    func summary(for id: String) -> NestedMetricSummary? {
         guard let tree else { return nil }
         return helper.summaryFor(tree: tree, itemId: id)
     }
 
     // MARK: - Selection / editing
 
-    func select(id: Int64) {
+    func select(id: String) {
         if draft != nil { draft = nil }
         selectedId = (selectedId == id) ? nil : id
         editingId = nil
     }
 
-    func startEdit(id: Int64) {
+    func startEdit(id: String) {
         selectedId = id
         editingId = id
         draft = nil
     }
 
-    func commitEdit(id: Int64, text: String) {
+    func commitEdit(id: String, text: String) {
         editingId = nil
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
@@ -287,10 +286,10 @@ final class NestedEditorState: ObservableObject {
 
     func startAddRoot() {
         editingId = nil
-        draft = NestedDraft(anchorId: -1, parentId: -1, depth: 0, text: "")
+        draft = NestedDraft(anchorId: "", parentId: "", depth: 0, text: "")
     }
 
-    func startAddChild(of id: Int64) {
+    func startAddChild(of id: String) {
         guard let node = indexById[id] else { return }
         editingId = nil
         // Anchor after the subtree's last visible descendant (ViewModel parity).
@@ -302,20 +301,20 @@ final class NestedEditorState: ObservableObject {
         draft = NestedDraft(anchorId: anchor.item.id, parentId: id, depth: depth, text: "")
     }
 
-    func startAddSibling(of id: Int64) {
+    func startAddSibling(of id: String) {
         guard let node = indexById[id] else { return }
         editingId = nil
         let depth = visibleRows.first(where: { $0.id == id })?.depth ?? 0
         draft = NestedDraft(
             anchorId: id,
-            parentId: node.item.parentId?.int64Value ?? -1,
+            parentId: node.item.parentId ?? "",
             depth: depth,
             text: ""
         )
     }
 
     func commitDraft(thenContinue: Bool) {
-        guard let d = draft, selectedDocId >= 0 else { return }
+        guard let d = draft, !selectedDocId.isEmpty else { return }
         let text = d.text
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             draft = nil
@@ -329,14 +328,13 @@ final class NestedEditorState: ObservableObject {
         ) { [weak self] newId in
             DispatchQueue.main.async {
                 guard let self else { return }
-                let id = newId.int64Value
-                if id < 0 { self.draft = nil; return }
+                if newId.isEmpty { self.draft = nil; return }
                 if thenContinue {
-                    self.selectedId = id
-                    self.draft = NestedDraft(anchorId: id, parentId: d.parentId, depth: d.depth, text: "")
+                    self.selectedId = newId
+                    self.draft = NestedDraft(anchorId: newId, parentId: d.parentId, depth: d.depth, text: "")
                 } else {
                     self.draft = nil
-                    self.selectedId = id
+                    self.selectedId = newId
                 }
             }
         }
@@ -347,28 +345,28 @@ final class NestedEditorState: ObservableObject {
     // MARK: - Structure ops on selection
 
     func indentSelected() {
-        guard let id = selectedId, selectedDocId >= 0 else { return }
+        guard let id = selectedId, !selectedDocId.isEmpty else { return }
         helper.indent(documentId: selectedDocId, itemId: id)
     }
 
     func outdentSelected() {
-        guard let id = selectedId, selectedDocId >= 0 else { return }
+        guard let id = selectedId, !selectedDocId.isEmpty else { return }
         helper.outdent(documentId: selectedDocId, itemId: id)
     }
 
     func moveSelectedUp() {
-        guard let id = selectedId, selectedDocId >= 0 else { return }
+        guard let id = selectedId, !selectedDocId.isEmpty else { return }
         helper.moveUp(documentId: selectedDocId, itemId: id)
     }
 
     func moveSelectedDown() {
-        guard let id = selectedId, selectedDocId >= 0 else { return }
+        guard let id = selectedId, !selectedDocId.isEmpty else { return }
         helper.moveDown(documentId: selectedDocId, itemId: id)
     }
 
-    func toggleCollapse(id: Int64) { helper.toggleCollapsed(itemId: id) }
+    func toggleCollapse(id: String) { helper.toggleCollapsed(itemId: id) }
 
-    func toggleCheck(id: Int64, checked: Bool) { helper.toggleChecked(itemId: id, checked: checked) }
+    func toggleCheck(id: String, checked: Bool) { helper.toggleChecked(itemId: id, checked: checked) }
 
     func confirmDeleteSelected() {
         guard let id = selectedId else { return }
@@ -390,7 +388,7 @@ final class NestedEditorState: ObservableObject {
 
     func zoomToRoot() { zoomPath = [] }
 
-    func zoomTo(id: Int64) {
+    func zoomTo(id: String) {
         if let c = chain(to: id) { zoomPath = c.map { $0.item.id } }
     }
 
@@ -398,12 +396,12 @@ final class NestedEditorState: ObservableObject {
 
     /// Drop draggedId onto targetId's gap: sibling just above target.
     /// Own-subtree drops are refused by shared moveToPosition (no-op).
-    func drop(draggedId: Int64, onto targetId: Int64) {
-        guard draggedId != targetId, selectedDocId >= 0 else { return }
+    func drop(draggedId: String, onto targetId: String) {
+        guard draggedId != targetId, !selectedDocId.isEmpty else { return }
         guard let target = indexById[targetId] else { return }
-        let parentId = target.item.parentId?.int64Value ?? -1
+        let parentId = target.item.parentId ?? ""
         let siblings: [NestedItemNode]
-        if parentId < 0 {
+        if parentId.isEmpty {
             guard let tree else { return }
             siblings = tree.rootNodes
         } else {
@@ -416,8 +414,8 @@ final class NestedEditorState: ObservableObject {
     }
 
     /// Drop draggedId as last child of targetId.
-    func dropAsChild(draggedId: Int64, onto targetId: Int64) {
-        guard draggedId != targetId, selectedDocId >= 0 else { return }
+    func dropAsChild(draggedId: String, onto targetId: String) {
+        guard draggedId != targetId, !selectedDocId.isEmpty else { return }
         guard let target = indexById[targetId] else { return }
         helper.moveTo(
             documentId: selectedDocId,
@@ -429,32 +427,32 @@ final class NestedEditorState: ObservableObject {
 
     // MARK: - Metadata mutations (thin wrappers over shared use cases)
 
-    func saveNote(id: Int64, text: String) {
+    func saveNote(id: String, text: String) {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
         helper.saveItemNote(itemId: id, note: t.isEmpty ? nil : t)
     }
 
-    func updateFormatting(id: Int64, style: String, textColor: String, background: String) {
+    func updateFormatting(id: String, style: String, textColor: String, background: String) {
         helper.updateFormattingByName(itemId: id, styleName: style, textColorName: textColor, backgroundColorName: background)
     }
 
-    func updatePriority(id: Int64, name: String) {
+    func updatePriority(id: String, name: String) {
         helper.updatePriorityByName(itemId: id, priorityName: name)
     }
 
-    func setTag(id: Int64, tagId: Int64, enabled: Bool) {
+    func setTag(id: String, tagId: String, enabled: Bool) {
         helper.setTagEnabled(itemId: id, tagId: tagId, enabled: enabled)
     }
 
-    func setCheckboxEnabled(id: Int64, enabled: Bool) {
+    func setCheckboxEnabled(id: String, enabled: Bool) {
         helper.toggleCheckboxEnabled(itemId: id, enabled: enabled)
     }
 
-    func setCheckedExact(id: Int64, checked: Bool) {
+    func setCheckedExact(id: String, checked: Bool) {
         helper.toggleChecked(itemId: id, checked: checked)
     }
 
-    func updateDates(id: Int64, start: Int64?, end: Int64?) {
+    func updateDates(id: String, start: Int64?, end: Int64?) {
         helper.updateDateRangeDays(
             itemId: id,
             startEpochDays: start.map { Int32($0) } ?? Int32.min,
@@ -462,15 +460,15 @@ final class NestedEditorState: ObservableObject {
         )
     }
 
-    func updateMetricsSettings(id: Int64, minutes: Int32, policy: String, show: Bool) {
+    func updateMetricsSettings(id: String, minutes: Int32, policy: String, show: Bool) {
         helper.updateMetricSettingsByName(itemId: id, actualMinutes: minutes, policyName: policy, showTracked: show)
     }
 
-    func updateProgress(id: Int64, value: Int32?) {
+    func updateProgress(id: String, value: Int32?) {
         helper.updateProgressValue(itemId: id, progress: value ?? -1)
     }
 
-    func replaceMetrics(id: Int64, json: String) {
+    func replaceMetrics(id: String, json: String) {
         helper.replaceMetricsJson(itemId: id, json: json)
     }
 

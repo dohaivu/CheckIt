@@ -86,7 +86,7 @@ class CarryOverDailyPlanItemsUseCase(
 ) {
     suspend operator fun invoke(
         items: List<DailyPlanItem>,
-        itemIds: Set<Long>,
+        itemIds: Set<String>,
         toDate: LocalDate,
         timePolicy: CarryOverTimePolicy = CarryOverTimePolicy.ClearTimes
     ): CarryOverResult = withContext(dispatcher) {
@@ -96,7 +96,7 @@ class CarryOverDailyPlanItemsUseCase(
         }
 
         val clearTimes = timePolicy == CarryOverTimePolicy.ClearTimes
-        val newIds = mutableListOf<Long>()
+        val newIds = mutableListOf<String>()
         var skipped = 0
         for (item in selected) {
             val newId = repository.copyDailyPlanItemToDate(
@@ -186,12 +186,12 @@ class CompleteDayCloseUseCase(
     /** Splits leftover decisions into the operations performed by the review. */
     private fun resolveLeftovers(
         plannedItems: List<DailyPlanItem>,
-        actions: Map<Long, LeftoverAction>
+        actions: Map<String, LeftoverAction>
     ): LeftoverResolution {
         val plannedById = plannedItems.associateBy { it.id }
-        val markDoneIds = mutableListOf<Long>()
-        val carryIds = mutableListOf<Long>()
-        val dropIds = mutableListOf<Long>()
+        val markDoneIds = mutableListOf<String>()
+        val carryIds = mutableListOf<String>()
+        val dropIds = mutableListOf<String>()
         for ((itemId, action) in actions) {
             val item = plannedById[itemId] ?: continue
             when (action) {
@@ -209,9 +209,9 @@ class CompleteDayCloseUseCase(
     }
 
     private data class LeftoverResolution(
-        val markDoneIds: List<Long>,
-        val carryIds: List<Long>,
-        val dropIds: List<Long>
+        val markDoneIds: List<String>,
+        val carryIds: List<String>,
+        val dropIds: List<String>
     ) {
         val droppedCount: Int get() = dropIds.size
     }

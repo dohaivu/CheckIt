@@ -28,7 +28,7 @@ class CheckItNotificationCenter(
 ) {
     private val notificationManager = NotificationManagerCompat.from(context)
 
-    fun showTaskReminder(taskId: Long, taskName: String, label: String) {
+    fun showTaskReminder(taskId: String, taskName: String, label: String) {
         showReminder(
             notificationId = NotificationIds.taskReminder(taskId),
             requestCode = taskId.hashCode(),
@@ -56,7 +56,7 @@ class CheckItNotificationCenter(
         )
     }
 
-    fun showDailyPlanScheduleReminder(itemId: Long, title: String) {
+    fun showDailyPlanScheduleReminder(itemId: String, title: String) {
         showReminder(
             notificationId = NotificationIds.dailyPlanSchedule(itemId),
             requestCode = NotificationIds.dailyPlanSchedule(itemId),
@@ -71,7 +71,7 @@ class CheckItNotificationCenter(
         )
     }
 
-    fun dismissDailyPlanScheduleReminder(itemId: Long) {
+    fun dismissDailyPlanScheduleReminder(itemId: String) {
         notificationManager.cancel(NotificationIds.dailyPlanSchedule(itemId))
     }
 
@@ -89,7 +89,7 @@ class CheckItNotificationCenter(
         )
     }
 
-    fun showCheckInReminder(title: String, body: String, dailyPlanItemId: Long?) {
+    fun showCheckInReminder(title: String, body: String, dailyPlanItemId: String?) {
         if (!canPostNotifications()) return
         // Quiet-hours gate already applied by CheckInReminderPolicy; force-runs bypass it here too.
         ensureChannels()
@@ -128,7 +128,7 @@ class CheckItNotificationCenter(
         notificationManager.cancel(NotificationIds.CheckInReminder)
     }
 
-    private fun broadcastAction(requestCode: Int, action: String, dailyPlanItemId: Long?): PendingIntent {
+    private fun broadcastAction(requestCode: Int, action: String, dailyPlanItemId: String?): PendingIntent {
         val intent = Intent(context, CheckInReminderActionReceiver::class.java).apply {
             setAction(action)
             dailyPlanItemId?.let { putExtra(ExtraDailyPlanItemId, it) }
@@ -141,7 +141,7 @@ class CheckItNotificationCenter(
         )
     }
 
-    private fun sprintAction(dailyPlanItemId: Long?): PendingIntent {
+    private fun sprintAction(dailyPlanItemId: String?): PendingIntent {
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra(ExtraStartQuickSprint, true)
@@ -167,8 +167,8 @@ class CheckItNotificationCenter(
         title: String,
         body: String,
         subText: String?,
-        dailyPlanItemId: Long?,
-        startSprintItemId: Long? = null,
+        dailyPlanItemId: String?,
+        startSprintItemId: String? = null,
         openPlanAssist: Boolean = false,
         openDayClose: Boolean = false,
         bypassDnd: Boolean

@@ -20,15 +20,15 @@ import kotlinx.coroutines.launch
 
 data class ListSectionEditorState(
     val mode: EditorMode,
-    val sectionId: Long? = null,
-    val listId: Long,
+    val sectionId: String? = null,
+    val listId: String,
     val title: String = "",
     val color: String = AppIconColorDefaults.ListColors.first(),
     val sortOrder: Int = 0
 )
 
 data class ListSectionUiState(
-    val listId: Long? = null,
+    val listId: String? = null,
     val sections: List<ListSection> = emptyList(),
     val editor: ListSectionEditorState? = null
 )
@@ -44,7 +44,7 @@ class ListSectionViewModel(
     private val _events = Channel<UiEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
-    fun loadList(listId: Long, sections: List<ListSection>) {
+    fun loadList(listId: String, sections: List<ListSection>) {
         _uiState.update { it.copy(listId = listId, sections = sections.sortedBy { it.sortOrder }) }
     }
 

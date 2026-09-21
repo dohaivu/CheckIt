@@ -70,9 +70,9 @@ fun CheckItApp(
     autoAddTodayTasksToMyDayUseCase: AutoAddTodayTasksToMyDayUseCase = koinInject(),
     rebuildReflectStatsUseCase: RebuildReflectStatsUseCase = koinInject(),
     settingsRepository: SettingsRepository = koinInject(),
-    dailyPlanItemLaunchId: Long? = null,
-    taskLaunchId: Long? = null,
-    noteLaunchId: Long? = null,
+    dailyPlanItemLaunchId: String? = null,
+    taskLaunchId: String? = null,
+    noteLaunchId: String? = null,
     openMyDaySuggestionsLaunch: Boolean = false,
     openDayCloseLaunch: Boolean = false,
     openPlanAssistLaunch: Boolean = false,
@@ -80,9 +80,9 @@ fun CheckItApp(
     openNewJournalEntryLaunch: Boolean = false,
     openQuickSprintLaunch: Boolean = false,
     openNewTaskLaunch: Boolean = false,
-    startSprintItemIdLaunch: Long? = null,
+    startSprintItemIdLaunch: String? = null,
     startQuickSprintLaunch: Boolean = false,
-    quickSprintItemIdLaunch: Long? = null,
+    quickSprintItemIdLaunch: String? = null,
     onWidgetLaunchConsumed: () -> Unit = {}
 ) {
     val navState = rememberAppNavigationState()

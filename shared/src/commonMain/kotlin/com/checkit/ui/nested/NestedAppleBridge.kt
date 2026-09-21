@@ -55,8 +55,9 @@ import org.koin.mp.KoinPlatform
  * callbacks delivered on the Main thread — same pattern as
  * QuickNoteMenuHelper.
  *
- * Nullable Kotlin Long/Int parameters surface to Swift as KotlinLong?/
- * KotlinInt? (pass nil for null). Non-null ids map to Swift Int64.
+ * Nullable Kotlin Int parameters surface to Swift as KotlinInt?
+ * (pass nil for null). Entity ids are Strings (stable UUIDs for sync);
+ * blank means null for optional parent/anchor ids.
  *
  * The helper caches the latest observed tree so draft-commit position
  * math (mirroring NestedListsViewModel.commitNewItem) and move planning
@@ -100,7 +101,7 @@ class NestedAppleHelper(
     private val moveMutex = Mutex()
 
     /** Latest tree snapshot per observed document, for draft/move planning. */
-    private val latestTrees = mutableMapOf<Long, NestedDocumentTree>()
+    private val latestTrees = mutableMapOf<String, NestedDocumentTree>()
 
     fun observeDocumentList(onUpdate: (List<NestedDocument>) -> Unit): NestedAppleSubscription {
         val job = scope.launch {
@@ -116,7 +117,7 @@ class NestedAppleHelper(
         return NestedAppleSubscription(job)
     }
 
-    fun observeDocumentTree(documentId: Long, onUpdate: (NestedDocumentTree) -> Unit): NestedAppleSubscription {
+    fun observeDocumentTree(documentId: String, onUpdate: (NestedDocumentTree) -> Unit): NestedAppleSubscription {
         val job = scope.launch {
             observeTree(documentId).collect { tree ->
                 latestTrees[documentId] = tree
@@ -128,18 +129,18 @@ class NestedAppleHelper(
 
     // --- Documents ---
 
-    fun createDocument(title: String, onDone: (Long) -> Unit) {
+    fun createDocument(title: String, onDone: (String) -> Unit) {
         scope.launch {
-            val id = runCatching { addDocument(title) }.getOrNull() ?: -1L
+            val id = runCatching { addDocument(title) }.getOrNull() ?: ""
             onDone(id)
         }
     }
 
-    fun renameDocument(documentId: Long, title: String) {
+    fun renameDocument(documentId: String, title: String) {
         scope.launch { runCatching { renameDocumentUseCase(documentId, title) } }
     }
 
-    fun removeDocument(documentId: Long) {
+    fun removeDocument(documentId: String) {
         scope.launch {
             runCatching { deleteDocument(documentId) }
             latestTrees.remove(documentId)
@@ -149,47 +150,47 @@ class NestedAppleHelper(
     // --- Items: add (mirrors NestedListsViewModel.commitNewItem position math) ---
 
     /**
-     * Commits a new item. [anchorId]/[parentId] use -1 for null (root insert).
-     * onDone receives the new item id (or -1 on failure/blank).
+     * Commits a new item. Blank [anchorId]/[parentId] mean null (root insert).
+     * onDone receives the new item id (or blank on failure/blank).
      */
     fun commitItem(
-        documentId: Long,
-        anchorId: Long,
-        parentId: Long,
+        documentId: String,
+        anchorId: String,
+        parentId: String,
         text: String,
-        onDone: (Long) -> Unit,
+        onDone: (String) -> Unit,
     ) {
         scope.launch {
             val trimmed = text.trim()
             if (trimmed.isEmpty()) {
-                onDone(-1L)
+                onDone("")
                 return@launch
             }
-            val anchor: Long? = anchorId.takeIf { it >= 0 }
-            val parent: Long? = parentId.takeIf { it >= 0 }
+            val anchor: String? = anchorId.takeIf { it.isNotEmpty() }
+            val parent: String? = parentId.takeIf { it.isNotEmpty() }
             val items = latestTrees[documentId]?.flatItems.orEmpty()
             val (resolvedParent, position) = computeNestedInsertPosition(items, anchor, parent)
-            val id = runCatching { addItem(documentId, resolvedParent, trimmed, position) }.getOrNull() ?: -1L
+            val id = runCatching { addItem(documentId, resolvedParent, trimmed, position) }.getOrNull() ?: ""
             onDone(id)
         }
     }
 
-    fun saveItemText(itemId: Long, text: String) {
+    fun saveItemText(itemId: String, text: String) {
         scope.launch { runCatching { updateItemText(itemId, text) } }
     }
 
-    fun saveItemNote(itemId: Long, note: String?) {
+    fun saveItemNote(itemId: String, note: String?) {
         scope.launch { runCatching { updateItemNote(itemId, note?.take(2_000)) } }
     }
 
     // --- Formatting & metadata (same use cases as Android) ---
 
-    fun updateFormatting(itemId: Long, style: NestedTextStyle, textColor: NestedColorToken, backgroundColor: NestedColorToken) {
+    fun updateFormatting(itemId: String, style: NestedTextStyle, textColor: NestedColorToken, backgroundColor: NestedColorToken) {
         scope.launch { runCatching { updateItemFormatting(itemId, style, textColor, backgroundColor) } }
     }
 
     /** String-based overloads so Swift never touches reserved-word enum cases. */
-    fun updateFormattingByName(itemId: Long, styleName: String, textColorName: String, backgroundColorName: String) {
+    fun updateFormattingByName(itemId: String, styleName: String, textColorName: String, backgroundColorName: String) {
         scope.launch {
             runCatching {
                 updateItemFormatting(
@@ -206,7 +207,7 @@ class NestedAppleHelper(
      * Dates cross the bridge as epoch days (LocalDate.toEpochDays()).
      * Pass Int.MIN_VALUE to clear one side.
      */
-    fun updateDateRangeDays(itemId: Long, startEpochDays: Int, endEpochDays: Int) {
+    fun updateDateRangeDays(itemId: String, startEpochDays: Int, endEpochDays: Int) {
         scope.launch {
             runCatching {
                 updateItemDateRange(
@@ -218,20 +219,20 @@ class NestedAppleHelper(
         }
     }
 
-    fun updatePriority(itemId: Long, priority: TaskPriority) {
+    fun updatePriority(itemId: String, priority: TaskPriority) {
         scope.launch { runCatching { updateItemPriority(itemId, priority) } }
     }
 
-    fun updatePriorityByName(itemId: Long, priorityName: String) {
+    fun updatePriorityByName(itemId: String, priorityName: String) {
         scope.launch { runCatching { updateItemPriority(itemId, TaskPriority.valueOf(priorityName)) } }
     }
 
-    fun updateTags(itemId: Long, tagIds: List<Long>) {
+    fun updateTags(itemId: String, tagIds: List<String>) {
         scope.launch { runCatching { updateItemTags(itemId, tagIds) } }
     }
 
     /** Toggles one tag using the cached tree, so Swift only passes plain ids. */
-    fun setTagEnabled(itemId: Long, tagId: Long, enabled: Boolean) {
+    fun setTagEnabled(itemId: String, tagId: String, enabled: Boolean) {
         scope.launch {
             val current = latestTrees.values
                 .firstNotNullOfOrNull { it.itemById[itemId] }
@@ -241,11 +242,11 @@ class NestedAppleHelper(
         }
     }
 
-    fun updateMetricSettings(itemId: Long, actualMinutes: Int, policy: MetricRollupPolicy, showTracked: Boolean) {
+    fun updateMetricSettings(itemId: String, actualMinutes: Int, policy: MetricRollupPolicy, showTracked: Boolean) {
         scope.launch { runCatching { updateItemMetricSettings(itemId, actualMinutes, policy, showTracked) } }
     }
 
-    fun updateMetricSettingsByName(itemId: Long, actualMinutes: Int, policyName: String, showTracked: Boolean) {
+    fun updateMetricSettingsByName(itemId: String, actualMinutes: Int, policyName: String, showTracked: Boolean) {
         scope.launch {
             runCatching {
                 updateItemMetricSettings(
@@ -259,13 +260,13 @@ class NestedAppleHelper(
     }
 
     /** Pass -1 progress to hide the progress UI. */
-    fun updateProgressValue(itemId: Long, progress: Int) {
+    fun updateProgressValue(itemId: String, progress: Int) {
         scope.launch {
             runCatching { updateItemProgress(itemId, progress.takeIf { it >= 0 }) }
         }
     }
 
-    fun replaceMetrics(itemId: Long, metrics: List<MetricItem>) {
+    fun replaceMetrics(itemId: String, metrics: List<MetricItem>) {
         scope.launch { runCatching { replaceManualMetrics(itemId, metrics) } }
     }
 
@@ -276,7 +277,7 @@ class NestedAppleHelper(
      * "unit":"None","customUnit":null,"sortOrder":0,"enabled":true,
      * "isCompleted":false}]. Blank values are dropped.
      */
-    fun replaceMetricsJson(itemId: Long, json: String) {
+    fun replaceMetricsJson(itemId: String, json: String) {
         scope.launch {
             runCatching {
                 val decoded = Json.decodeFromString<List<MetricItem>>(json)
@@ -287,54 +288,54 @@ class NestedAppleHelper(
 
     // --- Checkbox & structure ---
 
-    fun toggleCheckboxEnabled(itemId: Long, enabled: Boolean) {
+    fun toggleCheckboxEnabled(itemId: String, enabled: Boolean) {
         scope.launch { runCatching { setCheckboxEnabled(itemId, enabled) } }
     }
 
-    fun setChecked(itemIds: List<Long>, checked: Boolean) {
+    fun setChecked(itemIds: List<String>, checked: Boolean) {
         scope.launch { runCatching { setItemsChecked(itemIds, checked) } }
     }
 
-    fun toggleChecked(itemId: Long, checked: Boolean) {
+    fun toggleChecked(itemId: String, checked: Boolean) {
         scope.launch { runCatching { setItemsChecked(listOf(itemId), checked) } }
     }
 
-    fun toggleCollapsed(itemId: Long) {
+    fun toggleCollapsed(itemId: String) {
         scope.launch { runCatching { toggleCollapsedUseCase(itemId) } }
     }
 
-    fun indent(documentId: Long, itemId: Long) {
+    fun indent(documentId: String, itemId: String) {
         applyMove(documentId) { items -> moveItems.indent(items, itemId) }
     }
 
-    fun outdent(documentId: Long, itemId: Long) {
+    fun outdent(documentId: String, itemId: String) {
         applyMove(documentId) { items -> moveItems.outdent(items, itemId) }
     }
 
-    fun moveUp(documentId: Long, itemId: Long) {
+    fun moveUp(documentId: String, itemId: String) {
         applyMove(documentId) { items -> moveItems.moveUp(items, itemId) }
     }
 
-    fun moveDown(documentId: Long, itemId: Long) {
+    fun moveDown(documentId: String, itemId: String) {
         applyMove(documentId) { items -> moveItems.moveDown(items, itemId) }
     }
 
-    /** [targetParentId] -1 drops at root. [targetIndex] is gap-based within the target group. */
-    fun moveTo(documentId: Long, itemId: Long, targetParentId: Long, targetIndex: Int) {
+    /** [targetParentId] blank drops at root. [targetIndex] is gap-based within the target group. */
+    fun moveTo(documentId: String, itemId: String, targetParentId: String, targetIndex: Int) {
         applyMove(documentId) { items ->
-            moveItems.moveToPosition(items, itemId, targetParentId.takeIf { it >= 0 }, targetIndex)
+            moveItems.moveToPosition(items, itemId, targetParentId.takeIf { it.isNotEmpty() }, targetIndex)
         }
     }
 
-    fun deleteItemList(itemIds: List<Long>) {
+    fun deleteItemList(itemIds: List<String>) {
         scope.launch { runCatching { deleteItems(itemIds) } }
     }
 
-    fun deleteSingleItem(itemId: Long) {
+    fun deleteSingleItem(itemId: String) {
         scope.launch { runCatching { deleteItems(listOf(itemId)) } }
     }
 
-    private fun applyMove(documentId: Long, planner: (List<NestedListItem>) -> List<com.checkit.domain.NestedItemMove>) {
+    private fun applyMove(documentId: String, planner: (List<NestedListItem>) -> List<com.checkit.domain.NestedItemMove>) {
         val items = latestTrees[documentId]?.flatItems ?: return
         val moves = planner(items)
         if (moves.isEmpty()) return
@@ -343,15 +344,15 @@ class NestedAppleHelper(
         }
     }
 
-    // --- Read helpers for Swift (avoid Map<Long, ...> interop friction) ---
+    // --- Read helpers for Swift (avoid Map<String, ...> interop friction) ---
 
-    fun summaryFor(tree: NestedDocumentTree, itemId: Long): NestedMetricSummary =
+    fun summaryFor(tree: NestedDocumentTree, itemId: String): NestedMetricSummary =
         tree.metricSummaryById[itemId] ?: NestedMetricSummary()
 
-    fun findItem(tree: NestedDocumentTree, itemId: Long): NestedListItem? =
+    fun findItem(tree: NestedDocumentTree, itemId: String): NestedListItem? =
         tree.itemById[itemId]
 
-    fun findNode(tree: NestedDocumentTree, itemId: Long): NestedItemNode? =
+    fun findNode(tree: NestedDocumentTree, itemId: String): NestedItemNode? =
         tree.nodeById[itemId]
 
     fun close() {

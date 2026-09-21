@@ -9,9 +9,9 @@ import com.checkit.ui.tasks.TaskViewModel
 
 @Composable
 internal fun WidgetLaunchHandler(
-    dailyPlanItemLaunchId: Long?,
-    taskLaunchId: Long?,
-    noteLaunchId: Long?,
+    dailyPlanItemLaunchId: String?,
+    taskLaunchId: String?,
+    noteLaunchId: String?,
     taskUiState: TaskUiState,
     myDayUiState: MyDayUiState,
     taskViewModel: TaskViewModel,

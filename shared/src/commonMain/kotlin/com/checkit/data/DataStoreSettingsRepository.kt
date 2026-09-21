@@ -72,15 +72,15 @@ class DataStoreSettingsRepository(
         dataStore.setAutoMyDayLastRunEpochDay(epochDay)
     }
 
-    override suspend fun setLastFabAction(type: String, id: Long?) {
+    override suspend fun setLastFabAction(type: String, id: String?) {
         dataStore.setLastFabAction(type, id)
     }
 
-    override suspend fun setLastNestedDocumentId(id: Long?) {
+    override suspend fun setLastNestedDocumentId(id: String?) {
         dataStore.setLastNestedDocumentId(id)
     }
 
-    override suspend fun setLastSelectedListId(id: Long?) {
+    override suspend fun setLastSelectedListId(id: String?) {
         dataStore.setLastSelectedListId(id)
     }
 

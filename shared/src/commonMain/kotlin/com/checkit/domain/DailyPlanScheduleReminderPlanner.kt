@@ -3,14 +3,14 @@ package com.checkit.domain
 import com.checkit.ui.MinutesPerDay
 
 data class DailyPlanScheduleReminderItem(
-    val id: Long,
+    val id: String,
     val title: String,
     val status: DailyPlanItemStatus,
     val startTimeMinutes: Int?
 )
 
 data class DailyPlanScheduleReminder(
-    val itemId: Long,
+    val itemId: String,
     val title: String,
     val startTimeMinutes: Int
 )

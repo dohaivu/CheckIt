@@ -24,7 +24,7 @@ data class DailyReflectStat(
  */
 data class DailyTagRollup(
     val dateEpochDays: Int,
-    val tagId: Long,
+    val tagId: String,
     val tagName: String,
     val tagColor: String?,
     val doneCount: Int,
@@ -44,7 +44,7 @@ data class HabitDailyRollup(
 
 /** Slim view of a done item used to build Reflect highlights. */
 data class DoneItemSummary(
-    val id: Long,
+    val id: String,
     val dateEpochDays: Int,
     val title: String,
     val note: String?,

@@ -65,7 +65,7 @@ class BuildDailyPlanMarkdownSummaryUseCase {
 class AddTaskToDailyPlanUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(date: LocalDate, task: TaskItem): Long =
+    suspend operator fun invoke(date: LocalDate, task: TaskItem): String =
         repository.addTaskToDailyPlan(date, task)
 }
 
@@ -80,51 +80,51 @@ class AddDailyPlanItemUseCase(
         endTimeMinutes: Int?,
         source: DailyPlanItemSource = DailyPlanItemSource.MyDayTask,
         status: DailyPlanItemStatus = DailyPlanItemStatus.Done,
-        tagIds: List<Long> = emptyList(),
+        tagIds: List<String> = emptyList(),
         label: String? = null
-    ): Long =
+    ): String =
         repository.addDailyPlanItem(date, title, note, startTimeMinutes, endTimeMinutes, source, status, tagIds, label)
 }
 
 class UpdateDailyPlanItemTimeUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(itemId: Long, startTimeMinutes: Int?, endTimeMinutes: Int?) =
+    suspend operator fun invoke(itemId: String, startTimeMinutes: Int?, endTimeMinutes: Int?) =
         repository.updateDailyPlanItemTime(itemId, startTimeMinutes, endTimeMinutes)
 }
 
 class UpdateDailyPlanItemUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(itemId: Long, input: DailyPlanItemWriteInput) =
+    suspend operator fun invoke(itemId: String, input: DailyPlanItemWriteInput) =
         repository.updateDailyPlanItem(itemId, input)
 }
 
 class UpdateDailyPlanItemStatusUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(itemId: Long, status: DailyPlanItemStatus) =
+    suspend operator fun invoke(itemId: String, status: DailyPlanItemStatus) =
         repository.updateDailyPlanItemStatus(itemId, status)
 }
 
 class UpdateDailyPlanItemTagUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(itemId: Long, tagIds: List<Long>) =
+    suspend operator fun invoke(itemId: String, tagIds: List<String>) =
         repository.updateDailyPlanItemTags(itemId, tagIds)
 }
 
 class LinkDailyPlanItemToTaskUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(itemId: Long, taskId: Long) =
+    suspend operator fun invoke(itemId: String, taskId: String) =
         repository.linkDailyPlanItemToTask(itemId, taskId)
 }
 
 class DeleteDailyPlanItemUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(itemId: Long) = repository.deleteDailyPlanItem(itemId)
+    suspend operator fun invoke(itemId: String) = repository.deleteDailyPlanItem(itemId)
 }
 
 private fun DailyPlanItem.titleLine(): String? {

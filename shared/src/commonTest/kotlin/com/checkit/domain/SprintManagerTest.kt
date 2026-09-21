@@ -42,7 +42,7 @@ class SprintManagerTest {
     @Test
     fun elapsedExcludesPausedTime() = runTest {
         val env = createEnv()
-        assertTrue(env.manager.startSprint(null, 1L, "Focus", durationSeconds = 100))
+        assertTrue(env.manager.startSprint(null, "1", "Focus", durationSeconds = 100))
 
         env.clock.advanceBy(30_000)
         env.manager.pauseSprint()

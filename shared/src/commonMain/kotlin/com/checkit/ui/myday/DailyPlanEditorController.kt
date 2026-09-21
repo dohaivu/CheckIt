@@ -43,7 +43,7 @@ internal class DailyPlanEditorController(
             )
         }
     }
-    fun openNewDailyPlan(title: String, tagIds: List<Long>, nestedListItemId: Long? = null) {
+    fun openNewDailyPlan(title: String, tagIds: List<String>, nestedListItemId: String? = null) {
         if (title.isBlank()) return
         cancelPendingEditorTextSave()
         val current = state.uiState.value
@@ -251,7 +251,7 @@ internal class DailyPlanEditorController(
             error = null
         )
     }
-    fun toggleTag(tagId: Long) = updateItemEditor {
+    fun toggleTag(tagId: String) = updateItemEditor {
         val newTagIds = if (it.selectedTagIds.contains(tagId)) {
             it.selectedTagIds - tagId
         } else {
@@ -269,13 +269,13 @@ internal class DailyPlanEditorController(
         state.sendEvent(UiEvent.ShowSnackbar("Deleted"))
     }
 
-    fun deleteDailyPlanItem(itemId: Long) {
+    fun deleteDailyPlanItem(itemId: String) {
         deleteDailyPlanItem(itemId) { it }
         state.sendEvent(UiEvent.ShowSnackbar("Removed from My Day"))
     }
 
     private fun deleteDailyPlanItem(
-        itemId: Long,
+        itemId: String,
         updateState: (MyDayUiState) -> MyDayUiState
     ) {
         scope.launch {

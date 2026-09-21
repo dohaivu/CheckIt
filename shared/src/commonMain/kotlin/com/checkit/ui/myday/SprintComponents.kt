@@ -317,7 +317,7 @@ fun QuickSprintSheet(
     suggestedTasks: List<TaskItem>,
     availableTags: List<TagItem>,
     continueItem: SprintChoice?,
-    onStartSprint: (taskId: Long?, dailyPlanItemId: Long?, description: String, tagIds: List<Long>) -> Unit,
+    onStartSprint: (taskId: String?, dailyPlanItemId: String?, description: String, tagIds: List<String>) -> Unit,
     onStartSprintWithChoice: (SprintChoice) -> Unit,
     onStartSprintWithTask: (TaskItem) -> Unit,
     onNewTagClick: () -> Unit = {},
@@ -325,7 +325,7 @@ fun QuickSprintSheet(
     suggestions: List<String> = emptyList(),
 ) {
     var text by remember { mutableStateOf("") }
-    var selectedTagIds by remember { mutableStateOf(emptySet<Long>()) }
+    var selectedTagIds by remember { mutableStateOf(emptySet<String>()) }
 
     AppEditorBottomSheet(onDismiss = onDismiss) {
         Column(

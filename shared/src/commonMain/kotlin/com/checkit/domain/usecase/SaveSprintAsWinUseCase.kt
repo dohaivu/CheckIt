@@ -18,7 +18,7 @@ class SaveSprintAsWinUseCase(
     private val updateDailyPlanItemTime: UpdateDailyPlanItemTimeUseCase,
     private val updateDailyPlanItemStatus: UpdateDailyPlanItemStatusUseCase
 ) {
-    suspend operator fun invoke(finished: SprintState.Finished): Long? {
+    suspend operator fun invoke(finished: SprintState.Finished): String? {
         if (finished.isBreak) return null
 
         val todayDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date

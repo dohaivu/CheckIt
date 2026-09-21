@@ -21,7 +21,7 @@ import kotlinx.coroutines.launch
 
 data class ListEditorState(
     val mode: EditorMode,
-    val listId: Long? = null,
+    val listId: String? = null,
     val title: String = "",
     val color: String = AppIconColorDefaults.ListColors.first(),
     val icon: String = AppIconColorDefaults.ListIcons.first(),
@@ -70,7 +70,7 @@ class ListViewModel(
     fun updateColor(color: String) = updateEditor { it.copy(color = color) }
     fun updateIcon(icon: String) = updateEditor { it.copy(icon = icon) }
 
-    fun saveEditor(onSaved: (Long) -> Unit = {}) {
+    fun saveEditor(onSaved: (String) -> Unit = {}) {
         val form = _uiState.value.editor ?: return
         if (form.title.isBlank()) {
             sendEvent(UiEvent.ShowSnackbar("Add a title"))

@@ -33,8 +33,8 @@ class CheckInReminderActionReceiver : BroadcastReceiver(), KoinComponent {
             try {
                 when (intent.action) {
                     ACTION_MARK_DONE -> {
-                        val itemId = intent.getLongExtra(ExtraDailyPlanItemId, -1L)
-                        if (itemId != -1L) {
+                        val itemId = intent.getStringExtra(ExtraDailyPlanItemId)?.takeIf { it.isNotEmpty() }
+                        if (itemId != null) {
                             repository.updateDailyPlanItemStatus(itemId, DailyPlanItemStatus.Done)
                         } else {
                             Log.w("CheckInAction", "Mark done without item id")

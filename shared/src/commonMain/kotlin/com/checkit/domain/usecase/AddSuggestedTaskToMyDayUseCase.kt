@@ -21,7 +21,7 @@ class AddSuggestedTaskToMyDayUseCase(
         task: TaskItem,
         suggestionStart: Int?,
         suggestionEnd: Int?
-    ): Result<Long> = runCatching {
+    ): Result<String> = runCatching {
         val dailyPlans = repository.observeDailyPlans().first()
         val todayDate = today()
         val plan = dailyPlans.firstOrNull { it.date == todayDate }

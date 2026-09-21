@@ -118,7 +118,7 @@ internal fun CalendarScreen(
     onDailyPlanItemClick: (DailyPlanItem, LocalDate) -> Unit,
     onOpenJournalHistory: () -> Unit,
     onAddDailyPlanItem: (LocalDate) -> Unit,
-    onTaskClick: (Long, DailyPlanItem?) -> Unit,
+    onTaskClick: (String, DailyPlanItem?) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
     onNewTagClick: () -> Unit = {},
     onOpenReflect: (LocalDate) -> Unit = {},
@@ -268,7 +268,7 @@ internal fun CalendarScreen(
 private fun SelectedDateContent(
     content: SelectedCalendarDateContent,
     onDailyPlanItemClick: (DailyPlanItem, LocalDate) -> Unit,
-    onTaskClick: (Long, DailyPlanItem?) -> Unit,
+    onTaskClick: (String, DailyPlanItem?) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
     modifier: Modifier = Modifier
 ) {

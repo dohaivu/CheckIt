@@ -69,7 +69,7 @@ internal fun JournalEntryEditorSheet(
     onPromptCleared: () -> Unit,
     onDiscardDraft: () -> Unit,
     onMoodToggle: (String) -> Unit,
-    onTagToggle: (Long) -> Unit,
+    onTagToggle: (String) -> Unit,
     onNewTagClick: () -> Unit,
     onSave: () -> Unit,
     onDelete: () -> Unit

@@ -110,7 +110,7 @@ internal class JournalController(
         val next = if (mood in it.moods) it.moods - mood else it.moods + mood
         it.copy(moods = next)
     }
-    fun toggleJournalEditorTag(tagId: Long) = updateEditor {
+    fun toggleJournalEditorTag(tagId: String) = updateEditor {
         val next = if (tagId in it.selectedTagIds) it.selectedTagIds - tagId else it.selectedTagIds + tagId
         it.copy(selectedTagIds = next)
     }
@@ -149,7 +149,7 @@ internal class JournalController(
         }
     }
 
-    fun deleteJournalEntry(entryId: Long) {
+    fun deleteJournalEntry(entryId: String) {
         scope.launch {
             deps.deleteJournalEntry(entryId)
             state.update { it.copy(journalEditor = null, journalDraft = null) }

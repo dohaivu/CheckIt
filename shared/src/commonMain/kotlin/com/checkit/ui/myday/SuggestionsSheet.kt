@@ -62,7 +62,7 @@ internal fun SuggestionsSheet(
     onDismiss: () -> Unit,
     onTaskClick: (TaskItem) -> Unit,
     onAddTask: (TaskItem) -> Unit,
-    onQuickAdd: (String, List<Long>) -> Unit,
+    onQuickAdd: (String, List<String>) -> Unit,
     onCarryLeftover: (DailyPlanItem) -> Unit,
     onCarryAllLeftovers: () -> Unit,
     onCreateTask: () -> Unit,
@@ -72,7 +72,7 @@ internal fun SuggestionsSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     var quickAddText by remember { mutableStateOf("") }
-    var selectedTagIds by remember { mutableStateOf(emptySet<Long>()) }
+    var selectedTagIds by remember { mutableStateOf(emptySet<String>()) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,

@@ -118,7 +118,7 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
         dataStore.edit { it[KEY_AUTO_MY_DAY_LAST_RUN_EPOCH_DAY] = epochDay }
     }
 
-    suspend fun setLastFabAction(type: String, id: Long?) {
+    suspend fun setLastFabAction(type: String, id: String?) {
         dataStore.edit { prefs ->
             prefs[KEY_LAST_FAB_ACTION_TYPE] = type
             if (id != null) {
@@ -129,7 +129,7 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
         }
     }
 
-    suspend fun setLastNestedDocumentId(id: Long?) {
+    suspend fun setLastNestedDocumentId(id: String?) {
         dataStore.edit { prefs ->
             if (id != null) {
                 prefs[KEY_LAST_NESTED_DOCUMENT_ID] = id
@@ -139,7 +139,7 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
         }
     }
 
-    suspend fun setLastSelectedListId(id: Long?) {
+    suspend fun setLastSelectedListId(id: String?) {
         dataStore.edit { prefs ->
             if (id != null) {
                 prefs[KEY_LAST_SELECTED_LIST_ID] = id
@@ -196,9 +196,9 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
         val KEY_CHECK_IN_REMINDER_LAST_SHOWN = longPreferencesKey("check_in_reminder_last_shown_at_millis")
         val KEY_AUTO_MY_DAY_LAST_RUN_EPOCH_DAY = intPreferencesKey("auto_my_day_last_run_epoch_day")
         val KEY_LAST_FAB_ACTION_TYPE = stringPreferencesKey("last_fab_action_type")
-        val KEY_LAST_FAB_ACTION_ID = longPreferencesKey("last_fab_action_id")
-        val KEY_LAST_NESTED_DOCUMENT_ID = longPreferencesKey("last_nested_document_id")
-        val KEY_LAST_SELECTED_LIST_ID = longPreferencesKey("last_selected_list_id")
+        val KEY_LAST_FAB_ACTION_ID = stringPreferencesKey("last_fab_action_id")
+        val KEY_LAST_NESTED_DOCUMENT_ID = stringPreferencesKey("last_nested_document_id")
+        val KEY_LAST_SELECTED_LIST_ID = stringPreferencesKey("last_selected_list_id")
         val KEY_RECENT_LABELS = stringPreferencesKey("recent_labels")
         val KEY_BACKUP_FOLDER_URI = stringPreferencesKey("backup_folder_uri")
         val KEY_BACKUP_FOLDER_NAME = stringPreferencesKey("backup_folder_name")

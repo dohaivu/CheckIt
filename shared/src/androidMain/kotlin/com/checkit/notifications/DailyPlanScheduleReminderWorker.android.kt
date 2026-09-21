@@ -17,7 +17,7 @@ class DailyPlanScheduleReminderWorker(
 
     override suspend fun doWork(): Result {
         return try {
-            val itemId = inputData.getLong(InputItemId, -1L).takeIf { it > 0L } ?: return Result.failure()
+            val itemId = inputData.getString(InputItemId)?.takeIf { it.isNotEmpty() } ?: return Result.failure()
             val dateEpochDays = inputData.getInt(InputDateEpochDays, Int.MIN_VALUE).takeIf { it != Int.MIN_VALUE }
                 ?: return Result.failure()
             val timeMinutes = inputData.getInt(InputTimeMinutes, -1).takeIf { it in 0 until MinutesPerDay }

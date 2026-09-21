@@ -34,7 +34,7 @@ data class NestedMetricSummary(
  * A single nested-lists document. Holds one unlimited-depth item tree.
  */
 data class NestedDocument(
-    val id: Long = 0L,
+    val id: String = "",
     val title: String,
     val createdAtMillis: Long,
     val updatedAtMillis: Long
@@ -45,9 +45,9 @@ data class NestedDocument(
  * [parentId] null means the item sits at the document root level.
  */
 data class NestedListItem(
-    val id: Long = 0L,
-    val documentId: Long,
-    val parentId: Long? = null,
+    val id: String = "",
+    val documentId: String,
+    val parentId: String? = null,
     val position: Int,
     val text: String,
     val note: String? = null,
@@ -85,14 +85,14 @@ data class NestedDocumentTree(
     val rootNodes: List<NestedItemNode>
 ) {
     /** Lazily-built indexes keep repeated editor actions from rescanning the tree. */
-    val nodeById: Map<Long, NestedItemNode> by lazy { indexNestedNodes(rootNodes) }
-    val itemById: Map<Long, NestedListItem> by lazy { nodeById.mapValues { it.value.item } }
+    val nodeById: Map<String, NestedItemNode> by lazy { indexNestedNodes(rootNodes) }
+    val itemById: Map<String, NestedListItem> by lazy { nodeById.mapValues { it.value.item } }
     val flatItems: List<NestedListItem> by lazy { flattenNestedNodes(rootNodes) }
-    val metricSummaryById: Map<Long, NestedMetricSummary> by lazy { calculateNestedMetricSummaries(rootNodes) }
+    val metricSummaryById: Map<String, NestedMetricSummary> by lazy { calculateNestedMetricSummaries(rootNodes) }
 }
 
-fun calculateNestedMetricSummaries(roots: List<NestedItemNode>): Map<Long, NestedMetricSummary> {
-    val summaries = HashMap<Long, NestedMetricSummary>()
+fun calculateNestedMetricSummaries(roots: List<NestedItemNode>): Map<String, NestedMetricSummary> {
+    val summaries = HashMap<String, NestedMetricSummary>()
     val stack = ArrayDeque<Pair<NestedItemNode, Boolean>>()
     roots.asReversed().forEach { stack.addLast(it to false) }
     while (stack.isNotEmpty()) {
@@ -127,7 +127,7 @@ fun filterNestedTree(
     end: LocalDate?,
     query: String = "",
     hideChecked: Boolean = false,
-    selectedTagIds: Set<Long> = emptySet()
+    selectedTagIds: Set<String> = emptySet()
 ): List<NestedItemNode> {
     return roots.mapNotNull { filterNestedNode(it, start, end, query, hideChecked, selectedTagIds) }
 }
@@ -138,7 +138,7 @@ private fun filterNestedNode(
     end: LocalDate?,
     query: String,
     hideChecked: Boolean,
-    selectedTagIds: Set<Long> = emptySet(),
+    selectedTagIds: Set<String> = emptySet(),
     forceKeep: Boolean = false
 ): NestedItemNode? {
     val item = node.item
@@ -199,9 +199,9 @@ private fun filterNestedNode(
  */
 fun computeNestedInsertPosition(
     items: List<NestedListItem>,
-    anchorId: Long?,
-    parentId: Long?
-): Pair<Long?, Int?> {
+    anchorId: String?,
+    parentId: String?
+): Pair<String?, Int?> {
     val anchor = items.firstOrNull { it.id == anchorId }
     val isAddingChild = parentId != null &&
         (anchor?.id == parentId || anchor?.parentId != parentId)
@@ -218,8 +218,8 @@ fun computeNestedInsertPosition(
  * Sibling gaps in [position] are acceptable; relative order is what matters.
  */
 data class NestedItemMove(
-    val itemId: Long,
-    val parentId: Long?,
+    val itemId: String,
+    val parentId: String?,
     val position: Int
 )
 
@@ -234,7 +234,7 @@ fun buildNestedTree(items: List<NestedListItem>): List<NestedItemNode> {
     val sortedChildren = childrenByParent.mapValues { (_, children) ->
         children.sortedWith(compareBy<NestedListItem> { it.position }.thenBy { it.id })
     }
-    val nodesById = HashMap<Long, NestedItemNode>(items.size)
+    val nodesById = HashMap<String, NestedItemNode>(items.size)
     val roots = sortedChildren[null].orEmpty()
     val stack = ArrayDeque<Pair<NestedListItem, Boolean>>()
     roots.asReversed().forEach { stack.addLast(it to false) }
@@ -255,8 +255,8 @@ fun buildNestedTree(items: List<NestedListItem>): List<NestedItemNode> {
     return roots.mapNotNull { root -> nodesById[root.id] }
 }
 
-private fun indexNestedNodes(roots: List<NestedItemNode>): Map<Long, NestedItemNode> {
-    val result = HashMap<Long, NestedItemNode>()
+private fun indexNestedNodes(roots: List<NestedItemNode>): Map<String, NestedItemNode> {
+    val result = HashMap<String, NestedItemNode>()
     val stack = ArrayDeque<NestedItemNode>()
     roots.asReversed().forEach(stack::addLast)
     while (stack.isNotEmpty()) {
@@ -291,8 +291,8 @@ private fun flattenNestedNodes(roots: List<NestedItemNode>): List<NestedListItem
  */
 fun planNestedMoves(
     items: List<NestedListItem>,
-    itemIds: Set<Long>,
-    targetParentId: Long?,
+    itemIds: Set<String>,
+    targetParentId: String?,
     targetIndex: Int
 ): List<NestedItemMove> {
     if (itemIds.isEmpty()) return emptyList()
@@ -301,9 +301,9 @@ fun planNestedMoves(
     val selected = itemIds.mapNotNull { itemsById[it] }
 
     val childrenByParent = items.groupBy { it.parentId }
-    fun descendantsOf(id: Long): Set<Long> {
-        val result = mutableSetOf<Long>()
-        val queue = ArrayDeque<Long>()
+    fun descendantsOf(id: String): Set<String> {
+        val result = mutableSetOf<String>()
+        val queue = ArrayDeque<String>()
         queue.add(id)
         while (queue.isNotEmpty()) {
             val current = queue.removeFirst()
@@ -340,10 +340,10 @@ fun planNestedMoves(
 /**
  * Returns the ids of [item]'s descendants (not including [item] itself).
  */
-fun nestedDescendantIds(items: List<NestedListItem>, itemId: Long): Set<Long> {
+fun nestedDescendantIds(items: List<NestedListItem>, itemId: String): Set<String> {
     val childrenByParent = items.groupBy { it.parentId }
-    val result = mutableSetOf<Long>()
-    val queue = ArrayDeque<Long>()
+    val result = mutableSetOf<String>()
+    val queue = ArrayDeque<String>()
     queue.add(itemId)
     while (queue.isNotEmpty()) {
         val current = queue.removeFirst()

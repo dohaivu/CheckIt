@@ -160,7 +160,7 @@ class TaskViewModel(
         }
     }
 
-    fun selectList(listId: Long) {
+    fun selectList(listId: String) {
         _uiState.update {
             it.copy(selection = TaskSelectionState(selectedListId = listId))
                 .refreshVisibleItems()
@@ -171,7 +171,7 @@ class TaskViewModel(
         }
     }
 
-    fun selectFilter(filterId: Long) {
+    fun selectFilter(filterId: String) {
         _uiState.update { state ->
             val nextFilterId = filterId.takeUnless { state.options.selectedFilterId == filterId }
             state.copy(options = state.options.copy(selectedFilterId = nextFilterId))
@@ -180,7 +180,7 @@ class TaskViewModel(
         }
     }
 
-    fun selectTag(tagId: Long) {
+    fun selectTag(tagId: String) {
         _uiState.update {
             it.copy(selection = TaskSelectionState(selectedTagId = tagId))
                 .refreshVisibleItems()
@@ -188,7 +188,7 @@ class TaskViewModel(
         }
     }
 
-    fun toggleTagFilter(tagId: Long) {
+    fun toggleTagFilter(tagId: String) {
         _uiState.update { state ->
             state.copy(options = state.options.copy(selectedTagIds = state.options.selectedTagIds.toggle(tagId)))
                 .refreshVisibleItems()
@@ -312,7 +312,7 @@ class TaskViewModel(
         }
     }
 
-    private suspend fun persistVisibleListOrder(listId: Long, nextVisibleItems: List<TaskListEntry>) {
+    private suspend fun persistVisibleListOrder(listId: String, nextVisibleItems: List<TaskListEntry>) {
         nextVisibleItems.forEachIndexed { index, entry ->
             val newSectionId = findSectionIdForIndex(nextVisibleItems, index)
             val isPinned = isIndexInPinnedArea(nextVisibleItems, index)
@@ -341,8 +341,8 @@ class TaskViewModel(
         return inPinnedArea
     }
 
-    private fun findSectionIdForIndex(entries: List<TaskListEntry>, index: Int): Long? {
-        var lastSectionId: Long? = null
+    private fun findSectionIdForIndex(entries: List<TaskListEntry>, index: Int): String? {
+        var lastSectionId: String? = null
         for (i in 0..index) {
             val entry = entries[i]
             if (entry is TaskListEntry.SectionHeader) {
@@ -372,11 +372,11 @@ class TaskViewModel(
     }
 
     fun openNewTaskFromDailyPlan(
-        planItemId: Long,
+        planItemId: String,
         title: String,
         note: String,
         label: String?,
-        tagIds: Set<Long>
+        tagIds: Set<String>
     ) {
         val listId = editableListId()
         cancelPendingTaskTextSave()
@@ -450,7 +450,7 @@ class TaskViewModel(
         }
     }
 
-    fun openTask(taskId: Long, dailyPlan: DailyPlanItem? = null) {
+    fun openTask(taskId: String, dailyPlan: DailyPlanItem? = null) {
         viewModelScope.launch {
             val task = getTask(taskId) ?: return@launch
             openTask(task, dailyPlan)
@@ -484,7 +484,7 @@ class TaskViewModel(
         }
     }
 
-    fun openNote(noteId: Long) {
+    fun openNote(noteId: String) {
         viewModelScope.launch {
             val note = getNote(noteId) ?: return@launch
             openNote(note)
@@ -529,7 +529,7 @@ class TaskViewModel(
     }
 
     fun updateTaskName(name: String) = updateTaskForm(saveImmediately = false) { it.copy(name = name, error = null) }
-    fun updateTaskListId(listId: Long) = updateTaskForm { it.copy(listId = listId) }
+    fun updateTaskListId(listId: String) = updateTaskForm { it.copy(listId = listId) }
     fun updateTaskDescription(description: String) = updateTaskForm(saveImmediately = false) { it.copy(description = description) }
     fun updateTaskDoDate(doDate: LocalDate?) = updateTaskForm {
         it.copy(
@@ -584,7 +584,7 @@ class TaskViewModel(
             persistTaskInPlace(nextForm)
         }
     }
-    fun toggleTaskTag(tagId: Long) {
+    fun toggleTaskTag(tagId: String) {
         val previousForm = _uiState.value.editor as? TaskEditorState.TaskForm ?: return
         val nextTagIds = previousForm.selectedTagIds.toggle(tagId)
         updateTaskForm { it.copy(selectedTagIds = nextTagIds) }
@@ -596,10 +596,10 @@ class TaskViewModel(
     }
     fun updateNoteTitle(title: String) = updateNoteForm { it.copy(title = title, error = null) }
     fun updateNoteContent(content: String) = updateNoteForm { it.copy(content = content, error = null) }
-    fun updateNoteListId(listId: Long) = updateNoteForm { it.copy(listId = listId) }
+    fun updateNoteListId(listId: String) = updateNoteForm { it.copy(listId = listId) }
     fun updateNoteDate(date: LocalDate?) = updateNoteForm { it.copy(date = date) }
     fun updateNoteStartTime(timeMinutes: Int?) = updateNoteForm { it.copy(startTimeMinutes = timeMinutes) }
-    fun toggleNoteTag(tagId: Long) = updateNoteForm { form ->
+    fun toggleNoteTag(tagId: String) = updateNoteForm { form ->
         form.copy(selectedTagIds = form.selectedTagIds.toggle(tagId))
     }
 
@@ -754,7 +754,7 @@ class TaskViewModel(
         }
     }
 
-    fun removeDailyPlanItemFromEditor(itemId: Long) {
+    fun removeDailyPlanItemFromEditor(itemId: String) {
         _uiState.update { state ->
             val form = state.editor as? TaskEditorState.TaskForm ?: return@update state
             if (form.dailyPlanItem?.id != itemId) return@update state
@@ -1012,7 +1012,7 @@ class TaskViewModel(
         if (form.mode == EditorMode.Edit) saveTask(form)
     }
 
-    private fun editableListId(): Long? =
+    private fun editableListId(): String? =
         _uiState.value.selectedListId ?: _uiState.value.board.lists.firstOrNull()?.id
 
     private fun sendEvent(event: UiEvent) {

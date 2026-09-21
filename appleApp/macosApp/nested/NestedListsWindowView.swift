@@ -17,7 +17,7 @@ import Shared
 
 struct NestedListsWindowView: View {
     @StateObject private var state = NestedEditorState()
-    @FocusState private var focusedRow: Int64?
+    @FocusState private var focusedRow: String?
     @FocusState private var draftFocused: Bool
 
     @State private var showNewDoc = false
@@ -100,9 +100,9 @@ struct NestedListsWindowView: View {
 
     // MARK: - Sidebar
 
-    private var docSelection: Binding<Int64?> {
+    private var docSelection: Binding<String?> {
         Binding(
-            get: { state.selectedDocId >= 0 ? state.selectedDocId : nil },
+            get: { state.selectedDocId.isEmpty ? nil : state.selectedDocId },
             set: { if let id = $0 { state.openDocument(id: id) } }
         )
     }
@@ -140,7 +140,7 @@ struct NestedListsWindowView: View {
 
     @ViewBuilder
     private var detail: some View {
-        if state.selectedDocId < 0 {
+        if state.selectedDocId.isEmpty {
             VStack(spacing: 8) {
                 Text("Select a document").font(.headline)
                 Text("Pick one from the sidebar or create a new document.")
@@ -277,7 +277,7 @@ struct NestedListsWindowView: View {
         return ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    if state.draft?.anchorId == -1 {
+                    if state.draft?.anchorId.isEmpty == true {
                         draftRow(depth: 0)
                     }
                     if rows.isEmpty, state.draft == nil {

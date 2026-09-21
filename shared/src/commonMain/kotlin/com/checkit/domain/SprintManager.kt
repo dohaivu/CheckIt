@@ -17,8 +17,8 @@ sealed interface SprintState {
     data object Idle : SprintState
 
     data class Running(
-        val taskId: Long?,
-        val dailyPlanItemId: Long?,
+        val taskId: String?,
+        val dailyPlanItemId: String?,
         val description: String,
         val totalSeconds: Int,
         val remainingSeconds: Int,
@@ -27,7 +27,7 @@ sealed interface SprintState {
         val endsAtEpochMillis: Long,
         val isPomodoro: Boolean = false,
         val isBreak: Boolean = false,
-        val tagIds: List<Long> = emptyList()
+        val tagIds: List<String> = emptyList()
     ) : SprintState
 
     data class Paused(
@@ -36,15 +36,15 @@ sealed interface SprintState {
     ) : SprintState
 
     data class Finished(
-        val taskId: Long?,
-        val dailyPlanItemId: Long?,
+        val taskId: String?,
+        val dailyPlanItemId: String?,
         val description: String,
         val durationSeconds: Int,
         val elapsedSeconds: Int,
         val startTimeEpochMillis: Long,
         val isPomodoro: Boolean,
         val isBreak: Boolean = false,
-        val tagIds: List<Long> = emptyList()
+        val tagIds: List<String> = emptyList()
     ) : SprintState
 }
 
@@ -63,13 +63,13 @@ class SprintManager(
      * Returns false if a sprint is already running or paused (does not overwrite).
      */
     fun startSprint(
-        taskId: Long?,
-        dailyPlanItemId: Long?,
+        taskId: String?,
+        dailyPlanItemId: String?,
         description: String,
         durationSeconds: Int = 300,
         isPomodoro: Boolean = false,
         isBreak: Boolean = false,
-        tagIds: List<Long> = emptyList(),
+        tagIds: List<String> = emptyList(),
         startTimeEpochMillis: Long? = null
     ): Boolean {
         when (_state.value) {

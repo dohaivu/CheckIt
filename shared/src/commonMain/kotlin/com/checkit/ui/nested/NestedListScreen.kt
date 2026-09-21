@@ -157,10 +157,10 @@ internal fun NestedListScreen(
     state: NestedEditorState.Active,
     viewModel: NestedListsViewModel,
     modifier: Modifier = Modifier,
-    onAddToDailyPlan: (title: String, tagIds: List<Long>, nestedListItemId: Long?) -> Unit = { _, _, _ -> },
+    onAddToDailyPlan: (title: String, tagIds: List<String>, nestedListItemId: String?) -> Unit = { _, _, _ -> },
     onCopyToTask: (title: String, note: String?, subtaskTexts: List<String>) -> Unit = { _, _, _ -> }
 ) {
-    var detailsItemId by remember { mutableStateOf<Long?>(null) }
+    var detailsItemId by remember { mutableStateOf<String?>(null) }
     val tree = state.tree
     val focusedNode = state.focusedItem
     val unfilteredRoots = remember(focusedNode, tree.rootNodes) {
@@ -267,11 +267,11 @@ internal fun NestedListScreen(
             val density = androidx.compose.ui.platform.LocalDensity.current
             var drag by remember { mutableStateOf<DragDropState?>(null) }
 
-            val draggedDescendantIds = remember<Set<Long>>(drag?.itemId, state.tree) {
+            val draggedDescendantIds = remember<Set<String>>(drag?.itemId, state.tree) {
                 val id = drag?.itemId
                 val node = if (id != null) state.tree.nodeById[id] else null
                 if (node != null && node.hasChildren) {
-                    val result = HashSet<Long>()
+                    val result = HashSet<String>()
                     val stack = ArrayDeque<NestedItemNode>()
                     stack.addAll(node.children)
                     while (stack.isNotEmpty()) {
@@ -581,7 +581,7 @@ private fun NestedFormattingBottomBar(
     onPriorityChange: (TaskPriority) -> Unit,
     onDateRangeChange: (kotlinx.datetime.LocalDate?, kotlinx.datetime.LocalDate?) -> Unit,
     availableTags: List<com.checkit.domain.TagItem>,
-    onTagsChange: (List<Long>) -> Unit,
+    onTagsChange: (List<String>) -> Unit,
     onToggleNote: () -> Unit,
     onToggleCheckbox: () -> Unit,
     onSetChecked: (Boolean) -> Unit
@@ -1511,7 +1511,7 @@ private data class Breadcrumb(
     val label: String,
     val depth: Int,
     val isRoot: Boolean,
-    val itemId: Long? = null
+    val itemId: String? = null
 )
 
 private fun buildBreadcrumbs(state: NestedEditorState.Active, roots: List<NestedItemNode>): List<Breadcrumb> {
@@ -1533,7 +1533,7 @@ private fun buildBreadcrumbs(state: NestedEditorState.Active, roots: List<Nested
 }
 
 /** Returns the node chain from a root down to [id], or null if not found. */
-private fun findAncestorChain(nodes: List<NestedItemNode>, id: Long): List<NestedItemNode>? {
+private fun findAncestorChain(nodes: List<NestedItemNode>, id: String): List<NestedItemNode>? {
     for (node in nodes) {
         if (node.item.id == id) return listOf(node)
         findAncestorChain(node.children, id)?.let { return listOf(node) + it }
@@ -1548,11 +1548,11 @@ private fun NestedListFilterBar(
     hideChecked: Boolean,
     isActive: Boolean,
     availableTags: List<TagItem>,
-    selectedTagIds: Set<Long>,
+    selectedTagIds: Set<String>,
     onFocusChange: (FocusPeriod) -> Unit,
     onQueryChange: (String) -> Unit,
     onHideCheckedChange: (Boolean) -> Unit,
-    onTagToggle: (Long) -> Unit,
+    onTagToggle: (String) -> Unit,
     onReset: () -> Unit,
     onPreviousPeriod: () -> Unit,
     onNextPeriod: () -> Unit,
@@ -1667,7 +1667,7 @@ private fun NestedListFilterBar(
 @Composable
 private fun BreadcrumbBar(
     breadcrumbs: List<Breadcrumb>,
-    onCrumbClick: (Long) -> Unit,
+    onCrumbClick: (String) -> Unit,
     onRootClick: () -> Unit
 ) {
     val scrollState = rememberScrollState()
@@ -2213,25 +2213,25 @@ private data class NestedTraversalEntry(
 
 /** Mutable state for an in-progress row drag; lives across gesture callbacks. */
 private class DragDropState(
-    val itemId: Long,
+    val itemId: String,
     val initialDepth: Int
 ) {
     // Observable so graphicsLayer/composition react to gesture mutations.
     var pointerViewportY by mutableStateOf(0)
     var totalDragY by mutableStateOf(0f)
     var totalDragX by mutableStateOf(0f)
-    var targetParentId by mutableStateOf<Long?>(null)
+    var targetParentId by mutableStateOf<String?>(null)
     var targetIndex by mutableStateOf(0)
-    var indicatorRowId by mutableStateOf<Long?>(null)
+    var indicatorRowId by mutableStateOf<String?>(null)
     var indicatorDepth by mutableStateOf(0)
     var below by mutableStateOf(false)
     var hasResolved by mutableStateOf(false)
 }
 
 private data class ResolvedDropTarget(
-    val parentId: Long?,
+    val parentId: String?,
     val index: Int,
-    val rowId: Long,
+    val rowId: String,
     val below: Boolean,
     val depth: Int
 )
@@ -2249,7 +2249,7 @@ private fun resolveDropTarget(
     density: androidx.compose.ui.unit.Density
 ): ResolvedDropTarget? {
     if (rows.isEmpty()) return null
-    val entries = layoutInfo.visibleItemsInfo.filter { it.key is Long }
+    val entries = layoutInfo.visibleItemsInfo.filter { it.key is String }
     if (entries.isEmpty()) return null
 
     val pointerY = drag.pointerViewportY
@@ -2259,7 +2259,7 @@ private fun resolveDropTarget(
         else entries.minByOrNull { kotlin.math.abs((it.offset + it.size / 2) - pointerY) }
         ?: return null
 
-    val hoveredKey = hovered.key as? Long ?: return null
+    val hoveredKey = hovered.key as? String ?: return null
     val hoveredRowIdx = rows.indexOfFirst { it.node.item.id == hoveredKey }
     if (hoveredRowIdx < 0) return null
     val hoveredRow = rows[hoveredRowIdx]
@@ -2287,12 +2287,12 @@ private fun resolveDropTarget(
     val depthDelta = (drag.totalDragX / stepPx).toInt()
     val targetDepth = (baseDepth + depthDelta).coerceIn(effectiveMinDepth, maxDepth)
 
-    fun siblingsOf(parentId: Long?): List<NestedListItem> {
+    fun siblingsOf(parentId: String?): List<NestedListItem> {
         val nodes = if (parentId == null) tree.rootNodes else tree.nodeById[parentId]?.children.orEmpty()
         return nodes.mapNotNull { if (it.item.id != drag.itemId) it.item else null }
     }
 
-    val targetParentId: Long?
+    val targetParentId: String?
     val targetIndex: Int
 
     if (aboveRow == null) {
@@ -2323,7 +2323,7 @@ private fun resolveDropTarget(
         }
     }
 
-    val displayRowId: Long
+    val displayRowId: String
     val displayBelow: Boolean
     if (belowRow != null) {
         displayRowId = belowRow.node.item.id

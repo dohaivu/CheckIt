@@ -13,7 +13,7 @@ import kotlin.time.Clock
 class UpsertDailyPlanItemUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(editor: DailyPlanItemEditorState): Result<Long> {
+    suspend operator fun invoke(editor: DailyPlanItemEditorState): Result<String> {
         val title = editor.title.trim()
         val note = editor.note.trim()
         val source = editor.saveSource()

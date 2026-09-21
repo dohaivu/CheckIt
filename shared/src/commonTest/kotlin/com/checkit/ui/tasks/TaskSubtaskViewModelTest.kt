@@ -104,12 +104,12 @@ class TaskSubtaskViewModelTest {
     }
 
     private fun taskWithSubtasks() = TaskItem(
-        id = 42L,
+        id = "42",
         list = null,
         name = "Ship",
         subtasks = listOf(
-            SubTaskItem(id = 10L, taskId = 42L, name = "Draft", isCompleted = false, sortOrder = 0),
-            SubTaskItem(id = 11L, taskId = 42L, name = "Send", isCompleted = true, sortOrder = 1)
+            SubTaskItem(id = "10", taskId = "42", name = "Draft", isCompleted = false, sortOrder = 0),
+            SubTaskItem(id = "11", taskId = "42", name = "Send", isCompleted = true, sortOrder = 1)
         ),
         sortOrder = 0,
         createdAtMillis = 0L,

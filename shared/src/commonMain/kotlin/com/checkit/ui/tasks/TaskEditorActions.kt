@@ -25,14 +25,14 @@ data class TaskEditorActions(
 
     data class Task(
         val onNameChange: (String) -> Unit,
-        val onListChange: (Long) -> Unit,
+        val onListChange: (String) -> Unit,
         val onDescriptionChange: (String) -> Unit,
         val onDoDateChange: (LocalDate?) -> Unit,
         val onTimeChange: (Int?, Int?) -> Unit,
         val onRepeatChange: (RepeatPreset) -> Unit,
         val onPriorityChange: (TaskPriority) -> Unit,
         val onReminderToggle: (Int) -> Unit,
-        val onTagToggle: (Long) -> Unit,
+        val onTagToggle: (String) -> Unit,
         val onLabelChange: (String) -> Unit
     )
 
@@ -42,7 +42,7 @@ data class TaskEditorActions(
         val onNoteChange: (String) -> Unit,
         val onLabelChange: (String) -> Unit,
         val onStatus: () -> Unit,
-        val onDelete: (Long) -> Unit,
+        val onDelete: (String) -> Unit,
         val onStartSprint: (DailyPlanItem) -> Unit,
         val onStartOngoingSprint: (DailyPlanItem) -> Unit
     )
@@ -58,10 +58,10 @@ data class TaskEditorActions(
     data class Note(
         val onTitleChange: (String) -> Unit,
         val onContentChange: (String) -> Unit,
-        val onListChange: (Long) -> Unit,
+        val onListChange: (String) -> Unit,
         val onDateChange: (LocalDate?) -> Unit,
         val onStartTimeChange: (Int?) -> Unit,
-        val onTagToggle: (Long) -> Unit,
+        val onTagToggle: (String) -> Unit,
         val onLabelChange: (String) -> Unit
     )
 }

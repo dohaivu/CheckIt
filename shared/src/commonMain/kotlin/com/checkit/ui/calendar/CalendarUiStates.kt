@@ -32,7 +32,7 @@ data class CalendarUiState(
     /** Single-day plan fetched on demand when a past date is selected. */
     val selectedDayPlan: DailyPlan? = null,
     val calendarDisplayMode: CalendarDisplayMode = CalendarDisplayMode.Week,
-    val selectedTagIds: Set<Long> = emptySet(),
+    val selectedTagIds: Set<String> = emptySet(),
     val isMonthlyWinsExpanded: Boolean = false
     ) {
     val monthlyWins: List<Triple<LocalDate, AnnotatedString, Float>> by lazy {
@@ -151,7 +151,7 @@ data class CalendarUiState(
     fun dailyPlanForDate(date: LocalDate): DailyPlan? = dailyPlanByDate[date]
 }
 
-private fun DailyPlanItem.hasAnyTag(tagIds: Set<Long>): Boolean =
+private fun DailyPlanItem.hasAnyTag(tagIds: Set<String>): Boolean =
     tags.any { it.id in tagIds }
 
 data class CalendarDateMarkers(

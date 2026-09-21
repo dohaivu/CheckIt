@@ -77,15 +77,15 @@ class FakeSettingsRepository(initialSettings: UserSettings = UserSettings()) : S
         settingsFlow.update { it.copy(autoMyDayLastRunEpochDay = epochDay) }
     }
 
-    override suspend fun setLastFabAction(type: String, id: Long?) {
+    override suspend fun setLastFabAction(type: String, id: String?) {
         settingsFlow.update { it.copy(lastFabActionType = type, lastFabActionId = id) }
     }
 
-    override suspend fun setLastNestedDocumentId(id: Long?) {
+    override suspend fun setLastNestedDocumentId(id: String?) {
         settingsFlow.update { it.copy(lastNestedDocumentId = id) }
     }
 
-    override suspend fun setLastSelectedListId(id: Long?) {
+    override suspend fun setLastSelectedListId(id: String?) {
         settingsFlow.update { it.copy(lastSelectedListId = id) }
     }
 

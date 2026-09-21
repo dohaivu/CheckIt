@@ -30,7 +30,7 @@ class DailyPlanScheduleReminderPolicy(
 
     suspend fun shouldShowReminder(
         dateEpochDays: Int,
-        itemId: Long,
+        itemId: String,
         scheduledTimeMinutes: Int
     ): Boolean {
         val settings = settingsRepository.settings.first()

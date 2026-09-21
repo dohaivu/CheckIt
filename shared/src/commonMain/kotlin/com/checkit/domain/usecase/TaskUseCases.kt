@@ -36,13 +36,13 @@ class ObserveTaskBoardUseCase(
 class GetTaskUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(taskId: Long): TaskItem? = repository.getTask(taskId)
+    suspend operator fun invoke(taskId: String): TaskItem? = repository.getTask(taskId)
 }
 
 class GetNoteUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(noteId: Long): NoteItem? = repository.getNote(noteId)
+    suspend operator fun invoke(noteId: String): NoteItem? = repository.getNote(noteId)
 }
 
 class ObserveTasksForDateUseCase(
@@ -87,7 +87,7 @@ class ObserveTagsUseCase(
 class GetDailyPlanItemUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(itemId: Long): DailyPlanItem? = repository.getDailyPlanItem(itemId)
+    suspend operator fun invoke(itemId: String): DailyPlanItem? = repository.getDailyPlanItem(itemId)
 }
 
 /**
@@ -146,125 +146,125 @@ private fun TaskItem.qualifiesForAddToMyDay(today: LocalDate): Boolean =
 class ObserveTagUsageCountsUseCase(
     private val repository: CheckItRepository
 ) {
-    operator fun invoke(): Flow<Map<Long, Int>> = repository.observeTagUsageCounts()
+    operator fun invoke(): Flow<Map<String, Int>> = repository.observeTagUsageCounts()
 }
 
 class AddTagUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(input: TagWriteInput): Long = repository.addTag(input)
+    suspend operator fun invoke(input: TagWriteInput): String = repository.addTag(input)
 }
 
 class UpdateTagUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(tagId: Long, input: TagWriteInput) =
+    suspend operator fun invoke(tagId: String, input: TagWriteInput) =
         repository.updateTag(tagId, input)
 }
 
 class UpdateTagSortOrderUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(tagId: Long, sortOrder: Int) =
+    suspend operator fun invoke(tagId: String, sortOrder: Int) =
         repository.updateTagSortOrder(tagId, sortOrder)
 }
 
 class DeleteTagUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(tagId: Long) = repository.deleteTag(tagId)
+    suspend operator fun invoke(tagId: String) = repository.deleteTag(tagId)
 }
 
 class IsTagNameTakenUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(name: String, excludeTagId: Long? = null): Boolean =
+    suspend operator fun invoke(name: String, excludeTagId: String? = null): Boolean =
         repository.isTagNameTaken(name, excludeTagId)
 }
 
 class AddTaskUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(input: TaskWriteInput): Long = repository.addTask(input)
+    suspend operator fun invoke(input: TaskWriteInput): String = repository.addTask(input)
 }
 
 class UpdateTaskUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(taskId: Long, input: TaskWriteInput) = repository.updateTask(taskId, input)
+    suspend operator fun invoke(taskId: String, input: TaskWriteInput) = repository.updateTask(taskId, input)
 }
 
 class DeleteTaskUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(taskId: Long) = repository.trashTask(taskId)
+    suspend operator fun invoke(taskId: String) = repository.trashTask(taskId)
 }
 
 class RestoreTaskUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(taskId: Long) = repository.restoreTask(taskId)
+    suspend operator fun invoke(taskId: String) = repository.restoreTask(taskId)
 }
 
 class CompleteTaskUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(taskId: Long) = repository.completeTask(taskId)
+    suspend operator fun invoke(taskId: String) = repository.completeTask(taskId)
 }
 
 class UpdateTaskStatusUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(taskId: Long, status: TaskStatus) = repository.updateTaskStatus(taskId, status)
+    suspend operator fun invoke(taskId: String, status: TaskStatus) = repository.updateTaskStatus(taskId, status)
 }
 
 class AddNoteUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(input: NoteWriteInput): Long = repository.addNote(input)
+    suspend operator fun invoke(input: NoteWriteInput): String = repository.addNote(input)
 }
 
 class UpdateNoteUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(noteId: Long, input: NoteWriteInput) = repository.updateNote(noteId, input)
+    suspend operator fun invoke(noteId: String, input: NoteWriteInput) = repository.updateNote(noteId, input)
 }
 
 class CompleteNoteUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(noteId: Long) = repository.completeNote(noteId)
+    suspend operator fun invoke(noteId: String) = repository.completeNote(noteId)
 }
 
 class UpdateNoteStatusUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(noteId: Long, status: TaskStatus) = repository.updateNoteStatus(noteId, status)
+    suspend operator fun invoke(noteId: String, status: TaskStatus) = repository.updateNoteStatus(noteId, status)
 }
 
 class DeleteNoteUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(noteId: Long) = repository.trashNote(noteId)
+    suspend operator fun invoke(noteId: String) = repository.trashNote(noteId)
 }
 
 class RestoreNoteUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(noteId: Long) = repository.restoreNote(noteId)
+    suspend operator fun invoke(noteId: String) = repository.restoreNote(noteId)
 }
 
 class MoveTaskUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(taskId: Long, listId: Long, sectionId: Long?, sortOrder: Int, isPinned: Boolean) =
+    suspend operator fun invoke(taskId: String, listId: String, sectionId: String?, sortOrder: Int, isPinned: Boolean) =
         repository.moveTask(taskId, listId, sectionId, sortOrder, isPinned)
 }
 
 class MoveNoteUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(noteId: Long, listId: Long, sectionId: Long?, sortOrder: Int, isPinned: Boolean) =
+    suspend operator fun invoke(noteId: String, listId: String, sectionId: String?, sortOrder: Int, isPinned: Boolean) =
         repository.moveNote(noteId, listId, sectionId, sortOrder, isPinned)
 }
 
@@ -292,7 +292,7 @@ class SelectTaskBoardItemsUseCase {
 }
 
 sealed interface TaskBoardSelection {
-    data class ListSelection(val listId: Long) : TaskBoardSelection
+    data class ListSelection(val listId: String) : TaskBoardSelection
     data class FilterSelection(val filter: TaskFilter) : TaskBoardSelection
 }
 

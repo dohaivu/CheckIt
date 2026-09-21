@@ -11,7 +11,7 @@ import kotlin.test.assertNull
 
 class TaskUiStateViewsTest {
 
-    private fun todayFilter(id: Long = 1L) = TaskFilter(
+    private fun todayFilter(id: String = "1") = TaskFilter(
         id = id,
         name = "Today",
         icon = "Today",
@@ -20,7 +20,7 @@ class TaskUiStateViewsTest {
         sortOrder = 0
     )
 
-    private fun allFilter(id: Long = 0L) = TaskFilter(
+    private fun allFilter(id: String = "") = TaskFilter(
         id = id,
         name = "All",
         icon = "AllInclusive",
@@ -28,7 +28,7 @@ class TaskUiStateViewsTest {
         sortOrder = -1
     )
 
-    private fun highPriorityFilter(id: Long = 2L) = TaskFilter(
+    private fun highPriorityFilter(id: String = "2") = TaskFilter(
         id = id,
         name = "High priority",
         icon = "PriorityHigh",
@@ -51,7 +51,7 @@ class TaskUiStateViewsTest {
     @Test
     fun availableViewsExcludesTimelineForNonTodayFilter() {
         val board = TaskBoard(filters = listOf(highPriorityFilter()))
-        val state = TaskUiState(board = board, options = TaskViewOptionsState(selectedFilterId = 2L))
+        val state = TaskUiState(board = board, options = TaskViewOptionsState(selectedFilterId = "2"))
 
         assertNull(state.dayLimit)
         assertFalse(TaskWorkspaceView.Timeline in state.availableViews)
@@ -60,7 +60,7 @@ class TaskUiStateViewsTest {
     @Test
     fun availableViewsIncludesTimelineForTodayFilter() {
         val board = TaskBoard(filters = listOf(todayFilter(), highPriorityFilter()))
-        val state = TaskUiState(board = board, options = TaskViewOptionsState(selectedFilterId = 1L))
+        val state = TaskUiState(board = board, options = TaskViewOptionsState(selectedFilterId = "1"))
 
         assertEquals(1, state.dayLimit)
         assertEquals(
@@ -72,7 +72,7 @@ class TaskUiStateViewsTest {
     @Test
     fun availableViewsExcludesTimelineForAllFilter() {
         val board = TaskBoard(filters = listOf(allFilter(), todayFilter(), highPriorityFilter()))
-        val state = TaskUiState(board = board, options = TaskViewOptionsState(selectedFilterId = 0L))
+        val state = TaskUiState(board = board, options = TaskViewOptionsState(selectedFilterId = ""))
 
         assertNull(state.dayLimit)
         assertEquals(
@@ -84,7 +84,7 @@ class TaskUiStateViewsTest {
     @Test
     fun availableViewsExcludesTimelineForListOrTagSelection() {
         val board = TaskBoard(filters = listOf(todayFilter(), highPriorityFilter()))
-        val state = TaskUiState(board = board, selection = TaskSelectionState(selectedListId = 99L))
+        val state = TaskUiState(board = board, selection = TaskSelectionState(selectedListId = "99"))
 
         assertNull(state.dayLimit)
         assertFalse(TaskWorkspaceView.Timeline in state.availableViews)

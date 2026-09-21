@@ -32,9 +32,9 @@ import com.checkit.widget.ExtraTaskId
 class MainActivity : ComponentActivity() {
     private val NOTIFICATION_PERMISSION_REQUEST_CODE = 1001
     private val ALARM_PERMISSION_REQUEST_CODE = 1002
-    private val dailyPlanItemLaunchId = mutableStateOf<Long?>(null)
-    private val taskLaunchId = mutableStateOf<Long?>(null)
-    private val noteLaunchId = mutableStateOf<Long?>(null)
+    private val dailyPlanItemLaunchId = mutableStateOf<String?>(null)
+    private val taskLaunchId = mutableStateOf<String?>(null)
+    private val noteLaunchId = mutableStateOf<String?>(null)
     private val openMyDaySuggestionsLaunch = mutableStateOf(false)
     private val openDayCloseLaunch = mutableStateOf(false)
     private val openPlanAssistLaunch = mutableStateOf(false)
@@ -42,9 +42,9 @@ class MainActivity : ComponentActivity() {
     private val openNewJournalEntryLaunch = mutableStateOf(false)
     private val openQuickSprintLaunch = mutableStateOf(false)
     private val openNewTaskLaunch = mutableStateOf(false)
-    private val startSprintItemIdLaunch = mutableStateOf<Long?>(null)
+    private val startSprintItemIdLaunch = mutableStateOf<String?>(null)
     private val startQuickSprintLaunch = mutableStateOf(false)
-    private val quickSprintItemIdLaunch = mutableStateOf<Long?>(null)
+    private val quickSprintItemIdLaunch = mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -105,10 +105,10 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleLaunchIntent(intent: Intent) {
-        val dailyPlanItemId = intent.longExtraOrNull(ExtraDailyPlanItemId)
+        val dailyPlanItemId = intent.stringExtraOrNull(ExtraDailyPlanItemId)
         dailyPlanItemLaunchId.value = dailyPlanItemId
-        taskLaunchId.value = intent.longExtraOrNull(ExtraTaskId)
-        noteLaunchId.value = intent.longExtraOrNull(ExtraNoteId)
+        taskLaunchId.value = intent.stringExtraOrNull(ExtraTaskId)
+        noteLaunchId.value = intent.stringExtraOrNull(ExtraNoteId)
         openMyDaySuggestionsLaunch.value = intent.getBooleanExtra(ExtraOpenMyDaySuggestions, false)
         openDayCloseLaunch.value = intent.getBooleanExtra(ExtraOpenDayClose, false)
         openPlanAssistLaunch.value = intent.getBooleanExtra(ExtraOpenPlanAssist, false)
@@ -117,13 +117,13 @@ class MainActivity : ComponentActivity() {
         openQuickSprintLaunch.value = intent.getBooleanExtra(ExtraOpenQuickSprint, false)
         openNewTaskLaunch.value = intent.getBooleanExtra(ExtraOpenNewTask, false)
 
-        val startSprintItemId = intent.longExtraOrNull(ExtraStartSprintForItemId)
+        val startSprintItemId = intent.stringExtraOrNull(ExtraStartSprintForItemId)
         startSprintItemIdLaunch.value = startSprintItemId
 
         val startQuickSprint = intent.getBooleanExtra(ExtraStartQuickSprint, false)
         startQuickSprintLaunch.value = startQuickSprint
         quickSprintItemIdLaunch.value =
-            if (startQuickSprint) intent.longExtraOrNull(ExtraQuickSprintItemId) else null
+            if (startQuickSprint) intent.stringExtraOrNull(ExtraQuickSprintItemId) else null
 
         if (dailyPlanItemId != null || startSprintItemId != null) {
             val center = CheckItNotificationCenter(this)
@@ -152,7 +152,5 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private fun Intent.longExtraOrNull(name: String): Long? =
-    getLongExtra(name, MissingLaunchId).takeIf { it != MissingLaunchId }
-
-private const val MissingLaunchId = -1L
+private fun Intent.stringExtraOrNull(name: String): String? =
+    getStringExtra(name)?.takeIf { it.isNotEmpty() }

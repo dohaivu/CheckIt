@@ -39,10 +39,10 @@ import com.checkit.ui.theme.toColor
 internal fun TaskSidebar(
     lists: List<ListItem>,
     isBoardSelected: Boolean,
-    selectedListId: Long?,
+    selectedListId: String?,
     isTagsSelected: Boolean,
     onBoardClick: () -> Unit,
-    onListClick: (Long) -> Unit,
+    onListClick: (String) -> Unit,
     onTagsClick: () -> Unit,
     onAddListClick: () -> Unit,
     onEditListClick: (ListItem) -> Unit

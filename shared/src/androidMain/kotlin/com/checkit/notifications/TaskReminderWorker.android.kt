@@ -9,7 +9,7 @@ class TaskReminderWorker(
     workerParams: WorkerParameters
 ) : CoroutineWorker(appContext, workerParams) {
     override suspend fun doWork(): Result {
-        val taskId = inputData.getLong(InputTaskId, -1L).takeIf { it > 0L } ?: return Result.failure()
+        val taskId = inputData.getString(InputTaskId)?.takeIf { it.isNotEmpty() } ?: return Result.failure()
         val taskName = inputData.getString(InputTaskName).orEmpty()
         val label = inputData.getString(InputLabel).orEmpty()
 

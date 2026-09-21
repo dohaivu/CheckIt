@@ -14,19 +14,19 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class SmartScheduleDailyPlanUseCaseTest {
-    private val workTag = TagItem(id = 1, name = "Work", color = "#2563EB")
-    private val lifeTag = TagItem(id = 2, name = "Life", color = "#7C3AED")
+    private val workTag = TagItem(id = "1", name = "Work", color = "#2563EB")
+    private val lifeTag = TagItem(id = "2", name = "Life", color = "#7C3AED")
     private val today = LocalDate(2026, 6, 10)
 
     @Test
     fun schedulesFromModeOfCompletedHistory() = runTest {
         val repository = repositoryWithHistory(
             pastPlans = listOf(
-                plan(day(9), item(2, day(9), workTag, Done, 540, 600)),
-                plan(day(8), item(3, day(8), workTag, Done, 540, 600)),
-                plan(day(7), item(4, day(7), workTag, Done, 600, 660))
+                plan(day(9), item("2", day(9), workTag, Done, 540, 600)),
+                plan(day(8), item("3", day(8), workTag, Done, 540, 600)),
+                plan(day(7), item("4", day(7), workTag, Done, 600, 660))
             ),
-            todayItems = listOf(item(1, today, workTag, Planned))
+            todayItems = listOf(item("1", today, workTag, Planned))
         )
         val useCase = useCase(repository)
 
@@ -34,89 +34,89 @@ class SmartScheduleDailyPlanUseCaseTest {
 
         assertEquals(SmartScheduleResult(scheduledCount = 1, candidateCount = 1), result.getOrThrow())
         assertEquals(1, repository.updatedDailyPlanItemTimes.size)
-        assertEquals(Triple(1L, 540, 600), repository.updatedDailyPlanItemTimes.single())
+        assertEquals(Triple("1", 540, 600), repository.updatedDailyPlanItemTimes.single())
     }
 
     @Test
     fun defaultFallbackUsesNowAsStart() = runTest {
         val repository = repositoryWithHistory(
             pastPlans = emptyList(),
-            todayItems = listOf(item(1, today, workTag, Planned))
+            todayItems = listOf(item("1", today, workTag, Planned))
         )
         val useCase = useCase(repository, nowMinutes = 100)
 
         val result = useCase()
 
         assertEquals(1, result.getOrThrow().scheduledCount)
-        assertEquals(Triple(1L, 100, 145), repository.updatedDailyPlanItemTimes.single())
+        assertEquals(Triple("1", 100, 145), repository.updatedDailyPlanItemTimes.single())
     }
 
     @Test
     fun clampsPreferredStartToNow() = runTest {
         val repository = repositoryWithHistory(
             pastPlans = listOf(
-                plan(day(9), item(2, day(9), workTag, Done, 540, 600)),
-                plan(day(8), item(3, day(8), workTag, Done, 540, 600))
+                plan(day(9), item("2", day(9), workTag, Done, 540, 600)),
+                plan(day(8), item("3", day(8), workTag, Done, 540, 600))
             ),
-            todayItems = listOf(item(1, today, workTag, Planned))
+            todayItems = listOf(item("1", today, workTag, Planned))
         )
         val useCase = useCase(repository, nowMinutes = 600)
 
         val result = useCase()
 
         assertEquals(1, result.getOrThrow().scheduledCount)
-        assertEquals(Triple(1L, 600, 660), repository.updatedDailyPlanItemTimes.single())
+        assertEquals(Triple("1", 600, 660), repository.updatedDailyPlanItemTimes.single())
     }
 
     @Test
     fun onlyUsesMostRecentThreeDaysPerTag() = runTest {
         val repository = repositoryWithHistory(
             pastPlans = listOf(
-                plan(day(4), item(2, day(4), workTag, Done, 540, 600)),
-                plan(day(5), item(3, day(5), workTag, Done, 540, 600)),
-                plan(day(6), item(4, day(6), workTag, Done, 540, 600)),
-                plan(day(7), item(5, day(7), workTag, Done, 1200, 1260), item(6, day(7), workTag, Done, 1200, 1260)),
-                plan(day(8), item(7, day(8), workTag, Done, 1200, 1260), item(8, day(8), workTag, Done, 1200, 1260)),
-                plan(day(9), item(9, day(9), workTag, Done, 1200, 1260), item(10, day(9), workTag, Done, 1200, 1260))
+                plan(day(4), item("2", day(4), workTag, Done, 540, 600)),
+                plan(day(5), item("3", day(5), workTag, Done, 540, 600)),
+                plan(day(6), item("4", day(6), workTag, Done, 540, 600)),
+                plan(day(7), item("5", day(7), workTag, Done, 1200, 1260), item("6", day(7), workTag, Done, 1200, 1260)),
+                plan(day(8), item("7", day(8), workTag, Done, 1200, 1260), item("8", day(8), workTag, Done, 1200, 1260)),
+                plan(day(9), item("9", day(9), workTag, Done, 1200, 1260), item("10", day(9), workTag, Done, 1200, 1260))
             ),
-            todayItems = listOf(item(1, today, workTag, Planned))
+            todayItems = listOf(item("1", today, workTag, Planned))
         )
         val useCase = useCase(repository)
 
         val result = useCase()
 
         assertEquals(1, result.getOrThrow().scheduledCount)
-        assertEquals(Triple(1L, 540, 600), repository.updatedDailyPlanItemTimes.single())
+        assertEquals(Triple("1", 540, 600), repository.updatedDailyPlanItemTimes.single())
     }
 
     @Test
     fun usesFirstTagOnly() = runTest {
         val repository = repositoryWithHistory(
             pastPlans = listOf(
-                plan(day(9), item(2, day(9), workTag, Done, 540, 600)),
-                plan(day(8), item(3, day(8), workTag, Done, 540, 600)),
-                plan(day(9), item(4, day(9), lifeTag, Done, 840, 900)),
-                plan(day(8), item(5, day(8), lifeTag, Done, 840, 900))
+                plan(day(9), item("2", day(9), workTag, Done, 540, 600)),
+                plan(day(8), item("3", day(8), workTag, Done, 540, 600)),
+                plan(day(9), item("4", day(9), lifeTag, Done, 840, 900)),
+                plan(day(8), item("5", day(8), lifeTag, Done, 840, 900))
             ),
-            todayItems = listOf(item(1, today, listOf(workTag, lifeTag), Planned))
+            todayItems = listOf(item("1", today, listOf(workTag, lifeTag), Planned))
         )
         val useCase = useCase(repository)
 
         val result = useCase()
 
         assertEquals(1, result.getOrThrow().scheduledCount)
-        assertEquals(Triple(1L, 540, 600), repository.updatedDailyPlanItemTimes.single())
+        assertEquals(Triple("1", 540, 600), repository.updatedDailyPlanItemTimes.single())
     }
 
     @Test
     fun skipsUntaggedItems() = runTest {
         val repository = repositoryWithHistory(
             pastPlans = listOf(
-                plan(day(9), item(2, day(9), workTag, Done, 540, 600))
+                plan(day(9), item("2", day(9), workTag, Done, 540, 600))
             ),
             todayItems = listOf(
-                item(1, today, workTag, Planned),
-                item(5, today, emptyList(), Planned)
+                item("1", today, workTag, Planned),
+                item("5", today, emptyList(), Planned)
             )
         )
         val useCase = useCase(repository)
@@ -131,21 +131,21 @@ class SmartScheduleDailyPlanUseCaseTest {
     fun schedulesWithDefaultsWhenNoHistory() = runTest {
         val repository = repositoryWithHistory(
             pastPlans = emptyList(),
-            todayItems = listOf(item(1, today, workTag, Planned))
+            todayItems = listOf(item("1", today, workTag, Planned))
         )
         val useCase = useCase(repository)
 
         val result = useCase()
 
         assertEquals(SmartScheduleResult(scheduledCount = 1, candidateCount = 1), result.getOrThrow())
-        assertEquals(listOf<Triple<Long, Int?, Int?>>(Triple(1L, 0, 45)), repository.updatedDailyPlanItemTimes)
+        assertEquals(listOf<Triple<String, Int?, Int?>>(Triple("1", 0, 45)), repository.updatedDailyPlanItemTimes)
     }
 
     @Test
     fun ignoresSchedulingIfSamplesEmptyAndParameterTrue() = runTest {
         val repository = repositoryWithHistory(
             pastPlans = emptyList(),
-            todayItems = listOf(item(1, today, workTag, Planned))
+            todayItems = listOf(item("1", today, workTag, Planned))
         )
         val useCase = useCase(repository, nowMinutes = 0)
 
@@ -159,28 +159,28 @@ class SmartScheduleDailyPlanUseCaseTest {
     fun fallsBackToDefaultDurationWhenHistoryHasNoEnd() = runTest {
         val repository = repositoryWithHistory(
             pastPlans = listOf(
-                plan(day(9), item(2, day(9), workTag, Done, 540)),
-                plan(day(8), item(3, day(8), workTag, Done, 540))
+                plan(day(9), item("2", day(9), workTag, Done, 540)),
+                plan(day(8), item("3", day(8), workTag, Done, 540))
             ),
-            todayItems = listOf(item(1, today, workTag, Planned))
+            todayItems = listOf(item("1", today, workTag, Planned))
         )
         val useCase = useCase(repository)
 
         val result = useCase()
 
         assertEquals(1, result.getOrThrow().scheduledCount)
-        assertEquals(Triple(1L, 540, 585), repository.updatedDailyPlanItemTimes.single())
+        assertEquals(Triple("1", 540, 585), repository.updatedDailyPlanItemTimes.single())
     }
 
     @Test
     fun storesNullEndForNotes() = runTest {
         val repository = repositoryWithHistory(
             pastPlans = listOf(
-                plan(day(9), item(2, day(9), workTag, Done, 540, 600)),
-                plan(day(8), item(3, day(8), workTag, Done, 540, 600))
+                plan(day(9), item("2", day(9), workTag, Done, 540, 600)),
+                plan(day(8), item("3", day(8), workTag, Done, 540, 600))
             ),
             todayItems = listOf(
-                item(1, today, workTag, Planned, source = DailyPlanItemSource.MyDayNote)
+                item("1", today, workTag, Planned, source = DailyPlanItemSource.MyDayNote)
             )
         )
         val useCase = useCase(repository)
@@ -189,7 +189,7 @@ class SmartScheduleDailyPlanUseCaseTest {
 
         assertEquals(1, result.getOrThrow().scheduledCount)
         val (id, start, end) = repository.updatedDailyPlanItemTimes.single()
-        assertEquals(1L, id)
+        assertEquals("1", id)
         assertEquals(540, start)
         assertNull(end)
     }
@@ -198,12 +198,12 @@ class SmartScheduleDailyPlanUseCaseTest {
     fun accumulatesScheduledItemsToAvoidOverlap() = runTest {
         val repository = repositoryWithHistory(
             pastPlans = listOf(
-                plan(day(9), item(3, day(9), workTag, Done, 540, 600)),
-                plan(day(8), item(4, day(8), workTag, Done, 540, 600))
+                plan(day(9), item("3", day(9), workTag, Done, 540, 600)),
+                plan(day(8), item("4", day(8), workTag, Done, 540, 600))
             ),
             todayItems = listOf(
-                item(1, today, workTag, Planned),
-                item(2, today, workTag, Planned)
+                item("1", today, workTag, Planned),
+                item("2", today, workTag, Planned)
             )
         )
         val useCase = useCase(repository)
@@ -212,7 +212,7 @@ class SmartScheduleDailyPlanUseCaseTest {
 
         assertEquals(SmartScheduleResult(scheduledCount = 2, candidateCount = 2), result.getOrThrow())
         assertEquals(
-            listOf<Triple<Long, Int?, Int?>>(Triple(1L, 540, 600), Triple(2L, 600, 660)),
+            listOf<Triple<String, Int?, Int?>>(Triple("1", 540, 600), Triple("2", 600, 660)),
             repository.updatedDailyPlanItemTimes
         )
     }
@@ -220,8 +220,8 @@ class SmartScheduleDailyPlanUseCaseTest {
     @Test
     fun returnsNothingWhenNoCandidates() = runTest {
         val repository = repositoryWithHistory(
-            pastPlans = listOf(plan(day(9), item(2, day(9), workTag, Done, 540, 600))),
-            todayItems = listOf(item(1, today, workTag, Done))
+            pastPlans = listOf(plan(day(9), item("2", day(9), workTag, Done, 540, 600))),
+            todayItems = listOf(item("1", today, workTag, Done))
         )
         val useCase = useCase(repository)
 
@@ -235,13 +235,13 @@ class SmartScheduleDailyPlanUseCaseTest {
     fun keepsExistingTimesForUntaggedAndDoneItems() = runTest {
         val repository = repositoryWithHistory(
             pastPlans = listOf(
-                plan(day(9), item(4, day(9), workTag, Done, 540, 600)),
-                plan(day(8), item(5, day(8), workTag, Done, 540, 600))
+                plan(day(9), item("4", day(9), workTag, Done, 540, 600)),
+                plan(day(8), item("5", day(8), workTag, Done, 540, 600))
             ),
             todayItems = listOf(
-                item(1, today, workTag, Planned),
-                item(2, today, emptyList(), Planned, start = 300, end = 360),
-                item(3, today, workTag, Done, start = 540, end = 600)
+                item("1", today, workTag, Planned),
+                item("2", today, emptyList(), Planned, start = 300, end = 360),
+                item("3", today, workTag, Done, start = 540, end = 600)
             )
         )
         val useCase = useCase(repository)
@@ -249,22 +249,22 @@ class SmartScheduleDailyPlanUseCaseTest {
         val result = useCase()
 
         assertEquals(1, result.getOrThrow().scheduledCount)
-        assertEquals(Triple(1L, 600, 660), repository.updatedDailyPlanItemTimes.single())
+        assertEquals(Triple("1", 600, 660), repository.updatedDailyPlanItemTimes.single())
     }
 
     @Test
     fun protectsCandidateWithNarrowerPreferenceInsteadOfInputOrder() = runTest {
         val repository = repositoryWithHistory(
             pastPlans = listOf(
-                plan(day(9), item(3, day(9), workTag, Done, 540, 600)),
-                plan(day(8), item(4, day(8), workTag, Done, 540, 600)),
-                plan(day(9), item(5, day(9), lifeTag, Done, 540, 585)),
-                plan(day(8), item(6, day(8), lifeTag, Done, 540, 585))
+                plan(day(9), item("3", day(9), workTag, Done, 540, 600)),
+                plan(day(8), item("4", day(8), workTag, Done, 540, 600)),
+                plan(day(9), item("5", day(9), lifeTag, Done, 540, 585)),
+                plan(day(8), item("6", day(8), lifeTag, Done, 540, 585))
             ),
             todayItems = listOf(
-                item(2, today, lifeTag, Planned),
-                item(1, today, workTag, Planned),
-                item(7, today, emptyList(), Planned, start = 600, end = 660)
+                item("2", today, lifeTag, Planned),
+                item("1", today, workTag, Planned),
+                item("7", today, emptyList(), Planned, start = 600, end = 660)
             )
         )
 
@@ -273,8 +273,8 @@ class SmartScheduleDailyPlanUseCaseTest {
         assertEquals(2, result.getOrThrow().scheduledCount)
         assertEquals(
             setOf(
-                Triple(1L, 540, 600),
-                Triple(2L, 660, 705)
+                Triple("1", 540, 600),
+                Triple("2", 660, 705)
             ),
             repository.updatedDailyPlanItemTimes.toSet()
         )
@@ -285,8 +285,8 @@ class SmartScheduleDailyPlanUseCaseTest {
         val repository = repositoryWithHistory(
             pastPlans = emptyList(),
             todayItems = listOf(
-                item(1, today, workTag, Planned),
-                item(2, today, emptyList(), Planned, start = 600, end = 1440)
+                item("1", today, workTag, Planned),
+                item("2", today, emptyList(), Planned, start = 600, end = 1440)
             )
         )
 
@@ -335,7 +335,7 @@ class SmartScheduleDailyPlanUseCaseTest {
     private fun plan(date: LocalDate, vararg items: DailyPlanItem): DailyPlan = DailyPlan(date = date, items = items.toList())
 
     private fun item(
-        id: Long,
+        id: String,
         date: LocalDate,
         tag: TagItem,
         status: DailyPlanItemStatus,
@@ -345,7 +345,7 @@ class SmartScheduleDailyPlanUseCaseTest {
     ): DailyPlanItem = item(id, date, listOf(tag), status, start, end, source)
 
     private fun item(
-        id: Long,
+        id: String,
         date: LocalDate,
         tags: List<TagItem>,
         status: DailyPlanItemStatus,

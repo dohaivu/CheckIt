@@ -57,7 +57,7 @@ internal fun JournalHistorySheet(
     state: JournalHistoryUiState,
     onMoodToggle: (MoodFilter) -> Unit,
     onSearchTextChange: (String) -> Unit,
-    onTagToggle: (Long) -> Unit,
+    onTagToggle: (String) -> Unit,
     onEntryClick: (JournalEntry) -> Unit,
     onGoalClick: (PeriodGoal) -> Unit = {},
     onLoadMore: () -> Unit = {},
@@ -96,7 +96,7 @@ private fun JournalFilterBar(
     state: JournalHistoryUiState,
     onMoodToggle: (MoodFilter) -> Unit,
     onSearchTextChange: (String) -> Unit,
-    onTagToggle: (Long) -> Unit,
+    onTagToggle: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(

@@ -29,7 +29,7 @@ import kotlinx.datetime.minus
 data class JournalHistoryFilters(
     val mood: MoodFilter? = null,
     val searchText: String = "",
-    val tagId: Long? = null
+    val tagId: String? = null
 )
 
 private fun JournalHistoryFilters.hasActiveFilters(): Boolean =
@@ -143,7 +143,7 @@ class JournalHistoryViewModel(
         resetWindow()
     }
 
-    fun toggleTag(tagId: Long) {
+    fun toggleTag(tagId: String) {
         _uiState.update { state ->
             state.copy(
                 filters = state.filters.copy(tagId = if (state.filters.tagId == tagId) null else tagId)

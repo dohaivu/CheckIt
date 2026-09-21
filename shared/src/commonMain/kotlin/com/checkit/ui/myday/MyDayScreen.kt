@@ -139,7 +139,7 @@ private enum class MyDaySegments(val title: String) {
 internal fun MyDayScreen(
     viewModel: MyDayViewModel,
     quickNoteViewModel: QuickNoteViewModel,
-    onTaskClick: (Long, DailyPlanItem?) -> Unit,
+    onTaskClick: (String, DailyPlanItem?) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
     onNoteTimeChange: (NoteItem, Int) -> Unit,
     onCreateTask: (addToMyDayOnSave: Boolean) -> Unit,
@@ -955,9 +955,9 @@ internal fun MyDayAgenda(
     date: LocalDate,
     activeSprint: SprintState.Running?,
     onItemClick: (DailyPlanItem) -> Unit,
-    onTaskClick: (Long, DailyPlanItem?) -> Unit,
+    onTaskClick: (String, DailyPlanItem?) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
-    onSprintClick: ((Long?, Long?, String) -> Unit)? = null,
+    onSprintClick: ((String?, String?, String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val projection = remember(items, notes, journalEntries) {
@@ -1031,8 +1031,8 @@ private fun MyDayTimeline(
     activeSprint: SprintState.Running?,
     onItemClick: (DailyPlanItem) -> Unit,
     onNoteClick: (NoteItem) -> Unit,
-    onTaskClick: (Long, DailyPlanItem?) -> Unit,
-    onSprintClick: ((Long?, Long?, String) -> Unit)? = null,
+    onTaskClick: (String, DailyPlanItem?) -> Unit,
+    onSprintClick: ((String?, String?, String) -> Unit)? = null,
     onCreateTask: (Int, Int) -> Unit,
     onItemTimeChange: (DailyPlanItem, Int, Int) -> Unit,
     onNoteTimeChange: (NoteItem, Int) -> Unit,
@@ -1108,8 +1108,8 @@ private fun MyDayBoard(
     state: MyDayUiState,
     activeSprint: SprintState.Running?,
     onItemClick: (DailyPlanItem) -> Unit,
-    onTaskClick: (Long, DailyPlanItem?) -> Unit,
-    onSprintClick: ((Long?, Long?, String) -> Unit)? = null,
+    onTaskClick: (String, DailyPlanItem?) -> Unit,
+    onSprintClick: ((String?, String?, String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -1153,8 +1153,8 @@ private fun MyDayBoardItem(
     item: DailyPlanItem,
     activeSprint: SprintState.Running?,
     onItemClick: (DailyPlanItem) -> Unit,
-    onTaskClick: (Long, DailyPlanItem?) -> Unit,
-    onSprintClick: ((Long?, Long?, String) -> Unit)? = null
+    onTaskClick: (String, DailyPlanItem?) -> Unit,
+    onSprintClick: ((String?, String?, String) -> Unit)? = null
 ) {
     DailyPlanTimelineCard(
         item = item,
@@ -1176,8 +1176,8 @@ private fun MyDayBoardItem(
 private fun SprintTrailingContent(
     item: DailyPlanItem,
     activeSprint: SprintState.Running?,
-    onSprintClick: ((Long?, Long?, String) -> Unit)?,
-    taskId: Long? = item.taskId,
+    onSprintClick: ((String?, String?, String) -> Unit)?,
+    taskId: String? = item.taskId,
     title: String = item.title
 ) {
     if (item.status == DailyPlanItemStatus.Done || onSprintClick == null) return

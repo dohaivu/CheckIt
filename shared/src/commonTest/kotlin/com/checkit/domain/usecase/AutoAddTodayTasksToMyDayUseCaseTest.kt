@@ -27,8 +27,8 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
         val repository = FakeCheckItRepository(
             initialBoard = TaskBoard(
                 tasks = listOf(
-                    task(id = 1L, doDate = today),
-                    task(id = 2L, doDate = today)
+                    task(id = "1", doDate = today),
+                    task(id = "2", doDate = today)
                 )
             )
         )
@@ -45,17 +45,17 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
         val addedCount = useCase()
 
         assertEquals(2, addedCount)
-        assertEquals(listOf(1L, 2L), repository.addedDailyPlanTasks.map { it.second.id })
+        assertEquals(listOf("1", "2"), repository.addedDailyPlanTasks.map { it.second.id })
     }
 
     @Test
     fun smartSchedulesTasksAddedToMyDay() = runTest {
         val today = today()
         val yesterday = today.minus(1, DateTimeUnit.DAY)
-        val workTag = TagItem(id = 1L, name = "Work", color = "#2563EB")
+        val workTag = TagItem(id = "1", name = "Work", color = "#2563EB")
         val repository = FakeCheckItRepository(
             initialBoard = TaskBoard(
-                tasks = listOf(task(id = 1L, doDate = today, tags = listOf(workTag)))
+                tasks = listOf(task(id = "1", doDate = today, tags = listOf(workTag)))
             )
         )
         repository.setDailyPlans(
@@ -63,7 +63,7 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
                 DailyPlan(
                     date = yesterday,
                     items = listOf(
-                        historyItem(10L, yesterday, workTag, 540, 600)
+                        historyItem("10", yesterday, workTag, 540, 600)
                     )
                 )
             )
@@ -81,7 +81,7 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
         useCase()
 
         assertEquals(1, repository.updatedDailyPlanItemTimes.size)
-        assertEquals(Triple(400L, 540, 600), repository.updatedDailyPlanItemTimes.single())
+        assertEquals(Triple("400", 540, 600), repository.updatedDailyPlanItemTimes.single())
     }
 
     @Test
@@ -91,11 +91,11 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
         val repository = FakeCheckItRepository(
             initialBoard = TaskBoard(
                 tasks = listOf(
-                    task(id = 1L, doDate = today),
-                    task(id = 2L, doDate = today, status = TaskStatus.Completed),
-                    task(id = 3L, doDate = today, trashedAtMillis = 1L),
-                    task(id = 4L, doDate = yesterday),
-                    task(id = 5L, doDate = null)
+                    task(id = "1", doDate = today),
+                    task(id = "2", doDate = today, status = TaskStatus.Completed),
+                    task(id = "3", doDate = today, trashedAtMillis = 1L),
+                    task(id = "4", doDate = yesterday),
+                    task(id = "5", doDate = null)
                 )
             )
         )
@@ -108,7 +108,7 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
         val addedCount = useCase()
 
         assertEquals(1, addedCount)
-        assertEquals(listOf(1L), repository.addedDailyPlanTasks.map { it.second.id })
+        assertEquals(listOf("1"), repository.addedDailyPlanTasks.map { it.second.id })
     }
 
     @Test
@@ -117,8 +117,8 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
         val repository = FakeCheckItRepository(
             initialBoard = TaskBoard(
                 tasks = listOf(
-                    task(id = 1L, doDate = null, type = TaskType.Habit),
-                    task(id = 2L, doDate = null, type = TaskType.Task)
+                    task(id = "1", doDate = null, type = TaskType.Habit),
+                    task(id = "2", doDate = null, type = TaskType.Task)
                 )
             )
         )
@@ -131,7 +131,7 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
         val addedCount = useCase()
 
         assertEquals(1, addedCount)
-        assertEquals(listOf(1L), repository.addedDailyPlanTasks.map { it.second.id })
+        assertEquals(listOf("1"), repository.addedDailyPlanTasks.map { it.second.id })
     }
 
     @Test
@@ -141,8 +141,8 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
         val repository = FakeCheckItRepository(
             initialBoard = TaskBoard(
                 tasks = listOf(
-                    task(id = 1L, doDate = null, type = TaskType.Habit),
-                    task(id = 2L, doDate = null, type = TaskType.Habit, completedDate = yesterday)
+                    task(id = "1", doDate = null, type = TaskType.Habit),
+                    task(id = "2", doDate = null, type = TaskType.Habit, completedDate = yesterday)
                 )
             )
         )
@@ -155,14 +155,14 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
         val addedCount = useCase()
 
         assertEquals(1, addedCount)
-        assertEquals(listOf(1L), repository.addedDailyPlanTasks.map { it.second.id })
+        assertEquals(listOf("1"), repository.addedDailyPlanTasks.map { it.second.id })
     }
 
     @Test
     fun doesNotDuplicateTaskAlreadyPlannedToday() = runTest {
         val today = today()
         val repository = FakeCheckItRepository(
-            initialBoard = TaskBoard(tasks = listOf(task(id = 1L, doDate = today)))
+            initialBoard = TaskBoard(tasks = listOf(task(id = "1", doDate = today)))
         )
         repository.setDailyPlans(
             listOf(
@@ -170,9 +170,9 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
                     date = today,
                     items = listOf(
                         DailyPlanItem(
-                            id = 10L,
+                            id = "10",
                             dateEpochDays = today.toEpochDays().toInt(),
-                            taskId = 1L,
+                            taskId = "1",
                             title = "Task 1",
                             source = DailyPlanItemSource.ExistingTask,
                             status = DailyPlanItemStatus.Planned,
@@ -200,16 +200,16 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
         val today = today()
         val yesterday = today.minus(1, DateTimeUnit.DAY)
         val repository = FakeCheckItRepository(
-            initialBoard = TaskBoard(tasks = listOf(task(id = 1L, doDate = today)))
+            initialBoard = TaskBoard(tasks = listOf(task(id = "1", doDate = today)))
         )
         repository.setDailyPlans(
             listOf(
                 DailyPlan(
                     date = yesterday,
                     items = listOf(
-                        habitItem(id = 100L, taskId = 1L),
-                        habitItem(id = 101L, taskId = 1L, status = DailyPlanItemStatus.Done),
-                        item(id = 102L, taskId = 1L, source = DailyPlanItemSource.MyDayTask)
+                        habitItem(id = "100", taskId = "1"),
+                        habitItem(id = "101", taskId = "1", status = DailyPlanItemStatus.Done),
+                        item(id = "102", taskId = "1", source = DailyPlanItemSource.MyDayTask)
                     )
                 )
             )
@@ -222,16 +222,16 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
 
         useCase()
 
-        assertEquals(listOf(100L), repository.deletedDailyPlanItemIds)
+        assertEquals(listOf("100"), repository.deletedDailyPlanItemIds)
         assertEquals(
-            listOf(101L, 102L),
+            listOf("101", "102"),
             repository.dailyPlanForDate(yesterday)?.items?.map { it.id }
         )
     }
 
     private fun habitItem(
-        id: Long,
-        taskId: Long,
+        id: String,
+        taskId: String,
         status: DailyPlanItemStatus = DailyPlanItemStatus.Planned
     ) = DailyPlanItem(
         id = id,
@@ -246,8 +246,8 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
     )
 
     private fun item(
-        id: Long,
-        taskId: Long,
+        id: String,
+        taskId: String,
         source: DailyPlanItemSource
     ) = DailyPlanItem(
         id = id,
@@ -261,7 +261,7 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
     )
 
     private fun historyItem(
-        id: Long,
+        id: String,
         date: LocalDate,
         tag: TagItem,
         start: Int,
@@ -284,7 +284,7 @@ class AutoAddTodayTasksToMyDayUseCaseTest {
         Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 
     private fun task(
-        id: Long,
+        id: String,
         doDate: LocalDate?,
         status: TaskStatus = TaskStatus.Open,
         type: TaskType = TaskType.Task,

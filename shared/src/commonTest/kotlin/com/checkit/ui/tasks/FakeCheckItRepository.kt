@@ -1,6 +1,7 @@
 package com.checkit.ui.tasks
 
 import com.checkit.data.CheckItRepository
+import kotlin.uuid.Uuid
 import com.checkit.data.DailyPlanItemTimeUpdate
 import com.checkit.data.DailyPlanItemWriteInput
 import com.checkit.domain.PeriodGoalHistoryItem
@@ -53,50 +54,50 @@ import kotlinx.datetime.plus
 class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepository {
     private val boardFlow = MutableStateFlow(initialBoard)
     val addedLists = mutableListOf<ListWriteInput>()
-    val updatedLists = mutableListOf<Pair<Long, ListWriteInput>>()
-    val deletedLists = mutableListOf<Long>()
+    val updatedLists = mutableListOf<Pair<String, ListWriteInput>>()
+    val deletedLists = mutableListOf<String>()
     val addedTags = mutableListOf<TagWriteInput>()
-    val updatedTags = mutableListOf<Pair<Long, TagWriteInput>>()
-    val updatedTagSortOrders = mutableListOf<Pair<Long, Int>>()
-    val deletedTags = mutableListOf<Long>()
+    val updatedTags = mutableListOf<Pair<String, TagWriteInput>>()
+    val updatedTagSortOrders = mutableListOf<Pair<String, Int>>()
+    val deletedTags = mutableListOf<String>()
     val addedTasks = mutableListOf<TaskWriteInput>()
-    val updatedTasks = mutableListOf<Pair<Long, TaskWriteInput>>()
-    val deletedTasks = mutableListOf<Long>()
-    val trashedTasks = mutableListOf<Long>()
+    val updatedTasks = mutableListOf<Pair<String, TaskWriteInput>>()
+    val deletedTasks = mutableListOf<String>()
+    val trashedTasks = mutableListOf<String>()
     val addedDailyPlanTasks = mutableListOf<Pair<LocalDate, TaskItem>>()
     val addedManualDailyPlanItems = mutableListOf<DailyPlanItemWriteInput>()
-    val updatedDailyPlanItems = mutableListOf<Pair<Long, DailyPlanItemWriteInput>>()
-    val updatedDailyPlanItemTimes = mutableListOf<Triple<Long, Int?, Int?>>()
-    val deletedDailyPlanItemIds = mutableListOf<Long>()
-    val linkedDailyPlanItemTaskIds = mutableListOf<Pair<Long, Long>>()
+    val updatedDailyPlanItems = mutableListOf<Pair<String, DailyPlanItemWriteInput>>()
+    val updatedDailyPlanItemTimes = mutableListOf<Triple<String, Int?, Int?>>()
+    val deletedDailyPlanItemIds = mutableListOf<String>()
+    val linkedDailyPlanItemTaskIds = mutableListOf<Pair<String, String>>()
     
-    val addedSections = mutableListOf<Triple<Long, String, String>>()
+    val addedSections = mutableListOf<Triple<String, String, String>>()
     val updatedSections = mutableListOf<com.checkit.domain.ListSection>()
-    val deletedSections = mutableListOf<Long>()
+    val deletedSections = mutableListOf<String>()
     
     val currentBoard: TaskBoard get() = boardFlow.value
     
-    private var nextListId: Long = 100L
-    private var nextTagId: Long = 200L
-    private var nextTaskId: Long = 300L
-    private var nextDailyPlanItemId: Long = 400L
-    private var nextSectionId: Long = 600L
+    private var nextListId: Long = 100
+    private var nextTagId: Long = 200
+    private var nextTaskId: Long = 300
+    private var nextDailyPlanItemId: Long = 400
+    private var nextSectionId: Long = 600
 
-    val lastAssignedTagId: Long get() = nextTagId - 1
-    val lastAssignedTaskId: Long get() = nextTaskId - 1
-    val lastAssignedDailyPlanItemId: Long get() = nextDailyPlanItemId - 1
+    val lastAssignedTagId: String get() = (nextTagId - 1).toString()
+    val lastAssignedTaskId: String get() = (nextTaskId - 1).toString()
+    val lastAssignedDailyPlanItemId: String get() = (nextDailyPlanItemId - 1).toString()
 
     private val dailyPlansFlow = MutableStateFlow<List<DailyPlan>>(emptyList())
     val copiedDailyPlanItems = mutableListOf<DailyPlanItem>()
-    val statusUpdates = mutableListOf<Pair<Long, DailyPlanItemStatus>>()
-    val markedHandledItemIds = mutableListOf<Long>()
+    val statusUpdates = mutableListOf<Pair<String, DailyPlanItemStatus>>()
+    val markedHandledItemIds = mutableListOf<String>()
     private val periodGoalsFlow = MutableStateFlow<List<PeriodGoal>>(emptyList())
 
     private val journalEntriesFlow = MutableStateFlow<List<JournalEntry>>(emptyList())
     val addedJournalEntries = mutableListOf<JournalEntryWriteInput>()
-    val updatedJournalEntries = mutableListOf<Pair<Long, JournalEntryWriteInput>>()
-    val deletedJournalEntryIds = mutableListOf<Long>()
-    private var nextJournalEntryId: Long = 500L
+    val updatedJournalEntries = mutableListOf<Pair<String, JournalEntryWriteInput>>()
+    val deletedJournalEntryIds = mutableListOf<String>()
+    private var nextJournalEntryId: Long = 500
 
     override fun observeTaskBoard(onlyOpen: Boolean): Flow<TaskBoard> = boardFlow.map { board ->
         if (onlyOpen) {
@@ -109,8 +110,8 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         }
     }
 
-    override fun observeTagUsageCounts(): Flow<Map<Long, Int>> = boardFlow.map { board ->
-        val counts = mutableMapOf<Long, Int>()
+    override fun observeTagUsageCounts(): Flow<Map<String, Int>> = boardFlow.map { board ->
+        val counts = mutableMapOf<String, Int>()
         board.tasks.filter { !it.isTrashed }.forEach { task ->
             task.tags.forEach { tag -> counts[tag.id] = (counts[tag.id] ?: 0) + 1 }
         }
@@ -158,10 +159,10 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
             }
         }
 
-    override suspend fun getTask(taskId: Long): TaskItem? = 
+    override suspend fun getTask(taskId: String): TaskItem? = 
         boardFlow.value.tasks.find { it.id == taskId }
 
-    override suspend fun getNote(noteId: Long): NoteItem? = 
+    override suspend fun getNote(noteId: String): NoteItem? = 
         boardFlow.value.notes.find { it.id == noteId }
 
     override fun observeDailyPlans(startDate: LocalDate?, endDate: LocalDate?): Flow<List<DailyPlan>> =
@@ -179,8 +180,8 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         journalEntriesFlow.value = entries
     }
 
-    override suspend fun addJournalEntry(input: JournalEntryWriteInput): Long {
-        val id = nextJournalEntryId++
+    override suspend fun addJournalEntry(input: JournalEntryWriteInput): String {
+        val id = (nextJournalEntryId++).toString()
         addedJournalEntries.add(input)
         val entry = JournalEntry(
             id = id,
@@ -195,9 +196,9 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         return id
     }
 
-    fun currentJournalEntry(id: Long) = journalEntriesFlow.value.find { it.id == id }
+    fun currentJournalEntry(id: String) = journalEntriesFlow.value.find { it.id == id }
 
-    override suspend fun updateJournalEntry(entryId: Long, input: JournalEntryWriteInput) {
+    override suspend fun updateJournalEntry(entryId: String, input: JournalEntryWriteInput) {
         updatedJournalEntries.add(entryId to input)
         journalEntriesFlow.update { list ->
             list.map { entry ->
@@ -213,7 +214,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         }
     }
 
-    override suspend fun deleteJournalEntry(entryId: Long) {
+    override suspend fun deleteJournalEntry(entryId: String) {
         deletedJournalEntryIds.add(entryId)
         journalEntriesFlow.update { it.filter { entry -> entry.id != entryId } }
     }
@@ -226,22 +227,22 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         periodGoalsFlow.value = goals
     }
 
-    override suspend fun addList(input: ListWriteInput): Long {
-        val id = nextListId++
+    override suspend fun addList(input: ListWriteInput): String {
+        val id = (nextListId++).toString()
         addedLists.add(input)
         val newList = ListItem(id, input.title, input.icon, input.color, 0)
         boardFlow.update { it.copy(lists = it.lists + newList) }
         return id
     }
 
-    override suspend fun updateList(listId: Long, input: ListWriteInput) {
+    override suspend fun updateList(listId: String, input: ListWriteInput) {
         updatedLists.add(listId to input)
         boardFlow.update { board ->
             board.copy(lists = board.lists.map { if (it.id == listId) it.copy(title = input.title, icon = input.icon, color = input.color) else it })
         }
     }
 
-    override suspend fun deleteList(listId: Long) {
+    override suspend fun deleteList(listId: String) {
         deletedLists.add(listId)
         val inbox = currentBoard.lists.find { it.title == "Inbox" } ?: currentBoard.lists.firstOrNull { it.id != listId }
         boardFlow.update { board ->
@@ -253,29 +254,29 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         }
     }
 
-    override suspend fun addTag(input: TagWriteInput): Long {
-        val id = nextTagId++
+    override suspend fun addTag(input: TagWriteInput): String {
+        val id = (nextTagId++).toString()
         addedTags.add(input)
         val newTag = TagItem(id, input.name, input.color, 0)
         boardFlow.update { it.copy(tags = it.tags + newTag) }
         return id
     }
 
-    override suspend fun updateTag(tagId: Long, input: TagWriteInput) {
+    override suspend fun updateTag(tagId: String, input: TagWriteInput) {
         updatedTags.add(tagId to input)
         boardFlow.update { board ->
             board.copy(tags = board.tags.map { if (it.id == tagId) it.copy(name = input.name, color = input.color) else it })
         }
     }
 
-    override suspend fun updateTagSortOrder(tagId: Long, sortOrder: Int) {
+    override suspend fun updateTagSortOrder(tagId: String, sortOrder: Int) {
         updatedTagSortOrders.add(tagId to sortOrder)
         boardFlow.update { board ->
             board.copy(tags = board.tags.map { if (it.id == tagId) it.copy(sortOrder = sortOrder) else it })
         }
     }
 
-    override suspend fun deleteTag(tagId: Long) {
+    override suspend fun deleteTag(tagId: String) {
         deletedTags.add(tagId)
         boardFlow.update { board ->
             board.copy(
@@ -286,18 +287,18 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         }
     }
 
-    override suspend fun isTagNameTaken(name: String, excludeTagId: Long?): Boolean =
+    override suspend fun isTagNameTaken(name: String, excludeTagId: String?): Boolean =
         currentBoard.tags.any { it.name == name && it.id != excludeTagId }
 
-    override suspend fun addTask(input: TaskWriteInput): Long {
-        val id = nextTaskId++
+    override suspend fun addTask(input: TaskWriteInput): String {
+        val id = (nextTaskId++).toString()
         addedTasks.add(input)
         val newTask = TaskItem(
             id = id,
             list = input.listId?.let { lid -> currentBoard.lists.find { it.id == lid } },
             name = input.name,
             description = input.description,
-            subtasks = input.subtasks.mapIndexed { i, s -> SubTaskItem(i.toLong(), id, s.name, s.isCompleted, i) },
+            subtasks = input.subtasks.mapIndexed { i, s -> SubTaskItem(i.toString(), id, s.name, s.isCompleted, i) },
             status = input.status,
             priority = input.priority,
             type = input.type,
@@ -314,7 +315,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         return id
     }
 
-    override suspend fun updateTask(taskId: Long, input: TaskWriteInput) {
+    override suspend fun updateTask(taskId: String, input: TaskWriteInput) {
         updatedTasks.add(taskId to input)
         boardFlow.update { board ->
             board.copy(tasks = board.tasks.map {
@@ -323,7 +324,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
                         list = input.listId?.let { lid -> board.lists.find { it.id == lid } },
                         name = input.name,
                         description = input.description,
-                        subtasks = input.subtasks.mapIndexed { i, s -> SubTaskItem(i.toLong(), taskId, s.name, s.isCompleted, i) },
+                        subtasks = input.subtasks.mapIndexed { i, s -> SubTaskItem(i.toString(), taskId, s.name, s.isCompleted, i) },
                         status = input.status,
                         priority = input.priority,
                         type = input.type,
@@ -338,33 +339,33 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         }
     }
 
-    override suspend fun trashTask(taskId: Long) {
+    override suspend fun trashTask(taskId: String) {
         trashedTasks.add(taskId)
         boardFlow.update { board ->
             board.copy(tasks = board.tasks.map { if (it.id == taskId) it.copy(trashedAtMillis = 1L) else it })
         }
     }
 
-    override suspend fun restoreTask(taskId: Long) {
+    override suspend fun restoreTask(taskId: String) {
         boardFlow.update { board ->
             board.copy(tasks = board.tasks.map { if (it.id == taskId) it.copy(trashedAtMillis = null) else it })
         }
     }
 
-    override suspend fun completeTask(taskId: Long) {
+    override suspend fun completeTask(taskId: String) {
         boardFlow.update { board ->
             board.copy(tasks = board.tasks.map { if (it.id == taskId) it.copy(status = TaskStatus.Completed) else it })
         }
     }
 
-    override suspend fun updateTaskStatus(taskId: Long, status: TaskStatus) {
+    override suspend fun updateTaskStatus(taskId: String, status: TaskStatus) {
         boardFlow.update { board ->
             board.copy(tasks = board.tasks.map { if (it.id == taskId) it.copy(status = status) else it })
         }
     }
 
-    override suspend fun addTaskToDailyPlan(date: LocalDate, task: TaskItem): Long {
-        val id = nextDailyPlanItemId++
+    override suspend fun addTaskToDailyPlan(date: LocalDate, task: TaskItem): String {
+        val id = (nextDailyPlanItemId++).toString()
         addedDailyPlanTasks.add(date to task)
         val newItem = DailyPlanItem(
             id = id,
@@ -397,13 +398,13 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         endTimeMinutes: Int?,
         source: DailyPlanItemSource,
         status: DailyPlanItemStatus,
-        tagIds: List<Long>,
+        tagIds: List<String>,
         label: String?,
-        taskId: Long?,
-        nestedListItemId: Long?,
-        carriedFromItemId: Long?
-    ): Long {
-        val id = nextDailyPlanItemId++
+        taskId: String?,
+        nestedListItemId: String?,
+        carriedFromItemId: String?
+    ): String {
+        val id = (nextDailyPlanItemId++).toString()
         val input = DailyPlanItemWriteInput(date, title, note, source, status, startTimeMinutes, endTimeMinutes, tagIds, label, nestedListItemId)
         addedManualDailyPlanItems.add(input)
         val newItem = DailyPlanItem(
@@ -434,7 +435,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         return id
     }
 
-    override suspend fun updateDailyPlanItemTime(itemId: Long, startTimeMinutes: Int?, endTimeMinutes: Int?) {
+    override suspend fun updateDailyPlanItemTime(itemId: String, startTimeMinutes: Int?, endTimeMinutes: Int?) {
         updatedDailyPlanItemTimes.add(Triple(itemId, startTimeMinutes, endTimeMinutes))
         dailyPlansFlow.update { list ->
             list.map { plan ->
@@ -447,7 +448,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         updates.forEach { update -> updateDailyPlanItemTime(update.itemId, update.startTimeMinutes, update.endTimeMinutes) }
     }
 
-    override suspend fun updateDailyPlanItemStatus(itemId: Long, status: DailyPlanItemStatus) {
+    override suspend fun updateDailyPlanItemStatus(itemId: String, status: DailyPlanItemStatus) {
         statusUpdates.add(itemId to status)
         dailyPlansFlow.update { list ->
             list.map { plan ->
@@ -456,11 +457,11 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         }
     }
 
-    override suspend fun updateDailyPlanItemsStatus(itemIds: List<Long>, status: DailyPlanItemStatus) {
+    override suspend fun updateDailyPlanItemsStatus(itemIds: List<String>, status: DailyPlanItemStatus) {
         itemIds.forEach { updateDailyPlanItemStatus(it, status) }
     }
 
-    override suspend fun updateDailyPlanItem(itemId: Long, input: DailyPlanItemWriteInput) {
+    override suspend fun updateDailyPlanItem(itemId: String, input: DailyPlanItemWriteInput) {
         updatedDailyPlanItems.add(itemId to input)
         dailyPlansFlow.update { list ->
             list.map { plan ->
@@ -478,7 +479,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         }
     }
 
-    override suspend fun updateDailyPlanItemTags(itemId: Long, tagIds: List<Long>) {
+    override suspend fun updateDailyPlanItemTags(itemId: String, tagIds: List<String>) {
         dailyPlansFlow.update { list ->
             list.map { plan ->
                 plan.copy(items = plan.items.map { if (it.id == itemId) it.copy(
@@ -488,7 +489,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         }
     }
 
-    override suspend fun linkDailyPlanItemToTask(itemId: Long, taskId: Long) {
+    override suspend fun linkDailyPlanItemToTask(itemId: String, taskId: String) {
         linkedDailyPlanItemTaskIds.add(itemId to taskId)
         dailyPlansFlow.update { list ->
             list.map { plan ->
@@ -497,14 +498,14 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         }
     }
 
-    override suspend fun deleteDailyPlanItem(itemId: Long) {
+    override suspend fun deleteDailyPlanItem(itemId: String) {
         deletedDailyPlanItemIds.add(itemId)
         dailyPlansFlow.update { list ->
             list.map { plan -> plan.copy(items = plan.items.filter { it.id != itemId }) }
         }
     }
 
-    override suspend fun getDailyPlanItem(itemId: Long): DailyPlanItem? =
+    override suspend fun getDailyPlanItem(itemId: String): DailyPlanItem? =
         dailyPlansFlow.value.asSequence().flatMap { it.items.asSequence() }.find { it.id == itemId }
 
     override suspend fun dailyPlanForDate(date: LocalDate): DailyPlan? =
@@ -562,16 +563,16 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
     override suspend fun savePeriodGoal(goal: PeriodGoal) {
         periodGoalsFlow.update { list ->
             val existingIndex = list.indexOfFirst {
-                (it.id != 0L && it.id == goal.id) ||
+                (it.id.isNotEmpty() && it.id == goal.id) ||
                     (it.period == goal.period && it.startEpochDays == goal.startEpochDays)
             }
             if (existingIndex >= 0) {
                 list.toMutableList().apply {
                     val old = get(existingIndex)
-                    set(existingIndex, goal.copy(id = if (goal.id == 0L) old.id else goal.id))
+                    set(existingIndex, goal.copy(id = if (goal.id.isEmpty()) old.id else goal.id))
                 }
             } else {
-                val newId = if (goal.id == 0L) (list.maxOfOrNull { it.id } ?: 0L) + 1 else goal.id
+                val newId = if (goal.id.isEmpty()) Uuid.random().toString() else goal.id
                 list + goal.copy(id = newId)
             }
         }
@@ -685,7 +686,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
     override fun observeJournalEntriesFiltered(
         moodEmojis: List<String>,
         searchText: String?,
-        tagId: Long?,
+        tagId: String?,
         startDate: LocalDate?,
         endDateInclusive: LocalDate?
     ): Flow<List<JournalEntry>> =
@@ -723,9 +724,9 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
 
     override suspend fun completeDayClose(
         date: LocalDate,
-        markDoneItemIds: List<Long>,
-        carryItemIds: List<Long>,
-        dropItemIds: List<Long>,
+        markDoneItemIds: List<String>,
+        carryItemIds: List<String>,
+        dropItemIds: List<String>,
         winNote: String?,
         tomorrowGoal: String?,
         rating: Float,
@@ -794,7 +795,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         return DayCloseCommitResult(carriedCount = carriedCount, skippedCount = skippedCount)
     }
 
-    private fun markDailyPlanItemsHandled(ids: List<Long>) {
+    private fun markDailyPlanItemsHandled(ids: List<String>) {
         ids.forEach { id ->
             if (!markedHandledItemIds.contains(id)) {
                 markedHandledItemIds.add(id)
@@ -816,7 +817,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         source: DailyPlanItem,
         targetDate: LocalDate,
         clearTimes: Boolean
-    ): Long? {
+    ): String? {
         val alreadyPresent = dailyPlansFlow.value.find { it.date == targetDate }?.items?.any { item ->
             (source.taskId != null && item.taskId == source.taskId) ||
                 (item.carriedFromItemId != null && item.carriedFromItemId == source.id)
@@ -843,10 +844,10 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         return newItemId
     }
 
-    override suspend fun countDoneDailyPlanItemsForTaskOnDate(taskId: Long, dateEpochDays: Int, excludeItemId: Long): Int = 0
+    override suspend fun countDoneDailyPlanItemsForTaskOnDate(taskId: String, dateEpochDays: Int, excludeItemId: String): Int = 0
 
-    override suspend fun addNote(input: NoteWriteInput): Long {
-        val id = nextTaskId++ // sharing ID space
+    override suspend fun addNote(input: NoteWriteInput): String {
+        val id = (nextTaskId++).toString() // sharing ID space
         val newNote = NoteItem(
             id = id,
             list = input.listId?.let { lid -> currentBoard.lists.find { it.id == lid } },
@@ -864,7 +865,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         return id
     }
 
-    override suspend fun updateNote(noteId: Long, input: NoteWriteInput) {
+    override suspend fun updateNote(noteId: String, input: NoteWriteInput) {
         boardFlow.update { board ->
             board.copy(notes = board.notes.map { if (it.id == noteId) it.copy(
                 list = input.listId?.let { lid -> board.lists.find { it.id == lid } },
@@ -878,31 +879,31 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         }
     }
 
-    override suspend fun completeNote(noteId: Long) {
+    override suspend fun completeNote(noteId: String) {
         boardFlow.update { board ->
             board.copy(notes = board.notes.map { if (it.id == noteId) it.copy(status = TaskStatus.Completed) else it })
         }
     }
 
-    override suspend fun updateNoteStatus(noteId: Long, status: TaskStatus) {
+    override suspend fun updateNoteStatus(noteId: String, status: TaskStatus) {
         boardFlow.update { board ->
             board.copy(notes = board.notes.map { if (it.id == noteId) it.copy(status = status) else it })
         }
     }
 
-    override suspend fun trashNote(noteId: Long) {
+    override suspend fun trashNote(noteId: String) {
         boardFlow.update { board ->
             board.copy(notes = board.notes.map { if (it.id == noteId) it.copy(trashedAtMillis = 1L) else it })
         }
     }
 
-    override suspend fun restoreNote(noteId: Long) {
+    override suspend fun restoreNote(noteId: String) {
         boardFlow.update { board ->
             board.copy(notes = board.notes.map { if (it.id == noteId) it.copy(trashedAtMillis = null) else it })
         }
     }
 
-    override suspend fun moveTask(taskId: Long, listId: Long, sectionId: Long?, sortOrder: Int, isPinned: Boolean) {
+    override suspend fun moveTask(taskId: String, listId: String, sectionId: String?, sortOrder: Int, isPinned: Boolean) {
         boardFlow.update { board ->
             board.copy(
                 tasks = board.tasks.map {
@@ -912,7 +913,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         }
     }
 
-    override suspend fun moveNote(noteId: Long, listId: Long, sectionId: Long?, sortOrder: Int, isPinned: Boolean) {
+    override suspend fun moveNote(noteId: String, listId: String, sectionId: String?, sortOrder: Int, isPinned: Boolean) {
         boardFlow.update { board ->
             board.copy(
                 notes = board.notes.map {
@@ -923,8 +924,8 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
     }
 
 
-    override suspend fun addSection(listId: Long, title: String, color: String): Long {
-        val id = nextSectionId++
+    override suspend fun addSection(listId: String, title: String, color: String): String {
+        val id = (nextSectionId++).toString()
         addedSections.add(Triple(listId, title, color))
         boardFlow.update { board ->
             board.copy(
@@ -946,8 +947,8 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         return id
     }
 
-    override suspend fun updateSection(sectionId: Long, title: String, color: String, sortOrder: Int) {
-        val section = com.checkit.domain.ListSection(sectionId, 0L, title, color, sortOrder)
+    override suspend fun updateSection(sectionId: String, title: String, color: String, sortOrder: Int) {
+        val section = com.checkit.domain.ListSection(sectionId, "0", title, color, sortOrder)
         updatedSections.add(section)
         boardFlow.update { board ->
             board.copy(
@@ -962,7 +963,7 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
         }
     }
 
-    override suspend fun deleteSection(sectionId: Long) {
+    override suspend fun deleteSection(sectionId: String) {
         deletedSections.add(sectionId)
         boardFlow.update { board ->
             board.copy(
@@ -975,25 +976,25 @@ class FakeCheckItRepository(initialBoard: TaskBoard = TaskBoard()) : CheckItRepo
 
     override fun observeNestedDocuments(): Flow<List<NestedDocument>> = MutableStateFlow(emptyList())
     override fun observeTags(): Flow<List<TagItem>> = boardFlow.map { it.tags }
-    override fun observeNestedDocumentTree(documentId: Long): Flow<NestedDocumentTree> = MutableStateFlow(NestedDocumentTree(NestedDocument(0, "", 0, 0), emptyList()))
-    override suspend fun addNestedDocument(title: String): Long = 0
-    override suspend fun renameNestedDocument(documentId: Long, title: String) {}
-    override suspend fun deleteNestedDocument(documentId: Long) {}
-    override suspend fun addNestedItem(documentId: Long, parentId: Long?, text: String, position: Int?): Long = 0
-    override suspend fun updateNestedItemText(itemId: Long, text: String) {}
-    override suspend fun updateNestedItemNote(itemId: Long, note: String?) {}
-    override suspend fun updateNestedItemFormatting(itemId: Long, textStyle: NestedTextStyle, textColor: NestedColorToken, backgroundColor: NestedColorToken) {}
-    override suspend fun updateNestedItemPriority(itemId: Long, priority: TaskPriority) {}
-    override suspend fun updateNestedItemDateRange(itemId: Long, startDate: LocalDate?, endDate: LocalDate?) {}
-    override suspend fun updateNestedItemTags(itemId: Long, tagIds: List<Long>) {}
-    override suspend fun updateNestedItemMetricSettings(itemId: Long, actualMinutes: Int, metricRollupPolicy: MetricRollupPolicy, showTrackedMinutes: Boolean) {}
-    override suspend fun updateNestedItemProgress(itemId: Long, progressPercent: Int?) {}
-    override suspend fun replaceNestedManualMetrics(itemId: Long, metrics: List<MetricItem>) {}
-    override suspend fun setNestedItemCheckboxEnabled(itemId: Long, checkboxEnabled: Boolean) {}
-    override suspend fun setNestedItemsChecked(itemIds: List<Long>, checked: Boolean) {}
-    override suspend fun toggleNestedItemCollapsed(itemId: Long) {}
+    override fun observeNestedDocumentTree(documentId: String): Flow<NestedDocumentTree> = MutableStateFlow(NestedDocumentTree(NestedDocument("", "", 0, 0), emptyList()))
+    override suspend fun addNestedDocument(title: String): String = Uuid.random().toString()
+    override suspend fun renameNestedDocument(documentId: String, title: String) {}
+    override suspend fun deleteNestedDocument(documentId: String) {}
+    override suspend fun addNestedItem(documentId: String, parentId: String?, text: String, position: Int?): String = Uuid.random().toString()
+    override suspend fun updateNestedItemText(itemId: String, text: String) {}
+    override suspend fun updateNestedItemNote(itemId: String, note: String?) {}
+    override suspend fun updateNestedItemFormatting(itemId: String, textStyle: NestedTextStyle, textColor: NestedColorToken, backgroundColor: NestedColorToken) {}
+    override suspend fun updateNestedItemPriority(itemId: String, priority: TaskPriority) {}
+    override suspend fun updateNestedItemDateRange(itemId: String, startDate: LocalDate?, endDate: LocalDate?) {}
+    override suspend fun updateNestedItemTags(itemId: String, tagIds: List<String>) {}
+    override suspend fun updateNestedItemMetricSettings(itemId: String, actualMinutes: Int, metricRollupPolicy: MetricRollupPolicy, showTrackedMinutes: Boolean) {}
+    override suspend fun updateNestedItemProgress(itemId: String, progressPercent: Int?) {}
+    override suspend fun replaceNestedManualMetrics(itemId: String, metrics: List<MetricItem>) {}
+    override suspend fun setNestedItemCheckboxEnabled(itemId: String, checkboxEnabled: Boolean) {}
+    override suspend fun setNestedItemsChecked(itemIds: List<String>, checked: Boolean) {}
+    override suspend fun toggleNestedItemCollapsed(itemId: String) {}
     override suspend fun moveNestedItems(moves: List<NestedItemMove>) {}
-    override suspend fun deleteNestedItems(itemIds: List<Long>) {}
+    override suspend fun deleteNestedItems(itemIds: List<String>) {}
 
     var lastBackupJson: String? = null
     override suspend fun exportBackupJson(): String = lastBackupJson ?: "{}"

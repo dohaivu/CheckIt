@@ -32,14 +32,14 @@ class ObserveNestedTagsUseCase(
 class ObserveNestedDocumentTreeUseCase(
     private val repository: CheckItRepository
 ) {
-    operator fun invoke(documentId: Long): Flow<NestedDocumentTree> =
+    operator fun invoke(documentId: String): Flow<NestedDocumentTree> =
         repository.observeNestedDocumentTree(documentId)
 }
 
 class AddNestedDocumentUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(title: String): Long {
+    suspend operator fun invoke(title: String): String {
         val trimmed = title.trim()
         require(trimmed.isNotBlank()) { "Document title must not be blank" }
         return repository.addNestedDocument(trimmed)
@@ -49,7 +49,7 @@ class AddNestedDocumentUseCase(
 class RenameNestedDocumentUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(documentId: Long, title: String) {
+    suspend operator fun invoke(documentId: String, title: String) {
         val trimmed = title.trim()
         require(trimmed.isNotBlank()) { "Document title must not be blank" }
         repository.renameNestedDocument(documentId, trimmed)
@@ -59,13 +59,13 @@ class RenameNestedDocumentUseCase(
 class DeleteNestedDocumentUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(documentId: Long) = repository.deleteNestedDocument(documentId)
+    suspend operator fun invoke(documentId: String) = repository.deleteNestedDocument(documentId)
 }
 
 class AddNestedItemUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(documentId: Long, parentId: Long?, text: String, position: Int? = null): Long {
+    suspend operator fun invoke(documentId: String, parentId: String?, text: String, position: Int? = null): String {
         val trimmed = text.trim()
         require(trimmed.isNotBlank()) { "Item text must not be blank" }
         return repository.addNestedItem(documentId, parentId, trimmed, position)
@@ -75,7 +75,7 @@ class AddNestedItemUseCase(
 class UpdateNestedItemTextUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(itemId: Long, text: String) {
+    suspend operator fun invoke(itemId: String, text: String) {
         val trimmed = text.trim()
         require(trimmed.isNotBlank()) { "Item text must not be blank" }
         repository.updateNestedItemText(itemId, trimmed)
@@ -85,7 +85,7 @@ class UpdateNestedItemTextUseCase(
 class UpdateNestedItemNoteUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(itemId: Long, note: String?) =
+    suspend operator fun invoke(itemId: String, note: String?) =
         repository.updateNestedItemNote(itemId, note)
 }
 
@@ -93,7 +93,7 @@ class UpdateNestedItemFormattingUseCase(
     private val repository: CheckItRepository
 ) {
     suspend operator fun invoke(
-        itemId: Long,
+        itemId: String,
         textStyle: NestedTextStyle,
         textColor: NestedColorToken,
         backgroundColor: NestedColorToken
@@ -103,21 +103,21 @@ class UpdateNestedItemFormattingUseCase(
 class UpdateNestedItemPriorityUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(itemId: Long, priority: TaskPriority) =
+    suspend operator fun invoke(itemId: String, priority: TaskPriority) =
         repository.updateNestedItemPriority(itemId, priority)
 }
 
 class UpdateNestedItemDateRangeUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(itemId: Long, startDate: LocalDate?, endDate: LocalDate?) =
+    suspend operator fun invoke(itemId: String, startDate: LocalDate?, endDate: LocalDate?) =
         repository.updateNestedItemDateRange(itemId, startDate, endDate)
 }
 
 class UpdateNestedItemTagsUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(itemId: Long, tagIds: List<Long>) =
+    suspend operator fun invoke(itemId: String, tagIds: List<String>) =
         repository.updateNestedItemTags(itemId, tagIds)
 }
 
@@ -125,7 +125,7 @@ class UpdateNestedItemMetricSettingsUseCase(
     private val repository: CheckItRepository
 ) {
     suspend operator fun invoke(
-        itemId: Long,
+        itemId: String,
         actualMinutes: Int,
         metricRollupPolicy: MetricRollupPolicy,
         showTrackedMinutes: Boolean
@@ -137,35 +137,35 @@ class UpdateNestedItemMetricSettingsUseCase(
 class ReplaceNestedManualMetricsUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(itemId: Long, metrics: List<MetricItem>) =
+    suspend operator fun invoke(itemId: String, metrics: List<MetricItem>) =
         repository.replaceNestedManualMetrics(itemId, metrics)
 }
 
 class UpdateNestedItemProgressUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(itemId: Long, progressPercent: Int?) =
+    suspend operator fun invoke(itemId: String, progressPercent: Int?) =
         repository.updateNestedItemProgress(itemId, progressPercent)
 }
 
 class SetNestedItemCheckboxEnabledUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(itemId: Long, checkboxEnabled: Boolean) =
+    suspend operator fun invoke(itemId: String, checkboxEnabled: Boolean) =
         repository.setNestedItemCheckboxEnabled(itemId, checkboxEnabled)
 }
 
 class SetNestedItemsCheckedUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(itemIds: List<Long>, checked: Boolean) =
+    suspend operator fun invoke(itemIds: List<String>, checked: Boolean) =
         repository.setNestedItemsChecked(itemIds, checked)
 }
 
 class ToggleNestedItemCollapsedUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(itemId: Long) = repository.toggleNestedItemCollapsed(itemId)
+    suspend operator fun invoke(itemId: String) = repository.toggleNestedItemCollapsed(itemId)
 }
 
 class MoveNestedItemsUseCase(
@@ -180,7 +180,7 @@ class MoveNestedItemsUseCase(
         repository.moveNestedItems(moves)
 
     /** Indents [itemId] under its previous sibling. No-op if first in group. */
-    fun indent(items: List<NestedListItem>, itemId: Long): List<NestedItemMove> {
+    fun indent(items: List<NestedListItem>, itemId: String): List<NestedItemMove> {
         val item = items.firstOrNull { it.id == itemId } ?: return emptyList()
         val siblings = siblingsOf(items, item.parentId)
         val index = siblings.indexOfFirst { it.id == itemId }
@@ -194,7 +194,7 @@ class MoveNestedItemsUseCase(
     }
 
     /** Outdents [itemId] to sit right after its parent. No-op if it has none. */
-    fun outdent(items: List<NestedListItem>, itemId: Long): List<NestedItemMove> {
+    fun outdent(items: List<NestedListItem>, itemId: String): List<NestedItemMove> {
         val item = items.firstOrNull { it.id == itemId } ?: return emptyList()
         val parent = items.firstOrNull { it.id == item.parentId } ?: return emptyList()
         val siblings = siblingsOf(items, parent.parentId)
@@ -207,7 +207,7 @@ class MoveNestedItemsUseCase(
     }
 
     /** Moves [itemId] one slot up within its siblings. No-op if already first. */
-    fun moveUp(items: List<NestedListItem>, itemId: Long): List<NestedItemMove> {
+    fun moveUp(items: List<NestedListItem>, itemId: String): List<NestedItemMove> {
         val item = items.firstOrNull { it.id == itemId } ?: return emptyList()
         val siblings = siblingsOf(items, item.parentId)
         val index = siblings.indexOfFirst { it.id == itemId }
@@ -219,7 +219,7 @@ class MoveNestedItemsUseCase(
     }
 
     /** Moves [itemId] one slot down within its siblings. No-op if already last. */
-    fun moveDown(items: List<NestedListItem>, itemId: Long): List<NestedItemMove> {
+    fun moveDown(items: List<NestedListItem>, itemId: String): List<NestedItemMove> {
         val item = items.firstOrNull { it.id == itemId } ?: return emptyList()
         val siblings = siblingsOf(items, item.parentId)
         val index = siblings.indexOfFirst { it.id == itemId }
@@ -238,12 +238,12 @@ class MoveNestedItemsUseCase(
      */
     fun moveToPosition(
         items: List<NestedListItem>,
-        itemId: Long,
-        newParentId: Long?,
+        itemId: String,
+        newParentId: String?,
         newIndex: Int
     ): List<NestedItemMove> {
         val item = items.firstOrNull { it.id == itemId } ?: return emptyList()
-        var cursor: Long? = newParentId
+        var cursor: String? = newParentId
         while (cursor != null) {
             if (cursor == itemId) return emptyList()
             cursor = items.firstOrNull { it.id == cursor }?.parentId
@@ -267,14 +267,14 @@ class MoveNestedItemsUseCase(
      * Emits moves that pin [ordered] to contiguous 0-based positions under
      * [parentId], only for items whose parent or position actually changes.
      */
-    private fun renormalizeGroup(ordered: List<NestedListItem>, parentId: Long?): List<NestedItemMove> =
+    private fun renormalizeGroup(ordered: List<NestedListItem>, parentId: String?): List<NestedItemMove> =
         ordered.mapIndexedNotNull { index, item ->
             if (item.parentId != parentId || item.position != index) {
                 NestedItemMove(item.id, parentId, index)
             } else null
         }
 
-    private fun siblingsOf(items: List<NestedListItem>, parentId: Long?): List<NestedListItem> =
+    private fun siblingsOf(items: List<NestedListItem>, parentId: String?): List<NestedListItem> =
         items.filter { it.parentId == parentId }
             .sortedWith(compareBy<NestedListItem> { it.position }.thenBy { it.id })
 }
@@ -282,7 +282,7 @@ class MoveNestedItemsUseCase(
 class DeleteNestedItemsUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(itemIds: List<Long>) = repository.deleteNestedItems(itemIds)
+    suspend operator fun invoke(itemIds: List<String>) = repository.deleteNestedItems(itemIds)
 }
 
 /** Flattens a node forest back into a list of items (depth-first, pre-order). */

@@ -48,7 +48,7 @@ enum class CarryOverTimePolicy {
 }
 
 data class DayCloseTagMinutes(
-    val tagId: Long,
+    val tagId: String,
     val name: String,
     val color: String,
     val totalMinutes: Int
@@ -68,7 +68,7 @@ data class DayCloseSummary(
 
 data class DayCloseConfirmInput(
     val date: LocalDate,
-    val leftoverActions: Map<Long, LeftoverAction>,
+    val leftoverActions: Map<String, LeftoverAction>,
     val winNote: String? = null,
     val tomorrowGoal: String? = null,
     val rating: Float = 0f
@@ -90,5 +90,5 @@ data class DayCloseCommitResult(
 data class CarryOverResult(
     val carriedCount: Int,
     val skippedCount: Int,
-    val newItemIds: List<Long>
+    val newItemIds: List<String>
 )

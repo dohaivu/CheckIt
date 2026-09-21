@@ -8,8 +8,8 @@ internal object NotificationIds {
     const val CountdownOngoing = 1003
     const val CountdownFinished = 1004
 
-    fun taskReminder(taskId: Long): Int =
-        taskId.stableIntId()
+    fun taskReminder(taskId: String): Int =
+        taskId.hashCode()
 
     fun appReminder(type: String): Int = when (type) {
         DailyAppReminderWorker.TypePlan -> PlanReminder
@@ -17,12 +17,9 @@ internal object NotificationIds {
         else -> 70_000
     }
 
-    fun dailyPlanSchedule(itemId: Long): Int =
-        80_000 + itemId.stableIntId().and(0x3fff)
+    fun dailyPlanSchedule(itemId: String): Int =
+        80_000 + (itemId.hashCode() and 0x3fff)
 
     fun quickNoteReminder(noteId: String): Int =
         90_000 + (noteId.hashCode() and 0x3fff)
-
-    private fun Long.stableIntId(): Int =
-        (this xor (this ushr 32)).toInt()
 }

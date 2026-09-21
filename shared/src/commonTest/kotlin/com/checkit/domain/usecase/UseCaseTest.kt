@@ -20,13 +20,13 @@ class UseCaseTest {
     fun todayFilterReturnsTasksDueTodayOnly() {
         val board = TaskBoard(
             tasks = listOf(
-                task(id = 1, doDate = today),
-                task(id = 2, doDate = LocalDate(2026, 6, 5)),
-                task(id = 3, doDate = null)
+                task(id = "1", doDate = today),
+                task(id = "2", doDate = LocalDate(2026, 6, 5)),
+                task(id = "3", doDate = null)
             )
         )
         val filter = TaskFilter(
-            id = 1,
+            id = "1",
             name = "Today",
             icon = "Today",
             color = "#2563EB",
@@ -36,21 +36,21 @@ class UseCaseTest {
 
         val items = selectItems(board, TaskBoardSelection.FilterSelection(filter), today)
 
-        assertEquals(listOf(1L), items.tasks.map { it.id })
+        assertEquals(listOf("1"), items.tasks.map { it.id })
     }
 
     @Test
     fun noDateFilterReturnsUndatedTasksOnly() {
         val board = TaskBoard(
             tasks = listOf(
-                task(id = 1, doDate = null),
-                task(id = 2, doDate = null, priority = TaskPriority.High),
-                task(id = 3, doDate = today)
+                task(id = "1", doDate = null),
+                task(id = "2", doDate = null, priority = TaskPriority.High),
+                task(id = "3", doDate = today)
             ),
-            notes = listOf(note(id = 4, date = today))
+            notes = listOf(note(id = "4", date = today))
         )
         val filter = TaskFilter(
-            id = 5,
+            id = "5",
             name = "No date",
             icon = "Schedule",
             color = "#7C3AED",
@@ -60,22 +60,22 @@ class UseCaseTest {
 
         val items = selectItems(board, TaskBoardSelection.FilterSelection(filter), today)
 
-        assertEquals(listOf(1L, 2L), items.tasks.map { it.id })
+        assertEquals(listOf("1", "2"), items.tasks.map { it.id })
         assertEquals(emptyList(), items.notes.map { it.id })
     }
 
     @Test
     fun tagAndPriorityFilterCanBeCombined() {
-        val tag = TagItem(id = 7, name = "Work", color = "#7C3AED")
+        val tag = TagItem(id = "7", name = "Work", color = "#7C3AED")
         val board = TaskBoard(
             tasks = listOf(
-                task(id = 1, tags = listOf(tag), priority = TaskPriority.High),
-                task(id = 2, tags = listOf(tag), priority = TaskPriority.Low),
-                task(id = 3, tags = emptyList(), priority = TaskPriority.High)
+                task(id = "1", tags = listOf(tag), priority = TaskPriority.High),
+                task(id = "2", tags = listOf(tag), priority = TaskPriority.Low),
+                task(id = "3", tags = emptyList(), priority = TaskPriority.High)
             )
         )
         val filter = TaskFilter(
-            id = 2,
+            id = "2",
             name = "High Work",
             icon = "PriorityHigh",
             color = "#DC2626",
@@ -86,24 +86,24 @@ class UseCaseTest {
 
         val items = selectItems(board, TaskBoardSelection.FilterSelection(filter), today)
 
-        assertEquals(listOf(1L), items.tasks.map { it.id })
+        assertEquals(listOf("1"), items.tasks.map { it.id })
     }
 
     @Test
     fun tagFilterReturnsMatchingTasksAndNotes() {
-        val tag = TagItem(id = 7, name = "Work", color = "#7C3AED")
+        val tag = TagItem(id = "7", name = "Work", color = "#7C3AED")
         val board = TaskBoard(
             tasks = listOf(
-                task(id = 1, tags = listOf(tag)),
-                task(id = 2)
+                task(id = "1", tags = listOf(tag)),
+                task(id = "2")
             ),
             notes = listOf(
-                note(id = 3, tags = listOf(tag)),
-                note(id = 4)
+                note(id = "3", tags = listOf(tag)),
+                note(id = "4")
             )
         )
         val filter = TaskFilter(
-            id = 4,
+            id = "4",
             name = "Work",
             icon = "Work",
             color = "#7C3AED",
@@ -113,20 +113,20 @@ class UseCaseTest {
 
         val items = selectItems(board, TaskBoardSelection.FilterSelection(filter), today)
 
-        assertEquals(listOf(1L), items.tasks.map { it.id })
-        assertEquals(listOf(3L), items.notes.map { it.id })
+        assertEquals(listOf("1"), items.tasks.map { it.id })
+        assertEquals(listOf("3"), items.notes.map { it.id })
     }
 
     @Test
     fun trashedFilterOnlyReturnsTrashedTasks() {
         val board = TaskBoard(
             tasks = listOf(
-                task(id = 1),
-                task(id = 2, trashedAtMillis = 1000L)
+                task(id = "1"),
+                task(id = "2", trashedAtMillis = 1000L)
             )
         )
         val filter = TaskFilter(
-            id = 3,
+            id = "3",
             name = "Trashed",
             icon = "Delete",
             color = "#6B7280",
@@ -136,21 +136,21 @@ class UseCaseTest {
 
         val items = selectItems(board, TaskBoardSelection.FilterSelection(filter), today)
 
-        assertEquals(listOf(2L), items.tasks.map { it.id })
+        assertEquals(listOf("2"), items.tasks.map { it.id })
     }
 
     @Test
     fun allFilterReturnsAllNonTrashedTasks() {
         val board = TaskBoard(
             tasks = listOf(
-                task(id = 1, doDate = today),
-                task(id = 2, doDate = LocalDate(2026, 6, 5), status = TaskStatus.Completed),
-                task(id = 3, trashedAtMillis = 1000L),
-                task(id = 4, priority = TaskPriority.High)
+                task(id = "1", doDate = today),
+                task(id = "2", doDate = LocalDate(2026, 6, 5), status = TaskStatus.Completed),
+                task(id = "3", trashedAtMillis = 1000L),
+                task(id = "4", priority = TaskPriority.High)
             )
         )
         val filter = TaskFilter(
-            id = 0,
+            id = "0",
             name = "All",
             icon = "AllInclusive",
             color = "#475569",
@@ -159,20 +159,20 @@ class UseCaseTest {
 
         val items = selectItems(board, TaskBoardSelection.FilterSelection(filter), today)
 
-        assertEquals(listOf(1L, 2L, 4L), items.tasks.map { it.id })
+        assertEquals(listOf("1", "2", "4"), items.tasks.map { it.id })
     }
 
     @Test
     fun allFilterReturnsAllNonTrashedNotes() {
         val board = TaskBoard(
             notes = listOf(
-                note(id = 10, date = today),
-                note(id = 11, date = LocalDate(2026, 6, 5)),
-                note(id = 12, date = LocalDate(2026, 6, 1), trashedAtMillis = 1000L)
+                note(id = "10", date = today),
+                note(id = "11", date = LocalDate(2026, 6, 5)),
+                note(id = "12", date = LocalDate(2026, 6, 1), trashedAtMillis = 1000L)
             )
         )
         val allFilter = TaskFilter(
-            id = 0,
+            id = "0",
             name = "All",
             icon = "AllInclusive",
             color = "#475569",
@@ -181,19 +181,19 @@ class UseCaseTest {
 
         val items = selectItems(board, TaskBoardSelection.FilterSelection(allFilter), today)
 
-        assertEquals(listOf(10L, 11L), items.notes.map { it.id })
+        assertEquals(listOf("10", "11"), items.notes.map { it.id })
     }
 
     @Test
     fun todayFilterReturnsNotesDatedToday() {
         val board = TaskBoard(
             notes = listOf(
-                note(id = 20, date = today),
-                note(id = 21, date = LocalDate(2026, 6, 5))
+                note(id = "20", date = today),
+                note(id = "21", date = LocalDate(2026, 6, 5))
             )
         )
         val todayFilter = TaskFilter(
-            id = 1,
+            id = "1",
             name = "Today",
             icon = "Today",
             color = "#2563EB",
@@ -203,19 +203,19 @@ class UseCaseTest {
 
         val items = selectItems(board, TaskBoardSelection.FilterSelection(todayFilter), today)
 
-        assertEquals(listOf(20L), items.notes.map { it.id })
+        assertEquals(listOf("20"), items.notes.map { it.id })
     }
 
     @Test
     fun completedFilterReturnsNoNotes() {
         val board = TaskBoard(
             notes = listOf(
-                note(id = 30, date = today),
-                note(id = 31, date = LocalDate(2026, 6, 5))
+                note(id = "30", date = today),
+                note(id = "31", date = LocalDate(2026, 6, 5))
             )
         )
         val completedFilter = TaskFilter(
-            id = 2,
+            id = "2",
             name = "Completed",
             icon = "TaskAlt",
             color = "#059669",
@@ -232,12 +232,12 @@ class UseCaseTest {
     fun trashedFilterOnlyReturnsTrashedNotes() {
         val board = TaskBoard(
             notes = listOf(
-                note(id = 40, date = today),
-                note(id = 41, date = today, trashedAtMillis = 1000L)
+                note(id = "40", date = today),
+                note(id = "41", date = today, trashedAtMillis = 1000L)
             )
         )
         val trashedFilter = TaskFilter(
-            id = 3,
+            id = "3",
             name = "Trashed",
             icon = "Delete",
             color = "#6B7280",
@@ -247,11 +247,11 @@ class UseCaseTest {
 
         val items = selectItems(board, TaskBoardSelection.FilterSelection(trashedFilter), today)
 
-        assertEquals(listOf(41L), items.notes.map { it.id })
+        assertEquals(listOf("41"), items.notes.map { it.id })
     }
 
     private fun task(
-        id: Long,
+        id: String,
         doDate: LocalDate? = null,
         tags: List<TagItem> = emptyList(),
         priority: TaskPriority = TaskPriority.None,
@@ -272,7 +272,7 @@ class UseCaseTest {
     )
 
     private fun note(
-        id: Long,
+        id: String,
         tags: List<TagItem> = emptyList(),
         date: LocalDate = today,
         trashedAtMillis: Long? = null

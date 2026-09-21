@@ -189,9 +189,9 @@ struct NestedRowView: View {
         .onDrop(of: [.text], isTargeted: nil) { providers in
             guard let provider = providers.first else { return false }
             _ = provider.loadObject(ofClass: NSString.self) { payload, _ in
-                guard let s = payload as? String, s.hasPrefix("nested:"),
-                      let dragged = Int64(s.dropFirst("nested:".count))
+                guard let s = payload as? String, s.hasPrefix("nested:")
                 else { return }
+                let dragged = String(s.dropFirst("nested:".count))
                 DispatchQueue.main.async {
                     // Option held while dropping = nest as child; else sibling gap.
                     let opts = NSEvent.modifierFlags.contains(.option)

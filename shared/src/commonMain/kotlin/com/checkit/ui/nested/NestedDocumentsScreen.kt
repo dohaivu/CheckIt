@@ -58,7 +58,7 @@ import org.jetbrains.compose.resources.stringResource
 internal fun NestedDocumentsScreen(
     state: NestedUiState,
     viewModel: NestedListsViewModel,
-    onAddToDailyPlan: (title: String, tagIds: List<Long>, nestedListItemId: Long?) -> Unit,
+    onAddToDailyPlan: (title: String, tagIds: List<String>, nestedListItemId: String?) -> Unit,
     onCopyToTask: (title: String, note: String?, subtaskTexts: List<String>) -> Unit = { _, _, _ -> }
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)

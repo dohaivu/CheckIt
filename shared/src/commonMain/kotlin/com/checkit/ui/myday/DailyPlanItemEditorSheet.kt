@@ -75,7 +75,7 @@ internal fun DailyPlanItemEditorSheet(
     onSourceChange: (DailyPlanItemSource) -> Unit,
     onDateChange: (LocalDate?) -> Unit,
     onTimeChange: (Int?, Int?) -> Unit,
-    onTagToggle: (Long) -> Unit,
+    onTagToggle: (String) -> Unit,
     onNewTagClick: () -> Unit,
     onAdd: () -> Unit,
     onDelete: () -> Unit,
@@ -282,7 +282,7 @@ private fun DailyPlanItemFormContent(
     onSourceChange: (DailyPlanItemSource) -> Unit,
     onDateChange: (LocalDate?) -> Unit,
     onTimeChange: (Int?, Int?) -> Unit,
-    onTagToggle: (Long) -> Unit,
+    onTagToggle: (String) -> Unit,
     onNewTagClick: () -> Unit,
     enabled: Boolean
 ) {
@@ -567,8 +567,8 @@ private fun AddModeIntentControls(
 private fun LabeledTagPicker(
     source: DailyPlanItemSource,
     availableTags: List<TagItem>,
-    selectedTagIds: Set<Long>,
-    onTagToggle: (Long) -> Unit,
+    selectedTagIds: Set<String>,
+    onTagToggle: (String) -> Unit,
     onNewTagClick: () -> Unit,
     enabled: Boolean
 ) {

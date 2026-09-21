@@ -24,7 +24,7 @@ class ObserveJournalEntriesUseCase(
 class AddJournalEntryUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(input: JournalEntryWriteInput): Result<Long> {
+    suspend operator fun invoke(input: JournalEntryWriteInput): Result<String> {
         if (input.content.trim().isBlank() && input.label.isNullOrBlank()) {
             return Result.failure(Exception("Add a note"))
         }
@@ -35,12 +35,12 @@ class AddJournalEntryUseCase(
 class UpdateJournalEntryUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(entryId: Long, input: JournalEntryWriteInput): Result<Unit> =
+    suspend operator fun invoke(entryId: String, input: JournalEntryWriteInput): Result<Unit> =
         runCatching { repository.updateJournalEntry(entryId, input) }
 }
 
 class DeleteJournalEntryUseCase(
     private val repository: CheckItRepository
 ) {
-    suspend operator fun invoke(entryId: Long) = repository.deleteJournalEntry(entryId)
+    suspend operator fun invoke(entryId: String) = repository.deleteJournalEntry(entryId)
 }

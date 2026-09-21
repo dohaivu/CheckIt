@@ -56,7 +56,7 @@ internal class DayCloseController(
         state.update { it.copy(dayClose = null) }
     }
 
-    fun setLeftoverAction(itemId: Long, action: LeftoverAction) {
+    fun setLeftoverAction(itemId: String, action: LeftoverAction) {
         state.update { current ->
             val review = current.dayClose ?: return@update current
             current.copy(

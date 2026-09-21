@@ -26,9 +26,9 @@ import com.checkit.ui.theme.toColor
 
 @Composable
 internal fun ListPicker(
-    selectedListId: Long,
+    selectedListId: String,
     lists: List<ListItem>,
-    onListChange: (Long) -> Unit,
+    onListChange: (String) -> Unit,
     enabled: Boolean = true
 ) {
     if (lists.isEmpty()) return

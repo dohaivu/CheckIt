@@ -13,32 +13,33 @@ import com.checkit.domain.DayCloseCommitResult
 import com.checkit.domain.Period
 import com.checkit.domain.TaskReminderWriteInput
 import kotlinx.coroutines.flow.Flow
+import kotlin.uuid.Uuid
 
 @Dao
 interface CheckItDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertTag(tag: TagEntity): Long
+    suspend fun insertTag(tag: TagEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertTask(task: TaskEntity): Long
+    suspend fun insertTask(task: TaskEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertNote(note: NoteEntity): Long
+    suspend fun insertNote(note: NoteEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertDailyPlanItem(item: DailyPlanItemEntity): Long
+    suspend fun insertDailyPlanItem(item: DailyPlanItemEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertSubTask(subTask: SubTaskEntity): Long
+    suspend fun insertSubTask(subTask: SubTaskEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertReminder(reminder: TaskReminderEntity): Long
+    suspend fun insertReminder(reminder: TaskReminderEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertList(list: ListEntity): Long
+    suspend fun insertList(list: ListEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertListSection(section: ListSectionEntity): Long
+    suspend fun insertListSection(section: ListSectionEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTaskList(taskList: TaskListEntity)
@@ -47,10 +48,10 @@ interface CheckItDao {
     suspend fun insertNoteList(noteList: NoteListEntity)
 
     @Query("DELETE FROM task_list WHERE taskId = :taskId")
-    suspend fun deleteTaskList(taskId: Long)
+    suspend fun deleteTaskList(taskId: String)
 
     @Query("DELETE FROM note_list WHERE noteId = :noteId")
-    suspend fun deleteNoteList(noteId: Long)
+    suspend fun deleteNoteList(noteId: String)
 
     @Query("SELECT * FROM task_list")
     fun observeTaskLists(): Flow<List<TaskListEntity>>
@@ -59,28 +60,28 @@ interface CheckItDao {
     fun observeNoteLists(): Flow<List<NoteListEntity>>
 
     @Query("SELECT * FROM task_list WHERE taskId = :taskId LIMIT 1")
-    suspend fun taskListByTaskId(taskId: Long): TaskListEntity?
+    suspend fun taskListByTaskId(taskId: String): TaskListEntity?
 
     @Query("SELECT * FROM note_list WHERE noteId = :noteId LIMIT 1")
-    suspend fun noteListByNoteId(noteId: Long): NoteListEntity?
+    suspend fun noteListByNoteId(noteId: String): NoteListEntity?
 
     @Query("SELECT * FROM lists WHERE id = :listId LIMIT 1")
-    suspend fun listById(listId: Long): ListEntity?
+    suspend fun listById(listId: String): ListEntity?
 
     @Query("SELECT * FROM list_sections WHERE id = :sectionId LIMIT 1")
-    suspend fun sectionById(sectionId: Long): ListSectionEntity?
+    suspend fun sectionById(sectionId: String): ListSectionEntity?
 
-    @Query("SELECT * FROM lists ORDER BY sortOrder ASC, title ASC")
+    @Query("SELECT * FROM lists WHERE deleted = 0 ORDER BY sortOrder ASC, title ASC")
     fun observeLists(): Flow<List<ListEntity>>
 
-    @Query("SELECT * FROM list_sections ORDER BY listId ASC, sortOrder ASC, title ASC")
+    @Query("SELECT * FROM list_sections WHERE deleted = 0 ORDER BY listId ASC, sortOrder ASC, title ASC")
     fun observeListSections(): Flow<List<ListSectionEntity>>
 
-    @Query("SELECT * FROM list_sections WHERE listId = :listId ORDER BY sortOrder ASC, title ASC")
-    fun observeSectionsForList(listId: Long): Flow<List<ListSectionEntity>>
+    @Query("SELECT * FROM list_sections WHERE deleted = 0 AND listId = :listId ORDER BY sortOrder ASC, title ASC")
+    fun observeSectionsForList(listId: String): Flow<List<ListSectionEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertJournalEntry(entry: JournalEntryEntity): Long
+    suspend fun insertJournalEntry(entry: JournalEntryEntity)
 
     @Query(
         """
@@ -90,25 +91,25 @@ interface CheckItDao {
           AND EXISTS(SELECT 1 FROM tags WHERE id = :tagId)
         """
     )
-    suspend fun insertJournalEntryTagIfParentsExist(entryId: Long, tagId: Long)
+    suspend fun insertJournalEntryTagIfParentsExist(entryId: String, tagId: String)
 
     @Query("DELETE FROM journal_entry_tags WHERE entryId = :entryId")
-    suspend fun deleteJournalEntryTags(entryId: Long)
+    suspend fun deleteJournalEntryTags(entryId: String)
 
-    @Query("SELECT COUNT(*) FROM journal_entries WHERE dateEpochDays = :dateEpochDays")
+    @Query("SELECT COUNT(*) FROM journal_entries WHERE deleted = 0 AND dateEpochDays = :dateEpochDays")
     suspend fun journalEntryCountForDate(dateEpochDays: Int): Int
 
-    @Query("SELECT * FROM journal_entries ORDER BY createdTimeMinutes ASC")
+    @Query("SELECT * FROM journal_entries WHERE deleted = 0 ORDER BY createdTimeMinutes ASC")
     fun observeJournalEntries(): Flow<List<JournalEntryEntity>>
 
-    @Query("SELECT * FROM journal_entries WHERE dateEpochDays = :dateEpochDays ORDER BY createdTimeMinutes ASC")
+    @Query("SELECT * FROM journal_entries WHERE deleted = 0 AND dateEpochDays = :dateEpochDays ORDER BY createdTimeMinutes ASC")
     fun observeJournalEntriesForDate(dateEpochDays: Int): Flow<List<JournalEntryEntity>>
 
     @Query("SELECT * FROM journal_entry_tags")
     fun observeJournalEntryTags(): Flow<List<JournalEntryTagEntity>>
 
     @Query("SELECT * FROM journal_entries WHERE id = :entryId LIMIT 1")
-    suspend fun journalEntryById(entryId: Long): JournalEntryEntity?
+    suspend fun journalEntryById(entryId: String): JournalEntryEntity?
 
     @Query(
         """
@@ -116,87 +117,100 @@ interface CheckItDao {
         SET label = :label,
             content = :content,
             moods = :moods,
-            attachments = :attachments
+            attachments = :attachments,
+            updatedAtMillis = :updatedAtMillis,
+            dirty = 1
         WHERE id = :entryId
         """
     )
-    suspend fun updateJournalEntry(entryId: Long, label: String?, content: String, moods: String, attachments: String)
+    suspend fun updateJournalEntry(
+        entryId: String,
+        label: String?,
+        content: String,
+        moods: String,
+        attachments: String,
+        updatedAtMillis: Long
+    )
 
-    @Query("DELETE FROM journal_entries WHERE id = :entryId")
-    suspend fun deleteJournalEntry(entryId: Long)
+    /**
+     * Tombstone instead of hard delete so the deletion syncs; the row is
+     * hard-deleted later via [getPurgeableJournalTombstones] once uploaded.
+     */
+    @Query("UPDATE journal_entries SET deleted = 1, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :entryId")
+    suspend fun deleteJournalEntry(entryId: String, updatedAtMillis: Long)
 
     @Query("DELETE FROM task_tags WHERE taskId = :taskId")
-    suspend fun deleteTaskTags(taskId: Long)
+    suspend fun deleteTaskTags(taskId: String)
 
     @Query("DELETE FROM sub_tasks WHERE taskId = :taskId")
-    suspend fun deleteSubTasks(taskId: Long)
+    suspend fun deleteSubTasks(taskId: String)
 
     @Query("DELETE FROM task_reminders WHERE taskId = :taskId")
-    suspend fun deleteTaskReminders(taskId: Long)
+    suspend fun deleteTaskReminders(taskId: String)
 
     @Query("DELETE FROM note_tags WHERE noteId = :noteId")
-    suspend fun deleteNoteTags(noteId: Long)
+    suspend fun deleteNoteTags(noteId: String)
 
     @Query("DELETE FROM daily_plan_item_tags WHERE itemId = :itemId")
-    suspend fun deleteDailyPlanItemTags(itemId: Long)
+    suspend fun deleteDailyPlanItemTags(itemId: String)
 
-    @Query("SELECT * FROM tags ORDER BY sortOrder ASC, lastUsedAtMillis DESC, name ASC")
+    @Query("SELECT * FROM tags WHERE deleted = 0 ORDER BY sortOrder ASC, lastUsedAtMillis DESC, name ASC")
     fun observeTags(): Flow<List<TagEntity>>
 
     @Query("SELECT * FROM task_filters ORDER BY sortOrder ASC, name ASC")
     fun observeFilters(): Flow<List<TaskFilterEntity>>
 
-    @Query("SELECT * FROM tasks WHERE status = 'Open' ORDER BY createdAtMillis DESC")
+    @Query("SELECT * FROM tasks WHERE status = 'Open' AND deleted = 0 ORDER BY createdAtMillis DESC")
     fun observeTasksOpen(): Flow<List<TaskEntity>>
 
-    @Query("SELECT * FROM tasks ORDER BY createdAtMillis DESC")
+    @Query("SELECT * FROM tasks WHERE deleted = 0 ORDER BY createdAtMillis DESC")
     fun observeTasksAll(): Flow<List<TaskEntity>>
 
     @Query("SELECT * FROM tasks WHERE id = :taskId LIMIT 1")
-    suspend fun taskById(taskId: Long): TaskEntity?
+    suspend fun taskById(taskId: String): TaskEntity?
 
     @Query("SELECT * FROM notes WHERE id = :noteId LIMIT 1")
-    suspend fun noteById(noteId: Long): NoteEntity?
+    suspend fun noteById(noteId: String): NoteEntity?
 
-    @Query("SELECT * FROM notes WHERE status = 'Open' ORDER BY editedAtMillis DESC")
+    @Query("SELECT * FROM notes WHERE status = 'Open' AND deleted = 0 ORDER BY editedAtMillis DESC")
     fun observeNotesOpen(): Flow<List<NoteEntity>>
 
-    @Query("SELECT * FROM notes ORDER BY editedAtMillis DESC")
+    @Query("SELECT * FROM notes WHERE deleted = 0 ORDER BY editedAtMillis DESC")
     fun observeNotesAll(): Flow<List<NoteEntity>>
 
-    @Query("SELECT * FROM daily_plan_items ORDER BY sortOrder ASC, addedAtMillis ASC")
+    @Query("SELECT * FROM daily_plan_items WHERE deleted = 0 ORDER BY sortOrder ASC, addedAtMillis ASC")
     fun observeDailyPlanItems(): Flow<List<DailyPlanItemEntity>>
 
-    @Query("SELECT * FROM daily_plan_items WHERE dateEpochDays BETWEEN :startEpochDays AND :endEpochDays ORDER BY sortOrder ASC, addedAtMillis ASC")
+    @Query("SELECT * FROM daily_plan_items WHERE deleted = 0 AND dateEpochDays BETWEEN :startEpochDays AND :endEpochDays ORDER BY sortOrder ASC, addedAtMillis ASC")
     fun observeDailyPlanItemsInRange(startEpochDays: Int, endEpochDays: Int): Flow<List<DailyPlanItemEntity>>
 
     @Query("SELECT * FROM daily_plan_items WHERE id = :itemId LIMIT 1")
-    suspend fun dailyPlanItemById(itemId: Long): DailyPlanItemEntity?
+    suspend fun dailyPlanItemById(itemId: String): DailyPlanItemEntity?
 
-    @Query("SELECT * FROM daily_plan_items WHERE dateEpochDays = :dateEpochDays ORDER BY sortOrder ASC, addedAtMillis ASC")
+    @Query("SELECT * FROM daily_plan_items WHERE deleted = 0 AND dateEpochDays = :dateEpochDays ORDER BY sortOrder ASC, addedAtMillis ASC")
     suspend fun dailyPlanItemsForDate(dateEpochDays: Int): List<DailyPlanItemEntity>
 
-    @Query("SELECT COUNT(*) FROM daily_plan_items WHERE dateEpochDays = :dateEpochDays AND carriedFromItemId = :sourceItemId")
-    suspend fun carriedFromCountOnDate(dateEpochDays: Int, sourceItemId: Long): Int
+    @Query("SELECT COUNT(*) FROM daily_plan_items WHERE deleted = 0 AND dateEpochDays = :dateEpochDays AND carriedFromItemId = :sourceItemId")
+    suspend fun carriedFromCountOnDate(dateEpochDays: Int, sourceItemId: String): Int
 
-    @Query("SELECT * FROM tasks WHERE doDateEpochDays = :dateEpochDays AND trashedAtMillis IS NULL AND status != 'Completed' ORDER BY createdAtMillis DESC")
+    @Query("SELECT * FROM tasks WHERE deleted = 0 AND doDateEpochDays = :dateEpochDays AND trashedAtMillis IS NULL AND status != 'Completed' ORDER BY createdAtMillis DESC")
     fun observeTasksForDate(dateEpochDays: Int): Flow<List<TaskEntity>>
 
-    @Query("SELECT * FROM tasks WHERE doDateEpochDays BETWEEN :startEpochDays AND :endEpochDays AND trashedAtMillis IS NULL AND status != 'Completed' ORDER BY createdAtMillis DESC")
+    @Query("SELECT * FROM tasks WHERE deleted = 0 AND doDateEpochDays BETWEEN :startEpochDays AND :endEpochDays AND trashedAtMillis IS NULL AND status != 'Completed' ORDER BY createdAtMillis DESC")
     fun observeTasksForDateRange(startEpochDays: Int, endEpochDays: Int): Flow<List<TaskEntity>>
 
     @Query("""
         SELECT * FROM tasks 
-        WHERE trashedAtMillis IS NULL 
+        WHERE deleted = 0 AND trashedAtMillis IS NULL 
           AND (doDateEpochDays = :dateEpochDays OR status = 'Open' OR completedDateEpochDays = :dateEpochDays)
         ORDER BY createdAtMillis DESC
     """)
     fun observeWorkingTasks(dateEpochDays: Int): Flow<List<TaskEntity>>
 
-    @Query("SELECT * FROM notes WHERE dateEpochDays = :dateEpochDays AND trashedAtMillis IS NULL AND status != 'Completed' ORDER BY editedAtMillis DESC")
+    @Query("SELECT * FROM notes WHERE deleted = 0 AND dateEpochDays = :dateEpochDays AND trashedAtMillis IS NULL AND status != 'Completed' ORDER BY editedAtMillis DESC")
     fun observeNotesForDate(dateEpochDays: Int): Flow<List<NoteEntity>>
 
-    @Query("SELECT * FROM notes WHERE dateEpochDays BETWEEN :startEpochDays AND :endEpochDays AND trashedAtMillis IS NULL AND status != 'Completed' ORDER BY editedAtMillis DESC")
+    @Query("SELECT * FROM notes WHERE deleted = 0 AND dateEpochDays BETWEEN :startEpochDays AND :endEpochDays AND trashedAtMillis IS NULL AND status != 'Completed' ORDER BY editedAtMillis DESC")
     fun observeNotesForDateRange(startEpochDays: Int, endEpochDays: Int): Flow<List<NoteEntity>>
 
     @Query("SELECT * FROM sub_tasks ORDER BY sortOrder ASC, id ASC")
@@ -213,15 +227,19 @@ interface CheckItDao {
         SELECT tagId, COUNT(*) AS usageCount FROM (
             SELECT tt.tagId AS tagId
             FROM task_tags tt INNER JOIN tasks t ON t.id = tt.taskId
-            WHERE t.trashedAtMillis IS NULL
+            WHERE t.trashedAtMillis IS NULL AND t.deleted = 0
             UNION ALL
             SELECT nt.tagId AS tagId
             FROM note_tags nt INNER JOIN notes n ON n.id = nt.noteId
-            WHERE n.trashedAtMillis IS NULL
+            WHERE n.trashedAtMillis IS NULL AND n.deleted = 0
             UNION ALL
-            SELECT pt.tagId AS tagId FROM daily_plan_item_tags pt
+            SELECT pt.tagId AS tagId
+            FROM daily_plan_item_tags pt INNER JOIN daily_plan_items i ON i.id = pt.itemId
+            WHERE i.deleted = 0
             UNION ALL
-            SELECT jt.tagId AS tagId FROM journal_entry_tags jt
+            SELECT jt.tagId AS tagId
+            FROM journal_entry_tags jt INNER JOIN journal_entries j ON j.id = jt.entryId
+            WHERE j.deleted = 0
         )
         GROUP BY tagId
         """
@@ -235,16 +253,16 @@ interface CheckItDao {
     fun observeDailyPlanItemTags(): Flow<List<DailyPlanItemTagEntity>>
 
     @Query("SELECT isPinned FROM task_list WHERE taskId = :taskId AND listId = :listId LIMIT 1")
-    suspend fun taskIsPinnedInList(taskId: Long, listId: Long): Boolean
+    suspend fun taskIsPinnedInList(taskId: String, listId: String): Boolean
 
     @Query("SELECT isPinned FROM note_list WHERE noteId = :noteId AND listId = :listId LIMIT 1")
-    suspend fun noteIsPinnedInList(noteId: Long, listId: Long): Boolean
+    suspend fun noteIsPinnedInList(noteId: String, listId: String): Boolean
 
     @Query("SELECT COALESCE(MAX(tl.sortOrder), -1) + 1 FROM task_list tl WHERE tl.listId = :listId")
-    suspend fun nextTaskSortOrder(listId: Long): Int
+    suspend fun nextTaskSortOrder(listId: String): Int
 
     @Query("SELECT COALESCE(MAX(nl.sortOrder), -1) + 1 FROM note_list nl WHERE nl.listId = :listId")
-    suspend fun nextNoteSortOrder(listId: Long): Int
+    suspend fun nextNoteSortOrder(listId: String): Int
 
     @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM daily_plan_items WHERE dateEpochDays = :dateEpochDays")
     suspend fun nextDailyPlanItemSortOrder(dateEpochDays: Int): Int
@@ -256,61 +274,79 @@ interface CheckItDao {
     suspend fun nextTagSortOrder(): Int
 
     @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM list_sections WHERE listId = :listId")
-    suspend fun nextSectionSortOrder(listId: Long): Int
+    suspend fun nextSectionSortOrder(listId: String): Int
 
-    @Query("UPDATE tags SET sortOrder = :sortOrder WHERE id = :tagId")
-    suspend fun updateTagSortOrder(tagId: Long, sortOrder: Int)
+    @Query("UPDATE tags SET sortOrder = :sortOrder, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :tagId")
+    suspend fun updateTagSortOrder(tagId: String, sortOrder: Int, updatedAtMillis: Long)
 
     @Query("UPDATE tags SET lastUsedAtMillis = :lastUsedAtMillis WHERE id = :tagId")
-    suspend fun updateTagLastUsedAtMillis(tagId: Long, lastUsedAtMillis: Long)
+    suspend fun updateTagLastUsedAtMillis(tagId: String, lastUsedAtMillis: Long)
 
-    @Query("SELECT COUNT(*) FROM daily_plan_items WHERE taskId = :taskId AND dateEpochDays = :dateEpochDays AND status = 'Done' AND id != :excludeItemId")
-    suspend fun countDoneDailyPlanItemsForTaskOnDate(taskId: Long, dateEpochDays: Int, excludeItemId: Long): Int
+    @Query("SELECT COUNT(*) FROM daily_plan_items WHERE deleted = 0 AND taskId = :taskId AND dateEpochDays = :dateEpochDays AND status = 'Done' AND id != :excludeItemId")
+    suspend fun countDoneDailyPlanItemsForTaskOnDate(taskId: String, dateEpochDays: Int, excludeItemId: String): Int
 
     @Query("SELECT tagId FROM daily_plan_item_tags WHERE itemId = :itemId")
-    suspend fun tagIdsForItem(itemId: Long): List<Long>
+    suspend fun tagIdsForItem(itemId: String): List<String>
 
     @Query("SELECT tagId FROM task_tags WHERE taskId = :taskId")
-    suspend fun tagIdsForTask(taskId: Long): List<Long>
+    suspend fun tagIdsForTask(taskId: String): List<String>
 
     @Query("SELECT tagId FROM note_tags WHERE noteId = :noteId")
-    suspend fun tagIdsForNote(noteId: Long): List<Long>
+    suspend fun tagIdsForNote(noteId: String): List<String>
 
     @Query("SELECT * FROM tags WHERE id IN (:tagIds)")
-    suspend fun tagsByIds(tagIds: List<Long>): List<TagEntity>
+    suspend fun tagsByIds(tagIds: List<String>): List<TagEntity>
 
     @Query("SELECT * FROM sub_tasks WHERE taskId = :taskId ORDER BY sortOrder ASC")
-    suspend fun subTasksForTask(taskId: Long): List<SubTaskEntity>
+    suspend fun subTasksForTask(taskId: String): List<SubTaskEntity>
 
     @Query("SELECT * FROM task_reminders WHERE taskId = :taskId ORDER BY remindAtMillis ASC")
-    suspend fun remindersForTask(taskId: Long): List<TaskReminderEntity>
+    suspend fun remindersForTask(taskId: String): List<TaskReminderEntity>
 
     @Query("SELECT id FROM lists WHERE title = 'Inbox' ORDER BY sortOrder ASC, id ASC LIMIT 1")
-    suspend fun inboxListId(): Long?
+    suspend fun inboxListId(): String?
 
-    @Query("UPDATE lists SET title = :title, icon = :icon, color = :color WHERE id = :listId")
-    suspend fun updateList(listId: Long, title: String, icon: String, color: String)
+    @Query("UPDATE lists SET title = :title, icon = :icon, color = :color, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :listId")
+    suspend fun updateList(listId: String, title: String, icon: String, color: String, updatedAtMillis: Long)
 
-    @Query("DELETE FROM lists WHERE id = :listId")
-    suspend fun deleteList(listId: Long)
+    /**
+     * Tombstone instead of hard delete so the deletion syncs; the row is
+     * hard-deleted later via [getPurgeableListTombstones] once uploaded.
+     */
+    @Query("UPDATE lists SET deleted = 1, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :listId")
+    suspend fun deleteList(listId: String, updatedAtMillis: Long)
 
-    @Query("DELETE FROM list_sections WHERE id = :sectionId")
-    suspend fun deleteSection(sectionId: Long)
+    @Query("UPDATE list_sections SET title = :title, color = :color, sortOrder = :sortOrder, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :sectionId")
+    suspend fun updateSection(sectionId: String, title: String, color: String, sortOrder: Int, updatedAtMillis: Long)
 
-    @Query("UPDATE list_sections SET title = :title, color = :color, sortOrder = :sortOrder WHERE id = :sectionId")
-    suspend fun updateSection(sectionId: Long, title: String, color: String, sortOrder: Int)
+    /**
+     * Tombstone instead of hard delete so the deletion syncs; the row is
+     * hard-deleted later via [getPurgeableListSectionTombstones] once uploaded.
+     */
+    @Query("UPDATE list_sections SET deleted = 1, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :sectionId")
+    suspend fun deleteSection(sectionId: String, updatedAtMillis: Long)
 
     @Query("UPDATE task_list SET listId = :toListId WHERE listId = :fromListId")
-    suspend fun moveTasksToList(fromListId: Long, toListId: Long)
+    suspend fun moveTasksToList(fromListId: String, toListId: String)
 
     @Query("UPDATE note_list SET listId = :toListId WHERE listId = :fromListId")
-    suspend fun moveNotesToList(fromListId: Long, toListId: Long)
+    suspend fun moveNotesToList(fromListId: String, toListId: String)
+
+    @Query("UPDATE tasks SET dirty = 1, updatedAtMillis = :nowMillis WHERE id IN (SELECT taskId FROM task_list WHERE listId = :listId)")
+    suspend fun markTasksInListDirty(listId: String, nowMillis: Long)
+
+    @Query("UPDATE notes SET dirty = 1, editedAtMillis = :nowMillis WHERE id IN (SELECT noteId FROM note_list WHERE listId = :listId)")
+    suspend fun markNotesInListDirty(listId: String, nowMillis: Long)
 
     @Transaction
-    suspend fun deleteListMovingContents(listId: Long, targetListId: Long) {
+    suspend fun deleteListMovingContents(listId: String, targetListId: String, nowMillis: Long) {
+        // Membership syncs embedded in the task/note documents, so the moved
+        // rows must be marked dirty before the joins are rewritten.
+        markTasksInListDirty(listId, nowMillis)
+        markNotesInListDirty(listId, nowMillis)
         moveTasksToList(fromListId = listId, toListId = targetListId)
         moveNotesToList(fromListId = listId, toListId = targetListId)
-        deleteList(listId)
+        deleteList(listId, nowMillis)
     }
 
     @Query(
@@ -321,7 +357,7 @@ interface CheckItDao {
           AND EXISTS(SELECT 1 FROM tags WHERE id = :tagId)
         """
     )
-    suspend fun insertTaskTagIfParentsExist(taskId: Long, tagId: Long)
+    suspend fun insertTaskTagIfParentsExist(taskId: String, tagId: String)
 
     @Query(
         """
@@ -331,7 +367,7 @@ interface CheckItDao {
           AND EXISTS(SELECT 1 FROM tags WHERE id = :tagId)
         """
     )
-    suspend fun insertNoteTagIfParentsExist(noteId: Long, tagId: Long)
+    suspend fun insertNoteTagIfParentsExist(noteId: String, tagId: String)
 
     @Query(
         """
@@ -341,16 +377,20 @@ interface CheckItDao {
           AND EXISTS(SELECT 1 FROM tags WHERE id = :tagId)
         """
     )
-    suspend fun insertDailyPlanItemTagIfParentsExist(itemId: Long, tagId: Long)
+    suspend fun insertDailyPlanItemTagIfParentsExist(itemId: String, tagId: String)
 
-    @Query("UPDATE tags SET name = :name, color = :color WHERE id = :tagId")
-    suspend fun updateTag(tagId: Long, name: String, color: String)
+    @Query("UPDATE tags SET name = :name, color = :color, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :tagId")
+    suspend fun updateTag(tagId: String, name: String, color: String, updatedAtMillis: Long)
 
-    @Query("DELETE FROM tags WHERE id = :tagId")
-    suspend fun deleteTag(tagId: Long)
+    /**
+     * Tombstone instead of hard delete so the deletion syncs; the row is
+     * hard-deleted later via [getPurgeableTagTombstones] once uploaded.
+     */
+    @Query("UPDATE tags SET deleted = 1, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :tagId")
+    suspend fun deleteTag(tagId: String, updatedAtMillis: Long)
 
     @Query("SELECT COUNT(*) FROM tags WHERE name = :name AND id != :excludeId")
-    suspend fun tagNameInUseExcept(name: String, excludeId: Long): Int
+    suspend fun tagNameInUseExcept(name: String, excludeId: String): Int
 
     @Query(
         """
@@ -365,12 +405,13 @@ interface CheckItDao {
             endTimeMinutes = :endTimeMinutes,
             repeatRRule = :repeatRRule,
             label = :label,
-            updatedAtMillis = :updatedAtMillis
+            updatedAtMillis = :updatedAtMillis,
+            dirty = 1
         WHERE id = :taskId
         """
     )
     suspend fun updateTask(
-        taskId: Long,
+        taskId: String,
         name: String,
         description: String,
         status: String,
@@ -384,18 +425,19 @@ interface CheckItDao {
         updatedAtMillis: Long
     )
 
-    @Query("UPDATE tasks SET trashedAtMillis = :trashedAtMillis, updatedAtMillis = :trashedAtMillis WHERE id = :taskId")
-    suspend fun trashTask(taskId: Long, trashedAtMillis: Long)
+    @Query("UPDATE tasks SET trashedAtMillis = :trashedAtMillis, updatedAtMillis = :trashedAtMillis, dirty = 1 WHERE id = :taskId")
+    suspend fun trashTask(taskId: String, trashedAtMillis: Long)
 
-    @Query("UPDATE tasks SET trashedAtMillis = NULL, updatedAtMillis = :updatedAtMillis WHERE id = :taskId")
-    suspend fun restoreTask(taskId: Long, updatedAtMillis: Long)
+    @Query("UPDATE tasks SET trashedAtMillis = NULL, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :taskId")
+    suspend fun restoreTask(taskId: String, updatedAtMillis: Long)
 
     @Transaction
-    suspend fun replaceTaskSubTasks(taskId: Long, subtasks: List<SubTaskWriteInput>) {
+    suspend fun replaceTaskSubTasks(taskId: String, subtasks: List<SubTaskWriteInput>) {
         deleteSubTasks(taskId)
         subtasks.forEachIndexed { index, subtask ->
             insertSubTask(
                 SubTaskEntity(
+                    id = Uuid.random().toString(),
                     taskId = taskId,
                     name = subtask.name,
                     isCompleted = subtask.isCompleted,
@@ -406,11 +448,12 @@ interface CheckItDao {
     }
 
     @Transaction
-    suspend fun replaceTaskReminders(taskId: Long, reminders: List<TaskReminderWriteInput>) {
+    suspend fun replaceTaskReminders(taskId: String, reminders: List<TaskReminderWriteInput>) {
         deleteTaskReminders(taskId)
         reminders.forEach { reminder ->
             insertReminder(
                 TaskReminderEntity(
+                    id = Uuid.random().toString(),
                     taskId = taskId,
                     remindAtMillis = reminder.remindAtMillis,
                     label = reminder.label
@@ -424,12 +467,13 @@ interface CheckItDao {
         UPDATE tasks
         SET status = :status,
             completedDateEpochDays = :completedDateEpochDays,
-            updatedAtMillis = :updatedAtMillis
+            updatedAtMillis = :updatedAtMillis,
+            dirty = 1
         WHERE id = :taskId
         """
     )
     suspend fun completeTask(
-        taskId: Long,
+        taskId: String,
         status: String,
         completedDateEpochDays: Int,
         updatedAtMillis: Long
@@ -440,46 +484,55 @@ interface CheckItDao {
         UPDATE tasks
         SET status = :status,
             completedDateEpochDays = CASE WHEN :status != 'Completed' THEN NULL ELSE completedDateEpochDays END,
-            updatedAtMillis = :updatedAtMillis
+            updatedAtMillis = :updatedAtMillis,
+            dirty = 1
         WHERE id = :taskId
         """
     )
     suspend fun updateTaskStatus(
-        taskId: Long,
+        taskId: String,
         status: String,
         updatedAtMillis: Long
     )
 
     @Query(
         """
-        DELETE FROM daily_plan_items
+        UPDATE daily_plan_items
+        SET deleted = 1,
+            updatedAtMillis = :nowMillis,
+            dirty = 1
         WHERE taskId = :taskId
           AND status = 'Planned'
+          AND deleted = 0
         """
     )
-    suspend fun deletePlannedDailyPlanItemsForTask(taskId: Long)
+    suspend fun deletePlannedDailyPlanItemsForTask(taskId: String, nowMillis: Long)
 
     @Query(
         """
         UPDATE daily_plan_items
         SET startTimeMinutes = :startTimeMinutes,
-            endTimeMinutes = :endTimeMinutes
+            endTimeMinutes = :endTimeMinutes,
+            updatedAtMillis = :nowMillis,
+            dirty = 1
         WHERE id = :itemId
         """
     )
     suspend fun updateDailyPlanItemTime(
-        itemId: Long,
+        itemId: String,
         startTimeMinutes: Int?,
-        endTimeMinutes: Int?
+        endTimeMinutes: Int?,
+        nowMillis: Long
     )
 
     @Transaction
-    suspend fun updateDailyPlanItemTimes(updates: List<DailyPlanItemTimeUpdate>) {
+    suspend fun updateDailyPlanItemTimes(updates: List<DailyPlanItemTimeUpdate>, nowMillis: Long) {
         updates.forEach { update ->
             updateDailyPlanItemTime(
                 itemId = update.itemId,
                 startTimeMinutes = update.startTimeMinutes,
-                endTimeMinutes = update.endTimeMinutes
+                endTimeMinutes = update.endTimeMinutes,
+                nowMillis = nowMillis
             )
         }
     }
@@ -488,40 +541,47 @@ interface CheckItDao {
         """
         UPDATE daily_plan_items
         SET status = :status,
-            completedAtMillis = :completedAtMillis
+            completedAtMillis = :completedAtMillis,
+            updatedAtMillis = :nowMillis,
+            dirty = 1
         WHERE id = :itemId
         """
     )
     suspend fun updateDailyPlanItemStatus(
-        itemId: Long,
+        itemId: String,
         status: String,
-        completedAtMillis: Long?
+        completedAtMillis: Long?,
+        nowMillis: Long
     )
 
     @Query(
         """
         UPDATE daily_plan_items
         SET status = :status,
-            completedAtMillis = :completedAtMillis
+            completedAtMillis = :completedAtMillis,
+            updatedAtMillis = :nowMillis,
+            dirty = 1
         WHERE id IN (:itemIds)
         """
     )
     suspend fun updateDailyPlanItemsStatus(
-        itemIds: List<Long>,
+        itemIds: List<String>,
         status: String,
-        completedAtMillis: Long?
+        completedAtMillis: Long?,
+        nowMillis: Long
     )
 
-    @Query("UPDATE daily_plan_items SET handledAtMillis = :handledAtMillis WHERE id IN (:itemIds)")
-    suspend fun markDailyPlanItemsHandled(itemIds: List<Long>, handledAtMillis: Long)
+    @Query("UPDATE daily_plan_items SET handledAtMillis = :handledAtMillis, updatedAtMillis = :handledAtMillis, dirty = 1 WHERE id IN (:itemIds)")
+    suspend fun markDailyPlanItemsHandled(itemIds: List<String>, handledAtMillis: Long)
 
-    @Query("SELECT * FROM period_goals ORDER BY startEpochDays ASC")
+    @Query("SELECT * FROM period_goals WHERE deleted = 0 ORDER BY startEpochDays ASC")
     fun observePeriodGoals(): Flow<List<PeriodGoalEntity>>
 
     @Query(
         """
         SELECT * FROM period_goals
-        WHERE (:startEpochDays IS NULL OR startEpochDays >= :startEpochDays)
+        WHERE deleted = 0
+          AND (:startEpochDays IS NULL OR startEpochDays >= :startEpochDays)
           AND (:endEpochDays IS NULL OR startEpochDays <= :endEpochDays)
         ORDER BY startEpochDays ASC
         """
@@ -537,7 +597,7 @@ interface CheckItDao {
     @Query(
         """
         SELECT * FROM period_goals
-        WHERE periodType = :periodType AND startEpochDays < :beforeEpochDays
+        WHERE deleted = 0 AND periodType = :periodType AND startEpochDays < :beforeEpochDays
         ORDER BY startEpochDays DESC
         LIMIT :limit OFFSET :offset
         """
@@ -611,6 +671,7 @@ interface CheckItDao {
                0,
                :computedAtMillis
         FROM daily_plan_items AS i
+        WHERE i.deleted = 0
         GROUP BY i.dateEpochDays
         """
     )
@@ -621,6 +682,7 @@ interface CheckItDao {
         INSERT OR IGNORE INTO daily_reflect_stats(dateEpochDays, plannedItemCount, doneItemCount, doneMinutes, journalCount, computedAtMillis)
         SELECT j.dateEpochDays, 0, 0, 0, 0, :computedAtMillis
         FROM journal_entries AS j
+        WHERE j.deleted = 0
         GROUP BY j.dateEpochDays
         """
     )
@@ -651,7 +713,7 @@ interface CheckItDao {
                )
         FROM daily_plan_items AS i
         JOIN daily_plan_item_tags AS it ON it.itemId = i.id
-        WHERE i.status = 'Done'
+        WHERE i.status = 'Done' AND i.deleted = 0
         GROUP BY i.dateEpochDays, it.tagId
         """
     )
@@ -671,7 +733,7 @@ interface CheckItDao {
                    END
                )
         FROM daily_plan_items AS i
-        WHERE i.isHabit = 1 AND i.status = 'Done'
+        WHERE i.isHabit = 1 AND i.status = 'Done' AND i.deleted = 0
         GROUP BY i.dateEpochDays,
                  CASE WHEN i.taskId IS NOT NULL THEN 'task:' || i.taskId ELSE 'title:' || LOWER(TRIM(i.title)) END
         """
@@ -699,24 +761,24 @@ interface CheckItDao {
         """
         SELECT id, dateEpochDays, title, note, source, startTimeMinutes, endTimeMinutes, completedAtMillis
         FROM daily_plan_items
-        WHERE status = 'Done' AND dateEpochDays BETWEEN :startEpochDays AND :endEpochDays
+        WHERE deleted = 0 AND status = 'Done' AND dateEpochDays BETWEEN :startEpochDays AND :endEpochDays
         ORDER BY completedAtMillis DESC
         """
     )
     fun observeDoneItemSummaries(startEpochDays: Int, endEpochDays: Int): Flow<List<DoneItemSummaryEntity>>
 
     @Query(
-        "SELECT * FROM journal_entries WHERE dateEpochDays BETWEEN :startEpochDays AND :endEpochDays ORDER BY createdTimeMinutes ASC"
+        "SELECT * FROM journal_entries WHERE deleted = 0 AND dateEpochDays BETWEEN :startEpochDays AND :endEpochDays ORDER BY createdTimeMinutes ASC"
     )
     fun observeJournalEntriesInRange(startEpochDays: Int, endEpochDays: Int): Flow<List<JournalEntryEntity>>
 
     @RawQuery(observedEntities = [JournalEntryEntity::class, JournalEntryTagEntity::class])
     fun observeJournalEntriesFiltered(query: RoomRawQuery): Flow<List<JournalEntryEntity>>
 
-    @Query("SELECT EXISTS(SELECT 1 FROM journal_entries WHERE dateEpochDays < :epochDays)")
+    @Query("SELECT EXISTS(SELECT 1 FROM journal_entries WHERE deleted = 0 AND dateEpochDays < :epochDays)")
     fun observeJournalEntryExistsBefore(epochDays: Int): Flow<Boolean>
 
-    @Query("SELECT EXISTS(SELECT 1 FROM period_goals WHERE periodType = 'Day' AND startEpochDays < :epochDays)")
+    @Query("SELECT EXISTS(SELECT 1 FROM period_goals WHERE deleted = 0 AND periodType = 'Day' AND startEpochDays < :epochDays)")
     fun observeDayGoalExistsBefore(epochDays: Int): Flow<Boolean>
 
 
@@ -726,7 +788,7 @@ interface CheckItDao {
     suspend fun periodGoalFor(periodType: String, startEpochDays: Int): PeriodGoalEntity?
 
     @Query(
-        "SELECT * FROM period_goals WHERE periodType = :periodType AND startEpochDays >= :startEpochDays AND startEpochDays < :endEpochDays ORDER BY startEpochDays ASC"
+        "SELECT * FROM period_goals WHERE deleted = 0 AND periodType = :periodType AND startEpochDays >= :startEpochDays AND startEpochDays < :endEpochDays ORDER BY startEpochDays ASC"
     )
     fun observePeriodGoalsInRange(
         periodType: String,
@@ -738,11 +800,11 @@ interface CheckItDao {
      * Insert-or-update without delete: keeps the existing primary key on
      * conflicts so a goal's inline metrics survive. Callers must resolve
      * [PeriodGoalEntity.id] for existing rows first — the fallback update
-     * matches by primary key only.
-     * Returns the new rowId on insert, or -1 when an existing row was updated.
+     * matches by primary key only. The entity carries its own
+     * [PeriodGoalEntity.updatedAtMillis]/dirty/deleted sync fields.
      */
     @Upsert
-    suspend fun upsertPeriodGoal(goal: PeriodGoalEntity): Long
+    suspend fun upsertPeriodGoal(goal: PeriodGoalEntity)
 
     /**
      * Applies a complete evening review atomically: marks done items, carries
@@ -753,9 +815,9 @@ interface CheckItDao {
     @Transaction
     suspend fun completeDayClose(
         dateEpochDays: Int,
-        markDoneItemIds: List<Long>,
-        carryItemIds: List<Long>,
-        dropItemIds: List<Long>,
+        markDoneItemIds: List<String>,
+        carryItemIds: List<String>,
+        dropItemIds: List<String>,
         winNote: String?,
         tomorrowGoal: String?,
         rating: Float = 0f,
@@ -778,9 +840,9 @@ interface CheckItDao {
                 }
             }
         }
-        updateDailyPlanItemsStatus(markDoneItemIds, DailyPlanItemStatus.Done.name, nowMillis)
+        updateDailyPlanItemsStatus(markDoneItemIds, DailyPlanItemStatus.Done.name, nowMillis, nowMillis)
         markDailyPlanItemsHandled(markDoneItemIds, nowMillis)
-        deleteDailyPlanItems(dropItemIds)
+        deleteDailyPlanItems(dropItemIds, nowMillis)
 
         var carriedCount = 0
         var skippedCount = 0
@@ -788,8 +850,10 @@ interface CheckItDao {
             val source = dailyPlanItemById(itemId) ?: return@forEach
             val alreadyCarried = carriedFromCountOnDate(targetDateEpochDays, source.id) > 0
             if (!alreadyCarried) {
-                val newItemId = insertDailyPlanItem(
+                val newItemId = Uuid.random().toString()
+                insertDailyPlanItem(
                     DailyPlanItemEntity(
+                        id = newItemId,
                         dateEpochDays = targetDateEpochDays,
                         taskId = source.taskId,
                         nestedListItemId = source.nestedListItemId,
@@ -804,7 +868,8 @@ interface CheckItDao {
                         isHabit = source.isHabit,
                         addedAtMillis = nowMillis,
                         completedAtMillis = null,
-                        carriedFromItemId = source.id
+                        carriedFromItemId = source.id,
+                        updatedAtMillis = nowMillis
                     )
                 )
                 tagIdsForItem(source.id).forEach { tagId ->
@@ -822,14 +887,19 @@ interface CheckItDao {
         val existingToday = periodGoalFor(Period.Day.name, dateEpochDays)
         upsertPeriodGoal(
             (existingToday ?: PeriodGoalEntity(
+                id = Uuid.random().toString(),
                 periodType = Period.Day.name,
                 startEpochDays = dateEpochDays,
-                endEpochDays = dateEpochDays + 1
+                endEpochDays = dateEpochDays + 1,
+                updatedAtMillis = nowMillis
             )).copy(
                 review = winNote?.trim().orEmpty(),
                 rating = rating.coerceIn(0f, 5f),
                 completedAtMillis = nowMillis,
-                editedAtMillis = nowMillis
+                editedAtMillis = nowMillis,
+                updatedAtMillis = nowMillis,
+                dirty = true,
+                deleted = false
             )
         )
 
@@ -840,10 +910,18 @@ interface CheckItDao {
             val existing = periodGoalFor(Period.Day.name, nextStartEpochDays)
             upsertPeriodGoal(
                 (existing ?: PeriodGoalEntity(
+                    id = Uuid.random().toString(),
                     periodType = Period.Day.name,
                     startEpochDays = nextStartEpochDays,
-                    endEpochDays = nextStartEpochDays + 1
-                )).copy(goal = goal, editedAtMillis = nowMillis)
+                    endEpochDays = nextStartEpochDays + 1,
+                    updatedAtMillis = nowMillis
+                )).copy(
+                    goal = goal,
+                    editedAtMillis = nowMillis,
+                    updatedAtMillis = nowMillis,
+                    dirty = true,
+                    deleted = false
+                )
             )
         }
 
@@ -855,7 +933,7 @@ interface CheckItDao {
 
     @Transaction
     suspend fun updateDailyPlanItemWithTags(
-        itemId: Long,
+        itemId: String,
         dateEpochDays: Int,
         title: String,
         note: String?,
@@ -865,15 +943,15 @@ interface CheckItDao {
         endTimeMinutes: Int?,
         completedAtMillis: Long?,
         label: String?,
-        nestedListItemId: Long?,
-        tagIds: List<Long>,
+        nestedListItemId: String?,
+        tagIds: List<String>,
         nowMillis: Long
     ) {
         val oldEntity = dailyPlanItemById(itemId) ?: return
         
         updateDailyPlanItem(
             itemId, dateEpochDays, title, note, source, status, 
-            startTimeMinutes, endTimeMinutes, completedAtMillis, label, nestedListItemId
+            startTimeMinutes, endTimeMinutes, completedAtMillis, label, nestedListItemId, nowMillis
         )
 
         if (oldEntity.nestedListItemId != null) {
@@ -899,7 +977,7 @@ interface CheckItDao {
 
     @Transaction
     suspend fun updateDailyPlanItemStatusWithMinutes(
-        itemId: Long,
+        itemId: String,
         status: String,
         completedAtMillis: Long?,
         nowMillis: Long
@@ -907,7 +985,7 @@ interface CheckItDao {
         val oldEntity = dailyPlanItemById(itemId) ?: return
         if (oldEntity.status == status) return
 
-        updateDailyPlanItemStatus(itemId, status, completedAtMillis)
+        updateDailyPlanItemStatus(itemId, status, completedAtMillis, nowMillis)
 
         if (oldEntity.nestedListItemId != null) {
             val start = oldEntity.startTimeMinutes
@@ -934,12 +1012,14 @@ interface CheckItDao {
             endTimeMinutes = :endTimeMinutes,
             completedAtMillis = :completedAtMillis,
             label = :label,
-            nestedListItemId = :nestedListItemId
+            nestedListItemId = :nestedListItemId,
+            updatedAtMillis = :nowMillis,
+            dirty = 1
         WHERE id = :itemId
         """
     )
     suspend fun updateDailyPlanItem(
-        itemId: Long,
+        itemId: String,
         dateEpochDays: Int,
         title: String,
         note: String?,
@@ -949,39 +1029,47 @@ interface CheckItDao {
         endTimeMinutes: Int?,
         completedAtMillis: Long?,
         label: String?,
-        nestedListItemId: Long?
+        nestedListItemId: String?,
+        nowMillis: Long
     )
 
-    @Query("DELETE FROM daily_plan_items WHERE id = :itemId")
-    suspend fun deleteDailyPlanItem(itemId: Long)
+    /**
+     * Tombstone instead of hard delete so the deletion syncs; the row is
+     * hard-deleted later via [getPurgeableDailyPlanItemTombstones] once uploaded.
+     */
+    @Query("UPDATE daily_plan_items SET deleted = 1, updatedAtMillis = :nowMillis, dirty = 1 WHERE id = :itemId")
+    suspend fun deleteDailyPlanItem(itemId: String, nowMillis: Long)
 
-    @Query("DELETE FROM daily_plan_items WHERE id IN (:itemIds)")
-    suspend fun deleteDailyPlanItems(itemIds: List<Long>)
+    @Query("UPDATE daily_plan_items SET deleted = 1, updatedAtMillis = :nowMillis, dirty = 1 WHERE id IN (:itemIds)")
+    suspend fun deleteDailyPlanItems(itemIds: List<String>, nowMillis: Long)
 
     @Query(
         """
         UPDATE daily_plan_items
         SET taskId = :taskId,
-            source = :source
+            source = :source,
+            updatedAtMillis = :nowMillis,
+            dirty = 1
         WHERE id = :itemId
         """
     )
-    suspend fun linkDailyPlanItemToTask(itemId: Long, taskId: Long, source: String)
+    suspend fun linkDailyPlanItemToTask(itemId: String, taskId: String, source: String, nowMillis: Long)
 
     @Query(
         """
         UPDATE tasks
         SET startTimeMinutes = NULL,
             endTimeMinutes = NULL,
-            updatedAtMillis = :updatedAtMillis
+            updatedAtMillis = :updatedAtMillis,
+            dirty = 1
         WHERE id = :taskId
         """
     )
-    suspend fun clearTaskTime(taskId: Long, updatedAtMillis: Long)
+    suspend fun clearTaskTime(taskId: String, updatedAtMillis: Long)
 
-    @Query("UPDATE notes SET title = :title, content = :content, status = :status, dateEpochDays = :dateEpochDays, startTimeMinutes = :startTimeMinutes, label = :label, editedAtMillis = :editedAtMillis WHERE id = :noteId")
+    @Query("UPDATE notes SET title = :title, content = :content, status = :status, dateEpochDays = :dateEpochDays, startTimeMinutes = :startTimeMinutes, label = :label, editedAtMillis = :editedAtMillis, dirty = 1 WHERE id = :noteId")
     suspend fun updateNote(
-        noteId: Long,
+        noteId: String,
         title: String,
         content: String,
         status: String,
@@ -991,141 +1079,158 @@ interface CheckItDao {
         editedAtMillis: Long
     )
 
-    @Query("UPDATE notes SET status = :status, editedAtMillis = :editedAtMillis WHERE id = :noteId")
-    suspend fun updateNoteStatus(noteId: Long, status: String, editedAtMillis: Long)
+    @Query("UPDATE notes SET status = :status, editedAtMillis = :editedAtMillis, dirty = 1 WHERE id = :noteId")
+    suspend fun updateNoteStatus(noteId: String, status: String, editedAtMillis: Long)
 
-    @Query("UPDATE notes SET trashedAtMillis = :trashedAtMillis, editedAtMillis = :trashedAtMillis WHERE id = :noteId")
-    suspend fun trashNote(noteId: Long, trashedAtMillis: Long)
+    @Query("UPDATE notes SET trashedAtMillis = :trashedAtMillis, editedAtMillis = :trashedAtMillis, dirty = 1 WHERE id = :noteId")
+    suspend fun trashNote(noteId: String, trashedAtMillis: Long)
 
-    @Query("UPDATE notes SET trashedAtMillis = NULL, editedAtMillis = :editedAtMillis WHERE id = :noteId")
-    suspend fun restoreNote(noteId: Long, editedAtMillis: Long)
+    @Query("UPDATE notes SET trashedAtMillis = NULL, editedAtMillis = :editedAtMillis, dirty = 1 WHERE id = :noteId")
+    suspend fun restoreNote(noteId: String, editedAtMillis: Long)
 
     // ---------------- Nested Documents ----------------
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertNestedDocument(document: NestedDocumentEntity): Long
+    suspend fun insertNestedDocument(document: NestedDocumentEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertNestedListItem(item: NestedListItemEntity): Long
+    suspend fun insertNestedListItem(item: NestedListItemEntity)
 
     @Transaction
     suspend fun insertNestedDocumentWithRoot(
         document: NestedDocumentEntity,
         rootItem: NestedListItemEntity
-    ): Long {
-        val documentId = insertNestedDocument(document)
-        insertNestedListItem(rootItem.copy(documentId = documentId))
-        return documentId
+    ): String {
+        insertNestedDocument(document)
+        insertNestedListItem(rootItem.copy(documentId = document.id))
+        return document.id
     }
 
-    @Query("SELECT * FROM nested_documents ORDER BY updatedAtMillis DESC, id ASC")
+    @Query("SELECT * FROM nested_documents WHERE deleted = 0 ORDER BY updatedAtMillis DESC, id ASC")
     fun observeNestedDocuments(): Flow<List<NestedDocumentEntity>>
 
-    @Query("SELECT * FROM nested_list_items WHERE documentId = :documentId ORDER BY position ASC, id ASC")
-    fun observeNestedItems(documentId: Long): Flow<List<NestedListItemEntity>>
+    @Query("SELECT * FROM nested_list_items WHERE deleted = 0 AND documentId = :documentId ORDER BY position ASC, id ASC")
+    fun observeNestedItems(documentId: String): Flow<List<NestedListItemEntity>>
 
     @Query("SELECT * FROM nested_item_tags WHERE itemId IN (SELECT id FROM nested_list_items WHERE documentId = :documentId)")
-    fun observeNestedItemTags(documentId: Long): Flow<List<NestedItemTagEntity>>
+    fun observeNestedItemTags(documentId: String): Flow<List<NestedItemTagEntity>>
 
     @Query("SELECT COALESCE(MAX(position), -1) + 1 FROM nested_list_items WHERE documentId = :documentId AND parentId IS :parentId")
-    suspend fun nextNestedItemPosition(documentId: Long, parentId: Long?): Int
+    suspend fun nextNestedItemPosition(documentId: String, parentId: String?): Int
 
-    @Query("UPDATE nested_documents SET title = :title, updatedAtMillis = :updatedAtMillis WHERE id = :documentId")
-    suspend fun updateNestedDocumentTitle(documentId: Long, title: String, updatedAtMillis: Long)
+    @Query("UPDATE nested_documents SET title = :title, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :documentId")
+    suspend fun updateNestedDocumentTitle(documentId: String, title: String, updatedAtMillis: Long)
 
-    @Query("DELETE FROM nested_documents WHERE id = :documentId")
-    suspend fun deleteNestedDocument(documentId: Long)
+    /**
+     * Tombstones the document and all of its items so deletions sync; rows
+     * are hard-deleted later via the purge queries once uploaded.
+     */
+    @Transaction
+    suspend fun deleteNestedDocument(documentId: String, nowMillis: Long) {
+        markNestedDocumentDeleted(documentId, nowMillis)
+        markNestedItemsDeletedForDocument(documentId, nowMillis)
+    }
 
-    @Query("UPDATE nested_list_items SET text = :text, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
-    suspend fun updateNestedItemText(itemId: Long, text: String, updatedAtMillis: Long)
+    @Query("UPDATE nested_documents SET deleted = 1, updatedAtMillis = :nowMillis, dirty = 1 WHERE id = :documentId")
+    suspend fun markNestedDocumentDeleted(documentId: String, nowMillis: Long)
 
-    @Query("UPDATE nested_list_items SET note = :note, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
-    suspend fun updateNestedItemNote(itemId: Long, note: String?, updatedAtMillis: Long)
+    @Query("UPDATE nested_list_items SET deleted = 1, updatedAtMillis = :nowMillis, dirty = 1 WHERE documentId = :documentId AND deleted = 0")
+    suspend fun markNestedItemsDeletedForDocument(documentId: String, nowMillis: Long)
 
-    @Query("UPDATE nested_list_items SET textStyle = :textStyle, textColor = :textColor, backgroundColor = :backgroundColor, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
+    @Query("UPDATE nested_list_items SET text = :text, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
+    suspend fun updateNestedItemText(itemId: String, text: String, updatedAtMillis: Long)
+
+    @Query("UPDATE nested_list_items SET note = :note, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
+    suspend fun updateNestedItemNote(itemId: String, note: String?, updatedAtMillis: Long)
+
+    @Query("UPDATE nested_list_items SET textStyle = :textStyle, textColor = :textColor, backgroundColor = :backgroundColor, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
     suspend fun updateNestedItemFormatting(
-        itemId: Long,
+        itemId: String,
         textStyle: String,
         textColor: String,
         backgroundColor: String,
         updatedAtMillis: Long
     )
 
-    @Query("UPDATE nested_list_items SET priority = :priority, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
+    @Query("UPDATE nested_list_items SET priority = :priority, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
     suspend fun updateNestedItemPriority(
-        itemId: Long,
+        itemId: String,
         priority: String,
         updatedAtMillis: Long
     )
 
-    @Query("UPDATE nested_list_items SET startDateEpochDays = :startDateEpochDays, endDateEpochDays = :endDateEpochDays, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
+    @Query("UPDATE nested_list_items SET startDateEpochDays = :startDateEpochDays, endDateEpochDays = :endDateEpochDays, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
     suspend fun updateNestedItemDateRange(
-        itemId: Long,
+        itemId: String,
         startDateEpochDays: Int?,
         endDateEpochDays: Int?,
         updatedAtMillis: Long
     )
 
-    @Query("UPDATE nested_list_items SET actualMinutes = :actualMinutes, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
-    suspend fun updateNestedItemActualMinutes(itemId: Long, actualMinutes: Int, updatedAtMillis: Long)
+    @Query("UPDATE nested_list_items SET actualMinutes = :actualMinutes, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
+    suspend fun updateNestedItemActualMinutes(itemId: String, actualMinutes: Int, updatedAtMillis: Long)
 
-    @Query("UPDATE nested_list_items SET metricRollupPolicy = :policy, showTrackedMinutes = :showTrackedMinutes, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
+    @Query("UPDATE nested_list_items SET metricRollupPolicy = :policy, showTrackedMinutes = :showTrackedMinutes, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
     suspend fun updateNestedItemMetricSettings(
-        itemId: Long,
+        itemId: String,
         policy: String,
         showTrackedMinutes: Boolean,
         updatedAtMillis: Long
     )
 
-    @Query("UPDATE nested_list_items SET progressPercent = :progressPercent, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
+    @Query("UPDATE nested_list_items SET progressPercent = :progressPercent, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
     suspend fun updateNestedItemProgress(
-        itemId: Long,
+        itemId: String,
         progressPercent: Int?,
         updatedAtMillis: Long
     )
 
-    @Query("UPDATE nested_list_items SET checkboxEnabled = :checkboxEnabled, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
-    suspend fun setNestedItemCheckboxEnabled(itemId: Long, checkboxEnabled: Boolean, updatedAtMillis: Long)
+    @Query("UPDATE nested_list_items SET checkboxEnabled = :checkboxEnabled, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
+    suspend fun setNestedItemCheckboxEnabled(itemId: String, checkboxEnabled: Boolean, updatedAtMillis: Long)
 
-    @Query("UPDATE nested_list_items SET checked = :checked, updatedAtMillis = :updatedAtMillis WHERE id IN (:itemIds)")
-    suspend fun setNestedItemsChecked(itemIds: List<Long>, checked: Boolean, updatedAtMillis: Long)
+    @Query("UPDATE nested_list_items SET checked = :checked, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id IN (:itemIds)")
+    suspend fun setNestedItemsChecked(itemIds: List<String>, checked: Boolean, updatedAtMillis: Long)
 
-    @Query("UPDATE nested_list_items SET collapsed = :collapsed, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
-    suspend fun setNestedItemCollapsed(itemId: Long, collapsed: Boolean, updatedAtMillis: Long)
+    @Query("UPDATE nested_list_items SET collapsed = :collapsed, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
+    suspend fun setNestedItemCollapsed(itemId: String, collapsed: Boolean, updatedAtMillis: Long)
 
-    @Query("UPDATE nested_list_items SET collapsed = NOT collapsed, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
-    suspend fun toggleNestedItemCollapsed(itemId: Long, updatedAtMillis: Long)
+    @Query("UPDATE nested_list_items SET collapsed = NOT collapsed, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
+    suspend fun toggleNestedItemCollapsed(itemId: String, updatedAtMillis: Long)
 
-    @Query("UPDATE nested_list_items SET parentId = :parentId, position = :position, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
+    @Query("UPDATE nested_list_items SET parentId = :parentId, position = :position, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
     suspend fun updateNestedItemPosition(
-        itemId: Long,
-        parentId: Long?,
+        itemId: String,
+        parentId: String?,
         position: Int,
         updatedAtMillis: Long
     )
 
-    @Query("DELETE FROM nested_list_items WHERE id IN (:itemIds)")
-    suspend fun deleteNestedItems(itemIds: List<Long>)
+    /**
+     * Tombstones instead of hard delete so deletions sync; rows are
+     * hard-deleted later via [getPurgeableNestedItemTombstones] once uploaded.
+     */
+    @Query("UPDATE nested_list_items SET deleted = 1, updatedAtMillis = :nowMillis, dirty = 1 WHERE id IN (:itemIds)")
+    suspend fun deleteNestedItems(itemIds: List<String>, nowMillis: Long)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertNestedItemTag(link: NestedItemTagEntity)
 
     @Query("DELETE FROM nested_item_tags WHERE itemId = :itemId")
-    suspend fun deleteNestedItemTags(itemId: Long)
+    suspend fun deleteNestedItemTags(itemId: String)
 
     @Transaction
-    suspend fun replaceNestedItemTags(itemId: Long, tagIds: List<Long>) {
+    suspend fun replaceNestedItemTags(itemId: String, tagIds: List<String>) {
         deleteNestedItemTags(itemId)
         tagIds.distinct().forEach { tagId -> insertNestedItemTag(NestedItemTagEntity(itemId, tagId)) }
     }
 
     @Query(
-        "UPDATE nested_list_items SET manualMetricsJson = :metricsJson, updatedAtMillis = :updatedAtMillis WHERE id = :itemId"
+        "UPDATE nested_list_items SET manualMetricsJson = :metricsJson, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId"
     )
-    suspend fun updateNestedItemManualMetrics(itemId: Long, metricsJson: String, updatedAtMillis: Long)
+    suspend fun updateNestedItemManualMetrics(itemId: String, metricsJson: String, updatedAtMillis: Long)
 
-    @Query("UPDATE nested_list_items SET actualMinutes = actualMinutes + :delta, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
-    suspend fun updateNestedItemActualMinutesDelta(itemId: Long, delta: Int, updatedAtMillis: Long)
+    @Query("UPDATE nested_list_items SET actualMinutes = actualMinutes + :delta, updatedAtMillis = :updatedAtMillis, dirty = 1 WHERE id = :itemId")
+    suspend fun updateNestedItemActualMinutesDelta(itemId: String, delta: Int, updatedAtMillis: Long)
 
     @Transaction
     suspend fun applyNestedMoves(moves: List<NestedMoveRow>) {
@@ -1138,6 +1243,150 @@ interface CheckItDao {
             )
         }
     }
+
+    @Query("UPDATE tasks SET dirty = 1, updatedAtMillis = :nowMillis WHERE id = :taskId")
+    suspend fun markTaskDirty(taskId: String, nowMillis: Long)
+
+    @Query("UPDATE notes SET dirty = 1, editedAtMillis = :nowMillis WHERE id = :noteId")
+    suspend fun markNoteDirty(noteId: String, nowMillis: Long)
+
+    @Query("UPDATE daily_plan_items SET dirty = 1, updatedAtMillis = :nowMillis WHERE id = :itemId")
+    suspend fun markDailyPlanItemDirty(itemId: String, nowMillis: Long)
+
+    @Query("UPDATE nested_list_items SET dirty = 1, updatedAtMillis = :nowMillis WHERE id = :itemId")
+    suspend fun markNestedItemDirty(itemId: String, nowMillis: Long)
+
+    // ---------------- Sync (dirty tracking, tombstones, purge) ----------------
+    //
+    // One query group per top-level sync table. Children and membership joins
+    // (sub-tasks, reminders, tag/list links) sync embedded in the parent
+    // document and need no sync columns of their own.
+    //
+    // Lifecycle per row: local writes set dirty = 1; upload clears it with
+    // markClean* (guarded by the read watermark so mid-push edits stay dirty);
+    // deletes write tombstones (deleted = 1, dirty = 1); purge hard-deletes
+    // tombstones only after they uploaded (dirty = 0) and aged past the
+    // retention cutoff so every device had a chance to sync them.
+
+    @Query("SELECT * FROM tasks WHERE dirty = 1 ORDER BY updatedAtMillis ASC")
+    suspend fun getDirtyTasks(): List<TaskEntity>
+
+    @Query("UPDATE tasks SET dirty = 0 WHERE id IN (:ids) AND updatedAtMillis <= :maxUpdatedAt")
+    suspend fun markTasksClean(ids: List<String>, maxUpdatedAt: Long)
+
+    @Query("SELECT * FROM tasks WHERE deleted = 1 AND dirty = 0 AND updatedAtMillis <= :cutoff ORDER BY updatedAtMillis ASC")
+    suspend fun getPurgeableTaskTombstones(cutoff: Long): List<TaskEntity>
+
+    @Query("DELETE FROM tasks WHERE id IN (:ids)")
+    suspend fun hardDeleteTasks(ids: List<String>)
+
+    @Query("SELECT * FROM notes WHERE dirty = 1 ORDER BY editedAtMillis ASC")
+    suspend fun getDirtyNotes(): List<NoteEntity>
+
+    @Query("UPDATE notes SET dirty = 0 WHERE id IN (:ids) AND editedAtMillis <= :maxUpdatedAt")
+    suspend fun markNotesClean(ids: List<String>, maxUpdatedAt: Long)
+
+    @Query("SELECT * FROM notes WHERE deleted = 1 AND dirty = 0 AND editedAtMillis <= :cutoff ORDER BY editedAtMillis ASC")
+    suspend fun getPurgeableNoteTombstones(cutoff: Long): List<NoteEntity>
+
+    @Query("DELETE FROM notes WHERE id IN (:ids)")
+    suspend fun hardDeleteNotes(ids: List<String>)
+
+    @Query("SELECT * FROM tags WHERE dirty = 1 ORDER BY updatedAtMillis ASC")
+    suspend fun getDirtyTags(): List<TagEntity>
+
+    @Query("UPDATE tags SET dirty = 0 WHERE id IN (:ids) AND updatedAtMillis <= :maxUpdatedAt")
+    suspend fun markTagsClean(ids: List<String>, maxUpdatedAt: Long)
+
+    @Query("SELECT * FROM tags WHERE deleted = 1 AND dirty = 0 AND updatedAtMillis <= :cutoff ORDER BY updatedAtMillis ASC")
+    suspend fun getPurgeableTagTombstones(cutoff: Long): List<TagEntity>
+
+    @Query("DELETE FROM tags WHERE id IN (:ids)")
+    suspend fun hardDeleteTags(ids: List<String>)
+
+    @Query("SELECT * FROM lists WHERE dirty = 1 ORDER BY updatedAtMillis ASC")
+    suspend fun getDirtyLists(): List<ListEntity>
+
+    @Query("UPDATE lists SET dirty = 0 WHERE id IN (:ids) AND updatedAtMillis <= :maxUpdatedAt")
+    suspend fun markListsClean(ids: List<String>, maxUpdatedAt: Long)
+
+    @Query("SELECT * FROM lists WHERE deleted = 1 AND dirty = 0 AND updatedAtMillis <= :cutoff ORDER BY updatedAtMillis ASC")
+    suspend fun getPurgeableListTombstones(cutoff: Long): List<ListEntity>
+
+    @Query("DELETE FROM lists WHERE id IN (:ids)")
+    suspend fun hardDeleteLists(ids: List<String>)
+
+    @Query("SELECT * FROM list_sections WHERE dirty = 1 ORDER BY updatedAtMillis ASC")
+    suspend fun getDirtyListSections(): List<ListSectionEntity>
+
+    @Query("UPDATE list_sections SET dirty = 0 WHERE id IN (:ids) AND updatedAtMillis <= :maxUpdatedAt")
+    suspend fun markListSectionsClean(ids: List<String>, maxUpdatedAt: Long)
+
+    @Query("SELECT * FROM list_sections WHERE deleted = 1 AND dirty = 0 AND updatedAtMillis <= :cutoff ORDER BY updatedAtMillis ASC")
+    suspend fun getPurgeableListSectionTombstones(cutoff: Long): List<ListSectionEntity>
+
+    @Query("DELETE FROM list_sections WHERE id IN (:ids)")
+    suspend fun hardDeleteListSections(ids: List<String>)
+
+    @Query("SELECT * FROM journal_entries WHERE dirty = 1 ORDER BY updatedAtMillis ASC")
+    suspend fun getDirtyJournalEntries(): List<JournalEntryEntity>
+
+    @Query("UPDATE journal_entries SET dirty = 0 WHERE id IN (:ids) AND updatedAtMillis <= :maxUpdatedAt")
+    suspend fun markJournalEntriesClean(ids: List<String>, maxUpdatedAt: Long)
+
+    @Query("SELECT * FROM journal_entries WHERE deleted = 1 AND dirty = 0 AND updatedAtMillis <= :cutoff ORDER BY updatedAtMillis ASC")
+    suspend fun getPurgeableJournalTombstones(cutoff: Long): List<JournalEntryEntity>
+
+    @Query("DELETE FROM journal_entries WHERE id IN (:ids)")
+    suspend fun hardDeleteJournalEntries(ids: List<String>)
+
+    @Query("SELECT * FROM daily_plan_items WHERE dirty = 1 ORDER BY updatedAtMillis ASC")
+    suspend fun getDirtyDailyPlanItems(): List<DailyPlanItemEntity>
+
+    @Query("UPDATE daily_plan_items SET dirty = 0 WHERE id IN (:ids) AND updatedAtMillis <= :maxUpdatedAt")
+    suspend fun markDailyPlanItemsClean(ids: List<String>, maxUpdatedAt: Long)
+
+    @Query("SELECT * FROM daily_plan_items WHERE deleted = 1 AND dirty = 0 AND updatedAtMillis <= :cutoff ORDER BY updatedAtMillis ASC")
+    suspend fun getPurgeableDailyPlanItemTombstones(cutoff: Long): List<DailyPlanItemEntity>
+
+    @Query("DELETE FROM daily_plan_items WHERE id IN (:ids)")
+    suspend fun hardDeleteDailyPlanItems(ids: List<String>)
+
+    @Query("SELECT * FROM period_goals WHERE dirty = 1 ORDER BY updatedAtMillis ASC")
+    suspend fun getDirtyPeriodGoals(): List<PeriodGoalEntity>
+
+    @Query("UPDATE period_goals SET dirty = 0 WHERE id IN (:ids) AND updatedAtMillis <= :maxUpdatedAt")
+    suspend fun markPeriodGoalsClean(ids: List<String>, maxUpdatedAt: Long)
+
+    @Query("SELECT * FROM period_goals WHERE deleted = 1 AND dirty = 0 AND updatedAtMillis <= :cutoff ORDER BY updatedAtMillis ASC")
+    suspend fun getPurgeablePeriodGoalTombstones(cutoff: Long): List<PeriodGoalEntity>
+
+    @Query("DELETE FROM period_goals WHERE id IN (:ids)")
+    suspend fun hardDeletePeriodGoals(ids: List<String>)
+
+    @Query("SELECT * FROM nested_documents WHERE dirty = 1 ORDER BY updatedAtMillis ASC")
+    suspend fun getDirtyNestedDocuments(): List<NestedDocumentEntity>
+
+    @Query("UPDATE nested_documents SET dirty = 0 WHERE id IN (:ids) AND updatedAtMillis <= :maxUpdatedAt")
+    suspend fun markNestedDocumentsClean(ids: List<String>, maxUpdatedAt: Long)
+
+    @Query("SELECT * FROM nested_documents WHERE deleted = 1 AND dirty = 0 AND updatedAtMillis <= :cutoff ORDER BY updatedAtMillis ASC")
+    suspend fun getPurgeableNestedDocumentTombstones(cutoff: Long): List<NestedDocumentEntity>
+
+    @Query("DELETE FROM nested_documents WHERE id IN (:ids)")
+    suspend fun hardDeleteNestedDocuments(ids: List<String>)
+
+    @Query("SELECT * FROM nested_list_items WHERE dirty = 1 ORDER BY updatedAtMillis ASC")
+    suspend fun getDirtyNestedItems(): List<NestedListItemEntity>
+
+    @Query("UPDATE nested_list_items SET dirty = 0 WHERE id IN (:ids) AND updatedAtMillis <= :maxUpdatedAt")
+    suspend fun markNestedItemsClean(ids: List<String>, maxUpdatedAt: Long)
+
+    @Query("SELECT * FROM nested_list_items WHERE deleted = 1 AND dirty = 0 AND updatedAtMillis <= :cutoff ORDER BY updatedAtMillis ASC")
+    suspend fun getPurgeableNestedItemTombstones(cutoff: Long): List<NestedListItemEntity>
+
+    @Query("DELETE FROM nested_list_items WHERE id IN (:ids)")
+    suspend fun hardDeleteNestedItems(ids: List<String>)
 
     // ---------------- JSON backup / restore ----------------
 
@@ -1368,8 +1617,8 @@ interface CheckItDao {
 }
 
 data class NestedMoveRow(
-    val itemId: Long,
-    val parentId: Long?,
+    val itemId: String,
+    val parentId: String?,
     val position: Int,
     val updatedAtMillis: Long
 )

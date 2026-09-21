@@ -70,7 +70,7 @@ import org.jetbrains.compose.resources.stringResource
 internal fun DayCloseSheet(
     state: DayCloseUiState,
     onDismiss: () -> Unit,
-    onLeftoverAction: (Long, LeftoverAction) -> Unit,
+    onLeftoverAction: (String, LeftoverAction) -> Unit,
     onWinNoteChange: (String) -> Unit,
     onRatingChange: (Float) -> Unit,
     onTomorrowGoalChange: (String) -> Unit,

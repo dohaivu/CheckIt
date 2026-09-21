@@ -8,7 +8,7 @@ import kotlinx.datetime.LocalDate
  * Numeric stats are not stored here; they are derived from the daily rollup tables.
  */
 data class PeriodGoal(
-    val id: Long = 0L,
+    val id: String = "",
     val period: Period = Period.Day,
     val startEpochDays: Int,
     val endEpochDays: Int,

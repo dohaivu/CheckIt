@@ -246,7 +246,7 @@ class ReflectViewModelTest {
             .filter { it.startDate != weekStart && it.startDate != weekStart.plus(1, DateTimeUnit.DAY) }
             .forEach {
                 assertEquals("", it.review)
-                assertEquals(0L, it.id)
+                assertEquals("", it.id)
                 assertEquals(Period.Day, it.period)
             }
 
@@ -285,7 +285,7 @@ class ReflectViewModelTest {
             .filter { it.startDate != inside }
             .forEach {
                 assertEquals("", it.review)
-                assertEquals(0L, it.id)
+                assertEquals("", it.id)
                 assertEquals(Period.Week, it.period)
             }
         assertTrue(monthGoals.none { it.startDate == outside })
@@ -325,13 +325,13 @@ class ReflectViewModelTest {
                     date = weekStart,
                     items = listOf(
                         item(
-                            id = 1L,
+                            id = "1",
                             title = "Deep work",
                             status = DailyPlanItemStatus.Done,
                             startTimeMinutes = 9 * 60,
                             endTimeMinutes = 10 * 60
                         ),
-                        item(id = 2L, title = "Open task", status = DailyPlanItemStatus.Planned)
+                        item(id = "2", title = "Open task", status = DailyPlanItemStatus.Planned)
                     )
                 )
             )
@@ -339,7 +339,7 @@ class ReflectViewModelTest {
         repository.setJournalEntries(
             listOf(
                 JournalEntry(
-                    id = 1L,
+                    id = "1",
                     dateEpochDays = weekStart.toEpochDays().toInt(),
                     label = "Cafe",
                     content = "Coffee",
@@ -426,7 +426,7 @@ class ReflectViewModelTest {
                     date = lastWeekStart,
                     items = listOf(
                         item(
-                            id = 1L,
+                            id = "1",
                             title = "Deep work",
                             status = DailyPlanItemStatus.Done,
                             startTimeMinutes = 9 * 60,
@@ -509,7 +509,7 @@ class ReflectViewModelTest {
         content: String,
         periodIntent: String? = null
     ) = PeriodGoal(
-        id = 0L,
+        id = "",
         period = period,
         startEpochDays = start.toEpochDays().toInt(),
         endEpochDays = period.endExclusive(start).toEpochDays().toInt(),
@@ -520,7 +520,7 @@ class ReflectViewModelTest {
     )
 
     private fun item(
-        id: Long,
+        id: String,
         title: String,
         status: DailyPlanItemStatus,
         startTimeMinutes: Int? = null,

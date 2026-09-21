@@ -38,7 +38,7 @@ sealed interface AppRoute : NavKey {
     @Serializable data object Reflect : AppRoute
     @Serializable data object Settings : AppRoute
     @Serializable data object NestedLists : AppRoute
-    @Serializable data class ListSections(val listId: Long) : AppRoute
+    @Serializable data class ListSections(val listId: String) : AppRoute
 }
 
 enum class CheckItTab {
@@ -123,9 +123,9 @@ sealed interface WidgetLaunchTarget {
 
     companion object {
         fun from(
-            dailyPlanItemId: Long?,
-            taskId: Long?,
-            noteId: Long?,
+            dailyPlanItemId: String?,
+            taskId: String?,
+            noteId: String?,
             taskUiState: TaskUiState,
             myDayUiState: MyDayUiState
         ): WidgetLaunchTarget? {
