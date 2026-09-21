@@ -130,6 +130,11 @@ internal fun NestedDocumentsScreen(
                     icon = { Icon(Icons.Default.Add, contentDescription = null) },
                     modifier = Modifier.padding(horizontal = 12.dp).height(48.dp)
                 )
+                NestedSyncDocumentsRow(
+                    state = state,
+                    onSync = viewModel::syncDocuments,
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
                 Spacer(Modifier.height(12.dp))
             }
         }
@@ -300,6 +305,57 @@ private fun NestedSyncStatusLine(
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+    )
+}
+
+/**
+ * Drawer row below "New document" for manual sync of the document list.
+ * List sync reports `documentId = null`, so open-document status never
+ * leaks into this row.
+ */
+@Composable
+private fun NestedSyncDocumentsRow(
+    state: NestedUiState,
+    onSync: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val sync = state.syncState
+    val isListSync = sync.documentId == null
+    val syncing = isListSync && sync.status == NestedSyncStatus.SYNCING
+    val label = when {
+        !isListSync -> "Sync documents"
+        sync.status == NestedSyncStatus.SYNCING -> "Syncing…"
+        sync.status == NestedSyncStatus.SYNCED ->
+            if (sync.lastSyncedAt != null) "Synced ${sync.lastSyncedAt.toClockLabel()}" else "Synced"
+        sync.status == NestedSyncStatus.OFFLINE -> "Offline — saved on device"
+        sync.status == NestedSyncStatus.ERROR -> sync.message ?: "Sync failed"
+        else -> "Sync documents"
+    }
+    NavigationDrawerItem(
+        label = {
+            Text(
+                label,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        },
+        selected = false,
+        onClick = onSync,
+        icon = {
+            if (syncing) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+            } else {
+                Icon(Icons.Default.Sync, contentDescription = null)
+            }
+        },
+        colors = NavigationDrawerItemDefaults.colors(
+            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+            selectedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+        ),
+        modifier = modifier.height(48.dp)
     )
 }
 

@@ -236,6 +236,16 @@ class NestedListsViewModel(
         }
     }
 
+    /** Manual Firestore sync of the document list (drawer entry point). */
+    fun syncDocuments() {
+        viewModelScope.launch {
+            runCatching { syncManager.syncDocuments() }
+                .onFailure { error ->
+                    _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Sync failed"))
+                }
+        }
+    }
+
     // --- Document Management ---
 
     fun startNewDocument() {

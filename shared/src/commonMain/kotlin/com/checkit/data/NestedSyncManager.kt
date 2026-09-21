@@ -25,18 +25,20 @@ data class NestedSyncState(
  * subcollection).
  *
  * Unlike QuickNote there are no automatic triggers: the UI calls
- * [syncDocument] explicitly from a sync button. Implementations push dirty
- * rows, pull watermarked remote changes with last-write-wins on
- * `updatedAtMillis`, and purge uploaded tombstones after the shared
- * retention window.
+ * [syncDocument] (open document) or [syncDocuments] (document list)
+ * explicitly from sync buttons. Implementations push dirty rows, pull
+ * watermarked remote changes with last-write-wins on `updatedAtMillis`,
+ * and purge uploaded tombstones after the shared retention window.
  */
 interface NestedSyncManager {
     val syncState: StateFlow<NestedSyncState>
     suspend fun syncDocument(documentId: String)
+    suspend fun syncDocuments()
 }
 
 class NoOpNestedSyncManager : NestedSyncManager {
     private val state = MutableStateFlow(NestedSyncState(NestedSyncStatus.SYNCED))
     override val syncState: StateFlow<NestedSyncState> = state.asStateFlow()
     override suspend fun syncDocument(documentId: String) = Unit
+    override suspend fun syncDocuments() = Unit
 }

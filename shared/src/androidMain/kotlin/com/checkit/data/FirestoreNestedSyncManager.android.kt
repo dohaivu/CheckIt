@@ -9,6 +9,8 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.checkit.domain.QuickNoteRules
 import com.checkit.util.awaitTask
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.CollectionReference
+import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -143,26 +145,9 @@ class FirestoreNestedSyncManager(
                 setLastPullMillis(documentId, maxOf(lastPull, pullStart, maxRemoteUpdatedAt))
 
                 // Purge: uploaded item tombstones, then the document tombstone.
-                var purged = 0
                 val purgeCutoff = pullStart - QuickNoteRules.PURGE_AFTER_MILLIS
-                bridge.purgeableItemIds(documentId, purgeCutoff).forEach { id ->
-                    try {
-                        itemsRef.document(id).delete().awaitTask()
-                        bridge.hardDeleteItems(listOf(id))
-                        purged++
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Nested purge failed for item $id; will retry next sync", e)
-                    }
-                }
-                bridge.purgeableDocumentId(documentId, purgeCutoff)?.let { id ->
-                    try {
-                        docRef.delete().awaitTask()
-                        bridge.hardDeleteDocument(id)
-                        purged++
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Nested purge failed for document $id; will retry next sync", e)
-                    }
-                }
+                val purged = purgeItems(itemsRef, documentId, purgeCutoff) +
+                    purgeDocument(docRef, documentId, purgeCutoff)
 
                 setLastSyncedAt(documentId, pullStart)
                 _syncState.value = NestedSyncState(NestedSyncStatus.SYNCED, documentId, pullStart)
@@ -179,6 +164,159 @@ class FirestoreNestedSyncManager(
                     else "Sync failed (${e.message ?: "unknown error"}). Try again.",
                 )
             }
+        }
+    }
+
+    /**
+     * Manual sync of the document list (all documents, no items): pushes
+     * dirty document rows, pulls watermarked remote documents, and purges
+     * uploaded document tombstones. Open-document sync still owns items.
+     */
+    override suspend fun syncDocuments() {
+        syncMutex.withLock {
+            if (!isOnline()) {
+                _syncState.value = NestedSyncState(
+                    NestedSyncStatus.OFFLINE,
+                    null,
+                    lastSyncedDocsAt(),
+                )
+                return
+            }
+            _syncState.value = NestedSyncState(
+                NestedSyncStatus.SYNCING,
+                null,
+                lastSyncedDocsAt(),
+            )
+            try {
+                val userId = ensureUserId()
+                if (userId == null) {
+                    recordFailure(null, "Sign-in failed. Try again.")
+                    return
+                }
+                Log.d(TAG, "Nested docs sync started uid=$userId")
+                val firestore = FirebaseFirestore.getInstance(NestedSyncConfig.DATABASE_ID)
+                val docsRef = firestore
+                    .collection(NestedSyncConfig.USERS_COLLECTION)
+                    .document(userId)
+                    .collection(NestedSyncConfig.DOCUMENTS_COLLECTION)
+
+                // Push: all dirty document rows (batched).
+                var pushed = 0
+                bridge.dirtyDocumentJsons()
+                    .mapNotNull { NestedSyncDocument.mapFromJson(it) }
+                    .chunked(NestedSyncConfig.PUSH_BATCH_SIZE)
+                    .let { chunks ->
+                        chunks.forEach { chunk ->
+                            val batch = firestore.batch()
+                            chunk.forEach { map ->
+                                val id = map[NestedSyncDocument.FIELD_ID] as? String ?: return@forEach
+                                batch.set(docsRef.document(id), map)
+                            }
+                            batch.commit().awaitTask()
+                        }
+                        val flat = chunks.flatten()
+                        if (flat.isNotEmpty()) {
+                            pushed = flat.size
+                            bridge.markDocumentsClean(
+                                flat.mapNotNull { it[NestedSyncDocument.FIELD_ID] as? String },
+                                flat.maxOf { (it[NestedSyncDocument.FIELD_UPDATED_AT] as? Number)?.toLong() ?: 0L },
+                            )
+                        }
+                    }
+
+                // Pull: watermarked documents (overlap margin for clock skew).
+                var applied = 0
+                val lastPull = lastPullDocsMillis()
+                val pullStart = Clock.System.now().toEpochMilliseconds()
+                val remoteDocs = docsRef
+                    .whereGreaterThan(
+                        NestedSyncDocument.FIELD_UPDATED_AT,
+                        lastPull - NestedSyncConfig.PULL_OVERLAP_MILLIS,
+                    )
+                    .get().awaitTask().documents
+                var maxRemoteUpdatedAt = lastPull
+                remoteDocs.forEach { doc ->
+                    val data = doc.data.orEmpty() + (NestedSyncDocument.FIELD_ID to doc.id)
+                    maxRemoteUpdatedAt = maxOf(
+                        maxRemoteUpdatedAt,
+                        (data[NestedSyncDocument.FIELD_UPDATED_AT] as? Number)?.toLong() ?: lastPull,
+                    )
+                    if (bridge.applyRemoteDocumentJson(NestedSyncDocument.toJson(data))) {
+                        applied++
+                    }
+                }
+                setLastPullDocsMillis(maxOf(lastPull, pullStart, maxRemoteUpdatedAt))
+
+                // Purge uploaded document tombstones (items first, guarded).
+                var purged = 0
+                val purgeCutoff = pullStart - QuickNoteRules.PURGE_AFTER_MILLIS
+                bridge.purgeableDocumentIds(purgeCutoff).forEach { id ->
+                    purged += purgeItems(
+                        docsRef.document(id).collection(NestedSyncConfig.ITEMS_COLLECTION),
+                        id,
+                        purgeCutoff,
+                    )
+                    purged += purgeDocument(docsRef.document(id), id, purgeCutoff)
+                }
+
+                setLastSyncedDocsAt(pullStart)
+                _syncState.value = NestedSyncState(NestedSyncStatus.SYNCED, null, pullStart)
+                Log.i(
+                    TAG,
+                    "Nested docs sync succeeded pushed=$pushed " +
+                        "pulled=${remoteDocs.size} applied=$applied purged=$purged",
+                )
+            } catch (e: Exception) {
+                val offline = !isOnline()
+                recordFailure(
+                    null,
+                    if (offline) "You're offline. Changes are saved on this device."
+                    else "Sync failed (${e.message ?: "unknown error"}). Try again.",
+                )
+            }
+        }
+    }
+
+    /**
+     * Purges uploaded item tombstones of one document. Returns the count.
+     */
+    private suspend fun purgeItems(
+        itemsRef: CollectionReference,
+        documentId: String,
+        cutoff: Long,
+    ): Int {
+        var purged = 0
+        bridge.purgeableItemIds(documentId, cutoff).forEach { id ->
+            try {
+                itemsRef.document(id).delete().awaitTask()
+                bridge.hardDeleteItems(listOf(id))
+                purged++
+            } catch (e: Exception) {
+                Log.w(TAG, "Nested purge failed for item $id; will retry next sync", e)
+            }
+        }
+        return purged
+    }
+
+    /**
+     * Purges one uploaded document tombstone. Skipped while the document
+     * still has dirty items, so list sync can never orphan unsynced item
+     * rows through the cascading hard delete. Returns 0 or 1.
+     */
+    private suspend fun purgeDocument(
+        docRef: DocumentReference,
+        documentId: String,
+        cutoff: Long,
+    ): Int {
+        val id = bridge.purgeableDocumentId(documentId, cutoff) ?: return 0
+        if (bridge.dirtyItemJsons(documentId).isNotEmpty()) return 0
+        try {
+            docRef.delete().awaitTask()
+            bridge.hardDeleteDocument(id)
+            return 1
+        } catch (e: Exception) {
+            Log.w(TAG, "Nested purge failed for document $id; will retry next sync", e)
+            return 0
         }
     }
 
@@ -200,11 +338,25 @@ class FirestoreNestedSyncManager(
 
     private fun syncedKey(documentId: String) = "last_synced_$documentId"
 
-    private suspend fun recordFailure(documentId: String, message: String) {
+    private suspend fun lastPullDocsMillis(): Long =
+        dataStore.data.map { it[KEY_LAST_PULL_DOCS] ?: 0L }.first()
+
+    private suspend fun setLastPullDocsMillis(value: Long) {
+        dataStore.edit { prefs -> prefs[KEY_LAST_PULL_DOCS] = value }
+    }
+
+    private suspend fun lastSyncedDocsAt(): Long? =
+        dataStore.data.map { it[KEY_LAST_SYNCED_DOCS] }.first()
+
+    private suspend fun setLastSyncedDocsAt(value: Long) {
+        dataStore.edit { prefs -> prefs[KEY_LAST_SYNCED_DOCS] = value }
+    }
+
+    private suspend fun recordFailure(documentId: String?, message: String) {
         _syncState.value = NestedSyncState(
             NestedSyncStatus.ERROR,
             documentId,
-            lastSyncedAt(documentId),
+            documentId?.let { lastSyncedAt(it) } ?: lastSyncedDocsAt(),
             message,
         )
         Log.w(TAG, "Nested sync failed for $documentId: $message")
@@ -232,5 +384,7 @@ class FirestoreNestedSyncManager(
 
     companion object {
         private const val TAG = "NestedSync"
+        private val KEY_LAST_PULL_DOCS = longPreferencesKey("last_pull_docs")
+        private val KEY_LAST_SYNCED_DOCS = longPreferencesKey("last_synced_docs")
     }
 }

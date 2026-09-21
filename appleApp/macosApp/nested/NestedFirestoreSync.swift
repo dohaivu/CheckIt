@@ -44,6 +44,9 @@ final class NestedFirestoreSync: ObservableObject {
     // Firestore field carrying the LWW clock (NestedSyncDocument).
     private static let updatedAtField = "updatedAtMillis"
 
+    private static let lastPullDocsKey = "nested.lastPullDocsMillis"
+    private static let lastSyncedDocsKey = "nested.lastSyncedDocsMillis"
+
     private static func lastPullKey(_ documentId: String) -> String {
         "nested.lastPullMillis.\(documentId)"
     }
@@ -94,7 +97,6 @@ final class NestedFirestoreSync: ObservableObject {
         guard !isSyncing else { return }
         isSyncing = true
         defer { isSyncing = false }
-
         online = monitor.currentPath.status == .satisfied
         guard isFirebaseConfigured() else {
             uiState = NestedSyncUiState(
@@ -177,26 +179,9 @@ final class NestedFirestoreSync: ObservableObject {
 
             // Purge: uploaded item tombstones, then the document tombstone.
             let purgeCutoff = pullStart - QuickNoteRules.shared.PURGE_AFTER_MILLIS
-            var purged = 0
-            let purgeableItems = try await bridgePurgeableItemIds(documentId: documentId, cutoff: purgeCutoff)
-            for id in purgeableItems {
-                do {
-                    try await itemsRef.document(id).delete()
-                    try await bridgeHardDeleteItems(ids: [id])
-                    purged += 1
-                } catch {
-                    print("[NestedSync] Purge failed for item \(id); will retry next sync: \(error)")
-                }
-            }
-            if let purgeableDoc = try await bridgePurgeableDocumentId(documentId: documentId, cutoff: purgeCutoff) {
-                do {
-                    try await docRef.delete()
-                    try await bridgeHardDeleteDocument(id: purgeableDoc)
-                    purged += 1
-                } catch {
-                    print("[NestedSync] Purge failed for document \(purgeableDoc); will retry next sync: \(error)")
-                }
-            }
+            let purgedItems = await purgeItems(itemsRef: itemsRef, documentId: documentId, cutoff: purgeCutoff)
+            let purgedDoc = await purgeDocument(docRef: docRef, documentId: documentId, cutoff: purgeCutoff)
+            let purged = purgedItems + purgedDoc
 
             UserDefaults.standard.set(Double(pullStart), forKey: Self.lastSyncedAtKey(documentId))
             uiState = NestedSyncUiState(status: .synced, documentId: documentId, lastSyncedAt: Date(timeIntervalSince1970: Double(pullStart) / 1000.0))
@@ -206,7 +191,144 @@ final class NestedFirestoreSync: ObservableObject {
         }
     }
 
+    /// Immediate sync of the document list — the drawer entry point.
+    /// Extra taps while syncing are ignored.
+    func syncDocumentsNow() {
+        Task { await syncAllDocuments() }
+    }
+
+    /// Manual sync of the document list (all documents, no items): pushes
+    /// dirty document rows, pulls watermarked remote documents, and purges
+    /// uploaded document tombstones. Open-document sync still owns items.
+    func syncAllDocuments() async {
+        guard !isSyncing else { return }
+        isSyncing = true
+        defer { isSyncing = false }
+
+        online = monitor.currentPath.status == .satisfied
+        guard isFirebaseConfigured() else {
+            uiState = NestedSyncUiState(
+                status: .error, documentId: nil, lastSyncedAt: lastSyncedDocsAt(),
+                message: "Firebase not configured. Add GoogleService-Info.plist."
+            )
+            return
+        }
+        guard online else {
+            uiState = NestedSyncUiState(status: .offline, documentId: nil, lastSyncedAt: lastSyncedDocsAt())
+            return
+        }
+        uiState = NestedSyncUiState(status: .syncing, documentId: nil, lastSyncedAt: lastSyncedDocsAt())
+
+        do {
+            guard let userId = try await ensureUserId() else {
+                recordFailure(documentId: nil, message: "Sign-in failed. Try again.")
+                return
+            }
+            print("[NestedSync] docs started uid=\(userId)")
+            let db = Firestore.firestore(database: Self.config.DATABASE_ID)
+            let docsRef = db.collection(Self.config.USERS_COLLECTION).document(userId)
+                .collection(Self.config.DOCUMENTS_COLLECTION)
+
+            // Push: all dirty document rows (batched).
+            var pushed = 0
+            let docJsons = try await bridgeDirtyDocumentJsons()
+            for chunk in docJsons.chunked(into: Int(Self.config.PUSH_BATCH_SIZE)) {
+                let batch = db.batch()
+                for json in chunk {
+                    guard let map = Self.documentDict(json: json),
+                          let id = map["id"] as? String
+                    else { continue }
+                    batch.setData(map, forDocument: docsRef.document(id))
+                }
+                try await batch.commit()
+                pushed += chunk.count
+            }
+            if !docJsons.isEmpty {
+                let ids = docJsons.compactMap { Self.documentDict(json: $0)?["id"] as? String }
+                let maxUpdated = docJsons.compactMap {
+                    (Self.documentDict(json: $0)?[Self.updatedAtField] as? NSNumber)?.int64Value
+                }.max() ?? 0
+                try await bridgeMarkDocumentsClean(ids: ids, maxUpdatedAt: maxUpdated)
+            }
+
+            // Pull: watermarked documents (overlap margin for clock skew).
+            var applied = 0
+            let lastPull = Int64(UserDefaults.standard.double(forKey: Self.lastPullDocsKey))
+            let pullStart = Self.nowMillis()
+            let snapshot = try await docsRef
+                .whereField(Self.updatedAtField, isGreaterThan: lastPull - Self.config.PULL_OVERLAP_MILLIS)
+                .getDocuments()
+            var maxRemoteUpdatedAt = lastPull
+            for doc in snapshot.documents {
+                let data = doc.data()
+                if let updated = (data[Self.updatedAtField] as? NSNumber)?.int64Value {
+                    maxRemoteUpdatedAt = max(maxRemoteUpdatedAt, updated)
+                }
+                guard let json = Self.jsonString(for: data, documentId: doc.documentID) else { continue }
+                if try await bridgeApplyRemoteDocument(json: json) {
+                    applied += 1
+                }
+            }
+            UserDefaults.standard.set(Double(max(max(lastPull, pullStart), maxRemoteUpdatedAt)), forKey: Self.lastPullDocsKey)
+
+            // Purge uploaded document tombstones (items first, guarded).
+            var purged = 0
+            let purgeCutoff = pullStart - QuickNoteRules.shared.PURGE_AFTER_MILLIS
+            let purgeableDocs = try await bridgePurgeableDocumentIds(cutoff: purgeCutoff)
+            for id in purgeableDocs {
+                purged += await purgeItems(
+                    itemsRef: docsRef.document(id).collection(Self.config.ITEMS_COLLECTION),
+                    documentId: id,
+                    cutoff: purgeCutoff
+                )
+                purged += await purgeDocument(docRef: docsRef.document(id), documentId: id, cutoff: purgeCutoff)
+            }
+
+            UserDefaults.standard.set(Double(pullStart), forKey: Self.lastSyncedDocsKey)
+            uiState = NestedSyncUiState(status: .synced, documentId: nil, lastSyncedAt: Date(timeIntervalSince1970: Double(pullStart) / 1000.0))
+            print("[NestedSync] docs pushed=\(pushed) pulled=\(snapshot.count) applied=\(applied) purged=\(purged)")
+        } catch {
+            recordFailure(documentId: nil, message: "Sync failed (\(error.localizedDescription)). Try again.")
+        }
+    }
+
     // MARK: - Steps
+
+    /// Purges uploaded item tombstones of one document. Returns the count.
+    private func purgeItems(itemsRef: CollectionReference, documentId: String, cutoff: Int64) async -> Int {
+        var purged = 0
+        do {
+            let ids = try await bridgePurgeableItemIds(documentId: documentId, cutoff: cutoff)
+            for id in ids {
+                do {
+                    try await itemsRef.document(id).delete()
+                    try await bridgeHardDeleteItems(ids: [id])
+                    purged += 1
+                } catch {
+                    print("[NestedSync] Purge failed for item \(id); will retry next sync: \(error)")
+                }
+            }
+        } catch {
+            print("[NestedSync] Purge lookup failed for doc \(documentId); will retry next sync: \(error)")
+        }
+        return purged
+    }
+
+    /// Purges one uploaded document tombstone. Skipped while the document
+    /// still has dirty items, so list sync can never orphan unsynced item
+    /// rows through the cascading hard delete. Returns 0 or 1.
+    private func purgeDocument(docRef: DocumentReference, documentId: String, cutoff: Int64) async -> Int {
+        do {
+            guard try await bridgePurgeableDocumentId(documentId: documentId, cutoff: cutoff) != nil else { return 0 }
+            if !(try await bridgeDirtyItemJsons(documentId: documentId)).isEmpty { return 0 }
+            try await docRef.delete()
+            try await bridgeHardDeleteDocument(id: documentId)
+            return 1
+        } catch {
+            print("[NestedSync] Purge failed for document \(documentId); will retry next sync: \(error)")
+            return 0
+        }
+    }
 
     private func ensureUserId() async throws -> String? {
         if let uid = Auth.auth().currentUser?.uid { return uid }
@@ -214,13 +336,25 @@ final class NestedFirestoreSync: ObservableObject {
         return result.user.uid
     }
 
-    private func recordFailure(documentId: String, message: String) {
-        uiState = NestedSyncUiState(status: .error, documentId: documentId, lastSyncedAt: lastSyncedAt(documentId: documentId), message: message)
+    private func recordFailure(documentId: String?, message: String) {
+        let last: Date?
+        if let documentId {
+            last = lastSyncedAt(documentId: documentId)
+        } else {
+            last = lastSyncedDocsAt()
+        }
+        uiState = NestedSyncUiState(status: .error, documentId: documentId, lastSyncedAt: last, message: message)
         print("[NestedSync] \(message)")
     }
 
     private func lastSyncedAt(documentId: String) -> Date? {
         let millis = UserDefaults.standard.double(forKey: Self.lastSyncedAtKey(documentId))
+        guard millis > 0 else { return nil }
+        return Date(timeIntervalSince1970: millis / 1000.0)
+    }
+
+    private func lastSyncedDocsAt() -> Date? {
+        let millis = UserDefaults.standard.double(forKey: Self.lastSyncedDocsKey)
         guard millis > 0 else { return nil }
         return Date(timeIntervalSince1970: millis / 1000.0)
     }
@@ -271,6 +405,15 @@ final class NestedFirestoreSync: ObservableObject {
         }
     }
 
+    private func bridgeDirtyDocumentJsons() async throws -> [String] {
+        try await withCheckedThrowingContinuation { cont in
+            bridge().dirtyDocumentJsons { jsons, error in
+                if let error { cont.resume(throwing: error) }
+                else { cont.resume(returning: jsons ?? []) }
+            }
+        }
+    }
+
     private func bridgeMarkDocumentClean(id: String, maxUpdatedAt: Int64) async throws {
         try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
             bridge().markDocumentClean(id: id, maxUpdatedAt: maxUpdatedAt) { error in
@@ -283,6 +426,15 @@ final class NestedFirestoreSync: ObservableObject {
     private func bridgeMarkItemsClean(ids: [String], maxUpdatedAt: Int64) async throws {
         try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
             bridge().markItemsClean(ids: ids, maxUpdatedAt: maxUpdatedAt) { error in
+                if let error { cont.resume(throwing: error) }
+                else { cont.resume() }
+            }
+        }
+    }
+
+    private func bridgeMarkDocumentsClean(ids: [String], maxUpdatedAt: Int64) async throws {
+        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+            bridge().markDocumentsClean(ids: ids, maxUpdatedAt: maxUpdatedAt) { error in
                 if let error { cont.resume(throwing: error) }
                 else { cont.resume() }
             }
@@ -321,6 +473,15 @@ final class NestedFirestoreSync: ObservableObject {
             bridge().purgeableDocumentId(documentId: documentId, cutoffMillis: cutoff) { id, error in
                 if let error { cont.resume(throwing: error) }
                 else { cont.resume(returning: id) }
+            }
+        }
+    }
+
+    private func bridgePurgeableDocumentIds(cutoff: Int64) async throws -> [String] {
+        try await withCheckedThrowingContinuation { cont in
+            bridge().purgeableDocumentIds(cutoffMillis: cutoff) { ids, error in
+                if let error { cont.resume(throwing: error) }
+                else { cont.resume(returning: ids ?? []) }
             }
         }
     }

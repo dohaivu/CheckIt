@@ -127,6 +127,9 @@ struct NestedListsWindowView: View {
             }
             .buttonStyle(.plain)
             .padding(8)
+            Divider()
+            nestedDocsSyncRow
+                .padding(8)
         }
     }
 
@@ -135,6 +138,48 @@ struct NestedListsWindowView: View {
         guard !t.isEmpty else { return }
         state.createDocument(title: t)
         showNewDoc = false
+    }
+
+    /// Manual sync row for the document list (no auto-sync).
+    /// List sync reports `documentId == nil`, so open-document status
+    /// never leaks into this row.
+    @ViewBuilder
+    private var nestedDocsSyncRow: some View {
+        let isListSync = sync.uiState.documentId == nil
+        let syncing = isListSync && sync.uiState.status == .syncing
+        HStack(spacing: 6) {
+            Button {
+                NestedFirestoreSync.shared.syncDocumentsNow()
+            } label: {
+                Label("Sync documents", systemImage: "arrow.clockwise")
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .help("Sync the document list")
+            .disabled(syncing)
+            Spacer()
+            Group {
+                switch sync.uiState.status {
+                case .syncing where isListSync:
+                    Text("Syncing…")
+                case .synced where isListSync:
+                    if let at = sync.uiState.lastSyncedAt {
+                        Text("Synced \(at.formatted(date: .omitted, time: .shortened))")
+                    } else {
+                        Text("Synced")
+                    }
+                case .offline where isListSync:
+                    Text("Offline")
+                case .error where isListSync:
+                    Text(sync.uiState.message ?? "Failed")
+                default:
+                    EmptyView()
+                }
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+        }
     }
 
     // MARK: - Detail

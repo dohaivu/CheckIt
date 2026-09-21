@@ -31,6 +31,21 @@ class NestedSyncBridge(
         )
     }
 
+    /** JSON-encoded push documents for all dirty documents (list sync). */
+    suspend fun dirtyDocumentJsons(): List<String> {
+        return dao.getDirtyNestedDocuments().map { entity ->
+            NestedSyncDocument.toJson(
+                NestedSyncDocument.docToMap(
+                    id = entity.id,
+                    title = entity.title,
+                    createdAtMillis = entity.createdAtMillis,
+                    updatedAtMillis = entity.updatedAtMillis,
+                    deleted = entity.deleted,
+                )
+            )
+        }
+    }
+
     /** JSON-encoded push documents for dirty items of one document. */
     suspend fun dirtyItemJsons(documentId: String): List<String> {
         val items = dao.getDirtyNestedItemsForDocument(documentId)
@@ -71,6 +86,10 @@ class NestedSyncBridge(
 
     suspend fun markDocumentClean(id: String, maxUpdatedAt: Long) {
         dao.markNestedDocumentsClean(listOf(id), maxUpdatedAt)
+    }
+
+    suspend fun markDocumentsClean(ids: List<String>, maxUpdatedAt: Long) {
+        if (ids.isNotEmpty()) dao.markNestedDocumentsClean(ids, maxUpdatedAt)
     }
 
     suspend fun markItemsClean(ids: List<String>, maxUpdatedAt: Long) {
@@ -166,6 +185,10 @@ class NestedSyncBridge(
             entity.deleted && !entity.dirty && entity.updatedAtMillis <= cutoffMillis
         }
     }
+
+    /** Ids of uploaded document tombstones old enough to purge. */
+    suspend fun purgeableDocumentIds(cutoffMillis: Long): List<String> =
+        dao.getPurgeableNestedDocumentTombstones(cutoffMillis).map { it.id }
 
     suspend fun hardDeleteItems(ids: List<String>) {
         if (ids.isNotEmpty()) dao.hardDeleteNestedItems(ids)

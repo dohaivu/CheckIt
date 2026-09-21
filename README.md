@@ -86,6 +86,9 @@ The app is designed around blending the calendar aspect with the completion aspe
 
 # iOS simulator framework
 ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64
+
+# macosApp build
+xcodebuild -project appleApp/appleApp.xcodeproj -scheme macosApp -configuration Debug build
 ```
 
 ## GitHub Release APK
