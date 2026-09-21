@@ -85,7 +85,6 @@ struct NestedRowView: View {
 
     @State private var editText = ""
     @FocusState private var fieldFocused: Bool
-    @State private var hovering = false
 
     private var item: NestedListItem { row.node.item }
 
@@ -98,20 +97,21 @@ struct NestedRowView: View {
                     .frame(width: 1)
                     .padding(.leading, 15)
             }
-            // Collapse dot.
+            // Collapse chevron (parents) or dot (leaves).
             Button {
                 state.toggleCollapse(id: item.id)
             } label: {
                 Group {
                     if row.node.hasChildren {
-                        Image(systemName: item.collapsed ? "circle" : "circle.fill")
-                            .font(.system(size: item.collapsed ? 11 : 8))
+                        Image(systemName: item.collapsed ? "chevron.right" : "chevron.down")
+                            .font(.system(size: 11, weight: .semibold))
                     } else {
                         Image(systemName: "circle.fill").font(.system(size: 6))
                     }
                 }
-                .foregroundStyle(Color.accentColor.opacity(0.7))
-                .frame(width: 22, height: 22)
+                .foregroundStyle(Color.accentColor.opacity(0.8))
+                .frame(width: 24, height: 24)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .disabled(!row.node.hasChildren)
@@ -139,6 +139,12 @@ struct NestedRowView: View {
                                 fieldFocused = true
                             }
                             .onSubmit { state.commitEdit(id: item.id, text: editText) }
+                            .onKeyPress(keys: [.return]) { press in
+                                guard press.modifiers.contains(.shift) else { return .ignored }
+                                state.commitEdit(id: item.id, text: editText)
+                                state.startAddSibling(of: item.id)
+                                return .handled
+                            }
                             .onKeyPress(.escape) {
                                 state.cancelEdit()
                                 return .handled
@@ -177,20 +183,7 @@ struct NestedRowView: View {
             .clipShape(RoundedRectangle(cornerRadius: 6))
             .contentShape(Rectangle())
             .onTapGesture { state.select(id: item.id) }
-            .onHover { hovering = $0 }
-
-            if hovering, !isEditing {
-                Button {
-                    state.startAddSibling(of: item.id)
-                } label: {
-                    Image(systemName: "plus.circle.fill")
-                        .foregroundStyle(Color.accentColor.opacity(0.6))
-                }
-                .buttonStyle(.plain)
-                .help("Add item below")
-            }
         }
-        .opacity(hovering || isSelected ? 1 : 0.98)
         .onDrag {
             NSItemProvider(object: "nested:\(item.id)" as NSString)
         }
@@ -219,7 +212,7 @@ struct NestedRowView: View {
     }
 
     private var rowBackground: Color {
-        if isSelected { return Color.accentColor.opacity(0.14) }
+        if isSelected { return Color.accentColor.opacity(0.25) }
         if isEditing { return Color.secondary.opacity(0.12) }
         if item.backgroundColor.name != "Default" {
             return nestedTokenColor(item.backgroundColor.name).opacity(0.16)
@@ -308,6 +301,27 @@ struct NestedRowView: View {
         if !m.name.isEmpty { s += m.name + " " }
         if !m.value.isEmpty { s += m.value }
         if let t = m.targetValue, !t.isEmpty { s += "/\(t)" }
+        if let u = metricUnitLabel(m) { s += " \(u)" }
         return s.trimmingCharacters(in: .whitespaces)
+    }
+
+    /// Mirrors shared MetricItem.displayUnit() (UiHelpers.kt).
+    private func metricUnitLabel(_ m: MetricItem) -> String? {
+        switch m.unit.name {
+        case "None": return nil
+        case "Custom":
+            let c = m.customUnit ?? ""
+            return c.isEmpty ? nil : c
+        case "Percentage": return "%"
+        case "Points": return "points"
+        case "Items": return "items"
+        case "Hours": return "hours"
+        case "Days": return "days"
+        case "Rating": return "rating"
+        case "VND": return "đ"
+        case "Lan": return "lần"
+        case "Km": return "km"
+        default: return nil
+        }
     }
 }

@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import AppKit
 import Shared
 
 // MARK: - Note sheet
@@ -229,8 +230,24 @@ struct NestedFormattingBar: View {
 
     private let tokens = ["Default", "Red", "Orange", "Yellow", "Green", "Blue", "Purple", "Pink"]
 
+    private func barBtn(
+        _ system: String,
+        tint: Color = .secondary,
+        help: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: system)
+                .font(.system(size: 14))
+                .foregroundStyle(tint)
+        }
+        .buttonStyle(.bordered)
+        .frame(minWidth: 36, minHeight: 30)
+        .help(help)
+    }
+
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 6) {
             // Text style
             Menu {
                 ForEach(["Body", "Header", "Subheader"], id: \.self) { s in
@@ -244,8 +261,10 @@ struct NestedFormattingBar: View {
                 }
             } label: {
                 Image(systemName: "textformat.size")
+                    .font(.system(size: 14))
             }
-            .menuStyle(.borderlessButton)
+            .menuStyle(.button)
+            .frame(minHeight: 30)
             .help("Text style")
             // Text color
             Menu {
@@ -256,9 +275,11 @@ struct NestedFormattingBar: View {
                 }
             } label: {
                 Image(systemName: "paintbrush")
+                    .font(.system(size: 14))
                     .foregroundStyle(item.textColor.name == "Default" ? .secondary : nestedTokenColor(item.textColor.name))
             }
-            .menuStyle(.borderlessButton)
+            .menuStyle(.button)
+            .frame(minHeight: 30)
             .help("Text color")
             // Background
             Menu {
@@ -269,9 +290,11 @@ struct NestedFormattingBar: View {
                 }
             } label: {
                 Image(systemName: "paintpalette")
+                    .font(.system(size: 14))
                     .foregroundStyle(item.backgroundColor.name == "Default" ? .secondary : nestedTokenColor(item.backgroundColor.name))
             }
-            .menuStyle(.borderlessButton)
+            .menuStyle(.button)
+            .frame(minHeight: 30)
             .help("Background color")
             // Priority
             Menu {
@@ -280,23 +303,24 @@ struct NestedFormattingBar: View {
                 }
             } label: {
                 Image(systemName: "flag")
+                    .font(.system(size: 14))
                     .foregroundStyle(nestedPriorityColor(item.priority.name))
             }
-            .menuStyle(.borderlessButton)
+            .menuStyle(.button)
+            .frame(minHeight: 30)
             .help("Priority")
             // Dates
-            Button {
+            barBtn(
+                "calendar",
+                tint: (item.startDate != nil || item.endDate != nil) ? Color.accentColor : .secondary,
+                help: "Date range"
+            ) {
                 hasStart = item.startDate != nil
                 hasEnd = item.endDate != nil
                 if let s = item.startDate?.toEpochDays() { startDate = nestedDate(fromEpochDays: s) }
                 if let e = item.endDate?.toEpochDays() { endDate = nestedDate(fromEpochDays: e) }
                 showDates = true
-            } label: {
-                Image(systemName: "calendar")
-                    .foregroundStyle((item.startDate != nil || item.endDate != nil) ? Color.accentColor : .secondary)
             }
-            .buttonStyle(.plain)
-            .help("Date range")
             .popover(isPresented: $showDates, arrowEdge: .bottom) {
                 VStack(alignment: .leading, spacing: 8) {
                     Toggle("Start", isOn: $hasStart)
@@ -325,48 +349,54 @@ struct NestedFormattingBar: View {
                 .padding()
                 .frame(width: 240)
             }
-            // Tags
-            Menu {
-                ForEach(state.availableTags, id: \.id) { tag in
-                    let on = item.tags.contains(where: { $0.id == tag.id })
-                    Button {
-                        state.setTag(id: item.id, tagId: tag.id, enabled: !on)
-                    } label: {
-                        HStack {
-                            Text(tag.name)
-                            if on { Image(systemName: "checkmark") }
-                        }
+            // Tags (read-only)
+            HStack(spacing: 4) {
+                Image(systemName: "tag")
+                    .font(.system(size: 14))
+                    .foregroundStyle(.secondary)
+                let tags: [TagItem] = item.tags
+                if tags.isEmpty {
+                    Text("No tags")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                } else {
+                    ForEach(tags, id: \.id) { tag in
+                        Text(tag.name)
+                            .font(.caption)
+                            .padding(.horizontal, 6).padding(.vertical, 1)
+                            .background(
+                                (Color(nestedHex: tag.color) ?? .secondary).opacity(0.2),
+                                in: RoundedRectangle(cornerRadius: 5)
+                            )
                     }
                 }
-            } label: {
-                Image(systemName: "tag")
-                    .foregroundStyle(item.tags.isEmpty ? .secondary : Color.accentColor)
             }
-            .menuStyle(.borderlessButton)
-            .help("Tags")
+            .padding(.horizontal, 8)
+            .frame(minHeight: 30)
+            .help("Tags (read-only)")
             // Note
-            Button { showNote = true } label: {
-                Image(systemName: "note.text")
-                    .foregroundStyle((item.note?.isEmpty ?? true) ? .secondary : Color.accentColor)
+            barBtn(
+                "note.text",
+                tint: (item.note?.isEmpty ?? true) ? .secondary : Color.accentColor,
+                help: "Edit note"
+            ) {
+                showNote = true
             }
-            .buttonStyle(.plain)
-            .help("Edit note")
             // Check
-            Button {
+            barBtn(
+                item.checked ? "checkmark.circle.fill" : "checkmark.circle",
+                tint: item.checked ? Color.accentColor : .secondary,
+                help: item.checked ? "Uncheck" : "Check off"
+            ) {
                 state.setCheckedExact(id: item.id, checked: !item.checked)
-            } label: {
-                Image(systemName: item.checked ? "checkmark.circle.fill" : "checkmark.circle")
-                    .foregroundStyle(item.checked ? Color.accentColor : .secondary)
             }
-            .buttonStyle(.plain)
-            .help(item.checked ? "Uncheck" : "Check off")
             // Details
-            Button { showDetails = true } label: {
-                Image(systemName: "info.circle")
+            barBtn("info.circle", help: "Item details") {
+                showDetails = true
             }
-            .buttonStyle(.plain)
-            .help("Item details")
         }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
         .sheet(isPresented: $showNote) { NestedNoteSheet(state: state, item: item) }
         .sheet(isPresented: $showDetails) { NestedDetailsSheet(state: state, item: item) }
     }

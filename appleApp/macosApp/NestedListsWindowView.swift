@@ -3,12 +3,16 @@
 //  macosApp — full nested-list editor window (sidebar + outline).
 //
 //  No filter bar (per spec). Keyboard-first: Up/Down navigate, Return edit,
-//  Return-in-edit commits and opens a sibling draft, Tab/Shift+Tab
+//  Return-in-edit commits, Shift+Return commits and adds a sibling below,
+//  Return-in-draft commits and opens the next sibling draft, Tab/Shift+Tab
 //  indent/outdent, Cmd+Up/Down move, Cmd+Left/Right outdent/indent,
-//  Cmd+Return adds a child, Delete confirms deletion, Esc cancels.
+//  Cmd+Return adds a child, Shift+Return adds a sibling, Delete confirms
+//  deletion, Esc cancels. Editor actions also live in the native window
+//  toolbar.
 //
 
 import SwiftUI
+import AppKit
 import Shared
 
 struct NestedListsWindowView: View {
@@ -25,15 +29,21 @@ struct NestedListsWindowView: View {
     @State private var draftText = ""
 
     var body: some View {
-        NavigationSplitView {
+        HSplitView {
             sidebar
-        } detail: {
+                .frame(minWidth: 200, idealWidth: 240, maxWidth: 360, maxHeight: .infinity)
             detail
+                .frame(minWidth: 560, maxWidth: .infinity, maxHeight: .infinity)
         }
-        .navigationSplitViewStyle(.balanced)
         .frame(minWidth: 760, minHeight: 480)
+        .background(WindowAccessor(onWindow: { win in
+            Task { @MainActor in state.attachWindow(win) }
+        }))
         .onAppear { state.start() }
-        .onDisappear { state.stop() }
+        .onDisappear {
+            state.detachWindow()
+            state.stop()
+        }
         .sheet(isPresented: $showNewDoc) {
             VStack(alignment: .leading, spacing: 12) {
                 Text("New document").font(.headline)
@@ -117,7 +127,6 @@ struct NestedListsWindowView: View {
             .buttonStyle(.plain)
             .padding(8)
         }
-        .navigationSplitViewColumnWidth(min: 200, ideal: 240)
     }
 
     private func createDoc() {
@@ -142,14 +151,23 @@ struct NestedListsWindowView: View {
             ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             VStack(spacing: 0) {
-                breadcrumbBar
-                editorToolbar
-                Divider()
+                detailHeader
                 outlineList
+                    .padding(.top, 6)
                 Divider()
                 bottomBar
             }
         }
+    }
+
+    private var detailHeader: some View {
+        VStack(spacing: 0) {
+            breadcrumbBar
+            Divider()
+            editorBar
+            Divider()
+        }
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 
     private var breadcrumbBar: some View {
@@ -175,46 +193,81 @@ struct NestedListsWindowView: View {
         .padding(.vertical, 6)
     }
 
-    private var editorToolbar: some View {
+    // MARK: - Editor bar
+
+    private var editorBar: some View {
         let sel = state.selectedId
         let node = sel.flatMap { state.indexById[$0] }
-        return HStack(spacing: 2) {
-            toolbarBtn("magnifyingglass.plus", help: "Zoom in") { state.zoomInSelected() }
+        return ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                editorBtn("Zoom In", system: "plus.magnifyingglass", help: "Zoom in") {
+                    state.zoomInSelected()
+                }
                 .disabled(!(node?.hasChildren ?? false))
-            toolbarBtn("magnifyingglass.minus", help: "Zoom out") { state.zoomOut() }
+                editorBtn("Zoom Out", system: "minus.magnifyingglass", help: "Zoom out") {
+                    state.zoomOut()
+                }
                 .disabled(state.zoomPath.isEmpty)
-            Divider().frame(height: 16)
-            toolbarBtn("arrow.left.to.line", help: "Outdent (Shift+Tab)") { state.outdentSelected() }
+                barSeparator
+                editorBtn("Outdent", system: "arrow.left.to.line", help: "Outdent (Shift+Tab)") {
+                    state.outdentSelected()
+                }
                 .disabled(sel == nil)
-            toolbarBtn("arrow.right.to.line", help: "Indent (Tab)") { state.indentSelected() }
+                editorBtn("Indent", system: "arrow.right.to.line", help: "Indent (Tab)") {
+                    state.indentSelected()
+                }
                 .disabled(sel == nil)
-            toolbarBtn("chevron.up", help: "Move up (Cmd+Up)") { state.moveSelectedUp() }
+                editorBtn("Up", system: "chevron.up", help: "Move up (Cmd+Up)") {
+                    state.moveSelectedUp()
+                }
                 .disabled(sel == nil)
-            toolbarBtn("chevron.down", help: "Move down (Cmd+Down)") { state.moveSelectedDown() }
+                editorBtn("Down", system: "chevron.down", help: "Move down (Cmd+Down)") {
+                    state.moveSelectedDown()
+                }
                 .disabled(sel == nil)
-            Divider().frame(height: 16)
-            toolbarBtn("plus", help: "Add child (Cmd+Return)") {
-                if let id = sel { state.startAddChild(of: id) }
-            }.disabled(sel == nil)
-            toolbarBtn("text.below.photo", help: "Add sibling below (Return in edit)") {
-                if let id = sel { state.startAddSibling(of: id) }
-            }.disabled(sel == nil)
-            toolbarBtn("trash", help: "Delete (Del)") {
-                if sel != nil { state.showDeleteConfirm = true }
-            }.disabled(sel == nil)
-            Spacer()
-            toolbarBtn("plus.circle", help: "Add root item") { state.startAddRoot() }
+                barSeparator
+                editorBtn("Child", system: "plus", help: "Add child (Cmd+Return)") {
+                    if let id = sel { state.startAddChild(of: id) }
+                }
+                .disabled(sel == nil)
+                editorBtn("Sibling", system: "text.badge.plus", help: "Add sibling below (Shift+Return)") {
+                    if let id = sel { state.startAddSibling(of: id) }
+                }
+                .disabled(sel == nil)
+                editorBtn("Root", system: "plus.circle", help: "Add root item") {
+                    state.startAddRoot()
+                }
+                editorBtn("Delete", system: "trash", help: "Delete (Del)") {
+                    if sel != nil { state.showDeleteConfirm = true }
+                }
+                .disabled(sel == nil)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
     }
 
-    private func toolbarBtn(_ system: String, help: String, action: @escaping () -> Void) -> some View {
+    private func editorBtn(
+        _ title: String,
+        system: String,
+        help: String,
+        action: @escaping () -> Void
+    ) -> some View {
         Button(action: action) {
             Image(systemName: system)
+                .imageScale(.medium)
+                .frame(width: 28, height: 28)
         }
-        .buttonStyle(.plain)
+        // Match macOS toolbar conventions: template icons, a predictable
+        // hit target, and text exposed through help and accessibility rather
+        // than permanently consuming horizontal space.
+        .buttonStyle(.borderless)
+        .accessibilityLabel(title)
         .help(help)
+    }
+
+    private var barSeparator: some View {
+        Divider().frame(height: 18)
     }
 
     // MARK: - Outline list + keyboard
@@ -222,46 +275,52 @@ struct NestedListsWindowView: View {
     private var outlineList: some View {
         let rows = state.visibleRows
         return ScrollViewReader { proxy in
-            List {
-                if state.draft?.anchorId == -1 {
-                    draftRow(depth: 0)
-                }
-                if rows.isEmpty, state.draft == nil {
-                    VStack(spacing: 8) {
-                        Text("Nothing here yet").font(.headline)
-                        Text("Start with a root item, then indent items to build your outline.")
-                            .foregroundStyle(.secondary)
-                        Button("Add item") { state.startAddRoot() }
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    if state.draft?.anchorId == -1 {
+                        draftRow(depth: 0)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 48)
-                }
-                ForEach(rows) { row in
-                    VStack(alignment: .leading, spacing: 0) {
-                        NestedRowView(
-                            state: state,
-                            row: row,
-                            isSelected: state.selectedId == row.id,
-                            isEditing: state.editingId == row.id
-                        )
-                        if state.draft?.anchorId == row.id, let d = state.draft {
-                            draftRow(depth: d.depth)
+                    if rows.isEmpty, state.draft == nil {
+                        VStack(spacing: 8) {
+                            Text("Nothing here yet").font(.headline)
+                            Text("Start with a root item, then indent items to build your outline.")
+                                .foregroundStyle(.secondary)
+                            Button("Add item") { state.startAddRoot() }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 48)
+                    }
+                    ForEach(rows) { row in
+                        VStack(alignment: .leading, spacing: 0) {
+                            NestedRowView(
+                                state: state,
+                                row: row,
+                                isSelected: state.selectedId == row.id,
+                                isEditing: state.editingId == row.id
+                            )
+                            if state.draft?.anchorId == row.id, let d = state.draft {
+                                draftRow(depth: d.depth)
+                            }
+                        }
+                        .padding(.vertical, 1)
+                        .focusable()
+                        .focused($focusedRow, equals: row.id)
+                        .id(row.id)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            state.select(id: row.id)
+                            focusedRow = row.id
                         }
                     }
-                    .listRowInsets(EdgeInsets(top: 1, leading: 8, bottom: 1, trailing: 8))
-                    .listRowSeparator(.hidden)
-                    .focused($focusedRow, equals: row.id)
-                    .id(row.id)
-                    .onTapGesture {
-                        state.select(id: row.id)
-                        focusedRow = row.id
-                    }
                 }
+                .padding(.horizontal, 8)
             }
-            .listStyle(.plain)
+            .background(Color(nsColor: .windowBackgroundColor))
+            .scrollEdgeEffectHidden(true, for: .all)
             .onChange(of: state.selectedId) { _, id in
                 focusedRow = id
-                if let id { withAnimation { proxy.scrollTo(id, anchor: .center) } }
+                // Minimal scroll: only moves if the row is out of view.
+                if let id { withAnimation { proxy.scrollTo(id) } }
             }
             .onChange(of: state.draft?.anchorId) { _, _ in
                 draftText = state.draft?.text ?? ""
@@ -275,25 +334,26 @@ struct NestedListsWindowView: View {
                 }
                 return .handled
             }
+            // Note: nav-mode Tab/Shift+Tab is owned by the NSEvent monitor
+            // (see NestedEditorState.attachWindow) because AppKit focus
+            // navigation can swallow Shift+Tab before SwiftUI sees it.
             .onKeyPress(keys: [.return]) { press in
                 if press.modifiers.contains(.command) {
                     guard let id = state.selectedId else { return .ignored }
                     state.startAddChild(of: id)
                     return .handled
                 }
+                if press.modifiers.contains(.shift) {
+                    guard state.editingId == nil, state.draft == nil,
+                          let id = state.selectedId
+                    else { return .ignored }
+                    state.startAddSibling(of: id)
+                    return .handled
+                }
                 guard state.editingId == nil, state.draft == nil,
                       let id = state.selectedId
                 else { return .ignored }
                 state.startEdit(id: id)
-                return .handled
-            }
-            .onKeyPress(keys: [.tab]) { press in
-                guard state.editingId == nil else { return .ignored }
-                if press.modifiers.contains(.shift) {
-                    state.outdentSelected()
-                } else {
-                    state.indentSelected()
-                }
                 return .handled
             }
             .onKeyPress(keys: [.leftArrow, .rightArrow]) { press in
@@ -372,8 +432,8 @@ struct NestedListsWindowView: View {
             .buttonStyle(.plain)
             .help("Cancel")
         }
-        .listRowInsets(EdgeInsets(top: 1, leading: 8, bottom: 1, trailing: 8))
-        .listRowSeparator(.hidden)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 1)
         .onAppear {
             draftText = state.draft?.text ?? ""
             draftFocused = true
@@ -384,9 +444,29 @@ struct NestedListsWindowView: View {
     private var bottomBar: some View {
         if let id = state.selectedId, let node = state.indexById[id] {
             NestedFormattingBar(state: state, item: node.item)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
                 .id(id)
         }
+    }
+}
+
+// MARK: - Window access for the Tab key monitor
+
+final class WindowReportView: NSView {
+    var onWindow: ((NSWindow?) -> Void)?
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        onWindow?(window)
+    }
+}
+
+struct WindowAccessor: NSViewRepresentable {
+    let onWindow: (NSWindow?) -> Void
+    func makeNSView(context: Context) -> WindowReportView {
+        let v = WindowReportView()
+        v.onWindow = onWindow
+        return v
+    }
+    func updateNSView(_ nsView: WindowReportView, context: Context) {
+        nsView.onWindow = onWindow
     }
 }

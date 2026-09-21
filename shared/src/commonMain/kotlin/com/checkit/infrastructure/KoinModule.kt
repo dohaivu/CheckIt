@@ -259,7 +259,7 @@ val provideInteractorModule = module {
             observeTags = get(),
             observeTree = get(),
             addDocument = get(),
-            renameDocument = get(),
+            renameDocumentUseCase = get(),
             deleteDocument = get(),
             addItem = get(),
             updateItemText = get(),
@@ -273,7 +273,7 @@ val provideInteractorModule = module {
             replaceManualMetrics = get(),
             setCheckboxEnabled = get(),
             setItemsChecked = get(),
-            toggleCollapsed = get(),
+            toggleCollapsedUseCase = get(),
             moveItems = get(),
             deleteItems = get()
         )

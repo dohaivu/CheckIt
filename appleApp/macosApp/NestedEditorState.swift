@@ -13,6 +13,7 @@
 
 import SwiftUI
 import Combine
+import AppKit
 import Shared
 
 /// One visible outline row: node + indent depth.
@@ -64,6 +65,8 @@ final class NestedEditorState: ObservableObject {
     private var docsSub: NestedAppleSubscription?
     private var tagsSub: NestedAppleSubscription?
     private var treeSub: NestedAppleSubscription?
+    private var hostWindow: NSWindow?
+    private var tabMonitor: Any?
 
     init() {
         NestedAppleBridge.shared.ensureKoin()
@@ -97,6 +100,42 @@ final class NestedEditorState: ObservableObject {
         docsSub?.cancel(); docsSub = nil
         tagsSub?.cancel(); tagsSub = nil
         treeSub?.cancel(); treeSub = nil
+        detachWindow()
+    }
+
+    // MARK: - Tab key monitor (Shift+Tab reliability)
+
+    /// AppKit focus navigation can swallow Shift+Tab before SwiftUI's
+    /// onKeyPress sees it, so nav-mode Tab is intercepted here at the
+    /// NSEvent level. Edit/draft Tabs keep flowing to the SwiftUI field
+    /// handlers, which own the in-progress text.
+    func attachWindow(_ window: NSWindow?) {
+        if hostWindow === window { return }
+        detachWindow()
+        hostWindow = window
+        guard window != nil else { return }
+        tabMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self,
+                  let window = self.hostWindow,
+                  event.window == window,
+                  window.attachedSheet == nil,
+                  event.keyCode == 48, // Tab
+                  !(window.firstResponder is NSText)
+            else { return event }
+            let handled = MainActor.assumeIsolated { self.handleTabKey(shift: event.modifierFlags.contains(.shift)) }
+            return handled ? nil : event
+        }
+    }
+
+    func detachWindow() {
+        if let m = tabMonitor { NSEvent.removeMonitor(m); tabMonitor = nil }
+        hostWindow = nil
+    }
+
+    private func handleTabKey(shift: Bool) -> Bool {
+        guard editingId == nil, draft == nil, selectedId != nil else { return false }
+        if shift { outdentSelected() } else { indentSelected() }
+        return true
     }
 
     // MARK: - Documents

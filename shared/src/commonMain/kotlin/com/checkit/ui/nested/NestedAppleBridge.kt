@@ -78,7 +78,7 @@ class NestedAppleHelper(
     private val observeTags: ObserveNestedTagsUseCase,
     private val observeTree: ObserveNestedDocumentTreeUseCase,
     private val addDocument: AddNestedDocumentUseCase,
-    private val renameDocument: RenameNestedDocumentUseCase,
+    private val renameDocumentUseCase: RenameNestedDocumentUseCase,
     private val deleteDocument: DeleteNestedDocumentUseCase,
     private val addItem: AddNestedItemUseCase,
     private val updateItemText: UpdateNestedItemTextUseCase,
@@ -92,7 +92,7 @@ class NestedAppleHelper(
     private val replaceManualMetrics: ReplaceNestedManualMetricsUseCase,
     private val setCheckboxEnabled: SetNestedItemCheckboxEnabledUseCase,
     private val setItemsChecked: SetNestedItemsCheckedUseCase,
-    private val toggleCollapsed: ToggleNestedItemCollapsedUseCase,
+    private val toggleCollapsedUseCase: ToggleNestedItemCollapsedUseCase,
     private val moveItems: MoveNestedItemsUseCase,
     private val deleteItems: DeleteNestedItemsUseCase,
 ) {
@@ -136,7 +136,7 @@ class NestedAppleHelper(
     }
 
     fun renameDocument(documentId: Long, title: String) {
-        scope.launch { runCatching { renameDocument(documentId, title) } }
+        scope.launch { runCatching { renameDocumentUseCase(documentId, title) } }
     }
 
     fun removeDocument(documentId: Long) {
@@ -300,7 +300,7 @@ class NestedAppleHelper(
     }
 
     fun toggleCollapsed(itemId: Long) {
-        scope.launch { runCatching { toggleCollapsed(itemId) } }
+        scope.launch { runCatching { toggleCollapsedUseCase(itemId) } }
     }
 
     fun indent(documentId: Long, itemId: Long) {
