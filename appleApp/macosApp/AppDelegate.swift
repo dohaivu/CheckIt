@@ -231,6 +231,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             menu.addItem(header)
         }
         menu.addItem(.separator())
+        let nested = NSMenuItem(title: "Nested Lists…", action: #selector(nestedListsClicked), keyEquivalent: "l")
+        nested.target = self
+        menu.addItem(nested)
         let settings = NSMenuItem(title: "Settings…", action: #selector(settingsClicked), keyEquivalent: ",")
         settings.target = self
         menu.addItem(settings)
@@ -248,6 +251,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Settings window
 
     private var settingsWindow: NSWindow?
+    private var nestedListsWindow: NSWindow?
+
+    @objc private func nestedListsClicked() {
+        if nestedListsWindow == nil {
+            let window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 1000, height: 700),
+                styleMask: [.titled, .closable, .resizable, .miniaturizable],
+                backing: .buffered,
+                defer: false
+            )
+            window.title = "Nested Lists"
+            window.minSize = NSSize(width: 760, height: 480)
+            window.contentViewController = NSHostingController(rootView: NestedListsWindowView())
+            window.center()
+            // Don't die with the popover: closing the window must not quit
+            // the menu-bar app, and reopening reuses the same window.
+            window.isReleasedWhenClosed = false
+            nestedListsWindow = window
+        }
+        NSApp.activate()
+        nestedListsWindow?.makeKeyAndOrderFront(nil)
+    }
 
     @objc private func settingsClicked() {
         if settingsWindow == nil {

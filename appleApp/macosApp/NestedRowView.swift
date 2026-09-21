@@ -1,0 +1,313 @@
+//
+//  NestedRowView.swift
+//  macosApp — one outline row + shared display helpers.
+//
+
+import SwiftUI
+import Shared
+import UniformTypeIdentifiers
+
+// MARK: - Display mappings (mirror NestedListScreen.kt)
+
+func nestedTokenColor(_ name: String) -> Color {
+    switch name {
+    case "Red": Color(red: 0xE5 / 255.0, green: 0x73 / 255.0, blue: 0x73 / 255.0)
+    case "Orange": Color(red: 1.0, green: 0xB7 / 255.0, blue: 0x4D / 255.0)
+    case "Yellow": Color(red: 1.0, green: 0xD5 / 255.0, blue: 0x4F / 255.0)
+    case "Green": Color(red: 0x66 / 255.0, green: 0xBB / 255.0, blue: 0x6A / 255.0)
+    case "Blue": Color(red: 0x42 / 255.0, green: 0xA5 / 255.0, blue: 0xF5 / 255.0)
+    case "Purple": Color(red: 0xAB / 255.0, green: 0x47 / 255.0, blue: 0xBC / 255.0)
+    case "Pink": Color(red: 0xEC / 255.0, green: 0x40 / 255.0, blue: 0x7A / 255.0)
+    default: Color.secondary
+    }
+}
+
+func nestedPriorityMarker(_ name: String) -> String {
+    switch name {
+    case "Low": "!"
+    case "Medium": "!!"
+    case "High": "!!!"
+    default: ""
+    }
+}
+
+func nestedPriorityColor(_ name: String) -> Color {
+    switch name {
+    case "Low": .green
+    case "Medium": .orange
+    case "High": .red
+    default: .secondary
+    }
+}
+
+func nestedRowFont(_ styleName: String) -> Font {
+    switch styleName {
+    case "Header": .title3.weight(.semibold)
+    case "Subheader": .headline
+    default: .body
+    }
+}
+
+extension Color {
+    init?(nestedHex hex: String) {
+        var s = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        if s.hasPrefix("#") { s.removeFirst() }
+        guard s.count == 6, let v = UInt32(s, radix: 16) else { return nil }
+        self.init(
+            red: Double((v >> 16) & 0xFF) / 255.0,
+            green: Double((v >> 8) & 0xFF) / 255.0,
+            blue: Double(v & 0xFF) / 255.0
+        )
+    }
+}
+
+func nestedDateLabel(startDays: Int64?, endDays: Int64?) -> String? {
+    guard startDays != nil || endDays != nil else { return nil }
+    let fmt = DateFormatter()
+    fmt.dateStyle = .medium
+    fmt.timeStyle = .none
+    func s(_ d: Int64) -> String { fmt.string(from: nestedDate(fromEpochDays: d)) }
+    switch (startDays, endDays) {
+    case let (.some(a), .some(b)): return a == b ? s(a) : "\(s(a)) → \(s(b))"
+    case let (.some(a), nil): return "from \(s(a))"
+    case let (nil, .some(b)): return "until \(s(b))"
+    default: return nil
+    }
+}
+
+// MARK: - Row
+
+struct NestedRowView: View {
+    @ObservedObject var state: NestedEditorState
+    let row: NestedRow
+    let isSelected: Bool
+    let isEditing: Bool
+
+    @State private var editText = ""
+    @FocusState private var fieldFocused: Bool
+    @State private var hovering = false
+
+    private var item: NestedListItem { row.node.item }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 0) {
+            // Indent guides.
+            ForEach(0..<row.depth, id: \.self) { _ in
+                Rectangle()
+                    .fill(Color.accentColor.opacity(0.3))
+                    .frame(width: 1)
+                    .padding(.leading, 15)
+            }
+            // Collapse dot.
+            Button {
+                state.toggleCollapse(id: item.id)
+            } label: {
+                Group {
+                    if row.node.hasChildren {
+                        Image(systemName: item.collapsed ? "circle" : "circle.fill")
+                            .font(.system(size: item.collapsed ? 11 : 8))
+                    } else {
+                        Image(systemName: "circle.fill").font(.system(size: 6))
+                    }
+                }
+                .foregroundStyle(Color.accentColor.opacity(0.7))
+                .frame(width: 22, height: 22)
+            }
+            .buttonStyle(.plain)
+            .disabled(!row.node.hasChildren)
+            .help(row.node.hasChildren ? (item.collapsed ? "Expand" : "Collapse") : "")
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .top, spacing: 6) {
+                    if item.checkboxEnabled {
+                        Button {
+                            state.toggleCheck(id: item.id, checked: !item.checked)
+                        } label: {
+                            Image(systemName: item.checked ? "checkmark.square.fill" : "square")
+                                .foregroundStyle(item.checked ? Color.accentColor : .secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .help(item.checked ? "Uncheck" : "Check off")
+                    }
+                    if isEditing {
+                        TextField("", text: $editText)
+                            .textFieldStyle(.plain)
+                            .font(nestedRowFont(item.textStyle.name))
+                            .focused($fieldFocused)
+                            .onAppear {
+                                editText = item.text
+                                fieldFocused = true
+                            }
+                            .onSubmit { state.commitEdit(id: item.id, text: editText) }
+                            .onKeyPress(.escape) {
+                                state.cancelEdit()
+                                return .handled
+                            }
+                            .onKeyPress(keys: [.tab]) { press in
+                                state.commitEdit(id: item.id, text: editText)
+                                if press.modifiers.contains(.shift) {
+                                    state.outdentSelected()
+                                } else {
+                                    state.indentSelected()
+                                }
+                                state.startEdit(id: item.id)
+                                return .handled
+                            }
+                    } else {
+                        Text(item.text.isEmpty ? "Untitled item" : item.text)
+                            .font(nestedRowFont(item.textStyle.name))
+                            .foregroundStyle(nestedTextColor)
+                            .strikethrough(item.checked)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                            .onTapGesture(count: 2) { state.startEdit(id: item.id) }
+                    }
+                    let marker = nestedPriorityMarker(item.priority.name)
+                    if !marker.isEmpty {
+                        Text(marker)
+                            .font(.headline).bold()
+                            .foregroundStyle(nestedPriorityColor(item.priority.name))
+                    }
+                }
+                metadata
+            }
+            .padding(.vertical, 5)
+            .padding(.horizontal, 6)
+            .background(rowBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .contentShape(Rectangle())
+            .onTapGesture { state.select(id: item.id) }
+            .onHover { hovering = $0 }
+
+            if hovering, !isEditing {
+                Button {
+                    state.startAddSibling(of: item.id)
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .foregroundStyle(Color.accentColor.opacity(0.6))
+                }
+                .buttonStyle(.plain)
+                .help("Add item below")
+            }
+        }
+        .opacity(hovering || isSelected ? 1 : 0.98)
+        .onDrag {
+            NSItemProvider(object: "nested:\(item.id)" as NSString)
+        }
+        .onDrop(of: [.text], isTargeted: nil) { providers in
+            guard let provider = providers.first else { return false }
+            _ = provider.loadObject(ofClass: NSString.self) { payload, _ in
+                guard let s = payload as? String, s.hasPrefix("nested:"),
+                      let dragged = Int64(s.dropFirst("nested:".count))
+                else { return }
+                DispatchQueue.main.async {
+                    // Option held while dropping = nest as child; else sibling gap.
+                    let opts = NSEvent.modifierFlags.contains(.option)
+                    if opts {
+                        state.dropAsChild(draggedId: dragged, onto: item.id)
+                    } else {
+                        state.drop(draggedId: dragged, onto: item.id)
+                    }
+                }
+            }
+            return true
+        }
+    }
+
+    private var nestedTextColor: Color {
+        item.textColor.name == "Default" ? .primary : nestedTokenColor(item.textColor.name)
+    }
+
+    private var rowBackground: Color {
+        if isSelected { return Color.accentColor.opacity(0.14) }
+        if isEditing { return Color.secondary.opacity(0.12) }
+        if item.backgroundColor.name != "Default" {
+            return nestedTokenColor(item.backgroundColor.name).opacity(0.16)
+        }
+        return .clear
+    }
+
+    @ViewBuilder
+    private var metadata: some View {
+        let summary = state.summary(for: item.id)
+        let progress = item.progressPercent?.int32Value
+        let note = item.note
+        let dateText = nestedDateLabel(
+            startDays: item.startDate?.toEpochDays(),
+            endDays: item.endDate?.toEpochDays()
+        )
+        if progress != nil || (summary?.doneItemCount ?? 0) > 0
+            || (item.showTrackedMinutes && (summary?.trackedMinutes ?? 0) > 0)
+            || (note != nil && !(note!.isEmpty)) || !item.tags.isEmpty || dateText != nil
+            || !item.manualMetrics.isEmpty
+        {
+            VStack(alignment: .leading, spacing: 3) {
+                if let p = progress {
+                    HStack(spacing: 6) {
+                        ProgressView(value: Double(max(0, min(100, Int(p)))) / 100.0)
+                            .progressViewStyle(.linear)
+                        Text("\(max(0, min(100, Int(p))))%")
+                            .font(.caption).bold()
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                HStack(spacing: 6) {
+                    if let s = summary, s.doneItemCount > 0 {
+                        Text("\(s.doneItemCount) done")
+                            .font(.caption)
+                            .padding(.horizontal, 6).padding(.vertical, 1)
+                            .background(Color.secondary.opacity(0.15), in: RoundedRectangle(cornerRadius: 5))
+                    }
+                    if let s = summary, item.showTrackedMinutes && s.trackedMinutes > 0 {
+                        Text("\(s.trackedMinutes) min")
+                            .font(.caption)
+                            .padding(.horizontal, 6).padding(.vertical, 1)
+                            .background(Color.secondary.opacity(0.15), in: RoundedRectangle(cornerRadius: 5))
+                    }
+                    ForEach(item.manualMetrics.filter { !$0.value.isEmpty || $0.isCompleted }, id: \.name) { m in
+                        HStack(spacing: 2) {
+                            if m.isCompleted {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.caption2).foregroundStyle(.green)
+                            }
+                            Text(metricLabel(m)).font(.caption)
+                        }
+                        .padding(.horizontal, 6).padding(.vertical, 1)
+                        .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 5))
+                    }
+                }
+                if let n = note, !n.isEmpty {
+                    Text(n)
+                        .font(.callout).foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+                if dateText != nil || !item.tags.isEmpty {
+                    HStack(spacing: 6) {
+                        if let d = dateText {
+                            Label(d, systemImage: "calendar")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        let tags: [TagItem] = item.tags
+                        ForEach(tags, id: \.id) { tag in
+                            Text(tag.name)
+                                .font(.caption)
+                                .padding(.horizontal, 6).padding(.vertical, 1)
+                                .background(
+                                    (Color(nestedHex: tag.color) ?? .secondary).opacity(0.2),
+                                    in: RoundedRectangle(cornerRadius: 5)
+                                )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func metricLabel(_ m: MetricItem) -> String {
+        var s = ""
+        if !m.name.isEmpty { s += m.name + " " }
+        if !m.value.isEmpty { s += m.value }
+        if let t = m.targetValue, !t.isEmpty { s += "/\(t)" }
+        return s.trimmingCharacters(in: .whitespaces)
+    }
+}

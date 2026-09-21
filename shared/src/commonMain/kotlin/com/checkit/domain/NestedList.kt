@@ -192,6 +192,28 @@ private fun filterNestedNode(
 }
 
 /**
+ * Computes the (parentId, position) for inserting a new item, mirroring the
+ * editor's draft-anchor semantics: a draft anchored to its own parent (or to
+ * nothing) appends as a child; otherwise it inserts as the next sibling after
+ * the anchor. Pure and shared by the Compose ViewModel and the Apple bridge.
+ */
+fun computeNestedInsertPosition(
+    items: List<NestedListItem>,
+    anchorId: Long?,
+    parentId: Long?
+): Pair<Long?, Int?> {
+    val anchor = items.firstOrNull { it.id == anchorId }
+    val isAddingChild = parentId != null &&
+        (anchor?.id == parentId || anchor?.parentId != parentId)
+    val position = if (isAddingChild) {
+        items.filter { it.parentId == parentId }.maxOfOrNull { it.position }?.plus(1) ?: 0
+    } else {
+        anchor?.position?.plus(1)
+    }
+    return parentId to position
+}
+
+/**
  * A single re-parent/reorder instruction produced by [planNestedMoves].
  * Sibling gaps in [position] are acceptable; relative order is what matters.
  */
