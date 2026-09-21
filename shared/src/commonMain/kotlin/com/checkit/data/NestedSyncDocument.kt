@@ -212,6 +212,45 @@ object NestedSyncDocument {
             .getOrNull()
             ?.mapValues { it.value.toSyncValue() }
 
+    /**
+     * Orders pulled items so parents apply before children, and reparents
+     * orphans (parent neither in this batch nor known locally) to the root
+     * so no row is ever lost to a foreign-key violation. Pure for testing.
+     *
+     * Cycles fall back to input order with parents kept as-is; the per-row
+     * insert is still guarded, so a corrupt batch can never abort a sync.
+     */
+    fun orderForApply(
+        items: List<RemoteNestedItem>,
+        localIds: Set<String>,
+    ): List<RemoteNestedItem> {
+        if (items.isEmpty()) return emptyList()
+        val batchIds = items.map { it.id }.toSet()
+        val reparented = items.map { item ->
+            val parent = item.parentId
+            if (parent != null && parent !in batchIds && parent !in localIds) {
+                item.copy(parentId = null)
+            } else {
+                item
+            }
+        }
+        val byId = reparented.associateBy { it.id }
+        fun depthOf(id: String): Int {
+            var depth = 0
+            var cursor = byId[id]?.parentId
+            val seen = HashSet<String>(4).apply { add(id) }
+            while (cursor != null && cursor in byId && seen.add(cursor) && depth < byId.size) {
+                depth++
+                cursor = byId[cursor]?.parentId
+            }
+            return depth
+        }
+        return reparented
+            .mapIndexed { index, item -> Triple(index, depthOf(item.id), item) }
+            .sortedWith(compareBy({ it.second }, { it.first }))
+            .map { it.third }
+    }
+
     private fun JsonElement.toSyncValue(): Any? = when (this) {
         is JsonNull -> null
         is JsonArray -> map { it.toSyncValue() }

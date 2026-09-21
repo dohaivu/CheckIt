@@ -165,16 +165,18 @@ final class NestedFirestoreSync: ObservableObject {
                 .whereField(Self.updatedAtField, isGreaterThan: lastPull - Self.config.PULL_OVERLAP_MILLIS)
                 .getDocuments()
             var maxRemoteUpdatedAt = lastPull
+            var pulledItemJsons: [String] = []
             for doc in snapshot.documents {
                 let data = doc.data()
                 if let updated = (data[Self.updatedAtField] as? NSNumber)?.int64Value {
                     maxRemoteUpdatedAt = max(maxRemoteUpdatedAt, updated)
                 }
                 guard let json = Self.jsonString(for: data, documentId: doc.documentID) else { continue }
-                if try await bridgeApplyRemoteItem(json: json) {
-                    applied += 1
-                }
+                pulledItemJsons.append(json)
             }
+            // Batch apply orders parents before children so the
+            // self-FK can never fail on first pulls.
+            applied += try await bridgeApplyRemoteItems(jsons: pulledItemJsons)
             UserDefaults.standard.set(Double(max(max(lastPull, pullStart), maxRemoteUpdatedAt)), forKey: Self.lastPullKey(documentId))
 
             // Purge: uploaded item tombstones, then the document tombstone.
@@ -455,6 +457,15 @@ final class NestedFirestoreSync: ObservableObject {
             bridge().applyRemoteItemJson(json: json) { applied, error in
                 if let error { cont.resume(throwing: error) }
                 else { cont.resume(returning: applied?.boolValue ?? false) }
+            }
+        }
+    }
+
+    private func bridgeApplyRemoteItems(jsons: [String]) async throws -> Int {
+        try await withCheckedThrowingContinuation { cont in
+            bridge().applyRemoteItemJsons(jsons: jsons) { applied, error in
+                if let error { cont.resume(throwing: error) }
+                else { cont.resume(returning: Int(truncating: applied ?? 0)) }
             }
         }
     }

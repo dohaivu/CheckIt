@@ -132,16 +132,17 @@ class FirestoreNestedSyncManager(
                     )
                     .get().awaitTask().documents
                 var maxRemoteUpdatedAt = lastPull
-                remoteItems.forEach { doc ->
+                val itemJsons = remoteItems.map { doc ->
                     val data = doc.data.orEmpty() + (NestedSyncDocument.FIELD_ID to doc.id)
                     maxRemoteUpdatedAt = maxOf(
                         maxRemoteUpdatedAt,
                         (data[NestedSyncDocument.FIELD_UPDATED_AT] as? Number)?.toLong() ?: lastPull,
                     )
-                    if (bridge.applyRemoteItemJson(NestedSyncDocument.toJson(data))) {
-                        applied++
-                    }
+                    NestedSyncDocument.toJson(data)
                 }
+                // Batch apply orders parents before children so the
+                // self-FK can never fail on first pulls.
+                applied += bridge.applyRemoteItemJsons(itemJsons)
                 setLastPullMillis(documentId, maxOf(lastPull, pullStart, maxRemoteUpdatedAt))
 
                 // Purge: uploaded item tombstones, then the document tombstone.

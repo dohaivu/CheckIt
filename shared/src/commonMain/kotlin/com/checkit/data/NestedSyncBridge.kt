@@ -127,6 +127,10 @@ class NestedSyncBridge(
      * Last-write-wins merge of one remote item into Room. Tag membership is
      * rebuilt from the embedded ids (unknown tags dropped for the FK).
      * Returns true when the remote won and was applied with dirty = false.
+     *
+     * Prefer [applyRemoteItemJsons] for pulls: it orders parents before
+     * children. A corrupt single row returns false instead of throwing, so
+     * one bad row can never abort (or, across the ObjC bridge, crash) a sync.
      */
     suspend fun applyRemoteItemJson(json: String): Boolean {
         val map = NestedSyncDocument.mapFromJson(json) ?: return false
@@ -135,6 +139,49 @@ class NestedSyncBridge(
             map = map,
         ) ?: return false
         if (remote.documentId.isBlank()) return false
+        return runCatching { upsertRemoteItem(remote) }
+            .onFailure { println("NestedSync: skipping item ${remote.id}: ${it.message}") }
+            .getOrDefault(false)
+    }
+
+    /**
+     * Batch merge for pulls: parses all rows, drops items whose document is
+     * unknown locally, orders parents before children (orphans reparented
+     * to the root), then applies sequentially. Returns the applied count.
+     * One bad row is skipped, never fatal.
+     */
+    suspend fun applyRemoteItemJsons(jsons: List<String>): Int {
+        val remotes = jsons.mapNotNull { json ->
+            val map = NestedSyncDocument.mapFromJson(json) ?: return@mapNotNull null
+            NestedSyncDocument.itemFromMap(
+                documentId = map[NestedSyncDocument.FIELD_DOCUMENT_ID] as? String ?: "",
+                map = map,
+            )
+        }.filter { it.documentId.isNotBlank() }
+        if (remotes.isEmpty()) return 0
+        var applied = 0
+        remotes.groupBy { it.documentId }.forEach { (documentId, items) ->
+            if (dao.nestedDocumentById(documentId) == null) {
+                println("NestedSync: skipping ${items.size} items of unknown document $documentId")
+                return@forEach
+            }
+            val localIds = dao.nestedItemIdsForDocument(documentId).toSet()
+            NestedSyncDocument.orderForApply(items, localIds).forEach { remote ->
+                val won = runCatching { upsertRemoteItem(remote) }
+                    .onFailure { println("NestedSync: skipping item ${remote.id}: ${it.message}") }
+                    .getOrDefault(false)
+                if (won) applied++
+            }
+        }
+        return applied
+    }
+
+    /**
+     * Inserts one winning remote row with dirty = false and rebuilds its
+     * tag links. Callers must guarantee the document exists and parents
+     * apply first (see [applyRemoteItemJsons]); failures throw.
+     */
+    private suspend fun upsertRemoteItem(remote: RemoteNestedItem): Boolean {
         val existing = dao.nestedItemById(remote.id)
         if (!NestedSyncDocument.shouldApplyRemote(existing?.updatedAtMillis, remote.updatedAtMillis)) {
             return false

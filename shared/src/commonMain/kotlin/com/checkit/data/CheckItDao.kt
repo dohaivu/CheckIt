@@ -1271,6 +1271,9 @@ interface CheckItDao {
     @Query("SELECT id FROM nested_list_items WHERE documentId = :documentId AND deleted = 1 AND dirty = 0 AND updatedAtMillis <= :cutoff ORDER BY updatedAtMillis ASC")
     suspend fun getPurgeableNestedItemIdsForDocument(documentId: String, cutoff: Long): List<String>
 
+    @Query("SELECT id FROM nested_list_items WHERE documentId = :documentId")
+    suspend fun nestedItemIdsForDocument(documentId: String): List<String>
+
     // ---------------- Sync (dirty tracking, tombstones, purge) ----------------
     //
     // One query group per top-level sync table. Children and membership joins

@@ -178,4 +178,78 @@ class NestedSyncDocumentTest {
     fun mapFromJsonNullOnInvalidInput() {
         assertNull(NestedSyncDocument.mapFromJson("not json"))
     }
+
+    private fun remoteItem(
+        id: String,
+        parentId: String? = null,
+    ) = RemoteNestedItem(
+        id = id,
+        documentId = "doc-1",
+        parentId = parentId,
+        position = 0,
+        text = id,
+        note = null,
+        checkboxEnabled = false,
+        checked = false,
+        collapsed = false,
+        textStyle = "Body",
+        textColor = "Default",
+        backgroundColor = "Default",
+        startDateEpochDays = null,
+        endDateEpochDays = null,
+        priority = "None",
+        actualMinutes = 0,
+        metricRollupPolicy = "IncludeChildren",
+        showTrackedMinutes = false,
+        progressPercent = null,
+        manualMetricsJson = "[]",
+        tagIds = emptyList(),
+        createdAtMillis = 100L,
+        updatedAtMillis = 200L,
+        deleted = false,
+    )
+
+    @Test
+    fun orderForApplyPutsParentsBeforeChildren() {
+        val ordered = NestedSyncDocument.orderForApply(
+            listOf(
+                remoteItem("child", parentId = "parent"),
+                remoteItem("grandchild", parentId = "child"),
+                remoteItem("parent"),
+            ),
+            localIds = emptySet(),
+        ).map { it.id }
+        assertEquals(listOf("parent", "child", "grandchild"), ordered)
+    }
+
+    @Test
+    fun orderForApplyKeepsParentKnownLocally() {
+        val ordered = NestedSyncDocument.orderForApply(
+            listOf(remoteItem("child", parentId = "parent")),
+            localIds = setOf("parent"),
+        )
+        assertEquals("parent", ordered.single().parentId)
+    }
+
+    @Test
+    fun orderForApplyReparentsUnknownOrphansToRoot() {
+        val ordered = NestedSyncDocument.orderForApply(
+            listOf(remoteItem("orphan", parentId = "gone")),
+            localIds = emptySet(),
+        )
+        assertEquals(listOf("orphan"), ordered.map { it.id })
+        assertNull(ordered.single().parentId)
+    }
+
+    @Test
+    fun orderForApplyTerminatesOnCycles() {
+        val ordered = NestedSyncDocument.orderForApply(
+            listOf(
+                remoteItem("a", parentId = "b"),
+                remoteItem("b", parentId = "a"),
+            ),
+            localIds = emptySet(),
+        ).map { it.id }
+        assertEquals(setOf("a", "b"), ordered.toSet())
+    }
 }
