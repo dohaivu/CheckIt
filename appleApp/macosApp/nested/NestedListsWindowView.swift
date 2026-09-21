@@ -490,7 +490,7 @@ struct NestedListsWindowView: View {
             }
             Image(systemName: "circle.fill").font(.system(size: 6))
                 .foregroundStyle(Color.accentColor.opacity(0.7))
-                .frame(width: 22, height: 22)
+                .frame(width: 24, height: 24)
             TextField("New item…", text: $draftText)
                 .textFieldStyle(.roundedBorder)
                 .focused($draftFocused)
@@ -524,7 +524,8 @@ struct NestedListsWindowView: View {
             .buttonStyle(.plain)
             .help("Cancel")
         }
-        .padding(.horizontal, 8)
+        // No horizontal padding here: the outline LazyVStack already insets
+        // 8pt, and doubling it would shift the guides right of the rows.
         .padding(.vertical, 1)
         .onAppear {
             draftText = state.draft?.text ?? ""
