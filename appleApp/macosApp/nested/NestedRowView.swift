@@ -299,27 +299,7 @@ struct NestedRowView: View {
         if !m.name.isEmpty { s += m.name + " " }
         if !m.value.isEmpty { s += m.value }
         if let t = m.targetValue, !t.isEmpty { s += "/\(t)" }
-        if let u = metricUnitLabel(m) { s += " \(u)" }
+        if let u = m.displayUnit() { s += " \(u)" }
         return s.trimmingCharacters(in: .whitespaces)
-    }
-
-    /// Mirrors shared MetricItem.displayUnit() (UiHelpers.kt).
-    private func metricUnitLabel(_ m: MetricItem) -> String? {
-        switch m.unit.name {
-        case "None": return nil
-        case "Custom":
-            let c = m.customUnit ?? ""
-            return c.isEmpty ? nil : c
-        case "Percentage": return "%"
-        case "Points": return "points"
-        case "Items": return "items"
-        case "Hours": return "hours"
-        case "Days": return "days"
-        case "Rating": return "rating"
-        case "VND": return "đ"
-        case "Lan": return "lần"
-        case "Km": return "km"
-        default: return nil
-        }
     }
 }

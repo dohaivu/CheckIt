@@ -49,12 +49,13 @@ struct NestedMetricDraft: Identifiable {
     var name = ""
     var value = ""
     var target = ""
-    var unit = "None"
+    var unit: MetricUnit = .none
     var customUnit = ""
     var completed = false
 }
 
-let nestedMetricUnits = ["None", "Percentage", "Points", "Items", "Hours", "Days", "Rating", "VND", "Lan", "Km", "Custom"]
+/// Display order for the unit picker comes from shared `MetricUnit.entries`;
+/// labels and names stay in shared Kotlin.
 
 struct NestedDetailsSheet: View {
     @ObservedObject var state: NestedEditorState
@@ -129,14 +130,14 @@ struct NestedDetailsSheet: View {
                                         TextField("Target", text: $m.target)
                                             .textFieldStyle(.roundedBorder)
                                         Picker("", selection: $m.unit) {
-                                            ForEach(nestedMetricUnits, id: \.self) { u in
-                                                Text(u).tag(u)
+                                            ForEach(MetricUnit.entries, id: \.self) { u in
+                                                Text(u.displayName(customUnit: nil)).tag(u)
                                             }
                                         }
                                         .pickerStyle(.menu)
                                         .frame(width: 110)
                                     }
-                                    if m.unit == "Custom" {
+                                    if m.unit == .custom {
                                         TextField("Custom unit (e.g. kg, pts)", text: $m.customUnit)
                                             .textFieldStyle(.roundedBorder)
                                     }
@@ -180,7 +181,7 @@ struct NestedDetailsSheet: View {
                     name: $0.name,
                     value: $0.value,
                     target: $0.targetValue ?? "",
-                    unit: $0.unit.name,
+                    unit: $0.unit,
                     customUnit: $0.customUnit ?? "",
                     completed: $0.isCompleted
                 )
@@ -199,7 +200,7 @@ struct NestedDetailsSheet: View {
                 "value": m.value,
                 "sortOrder": 0,
                 "enabled": true,
-                "unit": nestedMetricUnits.contains(m.unit) ? m.unit : "None",
+                "unit": m.unit.name,
                 "isCompleted": m.completed,
             ]
             d["targetValue"] = m.target.isEmpty ? NSNull() : m.target
