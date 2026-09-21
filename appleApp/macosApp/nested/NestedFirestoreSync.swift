@@ -2,13 +2,14 @@
 //  NestedFirestoreSync.swift
 //  appleApp
 //
-//  Manual Firestore sync for one open nested document on macOS, mirroring
-//  FirestoreNestedSyncManager.android.kt.
+//  Manual Firestore sync for nested lists on macOS, mirroring
+//  FirestoreNestedSyncManager.android.kt: one open document (syncNow)
+//  plus the document list (syncDocumentsNow).
 //
-//  Offline-first: every mutation is already in Room. syncNow(documentId:)
-//  pushes dirty rows of that document, pulls watermarked remote changes with
-//  last-write-wins on updatedAtMillis, then purges uploaded tombstones after
-//  the shared retention window.
+//  Offline-first: every mutation is already in Room. Sync pushes dirty
+//  rows, pulls watermarked remote changes with last-write-wins on
+//  updatedAtMillis, then purges uploaded tombstones after the shared
+//  retention window.
 //
 //  Unlike QuickNote there are no automatic triggers (no debounce, no
 //  reconnect or edit hooks): the UI calls syncNow from a sync button.
@@ -97,27 +98,11 @@ final class NestedFirestoreSync: ObservableObject {
         guard !isSyncing else { return }
         isSyncing = true
         defer { isSyncing = false }
-        online = monitor.currentPath.status == .satisfied
-        guard isFirebaseConfigured() else {
-            uiState = NestedSyncUiState(
-                status: .error, documentId: documentId, lastSyncedAt: lastSyncedAt(documentId: documentId),
-                message: "Firebase not configured. Add GoogleService-Info.plist."
-            )
-            return
-        }
-        guard online else {
-            uiState = NestedSyncUiState(status: .offline, documentId: documentId, lastSyncedAt: lastSyncedAt(documentId: documentId))
-            return
-        }
-        uiState = NestedSyncUiState(status: .syncing, documentId: documentId, lastSyncedAt: lastSyncedAt(documentId: documentId))
 
+        guard let prepared = await prepareSync(documentId: documentId) else { return }
+        let (userId, db) = prepared
         do {
-            guard let userId = try await ensureUserId() else {
-                recordFailure(documentId: documentId, message: "Sign-in failed. Try again.")
-                return
-            }
             print("[NestedSync] started uid=\(userId) doc=\(documentId)")
-            let db = Firestore.firestore(database: Self.config.DATABASE_ID)
             let docRef = db.collection(Self.config.USERS_COLLECTION).document(userId)
                 .collection(Self.config.DOCUMENTS_COLLECTION).document(documentId)
             let itemsRef = docRef.collection(Self.config.ITEMS_COLLECTION)
@@ -131,23 +116,11 @@ final class NestedFirestoreSync: ObservableObject {
                 let maxUpdated = (map[Self.updatedAtField] as? NSNumber)?.int64Value ?? 0
                 try await bridgeMarkDocumentClean(id: documentId, maxUpdatedAt: maxUpdated)
             }
-            let itemJsons = try await bridgeDirtyItemJsons(documentId: documentId)
-            for chunk in itemJsons.chunked(into: Int(Self.config.PUSH_BATCH_SIZE)) {
-                let batch = db.batch()
-                for json in chunk {
-                    guard let map = Self.documentDict(json: json),
-                          let id = map["id"] as? String
-                    else { continue }
-                    batch.setData(map, forDocument: itemsRef.document(id))
-                }
-                try await batch.commit()
-                pushed += chunk.count
-            }
-            if !itemJsons.isEmpty {
-                let ids = itemJsons.compactMap { Self.documentDict(json: $0)?["id"] as? String }
-                let maxUpdated = itemJsons.compactMap {
-                    (Self.documentDict(json: $0)?[Self.updatedAtField] as? NSNumber)?.int64Value
-                }.max() ?? 0
+            pushed += try await pushJsons(
+                bridgeDirtyItemJsons(documentId: documentId),
+                into: itemsRef,
+                db: db
+            ) { ids, maxUpdated in
                 try await bridgeMarkItemsClean(ids: ids, maxUpdatedAt: maxUpdated)
             }
 
@@ -161,23 +134,11 @@ final class NestedFirestoreSync: ObservableObject {
             }
             let lastPull = Int64(UserDefaults.standard.double(forKey: Self.lastPullKey(documentId)))
             let pullStart = Self.nowMillis()
-            let snapshot = try await itemsRef
-                .whereField(Self.updatedAtField, isGreaterThan: lastPull - Self.config.PULL_OVERLAP_MILLIS)
-                .getDocuments()
-            var maxRemoteUpdatedAt = lastPull
-            var pulledItemJsons: [String] = []
-            for doc in snapshot.documents {
-                let data = doc.data()
-                if let updated = (data[Self.updatedAtField] as? NSNumber)?.int64Value {
-                    maxRemoteUpdatedAt = max(maxRemoteUpdatedAt, updated)
-                }
-                guard let json = Self.jsonString(for: data, documentId: doc.documentID) else { continue }
-                pulledItemJsons.append(json)
-            }
+            let pulled = try await pullJsons(from: itemsRef, lastPull: lastPull)
             // Batch apply orders parents before children so the
             // self-FK can never fail on first pulls.
-            applied += try await bridgeApplyRemoteItems(jsons: pulledItemJsons)
-            UserDefaults.standard.set(Double(max(max(lastPull, pullStart), maxRemoteUpdatedAt)), forKey: Self.lastPullKey(documentId))
+            applied += try await bridgeApplyRemoteItems(jsons: pulled.jsons)
+            UserDefaults.standard.set(Double(max(max(lastPull, pullStart), pulled.maxRemote)), forKey: Self.lastPullKey(documentId))
 
             // Purge: uploaded item tombstones, then the document tombstone.
             let purgeCutoff = pullStart - QuickNoteRules.shared.PURGE_AFTER_MILLIS
@@ -187,9 +148,9 @@ final class NestedFirestoreSync: ObservableObject {
 
             UserDefaults.standard.set(Double(pullStart), forKey: Self.lastSyncedAtKey(documentId))
             uiState = NestedSyncUiState(status: .synced, documentId: documentId, lastSyncedAt: Date(timeIntervalSince1970: Double(pullStart) / 1000.0))
-            print("[NestedSync] doc=\(documentId) pushed=\(pushed) pulled=\(snapshot.count) applied=\(applied) purged=\(purged)")
+            print("[NestedSync] doc=\(documentId) pushed=\(pushed) pulled=\(pulled.jsons.count) applied=\(applied) purged=\(purged)")
         } catch {
-            recordFailure(documentId: documentId, message: "Sync failed (\(error.localizedDescription)). Try again.")
+            recordSyncFailure(documentId: documentId, error: error)
         }
     }
 
@@ -207,49 +168,19 @@ final class NestedFirestoreSync: ObservableObject {
         isSyncing = true
         defer { isSyncing = false }
 
-        online = monitor.currentPath.status == .satisfied
-        guard isFirebaseConfigured() else {
-            uiState = NestedSyncUiState(
-                status: .error, documentId: nil, lastSyncedAt: lastSyncedDocsAt(),
-                message: "Firebase not configured. Add GoogleService-Info.plist."
-            )
-            return
-        }
-        guard online else {
-            uiState = NestedSyncUiState(status: .offline, documentId: nil, lastSyncedAt: lastSyncedDocsAt())
-            return
-        }
-        uiState = NestedSyncUiState(status: .syncing, documentId: nil, lastSyncedAt: lastSyncedDocsAt())
-
+        guard let prepared = await prepareSync(documentId: nil) else { return }
+        let (userId, db) = prepared
         do {
-            guard let userId = try await ensureUserId() else {
-                recordFailure(documentId: nil, message: "Sign-in failed. Try again.")
-                return
-            }
             print("[NestedSync] docs started uid=\(userId)")
-            let db = Firestore.firestore(database: Self.config.DATABASE_ID)
             let docsRef = db.collection(Self.config.USERS_COLLECTION).document(userId)
                 .collection(Self.config.DOCUMENTS_COLLECTION)
 
             // Push: all dirty document rows (batched).
-            var pushed = 0
-            let docJsons = try await bridgeDirtyDocumentJsons()
-            for chunk in docJsons.chunked(into: Int(Self.config.PUSH_BATCH_SIZE)) {
-                let batch = db.batch()
-                for json in chunk {
-                    guard let map = Self.documentDict(json: json),
-                          let id = map["id"] as? String
-                    else { continue }
-                    batch.setData(map, forDocument: docsRef.document(id))
-                }
-                try await batch.commit()
-                pushed += chunk.count
-            }
-            if !docJsons.isEmpty {
-                let ids = docJsons.compactMap { Self.documentDict(json: $0)?["id"] as? String }
-                let maxUpdated = docJsons.compactMap {
-                    (Self.documentDict(json: $0)?[Self.updatedAtField] as? NSNumber)?.int64Value
-                }.max() ?? 0
+            let pushed = try await pushJsons(
+                bridgeDirtyDocumentJsons(),
+                into: docsRef,
+                db: db
+            ) { ids, maxUpdated in
                 try await bridgeMarkDocumentsClean(ids: ids, maxUpdatedAt: maxUpdated)
             }
 
@@ -257,21 +188,13 @@ final class NestedFirestoreSync: ObservableObject {
             var applied = 0
             let lastPull = Int64(UserDefaults.standard.double(forKey: Self.lastPullDocsKey))
             let pullStart = Self.nowMillis()
-            let snapshot = try await docsRef
-                .whereField(Self.updatedAtField, isGreaterThan: lastPull - Self.config.PULL_OVERLAP_MILLIS)
-                .getDocuments()
-            var maxRemoteUpdatedAt = lastPull
-            for doc in snapshot.documents {
-                let data = doc.data()
-                if let updated = (data[Self.updatedAtField] as? NSNumber)?.int64Value {
-                    maxRemoteUpdatedAt = max(maxRemoteUpdatedAt, updated)
-                }
-                guard let json = Self.jsonString(for: data, documentId: doc.documentID) else { continue }
+            let pulled = try await pullJsons(from: docsRef, lastPull: lastPull)
+            for json in pulled.jsons {
                 if try await bridgeApplyRemoteDocument(json: json) {
                     applied += 1
                 }
             }
-            UserDefaults.standard.set(Double(max(max(lastPull, pullStart), maxRemoteUpdatedAt)), forKey: Self.lastPullDocsKey)
+            UserDefaults.standard.set(Double(max(max(lastPull, pullStart), pulled.maxRemote)), forKey: Self.lastPullDocsKey)
 
             // Purge uploaded document tombstones (items first, guarded).
             var purged = 0
@@ -288,13 +211,84 @@ final class NestedFirestoreSync: ObservableObject {
 
             UserDefaults.standard.set(Double(pullStart), forKey: Self.lastSyncedDocsKey)
             uiState = NestedSyncUiState(status: .synced, documentId: nil, lastSyncedAt: Date(timeIntervalSince1970: Double(pullStart) / 1000.0))
-            print("[NestedSync] docs pushed=\(pushed) pulled=\(snapshot.count) applied=\(applied) purged=\(purged)")
+            print("[NestedSync] docs pushed=\(pushed) pulled=\(pulled.jsons.count) applied=\(applied) purged=\(purged)")
         } catch {
-            recordFailure(documentId: nil, message: "Sync failed (\(error.localizedDescription)). Try again.")
+            recordSyncFailure(documentId: nil, error: error)
         }
     }
 
     // MARK: - Steps
+
+    /// Shared online/config/sign-in prologue. Sets uiState and returns nil
+    /// when a terminal state was already set (offline or sign-in fail).
+    private func prepareSync(documentId: String?) async -> (String, Firestore)? {
+        let last = documentId.map { lastSyncedAt(documentId: $0) } ?? lastSyncedDocsAt()
+        online = monitor.currentPath.status == .satisfied
+        guard isFirebaseConfigured() else {
+            uiState = NestedSyncUiState(
+                status: .error, documentId: documentId, lastSyncedAt: last,
+                message: "Firebase not configured. Add GoogleService-Info.plist."
+            )
+            return nil
+        }
+        guard online else {
+            uiState = NestedSyncUiState(status: .offline, documentId: documentId, lastSyncedAt: last)
+            return nil
+        }
+        uiState = NestedSyncUiState(status: .syncing, documentId: documentId, lastSyncedAt: last)
+        guard let userId = try? await ensureUserId() else {
+            recordFailure(documentId: documentId, message: "Sign-in failed. Try again.")
+            return nil
+        }
+        return (userId, Firestore.firestore(database: Self.config.DATABASE_ID))
+    }
+
+    /// Pushes JSON rows into a collection in batches, clears dirty flags
+    /// guarded by the pushed watermark, and returns the pushed count. Rows
+    /// without an id are skipped before batching so counts stay accurate.
+    private func pushJsons(
+        _ jsons: [String],
+        into collection: CollectionReference,
+        db: Firestore,
+        markClean: ([String], Int64) async throws -> Void
+    ) async throws -> Int {
+        let rows = jsons.compactMap { json -> (String, Int64, [String: Any])? in
+            guard let map = Self.documentDict(json: json),
+                  let id = map["id"] as? String
+            else { return nil }
+            return (id, (map[Self.updatedAtField] as? NSNumber)?.int64Value ?? 0, map)
+        }
+        for chunk in rows.chunked(into: Int(Self.config.PUSH_BATCH_SIZE)) {
+            let batch = db.batch()
+            for (id, _, map) in chunk {
+                batch.setData(map, forDocument: collection.document(id))
+            }
+            try await batch.commit()
+        }
+        if !rows.isEmpty {
+            try await markClean(rows.map(\.0), rows.map(\.1).max() ?? 0)
+        }
+        return rows.count
+    }
+
+    /// Watermarked pull of one collection (overlap margin for clock skew).
+    /// Returns JSON rows plus the max remote clock for the watermark.
+    private func pullJsons(from collection: CollectionReference, lastPull: Int64) async throws -> (jsons: [String], maxRemote: Int64) {
+        let snapshot = try await collection
+            .whereField(Self.updatedAtField, isGreaterThan: lastPull - Self.config.PULL_OVERLAP_MILLIS)
+            .getDocuments()
+        var maxRemote = lastPull
+        var jsons: [String] = []
+        for doc in snapshot.documents {
+            let data = doc.data()
+            if let updated = (data[Self.updatedAtField] as? NSNumber)?.int64Value {
+                maxRemote = max(maxRemote, updated)
+            }
+            guard let json = Self.jsonString(for: data, documentId: doc.documentID) else { continue }
+            jsons.append(json)
+        }
+        return (jsons, maxRemote)
+    }
 
     /// Purges uploaded item tombstones of one document. Returns the count.
     private func purgeItems(itemsRef: CollectionReference, documentId: String, cutoff: Int64) async -> Int {
@@ -322,7 +316,7 @@ final class NestedFirestoreSync: ObservableObject {
     private func purgeDocument(docRef: DocumentReference, documentId: String, cutoff: Int64) async -> Int {
         do {
             guard try await bridgePurgeableDocumentId(documentId: documentId, cutoff: cutoff) != nil else { return 0 }
-            if !(try await bridgeDirtyItemJsons(documentId: documentId)).isEmpty { return 0 }
+            guard try await !bridgeHasDirtyItems(documentId: documentId) else { return 0 }
             try await docRef.delete()
             try await bridgeHardDeleteDocument(id: documentId)
             return 1
@@ -349,16 +343,29 @@ final class NestedFirestoreSync: ObservableObject {
         print("[NestedSync] \(message)")
     }
 
-    private func lastSyncedAt(documentId: String) -> Date? {
-        let millis = UserDefaults.standard.double(forKey: Self.lastSyncedAtKey(documentId))
+    /// Shared catch-block mapping: offline vs failed, surfaced via state.
+    private func recordSyncFailure(documentId: String?, error: Error) {
+        let message: String
+        if !online {
+            message = "You're offline. Changes are saved on this device."
+        } else {
+            message = "Sync failed (\(error.localizedDescription)). Try again."
+        }
+        recordFailure(documentId: documentId, message: message)
+    }
+
+    private func lastSyncedDate(key: String) -> Date? {
+        let millis = UserDefaults.standard.double(forKey: key)
         guard millis > 0 else { return nil }
         return Date(timeIntervalSince1970: millis / 1000.0)
     }
 
+    private func lastSyncedAt(documentId: String) -> Date? {
+        lastSyncedDate(key: Self.lastSyncedAtKey(documentId))
+    }
+
     private func lastSyncedDocsAt() -> Date? {
-        let millis = UserDefaults.standard.double(forKey: Self.lastSyncedDocsKey)
-        guard millis > 0 else { return nil }
-        return Date(timeIntervalSince1970: millis / 1000.0)
+        lastSyncedDate(key: Self.lastSyncedDocsKey)
     }
 
     private func isFirebaseConfigured() -> Bool {
@@ -452,11 +459,11 @@ final class NestedFirestoreSync: ObservableObject {
         }
     }
 
-    private func bridgeApplyRemoteItem(json: String) async throws -> Bool {
+    private func bridgeHasDirtyItems(documentId: String) async throws -> Bool {
         try await withCheckedThrowingContinuation { cont in
-            bridge().applyRemoteItemJson(json: json) { applied, error in
+            bridge().hasDirtyItems(documentId: documentId) { dirty, error in
                 if let error { cont.resume(throwing: error) }
-                else { cont.resume(returning: applied?.boolValue ?? false) }
+                else { cont.resume(returning: dirty?.boolValue ?? false) }
             }
         }
     }

@@ -96,6 +96,10 @@ class NestedSyncBridge(
         if (ids.isNotEmpty()) dao.markNestedItemsClean(ids, maxUpdatedAt)
     }
 
+    /** True when the document has unsynced item rows (cheap purge guard). */
+    suspend fun hasDirtyItems(documentId: String): Boolean =
+        dao.hasDirtyNestedItems(documentId)
+
     /**
      * Last-write-wins merge of one remote document into Room. Returns true
      * when the remote won and was applied with dirty = false.
@@ -121,27 +125,6 @@ class NestedSyncBridge(
             )
         )
         return true
-    }
-
-    /**
-     * Last-write-wins merge of one remote item into Room. Tag membership is
-     * rebuilt from the embedded ids (unknown tags dropped for the FK).
-     * Returns true when the remote won and was applied with dirty = false.
-     *
-     * Prefer [applyRemoteItemJsons] for pulls: it orders parents before
-     * children. A corrupt single row returns false instead of throwing, so
-     * one bad row can never abort (or, across the ObjC bridge, crash) a sync.
-     */
-    suspend fun applyRemoteItemJson(json: String): Boolean {
-        val map = NestedSyncDocument.mapFromJson(json) ?: return false
-        val remote = NestedSyncDocument.itemFromMap(
-            documentId = map[NestedSyncDocument.FIELD_DOCUMENT_ID] as? String ?: "",
-            map = map,
-        ) ?: return false
-        if (remote.documentId.isBlank()) return false
-        return runCatching { upsertRemoteItem(remote) }
-            .onFailure { println("NestedSync: skipping item ${remote.id}: ${it.message}") }
-            .getOrDefault(false)
     }
 
     /**
