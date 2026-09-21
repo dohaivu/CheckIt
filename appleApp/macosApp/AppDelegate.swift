@@ -31,7 +31,7 @@ extension Notification.Name {
 }
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var statusItem: NSStatusItem?
     private let popover = NSPopover()
     private var lastNotes: [QuickNote] = []
@@ -89,6 +89,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         KeyboardShortcuts.onKeyUp(for: .toggleQuickNote) { [weak self] in
             Task { @MainActor [weak self] in self?.togglePopover() }
         }
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        // A regular activation policy is used only while an auxiliary window
+        // is visible. Closing it should restore menu-bar-only behavior, not
+        // quit the status-item app.
+        false
     }
 
     // MARK: - Clicks
@@ -231,6 +238,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             menu.addItem(header)
         }
         menu.addItem(.separator())
+        let nested = NSMenuItem(title: "Nested Lists…", action: #selector(nestedListsClicked), keyEquivalent: "l")
+        nested.target = self
+        menu.addItem(nested)
         let settings = NSMenuItem(title: "Settings…", action: #selector(settingsClicked), keyEquivalent: ",")
         settings.target = self
         menu.addItem(settings)
@@ -248,6 +258,44 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Settings window
 
     private var settingsWindow: NSWindow?
+    private var nestedListsWindow: NSWindow?
+
+    /// Keep the app out of the Dock while it acts only as a menu-bar app,
+    /// but promote it to a regular app whenever one of its windows is shown.
+    private func updateActivationPolicyForWindows() {
+        let hasVisibleWindow = [settingsWindow, nestedListsWindow].contains { $0?.isVisible == true }
+        NSApp.setActivationPolicy(hasVisibleWindow ? .regular : .accessory)
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        // The window remains visible until AppKit finishes the close cycle.
+        DispatchQueue.main.async { [weak self] in
+            self?.updateActivationPolicyForWindows()
+        }
+    }
+
+    @objc private func nestedListsClicked() {
+        if nestedListsWindow == nil {
+            let window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 1000, height: 700),
+                styleMask: [.titled, .closable, .resizable, .miniaturizable],
+                backing: .buffered,
+                defer: false
+            )
+            window.title = "Nested Lists"
+            window.minSize = NSSize(width: 760, height: 480)
+            window.contentViewController = NSHostingController(rootView: NestedListsWindowView())
+            window.delegate = self
+            window.center()
+            // Don't die with the popover: closing the window must not quit
+            // the menu-bar app, and reopening reuses the same window.
+            window.isReleasedWhenClosed = false
+            nestedListsWindow = window
+        }
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate()
+        nestedListsWindow?.makeKeyAndOrderFront(nil)
+    }
 
     @objc private func settingsClicked() {
         if settingsWindow == nil {
@@ -259,9 +307,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             )
             window.title = "CheckIt Settings"
             window.contentViewController = NSHostingController(rootView: SettingsView())
+            window.delegate = self
             window.center()
             settingsWindow = window
         }
+        NSApp.setActivationPolicy(.regular)
         NSApp.activate()
         settingsWindow?.makeKeyAndOrderFront(nil)
     }

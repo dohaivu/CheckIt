@@ -119,6 +119,7 @@ import com.checkit.ui.calendar.CalendarViewModel
 import com.checkit.ui.quicknote.QuickNoteViewModel
 import com.checkit.ui.myday.MyDayViewModel
 import com.checkit.ui.nested.NestedListsViewModel
+import com.checkit.ui.nested.NestedAppleHelper
 import com.checkit.ui.reflect.ReflectViewModel
 import com.checkit.ui.journal.JournalHistoryViewModel
 import com.checkit.ui.quicknote.QuickNoteMenuHelper
@@ -252,6 +253,31 @@ val provideInteractorModule = module {
     single { ToggleNestedItemCollapsedUseCase(get()) }
     single { MoveNestedItemsUseCase(get()) }
     single { DeleteNestedItemsUseCase(get()) }
+    single {
+        NestedAppleHelper(
+            observeDocuments = get(),
+            observeTags = get(),
+            observeTree = get(),
+            addDocument = get(),
+            renameDocumentUseCase = get(),
+            deleteDocument = get(),
+            addItem = get(),
+            updateItemText = get(),
+            updateItemNote = get(),
+            updateItemFormatting = get(),
+            updateItemDateRange = get(),
+            updateItemPriority = get(),
+            updateItemTags = get(),
+            updateItemMetricSettings = get(),
+            updateItemProgress = get(),
+            replaceManualMetrics = get(),
+            setCheckboxEnabled = get(),
+            setItemsChecked = get(),
+            toggleCollapsedUseCase = get(),
+            moveItems = get(),
+            deleteItems = get()
+        )
+    }
     single<QuickNoteRepository> { RoomQuickNoteRepository(get(), get(), get()) }
     single { ObserveQuickNextUseCase(get()) }
     single { ObserveQuickNotesForWidgetUseCase(get()) }

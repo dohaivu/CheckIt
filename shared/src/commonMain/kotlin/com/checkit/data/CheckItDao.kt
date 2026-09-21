@@ -1084,17 +1084,17 @@ interface CheckItDao {
         updatedAtMillis: Long
     )
 
-    @Query("UPDATE nested_list_items SET checkboxEnabled = :checkboxEnabled WHERE id = :itemId")
-    suspend fun setNestedItemCheckboxEnabled(itemId: Long, checkboxEnabled: Boolean)
+    @Query("UPDATE nested_list_items SET checkboxEnabled = :checkboxEnabled, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
+    suspend fun setNestedItemCheckboxEnabled(itemId: Long, checkboxEnabled: Boolean, updatedAtMillis: Long)
 
-    @Query("UPDATE nested_list_items SET checked = :checked WHERE id IN (:itemIds)")
-    suspend fun setNestedItemsChecked(itemIds: List<Long>, checked: Boolean)
+    @Query("UPDATE nested_list_items SET checked = :checked, updatedAtMillis = :updatedAtMillis WHERE id IN (:itemIds)")
+    suspend fun setNestedItemsChecked(itemIds: List<Long>, checked: Boolean, updatedAtMillis: Long)
 
-    @Query("UPDATE nested_list_items SET collapsed = :collapsed WHERE id = :itemId")
-    suspend fun setNestedItemCollapsed(itemId: Long, collapsed: Boolean)
+    @Query("UPDATE nested_list_items SET collapsed = :collapsed, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
+    suspend fun setNestedItemCollapsed(itemId: Long, collapsed: Boolean, updatedAtMillis: Long)
 
-    @Query("UPDATE nested_list_items SET collapsed = NOT collapsed WHERE id = :itemId")
-    suspend fun toggleNestedItemCollapsed(itemId: Long)
+    @Query("UPDATE nested_list_items SET collapsed = NOT collapsed, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
+    suspend fun toggleNestedItemCollapsed(itemId: Long, updatedAtMillis: Long)
 
     @Query("UPDATE nested_list_items SET parentId = :parentId, position = :position, updatedAtMillis = :updatedAtMillis WHERE id = :itemId")
     suspend fun updateNestedItemPosition(

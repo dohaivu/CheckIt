@@ -1521,16 +1521,16 @@ class RoomCheckItRepository(
     }
 
     override suspend fun setNestedItemCheckboxEnabled(itemId: Long, checkboxEnabled: Boolean) {
-        dao.setNestedItemCheckboxEnabled(itemId, checkboxEnabled)
+        dao.setNestedItemCheckboxEnabled(itemId, checkboxEnabled, Clock.System.now().toEpochMilliseconds())
     }
 
     override suspend fun setNestedItemsChecked(itemIds: List<Long>, checked: Boolean) {
         if (itemIds.isEmpty()) return
-        dao.setNestedItemsChecked(itemIds, checked)
+        dao.setNestedItemsChecked(itemIds, checked, Clock.System.now().toEpochMilliseconds())
     }
 
     override suspend fun toggleNestedItemCollapsed(itemId: Long) {
-        dao.toggleNestedItemCollapsed(itemId)
+        dao.toggleNestedItemCollapsed(itemId, Clock.System.now().toEpochMilliseconds())
     }
 
     override suspend fun moveNestedItems(moves: List<NestedItemMove>) {

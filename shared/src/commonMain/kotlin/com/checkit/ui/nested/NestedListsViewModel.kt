@@ -10,6 +10,7 @@ import com.checkit.domain.NestedDocument
 import com.checkit.domain.NestedDocumentTree
 import com.checkit.domain.NestedItemNode
 import com.checkit.domain.NestedListItem
+import com.checkit.domain.computeNestedInsertPosition
 
 import com.checkit.domain.NestedTextStyle
 import com.checkit.domain.TagItem
@@ -401,18 +402,14 @@ class NestedListsViewModel(
         }
 
         val items = active.tree.flatItems
-        val anchor = items.firstOrNull { it.id == overlay.draft.anchorId }
-        val isAddingChild = overlay.draft.parentId != null &&
-            (anchor?.id == overlay.draft.parentId || anchor?.parentId != overlay.draft.parentId)
-
-        val position = if (isAddingChild) {
-            items.filter { it.parentId == overlay.draft.parentId }.maxOfOrNull { it.position }?.plus(1) ?: 0
-        } else {
-            anchor?.position?.plus(1)
-        }
+        val (parentId, position) = computeNestedInsertPosition(
+            items,
+            overlay.draft.anchorId,
+            overlay.draft.parentId
+        )
 
         viewModelScope.launch {
-            runCatching { addItemUseCase(active.documentId, overlay.draft.parentId, text, position) }
+            runCatching { addItemUseCase(active.documentId, parentId, text, position) }
                 .onSuccess { itemId ->
                     if (thenContinue) {
                         selectItem(itemId)
