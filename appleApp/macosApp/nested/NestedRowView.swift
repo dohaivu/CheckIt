@@ -227,10 +227,15 @@ struct NestedRowView: View {
             startDays: item.startDate?.toEpochDays(),
             endDays: item.endDate?.toEpochDays()
         )
+        // Android parity (NestedItemMetadataPreview): leaf items always show
+        // their own tracked minutes; parents only when showTrackedMinutes.
+        let isLeaf = !row.node.hasChildren
+        let showTracked = isLeaf || item.showTrackedMinutes
+        let visibleMetrics = item.manualMetrics.filter { $0.enabled && (!$0.value.isEmpty || $0.isCompleted) }
         if progress != nil || (summary?.doneItemCount ?? 0) > 0
-            || (item.showTrackedMinutes && (summary?.trackedMinutes ?? 0) > 0)
+            || (showTracked && (summary?.trackedMinutes ?? 0) > 0)
             || (note != nil && !(note!.isEmpty)) || !item.tags.isEmpty || dateText != nil
-            || !item.manualMetrics.isEmpty
+            || !visibleMetrics.isEmpty
         {
             VStack(alignment: .leading, spacing: 3) {
                 if let p = progress {
@@ -249,13 +254,13 @@ struct NestedRowView: View {
                             .padding(.horizontal, 6).padding(.vertical, 1)
                             .background(Color.secondary.opacity(0.15), in: RoundedRectangle(cornerRadius: 5))
                     }
-                    if let s = summary, item.showTrackedMinutes && s.trackedMinutes > 0 {
+                    if let s = summary, showTracked && s.trackedMinutes > 0 {
                         Text("\(s.trackedMinutes) min")
                             .font(.caption)
                             .padding(.horizontal, 6).padding(.vertical, 1)
                             .background(Color.secondary.opacity(0.15), in: RoundedRectangle(cornerRadius: 5))
                     }
-                    ForEach(item.manualMetrics.filter { !$0.value.isEmpty || $0.isCompleted }, id: \.name) { m in
+                    ForEach(visibleMetrics, id: \.name) { m in
                         HStack(spacing: 2) {
                             if m.isCompleted {
                                 Image(systemName: "checkmark.circle.fill")

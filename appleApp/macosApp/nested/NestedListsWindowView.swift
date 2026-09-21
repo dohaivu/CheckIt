@@ -400,13 +400,19 @@ struct NestedListsWindowView: View {
             .background(Color(nsColor: .windowBackgroundColor))
             .scrollEdgeEffectHidden(true, for: .all)
             .onChange(of: state.selectedId) { _, id in
-                focusedRow = id
-                // Minimal scroll: only moves if the row is out of view.
-                if let id { withAnimation { proxy.scrollTo(id) } }
+                // Deferred: publishing focus/scroll state synchronously here
+                // warns ("within view updates") and is undefined behavior.
+                DispatchQueue.main.async {
+                    focusedRow = id
+                    // Minimal scroll: only moves if the row is out of view.
+                    if let id { withAnimation { proxy.scrollTo(id) } }
+                }
             }
             .onChange(of: state.draft?.anchorId) { _, _ in
-                draftText = state.draft?.text ?? ""
-                draftFocused = state.draft != nil
+                DispatchQueue.main.async {
+                    draftText = state.draft?.text ?? ""
+                    draftFocused = state.draft != nil
+                }
             }
             .onKeyPress(keys: [.upArrow, .downArrow]) { press in
                 if press.modifiers.contains(.command) {
@@ -489,7 +495,11 @@ struct NestedListsWindowView: View {
                 .textFieldStyle(.roundedBorder)
                 .focused($draftFocused)
                 .onChange(of: draftText) { _, t in
-                    if state.draft != nil { state.draft?.text = t }
+                    // Deferred: writing state.draft synchronously here publishes
+                    // NestedEditorState from within view updates (Xcode warns).
+                    DispatchQueue.main.async {
+                        if state.draft != nil { state.draft?.text = t }
+                    }
                 }
                 .onSubmit { state.commitDraft(thenContinue: true) }
                 .onKeyPress(.escape) {
