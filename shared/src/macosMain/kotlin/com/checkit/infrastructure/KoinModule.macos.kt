@@ -1,6 +1,8 @@
 package com.checkit.infrastructure
 
 import com.checkit.data.AppleQuickNoteSyncManager
+import com.checkit.data.NoOpNestedSyncManager
+import com.checkit.data.NestedSyncManager
 import com.checkit.data.QuickNoteSyncManager
 import com.checkit.notifications.NoOpQuickNoteReminderScheduler
 import com.checkit.notifications.NoOpTaskReminderNotificationScheduler
@@ -28,6 +30,7 @@ actual fun platformModule() = module {
     single<CountdownScheduler> { NoOpCountdownScheduler() }
     single<QuickNoteReminderScheduler> { NoOpQuickNoteReminderScheduler() }
     single<QuickNoteSyncManager> { AppleQuickNoteSyncManager() }
+    single<NestedSyncManager> { NoOpNestedSyncManager() }
     single<QuickNoteCameraCapture> { NoOpQuickNoteCameraCapture() }
     single<BackupScheduler> { NoOpBackupScheduler() }
 }

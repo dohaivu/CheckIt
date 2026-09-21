@@ -2,6 +2,8 @@ package com.checkit.ui.nested
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.checkit.data.NestedSyncManager
+import com.checkit.data.NestedSyncState
 import com.checkit.data.SettingsRepository
 import com.checkit.domain.MetricItem
 import com.checkit.domain.MetricRollupPolicy
@@ -111,7 +113,8 @@ data class NestedUiState(
     val documentDeleting: NestedDocument? = null,
     val showNewDocumentDialog: Boolean = false,
     val newDocumentTitle: String = "",
-    val editor: NestedEditorState? = null
+    val editor: NestedEditorState? = null,
+    val syncState: NestedSyncState = NestedSyncState()
 )
 
 class NestedListsViewModel(
@@ -136,7 +139,8 @@ class NestedListsViewModel(
     private val toggleCollapsedUseCase: ToggleNestedItemCollapsedUseCase,
     private val moveItemsUseCase: MoveNestedItemsUseCase,
     private val deleteItemsUseCase: DeleteNestedItemsUseCase,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val syncManager: NestedSyncManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(NestedUiState())
@@ -151,6 +155,11 @@ class NestedListsViewModel(
 
     init {
         collectDocuments()
+        viewModelScope.launch {
+            syncManager.syncState.collect { syncState ->
+                _uiState.update { it.copy(syncState = syncState) }
+            }
+        }
         viewModelScope.launch {
             observeTagsUseCase().collect { tags ->
                 latestTags = tags
@@ -213,6 +222,17 @@ class NestedListsViewModel(
         _uiState.update { it.copy(editor = null) }
         viewModelScope.launch {
             settingsRepository.setLastNestedDocumentId(null)
+        }
+    }
+
+    /** Manual Firestore sync of the open document (sync button entry point). */
+    fun syncOpenDocument() {
+        val documentId = (_uiState.value.editor as? NestedEditorState.Active)?.documentId ?: return
+        viewModelScope.launch {
+            runCatching { syncManager.syncDocument(documentId) }
+                .onFailure { error ->
+                    _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Sync failed"))
+                }
         }
     }
 

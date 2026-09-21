@@ -17,6 +17,7 @@ import Shared
 
 struct NestedListsWindowView: View {
     @StateObject private var state = NestedEditorState()
+    @ObservedObject private var sync = NestedFirestoreSync.shared
     @FocusState private var focusedRow: String?
     @FocusState private var draftFocused: Bool
 
@@ -188,12 +189,49 @@ struct NestedListsWindowView: View {
                 }
             }
             Spacer()
+            nestedSyncStatus
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
     }
 
     // MARK: - Editor bar
+
+    /// Manual sync button + status for the open document (no auto-sync).
+    @ViewBuilder
+    private var nestedSyncStatus: some View {
+        let docId = state.selectedDocId
+        let isSyncing = sync.uiState.status == .syncing && sync.uiState.documentId == docId
+        Group {
+            switch sync.uiState.status {
+            case .syncing where sync.uiState.documentId == docId:
+                Text("Syncing…").font(.caption).foregroundStyle(.secondary)
+            case .synced where sync.uiState.documentId == docId:
+                if let at = sync.uiState.lastSyncedAt {
+                    Text("Synced \(at.formatted(date: .omitted, time: .shortened))")
+                        .font(.caption).foregroundStyle(.secondary)
+                } else {
+                    Text("Synced").font(.caption).foregroundStyle(.secondary)
+                }
+            case .offline where sync.uiState.documentId == docId:
+                Text("Offline — saved on this device").font(.caption).foregroundStyle(.secondary)
+            case .error where sync.uiState.documentId == docId:
+                Text(sync.uiState.message ?? "Sync failed.")
+                    .font(.caption).foregroundStyle(.secondary)
+            default:
+                EmptyView()
+            }
+            Button {
+                NestedFirestoreSync.shared.syncNow(documentId: docId)
+            } label: {
+                Image(systemName: "arrow.clockwise")
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .help("Sync this document")
+            .disabled(docId.isEmpty || isSyncing)
+        }
+    }
 
     private var editorBar: some View {
         let sel = state.selectedId

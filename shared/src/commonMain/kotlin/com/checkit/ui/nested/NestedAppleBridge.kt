@@ -372,4 +372,7 @@ object NestedAppleBridge {
 
     fun helper(): NestedAppleHelper =
         koinApp?.koin?.get() ?: KoinPlatform.getKoin().get()
+
+    fun syncBridge(): com.checkit.data.NestedSyncBridge =
+        koinApp?.koin?.get() ?: KoinPlatform.getKoin().get()
 }

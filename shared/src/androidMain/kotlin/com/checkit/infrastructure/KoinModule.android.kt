@@ -3,7 +3,9 @@ package com.checkit.infrastructure
 import com.checkit.auth.AndroidGoogleAccountManager
 import com.checkit.auth.GoogleAccountManager
 import com.checkit.data.AndroidBackupStorage
+import com.checkit.data.FirestoreNestedSyncManager
 import com.checkit.data.FirestoreQuickNoteSyncManager
+import com.checkit.data.NestedSyncManager
 import com.checkit.data.QuickNoteSyncManager
 import com.checkit.notifications.AlarmManagerQuickNoteReminderScheduler
 import com.checkit.notifications.AndroidCheckInReminderForceRunner
@@ -37,6 +39,7 @@ actual fun platformModule() = module {
     single<CheckInReminderForceRunner> { AndroidCheckInReminderForceRunner(androidContext(), get(), get()) }
     single<QuickNoteReminderScheduler> { AlarmManagerQuickNoteReminderScheduler(androidContext()) }
     single<QuickNoteSyncManager> { FirestoreQuickNoteSyncManager(androidContext(), get(), get()) }
+    single<NestedSyncManager> { FirestoreNestedSyncManager(androidContext(), get()) }
     single<QuickNoteCameraCapture> { AndroidQuickNoteCameraCapture() }
     single<GoogleAccountManager> { AndroidGoogleAccountManager(androidContext(), get()) }
     single<BackupScheduler> { AndroidBackupScheduler(androidContext()) }

@@ -2,6 +2,7 @@ package com.checkit.ui.nested
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -20,6 +21,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
@@ -50,7 +52,9 @@ import checkit.shared.generated.resources.nested_documents_empty
 import checkit.shared.generated.resources.nested_lists_title
 import checkit.shared.generated.resources.nested_new_document
 import checkit.shared.generated.resources.nested_untitled_document
+import com.checkit.data.NestedSyncStatus
 import com.checkit.ui.components.TinyTopAppBar
+import com.checkit.ui.toClockLabel
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 
@@ -156,6 +160,22 @@ internal fun NestedDocumentsScreen(
                             TextButton(onClick = viewModel::selectAll) { Text("Select all") }
                             TextButton(onClick = viewModel::exitSelectionMode) { Text(stringResource(Res.string.cancel)) }
                         } else if (activeEditor != null) {
+                            val isSyncing = state.syncState.status == NestedSyncStatus.SYNCING &&
+                                state.syncState.documentId == activeEditor.documentId
+                            IconButton(
+                                onClick = viewModel::syncOpenDocument,
+                                enabled = !isSyncing
+                            ) {
+                                if (isSyncing) {
+                                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.Sync,
+                                        contentDescription = "Sync this document",
+                                        tint = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
                             IconButton(onClick = viewModel::toggleFilterVisibility) {
                                 Icon(
                                     imageVector = Icons.Default.FilterList,
@@ -174,7 +194,13 @@ internal fun NestedDocumentsScreen(
                     .padding(top = padding.calculateTopPadding())
                     .consumeWindowInsets(padding)
             ) {
-                when (val editor = state.editor) {
+                Column(Modifier.fillMaxSize()) {
+                    NestedSyncStatusLine(
+                        state = state,
+                        documentId = activeEditor?.documentId,
+                    )
+                    Box(Modifier.weight(1f)) {
+                        when (val editor = state.editor) {
                     is NestedEditorState.Active -> {
                         NestedListScreen(
                             state = editor,
@@ -212,6 +238,8 @@ internal fun NestedDocumentsScreen(
                             }
                         }
                     }
+                        }
+                    }
                 }
             }
         }
@@ -243,6 +271,36 @@ internal fun NestedDocumentsScreen(
             }
         )
     }
+}
+
+/**
+ * Slim one-line sync status under the top bar, shown only when relevant to
+ * the open document (mirrors QuickNoteHeaderBanner, manual-sync edition:
+ * no retry button — the toolbar sync button re-runs).
+ */
+@Composable
+private fun NestedSyncStatusLine(
+    state: NestedUiState,
+    documentId: String?,
+) {
+    val sync = state.syncState
+    if (documentId == null || sync.documentId != documentId) return
+    val text = when (sync.status) {
+        NestedSyncStatus.IDLE -> return
+        NestedSyncStatus.SYNCING -> "Syncing…"
+        NestedSyncStatus.SYNCED ->
+            if (sync.lastSyncedAt != null) "Synced ${sync.lastSyncedAt.toClockLabel()}" else "Synced"
+        NestedSyncStatus.OFFLINE -> "You're offline. Changes are saved on this device."
+        NestedSyncStatus.ERROR -> sync.message ?: "Sync failed. Try again."
+    }
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+    )
 }
 
 @Composable

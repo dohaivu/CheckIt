@@ -1256,6 +1256,21 @@ interface CheckItDao {
     @Query("UPDATE nested_list_items SET dirty = 1, updatedAtMillis = :nowMillis WHERE id = :itemId")
     suspend fun markNestedItemDirty(itemId: String, nowMillis: Long)
 
+    @Query("SELECT * FROM nested_documents WHERE id = :documentId LIMIT 1")
+    suspend fun nestedDocumentById(documentId: String): NestedDocumentEntity?
+
+    @Query("SELECT * FROM nested_list_items WHERE id = :itemId LIMIT 1")
+    suspend fun nestedItemById(itemId: String): NestedListItemEntity?
+
+    @Query("SELECT * FROM nested_item_tags WHERE itemId IN (:itemIds)")
+    suspend fun nestedItemTagsForItems(itemIds: List<String>): List<NestedItemTagEntity>
+
+    @Query("SELECT * FROM nested_list_items WHERE documentId = :documentId AND dirty = 1 ORDER BY updatedAtMillis ASC")
+    suspend fun getDirtyNestedItemsForDocument(documentId: String): List<NestedListItemEntity>
+
+    @Query("SELECT id FROM nested_list_items WHERE documentId = :documentId AND deleted = 1 AND dirty = 0 AND updatedAtMillis <= :cutoff ORDER BY updatedAtMillis ASC")
+    suspend fun getPurgeableNestedItemIdsForDocument(documentId: String, cutoff: Long): List<String>
+
     // ---------------- Sync (dirty tracking, tombstones, purge) ----------------
     //
     // One query group per top-level sync table. Children and membership joins

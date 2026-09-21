@@ -300,6 +300,7 @@ val provideDatabaseModule = module {
     single { get<CheckItDatabase>().checkItDao() }
     single { get<CheckItDatabase>().quickNoteDao() }
     single { com.checkit.data.QuickNoteSyncBridge(get()) }
+    single { com.checkit.data.NestedSyncBridge(get()) }
 }
 
 val provideLocalServiceModule = module {
@@ -409,7 +410,8 @@ val provideViewModelModule = module {
             toggleCollapsedUseCase = get(),
             moveItemsUseCase = get(),
             deleteItemsUseCase = get(),
-            settingsRepository = get()
+            settingsRepository = get(),
+            syncManager = get()
         )
     }
     viewModel {
