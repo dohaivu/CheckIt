@@ -5,7 +5,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.text.AnnotatedString
 
 @Composable
-fun String?.asAnnotatedString(): AnnotatedString {
+fun String?.asMarkdownAnnotatedString(): AnnotatedString {
     val text = this ?: ""
     return remember(text) {
         parseMarkdownToAnnotatedString(text)

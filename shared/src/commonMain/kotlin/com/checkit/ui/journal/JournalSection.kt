@@ -30,12 +30,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RichTooltip
@@ -57,7 +55,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -75,7 +72,7 @@ import com.checkit.domain.MoodSadEmojis
 import com.checkit.domain.MoodTiredEmojis
 import com.checkit.domain.MoodWorriedEmojis
 import com.checkit.ui.components.EmojiPicker
-import com.checkit.ui.components.asAnnotatedString
+import com.checkit.ui.components.asMarkdownAnnotatedString
 import com.checkit.ui.components.getMoodColorFromEmoji
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -430,7 +427,7 @@ internal fun JournalThoughtCard(
             RichTooltip(
                 title = { Text(entry.label ?: "Check-In") }
             ) {
-                Text(entry.content.asAnnotatedString())
+                Text(entry.content.asMarkdownAnnotatedString())
             }
         },
         state = tooltipState
@@ -451,7 +448,7 @@ internal fun JournalThoughtCard(
                 .clickable { scope.launch { tooltipState.show() } }
                 .padding(horizontal = 12.dp, vertical = 6.dp)
         ) {
-            val annotatedContent = entry.content.asAnnotatedString()
+            val annotatedContent = entry.content.asMarkdownAnnotatedString()
         Text(
                 text = if (entry.content.isNotBlank()) annotatedContent else AnnotatedString(entry.label.orEmpty()),
                 style = MaterialTheme.typography.bodyMedium,

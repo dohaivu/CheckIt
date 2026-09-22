@@ -33,12 +33,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import checkit.shared.generated.resources.Res
 import checkit.shared.generated.resources.calendar_open_review
-import checkit.shared.generated.resources.reflect_review_card_title
 import checkit.shared.generated.resources.reflect_review_empty
 import com.checkit.ui.color
 import com.checkit.ui.components.MetricChip
 import com.checkit.ui.components.RatingBar
-import com.checkit.ui.components.asAnnotatedString
+import com.checkit.ui.components.asMarkdownAnnotatedString
 import com.checkit.ui.gradient
 import com.checkit.ui.periodDetail
 import org.jetbrains.compose.resources.stringResource
@@ -138,7 +137,7 @@ internal fun GoalReflectionCard(
                     )
                     Spacer(Modifier.width(10.dp))
                     Text(
-                        text = periodGoal,
+                        text = periodGoal.asMarkdownAnnotatedString(),
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f),
                             fontWeight = FontWeight.Medium,
@@ -159,7 +158,7 @@ internal fun GoalReflectionCard(
                 )
             } else {
                 Text(
-                    text = goal.review.asAnnotatedString(),
+                    text = goal.review.asMarkdownAnnotatedString(),
                     style = MaterialTheme.typography.bodyMedium.copy(
                         lineHeight = 22.sp,
                         fontWeight = FontWeight.Normal,

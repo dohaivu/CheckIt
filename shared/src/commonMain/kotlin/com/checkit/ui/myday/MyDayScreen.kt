@@ -108,6 +108,7 @@ import com.checkit.ui.localizedCompactDateWithDayName
 import com.checkit.ui.TimelineItem
 import com.checkit.ui.TimelineItemType
 import com.checkit.ui.color
+import com.checkit.ui.components.asMarkdownAnnotatedString
 import com.checkit.ui.gradient
 import com.checkit.ui.isOverdue
 import com.checkit.ui.periodDetail
@@ -808,7 +809,7 @@ private fun DayGoalBanner(
                     )
                     goal.goal?.takeIf { it.isNotBlank() }?.let { intent ->
                         Text(
-                            text = intent,
+                            text = intent.asMarkdownAnnotatedString(),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface
                         )

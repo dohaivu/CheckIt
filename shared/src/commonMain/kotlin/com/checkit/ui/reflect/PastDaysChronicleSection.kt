@@ -44,7 +44,7 @@ import com.checkit.domain.PeriodGoal
 import com.checkit.ui.components.MetricChip
 import com.checkit.ui.components.RatingBar
 import com.checkit.ui.components.ReportPeriod
-import com.checkit.ui.components.asAnnotatedString
+import com.checkit.ui.components.asMarkdownAnnotatedString
 import com.checkit.ui.periodDetail
 import com.checkit.ui.toDurationLabel
 import org.jetbrains.compose.resources.stringResource
@@ -231,7 +231,7 @@ internal fun ChronicleRow(
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text = periodGoalText,
+                    text = periodGoalText.asMarkdownAnnotatedString(),
                     style = MaterialTheme.typography.bodySmall.copy(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Medium
@@ -244,7 +244,7 @@ internal fun ChronicleRow(
         // Multi-line Full Review Text (no maxLines truncation)
         if (goal.review.isNotBlank()) {
             Text(
-                text = goal.review.asAnnotatedString(),
+                text = goal.review.asMarkdownAnnotatedString(),
                 style = MaterialTheme.typography.bodyMedium.copy(
                     color = MaterialTheme.colorScheme.onSurface,
                     lineHeight = 21.sp,

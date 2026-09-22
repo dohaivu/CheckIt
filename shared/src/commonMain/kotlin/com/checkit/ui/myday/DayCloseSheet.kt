@@ -58,6 +58,7 @@ import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.MarkdownVisualTransformation
 import com.checkit.ui.components.RatingBar
+import com.checkit.ui.components.asMarkdownAnnotatedString
 import com.checkit.ui.isOverdue
 import com.checkit.ui.toDurationLabel
 import com.checkit.ui.tasks.views.DailyPlanTimelineCard
@@ -215,7 +216,7 @@ private fun TodayGoalReminder(goal: String) {
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                text = goal,
+                text = goal.asMarkdownAnnotatedString(),
                 style = MaterialTheme.typography.bodySmall.copy(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Medium

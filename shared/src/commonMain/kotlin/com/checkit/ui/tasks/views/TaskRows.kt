@@ -34,7 +34,7 @@ import com.checkit.domain.TaskType
 import com.checkit.ui.components.CompactDetailChip
 import com.checkit.ui.components.DateTimeRangeDetailChip
 import com.checkit.ui.components.SupportingPills
-import com.checkit.ui.components.asAnnotatedString
+import com.checkit.ui.components.asMarkdownAnnotatedString
 import com.checkit.ui.HabitIcon
 import com.checkit.ui.NoteIcon
 import com.checkit.ui.tasks.SubtaskBriefList
@@ -279,7 +279,7 @@ internal fun StandardNoteRowContent(note: NoteItem, showList: Boolean) {
 
                 if (note.content.isNotBlank()) {
                     Text(
-                        text = note.content.asAnnotatedString(),
+                        text = note.content.asMarkdownAnnotatedString(),
                         style = MaterialTheme.typography.bodyMedium,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
@@ -329,7 +329,7 @@ internal fun DetailNoteRowContent(note: NoteItem, showList: Boolean) {
 
                 if (note.content.isNotBlank()) {
                     Text(
-                        text = note.content.asAnnotatedString(),
+                        text = note.content.asMarkdownAnnotatedString(),
                         style = MaterialTheme.typography.bodyMedium,
                         maxLines = 5,
                         overflow = TextOverflow.Ellipsis
