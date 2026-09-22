@@ -250,12 +250,14 @@ struct NestedFormattingBar: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            // Text style
+            // Text style (flat rows; Toggle renders a native checkmark on
+            // the current value — custom row views don't paint in Menus).
             Menu {
                 ForEach(["Header", "Subheader", "Body"], id: \.self) { s in
-                    Button(s) {
-                        state.updateFormatting(id: item.id, style: s, textColor: item.textColor.name, background: item.backgroundColor.name)
-                    }
+                    Toggle(s, isOn: Binding(
+                        get: { s == item.textStyle.name },
+                        set: { if $0 { state.updateFormatting(id: item.id, style: s, textColor: item.textColor.name, background: item.backgroundColor.name) } }
+                    ))
                 }
                 Divider()
                 Button(item.checkboxEnabled ? "Hide checkbox" : "Show checkbox") {
@@ -271,13 +273,14 @@ struct NestedFormattingBar: View {
             // Text color
             Menu {
                 ForEach(tokens, id: \.self) { t in
-                    Button(t) {
-                        state.updateFormatting(id: item.id, style: item.textStyle.name, textColor: t, background: item.backgroundColor.name)
-                    }
+                    Toggle(t, isOn: Binding(
+                        get: { t == item.textColor.name },
+                        set: { if $0 { state.updateFormatting(id: item.id, style: item.textStyle.name, textColor: t, background: item.backgroundColor.name) } }
+                    ))
                 }
             } label: {
                 Image(systemName: "paintbrush")
-                    .foregroundStyle(item.textColor.name == "Default" ? .secondary : nestedTokenColor(item.textColor.name))
+                    .foregroundStyle(item.textColor.name == "Default" ? .secondary : Color.accentColor)
             }
             .menuStyle(.borderlessButton)
             .frame(width: 28, height: 28)
@@ -286,13 +289,14 @@ struct NestedFormattingBar: View {
             // Background
             Menu {
                 ForEach(tokens, id: \.self) { t in
-                    Button(t) {
-                        state.updateFormatting(id: item.id, style: item.textStyle.name, textColor: item.textColor.name, background: t)
-                    }
+                    Toggle(t, isOn: Binding(
+                        get: { t == item.backgroundColor.name },
+                        set: { if $0 { state.updateFormatting(id: item.id, style: item.textStyle.name, textColor: item.textColor.name, background: t) } }
+                    ))
                 }
             } label: {
                 Image(systemName: "paintpalette")
-                    .foregroundStyle(item.backgroundColor.name == "Default" ? .secondary : nestedTokenColor(item.backgroundColor.name))
+                    .foregroundStyle(item.backgroundColor.name == "Default" ? .secondary : Color.accentColor)
             }
             .menuStyle(.borderlessButton)
             .frame(width: 28, height: 28)
@@ -301,11 +305,14 @@ struct NestedFormattingBar: View {
             // Priority
             Menu {
                 ForEach(["None", "Low", "Medium", "High"], id: \.self) { p in
-                    Button(p) { state.updatePriority(id: item.id, name: p) }
+                    Toggle(p, isOn: Binding(
+                        get: { p == item.priority.name },
+                        set: { if $0 { state.updatePriority(id: item.id, name: p) } }
+                    ))
                 }
             } label: {
                 Image(systemName: "flag")
-                    .foregroundStyle(nestedPriorityColor(item.priority.name))
+                    .foregroundStyle(item.priority.name == "None" ? .secondary : Color.accentColor)
             }
             .menuStyle(.borderlessButton)
             .frame(width: 28, height: 28)

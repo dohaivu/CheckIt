@@ -33,11 +33,11 @@ struct NestedListsWindowView: View {
     var body: some View {
         HSplitView {
             sidebar
-                .frame(minWidth: 200, idealWidth: 240, maxWidth: 360, maxHeight: .infinity)
+                .frame(minWidth: 200, idealWidth: 200, maxWidth: 300, maxHeight: .infinity)
             detail
-                .frame(minWidth: 560, maxWidth: .infinity, maxHeight: .infinity)
+                .frame(minWidth: 760, idealWidth: 760, maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(minWidth: 760, minHeight: 480)
+        .frame(minWidth: 960, minHeight: 680)
         .background(WindowAccessor(onWindow: { win in
             Task { @MainActor in state.attachWindow(win) }
         }))
