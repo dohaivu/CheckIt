@@ -39,8 +39,8 @@ import com.checkit.ui.theme.toColor
 @Composable
 fun TagOptionMenu(
     availableTags: List<TagItem>,
-    selectedTagIds: Set<Long>,
-    onTagToggle: (Long) -> Unit,
+    selectedTagIds: Set<String>,
+    onTagToggle: (String) -> Unit,
     onNewTagClick: () -> Unit = {}
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -98,8 +98,8 @@ fun TagOptionMenu(
 @Composable
 fun TagPicker(
     availableTags: List<TagItem>,
-    selectedTagIds: Set<Long>,
-    onTagToggle: (Long) -> Unit,
+    selectedTagIds: Set<String>,
+    onTagToggle: (String) -> Unit,
     onNewTagClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     enabled: Boolean = true

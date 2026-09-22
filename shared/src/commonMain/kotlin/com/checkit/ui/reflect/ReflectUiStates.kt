@@ -287,7 +287,7 @@ internal fun calculateStreak(doneDates: Set<LocalDate>, today: LocalDate): Int {
 }
 
 data class TagReportItem(
-    val tagId: Long,
+    val tagId: String,
     val name: String,
     val color: String,
     val totalMinutes: Int,

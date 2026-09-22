@@ -72,6 +72,7 @@ import com.checkit.ui.components.DatePicker
 import com.checkit.ui.components.EditorOverflowMenu
 import com.checkit.ui.components.LabelTextField
 import com.checkit.ui.components.ListPicker
+import com.checkit.ui.components.MarkdownTextField
 import com.checkit.ui.components.MarkdownVisualTransformation
 import com.checkit.ui.components.PriorityPicker
 import com.checkit.ui.components.TagPicker
@@ -333,7 +334,7 @@ private fun TaskFormContent(
     availableLists: List<ListItem>,
     availableTags: List<TagItem>,
     onNameChange: (String) -> Unit,
-    onListChange: (Long) -> Unit,
+    onListChange: (String) -> Unit,
     onDescriptionChange: (String) -> Unit,
     onDoDateChange: (LocalDate?) -> Unit,
     onTimeChange: (Int?, Int?) -> Unit,
@@ -343,7 +344,7 @@ private fun TaskFormContent(
     onSubTaskNameChange: (Int, String) -> Unit,
     onSubTaskRemove: (Int) -> Unit,
     onSubTaskMove: (Int, Int) -> Unit,
-    onTagToggle: (Long) -> Unit,
+    onTagToggle: (String) -> Unit,
     onLabelChange: (String) -> Unit,
     onNewTagClick: () -> Unit,
     recentLabels: List<String>,
@@ -427,7 +428,7 @@ private fun TaskFormContent(
                 modifier = Modifier.padding(horizontal = 4.dp)
             )
         }
-        AppOutlinedTextField(
+        MarkdownTextField(
             value = form.description,
             onValueChange = onDescriptionChange,
             textStyle = MaterialTheme.typography.bodyMedium.copy(
@@ -435,8 +436,7 @@ private fun TaskFormContent(
                 fontWeight = FontWeight.Normal
             ),
             maxLines = 5,
-            enabled = enabled,
-            visualTransformation = remember { MarkdownVisualTransformation() }
+            enabled = enabled
         )
 
         SubtaskChecklist(
@@ -482,7 +482,7 @@ private fun DailyPlanSection(
     onNoteChange: (String) -> Unit,
     onLabelChange: (String) -> Unit,
     onStatusChange: () -> Unit,
-    onDelete: (Long) -> Unit,
+    onDelete: (String) -> Unit,
     onStartSprint: (DailyPlanItem) -> Unit,
     onStartOngoingSprint: (DailyPlanItem) -> Unit,
     recentLabels: List<String>,
@@ -675,10 +675,10 @@ private fun NoteFormContent(
     availableTags: List<TagItem>,
     onTitleChange: (String) -> Unit,
     onContentChange: (String) -> Unit,
-    onListChange: (Long) -> Unit,
+    onListChange: (String) -> Unit,
     onDateChange: (LocalDate?) -> Unit,
     onStartTimeChange: (Int?) -> Unit,
-    onTagToggle: (Long) -> Unit,
+    onTagToggle: (String) -> Unit,
     onLabelChange: (String) -> Unit,
     onNewTagClick: () -> Unit,
     recentLabels: List<String>,
@@ -722,20 +722,18 @@ private fun NoteFormContent(
             modifier = Modifier.fillMaxWidth(),
             isError = form.error != null
         )
-        AppOutlinedTextField(
+        MarkdownTextField(
             value = form.content,
             onValueChange = onContentChange,
             textStyle = MaterialTheme.typography.bodyMedium.copy(
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Normal
             ),
-            minLines = 5,
+            minLines = 8,
             maxLines = 10,
             placeholder = "Add more details",
             enabled = enabled,
-            modifier = Modifier.fillMaxWidth().height(130.dp),
-            visualTransformation = remember { MarkdownVisualTransformation() },
-            isError = form.error != null
+            modifier = Modifier.fillMaxWidth(),
         )
         form.error?.let { error ->
             Text(

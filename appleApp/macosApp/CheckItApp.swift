@@ -19,6 +19,7 @@ struct CheckItApp: App {
         configureFirebase()
         QuickNoteGoogleSignIn.shared.start()
         QuickNoteFirestoreSync.shared.start()
+        NestedFirestoreSync.shared.start()
     }
 
     // Menu-bar-only app (LSUIElement): AppDelegate owns the NSStatusItem.

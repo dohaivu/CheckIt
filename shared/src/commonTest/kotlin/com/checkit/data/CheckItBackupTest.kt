@@ -19,11 +19,11 @@ class CheckItBackupTest {
         val backup = CheckItBackup(
             exportedAtMillis = 1_700_000_000_000L,
             settings = UserSettings(languageCode = "vi", themeModeCode = "dark"),
-            lists = listOf(ListEntity(id = 1L, title = "Inbox", icon = "Inbox", color = "#2563EB", sortOrder = 0)),
-            tags = listOf(TagEntity(id = 2L, name = "focus", color = "#FF0000", sortOrder = 0)),
+            lists = listOf(ListEntity(id = "1", title = "Inbox", icon = "Inbox", color = "#2563EB", sortOrder = 0, createdAtMillis = 10L, updatedAtMillis = 20L)),
+            tags = listOf(TagEntity(id = "2", name = "focus", color = "#FF0000", sortOrder = 0, createdAtMillis = 10L, updatedAtMillis = 20L)),
             tasks = listOf(
                 TaskEntity(
-                    id = 3L,
+                    id = "3",
                     name = "Write backup",
                     status = "Open",
                     priority = "High",
@@ -31,8 +31,8 @@ class CheckItBackupTest {
                     updatedAtMillis = 20L,
                 )
             ),
-            taskTags = listOf(TaskTagEntity(taskId = 3L, tagId = 2L)),
-            taskLists = listOf(TaskListEntity(taskId = 3L, listId = 1L)),
+            taskTags = listOf(TaskTagEntity(taskId = "3", tagId = "2")),
+            taskLists = listOf(TaskListEntity(taskId = "3", listId = "1")),
             quickNotes = listOf(
                 QuickNoteEntity(
                     id = "note-1",

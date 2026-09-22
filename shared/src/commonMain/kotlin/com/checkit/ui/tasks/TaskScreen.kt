@@ -43,7 +43,7 @@ internal fun TaskScreen(
     viewModel: TaskViewModel,
     listViewModel: ListViewModel,
     onOpenTags: () -> Unit,
-    onOpenSections: (Long) -> Unit,
+    onOpenSections: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)

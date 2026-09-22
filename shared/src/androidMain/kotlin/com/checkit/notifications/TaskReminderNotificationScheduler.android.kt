@@ -15,7 +15,7 @@ class AndroidTaskReminderNotificationScheduler(
     private val appContext = context.applicationContext
     private val workManager = WorkManager.getInstance(appContext)
 
-    override suspend fun scheduleTaskReminders(taskId: Long, reminders: List<ScheduledTaskReminder>) {
+    override suspend fun scheduleTaskReminders(taskId: String, reminders: List<ScheduledTaskReminder>) {
         cancelTaskReminders(taskId)
         reminders
             .filter { it.remindAtMillis > Clock.System.now().toEpochMilliseconds() }
@@ -41,10 +41,10 @@ class AndroidTaskReminderNotificationScheduler(
             }
     }
 
-    override suspend fun cancelTaskReminders(taskId: Long) {
+    override suspend fun cancelTaskReminders(taskId: String) {
         workManager.cancelAllWorkByTag(taskTag(taskId))
     }
 
-    private fun taskTag(taskId: Long): String = "task-reminder-task-$taskId"
-    private fun workName(taskId: Long, remindAtMillis: Long): String = "task-reminder-$taskId-$remindAtMillis"
+    private fun taskTag(taskId: String): String = "task-reminder-task-$taskId"
+    private fun workName(taskId: String, remindAtMillis: Long): String = "task-reminder-$taskId-$remindAtMillis"
 }

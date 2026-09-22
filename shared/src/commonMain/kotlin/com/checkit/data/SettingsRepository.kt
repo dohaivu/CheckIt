@@ -22,9 +22,9 @@ data class UserSettings(
     val checkInReminderLastShownAtMillis: Long? = null,
     val autoMyDayLastRunEpochDay: Int? = null,
     val lastFabActionType: String = "QuickSprint",
-    val lastFabActionId: Long? = null,
-    val lastNestedDocumentId: Long? = null,
-    val lastSelectedListId: Long? = null,
+    val lastFabActionId: String? = null,
+    val lastNestedDocumentId: String? = null,
+    val lastSelectedListId: String? = null,
     val recentLabels: List<String> = emptyList(),
     val backupFolderUri: String? = null,
     val backupFolderName: String? = null,
@@ -49,9 +49,9 @@ interface SettingsRepository {
     suspend fun setScheduleReminderEnabled(enabled: Boolean)
     suspend fun setCheckInReminderLastShownAtMillis(millis: Long)
     suspend fun setAutoMyDayLastRunEpochDay(epochDay: Int)
-    suspend fun setLastFabAction(type: String, id: Long?)
-    suspend fun setLastNestedDocumentId(id: Long?)
-    suspend fun setLastSelectedListId(id: Long?)
+    suspend fun setLastFabAction(type: String, id: String?)
+    suspend fun setLastNestedDocumentId(id: String?)
+    suspend fun setLastSelectedListId(id: String?)
     suspend fun addRecentLabel(label: String)
     suspend fun setBackupFolder(uri: String?, name: String?)
     suspend fun setLastBackupAtMillis(millis: Long)

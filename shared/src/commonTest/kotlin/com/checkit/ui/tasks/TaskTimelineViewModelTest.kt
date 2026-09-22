@@ -49,7 +49,7 @@ class TaskTimelineViewModelTest {
     @BeforeTest
     fun setUp() {
         Dispatchers.setMain(dispatcher)
-        val inbox = ListItem(id = 1L, title = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
+        val inbox = ListItem(id = "1", title = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
         repository = FakeCheckItRepository(initialBoard = TaskBoard(lists = listOf(inbox)))
         viewModel = TaskViewModel(
             observeTaskBoard = ObserveTaskBoardUseCase(repository),
@@ -110,7 +110,7 @@ class TaskTimelineViewModelTest {
     }
 
     private fun inboxList() = ListItem(
-        id = 1L,
+        id = "1",
         title = "Inbox",
         color = "#2563EB",
         icon = "Inbox",
@@ -118,7 +118,7 @@ class TaskTimelineViewModelTest {
     )
 
     private fun timedTask() = TaskItem(
-        id = 7L,
+        id = "7",
         list = null,
         name = "Focus",
         startTimeMinutes = 9 * 60,

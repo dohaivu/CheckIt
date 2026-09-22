@@ -95,10 +95,10 @@ class SmartScheduleDailyPlanUseCase(
         requests: List<SmartScheduleRequest>,
         fixedItems: List<DailyPlanItem>,
         earliestStart: Int
-    ): Map<Long, SmartScheduleAssignment> {
+    ): Map<String, SmartScheduleAssignment> {
         val occupied = fixedItems.toMutableList()
         val remaining = requests.toMutableList()
-        val assignments = LinkedHashMap<Long, SmartScheduleAssignment>()
+        val assignments = LinkedHashMap<String, SmartScheduleAssignment>()
 
         while (remaining.isNotEmpty()) {
             val optionsByRequest = remaining.associateWith { request ->
@@ -172,16 +172,16 @@ class SmartScheduleDailyPlanUseCase(
     private fun buildTagHistory(
         plans: List<DailyPlan>,
         today: LocalDate
-    ): Map<Long, List<SmartTimeSample>> {
-        val history = HashMap<Long, MutableList<SmartTimeSample>>()
-        val daysSeen = HashMap<Long, Int>()
+    ): Map<String, List<SmartTimeSample>> {
+        val history = HashMap<String, MutableList<SmartTimeSample>>()
+        val daysSeen = HashMap<String, Int>()
         for (plan in plans) {
             if (plan.date >= today) continue
             val doneWithTime = plan.items.filter {
                 it.status == DailyPlanItemStatus.Done && it.startTimeMinutes != null
             }
             if (doneWithTime.isEmpty()) continue
-            val tagsOnDay = HashSet<Long>()
+            val tagsOnDay = HashSet<String>()
             doneWithTime.forEach { item -> item.tags.forEach { tagsOnDay.add(it.id) } }
             for (tagId in tagsOnDay) {
                 val seen = daysSeen[tagId] ?: 0

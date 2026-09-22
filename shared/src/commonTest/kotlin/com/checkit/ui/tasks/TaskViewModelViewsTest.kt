@@ -65,12 +65,12 @@ class TaskViewModelViewsTest {
         Dispatchers.setMain(dispatcher)
         val board = TaskBoard(
             lists = listOf(
-                ListItem(id = 1L, title = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
+                ListItem(id = "1", title = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
             ),
             filters = listOf(
-                todayFilter(1L),
-                highPriorityFilter(2L),
-                allFilter(0L)
+                todayFilter("1"),
+                highPriorityFilter("2"),
+                allFilter("0")
             )
         )
         repository = FakeCheckItRepository(initialBoard = board)
@@ -111,7 +111,7 @@ class TaskViewModelViewsTest {
 
     @Test
     fun timelineViewIsAvailableForTodayFilter() = runTest(dispatcher) {
-        viewModel.selectFilter(1L)
+        viewModel.selectFilter("1")
         viewModel.selectView(TaskWorkspaceView.Timeline)
 
         val state = viewModel.uiState.value
@@ -122,9 +122,9 @@ class TaskViewModelViewsTest {
 
     @Test
     fun selectingNonTodayFilterCoercesTimelineBackToList() = runTest(dispatcher) {
-        viewModel.selectFilter(1L)
+        viewModel.selectFilter("1")
         viewModel.selectView(TaskWorkspaceView.Timeline)
-        viewModel.selectFilter(2L)
+        viewModel.selectFilter("2")
 
         val state = viewModel.uiState.value
         assertNull(state.dayLimit)
@@ -134,8 +134,8 @@ class TaskViewModelViewsTest {
 
     @Test
     fun selectingActiveFilterClearsScope() = runTest(dispatcher) {
-        viewModel.selectFilter(2L)
-        viewModel.selectFilter(2L)
+        viewModel.selectFilter("2")
+        viewModel.selectFilter("2")
 
         val state = viewModel.uiState.value
         assertNull(state.selectedFilterId)
@@ -143,7 +143,7 @@ class TaskViewModelViewsTest {
 
     @Test
     fun selectViewTimelineIsIgnoredWhenFilterIsNotToday() = runTest(dispatcher) {
-        viewModel.selectFilter(2L)
+        viewModel.selectFilter("2")
         viewModel.selectView(TaskWorkspaceView.Timeline)
 
         val state = viewModel.uiState.value
@@ -152,7 +152,7 @@ class TaskViewModelViewsTest {
 
     @Test
     fun allFilterExcludesTimelineView() = runTest(dispatcher) {
-        viewModel.selectFilter(0L)
+        viewModel.selectFilter("0")
         viewModel.selectView(TaskWorkspaceView.Timeline)
 
         val state = viewModel.uiState.value
@@ -163,69 +163,69 @@ class TaskViewModelViewsTest {
 
     @Test
     fun filterPersistsWhenSelectingList() = runTest(dispatcher) {
-        viewModel.selectFilter(1L)
+        viewModel.selectFilter("1")
         viewModel.selectView(TaskWorkspaceView.Timeline)
-        viewModel.selectList(99L)
+        viewModel.selectList("99")
 
         val state = viewModel.uiState.value
         assertEquals(1, state.dayLimit)
         assertEquals(TaskWorkspaceView.Timeline, state.selectedView)
-        assertEquals(99L, state.selectedListId)
+        assertEquals("99", state.selectedListId)
     }
 
     @Test
     fun filterPersistsWhenSelectingTag() = runTest(dispatcher) {
-        viewModel.selectFilter(1L)
+        viewModel.selectFilter("1")
         viewModel.selectView(TaskWorkspaceView.Timeline)
-        viewModel.selectTag(7L)
+        viewModel.selectTag("7")
 
         val state = viewModel.uiState.value
         assertEquals(1, state.dayLimit)
         assertEquals(TaskWorkspaceView.Timeline, state.selectedView)
-        assertEquals(7L, state.selectedTagId)
+        assertEquals("7", state.selectedTagId)
     }
 
     @Test
     fun selectListPersistsLastSelectedListId() = runTest(dispatcher) {
         val fakeSettings = FakeSettingsRepository()
         val board = TaskBoard(
-            lists = listOf(ListItem(id = 42L, title = "List 42", color = "#123456", icon = "List", sortOrder = 0))
+            lists = listOf(ListItem(id = "42", title = "List 42", color = "#123456", icon = "List", sortOrder = 0))
         )
         val testViewModel = createViewModel(board, fakeSettings)
         dispatcher.scheduler.advanceUntilIdle()
 
-        testViewModel.selectList(42L)
+        testViewModel.selectList("42")
         dispatcher.scheduler.advanceUntilIdle()
 
-        assertEquals(42L, fakeSettings.currentSettings().lastSelectedListId)
+        assertEquals("42", fakeSettings.currentSettings().lastSelectedListId)
     }
 
     @Test
     fun initializationRestoresLastSelectedListId() = runTest(dispatcher) {
-        val initialSettings = UserSettings(lastSelectedListId = 100L)
+        val initialSettings = UserSettings(lastSelectedListId = "100")
         val fakeSettings = FakeSettingsRepository(initialSettings)
         val board = TaskBoard(
-            lists = listOf(ListItem(id = 100L, title = "List 100", color = "#123456", icon = "List", sortOrder = 0))
+            lists = listOf(ListItem(id = "100", title = "List 100", color = "#123456", icon = "List", sortOrder = 0))
         )
         val testViewModel = createViewModel(board, fakeSettings)
         dispatcher.scheduler.advanceUntilIdle()
 
-        assertEquals(100L, testViewModel.uiState.value.selectedListId)
+        assertEquals("100", testViewModel.uiState.value.selectedListId)
     }
 
     @Test
     fun titleSortBuildsUnifiedTaskAndNoteListOrder() = runTest(dispatcher) {
-        val inbox = ListItem(id = 1L, title = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
+        val inbox = ListItem(id = "1", title = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
         viewModel = createViewModel(
             TaskBoard(
                 lists = listOf(inbox),
                 tasks = listOf(
-                    task(id = 1L, list = inbox, name = "Bravo"),
-                    task(id = 2L, list = inbox, name = "Delta")
+                    task(id = "1", list = inbox, name = "Bravo"),
+                    task(id = "2", list = inbox, name = "Delta")
                 ),
                 notes = listOf(
-                    note(id = 3L, list = inbox, title = "Alpha"),
-                    note(id = 4L, list = inbox, title = "Charlie")
+                    note(id = "3", list = inbox, title = "Alpha"),
+                    note(id = "4", list = inbox, title = "Charlie")
                 )
             )
         )
@@ -246,17 +246,17 @@ class TaskViewModelViewsTest {
 
     @Test
     fun searchFiltersTasksAndNotesByTitleAndBody() = runTest(dispatcher) {
-        val inbox = ListItem(id = 1L, title = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
+        val inbox = ListItem(id = "1", title = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
         viewModel = createViewModel(
             TaskBoard(
                 lists = listOf(inbox),
                 tasks = listOf(
-                    task(id = 1L, list = inbox, name = "Budget", description = "Quarterly planning"),
-                    task(id = 2L, list = inbox, name = "Groceries", description = "Milk")
+                    task(id = "1", list = inbox, name = "Budget", description = "Quarterly planning"),
+                    task(id = "2", list = inbox, name = "Groceries", description = "Milk")
                 ),
                 notes = listOf(
-                    note(id = 3L, list = inbox, title = "Ideas", content = "Quarterly roadmap"),
-                    note(id = 4L, list = inbox, title = "Receipt", content = "Coffee")
+                    note(id = "3", list = inbox, title = "Ideas", content = "Quarterly roadmap"),
+                    note(id = "4", list = inbox, title = "Receipt", content = "Coffee")
                 )
             )
         )
@@ -277,18 +277,18 @@ class TaskViewModelViewsTest {
 
     @Test
     fun moveListItemPreviewsOrderWithoutPersistingUntilCommit() = runTest(dispatcher) {
-        val inbox = ListItem(id = 1L, title = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
+        val inbox = ListItem(id = "1", title = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
         viewModel = createViewModel(
             TaskBoard(
                 lists = listOf(inbox),
                 tasks = listOf(
-                    task(id = 1L, list = inbox, name = "First", sortOrder = 0),
-                    task(id = 2L, list = inbox, name = "Second", sortOrder = 1)
+                    task(id = "1", list = inbox, name = "First", sortOrder = 0),
+                    task(id = "2", list = inbox, name = "Second", sortOrder = 1)
                 )
             )
         )
         dispatcher.scheduler.advanceUntilIdle()
-        viewModel.selectList(1L)
+        viewModel.selectList("1")
 
         viewModel.moveListItem(0, 1)
         dispatcher.scheduler.advanceUntilIdle()
@@ -296,27 +296,27 @@ class TaskViewModelViewsTest {
         val previewIds = viewModel.uiState.value.visibleListItems.mapNotNull { entry ->
             (entry as? TaskListEntry.Task)?.item?.id
         }
-        assertEquals(listOf(2L, 1L), previewIds)
-        assertEquals(0, repository.currentBoard.tasks.first { it.id == 1L }.sortOrder)
-        assertEquals(1, repository.currentBoard.tasks.first { it.id == 2L }.sortOrder)
+        assertEquals(listOf("2", "1"), previewIds)
+        assertEquals(0, repository.currentBoard.tasks.first { it.id == "1" }.sortOrder)
+        assertEquals(1, repository.currentBoard.tasks.first { it.id == "2" }.sortOrder)
 
         viewModel.commitMovedListItems()
         dispatcher.scheduler.advanceUntilIdle()
 
-        assertEquals(1, repository.currentBoard.tasks.first { it.id == 1L }.sortOrder)
-        assertEquals(0, repository.currentBoard.tasks.first { it.id == 2L }.sortOrder)
+        assertEquals(1, repository.currentBoard.tasks.first { it.id == "1" }.sortOrder)
+        assertEquals(0, repository.currentBoard.tasks.first { it.id == "2" }.sortOrder)
     }
 
     @Test
     fun habitsViewShowsOnlyHabitTasks() = runTest(dispatcher) {
-        val inbox = ListItem(id = 1L, title = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
+        val inbox = ListItem(id = "1", title = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
         viewModel = createViewModel(
             TaskBoard(
                 lists = listOf(inbox),
                 tasks = listOf(
-                    task(id = 1L, list = inbox, name = "Read"),
-                    task(id = 2L, list = inbox, name = "Meditate", type = TaskType.Habit),
-                    task(id = 3L, list = inbox, name = "Write")
+                    task(id = "1", list = inbox, name = "Read"),
+                    task(id = "2", list = inbox, name = "Meditate", type = TaskType.Habit),
+                    task(id = "3", list = inbox, name = "Write")
                 )
             )
         )
@@ -331,10 +331,10 @@ class TaskViewModelViewsTest {
 
     @Test
     fun togglingTaskTagAlsoUpdatesDailyPlanItemTags() = runTest(dispatcher) {
-        val inbox = ListItem(id = 1L, title = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
-        val workTag = TagItem(id = 1L, name = "Work", color = "#DC2626", sortOrder = 0)
-        val homeTag = TagItem(id = 2L, name = "Home", color = "#0891B2", sortOrder = 1)
-        val item = task(id = 5L, list = inbox, name = "Gym", tags = listOf(workTag))
+        val inbox = ListItem(id = "1", title = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
+        val workTag = TagItem(id = "1", name = "Work", color = "#DC2626", sortOrder = 0)
+        val homeTag = TagItem(id = "2", name = "Home", color = "#0891B2", sortOrder = 1)
+        val item = task(id = "5", list = inbox, name = "Gym", tags = listOf(workTag))
         viewModel = createViewModel(
             TaskBoard(
                 lists = listOf(inbox),
@@ -349,7 +349,7 @@ class TaskViewModelViewsTest {
                     date = today,
                     items = listOf(
                         DailyPlanItem(
-                            id = 10L,
+                            id = "10",
                             dateEpochDays = today.toEpochDays().toInt(),
                             taskId = item.id,
                             title = "Gym",
@@ -408,7 +408,7 @@ class TaskViewModelViewsTest {
     }
 
     private fun task(
-        id: Long,
+        id: String,
         list: ListItem,
         name: String,
         description: String = "",
@@ -428,7 +428,7 @@ class TaskViewModelViewsTest {
     )
 
     private fun note(
-        id: Long,
+        id: String,
         list: ListItem,
         title: String,
         content: String = ""
@@ -443,7 +443,7 @@ class TaskViewModelViewsTest {
         sortOrder = id.toInt()
     )
 
-    private fun todayFilter(id: Long = 1L) = TaskFilter(
+    private fun todayFilter(id: String = "1") = TaskFilter(
         id = id,
         name = "Today",
         icon = "Today",
@@ -452,7 +452,7 @@ class TaskViewModelViewsTest {
         sortOrder = 0
     )
 
-    private fun allFilter(id: Long = 0L) = TaskFilter(
+    private fun allFilter(id: String = "") = TaskFilter(
         id = id,
         name = "All",
         icon = "AllInclusive",
@@ -460,7 +460,7 @@ class TaskViewModelViewsTest {
         sortOrder = -1
     )
 
-    private fun highPriorityFilter(id: Long = 2L) = TaskFilter(
+    private fun highPriorityFilter(id: String = "2") = TaskFilter(
         id = id,
         name = "High priority",
         icon = "PriorityHigh",

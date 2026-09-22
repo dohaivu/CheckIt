@@ -49,6 +49,7 @@ import com.checkit.domain.TagItem
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DeleteOverflowMenu
+import com.checkit.ui.components.MarkdownToolbar
 import com.checkit.ui.components.MarkdownVisualTransformation
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.myday.JournalEntryEditorState
@@ -69,7 +70,7 @@ internal fun JournalEntryEditorSheet(
     onPromptCleared: () -> Unit,
     onDiscardDraft: () -> Unit,
     onMoodToggle: (String) -> Unit,
-    onTagToggle: (Long) -> Unit,
+    onTagToggle: (String) -> Unit,
     onNewTagClick: () -> Unit,
     onSave: () -> Unit,
     onDelete: () -> Unit
@@ -454,45 +455,7 @@ private fun FeelingChips(
     }
 }
 
-@Composable
-private fun MarkdownToolbar(
-    onAction: (JournalToolbarAction) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-        modifier = modifier.fillMaxWidth()
-    ) {
-        listOf(
-            "B" to JournalToolbarAction.Bold,
-            "H" to JournalToolbarAction.Heading,
-            "• List" to JournalToolbarAction.Bullet,
-            "1. List" to JournalToolbarAction.Numbered,
-            "Quote" to JournalToolbarAction.Quote
-        ).forEach { (label, action) ->
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.surface)
-                    .border(
-                        width = 1.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
-                        shape = RoundedCornerShape(8.dp)
-                    )
-                    .clickable { onAction(action) }
-            ) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                )
-            }
-        }
-    }
-}
+
 
 internal fun insertJournalSnippet(content: String, snippet: String): String {
     if (snippet.isEmpty()) return content

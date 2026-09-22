@@ -28,7 +28,7 @@ class TaskTagEditorViewModelTest {
     private lateinit var viewModel: TagViewModel
 
     private val existingTag = TagItem(
-        id = 42L,
+        id = "42",
         name = "Work",
         color = "#7C3AED"
     )
@@ -68,7 +68,7 @@ class TaskTagEditorViewModelTest {
         val editor = viewModel.uiState.value.editor
         assertNotNull(editor)
         assertEquals(EditorMode.Edit, editor.mode)
-        assertEquals(42L, editor.tagId)
+        assertEquals("42", editor.tagId)
         assertEquals("Work", editor.name)
         assertEquals("#7C3AED", editor.color)
     }
@@ -101,7 +101,7 @@ class TaskTagEditorViewModelTest {
 
     @Test
     fun saveNewTagPersistsTrimmedInputAndReportsSavedId() = runTest(dispatcher) {
-        var savedId: Long? = null
+        var savedId: String? = null
         viewModel.openNewTag()
         viewModel.updateName("  Personal  ")
         viewModel.updateColor("#059669")
@@ -127,7 +127,7 @@ class TaskTagEditorViewModelTest {
 
         assertEquals(1, repository.updatedTags.size)
         val (updatedId, input) = repository.updatedTags.single()
-        assertEquals(42L, updatedId)
+        assertEquals("42", updatedId)
         assertEquals("Work", input.name)
         assertEquals("#DC2626", input.color)
         assertTrue(repository.addedTags.isEmpty())

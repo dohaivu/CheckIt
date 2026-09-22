@@ -8,11 +8,11 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class DayLinearTimelineTest {
-    private val workTag = TagItem(id = 1L, name = "Work", color = "#000000", sortOrder = 0)
-    private val deepTag = TagItem(id = 2L, name = "Deep", color = "#000000", sortOrder = 1)
+    private val workTag = TagItem(id = "1", name = "Work", color = "#000000", sortOrder = 0)
+    private val deepTag = TagItem(id = "2", name = "Deep", color = "#000000", sortOrder = 1)
 
     private fun item(
-        id: Long,
+        id: String,
         tags: List<TagItem>,
         startTimeMinutes: Int?,
         endTimeMinutes: Int?,
@@ -33,9 +33,9 @@ class DayLinearTimelineTest {
     @Test
     fun tagTimeTotalsSumsMinutesPerTagAcrossItems() {
         val items = listOf(
-            item(1L, listOf(workTag), 60, 120),
-            item(2L, listOf(workTag, deepTag), 120, 180),
-            item(3L, listOf(deepTag), 180, 210)
+            item("1", listOf(workTag), 60, 120),
+            item("2", listOf(workTag, deepTag), 120, 180),
+            item("3", listOf(deepTag), 180, 210)
         )
 
         val totals = items.tagTimeTotals()
@@ -48,9 +48,9 @@ class DayLinearTimelineTest {
     @Test
     fun tagTimeTotalsExcludesItemsWithoutTimeRange() {
         val items = listOf(
-            item(1L, listOf(workTag), 60, 120),
-            item(2L, listOf(workTag), null, null),
-            item(3L, listOf(workTag), 100, 100)
+            item("1", listOf(workTag), 60, 120),
+            item("2", listOf(workTag), null, null),
+            item("3", listOf(workTag), 100, 100)
         )
 
         assertEquals(listOf(60), items.tagTimeTotals().map { it.minutes })
@@ -58,11 +58,11 @@ class DayLinearTimelineTest {
 
     @Test
     fun tagTimeTotalsSortsByMinutesDescending() {
-        val lowTag = TagItem(id = 3L, name = "Low", color = "#000000", sortOrder = 2)
+        val lowTag = TagItem(id = "3", name = "Low", color = "#000000", sortOrder = 2)
         val items = listOf(
-            item(1L, listOf(lowTag), 60, 90),
-            item(2L, listOf(workTag), 60, 150),
-            item(3L, listOf(deepTag), 120, 180)
+            item("1", listOf(lowTag), 60, 90),
+            item("2", listOf(workTag), 60, 150),
+            item("3", listOf(deepTag), 120, 180)
         )
 
         val totals = items.tagTimeTotals()
@@ -73,8 +73,8 @@ class DayLinearTimelineTest {
     @Test
     fun timelineBlocksCarryDoneStatus() {
         val items = listOf(
-            item(1L, listOf(workTag), 6 * 60, 7 * 60, DailyPlanItemStatus.Done),
-            item(2L, listOf(workTag), 8 * 60, 9 * 60, DailyPlanItemStatus.Planned)
+            item("1", listOf(workTag), 6 * 60, 7 * 60, DailyPlanItemStatus.Done),
+            item("2", listOf(workTag), 8 * 60, 9 * 60, DailyPlanItemStatus.Planned)
         )
 
         val blocks = items.toDayTimelineBlocks()

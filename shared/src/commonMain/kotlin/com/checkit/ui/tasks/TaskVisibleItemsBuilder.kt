@@ -240,12 +240,12 @@ private val TaskListEntryDateComparator: Comparator<TaskListEntry> =
         .thenBy { it.typeRank }
         .thenBy { it.id }
 
-private val TaskListEntry.id: Long
+private val TaskListEntry.id: String
     get() = when (this) {
         is TaskListEntry.Task -> item.id
         is TaskListEntry.Note -> item.id
-        is TaskListEntry.SectionHeader -> section?.id ?: -1L
-        is TaskListEntry.PinnedHeader -> -2L
+        is TaskListEntry.SectionHeader -> section?.id ?: ""
+        is TaskListEntry.PinnedHeader -> "__pinned__"
     }
 
 private val TaskListEntry.sortOrder: Int

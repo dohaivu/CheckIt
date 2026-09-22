@@ -181,7 +181,7 @@ class CalendarViewModel(
         }
     }
 
-    fun toggleTagFilter(tagId: Long) {
+    fun toggleTagFilter(tagId: String) {
         _uiState.update { state ->
             val selectedTagIds = if (tagId in state.selectedTagIds) {
                 state.selectedTagIds - tagId

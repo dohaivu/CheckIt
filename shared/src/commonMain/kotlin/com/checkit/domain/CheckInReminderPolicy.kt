@@ -5,7 +5,7 @@ import com.checkit.data.SettingsRepository
 import kotlinx.coroutines.flow.first
 
 data class CheckInReminderPlanItem(
-    val id: Long? = null,
+    val id: String? = null,
     val startTimeMinutes: Int?,
     val endTimeMinutes: Int?,
     val isDone: Boolean = false,

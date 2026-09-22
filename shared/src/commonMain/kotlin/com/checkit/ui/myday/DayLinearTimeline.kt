@@ -293,7 +293,7 @@ internal data class TagTimeAggregate(
 )
 
 internal fun List<DailyPlanItem>.tagTimeTotals(): List<TagTimeAggregate> {
-    val totals = mutableMapOf<Long, TagTimeAggregate>()
+    val totals = mutableMapOf<String, TagTimeAggregate>()
     this.forEach { item ->
         val minutes = item.workMinutes()
         if (minutes <= 0) return@forEach

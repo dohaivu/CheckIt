@@ -262,7 +262,7 @@ class MyDayViewModelTest {
                     date = today,
                     items = listOf(
                         DailyPlanItem(
-                            id = 42L,
+                            id = "42",
                             dateEpochDays = today.toEpochDays().toInt(),
                             title = "Original",
                             note = "Old note",
@@ -306,7 +306,7 @@ class MyDayViewModelTest {
                     date = today,
                     items = listOf(
                         DailyPlanItem(
-                            id = 7L,
+                            id = "7",
                             dateEpochDays = today.toEpochDays().toInt(),
                             title = "Standalone task",
                             source = DailyPlanItemSource.MyDayTask,
@@ -326,7 +326,7 @@ class MyDayViewModelTest {
         assertNotNull(first)
         assertEquals(LeftoverAction.None, first.actionFor(first.summary.plannedItems.single()))
 
-        viewModel.setLeftoverAction(7L, LeftoverAction.Drop)
+        viewModel.setLeftoverAction("7", LeftoverAction.Drop)
         viewModel.confirmDayClose()
         dispatcher.scheduler.advanceUntilIdle()
 
@@ -334,8 +334,8 @@ class MyDayViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
         val reopened = viewModel.uiState.value.dayClose
         assertNotNull(reopened)
-        assertTrue(reopened.summary.plannedItems.none { it.id == 7L })
-        assertEquals(listOf(7L), reopened.summary.alreadyCarriedItems.map { it.id })
+        assertTrue(reopened.summary.plannedItems.none { it.id == "7" })
+        assertEquals(listOf("7"), reopened.summary.alreadyCarriedItems.map { it.id })
         assertEquals(LeftoverAction.Drop, reopened.actionFor(reopened.summary.alreadyCarriedItems.single()))
     }
 
@@ -348,7 +348,7 @@ class MyDayViewModelTest {
                     date = today,
                     items = listOf(
                         DailyPlanItem(
-                            id = 9L,
+                            id = "9",
                             dateEpochDays = today.toEpochDays().toInt(),
                             title = "Real item",
                             source = DailyPlanItemSource.MyDayTask,
@@ -372,7 +372,7 @@ class MyDayViewModelTest {
 
     @Test
     fun openJournalEditorAddModeSavesNewEntry() = runTest(dispatcher) {
-        val tag = TagItem(id = 1L, name = "Work", color = "#FF0000")
+        val tag = TagItem(id = "1", name = "Work", color = "#FF0000")
         repository.addTag(com.checkit.data.TagWriteInput(name = "Work", color = "#FF0000"))
         dispatcher.scheduler.advanceUntilIdle()
 
@@ -425,21 +425,21 @@ class MyDayViewModelTest {
         repository.setJournalEntries(
             listOf(
                 JournalEntry(
-                    id = 1L,
+                    id = "1",
                     dateEpochDays = today.toEpochDays().toInt(),
                     label = "Biking",
                     content = "Ride",
                     createdTimeMinutes = 1
                 ),
                 JournalEntry(
-                    id = 2L,
+                    id = "2",
                     dateEpochDays = today.toEpochDays().toInt(),
                     label = "Cafe",
                     content = "Coffee",
                     createdTimeMinutes = 2
                 ),
                 JournalEntry(
-                    id = 3L,
+                    id = "3",
                     dateEpochDays = today.toEpochDays().toInt() - 1,
                     label = "Old",
                     content = "Yesterday",
@@ -449,7 +449,7 @@ class MyDayViewModelTest {
         )
         dispatcher.scheduler.advanceUntilIdle()
 
-        assertEquals(listOf(1L, 2L), viewModel.uiState.value.journalEntries.map { it.id })
+        assertEquals(listOf("1", "2"), viewModel.uiState.value.journalEntries.map { it.id })
     }
 
     @Test
@@ -458,7 +458,7 @@ class MyDayViewModelTest {
         repository.setJournalEntries(
             listOf(
                 JournalEntry(
-                    id = 5L,
+                    id = "5",
                     dateEpochDays = today.toEpochDays().toInt(),
                     label = "Biking",
                     content = "Ride",
@@ -469,7 +469,7 @@ class MyDayViewModelTest {
         )
         dispatcher.scheduler.advanceUntilIdle()
 
-        viewModel.openJournalEditor(repository.currentJournalEntry(5L)!!)
+        viewModel.openJournalEditor(repository.currentJournalEntry("5")!!)
         val editor = viewModel.uiState.value.journalEditor
         assertNotNull(editor)
         assertEquals("Biking", editor.label)
@@ -480,7 +480,7 @@ class MyDayViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
 
         val (entryId, input) = repository.updatedJournalEntries.single()
-        assertEquals(5L, entryId)
+        assertEquals("5", entryId)
         assertEquals("Ride + sprint", input.content)
         assertEquals(null, viewModel.uiState.value.journalEditor)
     }
@@ -491,7 +491,7 @@ class MyDayViewModelTest {
         repository.setJournalEntries(
             listOf(
                 JournalEntry(
-                    id = 7L,
+                    id = "7",
                     dateEpochDays = today.toEpochDays().toInt(),
                     content = "Doomed",
                     createdTimeMinutes = 1
@@ -500,11 +500,11 @@ class MyDayViewModelTest {
         )
         dispatcher.scheduler.advanceUntilIdle()
 
-        viewModel.openJournalEditor(repository.currentJournalEntry(7L)!!)
-        viewModel.deleteJournalEntry(7L)
+        viewModel.openJournalEditor(repository.currentJournalEntry("7")!!)
+        viewModel.deleteJournalEntry("7")
         dispatcher.scheduler.advanceUntilIdle()
 
-        assertEquals(listOf(7L), repository.deletedJournalEntryIds)
+        assertEquals(listOf("7"), repository.deletedJournalEntryIds)
         assertEquals(null, viewModel.uiState.value.journalEditor)
         assertTrue(viewModel.uiState.value.journalEntries.isEmpty())
     }
@@ -515,7 +515,7 @@ class MyDayViewModelTest {
         startTimeMinutes: Int? = null,
         endTimeMinutes: Int? = null
     ) = DailyPlanItem(
-        id = 42L,
+        id = "42",
         dateEpochDays = 1,
         title = "Original",
         note = "Old note",

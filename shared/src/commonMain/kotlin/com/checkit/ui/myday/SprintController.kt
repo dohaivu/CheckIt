@@ -40,7 +40,7 @@ internal class SprintController(
         }
     }
 
-    fun startSprint(taskId: Long? = null, dailyPlanItemId: Long? = null, description: String = "", tagIds: List<Long> = emptyList()) {
+    fun startSprint(taskId: String? = null, dailyPlanItemId: String? = null, description: String = "", tagIds: List<String> = emptyList()) {
         dismissQuickSprint()
         if (!deps.sprintManager.startSprint(taskId, dailyPlanItemId, description, tagIds = tagIds)) {
             state.sendEvent(UiEvent.ShowSnackbar("A sprint is already in progress"))
@@ -52,7 +52,7 @@ internal class SprintController(
      * Links to the item when it is still unfinished, otherwise generic.
      * Unknown ids fall back to a generic sprint rather than staying silent.
      */
-    fun startSprintByItemId(itemId: Long? = null) {
+    fun startSprintByItemId(itemId: String? = null) {
         val item = itemId?.let { id -> state.uiState.value.items.firstOrNull { it.id == id } }
         startSprint(
             taskId = item?.taskId,

@@ -580,9 +580,9 @@ private sealed class GlanceAgendaItem {
     abstract val color: Color
     abstract val completed: Boolean
     abstract val overdue: Boolean
-    abstract val dailyPlanItemId: Long?
-    abstract val taskId: Long?
-    abstract val noteId: Long?
+    abstract val dailyPlanItemId: String?
+    abstract val taskId: String?
+    abstract val noteId: String?
 
     val timeLabel: String?
         get() = startTimeMinutes?.let { start ->
@@ -624,9 +624,9 @@ private sealed class GlanceAgendaItem {
         override val color: Color = note.cardColor()
         override val completed: Boolean = note.status == TaskStatus.Completed
         override val overdue: Boolean = false
-        override val dailyPlanItemId: Long? = null
-        override val taskId: Long? = null
-        override val noteId: Long = note.id
+        override val dailyPlanItemId: String? = null
+        override val taskId: String? = null
+        override val noteId: String = note.id
     }
 
     data class DailyPlan(
@@ -640,9 +640,9 @@ private sealed class GlanceAgendaItem {
         override val color: Color = item.cardColor()
         override val completed: Boolean = item.status == DailyPlanItemStatus.Done
         override val overdue: Boolean = item.isOverdue(today)
-        override val dailyPlanItemId: Long = item.id
-        override val taskId: Long? = item.taskId
-        override val noteId: Long? = null
+        override val dailyPlanItemId: String = item.id
+        override val taskId: String? = item.taskId
+        override val noteId: String? = null
     }
 }
 

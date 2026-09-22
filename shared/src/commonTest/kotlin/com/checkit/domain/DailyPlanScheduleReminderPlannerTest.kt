@@ -9,15 +9,15 @@ class DailyPlanScheduleReminderPlannerTest {
     fun nextReminderUsesEarliestPlannedTimedItem() {
         val reminder = DailyPlanScheduleReminderPlanner.nextReminder(
             items = listOf(
-                item(id = 1L, title = "Later", startTimeMinutes = 11 * 60),
-                item(id = 2L, title = "Soon", startTimeMinutes = 9 * 60),
-                item(id = 3L, title = "Past", startTimeMinutes = 8 * 60)
+                item(id = "1", title = "Later", startTimeMinutes = 11 * 60),
+                item(id = "2", title = "Soon", startTimeMinutes = 9 * 60),
+                item(id = "3", title = "Past", startTimeMinutes = 8 * 60)
             ),
             earliestTimeMinutes = 8 * 60 + 30
         )
 
         assertEquals(
-            DailyPlanScheduleReminder(itemId = 2L, title = "Soon", startTimeMinutes = 9 * 60),
+            DailyPlanScheduleReminder(itemId = "2", title = "Soon", startTimeMinutes = 9 * 60),
             reminder
         )
     }
@@ -26,15 +26,15 @@ class DailyPlanScheduleReminderPlannerTest {
     fun nextReminderSkipsDoneAndUntimedItems() {
         val reminder = DailyPlanScheduleReminderPlanner.nextReminder(
             items = listOf(
-                item(id = 1L, title = "Done", status = DailyPlanItemStatus.Done, startTimeMinutes = 9 * 60),
-                item(id = 2L, title = "Untimed", startTimeMinutes = null),
-                item(id = 3L, title = "Planned", startTimeMinutes = 10 * 60)
+                item(id = "1", title = "Done", status = DailyPlanItemStatus.Done, startTimeMinutes = 9 * 60),
+                item(id = "2", title = "Untimed", startTimeMinutes = null),
+                item(id = "3", title = "Planned", startTimeMinutes = 10 * 60)
             ),
             earliestTimeMinutes = 9 * 60
         )
 
         assertEquals(
-            DailyPlanScheduleReminder(itemId = 3L, title = "Planned", startTimeMinutes = 10 * 60),
+            DailyPlanScheduleReminder(itemId = "3", title = "Planned", startTimeMinutes = 10 * 60),
             reminder
         )
     }
@@ -43,14 +43,14 @@ class DailyPlanScheduleReminderPlannerTest {
     fun nextReminderSkipsItemsAtEarliestTime() {
         val reminder = DailyPlanScheduleReminderPlanner.nextReminder(
             items = listOf(
-                item(id = 1L, title = "Now", startTimeMinutes = 9 * 60),
-                item(id = 2L, title = "Next", startTimeMinutes = 9 * 60 + 1)
+                item(id = "1", title = "Now", startTimeMinutes = 9 * 60),
+                item(id = "2", title = "Next", startTimeMinutes = 9 * 60 + 1)
             ),
             earliestTimeMinutes = 9 * 60
         )
 
         assertEquals(
-            DailyPlanScheduleReminder(itemId = 2L, title = "Next", startTimeMinutes = 9 * 60 + 1),
+            DailyPlanScheduleReminder(itemId = "2", title = "Next", startTimeMinutes = 9 * 60 + 1),
             reminder
         )
     }
@@ -58,7 +58,7 @@ class DailyPlanScheduleReminderPlannerTest {
     @Test
     fun nextReminderReturnsNullAfterEndOfDay() {
         val reminder = DailyPlanScheduleReminderPlanner.nextReminder(
-            items = listOf(item(id = 1L, title = "Late", startTimeMinutes = 23 * 60 + 59)),
+            items = listOf(item(id = "1", title = "Late", startTimeMinutes = 23 * 60 + 59)),
             earliestTimeMinutes = 24 * 60
         )
 
@@ -66,7 +66,7 @@ class DailyPlanScheduleReminderPlannerTest {
     }
 
     private fun item(
-        id: Long,
+        id: String,
         title: String,
         status: DailyPlanItemStatus = DailyPlanItemStatus.Planned,
         startTimeMinutes: Int?

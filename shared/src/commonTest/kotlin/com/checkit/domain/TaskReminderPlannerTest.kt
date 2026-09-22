@@ -39,14 +39,14 @@ class TaskReminderPlannerTest {
     @Test
     fun selectedOffsetsForTaskInfersPersistedReminderOffsets() {
         val task = TaskItem(
-            id = 1L,
+            id = "1",
             list = null,
             name = "Review",
             doDate = LocalDate(2026, 6, 5),
             startTimeMinutes = 8 * 60 + 30,
             reminders = listOf(
-                TaskReminder(id = 1L, taskId = 1L, remindAtMillis = 1_780_647_600_000L),
-                TaskReminder(id = 2L, taskId = 1L, remindAtMillis = 1_780_644_600_000L)
+                TaskReminder(id = "1", taskId = "1", remindAtMillis = 1_780_647_600_000L),
+                TaskReminder(id = "2", taskId = "1", remindAtMillis = 1_780_644_600_000L)
             ),
             sortOrder = 0,
             createdAtMillis = 0L,

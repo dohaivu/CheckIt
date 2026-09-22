@@ -69,7 +69,7 @@ fun PeriodGoalRow(
             )
             goal.goal?.takeIf { it.isNotBlank() }?.let {
                 Text(
-                    text = it,
+                    text = it.asMarkdownAnnotatedString(),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Medium

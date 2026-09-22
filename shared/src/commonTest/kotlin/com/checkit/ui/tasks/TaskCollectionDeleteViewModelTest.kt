@@ -31,9 +31,9 @@ import kotlin.test.assertNull
 class TaskCollectionDeleteViewModelTest {
     private val dispatcher = StandardTestDispatcher()
 
-    private val inbox = ListItem(id = 1L, title = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
-    private val errands = ListItem(id = 2L, title = "Errands", color = "#059669", icon = "List", sortOrder = 1)
-    private val tag = TagItem(id = 10L, name = "Work", color = "#7C3AED")
+    private val inbox = ListItem(id = "1", title = "Inbox", color = "#2563EB", icon = "Inbox", sortOrder = 0)
+    private val errands = ListItem(id = "2", title = "Errands", color = "#059669", icon = "List", sortOrder = 1)
+    private val tag = TagItem(id = "10", name = "Work", color = "#7C3AED")
 
     @BeforeTest
     fun setUp() {
@@ -50,8 +50,8 @@ class TaskCollectionDeleteViewModelTest {
         val repository = FakeCheckItRepository(
             initialBoard = TaskBoard(
                 lists = listOf(inbox, errands),
-                tasks = listOf(task(id = 20L, list = errands)),
-                notes = listOf(note(id = 30L, list = errands))
+                tasks = listOf(task(id = "20", list = errands)),
+                notes = listOf(note(id = "30", list = errands))
             )
         )
         val viewModel = taskListViewModel(repository)
@@ -74,8 +74,8 @@ class TaskCollectionDeleteViewModelTest {
             initialBoard = TaskBoard(
                 lists = listOf(inbox),
                 tags = listOf(tag),
-                tasks = listOf(task(id = 20L, list = inbox, tags = listOf(tag))),
-                notes = listOf(note(id = 30L, list = inbox, tags = listOf(tag)))
+                tasks = listOf(task(id = "20", list = inbox, tags = listOf(tag))),
+                notes = listOf(note(id = "30", list = inbox, tags = listOf(tag)))
             )
         )
         val viewModel = taskTagViewModel(repository)
@@ -105,7 +105,7 @@ class TaskCollectionDeleteViewModelTest {
         isTagNameTaken = IsTagNameTakenUseCase(repository)
     )
 
-    private fun task(id: Long, list: ListItem, tags: List<TagItem> = emptyList()) = TaskItem(
+    private fun task(id: String, list: ListItem, tags: List<TagItem> = emptyList()) = TaskItem(
         id = id,
         list = list,
         name = "Task $id",
@@ -115,7 +115,7 @@ class TaskCollectionDeleteViewModelTest {
         updatedAtMillis = 0L
     )
 
-    private fun note(id: Long, list: ListItem, tags: List<TagItem> = emptyList()) = NoteItem(
+    private fun note(id: String, list: ListItem, tags: List<TagItem> = emptyList()) = NoteItem(
         id = id,
         list = list,
         content = "Note $id",

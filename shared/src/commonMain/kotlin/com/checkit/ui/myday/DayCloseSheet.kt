@@ -56,8 +56,10 @@ import com.checkit.domain.DayCloseTagMinutes
 import com.checkit.domain.LeftoverAction
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
+import com.checkit.ui.components.MarkdownTextField
 import com.checkit.ui.components.MarkdownVisualTransformation
 import com.checkit.ui.components.RatingBar
+import com.checkit.ui.components.asMarkdownAnnotatedString
 import com.checkit.ui.isOverdue
 import com.checkit.ui.toDurationLabel
 import com.checkit.ui.tasks.views.DailyPlanTimelineCard
@@ -70,7 +72,7 @@ import org.jetbrains.compose.resources.stringResource
 internal fun DayCloseSheet(
     state: DayCloseUiState,
     onDismiss: () -> Unit,
-    onLeftoverAction: (Long, LeftoverAction) -> Unit,
+    onLeftoverAction: (String, LeftoverAction) -> Unit,
     onWinNoteChange: (String) -> Unit,
     onRatingChange: (Float) -> Unit,
     onTomorrowGoalChange: (String) -> Unit,
@@ -215,7 +217,7 @@ private fun TodayGoalReminder(goal: String) {
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                text = goal,
+                text = goal.asMarkdownAnnotatedString(),
                 style = MaterialTheme.typography.bodySmall.copy(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Medium
@@ -263,7 +265,7 @@ private fun ReflectionSection(
             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
         )
 
-        AppOutlinedTextField(
+        MarkdownTextField(
             value = value,
             onValueChange = onValueChange,
             textStyle = MaterialTheme.typography.bodyMedium.copy(
@@ -283,8 +285,7 @@ private fun ReflectionSection(
             placeholder = stringResource(Res.string.day_close_win_note_placeholder),
             minLines = 4,
             maxLines = 6,
-            enabled = enabled,
-            visualTransformation = remember { MarkdownVisualTransformation() }
+            enabled = enabled
         )
     }
 }
@@ -302,7 +303,7 @@ private fun TomorrowGoalSection(
             fontWeight = FontWeight.Black,
             color = MaterialTheme.colorScheme.primary
         )
-        AppOutlinedTextField(
+        MarkdownTextField(
             value = value,
             onValueChange = onValueChange,
             textStyle = MaterialTheme.typography.bodyMedium.copy(
@@ -323,7 +324,6 @@ private fun TomorrowGoalSection(
             minLines = 3,
             maxLines = 6,
             enabled = enabled,
-            visualTransformation = remember { MarkdownVisualTransformation() }
         )
     }
 }

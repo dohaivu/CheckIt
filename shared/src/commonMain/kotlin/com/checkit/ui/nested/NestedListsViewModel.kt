@@ -2,6 +2,9 @@ package com.checkit.ui.nested
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.checkit.data.NestedSyncManager
+import com.checkit.data.NestedSyncState
+import com.checkit.auth.GoogleAccountManager
 import com.checkit.data.SettingsRepository
 import com.checkit.domain.MetricItem
 import com.checkit.domain.MetricRollupPolicy
@@ -58,15 +61,15 @@ import com.checkit.ui.today
 // --- State Hierarchy ---
 
 data class NewItemDraft(
-    val anchorId: Long? = null,
-    val parentId: Long? = null,
+    val anchorId: String? = null,
+    val parentId: String? = null,
     val depth: Int = 0,
     val text: String = ""
 )
 
 data class SelectionState(
     val isActive: Boolean = false,
-    val selectedIds: Set<Long> = emptySet()
+    val selectedIds: Set<String> = emptySet()
 )
 
 data class NestedFilterState(
@@ -74,7 +77,7 @@ data class NestedFilterState(
     val focus: FocusPeriod? = null,
     val query: String = "",
     val hideChecked: Boolean = false,
-    val selectedTagIds: Set<Long> = emptySet()
+    val selectedTagIds: Set<String> = emptySet()
 ) {
     val isActive: Boolean get() = focus != null || query.isNotBlank() || hideChecked || selectedTagIds.isNotEmpty()
 }
@@ -82,21 +85,21 @@ data class NestedFilterState(
 sealed interface NestedEditorOverlay {
     data object None : NestedEditorOverlay
     data class AddingItem(val draft: NewItemDraft) : NestedEditorOverlay
-    data class EditingNote(val itemId: Long, val initialText: String) : NestedEditorOverlay
-    data class ConfirmDelete(val itemIds: List<Long>) : NestedEditorOverlay
+    data class EditingNote(val itemId: String, val initialText: String) : NestedEditorOverlay
+    data class ConfirmDelete(val itemIds: List<String>) : NestedEditorOverlay
 }
 
 sealed interface NestedEditorState {
     data object Loading : NestedEditorState
     data class Error(val message: String) : NestedEditorState
     data class Active(
-        val documentId: Long,
+        val documentId: String,
         val tree: NestedDocumentTree,
-        val zoomPath: List<Long> = emptyList(),
+        val zoomPath: List<String> = emptyList(),
         val selection: SelectionState = SelectionState(),
         val overlay: NestedEditorOverlay = NestedEditorOverlay.None,
-        val selectedItemId: Long? = null,
-        val editingTextItemId: Long? = null,
+        val selectedItemId: String? = null,
+        val editingTextItemId: String? = null,
         val availableTags: List<TagItem> = emptyList(),
         val filters: NestedFilterState = NestedFilterState()
     ) : NestedEditorState {
@@ -111,7 +114,11 @@ data class NestedUiState(
     val documentDeleting: NestedDocument? = null,
     val showNewDocumentDialog: Boolean = false,
     val newDocumentTitle: String = "",
-    val editor: NestedEditorState? = null
+    val editor: NestedEditorState? = null,
+    val syncState: NestedSyncState = NestedSyncState(),
+    /** Null while anonymous: sync stays on this device until Google sign-in. */
+    val accountEmail: String? = null,
+    val isAnonymous: Boolean = true
 )
 
 class NestedListsViewModel(
@@ -136,7 +143,9 @@ class NestedListsViewModel(
     private val toggleCollapsedUseCase: ToggleNestedItemCollapsedUseCase,
     private val moveItemsUseCase: MoveNestedItemsUseCase,
     private val deleteItemsUseCase: DeleteNestedItemsUseCase,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val syncManager: NestedSyncManager,
+    private val accountManager: GoogleAccountManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(NestedUiState())
@@ -151,6 +160,18 @@ class NestedListsViewModel(
 
     init {
         collectDocuments()
+        viewModelScope.launch {
+            syncManager.syncState.collect { syncState ->
+                _uiState.update { it.copy(syncState = syncState) }
+            }
+        }
+        viewModelScope.launch {
+            accountManager.accountState.collect { account ->
+                _uiState.update {
+                    it.copy(accountEmail = account.email, isAnonymous = account.isAnonymous)
+                }
+            }
+        }
         viewModelScope.launch {
             observeTagsUseCase().collect { tags ->
                 latestTags = tags
@@ -176,7 +197,7 @@ class NestedListsViewModel(
         }
     }
 
-    fun openDocument(documentId: Long) {
+    fun openDocument(documentId: String) {
         val currentEditor = _uiState.value.editor
         if (currentEditor is NestedEditorState.Active && currentEditor.documentId == documentId) return
         
@@ -216,6 +237,27 @@ class NestedListsViewModel(
         }
     }
 
+    /** Manual Firestore sync of the open document (sync button entry point). */
+    fun syncOpenDocument() {
+        val documentId = (_uiState.value.editor as? NestedEditorState.Active)?.documentId ?: return
+        viewModelScope.launch {
+            runCatching { syncManager.syncDocument(documentId) }
+                .onFailure { error ->
+                    _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Sync failed"))
+                }
+        }
+    }
+
+    /** Manual Firestore sync of the document list (drawer entry point). */
+    fun syncDocuments() {
+        viewModelScope.launch {
+            runCatching { syncManager.syncDocuments() }
+                .onFailure { error ->
+                    _events.tryEmit(UiEvent.ShowSnackbar(error.message ?: "Sync failed"))
+                }
+        }
+    }
+
     // --- Document Management ---
 
     fun startNewDocument() {
@@ -251,7 +293,7 @@ class NestedListsViewModel(
         _uiState.update { it.copy(documentDeleting = null) }
     }
 
-    fun confirmDeleteDocument(documentId: Long) {
+    fun confirmDeleteDocument(documentId: String) {
         viewModelScope.launch {
             deleteDocumentUseCase(documentId)
             _uiState.update { 
@@ -279,7 +321,7 @@ class NestedListsViewModel(
         updateActiveEditor { it.copy(zoomPath = it.zoomPath.dropLast(1)) }
     }
 
-    fun zoomToItem(itemId: Long) {
+    fun zoomToItem(itemId: String) {
         updateActiveEditor { current ->
             val chain = ancestorChain(current.tree, itemId)
             if (chain.isNotEmpty()) current.copy(zoomPath = chain) else current
@@ -306,7 +348,7 @@ class NestedListsViewModel(
         updateActiveEditor { it.copy(filters = it.filters.copy(hideChecked = !it.filters.hideChecked)) }
     }
 
-    fun updateFilterTags(tagId: Long) {
+    fun updateFilterTags(tagId: String) {
         updateActiveEditor { current ->
             val selected = current.filters.selectedTagIds
             val next = if (tagId in selected) selected - tagId else selected + tagId
@@ -341,7 +383,7 @@ class NestedListsViewModel(
 
     // --- Item Editing ---
 
-    fun startAddChild(parentId: Long) {
+    fun startAddChild(parentId: String) {
         updateActiveEditor { current ->
             val parent = current.tree.nodeById[parentId] ?: return@updateActiveEditor current
             var anchor = parent
@@ -366,7 +408,7 @@ class NestedListsViewModel(
         }
     }
 
-    fun startAddSibling(siblingId: Long) {
+    fun startAddSibling(siblingId: String) {
         updateActiveEditor { current ->
             val item = current.tree.itemById[siblingId] ?: return@updateActiveEditor current
             current.copy(
@@ -435,11 +477,11 @@ class NestedListsViewModel(
         }
     }
 
-    fun startEditText(itemId: Long) {
+    fun startEditText(itemId: String) {
         updateActiveEditor { it.copy(selectedItemId = itemId, editingTextItemId = itemId) }
     }
 
-    fun selectItem(itemId: Long) {
+    fun selectItem(itemId: String) {
         updateActiveEditor { current ->
             current.copy(
                 selectedItemId = if (current.selectedItemId == itemId) null else itemId,
@@ -452,7 +494,7 @@ class NestedListsViewModel(
         updateActiveEditor { it.copy(editingTextItemId = null) }
     }
 
-    fun saveItemText(itemId: Long, text: String) {
+    fun saveItemText(itemId: String, text: String) {
         updateActiveEditor { it.copy(editingTextItemId = null) }
         if (text.isBlank()) return
         viewModelScope.launch {
@@ -460,7 +502,7 @@ class NestedListsViewModel(
         }
     }
 
-    fun startEditNote(itemId: Long) {
+    fun startEditNote(itemId: String) {
         updateActiveEditor { current ->
             val item = current.tree.itemById[itemId] ?: return@updateActiveEditor current
             current.copy(overlay = NestedEditorOverlay.EditingNote(itemId, item.note.orEmpty()))
@@ -469,7 +511,7 @@ class NestedListsViewModel(
 
     fun stopEditNote() = updateActiveEditor { it.copy(overlay = NestedEditorOverlay.None) }
 
-    fun saveItemNote(itemId: Long, note: String?) {
+    fun saveItemNote(itemId: String, note: String?) {
         stopEditNote()
         viewModelScope.launch {
             updateItemNoteUseCase(itemId, note?.take(2_000))
@@ -478,59 +520,59 @@ class NestedListsViewModel(
 
     // --- Formatting & Metadata ---
 
-    fun updateItemFormatting(itemId: Long, style: NestedTextStyle, text: NestedColorToken, bg: NestedColorToken) {
+    fun updateItemFormatting(itemId: String, style: NestedTextStyle, text: NestedColorToken, bg: NestedColorToken) {
         viewModelScope.launch { updateItemFormattingUseCase(itemId, style, text, bg) }
     }
 
-    fun updateItemDateRange(itemId: Long, start: LocalDate?, end: LocalDate?) {
+    fun updateItemDateRange(itemId: String, start: LocalDate?, end: LocalDate?) {
         viewModelScope.launch { updateItemDateRangeUseCase(itemId, start, end) }
     }
 
-    fun updateItemPriority(itemId: Long, priority: TaskPriority) {
+    fun updateItemPriority(itemId: String, priority: TaskPriority) {
         viewModelScope.launch { updateItemPriorityUseCase(itemId, priority) }
     }
 
-    fun updateItemTags(itemId: Long, tagIds: List<Long>) {
+    fun updateItemTags(itemId: String, tagIds: List<String>) {
         viewModelScope.launch { updateItemTagsUseCase(itemId, tagIds) }
     }
 
-    fun updateItemMetricSettings(itemId: Long, min: Int, policy: MetricRollupPolicy, show: Boolean) {
+    fun updateItemMetricSettings(itemId: String, min: Int, policy: MetricRollupPolicy, show: Boolean) {
         viewModelScope.launch { updateItemMetricSettingsUseCase(itemId, min, policy, show) }
     }
 
-    fun updateItemProgress(itemId: Long, progressPercent: Int?) {
+    fun updateItemProgress(itemId: String, progressPercent: Int?) {
         viewModelScope.launch { updateItemProgressUseCase(itemId, progressPercent) }
     }
 
-    fun replaceManualMetrics(itemId: Long, metrics: List<MetricItem>) {
+    fun replaceManualMetrics(itemId: String, metrics: List<MetricItem>) {
         viewModelScope.launch { replaceNestedManualMetricsUseCase(itemId, metrics) }
     }
 
     // --- Checkbox & Structure ---
 
-    fun toggleCheckboxEnabled(itemId: Long) {
+    fun toggleCheckboxEnabled(itemId: String) {
         val item = getActiveEditor()?.tree?.itemById?.get(itemId) ?: return
         viewModelScope.launch { setCheckboxEnabledUseCase(itemId, !item.checkboxEnabled) }
     }
 
-    fun toggleChecked(itemId: Long) {
+    fun toggleChecked(itemId: String) {
         val item = getActiveEditor()?.tree?.itemById?.get(itemId) ?: return
         if (!item.checkboxEnabled) return
         viewModelScope.launch { setItemsCheckedUseCase(listOf(itemId), !item.checked) }
     }
 
-    fun setChecked(itemId: Long, checked: Boolean) {
+    fun setChecked(itemId: String, checked: Boolean) {
         viewModelScope.launch { setItemsCheckedUseCase(listOf(itemId), checked) }
     }
 
-    fun toggleCollapsed(itemId: Long) {
+    fun toggleCollapsed(itemId: String) {
         viewModelScope.launch { toggleCollapsedUseCase(itemId) }
     }
 
-    fun indent(itemId: Long) = applyMove { items -> moveItemsUseCase.indent(items, itemId) }
-    fun outdent(itemId: Long) = applyMove { items -> moveItemsUseCase.outdent(items, itemId) }
-    fun moveUp(itemId: Long) = applyMove { items -> moveItemsUseCase.moveUp(items, itemId) }
-    fun moveDown(itemId: Long) = applyMove { items -> moveItemsUseCase.moveDown(items, itemId) }
+    fun indent(itemId: String) = applyMove { items -> moveItemsUseCase.indent(items, itemId) }
+    fun outdent(itemId: String) = applyMove { items -> moveItemsUseCase.outdent(items, itemId) }
+    fun moveUp(itemId: String) = applyMove { items -> moveItemsUseCase.moveUp(items, itemId) }
+    fun moveDown(itemId: String) = applyMove { items -> moveItemsUseCase.moveDown(items, itemId) }
 
     fun canStartDrag(): Boolean {
         val active = getActiveEditor() ?: return false
@@ -540,7 +582,7 @@ class NestedListsViewModel(
             active.editingTextItemId == null
     }
 
-    fun moveItemTo(itemId: Long, targetParentId: Long?, targetIndex: Int) =
+    fun moveItemTo(itemId: String, targetParentId: String?, targetIndex: Int) =
         applyMove { items -> moveItemsUseCase.moveToPosition(items, itemId, targetParentId, targetIndex) }
 
     private fun applyMove(planner: (List<NestedListItem>) -> List<com.checkit.domain.NestedItemMove>) {
@@ -562,7 +604,7 @@ class NestedListsViewModel(
         updateActiveEditor { it.copy(selection = SelectionState()) }
     }
 
-    fun toggleSelect(itemId: Long) {
+    fun toggleSelect(itemId: String) {
         updateActiveEditor { current ->
             val selected = current.selection.selectedIds
             val next = if (itemId in selected) selected - itemId else selected + itemId
@@ -616,8 +658,8 @@ class NestedListsViewModel(
         }
     }
 
-    private fun ancestorChain(tree: NestedDocumentTree, id: Long): List<Long> {
-        val chain = ArrayDeque<Long>()
+    private fun ancestorChain(tree: NestedDocumentTree, id: String): List<String> {
+        val chain = ArrayDeque<String>()
         var current = tree.itemById[id] ?: return emptyList()
         while (true) {
             chain.addFirst(current.id)
@@ -627,7 +669,7 @@ class NestedListsViewModel(
         return chain.toList()
     }
 
-    private fun NestedEditorState.Active.ancestorDepth(id: Long): Int {
+    private fun NestedEditorState.Active.ancestorDepth(id: String): Int {
         var depth = 0
         var currentId = tree.itemById[id]?.parentId
         while (currentId != null) {

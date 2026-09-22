@@ -75,7 +75,7 @@ internal fun ListSectionScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     
-    val rowBounds = remember { mutableStateMapOf<Long, SectionRowBounds>() }
+    val rowBounds = remember { mutableStateMapOf<String, SectionRowBounds>() }
     val draggedIndex = remember { mutableIntStateOf(-1) }
     val draggedCenterY = remember { mutableFloatStateOf(0f) }
 

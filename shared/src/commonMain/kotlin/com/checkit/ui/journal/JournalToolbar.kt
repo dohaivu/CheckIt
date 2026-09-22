@@ -2,6 +2,8 @@ package com.checkit.ui.journal
 
 enum class JournalToolbarAction {
     Bold,
+    Italic,
+    Strikethrough,
     Heading,
     Bullet,
     Numbered,
@@ -31,21 +33,33 @@ fun applyJournalToolbarAction(
     val selEnd = maxOf(start, end)
 
     return when (action) {
-        JournalToolbarAction.Bold -> {
-            if (selStart == selEnd) {
-                val insert = "**text**"
-                val newText = safeText.substring(0, selStart) + insert + safeText.substring(selStart)
-                JournalCursorEdit(newText, selStart + 2, selStart + 6)
-            } else {
-                val selected = safeText.substring(selStart, selEnd)
-                val newText = safeText.substring(0, selStart) + "**" + selected + "**" + safeText.substring(selEnd)
-                JournalCursorEdit(newText, selStart + 2, selEnd + 2)
-            }
-        }
+        JournalToolbarAction.Bold -> wrapSelection(safeText, selStart, selEnd, "**", "**", "text")
+        JournalToolbarAction.Italic -> wrapSelection(safeText, selStart, selEnd, "*", "*", "text")
+        JournalToolbarAction.Strikethrough -> wrapSelection(safeText, selStart, selEnd, "~~", "~~", "text")
         JournalToolbarAction.Heading -> toggleLinePrefix(safeText, selStart, selEnd, "## ")
         JournalToolbarAction.Bullet -> toggleLinePrefix(safeText, selStart, selEnd, "- ")
         JournalToolbarAction.Quote -> toggleLinePrefix(safeText, selStart, selEnd, "> ")
         JournalToolbarAction.Numbered -> toggleNumberedPrefix(safeText, selStart, selEnd)
+    }
+}
+
+private fun wrapSelection(
+    safeText: String,
+    selStart: Int,
+    selEnd: Int,
+    prefix: String,
+    suffix: String,
+    defaultPlaceholder: String
+): JournalCursorEdit {
+    val pLen = prefix.length
+    return if (selStart == selEnd) {
+        val insert = "$prefix$defaultPlaceholder$suffix"
+        val newText = safeText.substring(0, selStart) + insert + safeText.substring(selStart)
+        JournalCursorEdit(newText, selStart + pLen, selStart + pLen + defaultPlaceholder.length)
+    } else {
+        val selected = safeText.substring(selStart, selEnd)
+        val newText = safeText.substring(0, selStart) + prefix + selected + suffix + safeText.substring(selEnd)
+        JournalCursorEdit(newText, selStart + pLen, selEnd + pLen)
     }
 }
 

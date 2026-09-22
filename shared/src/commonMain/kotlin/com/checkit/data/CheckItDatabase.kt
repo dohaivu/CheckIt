@@ -16,31 +16,52 @@ import com.checkit.domain.TaskType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.serialization.Serializable
+import kotlin.time.Clock
 
 @Serializable
-@Entity(tableName = "lists")
+@Entity(
+    tableName = "lists",
+    indices = [Index("dirty"), Index("updatedAtMillis")]
+)
 data class ListEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0L,
+    @PrimaryKey
+    val id: String,
     val title: String,
     val icon: String,
     val color: String,
     val sortOrder: Int,
-    val isArchived: Boolean = false
+    val isArchived: Boolean = false,
+    val createdAtMillis: Long,
+    val updatedAtMillis: Long,
+    /** True when the row changed locally since the last successful upload. */
+    val dirty: Boolean = true,
+    /** Tombstone: true once the list is deleted locally; purged after upload. */
+    val deleted: Boolean = false
 )
 
 @Serializable
 @Entity(
     tableName = "tags",
-    indices = [Index(value = ["name"], unique = true)]
+    indices = [
+        Index(value = ["name"], unique = true),
+        Index("dirty"),
+        Index("updatedAtMillis")
+    ]
 )
 data class TagEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0L,
+    @PrimaryKey
+    val id: String,
     val name: String,
     val color: String,
     val sortOrder: Int = 0,
-    val lastUsedAtMillis: Long = 0L
+    /** Device-local usage recency; never synced (would fight last-write-wins). */
+    val lastUsedAtMillis: Long = 0L,
+    val createdAtMillis: Long,
+    val updatedAtMillis: Long,
+    /** True when the row changed locally since the last successful upload. */
+    val dirty: Boolean = true,
+    /** Tombstone: true once the tag is deleted locally; purged after upload. */
+    val deleted: Boolean = false
 )
 
 @Serializable
@@ -49,12 +70,14 @@ data class TagEntity(
     indices = [
         Index("status"),
         Index("priority"),
-        Index("doDateEpochDays")
+        Index("doDateEpochDays"),
+        Index("dirty"),
+        Index("updatedAtMillis")
     ]
 )
 data class TaskEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0L,
+    @PrimaryKey
+    val id: String,
     val name: String,
     val description: String = "",
     val status: String,
@@ -68,9 +91,17 @@ data class TaskEntity(
     val label: String? = null,
     val createdAtMillis: Long,
     val updatedAtMillis: Long,
-    val trashedAtMillis: Long? = null
+    val trashedAtMillis: Long? = null,
+    /** True when the row changed locally since the last successful upload. */
+    val dirty: Boolean = true,
+    /** Tombstone: true once the task is deleted locally; purged after upload. */
+    val deleted: Boolean = false
 )
 
+/**
+ * Sub-tasks are embedded in the parent task's sync document, so they carry
+ * no sync columns of their own; the parent's dirty/deleted flags cover them.
+ */
 @Serializable
 @Entity(
     tableName = "sub_tasks",
@@ -85,9 +116,9 @@ data class TaskEntity(
     indices = [Index("taskId")]
 )
 data class SubTaskEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0L,
-    val taskId: Long,
+    @PrimaryKey
+    val id: String,
+    val taskId: String,
     val name: String,
     val isCompleted: Boolean = false,
     val sortOrder: Int
@@ -96,20 +127,25 @@ data class SubTaskEntity(
 @Serializable
 @Entity(
     tableName = "notes",
-    indices = []
+    indices = [Index("dirty"), Index("editedAtMillis")]
 )
 data class NoteEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0L,
+    @PrimaryKey
+    val id: String,
     val title: String = "",
     val content: String,
     val status: String = "Open",
     val dateEpochDays: Int? = null,
     val startTimeMinutes: Int? = null,
     val createdAtMillis: Long,
+    /** Last-write-wins clock for sync. */
     val editedAtMillis: Long,
     val label: String? = null,
-    val trashedAtMillis: Long? = null
+    val trashedAtMillis: Long? = null,
+    /** True when the row changed locally since the last successful upload. */
+    val dirty: Boolean = true,
+    /** Tombstone: true once the note is deleted locally; purged after upload. */
+    val deleted: Boolean = false
 )
 
 @Serializable
@@ -129,14 +165,21 @@ data class NoteEntity(
             onDelete = ForeignKey.SET_NULL
         )
     ],
-    indices = [Index("dateEpochDays"), Index("taskId"), Index("status"), Index("nestedListItemId")]
+    indices = [
+        Index("dateEpochDays"),
+        Index("taskId"),
+        Index("status"),
+        Index("nestedListItemId"),
+        Index("dirty"),
+        Index("updatedAtMillis")
+    ]
 )
 data class DailyPlanItemEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0L,
+    @PrimaryKey
+    val id: String,
     val dateEpochDays: Int,
-    val taskId: Long? = null,
-    val nestedListItemId: Long? = null,
+    val taskId: String? = null,
+    val nestedListItemId: String? = null,
     val title: String,
     val note: String? = null,
     val source: String,
@@ -149,19 +192,29 @@ data class DailyPlanItemEntity(
     val addedAtMillis: Long,
     val completedAtMillis: Long? = null,
     /** Id of the source item this was copied from via carry-over, if any. */
-    val carriedFromItemId: Long? = null,
+    val carriedFromItemId: String? = null,
     /** Timestamp (epoch millis) when this item was resolved by a review or carry-over. */
-    val handledAtMillis: Long? = null
+    val handledAtMillis: Long? = null,
+    /** Last-write-wins clock for sync. */
+    val updatedAtMillis: Long,
+    /** True when the row changed locally since the last successful upload. */
+    val dirty: Boolean = true,
+    /** Tombstone: true once the item is deleted locally; purged after upload. */
+    val deleted: Boolean = false
 )
 
 @Serializable
 @Entity(
     tableName = "period_goals",
-    indices = [Index(value = ["periodType", "startEpochDays"], unique = true)]
+    indices = [
+        Index(value = ["periodType", "startEpochDays"], unique = true),
+        Index("dirty"),
+        Index("updatedAtMillis")
+    ]
 )
 data class PeriodGoalEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0L,
+    @PrimaryKey
+    val id: String,
     val periodType: String,
     val startEpochDays: Int,
     val endEpochDays: Int,
@@ -171,6 +224,12 @@ data class PeriodGoalEntity(
     val rating: Float = 0f,
     val completedAtMillis: Long? = null,
     val editedAtMillis: Long? = null,
+    /** Last-write-wins clock for sync; maintained alongside [editedAtMillis]. */
+    val updatedAtMillis: Long,
+    /** True when the row changed locally since the last successful upload. */
+    val dirty: Boolean = true,
+    /** Tombstone: true once the goal is deleted locally; purged after upload. */
+    val deleted: Boolean = false,
     /** Custom metrics stored inline as JSON; always loaded/saved with the goal. */
     val metricsJson: String = "[]"
 )
@@ -209,7 +268,7 @@ data class DailyReflectStatsEntity(
 )
 data class DailyTagRollupEntity(
     val dateEpochDays: Int,
-    val tagId: Long,
+    val tagId: String,
     val doneCount: Int,
     val doneMinutes: Int
 )
@@ -233,7 +292,7 @@ data class HabitDailyRollupEntity(
 /** Slim projection of daily_tag_rollups joined with tag metadata. */
 data class DailyTagRollupWithMeta(
     val dateEpochDays: Int,
-    val tagId: Long,
+    val tagId: String,
     val tagName: String,
     val tagColor: String?,
     val doneCount: Int,
@@ -242,7 +301,7 @@ data class DailyTagRollupWithMeta(
 
 /** Slim projection of a done daily-plan item for highlights (no tags/labels). */
 data class DoneItemSummaryEntity(
-    val id: Long,
+    val id: String,
     val dateEpochDays: Int,
     val title: String,
     val note: String?,
@@ -252,6 +311,7 @@ data class DoneItemSummaryEntity(
     val completedAtMillis: Long?
 )
 
+/** Tag membership syncs embedded in the parent document; no sync columns here. */
 @Serializable
 @Entity(
     tableName = "task_tags",
@@ -273,8 +333,8 @@ data class DoneItemSummaryEntity(
     indices = [Index("taskId"), Index("tagId")]
 )
 data class TaskTagEntity(
-    val taskId: Long,
-    val tagId: Long
+    val taskId: String,
+    val tagId: String
 )
 
 @Serializable
@@ -298,13 +358,13 @@ data class TaskTagEntity(
     indices = [Index("noteId"), Index("tagId")]
 )
 data class NoteTagEntity(
-    val noteId: Long,
-    val tagId: Long
+    val noteId: String,
+    val tagId: String
 )
 
 /** Projection row for per-tag usage counts (tasks, notes, daily plan items, journal entries). */
 data class TagUsageCountEntity(
-    val tagId: Long,
+    val tagId: String,
     val usageCount: Int
 )
 
@@ -329,24 +389,30 @@ data class TagUsageCountEntity(
     indices = [Index("itemId"), Index("tagId")]
 )
 data class DailyPlanItemTagEntity(
-    val itemId: Long,
-    val tagId: Long
+    val itemId: String,
+    val tagId: String
 )
 
 @Serializable
 @Entity(
     tableName = "journal_entries",
-    indices = [Index("dateEpochDays")]
+    indices = [Index("dateEpochDays"), Index("dirty"), Index("updatedAtMillis")]
 )
 data class JournalEntryEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0L,
+    @PrimaryKey
+    val id: String,
     val dateEpochDays: Int,
     val label: String? = null,
     val content: String,
     val moods: String = "",
     val createdTimeMinutes: Int,
-    val attachments: String = ""
+    val attachments: String = "",
+    /** Last-write-wins clock for sync. */
+    val updatedAtMillis: Long,
+    /** True when the row changed locally since the last successful upload. */
+    val dirty: Boolean = true,
+    /** Tombstone: true once the entry is deleted locally; purged after upload. */
+    val deleted: Boolean = false
 )
 
 @Serializable
@@ -370,8 +436,8 @@ data class JournalEntryEntity(
     indices = [Index("entryId"), Index("tagId")]
 )
 data class JournalEntryTagEntity(
-    val entryId: Long,
-    val tagId: Long
+    val entryId: String,
+    val tagId: String
 )
 
 @Serializable
@@ -388,13 +454,16 @@ data class JournalEntryTagEntity(
     indices = [Index("taskId"), Index("remindAtMillis")]
 )
 data class TaskReminderEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0L,
-    val taskId: Long,
+    @PrimaryKey
+    val id: String,
+    val taskId: String,
     val remindAtMillis: Long,
     val label: String = ""
 )
 
+/**
+ * Local-only UI configuration (seeded defaults); never synced.
+ */
 @Serializable
 @Entity(
     tableName = "task_filters",
@@ -409,12 +478,12 @@ data class TaskReminderEntity(
     indices = [Index("tagId")]
 )
 data class TaskFilterEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0L,
+    @PrimaryKey
+    val id: String,
     val name: String,
     val icon: String,
     val color: String,
-    val tagId: Long? = null,
+    val tagId: String? = null,
     val dueDatePreset: String? = null,
     val status: String? = null,
     val priority: String? = null,
@@ -433,15 +502,21 @@ data class TaskFilterEntity(
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("listId")]
+    indices = [Index("listId"), Index("dirty"), Index("updatedAtMillis")]
 )
 data class ListSectionEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0L,
-    val listId: Long,
+    @PrimaryKey
+    val id: String,
+    val listId: String,
     val title: String,
     val color: String,
-    val sortOrder: Int
+    val sortOrder: Int,
+    val createdAtMillis: Long,
+    val updatedAtMillis: Long,
+    /** True when the row changed locally since the last successful upload. */
+    val dirty: Boolean = true,
+    /** Tombstone: true once the section is deleted locally; purged after upload. */
+    val deleted: Boolean = false
 )
 
 @Serializable
@@ -471,11 +546,11 @@ data class ListSectionEntity(
     indices = [Index("taskId"), Index("listId"), Index("sectionId")]
 )
 data class TaskListEntity(
-    val taskId: Long,
-    val listId: Long,
+    val taskId: String,
+    val listId: String,
     val isPinned: Boolean = false,
     val sortOrder: Int = 0,
-    val sectionId: Long? = null
+    val sectionId: String? = null
 )
 
 @Serializable
@@ -505,21 +580,28 @@ data class TaskListEntity(
     indices = [Index("noteId"), Index("listId"), Index("sectionId")]
 )
 data class NoteListEntity(
-    val noteId: Long,
-    val listId: Long,
+    val noteId: String,
+    val listId: String,
     val isPinned: Boolean = false,
     val sortOrder: Int = 0,
-    val sectionId: Long? = null
+    val sectionId: String? = null
 )
 
 @Serializable
-@Entity(tableName = "nested_documents")
+@Entity(
+    tableName = "nested_documents",
+    indices = [Index("dirty"), Index("updatedAtMillis")]
+)
 data class NestedDocumentEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0L,
+    @PrimaryKey
+    val id: String,
     val title: String,
     val createdAtMillis: Long,
-    val updatedAtMillis: Long
+    val updatedAtMillis: Long,
+    /** True when the row changed locally since the last successful upload. */
+    val dirty: Boolean = true,
+    /** Tombstone: true once the document is deleted locally; purged after upload. */
+    val deleted: Boolean = false
 )
 
 @Serializable
@@ -539,13 +621,13 @@ data class NestedDocumentEntity(
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("documentId"), Index("parentId"), Index("startDateEpochDays"), Index("endDateEpochDays"), Index("priority")]
+    indices = [Index("documentId"), Index("parentId"), Index("startDateEpochDays"), Index("endDateEpochDays"), Index("priority"), Index("dirty"), Index("updatedAtMillis")]
 )
 data class NestedListItemEntity(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0L,
-    val documentId: Long,
-    val parentId: Long? = null,
+    @PrimaryKey
+    val id: String,
+    val documentId: String,
+    val parentId: String? = null,
     val position: Int,
     val text: String,
     val note: String? = null,
@@ -565,6 +647,10 @@ data class NestedListItemEntity(
     val progressPercent: Int? = null,
     val createdAtMillis: Long,
     val updatedAtMillis: Long,
+    /** True when the row changed locally since the last successful upload. */
+    val dirty: Boolean = true,
+    /** Tombstone: true once the item is deleted locally; purged after upload. */
+    val deleted: Boolean = false,
     /** Custom metrics stored inline as JSON; always loaded/saved with the item. */
     val manualMetricsJson: String = "[]"
 )
@@ -590,8 +676,8 @@ data class NestedListItemEntity(
     indices = [Index("itemId"), Index("tagId")]
 )
 data class NestedItemTagEntity(
-    val itemId: Long,
-    val tagId: Long
+    val itemId: String,
+    val tagId: String
 )
 
 @Database(
@@ -621,7 +707,7 @@ data class NestedItemTagEntity(
         HabitDailyRollupEntity::class,
         QuickNoteEntity::class
     ],
-    version = 17,
+    version = 1,
     exportSchema = false
 )
 @ConstructedBy(CheckItDatabaseConstructor::class)
@@ -635,65 +721,13 @@ expect object CheckItDatabaseConstructor : RoomDatabaseConstructor<CheckItDataba
     override fun initialize(): CheckItDatabase
 }
 
-val MIGRATION_12_13 = object : Migration(12, 13) {
-    override suspend fun migrate(connection: SQLiteConnection) {
-        connection.execSQL("ALTER TABLE nested_list_items ADD COLUMN progressPercent INTEGER")
-    }
-}
-
-val MIGRATION_13_14 = object : Migration(13, 14) {
-    override suspend fun migrate(connection: SQLiteConnection) {
-        connection.execSQL(
-            """
-            CREATE TABLE IF NOT EXISTS `quick_notes` (
-                `id` TEXT NOT NULL,
-                `content` TEXT NOT NULL,
-                `status` TEXT NOT NULL,
-                `createdAt` INTEGER NOT NULL,
-                `updatedAt` INTEGER NOT NULL,
-                `sortOrder` REAL NOT NULL,
-                `remindAt` INTEGER,
-                `deleteAt` INTEGER,
-                `deleted` INTEGER NOT NULL,
-                PRIMARY KEY(`id`)
-            )
-            """.trimIndent()
-        )
-        connection.execSQL("CREATE INDEX IF NOT EXISTS `index_quick_notes_status` ON `quick_notes` (`status`)")
-        connection.execSQL("CREATE INDEX IF NOT EXISTS `index_quick_notes_updatedAt` ON `quick_notes` (`updatedAt`)")
-        connection.execSQL("CREATE INDEX IF NOT EXISTS `index_quick_notes_status_sortOrder` ON `quick_notes` (`status`, `sortOrder`)")
-    }
-}
-
-val MIGRATION_14_15 = object : Migration(14, 15) {
-    override suspend fun migrate(connection: SQLiteConnection) {
-        // Existing rows predate dirty tracking: upload them on next sync.
-        connection.execSQL("ALTER TABLE quick_notes ADD COLUMN dirty INTEGER NOT NULL DEFAULT 1")
-        connection.execSQL("CREATE INDEX IF NOT EXISTS `index_quick_notes_dirty` ON `quick_notes` (`dirty`)")
-    }
-}
-
-val MIGRATION_15_16 = object : Migration(15, 16) {
-    override suspend fun migrate(connection: SQLiteConnection) {
-        connection.execSQL("ALTER TABLE quick_notes ADD COLUMN type TEXT NOT NULL DEFAULT 'TEXT'")
-        connection.execSQL("ALTER TABLE quick_notes ADD COLUMN attachmentLocalPath TEXT")
-        connection.execSQL("ALTER TABLE quick_notes ADD COLUMN attachmentUrl TEXT")
-    }
-}
-
-val MIGRATION_16_17 = object : Migration(16, 17) {
-    override suspend fun migrate(connection: SQLiteConnection) {
-        connection.execSQL("ALTER TABLE quick_notes ADD COLUMN priority TEXT NOT NULL DEFAULT 'None'")
-    }
-}
-
 fun buildCheckItDatabase(
     builder: RoomDatabase.Builder<CheckItDatabase>
 ): CheckItDatabase {
     return builder
         .fallbackToDestructiveMigration(false)
         .fallbackToDestructiveMigrationOnDowngrade(false)
-        .addMigrations(MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17)
+        .addMigrations()
         .setQueryCoroutineContext(Dispatchers.IO)
         .setDriver(BundledSQLiteDriver())
         .addCallback(object : RoomDatabase.Callback() {
@@ -714,25 +748,27 @@ private fun seedDefaultFilters(connection: SQLiteConnection) {
         val includeTrashed = if (filter.includeTrashed) 1 else 0
         connection.execSQL(
             """
-            INSERT INTO task_filters(name, icon, color, tagId, dueDatePreset, status, priority, includeTrashed, sortOrder)
-            SELECT '${filter.name}', '${filter.icon}', '${filter.color}', NULL, $dueDatePreset, $status, $priority, $includeTrashed, ${filter.sortOrder}
-            WHERE NOT EXISTS(SELECT 1 FROM task_filters WHERE name = '${filter.name}')
+            INSERT INTO task_filters(id, name, icon, color, tagId, dueDatePreset, status, priority, includeTrashed, sortOrder)
+            SELECT '${filter.id}', '${filter.name}', '${filter.icon}', '${filter.color}', NULL, $dueDatePreset, $status, $priority, $includeTrashed, ${filter.sortOrder}
+            WHERE NOT EXISTS(SELECT 1 FROM task_filters WHERE id = '${filter.id}')
             """.trimIndent()
         )
     }
 }
 
 private fun seedDefaultData(connection: SQLiteConnection) {
+    val now = Clock.System.now().toEpochMilliseconds()
     connection.execSQL(
         """
-        INSERT INTO lists(title, icon, color, sortOrder, isArchived)
-        SELECT 'Inbox', 'Inbox', '#2563EB', 0, 0
-        WHERE NOT EXISTS(SELECT 1 FROM lists WHERE title = 'Inbox')
+        INSERT INTO lists(id, title, icon, color, sortOrder, isArchived, createdAtMillis, updatedAtMillis, dirty, deleted)
+        SELECT 'inbox', 'Inbox', 'Inbox', '#2563EB', 0, 0, $now, $now, 0, 0
+        WHERE NOT EXISTS(SELECT 1 FROM lists WHERE id = 'inbox')
         """.trimIndent()
     )
 }
 
 private data class TaskFilterSeed(
+    val id: String,
     val name: String,
     val icon: String,
     val color: String,
@@ -744,8 +780,9 @@ private data class TaskFilterSeed(
 )
 
 private val DefaultTaskFilters = listOf(
-    TaskFilterSeed(name = "All", icon = "AllInclusive", color = "#475569", sortOrder = 0),
+    TaskFilterSeed(id = "all", name = "All", icon = "AllInclusive", color = "#475569", sortOrder = 0),
     TaskFilterSeed(
+        id = "today",
         name = "Today",
         icon = "Today",
         color = "#2563EB",
@@ -753,6 +790,7 @@ private val DefaultTaskFilters = listOf(
         sortOrder = 1
     ),
     TaskFilterSeed(
+        id = "upcoming",
         name = "Upcoming",
         icon = "Schedule",
         color = "#0891B2",
@@ -760,6 +798,7 @@ private val DefaultTaskFilters = listOf(
         sortOrder = 2
     ),
     TaskFilterSeed(
+        id = "overdue",
         name = "Overdue",
         icon = "Flag",
         color = "#EA580C",
@@ -767,6 +806,7 @@ private val DefaultTaskFilters = listOf(
         sortOrder = 3
     ),
     TaskFilterSeed(
+        id = "no-date",
         name = "No date",
         icon = "Schedule",
         color = "#7C3AED",
@@ -774,6 +814,7 @@ private val DefaultTaskFilters = listOf(
         sortOrder = 4
     ),
     TaskFilterSeed(
+        id = "completed",
         name = "Completed",
         icon = "TaskAlt",
         color = "#059669",
@@ -781,11 +822,12 @@ private val DefaultTaskFilters = listOf(
         sortOrder = 5
     ),
     TaskFilterSeed(
+        id = "high-priority",
         name = "High priority",
         icon = "PriorityHigh",
         color = "#DC2626",
         priority = "High",
         sortOrder = 6
     ),
-    TaskFilterSeed(name = "Trashed", icon = "Delete", color = "#6B7280", includeTrashed = true, sortOrder = 7)
+    TaskFilterSeed(id = "trashed", name = "Trashed", icon = "Delete", color = "#6B7280", includeTrashed = true, sortOrder = 7)
 )

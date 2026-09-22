@@ -10,7 +10,7 @@ import kotlin.test.assertTrue
 class FloatingQuickAddBarTest {
 
     private fun item(
-        id: Long,
+        id: String,
         startTimeMinutes: Int?,
         endTimeMinutes: Int? = null
     ) = DailyPlanItem(
@@ -33,44 +33,44 @@ class FloatingQuickAddBarTest {
 
     @Test
     fun itemOverlappingNowIsNearby() {
-        val items = listOf(item(1L, startTimeMinutes = 590, endTimeMinutes = 650))
+        val items = listOf(item("1", startTimeMinutes = 590, endTimeMinutes = 650))
         assertTrue(hasDailyPlanItemNearby(items, nowMinutes = 600))
     }
 
     @Test
     fun itemStartingWithinWindowIsNearby() {
         // Starts 10 minutes from now, within the default ±15 window.
-        val items = listOf(item(1L, startTimeMinutes = 620))
+        val items = listOf(item("1", startTimeMinutes = 620))
         assertTrue(hasDailyPlanItemNearby(items, nowMinutes = 610))
     }
 
     @Test
     fun itemEndingJustOutsideWindowIsNotNearby() {
-        val items = listOf(item(1L, startTimeMinutes = 500, endTimeMinutes = 560))
+        val items = listOf(item("1", startTimeMinutes = 500, endTimeMinutes = 560))
         assertFalse(hasDailyPlanItemNearby(items, nowMinutes = 600))
     }
 
     @Test
     fun itemStartingJustOutsideWindowIsNotNearby() {
-        val items = listOf(item(1L, startTimeMinutes = 650, endTimeMinutes = 700))
+        val items = listOf(item("1", startTimeMinutes = 650, endTimeMinutes = 700))
         assertFalse(hasDailyPlanItemNearby(items, nowMinutes = 600))
     }
 
     @Test
     fun itemWithoutStartTimeNeverCountsAsNearby() {
-        val items = listOf(item(1L, startTimeMinutes = null))
+        val items = listOf(item("1", startTimeMinutes = null))
         assertFalse(hasDailyPlanItemNearby(items, nowMinutes = 600))
     }
 
     @Test
     fun itemWithoutEndTimeTreatedAsInstantAtStart() {
-        assertTrue(hasDailyPlanItemNearby(listOf(item(1L, startTimeMinutes = 610)), nowMinutes = 600))
-        assertFalse(hasDailyPlanItemNearby(listOf(item(2L, startTimeMinutes = 700)), nowMinutes = 600))
+        assertTrue(hasDailyPlanItemNearby(listOf(item("1", startTimeMinutes = 610)), nowMinutes = 600))
+        assertFalse(hasDailyPlanItemNearby(listOf(item("2", startTimeMinutes = 700)), nowMinutes = 600))
     }
 
     @Test
     fun customWindowRespected() {
-        val items = listOf(item(1L, startTimeMinutes = 700, endTimeMinutes = 750))
+        val items = listOf(item("1", startTimeMinutes = 700, endTimeMinutes = 750))
         assertFalse(hasDailyPlanItemNearby(items, nowMinutes = 600, windowMinutes = 30))
         assertTrue(hasDailyPlanItemNearby(items, nowMinutes = 600, windowMinutes = 120))
     }

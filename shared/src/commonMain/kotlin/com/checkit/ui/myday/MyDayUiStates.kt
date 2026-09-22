@@ -174,7 +174,7 @@ enum class PeriodBannerType {
 
 data class DayCloseUiState(
     val summary: DayCloseSummary,
-    val leftoverActions: Map<Long, LeftoverAction> = emptyMap(),
+    val leftoverActions: Map<String, LeftoverAction> = emptyMap(),
     val winNote: String = "",
     val tomorrowGoal: String = "",
     /** Today's planned goal, shown for context while reflecting. */
@@ -194,7 +194,7 @@ enum class MyDayView {
 
 /** Bottom-sheet editor state for a single journal entry. */
 data class JournalEntryEditorState(
-    val entryId: Long? = null,
+    val entryId: String? = null,
     val date: LocalDate = today(),
     val label: String = "",
     val content: String = "",
@@ -202,7 +202,7 @@ data class JournalEntryEditorState(
     val promptId: String? = null,
     val isDraftResume: Boolean = false,
     val moods: List<String> = emptyList(),
-    val selectedTagIds: Set<Long> = emptySet()
+    val selectedTagIds: Set<String> = emptySet()
 ) {
     val isEditMode: Boolean get() = entryId != null
     val isDirty: Boolean get() =
@@ -212,9 +212,9 @@ data class JournalEntryEditorState(
 
 data class DailyPlanItemEditorState(
     val mode: EditorMode = EditorMode.Add,
-    val itemId: Long? = null,
-    val taskId: Long? = null,
-    val nestedListItemId: Long? = null,
+    val itemId: String? = null,
+    val taskId: String? = null,
+    val nestedListItemId: String? = null,
     val date: LocalDate = today(),
     val source: DailyPlanItemSource = DailyPlanItemSource.MyDayTask,
     val title: String = "",
@@ -223,7 +223,7 @@ data class DailyPlanItemEditorState(
     val label: String? = null,
     val startTimeMinutes: Int? = null,
     val endTimeMinutes: Int? = null,
-    val selectedTagIds: Set<Long> = emptySet(),
+    val selectedTagIds: Set<String> = emptySet(),
     val error: String? = null
 ) {
     val isAddMode: Boolean get() = mode == EditorMode.Add

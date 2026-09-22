@@ -55,7 +55,7 @@ class ListViewModelTest {
     @Test
     fun openEditListPrefillsExistingValues() = runTest(dispatcher) {
         val list = ListItem(
-            id = 12L,
+            id = "12",
             title = "Reading",
             color = "#7C3AED",
             icon = "Notes",
@@ -67,7 +67,7 @@ class ListViewModelTest {
         val editor = viewModel.uiState.value.editor
         assertNotNull(editor)
         assertEquals(EditorMode.Edit, editor.mode)
-        assertEquals(12L, editor.listId)
+        assertEquals("12", editor.listId)
         assertEquals("Reading", editor.title)
         assertEquals("#7C3AED", editor.color)
         assertEquals("Notes", editor.icon)

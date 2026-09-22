@@ -22,6 +22,22 @@ class JournalToolbarTest {
     }
 
     @Test
+    fun italicWrapsSelection() {
+        val edit = applyJournalToolbarAction("hello world", 6, 11, JournalToolbarAction.Italic)
+        assertEquals("hello *world*", edit.text)
+        assertEquals(7, edit.selectionStart)
+        assertEquals(12, edit.selectionEnd)
+    }
+
+    @Test
+    fun strikethroughWrapsSelection() {
+        val edit = applyJournalToolbarAction("hello world", 6, 11, JournalToolbarAction.Strikethrough)
+        assertEquals("hello ~~world~~", edit.text)
+        assertEquals(8, edit.selectionStart)
+        assertEquals(13, edit.selectionEnd)
+    }
+
+    @Test
     fun bulletPrefixesCurrentLineAtCursor() {
         val edit = applyJournalToolbarAction("line one\nline two", 12, 12, JournalToolbarAction.Bullet)
         assertEquals("line one\n- line two", edit.text)

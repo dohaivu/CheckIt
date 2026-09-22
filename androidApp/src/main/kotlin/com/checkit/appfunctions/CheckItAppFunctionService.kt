@@ -75,7 +75,7 @@ abstract class BaseCheckItAppFunctionService : AppFunctionService(), KoinCompone
      */
     @AppFunction(isDescribedByKDoc = true)
     suspend fun markTaskComplete(
-        taskId: Long
+        taskId: String
     ): String = withContext(Dispatchers.IO) {
         completeTask(taskId)
         "Task with ID $taskId marked as complete."

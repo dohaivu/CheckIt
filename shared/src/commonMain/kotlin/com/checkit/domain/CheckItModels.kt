@@ -12,8 +12,8 @@ data class TaskBoard(
     val notes: List<NoteItem> = emptyList(),
     val tags: List<TagItem> = emptyList()
 ) {
-    val tasksById: Map<Long, TaskItem> by lazy { tasks.associateBy { it.id } }
-    val notesById: Map<Long, NoteItem> by lazy { notes.associateBy { it.id } }
+    val tasksById: Map<String, TaskItem> by lazy { tasks.associateBy { it.id } }
+    val notesById: Map<String, NoteItem> by lazy { notes.associateBy { it.id } }
     val tasksByDate: Map<LocalDate, List<TaskItem>> by lazy {
         val map = mutableMapOf<LocalDate, MutableList<TaskItem>>()
         for (task in tasks) {
@@ -35,7 +35,7 @@ data class TaskBoard(
 }
 
 data class ListItem(
-    val id: Long,
+    val id: String,
     val title: String,
     val icon: String,
     val color: String,
@@ -45,15 +45,15 @@ data class ListItem(
 )
 
 data class ListSection(
-    val id: Long,
-    val listId: Long,
+    val id: String,
+    val listId: String,
     val title: String,
     val color: String,
     val sortOrder: Int
 )
 
 data class TaskItem(
-    val id: Long,
+    val id: String,
     val list: ListItem? = null,
     val name: String,
     val description: String = "",
@@ -71,7 +71,7 @@ data class TaskItem(
     val label: String? = null,
     val sortOrder: Int = 0,
     val isPinned: Boolean = false,
-    val sectionId: Long? = null,
+    val sectionId: String? = null,
     val createdAtMillis: Long,
     val updatedAtMillis: Long,
     val trashedAtMillis: Long? = null
@@ -93,13 +93,13 @@ data class TaskItem(
         createdAtMillis: Long,
         updatedAtMillis: Long,
         trashedAtMillis: Long?,
-        resolvedListId: Long?,
+        resolvedListId: String?,
         resolvedSubtasks: List<SubTaskItem>,
         resolvedReminders: List<TaskReminder>,
         resolvedTags: List<TagItem>,
         resolvedSortOrder: Int,
         resolvedIsPinned: Boolean,
-        resolvedSectionId: Long?
+        resolvedSectionId: String?
     ): Boolean {
         return this.id == id &&
             this.name == name &&
@@ -127,15 +127,15 @@ data class TaskItem(
 }
 
 data class SubTaskItem(
-    val id: Long,
-    val taskId: Long,
+    val id: String,
+    val taskId: String,
     val name: String,
     val isCompleted: Boolean,
     val sortOrder: Int
 )
 
 data class NoteItem(
-    val id: Long,
+    val id: String,
     val list: ListItem? = null,
     val title: String = "",
     val content: String,
@@ -148,7 +148,7 @@ data class NoteItem(
     val editedAtMillis: Long,
     val sortOrder: Int = 0,
     val isPinned: Boolean = false,
-    val sectionId: Long? = null,
+    val sectionId: String? = null,
     val trashedAtMillis: Long? = null
 ) {
     val isTrashed: Boolean get() = trashedAtMillis != null
@@ -163,11 +163,11 @@ data class NoteItem(
         editedAtMillis: Long,
         label: String?,
         trashedAtMillis: Long?,
-        resolvedListId: Long?,
+        resolvedListId: String?,
         resolvedTags: List<TagItem>,
         resolvedSortOrder: Int,
         resolvedIsPinned: Boolean,
-        resolvedSectionId: Long?
+        resolvedSectionId: String?
     ): Boolean {
         return this.id == id &&
             this.title == title &&
@@ -193,10 +193,10 @@ data class DailyPlan(
 )
 
 data class DailyPlanItem(
-    val id: Long,
+    val id: String,
     val dateEpochDays: Int,
-    val taskId: Long? = null,
-    val nestedListItemId: Long? = null,
+    val taskId: String? = null,
+    val nestedListItemId: String? = null,
     val title: String,
     val note: String? = null,
     val source: DailyPlanItemSource,
@@ -209,7 +209,7 @@ data class DailyPlanItem(
     val endTimeMinutes: Int? = null,
     val addedAtMillis: Long,
     val completedAtMillis: Long? = null,
-    val carriedFromItemId: Long? = null,
+    val carriedFromItemId: String? = null,
     val handledAtMillis: Long? = null
 ) {
     fun workMinutes(): Int {
@@ -220,8 +220,8 @@ data class DailyPlanItem(
 
     fun isSameAs(
         dateEpochDays: Int,
-        taskId: Long?,
-        nestedListItemId: Long?,
+        taskId: String?,
+        nestedListItemId: String?,
         title: String,
         note: String?,
         sourceName: String,
@@ -233,7 +233,7 @@ data class DailyPlanItem(
         isHabit: Boolean,
         addedAtMillis: Long,
         completedAtMillis: Long?,
-        carriedFromItemId: Long?,
+        carriedFromItemId: String?,
         handledAtMillis: Long?,
         resolvedTags: List<TagItem>
     ): Boolean {
@@ -274,7 +274,7 @@ enum class DailyPlanItemStatus {
 }
 
 data class JournalEntry(
-    val id: Long,
+    val id: String,
     val dateEpochDays: Int,
     val label: String? = null,
     val content: String,
@@ -285,30 +285,30 @@ data class JournalEntry(
 )
 
 data class TagItem(
-    val id: Long,
+    val id: String,
     val name: String,
     val color: String,
     val sortOrder: Int = 0,
     val lastUsedAtMillis: Long = 0L
 ) {
     companion object {
-        val None = TagItem(id = -1, name = "None", color = "#FFFFFF")
+        val None = TagItem(id = "", name = "None", color = "#FFFFFF")
     }
 }
 
 data class TaskReminder(
-    val id: Long,
-    val taskId: Long,
+    val id: String,
+    val taskId: String,
     val remindAtMillis: Long,
     val label: String = ""
 )
 
 data class TaskFilter(
-    val id: Long,
+    val id: String,
     val name: String,
     val icon: String,
     val color: String,
-    val tagId: Long? = null,
+    val tagId: String? = null,
     val dueDatePreset: DueDatePreset? = null,
     val status: TaskStatus? = null,
     val priority: TaskPriority? = null,

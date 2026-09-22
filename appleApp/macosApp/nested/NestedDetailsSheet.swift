@@ -49,12 +49,13 @@ struct NestedMetricDraft: Identifiable {
     var name = ""
     var value = ""
     var target = ""
-    var unit = "None"
+    var unit: MetricUnit = .none
     var customUnit = ""
     var completed = false
 }
 
-let nestedMetricUnits = ["None", "Percentage", "Points", "Items", "Hours", "Days", "Rating", "VND", "Lan", "Km", "Custom"]
+/// Display order for the unit picker comes from shared `MetricUnit.entries`;
+/// labels and names stay in shared Kotlin.
 
 struct NestedDetailsSheet: View {
     @ObservedObject var state: NestedEditorState
@@ -129,14 +130,14 @@ struct NestedDetailsSheet: View {
                                         TextField("Target", text: $m.target)
                                             .textFieldStyle(.roundedBorder)
                                         Picker("", selection: $m.unit) {
-                                            ForEach(nestedMetricUnits, id: \.self) { u in
-                                                Text(u).tag(u)
+                                            ForEach(MetricUnit.entries, id: \.self) { u in
+                                                Text(u.displayName(customUnit: nil)).tag(u)
                                             }
                                         }
                                         .pickerStyle(.menu)
                                         .frame(width: 110)
                                     }
-                                    if m.unit == "Custom" {
+                                    if m.unit == .custom {
                                         TextField("Custom unit (e.g. kg, pts)", text: $m.customUnit)
                                             .textFieldStyle(.roundedBorder)
                                     }
@@ -180,7 +181,7 @@ struct NestedDetailsSheet: View {
                     name: $0.name,
                     value: $0.value,
                     target: $0.targetValue ?? "",
-                    unit: $0.unit.name,
+                    unit: $0.unit,
                     customUnit: $0.customUnit ?? "",
                     completed: $0.isCompleted
                 )
@@ -199,7 +200,7 @@ struct NestedDetailsSheet: View {
                 "value": m.value,
                 "sortOrder": 0,
                 "enabled": true,
-                "unit": nestedMetricUnits.contains(m.unit) ? m.unit : "None",
+                "unit": m.unit.name,
                 "isCompleted": m.completed,
             ]
             d["targetValue"] = m.target.isEmpty ? NSNull() : m.target
@@ -249,12 +250,14 @@ struct NestedFormattingBar: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            // Text style
+            // Text style (flat rows; Toggle renders a native checkmark on
+            // the current value — custom row views don't paint in Menus).
             Menu {
                 ForEach(["Header", "Subheader", "Body"], id: \.self) { s in
-                    Button(s) {
-                        state.updateFormatting(id: item.id, style: s, textColor: item.textColor.name, background: item.backgroundColor.name)
-                    }
+                    Toggle(s, isOn: Binding(
+                        get: { s == item.textStyle.name },
+                        set: { if $0 { state.updateFormatting(id: item.id, style: s, textColor: item.textColor.name, background: item.backgroundColor.name) } }
+                    ))
                 }
                 Divider()
                 Button(item.checkboxEnabled ? "Hide checkbox" : "Show checkbox") {
@@ -270,13 +273,14 @@ struct NestedFormattingBar: View {
             // Text color
             Menu {
                 ForEach(tokens, id: \.self) { t in
-                    Button(t) {
-                        state.updateFormatting(id: item.id, style: item.textStyle.name, textColor: t, background: item.backgroundColor.name)
-                    }
+                    Toggle(t, isOn: Binding(
+                        get: { t == item.textColor.name },
+                        set: { if $0 { state.updateFormatting(id: item.id, style: item.textStyle.name, textColor: t, background: item.backgroundColor.name) } }
+                    ))
                 }
             } label: {
                 Image(systemName: "paintbrush")
-                    .foregroundStyle(item.textColor.name == "Default" ? .secondary : nestedTokenColor(item.textColor.name))
+                    .foregroundStyle(item.textColor.name == "Default" ? .secondary : Color.accentColor)
             }
             .menuStyle(.borderlessButton)
             .frame(width: 28, height: 28)
@@ -285,13 +289,14 @@ struct NestedFormattingBar: View {
             // Background
             Menu {
                 ForEach(tokens, id: \.self) { t in
-                    Button(t) {
-                        state.updateFormatting(id: item.id, style: item.textStyle.name, textColor: item.textColor.name, background: t)
-                    }
+                    Toggle(t, isOn: Binding(
+                        get: { t == item.backgroundColor.name },
+                        set: { if $0 { state.updateFormatting(id: item.id, style: item.textStyle.name, textColor: item.textColor.name, background: t) } }
+                    ))
                 }
             } label: {
                 Image(systemName: "paintpalette")
-                    .foregroundStyle(item.backgroundColor.name == "Default" ? .secondary : nestedTokenColor(item.backgroundColor.name))
+                    .foregroundStyle(item.backgroundColor.name == "Default" ? .secondary : Color.accentColor)
             }
             .menuStyle(.borderlessButton)
             .frame(width: 28, height: 28)
@@ -300,11 +305,14 @@ struct NestedFormattingBar: View {
             // Priority
             Menu {
                 ForEach(["None", "Low", "Medium", "High"], id: \.self) { p in
-                    Button(p) { state.updatePriority(id: item.id, name: p) }
+                    Toggle(p, isOn: Binding(
+                        get: { p == item.priority.name },
+                        set: { if $0 { state.updatePriority(id: item.id, name: p) } }
+                    ))
                 }
             } label: {
                 Image(systemName: "flag")
-                    .foregroundStyle(nestedPriorityColor(item.priority.name))
+                    .foregroundStyle(item.priority.name == "None" ? .secondary : Color.accentColor)
             }
             .menuStyle(.borderlessButton)
             .frame(width: 28, height: 28)

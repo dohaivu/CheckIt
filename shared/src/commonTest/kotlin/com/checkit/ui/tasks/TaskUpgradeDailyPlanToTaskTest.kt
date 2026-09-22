@@ -83,7 +83,7 @@ class TaskUpgradeDailyPlanToTaskTest {
         Dispatchers.resetMain()
     }
 
-    private suspend fun seedPlanItem(): Long = repository.addDailyPlanItem(
+    private suspend fun seedPlanItem(): String = repository.addDailyPlanItem(
         date = LocalDate(2026, 8, 24),
         title = "Draft quarterly report",
         note = "Still missing the metrics section",
@@ -107,7 +107,7 @@ class TaskUpgradeDailyPlanToTaskTest {
             title = "Draft quarterly report",
             note = "Still missing the metrics section",
             label = "work",
-            tagIds = setOf(7L, 9L)
+            tagIds = setOf("7", "9")
         )
         dispatcher.scheduler.advanceUntilIdle()
 
@@ -118,7 +118,7 @@ class TaskUpgradeDailyPlanToTaskTest {
         assertEquals("Draft quarterly report", form.name)
         assertEquals("Still missing the metrics section", form.description)
         assertEquals("work", form.label)
-        assertEquals(setOf(7L, 9L), form.selectedTagIds)
+        assertEquals(setOf("7", "9"), form.selectedTagIds)
         assertEquals(planItemId, form.upgradeDailyPlanItemId)
     }
 

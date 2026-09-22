@@ -58,9 +58,8 @@ import com.checkit.domain.MetricUnit
 import com.checkit.domain.Period
 import com.checkit.ui.components.RatingBar
 import com.checkit.ui.components.AppEditorBottomSheet
-import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.CompactFlatTextField
-import com.checkit.ui.components.MarkdownVisualTransformation
+import com.checkit.ui.components.MarkdownTextField
 import com.checkit.ui.components.icons.AppIcons
 import com.checkit.ui.components.icons.Target
 import com.checkit.ui.displayName
@@ -127,7 +126,7 @@ internal fun PeriodGoalEditorSheet(
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary
                 )
-                AppOutlinedTextField(
+                MarkdownTextField(
                     value = editor.review,
                     onValueChange = onReviewChange,
                     textStyle = MaterialTheme.typography.bodyMedium.copy(
@@ -145,8 +144,7 @@ internal fun PeriodGoalEditorSheet(
                         .padding(10.dp),
                     placeholder = "Jot down your reflection ...",
                     minLines = 6,
-                    enabled = !editor.isSaving,
-                    visualTransformation = remember { MarkdownVisualTransformation() }
+                    enabled = !editor.isSaving
                 )
 
                 Row(
@@ -237,7 +235,7 @@ internal fun PeriodGoalEditorSheet(
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
             )
-            AppOutlinedTextField(
+            MarkdownTextField(
                 value = editor.goal,
                 onValueChange = onGoalChange,
                 textStyle = MaterialTheme.typography.bodyMedium.copy(
@@ -255,8 +253,7 @@ internal fun PeriodGoalEditorSheet(
                     .padding(10.dp),
                 placeholder = "What will you focus on?",
                 minLines = 4,
-                enabled = !editor.isSaving,
-                visualTransformation = remember { MarkdownVisualTransformation() }
+                enabled = !editor.isSaving
             )
 
             PeriodMetricsSection(

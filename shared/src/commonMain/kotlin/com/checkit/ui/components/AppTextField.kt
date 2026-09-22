@@ -26,6 +26,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TransformedText
@@ -198,6 +199,7 @@ fun AppOutlinedTextField(
 class MarkdownVisualTransformation : VisualTransformation {
     private val boldRegex = Regex("\\*\\*(.*?)\\*\\*")
     private val italicRegex = Regex("\\*(.*?)\\*")
+    private val strikethroughRegex = Regex("~~(.*?)~~")
     // Matches any digit followed by a period and a space (e.g., "1. ", "12. ")
     private val numberedListRegex = Regex("^\\d+\\.\\s")
 
@@ -290,6 +292,16 @@ class MarkdownVisualTransformation : VisualTransformation {
                     end = range.last + 1
                 )
             }
+
+            // 5. Format Inline Elements: Strikethrough (~~text~~)
+            strikethroughRegex.findAll(rawText).forEach { matchResult ->
+                val range = matchResult.range
+                addStyle(
+                    style = SpanStyle(textDecoration = TextDecoration.LineThrough),
+                    start = range.first,
+                    end = range.last + 1
+                )
+            }
         }
 
         return TransformedText(transformed, OffsetMapping.Identity)
@@ -343,7 +355,7 @@ fun parseMarkdownToAnnotatedString(markdown: String?): AnnotatedString {
                 addStyle(headerStyle, lineStartIndex, lineEndIndex)
             }
 
-            // Apply all saved bold and italic styles using their adjusted positions
+            // Apply all saved bold, italic, and strikethrough styles using their adjusted positions
             stylesToApply.forEach { styleMarker ->
                 addStyle(
                     style = styleMarker.style,
@@ -365,9 +377,9 @@ private data class StyleMarker(val style: SpanStyle, val start: Int, val end: In
 
 private fun processInlineStyles(inputLine: String): Pair<String, List<StyleMarker>> {
     val styles = mutableListOf<StyleMarker>()
-    // Use a combined regex to find all bold and italic markers in order.
-    // Bold (**...**) is matched first, then italic (*...*).
-    val combinedRegex = Regex("(\\*\\*(.*?)\\*\\*)|(\\*(.*?)\\*)")
+    // Use a combined regex to find all bold, strikethrough, and italic markers in order.
+    // Bold (**...**) and strikethrough (~~...~~) are matched first, then italic (*...*).
+    val combinedRegex = Regex("(\\*\\*(.*?)\\*\\*)|(~~(.*?)~~)|(\\*(.*?)\\*)")
 
     val resultText = StringBuilder()
     var lastIndex = 0
@@ -377,21 +389,32 @@ private fun processInlineStyles(inputLine: String): Pair<String, List<StyleMarke
         resultText.append(inputLine.substring(lastIndex, match.range.first))
 
         // groupValues[1] is the full bold match, groupValues[2] is the bold inner text
-        // groupValues[3] is the full italic match, groupValues[4] is the italic inner text
+        // groupValues[3] is the full strikethrough match, groupValues[4] is the strikethrough inner text
+        // groupValues[5] is the full italic match, groupValues[6] is the italic inner text
         val isBold = match.groupValues[1].isNotEmpty()
-        val innerTextRaw = if (isBold) match.groupValues[2] else match.groupValues[4]
+        val isStrikethrough = match.groupValues[3].isNotEmpty()
+        val innerTextRaw = when {
+            isBold -> match.groupValues[2]
+            isStrikethrough -> match.groupValues[4]
+            else -> match.groupValues[6]
+        }
 
         val start = resultText.length
-        // Recursive call to handle nested styles (e.g., ***bold italic***)
+        // Recursive call to handle nested styles (e.g., ***bold italic***, ~~**bold strikethrough**~~)
         val (innerTextClean, innerStyles) = processInlineStyles(innerTextRaw)
 
         resultText.append(innerTextClean)
         val end = resultText.length
 
         // Add the outer style
+        val style = when {
+            isBold -> SpanStyle(fontWeight = FontWeight.Bold)
+            isStrikethrough -> SpanStyle(textDecoration = TextDecoration.LineThrough)
+            else -> SpanStyle(fontStyle = FontStyle.Italic)
+        }
         styles.add(
             StyleMarker(
-                style = if (isBold) SpanStyle(fontWeight = FontWeight.Bold) else SpanStyle(fontStyle = FontStyle.Italic),
+                style = style,
                 start = start,
                 end = end
             )

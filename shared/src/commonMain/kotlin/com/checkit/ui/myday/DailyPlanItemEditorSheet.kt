@@ -54,6 +54,7 @@ import com.checkit.ui.components.AutocompleteTextField
 import com.checkit.ui.components.DatePicker
 import com.checkit.ui.components.DeleteOverflowMenu
 import com.checkit.ui.components.LabelTextField
+import com.checkit.ui.components.MarkdownTextField
 import com.checkit.ui.components.MarkdownVisualTransformation
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.tasks.views.currentTimeMinutes
@@ -75,7 +76,7 @@ internal fun DailyPlanItemEditorSheet(
     onSourceChange: (DailyPlanItemSource) -> Unit,
     onDateChange: (LocalDate?) -> Unit,
     onTimeChange: (Int?, Int?) -> Unit,
-    onTagToggle: (Long) -> Unit,
+    onTagToggle: (String) -> Unit,
     onNewTagClick: () -> Unit,
     onAdd: () -> Unit,
     onDelete: () -> Unit,
@@ -282,7 +283,7 @@ private fun DailyPlanItemFormContent(
     onSourceChange: (DailyPlanItemSource) -> Unit,
     onDateChange: (LocalDate?) -> Unit,
     onTimeChange: (Int?, Int?) -> Unit,
-    onTagToggle: (Long) -> Unit,
+    onTagToggle: (String) -> Unit,
     onNewTagClick: () -> Unit,
     enabled: Boolean
 ) {
@@ -328,7 +329,7 @@ private fun DailyPlanItemFormContent(
             isError = state.error != null
         )
 
-        AppOutlinedTextField(
+        MarkdownTextField(
             value = state.note,
             onValueChange = onNoteChange,
             textStyle = MaterialTheme.typography.bodyMedium.copy(
@@ -340,8 +341,6 @@ private fun DailyPlanItemFormContent(
             placeholder = if (sourceLocked) null else "Add details",
             enabled = enabled,
             modifier = Modifier.fillMaxWidth(),
-            visualTransformation = remember { MarkdownVisualTransformation() },
-            isError = state.error != null
         )
         state.error?.let { error ->
             Text(
@@ -567,8 +566,8 @@ private fun AddModeIntentControls(
 private fun LabeledTagPicker(
     source: DailyPlanItemSource,
     availableTags: List<TagItem>,
-    selectedTagIds: Set<Long>,
-    onTagToggle: (Long) -> Unit,
+    selectedTagIds: Set<String>,
+    onTagToggle: (String) -> Unit,
     onNewTagClick: () -> Unit,
     enabled: Boolean
 ) {

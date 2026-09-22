@@ -6,12 +6,11 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -22,7 +21,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.material.icons.rounded.CheckBox
 import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
 import androidx.compose.material3.Icon
@@ -259,6 +257,21 @@ private fun SubtaskRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .then(
+                if (enabled) {
+                    Modifier.pointerInput(Unit) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = { currentOnDragStart() },
+                            onDragEnd = { currentOnDragEnd() },
+                            onDragCancel = { currentOnDragEnd() },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                currentOnMove(dragAmount.y)
+                            }
+                        )
+                    }
+                } else Modifier
+            )
             .background(
                 color = when {
                     isDragging -> MaterialTheme.colorScheme.surfaceContainerHigh
@@ -344,29 +357,6 @@ private fun SubtaskRow(
                         contentDescription = "Clear",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = ContentAlpha),
                         modifier = Modifier.size(18.dp)
-                    )
-                }
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .pointerInput(Unit) {
-                            detectDragGestures(
-                                onDragStart = { currentOnDragStart() },
-                                onDragEnd = { currentOnDragEnd() },
-                                onDragCancel = { currentOnDragEnd() },
-                                onDrag = { change, dragAmount ->
-                                    change.consume()
-                                    currentOnMove(dragAmount.y)
-                                }
-                            )
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.DragIndicator,
-                        contentDescription = "Reorder subtask",
-                        tint = if (isDragging) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = ContentAlpha),
-                        modifier = Modifier.size(20.dp)
                     )
                 }
             }

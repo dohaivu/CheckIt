@@ -31,12 +31,12 @@ class DayCloseUseCasesTest {
 
     @Test
     fun summaryCountsMinutesAndTopTags() = runTest {
-        val work = TagItem(id = 1L, name = "Work", color = "#2563EB")
+        val work = TagItem(id = "1", name = "Work", color = "#2563EB")
         val plan = DailyPlan(
             date = date,
             items = listOf(
                 item(
-                    id = 1L,
+                    id = "1",
                     title = "Deep work",
                     status = DailyPlanItemStatus.Done,
                     startTimeMinutes = 9 * 60,
@@ -44,13 +44,13 @@ class DayCloseUseCasesTest {
                     tags = listOf(work)
                 ),
                 item(
-                    id = 2L,
+                    id = "2",
                     title = "Later",
                     status = DailyPlanItemStatus.Planned,
                     startTimeMinutes = 14 * 60
                 ),
                 item(
-                    id = 3L,
+                    id = "3",
                     title = "No times done",
                     status = DailyPlanItemStatus.Done
                 )
@@ -63,7 +63,7 @@ class DayCloseUseCasesTest {
         assertEquals(60, summary.doneMinutes)
         assertEquals(listOf("Work"), summary.topTags.map { it.name })
         assertEquals(60, summary.topTags.single().totalMinutes)
-        assertEquals(listOf(2L), summary.plannedItems.map { it.id })
+        assertEquals(listOf("2"), summary.plannedItems.map { it.id })
     }
 
     @Test
@@ -82,18 +82,18 @@ class DayCloseUseCasesTest {
             date = date,
             items = listOf(
                 item(
-                    id = 50L,
+                    id = "50",
                     title = "Already carried",
                     status = DailyPlanItemStatus.Planned,
                     handledAtMillis = 1L
                 ),
                 item(
-                    id = 51L,
+                    id = "51",
                     title = "Still open",
                     status = DailyPlanItemStatus.Planned
                 ),
                 item(
-                    id = 1L,
+                    id = "1",
                     title = "Deep work",
                     status = DailyPlanItemStatus.Done,
                     startTimeMinutes = 9 * 60,
@@ -103,23 +103,23 @@ class DayCloseUseCasesTest {
         )
 
         val summary = buildSummary(date, plan)
-        assertEquals(listOf(50L), summary.alreadyCarriedItems.map { it.id })
-        assertEquals(listOf(51L), summary.plannedItems.map { it.id })
-        assertEquals(listOf(1L), summary.doneItems.map { it.id })
+        assertEquals(listOf("50"), summary.alreadyCarriedItems.map { it.id })
+        assertEquals(listOf("51"), summary.plannedItems.map { it.id })
+        assertEquals(listOf("1"), summary.doneItems.map { it.id })
         assertEquals(1, summary.doneCount)
     }
 
     @Test
     fun carryOverCopiesWithClearedTimesAndSkipsDuplicateTask() = runTest {
         val repository = FakeCheckItRepository()
-        val tag = TagItem(id = 5L, name = "Code", color = "#059669")
+        val tag = TagItem(id = "5", name = "Code", color = "#059669")
         repository.addTag(com.checkit.data.TagWriteInput(name = tag.name, color = tag.color))
         val seededTag = repository.currentBoard.tags.single()
         
         val carryOver = CarryOverDailyPlanItemsUseCase(repository, Dispatchers.Unconfined)
         val planned = item(
-            id = 11L,
-            taskId = 100L,
+            id = "11",
+            taskId = "100",
             title = "Ship PR",
             status = DailyPlanItemStatus.Planned,
             startTimeMinutes = 10 * 60,
@@ -133,7 +133,7 @@ class DayCloseUseCasesTest {
                     date = tomorrow,
                     items = listOf(
                         planned.copy(
-                            id = 99L,
+                            id = "99",
                             dateEpochDays = tomorrow.toEpochDays().toInt(),
                             startTimeMinutes = null,
                             endTimeMinutes = null
@@ -145,7 +145,7 @@ class DayCloseUseCasesTest {
 
         val skipped = carryOver(
             items = listOf(planned),
-            itemIds = setOf(11L),
+            itemIds = setOf("11"),
             toDate = tomorrow,
             timePolicy = CarryOverTimePolicy.ClearTimes
         )
@@ -155,7 +155,7 @@ class DayCloseUseCasesTest {
         repository.setDailyPlans(listOf(DailyPlan(date = date, items = listOf(planned))))
         val carried = carryOver(
             items = listOf(planned),
-            itemIds = setOf(11L),
+            itemIds = setOf("11"),
             toDate = tomorrow,
             timePolicy = CarryOverTimePolicy.ClearTimes
         )
@@ -165,9 +165,9 @@ class DayCloseUseCasesTest {
         assertEquals(DailyPlanItemStatus.Planned, copy.status)
         assertNull(copy.startTimeMinutes)
         assertNull(copy.endTimeMinutes)
-        assertEquals(100L, copy.taskId)
+        assertEquals("100", copy.taskId)
         assertEquals(listOf("Code"), copy.tags.map { it.name })
-        assertEquals(11L, copy.carriedFromItemId)
+        assertEquals("11", copy.carriedFromItemId)
     }
 
     @Test
@@ -175,7 +175,7 @@ class DayCloseUseCasesTest {
         val repository = FakeCheckItRepository()
         val carryOver = CarryOverDailyPlanItemsUseCase(repository, Dispatchers.Unconfined)
         val planned = item(
-            id = 21L,
+            id = "21",
             title = "Standalone task",
             status = DailyPlanItemStatus.Planned
         )
@@ -183,7 +183,7 @@ class DayCloseUseCasesTest {
 
         val first = carryOver(
             items = listOf(planned),
-            itemIds = setOf(21L),
+            itemIds = setOf("21"),
             toDate = tomorrow,
             timePolicy = CarryOverTimePolicy.ClearTimes
         )
@@ -192,7 +192,7 @@ class DayCloseUseCasesTest {
 
         val second = carryOver(
             items = listOf(planned),
-            itemIds = setOf(21L),
+            itemIds = setOf("21"),
             toDate = tomorrow,
             timePolicy = CarryOverTimePolicy.ClearTimes
         )
@@ -209,13 +209,13 @@ class DayCloseUseCasesTest {
             buildSummary = buildSummary,
             dispatcher = Dispatchers.Unconfined
         )
-        val planned = item(id = 1L, title = "Standalone", status = DailyPlanItemStatus.Planned)
+        val planned = item(id = "1", title = "Standalone", status = DailyPlanItemStatus.Planned)
         val plan = DailyPlan(date = date, items = listOf(planned))
         repository.setDailyPlans(listOf(plan))
 
         val input = DayCloseConfirmInput(
             date = date,
-            leftoverActions = mapOf(1L to LeftoverAction.CarryOver),
+            leftoverActions = mapOf("1" to LeftoverAction.CarryOver),
             tomorrowGoal = "Ship the review"
         )
         val first = complete(plan, input).getOrThrow()
@@ -227,7 +227,7 @@ class DayCloseUseCasesTest {
         assertEquals(1, repository.copiedDailyPlanItems.size)
         val tomorrowPlan = assertNotNull(repository.dailyPlanForDate(tomorrow))
         assertEquals(1, tomorrowPlan.items.size)
-        assertEquals(1, tomorrowPlan.items.count { it.carriedFromItemId == 1L })
+        assertEquals(1, tomorrowPlan.items.count { it.carriedFromItemId == "1" })
 
         // The tomorrow goal is stored as tomorrow's goal.
         val record = assertNotNull(repository.periodGoalFor(Period.Day, tomorrow))
@@ -244,8 +244,8 @@ class DayCloseUseCasesTest {
             buildSummary = buildSummary,
             dispatcher = Dispatchers.Unconfined
         )
-        val plannedA = item(id = 1L, title = "A", status = DailyPlanItemStatus.Planned)
-        val plannedB = item(id = 2L, title = "B", status = DailyPlanItemStatus.Planned)
+        val plannedA = item(id = "1", title = "A", status = DailyPlanItemStatus.Planned)
+        val plannedB = item(id = "2", title = "B", status = DailyPlanItemStatus.Planned)
         val plan = DailyPlan(date = date, items = listOf(plannedA, plannedB))
         repository.setDailyPlans(listOf(plan))
 
@@ -253,7 +253,7 @@ class DayCloseUseCasesTest {
             plan = plan,
             input = DayCloseConfirmInput(
                 date = date,
-                leftoverActions = mapOf(1L to LeftoverAction.None, 2L to LeftoverAction.None)
+                leftoverActions = mapOf("1" to LeftoverAction.None, "2" to LeftoverAction.None)
             )
         ).getOrThrow()
 
@@ -274,7 +274,7 @@ class DayCloseUseCasesTest {
             dispatcher = Dispatchers.Unconfined
         )
         val alreadyCarried = item(
-            id = 5L,
+            id = "5",
             title = "Already carried",
             status = DailyPlanItemStatus.Planned,
             handledAtMillis = 1L
@@ -286,13 +286,13 @@ class DayCloseUseCasesTest {
             plan = plan,
             input = DayCloseConfirmInput(
                 date = date,
-                leftoverActions = mapOf(5L to LeftoverAction.MarkDone)
+                leftoverActions = mapOf("5" to LeftoverAction.MarkDone)
             )
         ).getOrThrow()
 
         assertEquals(1, result.markedDoneCount)
-        assertEquals(listOf(5L to DailyPlanItemStatus.Done), repository.statusUpdates)
-        assertTrue(repository.markedHandledItemIds.contains(5L))
+        assertEquals(listOf("5" to DailyPlanItemStatus.Done), repository.statusUpdates)
+        assertTrue(repository.markedHandledItemIds.contains("5"))
     }
 
     @Test
@@ -322,15 +322,15 @@ class DayCloseUseCasesTest {
 
     @Test
     fun defaultLeftoverActionIsNoneRequiringExplicitChoice() {
-        val linked = item(id = 1L, taskId = 100L, title = "Linked", status = DailyPlanItemStatus.Planned)
-        val standalone = item(id = 2L, title = "Standalone", status = DailyPlanItemStatus.Planned)
+        val linked = item(id = "1", taskId = "100", title = "Linked", status = DailyPlanItemStatus.Planned)
+        val standalone = item(id = "2", title = "Standalone", status = DailyPlanItemStatus.Planned)
         assertEquals(LeftoverAction.None, linked.defaultLeftoverAction())
         assertEquals(LeftoverAction.None, standalone.defaultLeftoverAction())
     }
 
     @Test
     fun defaultReviewActionIsNoneForUnhandledItems() {
-        val item = item(id = 1L, title = "Pending", status = DailyPlanItemStatus.Planned)
+        val item = item(id = "1", title = "Pending", status = DailyPlanItemStatus.Planned)
         assertEquals(LeftoverAction.None, item.defaultReviewAction(emptyList()))
     }
 
@@ -338,16 +338,16 @@ class DayCloseUseCasesTest {
     fun defaultReviewActionInfersCarryOverFromTomorrowCopy() {
         val today = LocalDate(2026, 7, 10)
         val source = item(
-            id = 1L,
+            id = "1",
             title = "Carried",
             status = DailyPlanItemStatus.Planned,
             handledAtMillis = 10L
         )
         val copy = item(
-            id = 2L,
+            id = "2",
             title = "Carried (tomorrow)",
             status = DailyPlanItemStatus.Planned,
-            carriedFromItemId = 1L,
+            carriedFromItemId = "1",
             dateEpochDays = today.toEpochDays().toInt() + 1
         )
         assertEquals(LeftoverAction.CarryOver, source.defaultReviewAction(listOf(DailyPlan(today, listOf(copy)))))
@@ -357,7 +357,7 @@ class DayCloseUseCasesTest {
     fun defaultReviewActionInfersDropWhenHandledWithoutTomorrowCopy() {
         val today = LocalDate(2026, 7, 10)
         val source = item(
-            id = 1L,
+            id = "1",
             title = "Dropped",
             status = DailyPlanItemStatus.Planned,
             handledAtMillis = 10L
@@ -366,10 +366,10 @@ class DayCloseUseCasesTest {
     }
 
     private fun item(
-        id: Long,
+        id: String,
         title: String,
         status: DailyPlanItemStatus,
-        taskId: Long? = null,
+        taskId: String? = null,
         startTimeMinutes: Int? = null,
         endTimeMinutes: Int? = null,
         tags: List<TagItem> = emptyList(),
@@ -381,7 +381,7 @@ class DayCloseUseCasesTest {
         note: String? = null,
         addedAtMillis: Long = 0L,
         handledAtMillis: Long? = null,
-        carriedFromItemId: Long? = null,
+        carriedFromItemId: String? = null,
         dateEpochDays: Int = date.toEpochDays().toInt()
     ) = DailyPlanItem(
         id = id,

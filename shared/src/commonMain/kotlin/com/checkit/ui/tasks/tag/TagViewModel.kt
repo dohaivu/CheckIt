@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
 
 data class TagUiState(
     val editor: TagEditorState? = null,
-    val tagUsageCounts: Map<Long, Int> = emptyMap()
+    val tagUsageCounts: Map<String, Int> = emptyMap()
 )
 
 class TagViewModel(
@@ -74,7 +74,7 @@ class TagViewModel(
     fun updateName(name: String) = updateEditor { it.copy(name = name) }
     fun updateColor(color: String) = updateEditor { it.copy(color = color) }
 
-    fun saveEditor(onSaved: (Long) -> Unit = {}) {
+    fun saveEditor(onSaved: (String) -> Unit = {}) {
         val form = _uiState.value.editor ?: return
         val trimmedName = form.name.trim()
         if (trimmedName.isBlank()) {

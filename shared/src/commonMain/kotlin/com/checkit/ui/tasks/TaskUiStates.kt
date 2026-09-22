@@ -27,9 +27,9 @@ data class TaskUiState(
     val recentLabels: List<String> = emptyList(),
     val isLoading: Boolean = true
 ) {
-    val selectedListId: Long? get() = selection.selectedListId
-    val selectedFilterId: Long? get() = options.selectedFilterId
-    val selectedTagId: Long? get() = selection.selectedTagId
+    val selectedListId: String? get() = selection.selectedListId
+    val selectedFilterId: String? get() = options.selectedFilterId
+    val selectedTagId: String? get() = selection.selectedTagId
     val selectedView: TaskWorkspaceView get() = options.selectedView
     val listDisplayType: TaskListDisplayType get() = options.listDisplayType
     val showCompleted: Boolean get() = options.showCompleted
@@ -47,8 +47,8 @@ data class TaskUiState(
 }
 
 data class TaskSelectionState(
-    val selectedListId: Long? = null,
-    val selectedTagId: Long? = null
+    val selectedListId: String? = null,
+    val selectedTagId: String? = null
 )
 
 data class TaskViewOptionsState(
@@ -57,8 +57,8 @@ data class TaskViewOptionsState(
     val showCompleted: Boolean = false,
     val searchText: String = "",
     val sortOption: TaskSortOption = TaskSortOption.Custom,
-    val selectedFilterId: Long? = null,
-    val selectedTagIds: Set<Long> = emptySet()
+    val selectedFilterId: String? = null,
+    val selectedTagIds: Set<String> = emptySet()
 )
 
 data class TaskVisibleItemsState(
@@ -131,8 +131,8 @@ enum class EditorMode {
 sealed interface TaskEditorState {
     data class TaskForm(
         val mode: EditorMode,
-        val taskId: Long? = null,
-        val listId: Long? = null,
+        val taskId: String? = null,
+        val listId: String? = null,
         val name: String = "",
         val description: String = "",
         val doDate: LocalDate? = null,
@@ -146,18 +146,18 @@ sealed interface TaskEditorState {
         val type: TaskType = TaskType.Task,
         val label: String? = null,
         val isPinned: Boolean = false,
-        val selectedTagIds: Set<Long> = emptySet(),
+        val selectedTagIds: Set<String> = emptySet(),
         val addToMyDayOnSave: Boolean = false,
         val dailyPlanItem: DailyPlanItem? = null,
-        val upgradeDailyPlanItemId: Long? = null,
+        val upgradeDailyPlanItemId: String? = null,
         val trashedAtMillis: Long? = null,
         val error: String? = null
     ) : TaskEditorState
 
     data class NoteForm(
         val mode: EditorMode,
-        val noteId: Long? = null,
-        val listId: Long? = null,
+        val noteId: String? = null,
+        val listId: String? = null,
         val title: String = "",
         val content: String = "",
         val status: TaskStatus = TaskStatus.Open,
@@ -165,14 +165,14 @@ sealed interface TaskEditorState {
         val startTimeMinutes: Int? = null,
         val label: String? = null,
         val isPinned: Boolean = false,
-        val selectedTagIds: Set<Long> = emptySet(),
+        val selectedTagIds: Set<String> = emptySet(),
         val trashedAtMillis: Long? = null,
         val error: String? = null
     ) : TaskEditorState
 }
 
 data class SubTaskEditorState(
-    val id: Long? = null,
+    val id: String? = null,
     val name: String,
     val isCompleted: Boolean = false,
     val editorKey: Long = nextSubTaskEditorKey()
@@ -190,7 +190,7 @@ private fun nextSubTaskEditorKey(): Long = --subTaskEditorKeySeed
 
 data class TagEditorState(
     val mode: EditorMode,
-    val tagId: Long? = null,
+    val tagId: String? = null,
     val name: String = "",
     val color: String = AppIconColorDefaults.ListColors.first()
 )

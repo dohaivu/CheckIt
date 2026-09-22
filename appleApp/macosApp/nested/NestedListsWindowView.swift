@@ -17,7 +17,9 @@ import Shared
 
 struct NestedListsWindowView: View {
     @StateObject private var state = NestedEditorState()
-    @FocusState private var focusedRow: Int64?
+    @ObservedObject private var sync = NestedFirestoreSync.shared
+    @ObservedObject private var account = QuickNoteGoogleSignIn.shared
+    @FocusState private var focusedRow: String?
     @FocusState private var draftFocused: Bool
 
     @State private var showNewDoc = false
@@ -31,11 +33,11 @@ struct NestedListsWindowView: View {
     var body: some View {
         HSplitView {
             sidebar
-                .frame(minWidth: 200, idealWidth: 240, maxWidth: 360, maxHeight: .infinity)
+                .frame(minWidth: 200, idealWidth: 200, maxWidth: 300, maxHeight: .infinity)
             detail
-                .frame(minWidth: 560, maxWidth: .infinity, maxHeight: .infinity)
+                .frame(minWidth: 760, idealWidth: 760, maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(minWidth: 760, minHeight: 480)
+        .frame(minWidth: 960, minHeight: 680)
         .background(WindowAccessor(onWindow: { win in
             Task { @MainActor in state.attachWindow(win) }
         }))
@@ -100,9 +102,9 @@ struct NestedListsWindowView: View {
 
     // MARK: - Sidebar
 
-    private var docSelection: Binding<Int64?> {
+    private var docSelection: Binding<String?> {
         Binding(
-            get: { state.selectedDocId >= 0 ? state.selectedDocId : nil },
+            get: { state.selectedDocId.isEmpty ? nil : state.selectedDocId },
             set: { if let id = $0 { state.openDocument(id: id) } }
         )
     }
@@ -126,6 +128,9 @@ struct NestedListsWindowView: View {
             }
             .buttonStyle(.plain)
             .padding(8)
+            Divider()
+            nestedDocsSyncRow
+                .padding(8)
         }
     }
 
@@ -136,11 +141,67 @@ struct NestedListsWindowView: View {
         showNewDoc = false
     }
 
+    /// Manual sync row for the document list (no auto-sync).
+    /// List sync reports `documentId == nil`, so open-document status
+    /// never leaks into this row.
+    @ViewBuilder
+    private var nestedDocsSyncRow: some View {
+        let isListSync = sync.uiState.documentId == nil
+        let syncing = isListSync && sync.uiState.status == .syncing
+        HStack(spacing: 6) {
+            Button {
+                NestedFirestoreSync.shared.syncDocumentsNow()
+            } label: {
+                Label("Sync documents", systemImage: "arrow.clockwise")
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .help("Sync the document list")
+            .disabled(syncing)
+            Spacer()
+            VStack(alignment: .trailing, spacing: 0) {
+                Group {
+                    switch sync.uiState.status {
+                    case .syncing where isListSync:
+                        Text("Syncing…")
+                    case .synced where isListSync:
+                        if let at = sync.uiState.lastSyncedAt {
+                            Text("Synced \(at.formatted(date: .omitted, time: .shortened))")
+                        } else {
+                            Text("Synced")
+                        }
+                    case .offline where isListSync:
+                        Text("Offline")
+                    case .error where isListSync:
+                        Text(sync.uiState.message ?? "Failed")
+                    default:
+                        EmptyView()
+                    }
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                if account.isAnonymous {
+                    Text("Sign in Settings to share between devices")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                } else if let email = account.email {
+                    Text(email)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+            }
+        }
+    }
+
     // MARK: - Detail
 
     @ViewBuilder
     private var detail: some View {
-        if state.selectedDocId < 0 {
+        if state.selectedDocId.isEmpty {
             VStack(spacing: 8) {
                 Text("Select a document").font(.headline)
                 Text("Pick one from the sidebar or create a new document.")
@@ -188,12 +249,49 @@ struct NestedListsWindowView: View {
                 }
             }
             Spacer()
+            nestedSyncStatus
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
     }
 
     // MARK: - Editor bar
+
+    /// Manual sync button + status for the open document (no auto-sync).
+    @ViewBuilder
+    private var nestedSyncStatus: some View {
+        let docId = state.selectedDocId
+        let isSyncing = sync.uiState.status == .syncing && sync.uiState.documentId == docId
+        Group {
+            switch sync.uiState.status {
+            case .syncing where sync.uiState.documentId == docId:
+                Text("Syncing…").font(.caption).foregroundStyle(.secondary)
+            case .synced where sync.uiState.documentId == docId:
+                if let at = sync.uiState.lastSyncedAt {
+                    Text("Synced \(at.formatted(date: .omitted, time: .shortened))")
+                        .font(.caption).foregroundStyle(.secondary)
+                } else {
+                    Text("Synced").font(.caption).foregroundStyle(.secondary)
+                }
+            case .offline where sync.uiState.documentId == docId:
+                Text("Offline — saved on this device").font(.caption).foregroundStyle(.secondary)
+            case .error where sync.uiState.documentId == docId:
+                Text(sync.uiState.message ?? "Sync failed.")
+                    .font(.caption).foregroundStyle(.secondary)
+            default:
+                EmptyView()
+            }
+            Button {
+                NestedFirestoreSync.shared.syncNow(documentId: docId)
+            } label: {
+                Image(systemName: "arrow.clockwise")
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .help("Sync this document")
+            .disabled(docId.isEmpty || isSyncing)
+        }
+    }
 
     private var editorBar: some View {
         let sel = state.selectedId
@@ -277,7 +375,7 @@ struct NestedListsWindowView: View {
         return ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    if state.draft?.anchorId == -1 {
+                    if state.draft?.anchorId.isEmpty == true {
                         draftRow(depth: 0)
                     }
                     if rows.isEmpty, state.draft == nil {
@@ -301,7 +399,8 @@ struct NestedListsWindowView: View {
                                 draftRow(depth: d.depth)
                             }
                         }
-                        .padding(.vertical, 1)
+                        // No vertical padding: the indent guides must run
+                        // unbroken across rows. Spacing lives inside the row.
                         .focusable()
                         .focused($focusedRow, equals: row.id)
                         .id(row.id)
@@ -317,13 +416,19 @@ struct NestedListsWindowView: View {
             .background(Color(nsColor: .windowBackgroundColor))
             .scrollEdgeEffectHidden(true, for: .all)
             .onChange(of: state.selectedId) { _, id in
-                focusedRow = id
-                // Minimal scroll: only moves if the row is out of view.
-                if let id { withAnimation { proxy.scrollTo(id) } }
+                // Deferred: publishing focus/scroll state synchronously here
+                // warns ("within view updates") and is undefined behavior.
+                DispatchQueue.main.async {
+                    focusedRow = id
+                    // Minimal scroll: only moves if the row is out of view.
+                    if let id { withAnimation { proxy.scrollTo(id) } }
+                }
             }
             .onChange(of: state.draft?.anchorId) { _, _ in
-                draftText = state.draft?.text ?? ""
-                draftFocused = state.draft != nil
+                DispatchQueue.main.async {
+                    draftText = state.draft?.text ?? ""
+                    draftFocused = state.draft != nil
+                }
             }
             .onKeyPress(keys: [.upArrow, .downArrow]) { press in
                 if press.modifiers.contains(.command) {
@@ -392,21 +497,27 @@ struct NestedListsWindowView: View {
     }
 
     private func draftRow(depth: Int) -> some View {
-        HStack(spacing: 0) {
+        HStack(alignment: .top, spacing: 0) {
             ForEach(0..<depth, id: \.self) { _ in
                 Rectangle()
                     .fill(Color.accentColor.opacity(0.3))
                     .frame(width: 1)
-                    .padding(.leading, 15)
+                    .padding(.leading, 10)
+                    .frame(width: 16, alignment: .leading)
             }
             Image(systemName: "circle.fill").font(.system(size: 6))
                 .foregroundStyle(Color.accentColor.opacity(0.7))
-                .frame(width: 22, height: 22)
+                .frame(width: 16, height: 24)
+                .padding(.top, 4)
             TextField("New item…", text: $draftText)
                 .textFieldStyle(.roundedBorder)
                 .focused($draftFocused)
                 .onChange(of: draftText) { _, t in
-                    if state.draft != nil { state.draft?.text = t }
+                    // Deferred: writing state.draft synchronously here publishes
+                    // NestedEditorState from within view updates (Xcode warns).
+                    DispatchQueue.main.async {
+                        if state.draft != nil { state.draft?.text = t }
+                    }
                 }
                 .onSubmit { state.commitDraft(thenContinue: true) }
                 .onKeyPress(.escape) {
@@ -431,8 +542,8 @@ struct NestedListsWindowView: View {
             .buttonStyle(.plain)
             .help("Cancel")
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 1)
+        // No vertical padding here either: it would cut the guides
+        // around the draft row. (Horizontal is owned by the LazyVStack.)
         .onAppear {
             draftText = state.draft?.text ?? ""
             draftFocused = true

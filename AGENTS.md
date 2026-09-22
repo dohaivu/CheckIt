@@ -18,6 +18,9 @@ CheckIt is a Kotlin Multiplatform calendar and task management app targeting And
 
 # iOS simulator framework check
 ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64
+
+# macosApp build
+xcodebuild -project appleApp/appleApp.xcodeproj -scheme macosApp -configuration Debug build
 ```
 
 Do not run the full `./gradlew build` by default. Use the smallest relevant task set for the files changed.
@@ -28,6 +31,7 @@ Do not run the full `./gradlew build` by default. Use the smallest relevant task
 - Shared/business-logic changes: run `./gradlew :shared:testAndroidHostTest`; use `./gradlew :shared:allTests` when cross-target coverage is needed.
 - Android-impacting changes, including shared Compose UI: run `./gradlew :androidApp:assembleDebug`.
 - iOS-specific or KMP framework changes: run `./gradlew :shared:linkDebugFrameworkIosSimulatorArm64`.
+- macosApp changes: run `xcodebuild -project appleApp/appleApp.xcodeproj -scheme macosApp -configuration Debug build`
 - If a requested verification task cannot run, report the failure and what completed successfully.
 
 ## Testing Strategy

@@ -100,7 +100,7 @@ internal class PlanAssistController(
         }
     }
 
-    fun addDailyPlanItem(title: String, tagIds: List<Long>, nestedListItemId: Long? = null) {
+    fun addDailyPlanItem(title: String, tagIds: List<String>, nestedListItemId: String? = null) {
         if (title.isBlank()) return
         val current = state.uiState.value
 

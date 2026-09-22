@@ -34,13 +34,13 @@ class JournalHistoryViewModelTest {
         repository = FakeCheckItRepository()
         repository.setJournalEntries(
             listOf(
-                entry(id = 1L, day = today().minus(3, DateTimeUnit.DAY), content = "Great run", moods = listOf("😊"), tagIds = listOf(1L)),
-                entry(id = 2L, day = today().minus(2, DateTimeUnit.DAY), content = "Tough day", moods = listOf("😢"), label = "work"),
-                entry(id = 3L, day = today().minus(1, DateTimeUnit.DAY), content = "Quiet evening"),
+                entry(id = "1", day = today().minus(3, DateTimeUnit.DAY), content = "Great run", moods = listOf("😊"), tagIds = listOf("1")),
+                entry(id = "2", day = today().minus(2, DateTimeUnit.DAY), content = "Tough day", moods = listOf("😢"), label = "work"),
+                entry(id = "3", day = today().minus(1, DateTimeUnit.DAY), content = "Quiet evening"),
                 // Outside the initial 7-day window; reachable via loadOlder().
-                entry(id = 4L, day = today().minus(10, DateTimeUnit.DAY), content = "Old memory"),
+                entry(id = "4", day = today().minus(10, DateTimeUnit.DAY), content = "Old memory"),
                 // Even older: proves hasOlder stays true after one expansion.
-                entry(id = 5L, day = today().minus(40, DateTimeUnit.DAY), content = "Ancient memory")
+                entry(id = "5", day = today().minus(40, DateTimeUnit.DAY), content = "Ancient memory")
             )
         )
         repository.setDayGoals(
@@ -64,7 +64,7 @@ class JournalHistoryViewModelTest {
     @Test
     fun loadsRecentWindowNewestFirst() {
         val state = viewModel.uiState.value
-        assertEquals(listOf(3L, 2L, 1L), state.entries.map { it.id })
+        assertEquals(listOf("3", "2", "1"), state.entries.map { it.id })
         assertEquals(true, state.hasOlder)
     }
 
@@ -73,7 +73,7 @@ class JournalHistoryViewModelTest {
         viewModel.loadOlder()
         dispatcher.scheduler.advanceUntilIdle()
 
-        assertEquals(listOf(3L, 2L, 1L, 4L), viewModel.uiState.value.entries.map { it.id })
+        assertEquals(listOf("3", "2", "1", "4"), viewModel.uiState.value.entries.map { it.id })
         assertTrue(viewModel.uiState.value.hasOlder)
     }
 
@@ -82,12 +82,12 @@ class JournalHistoryViewModelTest {
         viewModel.toggleMood(MoodFilter.Good)
         dispatcher.scheduler.advanceUntilIdle()
 
-        assertEquals(listOf(1L), viewModel.uiState.value.entries.map { it.id })
+        assertEquals(listOf("1"), viewModel.uiState.value.entries.map { it.id })
 
         viewModel.toggleMood(MoodFilter.Bad)
         dispatcher.scheduler.advanceUntilIdle()
 
-        assertEquals(listOf(2L), viewModel.uiState.value.entries.map { it.id })
+        assertEquals(listOf("2"), viewModel.uiState.value.entries.map { it.id })
     }
 
     @Test
@@ -106,12 +106,12 @@ class JournalHistoryViewModelTest {
         viewModel.updateSearchText("RUN")
         dispatcher.scheduler.advanceUntilIdle()
 
-        assertEquals(listOf(1L), viewModel.uiState.value.entries.map { it.id })
+        assertEquals(listOf("1"), viewModel.uiState.value.entries.map { it.id })
 
         viewModel.updateSearchText("work")
         dispatcher.scheduler.advanceUntilIdle()
 
-        assertEquals(listOf(2L), viewModel.uiState.value.entries.map { it.id })
+        assertEquals(listOf("2"), viewModel.uiState.value.entries.map { it.id })
     }
 
     @Test
@@ -141,12 +141,12 @@ class JournalHistoryViewModelTest {
     )
 
     private fun entry(
-        id: Long,
+        id: String,
         day: LocalDate,
         content: String,
         moods: List<String> = emptyList(),
         label: String? = null,
-        tagIds: List<Long> = emptyList()
+        tagIds: List<String> = emptyList()
     ) = JournalEntry(
         id = id,
         dateEpochDays = day.toEpochDays().toInt(),

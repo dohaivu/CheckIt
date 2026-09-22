@@ -19,7 +19,7 @@ import kotlin.test.assertTrue
 class DigestReportTest {
 
     private fun doneTask(
-        id: Long,
+        id: String,
         title: String,
         startTimeMinutes: Int?,
         endTimeMinutes: Int?
@@ -86,15 +86,15 @@ class DigestReportTest {
         val plans = listOf(
             DailyPlan(
                 date = LocalDate(2026, 8, 1),
-                items = listOf(doneTask(1L, "Alpha", 480, 540))
+                items = listOf(doneTask("1", "Alpha", 480, 540))
             ),
             DailyPlan(
                 date = LocalDate(2026, 8, 31),
-                items = listOf(doneTask(2L, "Beta", 600, 660))
+                items = listOf(doneTask("2", "Beta", 600, 660))
             ),
             DailyPlan(
                 date = LocalDate(2026, 7, 31),
-                items = listOf(doneTask(3L, "Outside", 480, 480))
+                items = listOf(doneTask("3", "Outside", 480, 480))
             )
         )
 
@@ -114,15 +114,15 @@ class DigestReportTest {
         val plans = listOf(
             DailyPlan(
                 date = LocalDate(2026, 1, 5),
-                items = listOf(doneTask(1L, "Jan", 480, 540))
+                items = listOf(doneTask("1", "Jan", 480, 540))
             ),
             DailyPlan(
                 date = LocalDate(2026, 12, 20),
-                items = listOf(doneTask(2L, "Dec", 600, 660))
+                items = listOf(doneTask("2", "Dec", 600, 660))
             ),
             DailyPlan(
                 date = LocalDate(2025, 12, 31),
-                items = listOf(doneTask(3L, "Outside", 480, 480))
+                items = listOf(doneTask("3", "Outside", 480, 480))
             )
         )
 
@@ -142,11 +142,11 @@ class DigestReportTest {
         val plans = listOf(
             DailyPlan(
                 date = LocalDate(2026, 8, 3),
-                items = listOf(doneTask(1L, "Mon", 480, 540))
+                items = listOf(doneTask("1", "Mon", 480, 540))
             ),
             DailyPlan(
                 date = LocalDate(2026, 8, 9),
-                items = listOf(doneTask(2L, "Sun", 600, 660))
+                items = listOf(doneTask("2", "Sun", 600, 660))
             )
         )
 
@@ -162,7 +162,7 @@ class DigestReportTest {
         val plans = listOf(
             DailyPlan(
                 date = selectedDate,
-                items = listOf(doneTask(1L, "Today", 480, 540))
+                items = listOf(doneTask("1", "Today", 480, 540))
             )
         )
 
@@ -178,11 +178,11 @@ class DigestReportTest {
         val plans = listOf(
             DailyPlan(
                 date = LocalDate(2026, 8, 6),
-                items = listOf(doneTask(1L, "InWeek", 480, 540))
+                items = listOf(doneTask("1", "InWeek", 480, 540))
             ),
             DailyPlan(
                 date = LocalDate(2026, 8, 6).plus(7, DateTimeUnit.DAY),
-                items = listOf(doneTask(2L, "NextWeek", 480, 600))
+                items = listOf(doneTask("2", "NextWeek", 480, 600))
             )
         )
 

@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -42,7 +41,7 @@ import androidx.compose.ui.unit.sp
 import com.checkit.domain.JournalEntry
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.TagPlain
-import com.checkit.ui.components.asAnnotatedString
+import com.checkit.ui.components.asMarkdownAnnotatedString
 import com.checkit.ui.components.getMoodColorFromEmoji
 import com.checkit.ui.toClockLabel
 
@@ -270,7 +269,7 @@ internal fun JournalEntryCard(
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(
-                text = entry.content.asAnnotatedString(),
+                text = entry.content.asMarkdownAnnotatedString(),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 13.sp,

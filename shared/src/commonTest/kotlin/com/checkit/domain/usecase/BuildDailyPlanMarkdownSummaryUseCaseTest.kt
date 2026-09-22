@@ -19,36 +19,36 @@ class BuildDailyPlanMarkdownSummaryUseCaseTest {
 
     @Test
     fun buildsMinimalChronologicalMarkdownForDoneItems() {
-        val work = TagItem(id = 1L, name = "Work", color = "#2563EB")
-        val planning = TagItem(id = 2L, name = "Planning", color = "#059669")
+        val work = TagItem(id = "1", name = "Work", color = "#2563EB")
+        val planning = TagItem(id = "2", name = "Planning", color = "#059669")
         val task = task(
-            id = 10L,
+            id = "10",
             name = "Plan the day",
             description = "Review agenda, timeline, and the next task to start.",
             subtasks = listOf(
-                subtask(id = 1L, taskId = 10L, name = "Check calendar", isCompleted = true),
-                subtask(id = 2L, taskId = 10L, name = "Pick top priority", isCompleted = false)
+                subtask(id = "1", taskId = "10", name = "Check calendar", isCompleted = true),
+                subtask(id = "2", taskId = "10", name = "Pick top priority", isCompleted = false)
             )
         )
         val plan = dailyPlan(
             items = listOf(
                 item(
-                    id = 1L,
+                    id = "1",
                     title = "Later item",
                     status = DailyPlanItemStatus.Planned,
                     startTimeMinutes = 11 * 60
                 ),
                 item(
-                    id = 2L,
+                    id = "2",
                     title = "Capture sprint idea",
                     note = "Consider grouping review reminders with daily planning.",
                     source = DailyPlanItemSource.MyDayNote,
                     startTimeMinutes = 10 * 60 + 15,
                     endTimeMinutes = null,
-                    tags = listOf(TagItem(id = 3L, name = "Product", color = "#7C3AED"))
+                    tags = listOf(TagItem(id = "3", name = "Product", color = "#7C3AED"))
                 ),
                 item(
-                    id = 3L,
+                    id = "3",
                     taskId = task.id,
                     title = task.name,
                     source = DailyPlanItemSource.ExistingTask,
@@ -86,14 +86,14 @@ class BuildDailyPlanMarkdownSummaryUseCaseTest {
         val plan = dailyPlan(
             items = listOf(
                 item(
-                    id = 1L,
+                    id = "1",
                     title = "Timed",
                     note = "Done first.",
                     startTimeMinutes = 8 * 60,
                     endTimeMinutes = 8 * 60 + 10
                 ),
                 item(
-                    id = 2L,
+                    id = "2",
                     title = "Loose win",
                     note = "Wrapped a small follow-up.",
                     startTimeMinutes = null,
@@ -122,7 +122,7 @@ class BuildDailyPlanMarkdownSummaryUseCaseTest {
     fun emptyDoneItemsReturnEmptyMessage() {
         val markdown = buildSummary(
             date = date,
-            plan = dailyPlan(items = listOf(item(id = 1L, status = DailyPlanItemStatus.Planned))),
+            plan = dailyPlan(items = listOf(item(id = "1", status = DailyPlanItemStatus.Planned))),
             board = TaskBoard()
         )
 
@@ -134,11 +134,11 @@ class BuildDailyPlanMarkdownSummaryUseCaseTest {
         val plan = dailyPlan(
             items = listOf(
                 item(
-                    id = 1L,
+                    id = "1",
                     title = "   ",
                     note = "No title needed.",
                     startTimeMinutes = 9 * 60,
-                    tags = listOf(TagItem(id = 1L, name = "Hidden", color = "#2563EB"))
+                    tags = listOf(TagItem(id = "1", name = "Hidden", color = "#2563EB"))
                 )
             )
         )
@@ -159,7 +159,7 @@ class BuildDailyPlanMarkdownSummaryUseCaseTest {
         val plan = dailyPlan(
             items = listOf(
                 item(
-                    id = 1L,
+                    id = "1",
                     title = "Wrap up",
                     note = """
                         First line
@@ -192,8 +192,8 @@ class BuildDailyPlanMarkdownSummaryUseCaseTest {
     )
 
     private fun item(
-        id: Long,
-        taskId: Long? = null,
+        id: String,
+        taskId: String? = null,
         title: String = "Item $id",
         note: String? = null,
         source: DailyPlanItemSource = DailyPlanItemSource.MyDayTask,
@@ -218,7 +218,7 @@ class BuildDailyPlanMarkdownSummaryUseCaseTest {
     )
 
     private fun task(
-        id: Long,
+        id: String,
         name: String,
         description: String,
         subtasks: List<SubTaskItem> = emptyList()
@@ -235,8 +235,8 @@ class BuildDailyPlanMarkdownSummaryUseCaseTest {
     )
 
     private fun subtask(
-        id: Long,
-        taskId: Long,
+        id: String,
+        taskId: String,
         name: String,
         isCompleted: Boolean
     ) = SubTaskItem(

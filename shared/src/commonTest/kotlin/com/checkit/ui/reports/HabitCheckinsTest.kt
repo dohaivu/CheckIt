@@ -14,7 +14,7 @@ class HabitCheckinsTest {
 
     private fun rollup(
         date: LocalDate,
-        taskId: Long,
+        taskId: String,
         title: String,
         doneMinutes: Int = 0
     ) = HabitDailyRollup(
@@ -64,9 +64,9 @@ class HabitCheckinsTest {
     fun buildCheckinsGroupsByHabitAndCountsDistinctDoneDates() {
         val today = LocalDate(2026, 8, 2)
         val rollups = listOf(
-            rollup(today, taskId = 10L, title = "Meditate"),
-            rollup(today, taskId = 11L, title = "Run"),
-            rollup(today.minus(1, DateTimeUnit.DAY), taskId = 10L, title = "Meditate")
+            rollup(today, taskId = "10", title = "Meditate"),
+            rollup(today, taskId = "11", title = "Run"),
+            rollup(today.minus(1, DateTimeUnit.DAY), taskId = "10", title = "Meditate")
         )
 
         val checkins = buildHabitCheckins(rollups, today)
@@ -86,8 +86,8 @@ class HabitCheckinsTest {
     fun buildCheckinsSumsMinutesPerDate() {
         val today = LocalDate(2026, 8, 2)
         val rollups = listOf(
-            rollup(today, taskId = 10L, title = "Meditate", doneMinutes = 60),
-            rollup(today.minus(1, DateTimeUnit.DAY), taskId = 10L, title = "Meditate", doneMinutes = 60)
+            rollup(today, taskId = "10", title = "Meditate", doneMinutes = 60),
+            rollup(today.minus(1, DateTimeUnit.DAY), taskId = "10", title = "Meditate", doneMinutes = 60)
         )
 
         val checkins = buildHabitCheckins(rollups, today)
@@ -108,9 +108,9 @@ class HabitCheckinsTest {
     fun buildCheckinsSortsByStreakDescending() {
         val today = LocalDate(2026, 8, 2)
         val rollups = listOf(
-            rollup(today, taskId = 10L, title = "Meditate"),
-            rollup(today, taskId = 11L, title = "Run"),
-            rollup(today.minus(1, DateTimeUnit.DAY), taskId = 10L, title = "Meditate")
+            rollup(today, taskId = "10", title = "Meditate"),
+            rollup(today, taskId = "11", title = "Run"),
+            rollup(today.minus(1, DateTimeUnit.DAY), taskId = "10", title = "Meditate")
         )
 
         val checkins = buildHabitCheckins(rollups, today)

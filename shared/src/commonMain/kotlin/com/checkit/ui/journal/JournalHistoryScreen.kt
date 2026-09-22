@@ -40,7 +40,7 @@ import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.TagOptionMenu
 import com.checkit.ui.components.TagPlain
-import com.checkit.ui.components.asAnnotatedString
+import com.checkit.ui.components.asMarkdownAnnotatedString
 import com.checkit.ui.components.getMoodColorFromEmoji
 import com.checkit.ui.reflect.label
 import com.checkit.ui.reflect.reviewIcon
@@ -57,7 +57,7 @@ internal fun JournalHistorySheet(
     state: JournalHistoryUiState,
     onMoodToggle: (MoodFilter) -> Unit,
     onSearchTextChange: (String) -> Unit,
-    onTagToggle: (Long) -> Unit,
+    onTagToggle: (String) -> Unit,
     onEntryClick: (JournalEntry) -> Unit,
     onGoalClick: (PeriodGoal) -> Unit = {},
     onLoadMore: () -> Unit = {},
@@ -96,7 +96,7 @@ private fun JournalFilterBar(
     state: JournalHistoryUiState,
     onMoodToggle: (MoodFilter) -> Unit,
     onSearchTextChange: (String) -> Unit,
-    onTagToggle: (Long) -> Unit,
+    onTagToggle: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -258,7 +258,7 @@ private fun JournalAgendaGoalCard(
         }
         if (goal.review.isNotBlank()) {
             Text(
-                text = goal.review.asAnnotatedString(),
+                text = goal.review.asMarkdownAnnotatedString(),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -297,7 +297,7 @@ internal fun JournalHistoryEntryCard(
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Text(
-            text = entry.content.asAnnotatedString(),
+            text = entry.content.asMarkdownAnnotatedString(),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
             lineHeight = 24.sp

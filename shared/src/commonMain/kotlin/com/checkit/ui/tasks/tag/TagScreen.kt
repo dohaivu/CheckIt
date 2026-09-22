@@ -64,17 +64,17 @@ import kotlin.math.roundToInt
 @Composable
 internal fun TagScreen(
     tags: List<TagItem>,
-    selectedTagId: Long?,
+    selectedTagId: String?,
     tagViewModel: TagViewModel,
-    onTagClick: (Long) -> Unit,
+    onTagClick: (String) -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val state by tagViewModel.uiState.collectAsState()
     var orderedTags by remember(tags) { mutableStateOf(tags) }
-    var draggedTagId by remember { mutableStateOf<Long?>(null) }
+    var draggedTagId by remember { mutableStateOf<String?>(null) }
     val draggedCenterY = remember { mutableFloatStateOf(0f) }
-    val rowBounds = remember { mutableStateMapOf<Long, TagRowBounds>() }
+    val rowBounds = remember { mutableStateMapOf<String, TagRowBounds>() }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -268,7 +268,7 @@ private data class TagRowBounds(
 }
 
 private fun Modifier.animateTagPlacement(
-    key: Long,
+    key: String,
     isDragging: Boolean,
     onPositioned: (Float, Int) -> Unit
 ): Modifier = composed {

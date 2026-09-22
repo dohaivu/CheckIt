@@ -34,6 +34,6 @@ data class CheckItBackup(
     val quickNotes: List<QuickNoteEntity> = emptyList(),
 ) {
     companion object {
-        const val BACKUP_VERSION = 1
+        const val BACKUP_VERSION = 2
     }
 }
