@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.checkit.data.NestedSyncManager
 import com.checkit.data.NestedSyncState
+import com.checkit.auth.GoogleAccountManager
 import com.checkit.data.SettingsRepository
 import com.checkit.domain.MetricItem
 import com.checkit.domain.MetricRollupPolicy
@@ -114,7 +115,10 @@ data class NestedUiState(
     val showNewDocumentDialog: Boolean = false,
     val newDocumentTitle: String = "",
     val editor: NestedEditorState? = null,
-    val syncState: NestedSyncState = NestedSyncState()
+    val syncState: NestedSyncState = NestedSyncState(),
+    /** Null while anonymous: sync stays on this device until Google sign-in. */
+    val accountEmail: String? = null,
+    val isAnonymous: Boolean = true
 )
 
 class NestedListsViewModel(
@@ -140,7 +144,8 @@ class NestedListsViewModel(
     private val moveItemsUseCase: MoveNestedItemsUseCase,
     private val deleteItemsUseCase: DeleteNestedItemsUseCase,
     private val settingsRepository: SettingsRepository,
-    private val syncManager: NestedSyncManager
+    private val syncManager: NestedSyncManager,
+    private val accountManager: GoogleAccountManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(NestedUiState())
@@ -158,6 +163,13 @@ class NestedListsViewModel(
         viewModelScope.launch {
             syncManager.syncState.collect { syncState ->
                 _uiState.update { it.copy(syncState = syncState) }
+            }
+        }
+        viewModelScope.launch {
+            accountManager.accountState.collect { account ->
+                _uiState.update {
+                    it.copy(accountEmail = account.email, isAnonymous = account.isAnonymous)
+                }
             }
         }
         viewModelScope.launch {

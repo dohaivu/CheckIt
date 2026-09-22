@@ -3,6 +3,9 @@ package com.checkit.data
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import kotlin.time.Clock
 
 /**
@@ -48,8 +51,18 @@ class NestedSyncBridge(
     }
 
     /** JSON-encoded push documents for dirty items of one document. */
-    suspend fun dirtyItemJsons(documentId: String): List<String> {
-        val items = dao.getDirtyNestedItemsForDocument(documentId)
+    suspend fun dirtyItemJsons(documentId: String): List<String> =
+        itemJsons(dao.getDirtyNestedItemsForDocument(documentId))
+
+    /**
+     * JSON-encoded push documents for ALL dirty items. Both sync buttons
+     * push these, so no edit is ever stranded by tapping the "wrong"
+     * button; pull scopes stay per-button.
+     */
+    suspend fun dirtyAllItemJsons(): List<String> =
+        itemJsons(dao.getDirtyNestedItems())
+
+    private suspend fun itemJsons(items: List<NestedListItemEntity>): List<String> {
         if (items.isEmpty()) return emptyList()
         val tagsByItem = dao.nestedItemTagsForItems(items.map { it.id })
             .groupBy { it.itemId }.mapValues { entry -> entry.value.map { it.tagId } }
@@ -106,6 +119,11 @@ class NestedSyncBridge(
      * when the remote won and was applied with dirty = false. A winning
      * remote tombstone also tombstones locally synced items (dirty edits
      * survive), mirroring local delete semantics so deletion converges.
+     *
+     * Same-millisecond ties with differing content heal: a clean local row
+     * takes the remote, bumps its clock, and stays dirty so the healed
+     * version pushes next sync — ties converge instead of forking forever.
+     * `createdAtMillis` is write-once and always preserved.
      */
     suspend fun applyRemoteDocumentJson(json: String): Boolean {
         val map = NestedSyncDocument.mapFromJson(json) ?: return false
@@ -114,24 +132,44 @@ class NestedSyncBridge(
             map = map,
         ) ?: return false
         val existing = dao.nestedDocumentById(remote.id)
-        if (!NestedSyncDocument.shouldApplyRemote(existing?.updatedAtMillis, remote.updatedAtMillis)) {
-            return false
+        val now = Clock.System.now().toEpochMilliseconds()
+        val (updatedAt, dirty) = when {
+            existing == null || remote.updatedAtMillis > existing.updatedAtMillis ->
+                remote.updatedAtMillis to false
+            remote.updatedAtMillis == existing.updatedAtMillis &&
+                !existing.dirty && contentDiffers(
+                    local = NestedSyncDocument.docToMap(
+                        id = existing.id,
+                        title = existing.title,
+                        createdAtMillis = existing.createdAtMillis,
+                        updatedAtMillis = existing.updatedAtMillis,
+                        deleted = existing.deleted,
+                    ),
+                    remote = NestedSyncDocument.docToMap(
+                        id = remote.id,
+                        title = remote.title,
+                        createdAtMillis = remote.createdAtMillis,
+                        updatedAtMillis = remote.updatedAtMillis,
+                        deleted = remote.deleted,
+                    ),
+                ) -> {
+                println("NestedSync: healing tie on document ${remote.id}")
+                now to true
+            }
+            else -> return false
         }
         dao.upsertNestedDocument(
             NestedDocumentEntity(
                 id = remote.id,
                 title = remote.title,
-                createdAtMillis = remote.createdAtMillis,
-                updatedAtMillis = remote.updatedAtMillis,
-                dirty = false,
+                createdAtMillis = existing?.createdAtMillis ?: remote.createdAtMillis,
+                updatedAtMillis = updatedAt,
+                dirty = dirty,
                 deleted = remote.deleted,
             )
         )
         if (remote.deleted) {
-            dao.tombstoneCleanItemsForDocument(
-                remote.id,
-                Clock.System.now().toEpochMilliseconds(),
-            )
+            dao.tombstoneCleanItemsForDocument(remote.id, now)
         }
         return true
     }
@@ -230,15 +268,49 @@ class NestedSyncBridge(
     }
 
     /**
+     * True when two row maps differ ignoring write-once `createdAtMillis`
+     * (never merged). Numbers are canonicalized so Int-vs-Long never
+     * false-positives across the JSON boundary.
+     */
+    private fun contentDiffers(local: Map<String, Any?>, remote: Map<String, Any?>): Boolean {
+        val ignore = setOf(NestedSyncDocument.FIELD_CREATED_AT)
+        return NestedSyncDocument.canonical(local - ignore) !=
+            NestedSyncDocument.canonical(remote - ignore)
+    }
+
+    /**
      * Inserts one winning remote row with dirty = false and rebuilds its
      * tag links. Callers must guarantee the document exists and parents
      * apply first (see [applyRemoteItemJsons]); failures throw.
      */
     private suspend fun upsertRemoteItem(remote: RemoteNestedItem): Boolean {
         val existing = dao.nestedItemById(remote.id)
-        if (!NestedSyncDocument.shouldApplyRemote(existing?.updatedAtMillis, remote.updatedAtMillis)) {
-            return false
-        }
+        if (existing != null && remote.updatedAtMillis < existing.updatedAtMillis) return false
+        val now = Clock.System.now().toEpochMilliseconds()
+        val knownRemoteTags = if (remote.tagIds.isNotEmpty()) {
+            dao.tagsByIds(remote.tagIds).map { it.id }.toSet()
+        } else emptySet()
+        // Tie (same millisecond, both sides edited): a clean local row heals
+        // by taking remote scalars but UNIONING tag membership, so neither
+        // side's tags are lost; the bumped clock converges both sides.
+        // A dirty local row keeps winning — its push is in flight or next.
+        val (updatedAt, dirty, tagIds) =
+            if (existing == null || remote.updatedAtMillis > existing.updatedAtMillis) {
+                Triple(
+                    remote.updatedAtMillis,
+                    false,
+                    remote.tagIds.filter { it in knownRemoteTags },
+                )
+            } else {
+                if (existing.dirty) return false
+                val localTags = localTagIds(existing.id)
+                val union = (localTags + remote.tagIds.filter { it in knownRemoteTags }).distinct()
+                if (!contentDiffers(itemMap(existing, localTags), itemMap(remote.copy(tagIds = union)))) {
+                    return false
+                }
+                println("NestedSync: healing tie on item ${remote.id}")
+                Triple(now, true, union)
+            }
         dao.upsertNestedListItem(
             NestedListItemEntity(
                 id = remote.id,
@@ -260,19 +332,76 @@ class NestedSyncBridge(
                 metricRollupPolicy = remote.metricRollupPolicy,
                 showTrackedMinutes = remote.showTrackedMinutes,
                 progressPercent = remote.progressPercent,
-                createdAtMillis = remote.createdAtMillis,
-                updatedAtMillis = remote.updatedAtMillis,
-                dirty = false,
+                createdAtMillis = existing?.createdAtMillis ?: remote.createdAtMillis,
+                updatedAtMillis = updatedAt,
+                dirty = dirty,
                 deleted = remote.deleted,
                 manualMetricsJson = remote.manualMetricsJson,
             )
         )
-        val knownTagIds = if (remote.tagIds.isNotEmpty()) {
-            dao.tagsByIds(remote.tagIds).map { it.id }.toSet()
-        } else emptySet()
-        dao.replaceNestedItemTags(remote.id, remote.tagIds.filter { it in knownTagIds })
+        dao.replaceNestedItemTags(remote.id, tagIds)
         return true
     }
+
+    /** Tag ids currently linked locally, sorted for order-insensitive compare. */
+    private suspend fun localTagIds(itemId: String): List<String> =
+        dao.nestedItemTagsForItems(listOf(itemId)).map { it.tagId }.sorted()
+
+    private fun itemMap(entity: NestedListItemEntity, tagIds: List<String>): Map<String, Any?> =
+        NestedSyncDocument.itemToMap(
+            id = entity.id,
+            documentId = entity.documentId,
+            parentId = entity.parentId,
+            position = entity.position,
+            text = entity.text,
+            note = entity.note,
+            checkboxEnabled = entity.checkboxEnabled,
+            checked = entity.checked,
+            collapsed = entity.collapsed,
+            textStyle = entity.textStyle,
+            textColor = entity.textColor,
+            backgroundColor = entity.backgroundColor,
+            startDateEpochDays = entity.startDateEpochDays,
+            endDateEpochDays = entity.endDateEpochDays,
+            priority = entity.priority,
+            actualMinutes = entity.actualMinutes,
+            metricRollupPolicy = entity.metricRollupPolicy,
+            showTrackedMinutes = entity.showTrackedMinutes,
+            progressPercent = entity.progressPercent,
+            manualMetricsJson = entity.manualMetricsJson,
+            tagIds = tagIds,
+            createdAtMillis = entity.createdAtMillis,
+            updatedAtMillis = entity.updatedAtMillis,
+            deleted = entity.deleted,
+        )
+
+    private fun itemMap(remote: RemoteNestedItem): Map<String, Any?> =
+        NestedSyncDocument.itemToMap(
+            id = remote.id,
+            documentId = remote.documentId,
+            parentId = remote.parentId,
+            position = remote.position,
+            text = remote.text,
+            note = remote.note,
+            checkboxEnabled = remote.checkboxEnabled,
+            checked = remote.checked,
+            collapsed = remote.collapsed,
+            textStyle = remote.textStyle,
+            textColor = remote.textColor,
+            backgroundColor = remote.backgroundColor,
+            startDateEpochDays = remote.startDateEpochDays,
+            endDateEpochDays = remote.endDateEpochDays,
+            priority = remote.priority,
+            actualMinutes = remote.actualMinutes,
+            metricRollupPolicy = remote.metricRollupPolicy,
+            showTrackedMinutes = remote.showTrackedMinutes,
+            progressPercent = remote.progressPercent,
+            manualMetricsJson = remote.manualMetricsJson,
+            tagIds = remote.tagIds.sorted(),
+            createdAtMillis = remote.createdAtMillis,
+            updatedAtMillis = remote.updatedAtMillis,
+            deleted = remote.deleted,
+        )
 
     /** Ids of uploaded tombstones of one document old enough to purge. */
     suspend fun purgeableItemIds(documentId: String, cutoffMillis: Long): List<String> =
@@ -297,4 +426,32 @@ class NestedSyncBridge(
     suspend fun hardDeleteDocument(id: String) {
         dao.hardDeleteNestedDocuments(listOf(id))
     }
+
+    /**
+     * Full nested snapshot for pre-sync safety: written to app storage
+     * before each sync (platform keeps the last 3). Never throws — a
+     * snapshot must never break a sync. Restore is manual for now.
+     */
+    suspend fun exportNestedSnapshotJson(): String {
+        val snapshot = NestedSyncSnapshot(
+            exportedAtMillis = Clock.System.now().toEpochMilliseconds(),
+            documents = dao.getAllNestedDocumentsOnce(),
+            items = dao.getAllNestedListItemsOnce(),
+            itemTags = dao.getAllNestedItemTagsOnce(),
+        )
+        return snapshotJson.encodeToString(NestedSyncSnapshot.serializer(), snapshot)
+    }
+}
+
+@Serializable
+data class NestedSyncSnapshot(
+    val exportedAtMillis: Long,
+    val documents: List<NestedDocumentEntity>,
+    val items: List<NestedListItemEntity>,
+    val itemTags: List<NestedItemTagEntity>,
+)
+
+private val snapshotJson = Json {
+    encodeDefaults = true
+    ignoreUnknownKeys = true
 }

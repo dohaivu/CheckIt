@@ -213,6 +213,21 @@ object NestedSyncDocument {
             ?.mapValues { it.value.toSyncValue() }
 
     /**
+     * Canonical form for content comparison: all integral numbers become
+     * Long, floating point becomes Double, lists recurse. Lets tie-heal
+     * compare a locally built map against a JSON-parsed one without
+     * Int-vs-Long false positives. Pure for testing.
+     */
+    fun canonical(map: Map<String, Any?>): Map<String, Any?> =
+        map.mapValues { canonicalValue(it.value) }
+
+    private fun canonicalValue(value: Any?): Any? = when (value) {
+        is Number -> if (value is Double || value is Float) value.toDouble() else value.toLong()
+        is List<*> -> value.map { canonicalValue(it) }
+        else -> value
+    }
+
+    /**
      * Orders pulled items so parents apply before children, and reparents
      * orphans (parent neither in this batch nor known locally) to the root
      * so no row is ever lost to a foreign-key violation. Pure for testing.

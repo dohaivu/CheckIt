@@ -46,6 +46,7 @@ final class NestedFirestoreSync: ObservableObject {
     private static let updatedAtField = "updatedAtMillis"
 
     private static let lastSyncedDocsKey = "nested.lastSyncedDocsMillis"
+    private static let snapshotKeep = 3
 
     private static func lastSyncedAtKey(_ documentId: String) -> String {
         "nested.lastSyncedAtMillis.\(documentId)"
@@ -94,6 +95,7 @@ final class NestedFirestoreSync: ObservableObject {
         isSyncing = true
         defer { isSyncing = false }
 
+        await writePreSyncSnapshot(documentId: documentId)
         guard let prepared = await prepareSync(documentId: documentId) else { return }
         let (userId, db) = prepared
         do {
@@ -111,13 +113,7 @@ final class NestedFirestoreSync: ObservableObject {
                 let maxUpdated = (map[Self.updatedAtField] as? NSNumber)?.int64Value ?? 0
                 try await bridgeMarkDocumentClean(id: documentId, maxUpdatedAt: maxUpdated)
             }
-            pushed += try await pushJsons(
-                bridgeDirtyItemJsons(documentId: documentId),
-                into: itemsRef,
-                db: db
-            ) { ids, maxUpdated in
-                try await bridgeMarkItemsClean(ids: ids, maxUpdatedAt: maxUpdated)
-            }
+            pushed += try await pushAllDirtyItems(db: db, userId: userId)
 
             // Pull: full document plus full items. Manual sync converges:
             // LWW applies remote wins, delete detection tombstones clean
@@ -175,6 +171,7 @@ final class NestedFirestoreSync: ObservableObject {
         isSyncing = true
         defer { isSyncing = false }
 
+        await writePreSyncSnapshot(documentId: nil)
         guard let prepared = await prepareSync(documentId: nil) else { return }
         let (userId, db) = prepared
         do {
@@ -182,14 +179,17 @@ final class NestedFirestoreSync: ObservableObject {
             let docsRef = db.collection(Self.config.USERS_COLLECTION).document(userId)
                 .collection(Self.config.DOCUMENTS_COLLECTION)
 
-            // Push: all dirty document rows (batched).
-            let pushed = try await pushJsons(
-                bridgeDirtyDocumentJsons(),
+            // Push: all dirty document rows (batched), plus all dirty
+            // items anywhere so list sync never strands edits.
+            let docMaps = try await bridgeDirtyDocumentJsons().compactMap { Self.documentDict(json: $0) }
+            let pushedDocs = try await pushJsons(
+                docMaps,
                 into: docsRef,
                 db: db
             ) { ids, maxUpdated in
                 try await bridgeMarkDocumentsClean(ids: ids, maxUpdatedAt: maxUpdated)
             }
+            let pushed = pushedDocs + (try await pushAllDirtyItems(db: db, userId: userId))
 
             // Pull: full documents. Manual sync converges: LWW applies
             // remote wins, delete detection tombstones clean rows
@@ -233,6 +233,33 @@ final class NestedFirestoreSync: ObservableObject {
 
     // MARK: - Steps
 
+    /// Pre-sync safety snapshot (full nested JSON, last 3 kept). Never
+    /// throws: a snapshot must never break a sync.
+    private func writePreSyncSnapshot(documentId: String?) async {
+        do {
+            guard let json = try await bridgeExportSnapshot() else { return }
+            let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+                .appendingPathComponent("NestedSyncSnapshots", isDirectory: true)
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            let name = "nested_\(documentId ?? "docs")_\(Self.nowMillis()).json"
+            try json.write(to: dir.appendingPathComponent(name), atomically: true, encoding: .utf8)
+            let files = try FileManager.default.contentsOfDirectory(
+                at: dir,
+                includingPropertiesForKeys: [.contentModificationDateKey],
+                options: .skipsHiddenFiles
+            )
+            let dated = try files.map { url -> (URL, Date) in
+                let values = try url.resourceValues(forKeys: [.contentModificationDateKey])
+                return (url, values.contentModificationDate ?? .distantPast)
+            }.sorted { $0.1 < $1.1 }
+            for stale in dated.map(\.0).dropLast(Self.snapshotKeep) {
+                try? FileManager.default.removeItem(at: stale)
+            }
+        } catch {
+            print("[NestedSync] Pre-sync snapshot failed; continuing sync: \(error)")
+        }
+    }
+
     /// Shared online/config/sign-in prologue. Sets uiState and returns nil
     /// when a terminal state was already set (offline or sign-in fail).
     private func prepareSync(documentId: String?) async -> (String, Firestore)? {
@@ -257,19 +284,39 @@ final class NestedFirestoreSync: ObservableObject {
         return (userId, Firestore.firestore(database: Self.config.DATABASE_ID))
     }
 
-    /// Pushes JSON rows into a collection in batches, clears dirty flags
+    /// Pushes every dirty item across all documents, grouped by parent
+    /// collection. Both buttons use this so no edit is ever stranded by
+    /// tapping the "wrong" one; pull scopes stay per-button.
+    private func pushAllDirtyItems(db: Firestore, userId: String) async throws -> Int {
+        let maps = try await bridgeDirtyAllItemJsons().compactMap { Self.documentDict(json: $0) }
+        var grouped: [String: [[String: Any]]] = [:]
+        for map in maps {
+            guard let docId = map["documentId"] as? String, !docId.isEmpty else { continue }
+            grouped[docId, default: []].append(map)
+        }
+        var pushed = 0
+        for (docId, group) in grouped {
+            let itemsRef = db.collection(Self.config.USERS_COLLECTION).document(userId)
+                .collection(Self.config.DOCUMENTS_COLLECTION).document(docId)
+                .collection(Self.config.ITEMS_COLLECTION)
+            pushed += try await pushJsons(group, into: itemsRef, db: db) { ids, maxUpdated in
+                try await bridgeMarkItemsClean(ids: ids, maxUpdatedAt: maxUpdated)
+            }
+        }
+        return pushed
+    }
+
+    /// Pushes maps into a collection in batches, clears dirty flags
     /// guarded by the pushed watermark, and returns the pushed count. Rows
     /// without an id are skipped before batching so counts stay accurate.
     private func pushJsons(
-        _ jsons: [String],
+        _ maps: [[String: Any]],
         into collection: CollectionReference,
         db: Firestore,
         markClean: ([String], Int64) async throws -> Void
     ) async throws -> Int {
-        let rows = jsons.compactMap { json -> (String, Int64, [String: Any])? in
-            guard let map = Self.documentDict(json: json),
-                  let id = map["id"] as? String
-            else { return nil }
+        let rows = maps.compactMap { map -> (String, Int64, [String: Any])? in
+            guard let id = map["id"] as? String else { return nil }
             return (id, (map[Self.updatedAtField] as? NSNumber)?.int64Value ?? 0, map)
         }
         for chunk in rows.chunked(into: Int(Self.config.PUSH_BATCH_SIZE)) {
@@ -409,6 +456,15 @@ final class NestedFirestoreSync: ObservableObject {
         }
     }
 
+    private func bridgeDirtyAllItemJsons() async throws -> [String] {
+        try await withCheckedThrowingContinuation { cont in
+            bridge().dirtyAllItemJsons { jsons, error in
+                if let error { cont.resume(throwing: error) }
+                else { cont.resume(returning: jsons ?? []) }
+            }
+        }
+    }
+
     private func bridgeDirtyDocumentJsons() async throws -> [String] {
         try await withCheckedThrowingContinuation { cont in
             bridge().dirtyDocumentJsons { jsons, error in
@@ -459,6 +515,15 @@ final class NestedFirestoreSync: ObservableObject {
             bridge().hasDirtyItems(documentId: documentId) { dirty, error in
                 if let error { cont.resume(throwing: error) }
                 else { cont.resume(returning: dirty?.boolValue ?? false) }
+            }
+        }
+    }
+
+    private func bridgeExportSnapshot() async throws -> String? {
+        try await withCheckedThrowingContinuation { cont in
+            bridge().exportNestedSnapshotJson { json, error in
+                if let error { cont.resume(throwing: error) }
+                else { cont.resume(returning: json) }
             }
         }
     }

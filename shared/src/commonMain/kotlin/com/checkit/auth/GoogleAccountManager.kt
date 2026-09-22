@@ -1,6 +1,8 @@
 package com.checkit.auth
 
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 data class GoogleAccountState(
     /** Null while anonymous (the default) or signed out. */
@@ -22,4 +24,13 @@ interface GoogleAccountManager {
     suspend fun signIn()
     suspend fun signOut()
     fun clearError()
+}
+
+/** Apple targets drive sign-in natively (QuickNoteGoogleSignIn on macOS). */
+class NoOpGoogleAccountManager : GoogleAccountManager {
+    private val state = MutableStateFlow(GoogleAccountState())
+    override val accountState: StateFlow<GoogleAccountState> = state.asStateFlow()
+    override suspend fun signIn() = Unit
+    override suspend fun signOut() = Unit
+    override fun clearError() = Unit
 }

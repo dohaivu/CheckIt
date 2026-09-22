@@ -333,11 +333,30 @@ private fun NestedSyncDocumentsRow(
     }
     NavigationDrawerItem(
         label = {
-            Text(
-                label,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Column {
+                Text(
+                    label,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (state.isAnonymous && state.accountEmail == null) {
+                    Text(
+                        "Sign in Settings to share between devices",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                } else if (state.accountEmail != null) {
+                    Text(
+                        state.accountEmail,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
         },
         selected = false,
         onClick = onSync,

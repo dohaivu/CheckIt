@@ -179,6 +179,28 @@ class NestedSyncDocumentTest {
         assertNull(NestedSyncDocument.mapFromJson("not json"))
     }
 
+    @Test
+    fun canonicalUnifiesIntegralNumbers() {
+        val left = mapOf("position" to 3, "updatedAtMillis" to 200L, "tagIds" to listOf(1, 2L))
+        val right = mapOf("position" to 3L, "updatedAtMillis" to 200, "tagIds" to listOf(1L, 2))
+        assertEquals(
+            NestedSyncDocument.canonical(left),
+            NestedSyncDocument.canonical(right),
+        )
+    }
+
+    @Test
+    fun canonicalPreservesTypesAndNulls() {
+        val map = mapOf(
+            "text" to "x",
+            "note" to null,
+            "checked" to true,
+            "score" to 1.5,
+            "tagIds" to listOf("a", null),
+        )
+        assertEquals(map, NestedSyncDocument.canonical(map))
+    }
+
     private fun remoteItem(
         id: String,
         parentId: String? = null,

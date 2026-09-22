@@ -411,7 +411,8 @@ val provideViewModelModule = module {
             moveItemsUseCase = get(),
             deleteItemsUseCase = get(),
             settingsRepository = get(),
-            syncManager = get()
+            syncManager = get(),
+            accountManager = get()
         )
     }
     viewModel {

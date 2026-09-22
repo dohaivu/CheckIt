@@ -18,6 +18,7 @@ import Shared
 struct NestedListsWindowView: View {
     @StateObject private var state = NestedEditorState()
     @ObservedObject private var sync = NestedFirestoreSync.shared
+    @ObservedObject private var account = QuickNoteGoogleSignIn.shared
     @FocusState private var focusedRow: String?
     @FocusState private var draftFocused: Bool
 
@@ -158,27 +159,41 @@ struct NestedListsWindowView: View {
             .help("Sync the document list")
             .disabled(syncing)
             Spacer()
-            Group {
-                switch sync.uiState.status {
-                case .syncing where isListSync:
-                    Text("Syncing…")
-                case .synced where isListSync:
-                    if let at = sync.uiState.lastSyncedAt {
-                        Text("Synced \(at.formatted(date: .omitted, time: .shortened))")
-                    } else {
-                        Text("Synced")
+            VStack(alignment: .trailing, spacing: 0) {
+                Group {
+                    switch sync.uiState.status {
+                    case .syncing where isListSync:
+                        Text("Syncing…")
+                    case .synced where isListSync:
+                        if let at = sync.uiState.lastSyncedAt {
+                            Text("Synced \(at.formatted(date: .omitted, time: .shortened))")
+                        } else {
+                            Text("Synced")
+                        }
+                    case .offline where isListSync:
+                        Text("Offline")
+                    case .error where isListSync:
+                        Text(sync.uiState.message ?? "Failed")
+                    default:
+                        EmptyView()
                     }
-                case .offline where isListSync:
-                    Text("Offline")
-                case .error where isListSync:
-                    Text(sync.uiState.message ?? "Failed")
-                default:
-                    EmptyView()
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                if account.isAnonymous {
+                    Text("Sign in Settings to share between devices")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                } else if let email = account.email {
+                    Text(email)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
                 }
             }
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
         }
     }
 

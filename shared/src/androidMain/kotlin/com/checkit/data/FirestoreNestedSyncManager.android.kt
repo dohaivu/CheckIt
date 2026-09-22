@@ -12,6 +12,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,6 +20,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import java.io.File
 import kotlin.time.Clock
 
 private val Context.nestedSyncDataStore by preferencesDataStore(name = "nested_sync")
@@ -51,6 +54,7 @@ class FirestoreNestedSyncManager(
 
     override suspend fun syncDocument(documentId: String) {
         syncMutex.withLock {
+            writePreSyncSnapshot(documentId)
             val prepared = prepareSync(documentId) ?: return
             val (userId, firestore) = prepared
             Log.d(TAG, "Nested sync started uid=$userId doc=$documentId")
@@ -72,11 +76,7 @@ class FirestoreNestedSyncManager(
                         (map[NestedSyncDocument.FIELD_UPDATED_AT] as? Number)?.toLong() ?: 0L,
                     )
                 }
-                pushed += pushMaps(
-                    firestore,
-                    itemsRef,
-                    bridge.dirtyItemJsons(documentId).mapNotNull { NestedSyncDocument.mapFromJson(it) },
-                ) { ids, max -> bridge.markItemsClean(ids, max) }
+                pushed += pushAllDirtyItems(firestore, userId)
 
                 // Pull: full document plus full items. Manual sync converges:
                 // LWW applies remote wins, delete detection tombstones
@@ -122,12 +122,13 @@ class FirestoreNestedSyncManager(
     }
 
     /**
-     * Manual sync of the document list (all documents, no items): pushes
-     * dirty document rows, pulls watermarked remote documents, and purges
-     * uploaded document tombstones. Open-document sync still owns items.
+     * Manual sync of the document list: pushes all dirty documents plus all
+     * dirty items, pulls the full document set, and purges uploaded
+     * document tombstones. Open-document sync additionally pulls items.
      */
     override suspend fun syncDocuments() {
         syncMutex.withLock {
+            writePreSyncSnapshot(null)
             val prepared = prepareSync(null) ?: return
             val (userId, firestore) = prepared
             Log.d(TAG, "Nested docs sync started uid=$userId")
@@ -141,7 +142,9 @@ class FirestoreNestedSyncManager(
                     firestore,
                     docsRef,
                     bridge.dirtyDocumentJsons().mapNotNull { NestedSyncDocument.mapFromJson(it) },
-                ) { ids, max -> bridge.markDocumentsClean(ids, max) }
+                ) { ids, max -> bridge.markDocumentsClean(ids, max) } +
+                    // Plus all dirty items anywhere: list sync never strands edits.
+                    pushAllDirtyItems(firestore, userId)
 
                 // Pull: full documents. Manual sync converges: LWW applies
                 // remote wins, delete detection tombstones clean rows
@@ -182,7 +185,52 @@ class FirestoreNestedSyncManager(
         }
     }
 
+    /**
+     * Pushes every dirty item across all documents, grouped by parent
+     * collection. Both buttons use this so no edit is ever stranded by
+     * tapping the "wrong" one; pull scopes stay per-button.
+     */
+    private suspend fun pushAllDirtyItems(firestore: FirebaseFirestore, userId: String): Int {
+        val maps = bridge.dirtyAllItemJsons().mapNotNull { NestedSyncDocument.mapFromJson(it) }
+        var pushed = 0
+        maps.groupBy { it[NestedSyncDocument.FIELD_DOCUMENT_ID] as? String ?: "" }
+            .filterKeys { it.isNotEmpty() }
+            .forEach { (docId, group) ->
+                val itemsRef = firestore
+                    .collection(NestedSyncConfig.USERS_COLLECTION)
+                    .document(userId)
+                    .collection(NestedSyncConfig.DOCUMENTS_COLLECTION)
+                    .document(docId)
+                    .collection(NestedSyncConfig.ITEMS_COLLECTION)
+                pushed += pushMaps(firestore, itemsRef, group) { ids, max ->
+                    bridge.markItemsClean(ids, max)
+                }
+            }
+        return pushed
+    }
+
     private data class PreparedSync(val userId: String, val firestore: FirebaseFirestore)
+
+    /**
+     * Pre-sync safety snapshot (full nested JSON, last 3 kept). Never
+     * throws: a snapshot must never break a sync.
+     */
+    private suspend fun writePreSyncSnapshot(documentId: String?) {
+        try {
+            val json = bridge.exportNestedSnapshotJson()
+            withContext(Dispatchers.IO) {
+                val dir = File(appContext.filesDir, SNAPSHOT_DIR).apply { mkdirs() }
+                val name = "nested_${documentId ?: "docs"}_${Clock.System.now().toEpochMilliseconds()}.json"
+                File(dir, name).writeText(json)
+                dir.listFiles()
+                    ?.sortedBy { it.lastModified() }
+                    ?.dropLast(SNAPSHOT_KEEP)
+                    ?.forEach { runCatching { it.delete() } }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Pre-sync snapshot failed; continuing sync", e)
+        }
+    }
 
     /**
      * Shared online/config/sign-in prologue. Sets [syncState] and returns
@@ -337,6 +385,8 @@ class FirestoreNestedSyncManager(
 
     companion object {
         private const val TAG = "NestedSync"
+        private const val SNAPSHOT_DIR = "nested_sync_snapshots"
+        private const val SNAPSHOT_KEEP = 3
         private val KEY_LAST_SYNCED_DOCS = longPreferencesKey("last_synced_docs")
     }
 }
