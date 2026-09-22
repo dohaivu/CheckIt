@@ -89,14 +89,17 @@ struct NestedRowView: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
-            // Indent guides.
+            // Indent guides, sharing one x per depth (slightly right of
+            // cell center) — the toggle column below uses the same grid.
             ForEach(0..<row.depth, id: \.self) { _ in
                 Rectangle()
                     .fill(Color.accentColor.opacity(0.3))
                     .frame(width: 1)
-                    .padding(.leading, 15)
+                    .padding(.leading, 10)
+                    .frame(width: 16, alignment: .leading)
             }
-            // Collapse chevron (parents) or dot (leaves).
+            // Collapse chevron (parents) or dot (leaves), centered on the
+            // grid line like the guides.
             // Top offset centers the 24pt slot on the first text line
             // (content starts 5pt down), whatever the row height.
             Button {
@@ -111,7 +114,7 @@ struct NestedRowView: View {
                     }
                 }
                 .foregroundStyle(Color.accentColor.opacity(0.8))
-                .frame(width: 24, height: 24)
+                .frame(width: 16, height: 24)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -185,6 +188,19 @@ struct NestedRowView: View {
             .clipShape(RoundedRectangle(cornerRadius: 6))
             .contentShape(Rectangle())
             .onTapGesture { state.select(id: item.id) }
+        }
+        .background(alignment: .topLeading) {
+            // Guide continuation from the chevron down through the children.
+            // Same 16pt grid x as the guides, starting below the 24pt toggle
+            // slot; the chevron itself covers the line above it.
+            if row.node.hasChildren && !item.collapsed {
+                Rectangle()
+                    .fill(Color.accentColor.opacity(0.3))
+                    .frame(width: 1)
+                    .padding(.top, 28)
+                    .padding(.leading, CGFloat(row.depth * 16) + 10)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            }
         }
         .onDrag {
             NSItemProvider(object: "nested:\(item.id)" as NSString)
