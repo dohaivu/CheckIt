@@ -97,6 +97,8 @@ struct NestedRowView: View {
                     .padding(.leading, 15)
             }
             // Collapse chevron (parents) or dot (leaves).
+            // Top offset centers the 24pt slot on the first text line
+            // (content starts 5pt down), whatever the row height.
             Button {
                 state.toggleCollapse(id: item.id)
             } label: {
@@ -113,6 +115,7 @@ struct NestedRowView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .padding(.top, 4).padding(.leading, 3)
             .disabled(!row.node.hasChildren)
             .help(row.node.hasChildren ? (item.collapsed ? "Expand" : "Collapse") : "")
 
@@ -127,6 +130,12 @@ struct NestedRowView: View {
                         }
                         .buttonStyle(.plain)
                         .help(item.checked ? "Uncheck" : "Check off")
+                    }
+                    let marker = nestedPriorityMarker(item.priority.name)
+                    if !marker.isEmpty {
+                        Text(marker)
+                            .font(.headline).bold()
+                            .foregroundStyle(nestedPriorityColor(item.priority.name))
                     }
                     if isEditing {
                         TextField("", text: $editText)
@@ -166,12 +175,6 @@ struct NestedRowView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .contentShape(Rectangle())
                             .onTapGesture(count: 2) { state.startEdit(id: item.id) }
-                    }
-                    let marker = nestedPriorityMarker(item.priority.name)
-                    if !marker.isEmpty {
-                        Text(marker)
-                            .font(.headline).bold()
-                            .foregroundStyle(nestedPriorityColor(item.priority.name))
                     }
                 }
                 metadata

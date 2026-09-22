@@ -399,7 +399,8 @@ struct NestedListsWindowView: View {
                                 draftRow(depth: d.depth)
                             }
                         }
-                        .padding(.vertical, 1)
+                        // No vertical padding: the indent guides must run
+                        // unbroken across rows. Spacing lives inside the row.
                         .focusable()
                         .focused($focusedRow, equals: row.id)
                         .id(row.id)
@@ -496,7 +497,7 @@ struct NestedListsWindowView: View {
     }
 
     private func draftRow(depth: Int) -> some View {
-        HStack(spacing: 0) {
+        HStack(alignment: .top, spacing: 0) {
             ForEach(0..<depth, id: \.self) { _ in
                 Rectangle()
                     .fill(Color.accentColor.opacity(0.3))
@@ -506,6 +507,7 @@ struct NestedListsWindowView: View {
             Image(systemName: "circle.fill").font(.system(size: 6))
                 .foregroundStyle(Color.accentColor.opacity(0.7))
                 .frame(width: 24, height: 24)
+                .padding(.top, 4)
             TextField("New item…", text: $draftText)
                 .textFieldStyle(.roundedBorder)
                 .focused($draftFocused)
@@ -539,9 +541,8 @@ struct NestedListsWindowView: View {
             .buttonStyle(.plain)
             .help("Cancel")
         }
-        // No horizontal padding here: the outline LazyVStack already insets
-        // 8pt, and doubling it would shift the guides right of the rows.
-        .padding(.vertical, 1)
+        // No vertical padding here either: it would cut the guides
+        // around the draft row. (Horizontal is owned by the LazyVStack.)
         .onAppear {
             draftText = state.draft?.text ?? ""
             draftFocused = true
