@@ -54,6 +54,7 @@ import com.checkit.ui.components.AutocompleteTextField
 import com.checkit.ui.components.DatePicker
 import com.checkit.ui.components.DeleteOverflowMenu
 import com.checkit.ui.components.LabelTextField
+import com.checkit.ui.components.MarkdownTextField
 import com.checkit.ui.components.MarkdownVisualTransformation
 import com.checkit.ui.components.TagPicker
 import com.checkit.ui.tasks.views.currentTimeMinutes
@@ -328,7 +329,7 @@ private fun DailyPlanItemFormContent(
             isError = state.error != null
         )
 
-        AppOutlinedTextField(
+        MarkdownTextField(
             value = state.note,
             onValueChange = onNoteChange,
             textStyle = MaterialTheme.typography.bodyMedium.copy(
@@ -340,8 +341,6 @@ private fun DailyPlanItemFormContent(
             placeholder = if (sourceLocked) null else "Add details",
             enabled = enabled,
             modifier = Modifier.fillMaxWidth(),
-            visualTransformation = remember { MarkdownVisualTransformation() },
-            isError = state.error != null
         )
         state.error?.let { error ->
             Text(
