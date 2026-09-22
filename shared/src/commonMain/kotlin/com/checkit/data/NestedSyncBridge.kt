@@ -3,6 +3,7 @@ package com.checkit.data
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlin.time.Clock
 
 /**
  * Swift-friendly Room access for Firestore sync of one nested document,
@@ -102,7 +103,9 @@ class NestedSyncBridge(
 
     /**
      * Last-write-wins merge of one remote document into Room. Returns true
-     * when the remote won and was applied with dirty = false.
+     * when the remote won and was applied with dirty = false. A winning
+     * remote tombstone also tombstones locally synced items (dirty edits
+     * survive), mirroring local delete semantics so deletion converges.
      */
     suspend fun applyRemoteDocumentJson(json: String): Boolean {
         val map = NestedSyncDocument.mapFromJson(json) ?: return false
@@ -114,7 +117,7 @@ class NestedSyncBridge(
         if (!NestedSyncDocument.shouldApplyRemote(existing?.updatedAtMillis, remote.updatedAtMillis)) {
             return false
         }
-        dao.insertNestedDocument(
+        dao.upsertNestedDocument(
             NestedDocumentEntity(
                 id = remote.id,
                 title = remote.title,
@@ -124,6 +127,12 @@ class NestedSyncBridge(
                 deleted = remote.deleted,
             )
         )
+        if (remote.deleted) {
+            dao.tombstoneCleanItemsForDocument(
+                remote.id,
+                Clock.System.now().toEpochMilliseconds(),
+            )
+        }
         return true
     }
 
@@ -144,10 +153,7 @@ class NestedSyncBridge(
         if (remotes.isEmpty()) return 0
         var applied = 0
         remotes.groupBy { it.documentId }.forEach { (documentId, items) ->
-            if (dao.nestedDocumentById(documentId) == null) {
-                println("NestedSync: skipping ${items.size} items of unknown document $documentId")
-                return@forEach
-            }
+            ensureDocumentStub(documentId)
             val localIds = dao.nestedItemIdsForDocument(documentId).toSet()
             NestedSyncDocument.orderForApply(items, localIds).forEach { remote ->
                 val won = runCatching { upsertRemoteItem(remote) }
@@ -160,6 +166,70 @@ class NestedSyncBridge(
     }
 
     /**
+     * Creates a placeholder for items arriving without their document
+     * (deleted/purged locally while live remotely). Zero clocks lose LWW
+     * against any real version; clean so it never pushes junk. Data shown
+     * beats data silently dropped.
+     */
+    private suspend fun ensureDocumentStub(documentId: String) {
+        if (dao.nestedDocumentById(documentId) != null) return
+        dao.insertNestedDocument(
+            NestedDocumentEntity(
+                id = documentId,
+                title = "",
+                createdAtMillis = 0L,
+                updatedAtMillis = 0L,
+                dirty = false,
+                deleted = false,
+            )
+        )
+        println("NestedSync: resurrected stub for document $documentId")
+    }
+
+    /**
+     * Delete detection for a document missing remotely: a locally clean,
+     * live row was deleted elsewhere (tombstone aged out) — tombstone it
+     * so it converges instead of lingering. Dirty rows carry unpushed
+     * edits and are never touched. Returns true when tombstoned.
+     */
+    suspend fun reconcileDocumentMissing(documentId: String, nowMillis: Long): Boolean {
+        val entity = dao.nestedDocumentById(documentId) ?: return false
+        if (entity.deleted || entity.dirty) return false
+        dao.markDocumentsDeleted(listOf(documentId), nowMillis)
+        dao.tombstoneCleanItemsForDocument(documentId, nowMillis)
+        return true
+    }
+
+    /**
+     * Delete detection over a full remote id set: clean, live local docs
+     * missing remotely were deleted elsewhere. Returns the count.
+     */
+    suspend fun reconcileMissingDocuments(remoteIds: List<String>, nowMillis: Long): Int {
+        val remote = remoteIds.toSet()
+        val missing = dao.cleanLiveDocumentIds().filter { it !in remote }
+        if (missing.isEmpty()) return 0
+        dao.markDocumentsDeleted(missing, nowMillis)
+        missing.forEach { dao.tombstoneCleanItemsForDocument(it, nowMillis) }
+        return missing.size
+    }
+
+    /**
+     * Delete detection over a full remote id set for one document's items.
+     * Returns the count.
+     */
+    suspend fun reconcileMissingItems(
+        documentId: String,
+        remoteIds: List<String>,
+        nowMillis: Long,
+    ): Int {
+        val remote = remoteIds.toSet()
+        val missing = dao.cleanLiveItemIds(documentId).filter { it !in remote }
+        if (missing.isEmpty()) return 0
+        dao.markItemsDeleted(missing, nowMillis)
+        return missing.size
+    }
+
+    /**
      * Inserts one winning remote row with dirty = false and rebuilds its
      * tag links. Callers must guarantee the document exists and parents
      * apply first (see [applyRemoteItemJsons]); failures throw.
@@ -169,7 +239,7 @@ class NestedSyncBridge(
         if (!NestedSyncDocument.shouldApplyRemote(existing?.updatedAtMillis, remote.updatedAtMillis)) {
             return false
         }
-        dao.insertNestedListItem(
+        dao.upsertNestedListItem(
             NestedListItemEntity(
                 id = remote.id,
                 documentId = remote.documentId,

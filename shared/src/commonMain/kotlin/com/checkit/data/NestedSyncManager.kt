@@ -26,9 +26,10 @@ data class NestedSyncState(
  *
  * Unlike QuickNote there are no automatic triggers: the UI calls
  * [syncDocument] (open document) or [syncDocuments] (document list)
- * explicitly from sync buttons. Implementations push dirty rows, pull
- * watermarked remote changes with last-write-wins on `updatedAtMillis`,
- * and purge uploaded tombstones after the shared retention window.
+ * explicitly from sync buttons. Implementations push dirty rows, pull full
+ * remote state with last-write-wins on `updatedAtMillis`, reconcile rows
+ * deleted elsewhere, and purge uploaded tombstones after the shared
+ * retention window.
  */
 interface NestedSyncManager {
     val syncState: StateFlow<NestedSyncState>

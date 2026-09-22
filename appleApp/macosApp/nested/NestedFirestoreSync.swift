@@ -45,12 +45,7 @@ final class NestedFirestoreSync: ObservableObject {
     // Firestore field carrying the LWW clock (NestedSyncDocument).
     private static let updatedAtField = "updatedAtMillis"
 
-    private static let lastPullDocsKey = "nested.lastPullDocsMillis"
     private static let lastSyncedDocsKey = "nested.lastSyncedDocsMillis"
-
-    private static func lastPullKey(_ documentId: String) -> String {
-        "nested.lastPullMillis.\(documentId)"
-    }
 
     private static func lastSyncedAtKey(_ documentId: String) -> String {
         "nested.lastSyncedAtMillis.\(documentId)"
@@ -124,21 +119,33 @@ final class NestedFirestoreSync: ObservableObject {
                 try await bridgeMarkItemsClean(ids: ids, maxUpdatedAt: maxUpdated)
             }
 
-            // Pull: the document row by id, then watermarked items.
+            // Pull: full document plus full items. Manual sync converges:
+            // LWW applies remote wins, delete detection tombstones clean
+            // rows missing remotely.
             var applied = 0
-            let docSnapshot = try await docRef.getDocument()
-            if let data = docSnapshot.data(),
-               let json = Self.jsonString(for: data, documentId: docSnapshot.documentID),
-               try await bridgeApplyRemoteDocument(json: json) {
-                applied += 1
-            }
-            let lastPull = Int64(UserDefaults.standard.double(forKey: Self.lastPullKey(documentId)))
+            var reconciled = 0
             let pullStart = Self.nowMillis()
-            let pulled = try await pullJsons(from: itemsRef, lastPull: lastPull)
+            let docSnapshot = try await docRef.getDocument()
+            if docSnapshot.exists {
+                if let data = docSnapshot.data(),
+                   let json = Self.jsonString(for: data, documentId: docSnapshot.documentID),
+                   try await bridgeApplyRemoteDocument(json: json) {
+                    applied += 1
+                }
+            } else if try await bridgeReconcileDocumentMissing(documentId: documentId, now: pullStart) {
+                reconciled += 1
+            }
+            let snapshot = try await itemsRef.getDocuments()
+            var itemJsons: [String] = []
+            for doc in snapshot.documents {
+                guard let json = Self.jsonString(for: doc.data(), documentId: doc.documentID) else { continue }
+                itemJsons.append(json)
+            }
             // Batch apply orders parents before children so the
             // self-FK can never fail on first pulls.
-            applied += try await bridgeApplyRemoteItems(jsons: pulled.jsons)
-            UserDefaults.standard.set(Double(max(max(lastPull, pullStart), pulled.maxRemote)), forKey: Self.lastPullKey(documentId))
+            applied += try await bridgeApplyRemoteItems(jsons: itemJsons)
+            let itemIds = itemJsons.compactMap { Self.documentDict(json: $0)?["id"] as? String }
+            reconciled += try await bridgeReconcileMissingItems(documentId: documentId, remoteIds: itemIds, now: pullStart)
 
             // Purge: uploaded item tombstones, then the document tombstone.
             let purgeCutoff = pullStart - QuickNoteRules.shared.PURGE_AFTER_MILLIS
@@ -148,7 +155,7 @@ final class NestedFirestoreSync: ObservableObject {
 
             UserDefaults.standard.set(Double(pullStart), forKey: Self.lastSyncedAtKey(documentId))
             uiState = NestedSyncUiState(status: .synced, documentId: documentId, lastSyncedAt: Date(timeIntervalSince1970: Double(pullStart) / 1000.0))
-            print("[NestedSync] doc=\(documentId) pushed=\(pushed) pulled=\(pulled.jsons.count) applied=\(applied) purged=\(purged)")
+            print("[NestedSync] doc=\(documentId) pushed=\(pushed) pulled=\(itemJsons.count) applied=\(applied) reconciled=\(reconciled) purged=\(purged)")
         } catch {
             recordSyncFailure(documentId: documentId, error: error)
         }
@@ -184,17 +191,24 @@ final class NestedFirestoreSync: ObservableObject {
                 try await bridgeMarkDocumentsClean(ids: ids, maxUpdatedAt: maxUpdated)
             }
 
-            // Pull: watermarked documents (overlap margin for clock skew).
+            // Pull: full documents. Manual sync converges: LWW applies
+            // remote wins, delete detection tombstones clean rows
+            // missing remotely.
             var applied = 0
-            let lastPull = Int64(UserDefaults.standard.double(forKey: Self.lastPullDocsKey))
             let pullStart = Self.nowMillis()
-            let pulled = try await pullJsons(from: docsRef, lastPull: lastPull)
-            for json in pulled.jsons {
+            let snapshot = try await docsRef.getDocuments()
+            var docJsons: [String] = []
+            for doc in snapshot.documents {
+                guard let json = Self.jsonString(for: doc.data(), documentId: doc.documentID) else { continue }
+                docJsons.append(json)
+            }
+            for json in docJsons {
                 if try await bridgeApplyRemoteDocument(json: json) {
                     applied += 1
                 }
             }
-            UserDefaults.standard.set(Double(max(max(lastPull, pullStart), pulled.maxRemote)), forKey: Self.lastPullDocsKey)
+            let docIds = docJsons.compactMap { Self.documentDict(json: $0)?["id"] as? String }
+            let reconciled = try await bridgeReconcileMissingDocuments(remoteIds: docIds, now: pullStart)
 
             // Purge uploaded document tombstones (items first, guarded).
             var purged = 0
@@ -211,7 +225,7 @@ final class NestedFirestoreSync: ObservableObject {
 
             UserDefaults.standard.set(Double(pullStart), forKey: Self.lastSyncedDocsKey)
             uiState = NestedSyncUiState(status: .synced, documentId: nil, lastSyncedAt: Date(timeIntervalSince1970: Double(pullStart) / 1000.0))
-            print("[NestedSync] docs pushed=\(pushed) pulled=\(pulled.jsons.count) applied=\(applied) purged=\(purged)")
+            print("[NestedSync] docs pushed=\(pushed) pulled=\(docJsons.count) applied=\(applied) reconciled=\(reconciled) purged=\(purged)")
         } catch {
             recordSyncFailure(documentId: nil, error: error)
         }
@@ -269,25 +283,6 @@ final class NestedFirestoreSync: ObservableObject {
             try await markClean(rows.map(\.0), rows.map(\.1).max() ?? 0)
         }
         return rows.count
-    }
-
-    /// Watermarked pull of one collection (overlap margin for clock skew).
-    /// Returns JSON rows plus the max remote clock for the watermark.
-    private func pullJsons(from collection: CollectionReference, lastPull: Int64) async throws -> (jsons: [String], maxRemote: Int64) {
-        let snapshot = try await collection
-            .whereField(Self.updatedAtField, isGreaterThan: lastPull - Self.config.PULL_OVERLAP_MILLIS)
-            .getDocuments()
-        var maxRemote = lastPull
-        var jsons: [String] = []
-        for doc in snapshot.documents {
-            let data = doc.data()
-            if let updated = (data[Self.updatedAtField] as? NSNumber)?.int64Value {
-                maxRemote = max(maxRemote, updated)
-            }
-            guard let json = Self.jsonString(for: data, documentId: doc.documentID) else { continue }
-            jsons.append(json)
-        }
-        return (jsons, maxRemote)
     }
 
     /// Purges uploaded item tombstones of one document. Returns the count.
@@ -500,6 +495,33 @@ final class NestedFirestoreSync: ObservableObject {
             bridge().purgeableDocumentIds(cutoffMillis: cutoff) { ids, error in
                 if let error { cont.resume(throwing: error) }
                 else { cont.resume(returning: ids ?? []) }
+            }
+        }
+    }
+
+    private func bridgeReconcileDocumentMissing(documentId: String, now: Int64) async throws -> Bool {
+        try await withCheckedThrowingContinuation { cont in
+            bridge().reconcileDocumentMissing(documentId: documentId, nowMillis: now) { reconciled, error in
+                if let error { cont.resume(throwing: error) }
+                else { cont.resume(returning: reconciled?.boolValue ?? false) }
+            }
+        }
+    }
+
+    private func bridgeReconcileMissingDocuments(remoteIds: [String], now: Int64) async throws -> Int {
+        try await withCheckedThrowingContinuation { cont in
+            bridge().reconcileMissingDocuments(remoteIds: remoteIds, nowMillis: now) { reconciled, error in
+                if let error { cont.resume(throwing: error) }
+                else { cont.resume(returning: Int(truncating: reconciled ?? 0)) }
+            }
+        }
+    }
+
+    private func bridgeReconcileMissingItems(documentId: String, remoteIds: [String], now: Int64) async throws -> Int {
+        try await withCheckedThrowingContinuation { cont in
+            bridge().reconcileMissingItems(documentId: documentId, remoteIds: remoteIds, nowMillis: now) { reconciled, error in
+                if let error { cont.resume(throwing: error) }
+                else { cont.resume(returning: Int(truncating: reconciled ?? 0)) }
             }
         }
     }

@@ -1096,6 +1096,19 @@ interface CheckItDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertNestedListItem(item: NestedListItemEntity)
 
+    /**
+     * Update-or-insert without delete. Sync apply MUST use these instead of
+     * the REPLACE inserts above: REPLACE is DELETE + INSERT, which fires
+     * the document/parent CASCADEs and wipes local items/subtrees that the
+     * watermarked pull can never restore (data loss). Upsert touches only
+     * the row itself.
+     */
+    @Upsert
+    suspend fun upsertNestedDocument(document: NestedDocumentEntity)
+
+    @Upsert
+    suspend fun upsertNestedListItem(item: NestedListItemEntity)
+
     @Transaction
     suspend fun insertNestedDocumentWithRoot(
         document: NestedDocumentEntity,
@@ -1276,6 +1289,26 @@ interface CheckItDao {
 
     @Query("SELECT EXISTS(SELECT 1 FROM nested_list_items WHERE documentId = :documentId AND dirty = 1)")
     suspend fun hasDirtyNestedItems(documentId: String): Boolean
+
+    @Query("SELECT id FROM nested_documents WHERE deleted = 0 AND dirty = 0")
+    suspend fun cleanLiveDocumentIds(): List<String>
+
+    @Query("SELECT id FROM nested_list_items WHERE documentId = :documentId AND deleted = 0 AND dirty = 0")
+    suspend fun cleanLiveItemIds(documentId: String): List<String>
+
+    @Query("UPDATE nested_documents SET deleted = 1, dirty = 1, updatedAtMillis = :nowMillis WHERE id IN (:ids)")
+    suspend fun markDocumentsDeleted(ids: List<String>, nowMillis: Long)
+
+    @Query("UPDATE nested_list_items SET deleted = 1, dirty = 1, updatedAtMillis = :nowMillis WHERE id IN (:ids)")
+    suspend fun markItemsDeleted(ids: List<String>, nowMillis: Long)
+
+    /**
+     * Tombstones live, already-synced items of one document (dirty rows are
+     * unpushed edits and must survive). Mirrors local delete semantics so a
+     * remotely-won document deletion converges fully.
+     */
+    @Query("UPDATE nested_list_items SET deleted = 1, dirty = 1, updatedAtMillis = :nowMillis WHERE documentId = :documentId AND deleted = 0 AND dirty = 0")
+    suspend fun tombstoneCleanItemsForDocument(documentId: String, nowMillis: Long)
 
     // ---------------- Sync (dirty tracking, tombstones, purge) ----------------
     //

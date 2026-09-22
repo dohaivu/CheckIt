@@ -13,5 +13,4 @@ object NestedSyncConfig {
     const val DOCUMENTS_COLLECTION = "nestedDocuments"
     const val ITEMS_COLLECTION = "nestedItems"
     const val PUSH_BATCH_SIZE = 400
-    const val PULL_OVERLAP_MILLIS = 60_000L
 }
