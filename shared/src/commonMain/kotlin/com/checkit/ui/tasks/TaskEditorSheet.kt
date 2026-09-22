@@ -733,7 +733,7 @@ private fun NoteFormContent(
             maxLines = 10,
             placeholder = "Add more details",
             enabled = enabled,
-            modifier = Modifier.fillMaxWidth().height(130.dp),
+            modifier = Modifier.fillMaxWidth(),
         )
         form.error?.let { error ->
             Text(
