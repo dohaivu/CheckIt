@@ -71,8 +71,10 @@ import com.checkit.domain.usecase.toClockLabel
 import com.checkit.ui.components.AppEditorBottomSheet
 import com.checkit.ui.components.AppOutlinedTextField
 import com.checkit.ui.components.DeleteOverflowMenu
+import com.checkit.ui.components.MarkdownVisualTransformation
 import com.checkit.ui.components.ReorderDragState
 import com.checkit.ui.components.TimePicker
+import com.checkit.ui.components.asMarkdownAnnotatedString
 import com.checkit.ui.components.findReorderTarget
 import com.checkit.ui.components.reorderableRowGraphics
 import kotlin.uuid.Uuid
@@ -229,7 +231,7 @@ private fun RoutineCard(
                         )
                         Text(
                             text = minutes.toClockLabel(),
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -252,7 +254,7 @@ private fun RoutineCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onToggleStep(step.id) },
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalAlignment = Alignment.Top,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Icon(
@@ -269,17 +271,26 @@ private fun RoutineCard(
                                 onToggleStep(step.id)
                             }
                     )
-                    Text(
-                        text = step.title,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            textDecoration = if (checked) TextDecoration.LineThrough else null
-                        ),
-                        color = if (checked) {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        } else {
-                            MaterialTheme.colorScheme.onSurface
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = step.title,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                textDecoration = if (checked) TextDecoration.LineThrough else null
+                            ),
+                            color = if (checked) {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            }
+                        )
+                        if (step.description.isNotBlank()) {
+                            Text(
+                                text = step.description.asMarkdownAnnotatedString(),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
-                    )
+                    }
                 }
             }
         }
@@ -478,7 +489,10 @@ private fun RoutineStepsEditor(
                     val textStyle = MaterialTheme.typography.bodyMedium.copy(
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    Row(
+                    val detailStyle = MaterialTheme.typography.bodySmall.copy(
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Column(
                         modifier = Modifier
                             .reorderableRowGraphics(step.id, dragState)
                             .fillMaxWidth()
@@ -511,54 +525,84 @@ private fun RoutineStepsEditor(
                                 } else Modifier
                             )
                             .clip(RoundedCornerShape(12.dp))
-                            .padding(horizontal = 8.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            .padding(horizontal = 8.dp, vertical = 6.dp)
                     ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            BasicTextField(
+                                value = step.title,
+                                onValueChange = { value ->
+                                    onStepsChange(
+                                        steps.map { row ->
+                                            if (row.id == step.id) row.copy(title = value) else row
+                                        }
+                                    )
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .focusRequester(focusRequester),
+                                textStyle = textStyle,
+                                singleLine = false,
+                                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                                keyboardActions = KeyboardActions(onNext = { addStep() }),
+                                decorationBox = { innerTextField ->
+                                    if (step.title.isEmpty()) {
+                                        Text(
+                                            "Step",
+                                            style = textStyle.copy(
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                            )
+                                        )
+                                    }
+                                    innerTextField()
+                                }
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clickable {
+                                        onStepsChange(steps.filterNot { row -> row.id == step.id })
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = "Remove step",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
                         BasicTextField(
-                            value = step.title,
+                            value = step.description,
                             onValueChange = { value ->
                                 onStepsChange(
                                     steps.map { row ->
-                                        if (row.id == step.id) row.copy(title = value) else row
+                                        if (row.id == step.id) row.copy(description = value) else row
                                     }
                                 )
                             },
-                            modifier = Modifier
-                                .weight(1f)
-                                .focusRequester(focusRequester),
-                            textStyle = textStyle,
+                            modifier = Modifier.fillMaxWidth(),
+                            textStyle = detailStyle,
                             singleLine = false,
                             cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                            keyboardActions = KeyboardActions(onNext = { addStep() }),
                             decorationBox = { innerTextField ->
-                                if (step.title.isEmpty()) {
+                                if (step.description.isEmpty()) {
                                     Text(
-                                        "Step",
-                                        style = textStyle.copy(
+                                        "Add details",
+                                        style = detailStyle.copy(
                                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                                         )
                                     )
                                 }
                                 innerTextField()
-                            }
+                            },
+                            visualTransformation = remember { MarkdownVisualTransformation() }
                         )
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clickable {
-                                    onStepsChange(steps.filterNot { row -> row.id == step.id })
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                Icons.Default.Delete,
-                                contentDescription = "Remove step",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
                     }
                 }
             }

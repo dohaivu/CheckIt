@@ -20,6 +20,7 @@ const val RoutineStreakThresholdPercent = 80
 data class RoutineStepTemplate(
     val id: String,
     val title: String,
+    val description: String = "",
     val sortOrder: Int = 0
 )
 

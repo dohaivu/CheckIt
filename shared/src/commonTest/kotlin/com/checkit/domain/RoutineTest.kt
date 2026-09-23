@@ -31,10 +31,19 @@ class RoutineTest {
     @Test
     fun stepsJsonRoundTrip() {
         val steps = listOf(
-            RoutineStepTemplate(id = "id-1", title = "Drink water", sortOrder = 0),
+            RoutineStepTemplate(id = "id-1", title = "Drink water", description = "2 glasses", sortOrder = 0),
             RoutineStepTemplate(id = "id-2", title = "Read", sortOrder = 1)
         )
         assertEquals(steps, decodeRoutineSteps(encodeRoutineSteps(steps)))
+    }
+
+    @Test
+    fun stepsJsonWithoutDescriptionDecodesToBlank() {
+        val legacy = """[{"id":"id-1","title":"Drink water","sortOrder":0}]"""
+        assertEquals(
+            listOf(RoutineStepTemplate(id = "id-1", title = "Drink water", sortOrder = 0)),
+            decodeRoutineSteps(legacy)
+        )
     }
 
     @Test

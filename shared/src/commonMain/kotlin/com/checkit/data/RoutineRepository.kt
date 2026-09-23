@@ -46,7 +46,13 @@ class RoomRoutineRepository(
         require(trimmed.isNotEmpty()) { "Routine title must not be blank" }
         val normalizedSteps = steps
             .filter { it.title.isNotBlank() }
-            .mapIndexed { index, step -> step.copy(title = step.title.trim(), sortOrder = index) }
+            .mapIndexed { index, step ->
+                step.copy(
+                    title = step.title.trim(),
+                    description = step.description.trim(),
+                    sortOrder = index
+                )
+            }
         val existing = id?.let { dao.routineById(it) }
         val routineId = existing?.id ?: Uuid.random().toString()
         dao.upsertRoutine(
