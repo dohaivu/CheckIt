@@ -176,25 +176,17 @@ internal fun StandardTaskRowContent(task: TaskItem, showList: Boolean) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 62.dp)
             .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        TaskTitleRow(task, descriptionMaxLines = 0)
+        TaskTitleRow(task, descriptionMaxLines = 1)
         task.subtasks.takeIf { it.isNotEmpty() }?.let { SubtaskProgressText(task) }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-
-            SupportingPills(
-                date = { DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes, isOverdue = task.isOverdue()) },
-                list = if (showList) task.list else null,
-                tags = task.tags.take(2),
-                overflowCount = (task.tags.size - 2).coerceAtLeast(0)
-            )
-        }
+        SupportingPills(
+            date = { DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes, isOverdue = task.isOverdue()) },
+            list = if (showList) task.list else null,
+//            tags = task.tags.take(2),
+//            overflowCount = (task.tags.size - 2).coerceAtLeast(0)
+        )
     }
 }
 
@@ -203,23 +195,16 @@ internal fun DetailTaskRowContent(task: TaskItem, showList: Boolean) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 62.dp)
             .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        TaskTitleRow(task, descriptionMaxLines = 3)
+        TaskTitleRow(task, descriptionMaxLines = 10)
         SubtaskBriefList(task.subtasks)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            SupportingPills(
-                date = { DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes, isOverdue = task.isOverdue()) },
-                list = if (showList) task.list else null,
-                tags = task.tags
-            )
-        }
+        SupportingPills(
+            date = { DateTimeRangeDetailChip(task.doDate, task.startTimeMinutes, task.endTimeMinutes, isOverdue = task.isOverdue()) },
+            list = if (showList) task.list else null,
+//            tags = task.tags
+        )
     }
 }
 
@@ -380,7 +365,7 @@ internal fun TaskTitleRow(
             Text(task.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, lineHeight = 20.sp)
             if (descriptionMaxLines > 0 && task.description.isNotBlank()) {
                 Text(
-                    task.description,
+                    task.description.asMarkdownAnnotatedString(),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = descriptionMaxLines,

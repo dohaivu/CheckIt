@@ -221,11 +221,11 @@ fun TaskPriority.priorityColor(): Color = when (this) {
 }
 
 fun NoteItem?.cardColor(): Color {
-    return this?.tags?.firstOrNull()?.color?.toColor() ?: this?.list?.color?.toColor() ?: FallbackColor
+    return this?.tags?.firstOrNull()?.color?.toColor() ?: FallbackColor
 }
 
 fun TaskItem?.cardColor(): Color {
-    return this?.tags?.firstOrNull()?.color?.toColor() ?: this?.list?.color?.toColor() ?: this?.priority?.priorityColor() ?: FallbackColor
+    return this?.tags?.firstOrNull()?.color?.toColor() ?: FallbackColor
 }
 
 fun DailyPlanItem.cardColor(): Color {
@@ -239,7 +239,7 @@ fun TaskItem.timeRangeLabel(): String {
 }
 
 fun TaskItem.isOverdue(): Boolean {
-    return doDate.isOverdue(today(), endTimeMinutes, status == TaskStatus.Completed)
+    return doDate.isOverdue(today(), endTimeMinutes ?: startTimeMinutes, status == TaskStatus.Completed)
 }
 fun NoteItem.isOverdue(): Boolean {
     return date.isOverdue(today(), null,status == TaskStatus.Completed)

@@ -23,7 +23,7 @@ internal fun SupportingPills(
     overflowCount: Int = 0,
     modifier: Modifier = Modifier
 ) {
-    if (list == null && tags.isEmpty() && overflowCount == 0) return
+    if (date == null && list == null && tags.isEmpty() && overflowCount == 0) return
     FlowRow(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(6.dp),

@@ -68,7 +68,6 @@ import kotlin.math.abs
 @Composable
 internal fun SubtaskBriefList(subtasks: List<SubTaskItem>) {
     val activeSubtasks = subtasks.filter { !it.isCompleted }
-    if (activeSubtasks.isEmpty()) return
 
     Box(
         modifier = Modifier
@@ -82,25 +81,33 @@ internal fun SubtaskBriefList(subtasks: List<SubTaskItem>) {
             )
             .padding(8.dp)
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            activeSubtasks.forEach { subtask ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.CheckBoxOutlineBlank,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = ContentAlpha)
-                    )
-                    Text(
-                        text = subtask.name,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis
-                    )
+        if (activeSubtasks.isEmpty()) {
+            Text(
+                text = "${subtasks.count { it.isCompleted }}/${subtasks.size} subtasks",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                activeSubtasks.forEach { subtask ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.CheckBoxOutlineBlank,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = ContentAlpha)
+                        )
+                        Text(
+                            text = subtask.name,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
         }
