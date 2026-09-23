@@ -26,6 +26,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -103,6 +106,8 @@ fun MarkdownTextField(
 ) {
     var textFieldValue by remember { mutableStateOf(TextFieldValue(text = value)) }
     var lastExternalText by remember { mutableStateOf(value) }
+    var isFocused by remember { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
 
     if (value != lastExternalText) {
         lastExternalText = value
@@ -113,28 +118,6 @@ fun MarkdownTextField(
     }
 
     Column(modifier = modifier) {
-        if (showToolbar && enabled && !readOnly) {
-            MarkdownToolbar(
-                onAction = { action ->
-                    val edit = applyJournalToolbarAction(
-                        text = textFieldValue.text,
-                        selectionStart = textFieldValue.selection.start,
-                        selectionEnd = textFieldValue.selection.end,
-                        action = action
-                    )
-                    val newTextFieldValue = textFieldValue.copy(
-                        text = edit.text,
-                        selection = TextRange(edit.selectionStart, edit.selectionEnd)
-                    )
-                    textFieldValue = newTextFieldValue
-                    lastExternalText = edit.text
-                    onValueChange(edit.text)
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(Modifier.height(8.dp))
-        }
-
         AppOutlinedTextField(
             value = textFieldValue,
             onValueChange = { newValue ->
@@ -157,6 +140,31 @@ fun MarkdownTextField(
             visualTransformation = remember { MarkdownVisualTransformation() },
             contentPadding = contentPadding,
             modifier = textFieldModifier
+                .focusRequester(focusRequester)
+                .onFocusChanged { isFocused = it.isFocused }
         )
+
+        if (showToolbar && isFocused && enabled && !readOnly) {
+            Spacer(Modifier.height(6.dp))
+            MarkdownToolbar(
+                onAction = { action ->
+                    val edit = applyJournalToolbarAction(
+                        text = textFieldValue.text,
+                        selectionStart = textFieldValue.selection.start,
+                        selectionEnd = textFieldValue.selection.end,
+                        action = action
+                    )
+                    val newTextFieldValue = textFieldValue.copy(
+                        text = edit.text,
+                        selection = TextRange(edit.selectionStart, edit.selectionEnd)
+                    )
+                    textFieldValue = newTextFieldValue
+                    lastExternalText = edit.text
+                    onValueChange(edit.text)
+                    focusRequester.requestFocus()
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
     }
 }
