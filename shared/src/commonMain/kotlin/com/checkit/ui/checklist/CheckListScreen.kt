@@ -103,8 +103,6 @@ internal fun CheckListScreen(
                         markdown = state.selectedMarkdown.orEmpty(),
                         modifier = Modifier
                             .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .padding(horizontal = 16.dp, vertical = 12.dp)
                     )
                 }
             }
