@@ -116,6 +116,7 @@ import com.checkit.domain.usecase.SetQuickNotePriorityUseCase
 import com.checkit.domain.usecase.SetQuickNoteReminderUseCase
 import com.checkit.notifications.AppReminderScheduler
 import com.checkit.ui.calendar.CalendarViewModel
+import com.checkit.ui.checklist.ChecklistViewModel
 import com.checkit.ui.quicknote.QuickNoteViewModel
 import com.checkit.ui.myday.MyDayViewModel
 import com.checkit.ui.nested.NestedListsViewModel
@@ -387,6 +388,7 @@ val provideViewModelModule = module {
         )
     }
     viewModel { SettingsViewModel(get(), get(), get(), get<AppReminderScheduler>(), get(), get()) }
+    viewModel { ChecklistViewModel(get(), get()) }
     viewModel {
         NestedListsViewModel(
             observeDocumentsUseCase = get(),

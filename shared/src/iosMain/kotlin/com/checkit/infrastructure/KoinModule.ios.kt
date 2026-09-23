@@ -5,6 +5,8 @@ import com.checkit.data.NoOpQuickNoteSyncManager
 import com.checkit.data.NestedSyncManager
 import com.checkit.auth.GoogleAccountManager
 import com.checkit.auth.NoOpGoogleAccountManager
+import com.checkit.checklist.ChecklistStorage
+import com.checkit.checklist.NoOpChecklistStorage
 import com.checkit.data.QuickNoteSyncManager
 import com.checkit.notifications.NoOpQuickNoteReminderScheduler
 import com.checkit.notifications.NoOpTaskReminderNotificationScheduler
@@ -36,4 +38,5 @@ actual fun platformModule() = module {
     single<NestedSyncManager> { NoOpNestedSyncManager() }
     single<QuickNoteCameraCapture> { NoOpQuickNoteCameraCapture() }
     single<BackupScheduler> { NoOpBackupScheduler() }
+    single<ChecklistStorage> { NoOpChecklistStorage() }
 }

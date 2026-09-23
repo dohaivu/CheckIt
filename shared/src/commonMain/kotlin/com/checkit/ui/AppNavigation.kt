@@ -38,6 +38,8 @@ sealed interface AppRoute : NavKey {
     @Serializable data object Reflect : AppRoute
     @Serializable data object Settings : AppRoute
     @Serializable data object NestedLists : AppRoute
+    @Serializable data object ChecklistDocuments : AppRoute
+    @Serializable data class ChecklistDetail(val uri: String, val name: String) : AppRoute
     @Serializable data class ListSections(val listId: String) : AppRoute
 }
 
@@ -77,7 +79,7 @@ enum class CheckItTab {
             AppRoute.MyDay -> MyDay
             AppRoute.Task, AppRoute.Tags -> Task
             AppRoute.Calendar -> Calendar
-            AppRoute.Reflect -> Reflect
+            AppRoute.Reflect, AppRoute.ChecklistDocuments, is AppRoute.ChecklistDetail -> Reflect
             AppRoute.Settings -> Settings
             AppRoute.NestedLists -> NestedLists
             else -> null
