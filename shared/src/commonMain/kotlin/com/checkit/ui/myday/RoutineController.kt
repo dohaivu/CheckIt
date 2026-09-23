@@ -6,6 +6,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import kotlinx.datetime.DayOfWeek
 
 /** Observes routines + today checks and handles routine actions. */
 internal class RoutineController(
@@ -50,11 +51,12 @@ internal class RoutineController(
         title: String,
         description: String,
         reminderMinutes: Int?,
+        activeWeekdays: Set<DayOfWeek>,
         steps: List<RoutineStepTemplate>
     ) {
         scope.launch {
             try {
-                deps.saveRoutine(id, title, description, reminderMinutes, steps)
+                deps.saveRoutine(id, title, description, reminderMinutes, activeWeekdays, steps)
             } catch (error: Exception) {
                 state.sendEvent(UiEvent.ShowSnackbar(error.message ?: "Unable to save routine"))
             }

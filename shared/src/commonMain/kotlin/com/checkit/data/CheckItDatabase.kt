@@ -13,6 +13,7 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.sqlite.execSQL
 import androidx.sqlite.SQLiteConnection
 import com.checkit.domain.TaskType
+import com.checkit.domain.ActiveWeekdaysAllJson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.serialization.Serializable
@@ -688,6 +689,8 @@ data class RoutineEntity(
     val title: String,
     val description: String = "",
     val reminderMinutes: Int? = null,
+    /** Inline JSON list of weekday names; empty list means paused. */
+    val activeWeekdaysJson: String = ActiveWeekdaysAllJson,
     val sortOrder: Int = 0,
     /** Inline JSON list of RoutineStepTemplate; history keeps percent only. */
     val stepsJson: String = "[]",

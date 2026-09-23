@@ -427,6 +427,7 @@ internal fun MyDayScreen(
                                 MyDayView.Routine -> RoutineTab(
                                     routines = state.routines,
                                     checks = state.routineToday.checks,
+                                    today = state.today,
                                     onToggleStep = viewModel::toggleRoutineStep,
                                     onSaveRoutine = viewModel::saveRoutine,
                                     onDeleteRoutine = viewModel::deleteRoutine,

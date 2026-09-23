@@ -9,6 +9,7 @@ import com.checkit.domain.JournalEntry
 import com.checkit.domain.LeftoverAction
 import com.checkit.domain.RoutineStepTemplate
 import com.checkit.domain.SprintManager
+import kotlinx.datetime.DayOfWeek
 import com.checkit.domain.TaskItem
 import com.checkit.domain.usecase.AddJournalEntryUseCase
 import com.checkit.domain.usecase.AddSuggestedTaskToMyDayUseCase
@@ -131,8 +132,9 @@ class MyDayViewModel(
         title: String,
         description: String,
         reminderMinutes: Int?,
+        activeWeekdays: Set<DayOfWeek>,
         steps: List<RoutineStepTemplate>
-    ) = routines.saveRoutine(id, title, description, reminderMinutes, steps)
+    ) = routines.saveRoutine(id, title, description, reminderMinutes, activeWeekdays, steps)
     fun deleteRoutine(id: String) = routines.deleteRoutine(id)
 
     // Day review

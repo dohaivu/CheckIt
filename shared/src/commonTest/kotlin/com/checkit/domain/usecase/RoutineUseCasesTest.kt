@@ -1,5 +1,6 @@
 package com.checkit.domain.usecase
 
+import com.checkit.domain.AllWeekdays
 import com.checkit.domain.Routine
 import com.checkit.domain.RoutineLog
 import com.checkit.domain.RoutineStepTemplate
@@ -10,7 +11,9 @@ import com.checkit.ui.myday.FakeRoutineRepository
 import com.checkit.ui.myday.FakeRoutineTodayStore
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -66,6 +69,19 @@ class RoutineUseCasesTest {
     }
 
     @Test
+    fun toggleRoutineNotScheduledTodayIsNoop() = runTest {
+        val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+        val tomorrowWeekday = today.plus(1, DateTimeUnit.DAY).dayOfWeek
+        val routine = routineWithSteps("r1", listOf("s1")).copy(activeWeekdays = setOf(tomorrowWeekday))
+        val repo = FakeRoutineRepository(listOf(routine))
+        val store = FakeRoutineTodayStore()
+        ToggleRoutineStepUseCase(repo, store)("r1", "s1")
+
+        assertTrue(store.observe().first().checks.isEmpty())
+        assertTrue(repo.logs.isEmpty())
+    }
+
+    @Test
     fun deleteRoutineClearsTodayChecks() = runTest {
         val repo = FakeRoutineRepository(listOf(routineWithSteps("r1", listOf("s1"))))
         val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
@@ -94,6 +110,7 @@ class RoutineUseCasesTest {
             title = " Morning ",
             description = " Daily reset ",
             reminderMinutes = 8 * 60,
+            activeWeekdays = AllWeekdays,
             steps = listOf(
                 RoutineStepTemplate(id = "s1", title = "Water"),
                 RoutineStepTemplate(id = "s2", title = "  ")
@@ -106,7 +123,8 @@ class RoutineUseCasesTest {
                     routineId = id,
                     title = "Morning",
                     reminderMinutes = 8 * 60,
-                    stepCount = 1
+                    stepCount = 1,
+                    activeWeekdays = AllWeekdays
                 )
             ),
             scheduler.scheduled
@@ -124,6 +142,24 @@ class RoutineUseCasesTest {
             title = "Evening",
             description = "",
             reminderMinutes = null,
+            activeWeekdays = AllWeekdays,
+            steps = emptyList()
+        )
+
+        assertEquals(listOf("r1"), scheduler.cancelled)
+        assertTrue(scheduler.scheduled.isEmpty())
+    }
+
+    @Test
+    fun saveRoutineWithReminderButNoWeekdaysCancelsExisting() = runTest {
+        val repo = FakeRoutineRepository(listOf(routineWithSteps("r1", listOf("s1"))))
+        val scheduler = FakeRoutineReminderScheduler()
+        SaveRoutineUseCase(repo, scheduler)(
+            id = "r1",
+            title = "Paused",
+            description = "",
+            reminderMinutes = 8 * 60,
+            activeWeekdays = emptySet(),
             steps = emptyList()
         )
 

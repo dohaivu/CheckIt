@@ -10,13 +10,18 @@ class AndroidRoutineReminderScheduler(
     private val workManager = WorkManager.getInstance(appContext)
 
     override suspend fun scheduleRoutineReminder(reminder: ScheduledRoutineReminder) {
+        if (reminder.activeWeekdays.isEmpty()) {
+            cancelRoutineReminder(reminder.routineId)
+            return
+        }
         RoutineReminderWorker.scheduleAt(
             context = appContext,
             routineId = reminder.routineId,
             title = reminder.title,
             reminderMinutes = reminder.reminderMinutes,
             stepCount = reminder.stepCount,
-            delayMillis = RoutineReminderWorker.delayUntilNext(reminder.reminderMinutes)
+            activeWeekdays = reminder.activeWeekdays,
+            delayMillis = RoutineReminderWorker.delayUntilNext(reminder.reminderMinutes, reminder.activeWeekdays)
         )
     }
 

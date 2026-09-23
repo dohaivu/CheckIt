@@ -6,12 +6,15 @@ import com.checkit.domain.Routine
 import com.checkit.domain.RoutineLog
 import com.checkit.domain.RoutineStepTemplate
 import com.checkit.domain.RoutineTodayState
+import com.checkit.domain.isRoutineScheduled
 import com.checkit.domain.resolveRoutineTodayChecks
 import com.checkit.domain.routinePercent
+import com.checkit.domain.shouldScheduleRoutineReminder
 import com.checkit.notifications.RoutineReminderScheduler
 import com.checkit.notifications.ScheduledRoutineReminder
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -48,17 +51,19 @@ class SaveRoutineUseCase(
         title: String,
         description: String,
         reminderMinutes: Int?,
+        activeWeekdays: Set<DayOfWeek>,
         steps: List<RoutineStepTemplate>
     ): String {
-        val routineId = repository.saveRoutine(id, title, description, reminderMinutes, steps)
+        val routineId = repository.saveRoutine(id, title, description, reminderMinutes, activeWeekdays, steps)
         val trimmedTitle = title.trim()
-        if (reminderMinutes != null) {
+        if (reminderMinutes != null && shouldScheduleRoutineReminder(reminderMinutes, activeWeekdays)) {
             reminderScheduler.scheduleRoutineReminder(
                 ScheduledRoutineReminder(
                     routineId = routineId,
                     title = trimmedTitle,
                     reminderMinutes = reminderMinutes,
-                    stepCount = steps.count { it.title.isNotBlank() }
+                    stepCount = steps.count { it.title.isNotBlank() },
+                    activeWeekdays = activeWeekdays
                 )
             )
         } else if (id != null) {
@@ -84,9 +89,10 @@ class DeleteRoutineUseCase(
 }
 
 /**
- * Toggles one step for today. Handles day rollover (stale checks are
- * dropped), persists the transient checks, and seals today's percent-only
- * [RoutineLog] so the heatmap survives the DataStore reset.
+ * Toggles one step for today. No-op for routines not scheduled today.
+ * Handles day rollover (stale checks are dropped), persists the transient
+ * checks, and seals today's percent-only [RoutineLog] so the heatmap
+ * survives the DataStore reset.
  */
 class ToggleRoutineStepUseCase(
     private val repository: RoutineRepository,
@@ -97,6 +103,7 @@ class ToggleRoutineStepUseCase(
         val todayEpochDay = today.toEpochDays().toInt()
         val routine = repository.observeRoutines().first().firstOrNull { it.id == routineId }
             ?: return
+        if (!isRoutineScheduled(today, routine.activeWeekdays)) return
         val current = todayStore.observe().first()
         val base = resolveRoutineTodayChecks(current.epochDay, current.checks, todayEpochDay)
         val checked = base[routineId].orEmpty()

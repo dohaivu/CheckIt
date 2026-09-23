@@ -26,6 +26,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.checkit.domain.Routine
 import com.checkit.domain.RoutineLog
+import com.checkit.domain.calculateRoutineStreak
 import com.checkit.domain.routineIntensityByDate
 import com.checkit.domain.routineStreakDates
 import com.checkit.ui.localizedMonthTitle
@@ -407,7 +408,7 @@ internal fun buildRoutineSeries(
             key = routine.id,
             title = routine.title.ifBlank { "Routine" },
             intensityByDate = routineIntensityByDate(rows),
-            streak = calculateStreak(doneDates, today),
+            streak = calculateRoutineStreak(doneDates, routine.activeWeekdays, today),
             totalDone = doneDates.size
         )
     }.sortedWith(compareByDescending<HeatmapSeries> { it.streak }.thenBy { it.title.lowercase() })

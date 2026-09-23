@@ -3,8 +3,11 @@ package com.checkit.data
 import com.checkit.domain.Routine
 import com.checkit.domain.RoutineLog
 import com.checkit.domain.RoutineStepTemplate
+import com.checkit.domain.decodeActiveWeekdays
 import com.checkit.domain.decodeRoutineSteps
+import com.checkit.domain.encodeActiveWeekdays
 import com.checkit.domain.encodeRoutineSteps
+import kotlinx.datetime.DayOfWeek
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlin.time.Clock
@@ -18,6 +21,7 @@ interface RoutineRepository {
         title: String,
         description: String,
         reminderMinutes: Int?,
+        activeWeekdays: Set<DayOfWeek>,
         steps: List<RoutineStepTemplate>
     ): String
     suspend fun deleteRoutine(id: String)
@@ -41,6 +45,7 @@ class RoomRoutineRepository(
         title: String,
         description: String,
         reminderMinutes: Int?,
+        activeWeekdays: Set<DayOfWeek>,
         steps: List<RoutineStepTemplate>
     ): String {
         val now = Clock.System.now().toEpochMilliseconds()
@@ -63,6 +68,7 @@ class RoomRoutineRepository(
                 title = trimmed,
                 description = description.trim(),
                 reminderMinutes = reminderMinutes,
+                activeWeekdaysJson = encodeActiveWeekdays(activeWeekdays),
                 sortOrder = existing?.sortOrder ?: dao.nextRoutineSortOrder(),
                 stepsJson = encodeRoutineSteps(normalizedSteps),
                 createdAtMillis = existing?.createdAtMillis ?: now,
@@ -94,6 +100,7 @@ fun RoutineEntity.toDomain(): Routine = Routine(
     title = title,
     description = description,
     reminderMinutes = reminderMinutes,
+    activeWeekdays = decodeActiveWeekdays(activeWeekdaysJson),
     sortOrder = sortOrder,
     steps = decodeRoutineSteps(stepsJson).sortedBy { it.sortOrder },
     createdAtMillis = createdAtMillis,
