@@ -47,6 +47,7 @@ import com.checkit.ui.journal.JournalHistorySheet
 import com.checkit.ui.localization.AppLocaleProvider
 import com.checkit.ui.myday.DailyPlanItemEditorSheet
 import com.checkit.ui.myday.MyDayScreen
+import com.checkit.ui.myday.MyDayView
 import com.checkit.ui.nested.NestedDocumentsScreen
 import com.checkit.ui.reflect.PeriodGoalEditorSheet
 import com.checkit.ui.reflect.ReflectScreen
@@ -78,6 +79,7 @@ fun CheckItApp(
     openMyDaySuggestionsLaunch: Boolean = false,
     openDayCloseLaunch: Boolean = false,
     openPlanAssistLaunch: Boolean = false,
+    openRoutinesLaunch: Boolean = false,
     openCheckInLaunch: Boolean = false,
     openNewJournalEntryLaunch: Boolean = false,
     openQuickSprintLaunch: Boolean = false,
@@ -178,6 +180,13 @@ fun CheckItApp(
         if (!openPlanAssistLaunch) return@LaunchedEffect
         navState.resetTo(AppRoute.MyDay)
         viewModels.myDay.openSuggestions()
+        onWidgetLaunchConsumed()
+    }
+
+    LaunchedEffect(openRoutinesLaunch) {
+        if (!openRoutinesLaunch) return@LaunchedEffect
+        navState.resetTo(AppRoute.MyDay)
+        viewModels.myDay.selectView(MyDayView.Routine)
         onWidgetLaunchConsumed()
     }
 

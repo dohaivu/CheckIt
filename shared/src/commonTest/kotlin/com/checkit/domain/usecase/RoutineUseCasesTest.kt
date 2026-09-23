@@ -4,6 +4,8 @@ import com.checkit.domain.Routine
 import com.checkit.domain.RoutineLog
 import com.checkit.domain.RoutineStepTemplate
 import com.checkit.domain.RoutineTodayState
+import com.checkit.notifications.RoutineReminderScheduler
+import com.checkit.notifications.ScheduledRoutineReminder
 import com.checkit.ui.myday.FakeRoutineRepository
 import com.checkit.ui.myday.FakeRoutineTodayStore
 import kotlinx.coroutines.flow.first
@@ -73,10 +75,57 @@ class RoutineUseCasesTest {
                 checks = mapOf("r1" to setOf("s1"))
             )
         )
-        DeleteRoutineUseCase(repo, store)("r1")
+        val scheduler = FakeRoutineReminderScheduler()
+        DeleteRoutineUseCase(repo, store, scheduler)("r1")
 
         assertTrue(repo.routines.isEmpty())
         assertTrue(store.observe().first().checks.isEmpty())
+        assertEquals(listOf("r1"), scheduler.cancelled)
+    }
+
+    @Test
+    fun saveRoutineWithReminderSchedules() = runTest {
+        val repo = FakeRoutineRepository()
+        val scheduler = FakeRoutineReminderScheduler()
+        val save = SaveRoutineUseCase(repo, scheduler)
+
+        val id = save(
+            id = null,
+            title = " Morning ",
+            reminderMinutes = 8 * 60,
+            steps = listOf(
+                RoutineStepTemplate(id = "s1", title = "Water"),
+                RoutineStepTemplate(id = "s2", title = "  ")
+            )
+        )
+
+        assertEquals(
+            listOf(
+                ScheduledRoutineReminder(
+                    routineId = id,
+                    title = "Morning",
+                    reminderMinutes = 8 * 60,
+                    stepCount = 1
+                )
+            ),
+            scheduler.scheduled
+        )
+        assertTrue(scheduler.cancelled.isEmpty())
+    }
+
+    @Test
+    fun saveRoutineWithoutReminderCancelsExisting() = runTest {
+        val repo = FakeRoutineRepository(listOf(routineWithSteps("r1", listOf("s1"))))
+        val scheduler = FakeRoutineReminderScheduler()
+        SaveRoutineUseCase(repo, scheduler)(
+            id = "r1",
+            title = "Evening",
+            reminderMinutes = null,
+            steps = emptyList()
+        )
+
+        assertEquals(listOf("r1"), scheduler.cancelled)
+        assertTrue(scheduler.scheduled.isEmpty())
     }
 
     private fun routineWithSteps(id: String, stepIds: List<String>) = Routine(
@@ -86,4 +135,17 @@ class RoutineUseCasesTest {
             RoutineStepTemplate(id = stepId, title = "Step $stepId", sortOrder = index)
         }
     )
+}
+
+private class FakeRoutineReminderScheduler : RoutineReminderScheduler {
+    val scheduled = mutableListOf<ScheduledRoutineReminder>()
+    val cancelled = mutableListOf<String>()
+
+    override suspend fun scheduleRoutineReminder(reminder: ScheduledRoutineReminder) {
+        scheduled.add(reminder)
+    }
+
+    override suspend fun cancelRoutineReminder(routineId: String) {
+        cancelled.add(routineId)
+    }
 }

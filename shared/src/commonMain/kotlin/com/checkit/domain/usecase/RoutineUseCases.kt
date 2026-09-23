@@ -8,6 +8,8 @@ import com.checkit.domain.RoutineStepTemplate
 import com.checkit.domain.RoutineTodayState
 import com.checkit.domain.resolveRoutineTodayChecks
 import com.checkit.domain.routinePercent
+import com.checkit.notifications.RoutineReminderScheduler
+import com.checkit.notifications.ScheduledRoutineReminder
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.datetime.LocalDate
@@ -38,22 +40,41 @@ class ObserveRoutineLogsUseCase(
 }
 
 class SaveRoutineUseCase(
-    private val repository: RoutineRepository
+    private val repository: RoutineRepository,
+    private val reminderScheduler: RoutineReminderScheduler
 ) {
     suspend operator fun invoke(
         id: String?,
         title: String,
         reminderMinutes: Int?,
         steps: List<RoutineStepTemplate>
-    ): String = repository.saveRoutine(id, title, reminderMinutes, steps)
+    ): String {
+        val routineId = repository.saveRoutine(id, title, reminderMinutes, steps)
+        val trimmedTitle = title.trim()
+        if (reminderMinutes != null) {
+            reminderScheduler.scheduleRoutineReminder(
+                ScheduledRoutineReminder(
+                    routineId = routineId,
+                    title = trimmedTitle,
+                    reminderMinutes = reminderMinutes,
+                    stepCount = steps.count { it.title.isNotBlank() }
+                )
+            )
+        } else if (id != null) {
+            reminderScheduler.cancelRoutineReminder(routineId)
+        }
+        return routineId
+    }
 }
 
 class DeleteRoutineUseCase(
     private val repository: RoutineRepository,
-    private val todayStore: RoutineTodayStore
+    private val todayStore: RoutineTodayStore,
+    private val reminderScheduler: RoutineReminderScheduler
 ) {
     suspend operator fun invoke(id: String) {
         repository.deleteRoutine(id)
+        reminderScheduler.cancelRoutineReminder(id)
         val current = todayStore.observe().first()
         if (id in current.checks && current.epochDay != null) {
             todayStore.save(current.epochDay, current.checks - id)

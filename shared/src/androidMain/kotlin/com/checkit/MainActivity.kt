@@ -24,6 +24,7 @@ import com.checkit.widget.ExtraOpenNewJournalEntry
 import com.checkit.widget.ExtraOpenNewTask
 import com.checkit.widget.ExtraOpenPlanAssist
 import com.checkit.widget.ExtraOpenQuickSprint
+import com.checkit.widget.ExtraOpenRoutines
 import com.checkit.widget.ExtraQuickSprintItemId
 import com.checkit.widget.ExtraStartQuickSprint
 import com.checkit.widget.ExtraStartSprintForItemId
@@ -38,6 +39,7 @@ class MainActivity : ComponentActivity() {
     private val openMyDaySuggestionsLaunch = mutableStateOf(false)
     private val openDayCloseLaunch = mutableStateOf(false)
     private val openPlanAssistLaunch = mutableStateOf(false)
+    private val openRoutinesLaunch = mutableStateOf(false)
     private val openCheckInLaunch = mutableStateOf(false)
     private val openNewJournalEntryLaunch = mutableStateOf(false)
     private val openQuickSprintLaunch = mutableStateOf(false)
@@ -72,6 +74,7 @@ class MainActivity : ComponentActivity() {
                 openMyDaySuggestionsLaunch = openMyDaySuggestionsLaunch.value,
                 openDayCloseLaunch = openDayCloseLaunch.value,
                 openPlanAssistLaunch = openPlanAssistLaunch.value,
+                openRoutinesLaunch = openRoutinesLaunch.value,
                 openCheckInLaunch = openCheckInLaunch.value,
                 openNewJournalEntryLaunch = openNewJournalEntryLaunch.value,
                 openQuickSprintLaunch = openQuickSprintLaunch.value,
@@ -112,6 +115,7 @@ class MainActivity : ComponentActivity() {
         openMyDaySuggestionsLaunch.value = intent.getBooleanExtra(ExtraOpenMyDaySuggestions, false)
         openDayCloseLaunch.value = intent.getBooleanExtra(ExtraOpenDayClose, false)
         openPlanAssistLaunch.value = intent.getBooleanExtra(ExtraOpenPlanAssist, false)
+        openRoutinesLaunch.value = intent.getBooleanExtra(ExtraOpenRoutines, false)
         openCheckInLaunch.value = intent.getBooleanExtra(ExtraOpenCheckIn, false)
         openNewJournalEntryLaunch.value = intent.getBooleanExtra(ExtraOpenNewJournalEntry, false)
         openQuickSprintLaunch.value = intent.getBooleanExtra(ExtraOpenQuickSprint, false)
@@ -142,6 +146,7 @@ class MainActivity : ComponentActivity() {
         openMyDaySuggestionsLaunch.value = false
         openDayCloseLaunch.value = false
         openPlanAssistLaunch.value = false
+        openRoutinesLaunch.value = false
         openCheckInLaunch.value = false
         openNewJournalEntryLaunch.value = false
         openQuickSprintLaunch.value = false

@@ -36,6 +36,7 @@ import com.checkit.domain.usecase.AddSuggestedTaskToMyDayUseCase
 import com.checkit.domain.usecase.SaveRoutineUseCase
 import com.checkit.domain.usecase.SprintTransitionUseCase
 import com.checkit.domain.usecase.ToggleRoutineStepUseCase
+import com.checkit.notifications.NoOpRoutineReminderScheduler
 import com.checkit.domain.usecase.SaveSprintAsWinUseCase
 import com.checkit.domain.usecase.SmartScheduleDailyPlanUseCase
 import com.checkit.notifications.NoOpSprintNotificationScheduler
@@ -82,6 +83,7 @@ class MyDayViewModelTest {
         val updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository)
         val routineRepository = FakeRoutineRepository()
         val routineTodayStore = FakeRoutineTodayStore()
+        val routineReminderScheduler = NoOpRoutineReminderScheduler()
 
         return MyDayViewModel(
             observeDailyPlans = observeDailyPlans,
@@ -112,8 +114,8 @@ class MyDayViewModelTest {
             smartSchedule = SmartScheduleDailyPlanUseCase(repository),
             observeRoutines = ObserveRoutinesUseCase(routineRepository),
             observeRoutineToday = ObserveRoutineTodayUseCase(routineTodayStore),
-            saveRoutine = SaveRoutineUseCase(routineRepository),
-            deleteRoutine = DeleteRoutineUseCase(routineRepository, routineTodayStore),
+            saveRoutine = SaveRoutineUseCase(routineRepository, routineReminderScheduler),
+            deleteRoutine = DeleteRoutineUseCase(routineRepository, routineTodayStore, routineReminderScheduler),
             toggleRoutineStep = ToggleRoutineStepUseCase(routineRepository, routineTodayStore),
             sprintManager = SprintManager(NoOpSprintNotificationScheduler()),
             sprintTransition = SprintTransitionUseCase(

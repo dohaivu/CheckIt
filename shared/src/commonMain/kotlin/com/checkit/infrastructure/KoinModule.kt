@@ -307,8 +307,8 @@ val provideInteractorModule = module {
     single { ObserveRoutinesUseCase(get()) }
     single { ObserveRoutineTodayUseCase(get()) }
     single { ObserveRoutineLogsUseCase(get()) }
-    single { SaveRoutineUseCase(get()) }
-    single { DeleteRoutineUseCase(get(), get()) }
+    single { SaveRoutineUseCase(get(), get()) }
+    single { DeleteRoutineUseCase(get(), get(), get()) }
     single { ToggleRoutineStepUseCase(get(), get()) }
     single { QuickNoteMenuHelper(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
 }
