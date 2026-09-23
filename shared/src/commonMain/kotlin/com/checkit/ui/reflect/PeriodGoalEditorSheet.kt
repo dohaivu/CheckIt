@@ -252,7 +252,7 @@ internal fun PeriodGoalEditorSheet(
                     )
                     .padding(10.dp),
                 placeholder = "What will you focus on?",
-                minLines = 4,
+                minLines = 5,
                 enabled = !editor.isSaving
             )
 

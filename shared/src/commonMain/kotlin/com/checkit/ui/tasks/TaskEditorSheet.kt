@@ -428,7 +428,7 @@ private fun TaskFormContent(
                 modifier = Modifier.padding(horizontal = 4.dp)
             )
         }
-        MarkdownTextField(
+        AppOutlinedTextField(
             value = form.description,
             onValueChange = onDescriptionChange,
             textStyle = MaterialTheme.typography.bodyMedium.copy(
@@ -436,7 +436,8 @@ private fun TaskFormContent(
                 fontWeight = FontWeight.Normal
             ),
             maxLines = 5,
-            enabled = enabled
+            enabled = enabled,
+            visualTransformation = remember { MarkdownVisualTransformation() }
         )
 
         SubtaskChecklist(
