@@ -10,6 +10,9 @@ import com.checkit.domain.LeftoverAction
 import com.checkit.domain.NoteItem
 import com.checkit.domain.Period
 import com.checkit.domain.PeriodGoal
+import com.checkit.domain.Routine
+import com.checkit.domain.RoutineLog
+import com.checkit.domain.RoutineTodayState
 import com.checkit.domain.TagItem
 import com.checkit.domain.TaskItem
 import com.checkit.domain.TaskStatus
@@ -57,6 +60,10 @@ data class MyDayUiState(
     val showJournalList: Boolean = false,
     val recentLabels: List<String> = emptyList(),
     val nowMinutes: Int = 0,
+    /** Routine templates, today's transient checks, and percent-only history. */
+    val routines: List<Routine> = emptyList(),
+    val routineToday: RoutineTodayState = RoutineTodayState(epochDay = null),
+    val routineLogs: List<RoutineLog> = emptyList(),
     val isLoading: Boolean = true
 ) {
     val today: LocalDate = today()
@@ -189,7 +196,8 @@ data class DayCloseUiState(
 enum class MyDayView {
     Agenda,
     Timeline,
-    Board
+    Board,
+    Routine
 }
 
 /** Bottom-sheet editor state for a single journal entry. */

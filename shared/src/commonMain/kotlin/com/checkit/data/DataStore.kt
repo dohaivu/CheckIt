@@ -11,6 +11,9 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.checkit.ui.MinutesPerDay
 import com.checkit.domain.CheckInReminderPolicy
+import com.checkit.domain.RoutineTodayState
+import com.checkit.domain.decodeRoutineChecks
+import com.checkit.domain.encodeRoutineChecks
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -195,6 +198,23 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
         }
     }
 
+    /** Transient routine checks for one day; reset by rollover logic when the day changes. */
+    val routineToday: Flow<RoutineTodayState> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { prefs ->
+            RoutineTodayState(
+                epochDay = prefs[KEY_ROUTINE_DAY],
+                checks = decodeRoutineChecks(prefs[KEY_ROUTINE_CHECKS_JSON])
+            )
+        }
+
+    suspend fun setRoutineToday(epochDay: Int, checks: Map<String, Set<String>>) {
+        dataStore.edit { prefs ->
+            prefs[KEY_ROUTINE_DAY] = epochDay
+            prefs[KEY_ROUTINE_CHECKS_JSON] = encodeRoutineChecks(checks)
+        }
+    }
+
     private companion object {
         val KEY_LANGUAGE = stringPreferencesKey("language")
         val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
@@ -222,6 +242,8 @@ class AppDataStore(private val dataStore: DataStore<Preferences>) {
         val KEY_LAST_BACKUP_AT = longPreferencesKey("last_backup_at_millis")
         val KEY_CHECKLIST_FOLDER_URI = stringPreferencesKey("checklist_folder_uri")
         val KEY_CHECKLIST_FOLDER_NAME = stringPreferencesKey("checklist_folder_name")
+        val KEY_ROUTINE_DAY = intPreferencesKey("routine_today_epoch_day")
+        val KEY_ROUTINE_CHECKS_JSON = stringPreferencesKey("routine_today_checks_json")
     }
 }
 

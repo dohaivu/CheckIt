@@ -4,10 +4,14 @@ import androidx.room3.RoomDatabase
 import com.checkit.data.AppDataStore
 import com.checkit.data.CheckItDatabase
 import com.checkit.data.CheckItRepository
+import com.checkit.data.DataStoreRoutineTodayStore
 import com.checkit.data.DataStoreSettingsRepository
 import com.checkit.data.QuickNoteRepository
 import com.checkit.data.RoomCheckItRepository
 import com.checkit.data.RoomQuickNoteRepository
+import com.checkit.data.RoomRoutineRepository
+import com.checkit.data.RoutineRepository
+import com.checkit.data.RoutineTodayStore
 import com.checkit.data.SettingsRepository
 import com.checkit.data.buildCheckItDatabase
 import com.checkit.data.createPreferencesDataStore
@@ -38,6 +42,7 @@ import com.checkit.domain.usecase.CompleteTaskUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.DeleteJournalEntryUseCase
 import com.checkit.domain.usecase.DeleteListUseCase
+import com.checkit.domain.usecase.DeleteRoutineUseCase
 import com.checkit.domain.usecase.ExportBackupUseCase
 import com.checkit.domain.usecase.ImportBackupUseCase
 import com.checkit.domain.usecase.DeleteSectionUseCase
@@ -67,6 +72,11 @@ import com.checkit.domain.usecase.ObserveTasksForDateUseCase
 import com.checkit.domain.usecase.ObserveTasksInRangeUseCase
 import com.checkit.domain.usecase.ObserveTagsUseCase
 import com.checkit.domain.usecase.ObserveWorkingTasksUseCase
+import com.checkit.domain.usecase.ObserveRoutineLogsUseCase
+import com.checkit.domain.usecase.ObserveRoutineTodayUseCase
+import com.checkit.domain.usecase.ObserveRoutinesUseCase
+import com.checkit.domain.usecase.SaveRoutineUseCase
+import com.checkit.domain.usecase.ToggleRoutineStepUseCase
 import com.checkit.domain.usecase.UpdateNoteStatusUseCase
 import com.checkit.domain.usecase.UpdateTaskStatusUseCase
 import com.checkit.domain.usecase.RenameNestedDocumentUseCase
@@ -292,6 +302,14 @@ val provideInteractorModule = module {
     single { MoveQuickNoteUseCase(get()) }
     single { MaintainQuickNotesUseCase(get(), get()) }
     single { ClearExpiredQuickNoteRemindersUseCase(get()) }
+    single<RoutineRepository> { RoomRoutineRepository(get()) }
+    single<RoutineTodayStore> { DataStoreRoutineTodayStore(get()) }
+    single { ObserveRoutinesUseCase(get()) }
+    single { ObserveRoutineTodayUseCase(get()) }
+    single { ObserveRoutineLogsUseCase(get()) }
+    single { SaveRoutineUseCase(get()) }
+    single { DeleteRoutineUseCase(get(), get()) }
+    single { ToggleRoutineStepUseCase(get(), get()) }
     single { QuickNoteMenuHelper(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
 }
 
@@ -375,6 +393,12 @@ val provideViewModelModule = module {
             addSuggestedTaskToMyDay = get(),
             updateDailyPlanItemTime = get(),
             smartSchedule = get(),
+            observeRoutines = get(),
+            observeRoutineToday = get(),
+            observeRoutineLogs = get(),
+            saveRoutine = get(),
+            deleteRoutine = get(),
+            toggleRoutineStep = get(),
             sprintManager = get(),
             sprintTransition = get()
         )

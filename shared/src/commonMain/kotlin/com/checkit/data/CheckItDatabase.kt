@@ -680,6 +680,48 @@ data class NestedItemTagEntity(
     val tagId: String
 )
 
+@Serializable
+@Entity(tableName = "routines")
+data class RoutineEntity(
+    @PrimaryKey
+    val id: String,
+    val title: String,
+    val reminderMinutes: Int? = null,
+    val sortOrder: Int = 0,
+    /** Inline JSON list of RoutineStepTemplate; history keeps percent only. */
+    val stepsJson: String = "[]",
+    val createdAtMillis: Long,
+    val updatedAtMillis: Long,
+    /** True when the row changed locally since the last successful upload. */
+    val dirty: Boolean = true,
+    /** Tombstone: true once the item is deleted locally; purged after upload. */
+    val deleted: Boolean = false,
+)
+
+@Serializable
+@Entity(
+    tableName = "routine_logs",
+    primaryKeys = ["routineId", "dateEpochDays"],
+    foreignKeys = [
+        ForeignKey(
+            entity = RoutineEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["routineId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("routineId"), Index("dateEpochDays")]
+)
+data class RoutineLogEntity(
+    val routineId: String,
+    val dateEpochDays: Int,
+    /** Completion percent 0..100 for the day; drives heatmap intensity. */
+    val percent: Int,
+    val updatedAtMillis: Long,
+    val dirty: Boolean = true,
+    val deleted: Boolean = false
+)
+
 @Database(
     entities = [
         TaskEntity::class,
@@ -705,6 +747,8 @@ data class NestedItemTagEntity(
         DailyReflectStatsEntity::class,
         DailyTagRollupEntity::class,
         HabitDailyRollupEntity::class,
+        RoutineEntity::class,
+        RoutineLogEntity::class,
         QuickNoteEntity::class
     ],
     version = 1,

@@ -21,8 +21,12 @@ import com.checkit.domain.usecase.ObserveTagsUseCase
 import com.checkit.domain.usecase.ObserveWorkingTasksUseCase
 import com.checkit.domain.usecase.DeleteDailyPlanItemUseCase
 import com.checkit.domain.usecase.DeleteJournalEntryUseCase
+import com.checkit.domain.usecase.DeleteRoutineUseCase
 import com.checkit.domain.usecase.ObserveDailyPlansUseCase
 import com.checkit.domain.usecase.ObserveJournalEntriesUseCase
+import com.checkit.domain.usecase.ObserveRoutineLogsUseCase
+import com.checkit.domain.usecase.ObserveRoutineTodayUseCase
+import com.checkit.domain.usecase.ObserveRoutinesUseCase
 import com.checkit.domain.usecase.GetTaskUseCase
 import com.checkit.domain.SprintManager
 import com.checkit.domain.usecase.UpdateDailyPlanItemStatusUseCase
@@ -30,7 +34,9 @@ import com.checkit.domain.usecase.UpdateDailyPlanItemTimeUseCase
 import com.checkit.domain.usecase.UpsertDailyPlanItemUseCase
 import com.checkit.domain.usecase.UpdateJournalEntryUseCase
 import com.checkit.domain.usecase.AddSuggestedTaskToMyDayUseCase
+import com.checkit.domain.usecase.SaveRoutineUseCase
 import com.checkit.domain.usecase.SprintTransitionUseCase
+import com.checkit.domain.usecase.ToggleRoutineStepUseCase
 import com.checkit.domain.usecase.SaveSprintAsWinUseCase
 import com.checkit.domain.usecase.SmartScheduleDailyPlanUseCase
 import com.checkit.notifications.NoOpSprintNotificationScheduler
@@ -75,6 +81,8 @@ class MyDayViewModelTest {
         val observePeriodGoals = ObservePeriodGoalsUseCase(repository)
         val addTaskToDailyPlan = AddTaskToDailyPlanUseCase(repository)
         val updateDailyPlanItemTime = UpdateDailyPlanItemTimeUseCase(repository)
+        val routineRepository = FakeRoutineRepository()
+        val routineTodayStore = FakeRoutineTodayStore()
 
         return MyDayViewModel(
             observeDailyPlans = observeDailyPlans,
@@ -103,6 +111,12 @@ class MyDayViewModelTest {
             ),
             updateDailyPlanItemTime = updateDailyPlanItemTime,
             smartSchedule = SmartScheduleDailyPlanUseCase(repository),
+            observeRoutines = ObserveRoutinesUseCase(routineRepository),
+            observeRoutineToday = ObserveRoutineTodayUseCase(routineTodayStore),
+            observeRoutineLogs = ObserveRoutineLogsUseCase(routineRepository),
+            saveRoutine = SaveRoutineUseCase(routineRepository),
+            deleteRoutine = DeleteRoutineUseCase(routineRepository, routineTodayStore),
+            toggleRoutineStep = ToggleRoutineStepUseCase(routineRepository, routineTodayStore),
             sprintManager = SprintManager(NoOpSprintNotificationScheduler()),
             sprintTransition = SprintTransitionUseCase(
                 sprintManager = SprintManager(NoOpSprintNotificationScheduler()), // Separate instance for transition if needed or reuse

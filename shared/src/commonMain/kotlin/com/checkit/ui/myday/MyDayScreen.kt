@@ -423,6 +423,17 @@ internal fun MyDayScreen(
                                     onSprintClick = viewModel::startSprint,
                                     modifier = Modifier.weight(1f)
                                 )
+
+                                MyDayView.Routine -> RoutineTab(
+                                    routines = state.routines,
+                                    checks = state.routineToday.checks,
+                                    logs = state.routineLogs,
+                                    today = state.today,
+                                    onToggleStep = viewModel::toggleRoutineStep,
+                                    onSaveRoutine = viewModel::saveRoutine,
+                                    onDeleteRoutine = viewModel::deleteRoutine,
+                                    modifier = Modifier.weight(1f)
+                                )
                             }
                         }
                     } else {
@@ -1263,10 +1274,12 @@ private fun MyDayView.icon(): ImageVector = when (this) {
     MyDayView.Agenda -> Icons.AutoMirrored.Filled.ViewList
     MyDayView.Timeline -> Icons.Default.Schedule
     MyDayView.Board -> Icons.Default.Dashboard
+    MyDayView.Routine -> Icons.Default.Refresh
 }
 
 private fun MyDayView.label(): String = when (this) {
     MyDayView.Agenda -> "Agenda"
     MyDayView.Timeline -> "Timeline"
     MyDayView.Board -> "Board"
+    MyDayView.Routine -> "Routines"
 }

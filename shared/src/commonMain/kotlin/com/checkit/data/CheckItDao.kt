@@ -646,6 +646,31 @@ interface CheckItDao {
     )
     fun observeHabitDailyRollups(startEpochDays: Int, endEpochDays: Int): Flow<List<HabitDailyRollupEntity>>
 
+    // ---------------- Routines ----------------
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertRoutine(routine: RoutineEntity)
+
+    @Query("SELECT * FROM routines ORDER BY sortOrder ASC, title ASC")
+    fun observeRoutines(): Flow<List<RoutineEntity>>
+
+    @Query("SELECT * FROM routines WHERE id = :routineId LIMIT 1")
+    suspend fun routineById(routineId: String): RoutineEntity?
+
+    @Query("DELETE FROM routines WHERE id = :routineId")
+    suspend fun deleteRoutine(routineId: String)
+
+    @Query("SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM routines")
+    suspend fun nextRoutineSortOrder(): Int
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertRoutineLog(log: RoutineLogEntity)
+
+    @Query(
+        "SELECT * FROM routine_logs WHERE dateEpochDays BETWEEN :startEpochDays AND :endEpochDays ORDER BY dateEpochDays ASC"
+    )
+    fun observeRoutineLogs(startEpochDays: Int, endEpochDays: Int): Flow<List<RoutineLogEntity>>
+
     @Query("DELETE FROM daily_reflect_stats")
     suspend fun clearDailyReflectStats()
 
@@ -1504,6 +1529,12 @@ interface CheckItDao {
     @Query("SELECT * FROM nested_item_tags")
     suspend fun getAllNestedItemTagsOnce(): List<NestedItemTagEntity>
 
+    @Query("SELECT * FROM routines")
+    suspend fun getAllRoutinesOnce(): List<RoutineEntity>
+
+    @Query("SELECT * FROM routine_logs")
+    suspend fun getAllRoutineLogsOnce(): List<RoutineLogEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTaskTags(rows: List<TaskTagEntity>)
 
@@ -1557,6 +1588,12 @@ interface CheckItDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertNestedListItems(rows: List<NestedListItemEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertRoutines(rows: List<RoutineEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertRoutineLogs(rows: List<RoutineLogEntity>)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTaskLists(rows: List<TaskListEntity>)
@@ -1624,6 +1661,12 @@ interface CheckItDao {
     @Query("DELETE FROM tags")
     suspend fun clearTags()
 
+    @Query("DELETE FROM routine_logs")
+    suspend fun clearRoutineLogs()
+
+    @Query("DELETE FROM routines")
+    suspend fun clearRoutines()
+
     @Transaction
     suspend fun restoreBackup(backup: CheckItBackup) {
         clearNestedItemTags()
@@ -1642,6 +1685,8 @@ interface CheckItDao {
         clearTaskFilters()
         clearJournalEntries()
         clearPeriodGoals()
+        clearRoutineLogs()
+        clearRoutines()
         clearNestedListItems()
         clearNestedDocuments()
         clearLists()
@@ -1667,6 +1712,8 @@ interface CheckItDao {
         if (backup.taskLists.isNotEmpty()) insertTaskLists(backup.taskLists)
         if (backup.noteLists.isNotEmpty()) insertNoteLists(backup.noteLists)
         if (backup.nestedItemTags.isNotEmpty()) insertNestedItemTags(backup.nestedItemTags)
+        if (backup.routines.isNotEmpty()) insertRoutines(backup.routines)
+        if (backup.routineLogs.isNotEmpty()) insertRoutineLogs(backup.routineLogs)
     }
 }
 
