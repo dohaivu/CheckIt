@@ -297,8 +297,8 @@ private fun RoutineCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -312,6 +312,35 @@ private fun RoutineCard(
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
+
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .clickable(onClick = onEdit),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                        contentDescription = "Edit routine",
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
+            }
+            if (routine.description.isNotBlank()) {
+                Text(
+                    text = routine.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 routine.reminderMinutes?.let { minutes ->
                     Row(
                         modifier = Modifier
@@ -358,29 +387,7 @@ private fun RoutineCard(
                         )
                     }
                 }
-                Box(
-                    modifier = Modifier
-                        .size(28.dp)
-                        .clip(CircleShape)
-                        .clickable(onClick = onEdit),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                        contentDescription = "Edit routine",
-                        modifier = Modifier.size(15.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
-                }
             }
-            if (routine.description.isNotBlank()) {
-                Text(
-                    text = routine.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
             if (routine.steps.isNotEmpty()) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Row(
@@ -441,7 +448,7 @@ private fun RoutineCard(
                                     enabled = scheduledToday,
                                     onClick = { onToggleStep(step.id) }
                                 )
-                                .padding(horizontal = 6.dp, vertical = 6.dp),
+                                .padding(horizontal = 6.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.Top,
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
@@ -502,16 +509,16 @@ private fun RoutineEditorSheet(
     AppEditorBottomSheet(
         onDismiss = onDismiss,
         modifier = Modifier
-            .fillMaxHeight(0.9f)
-            .padding(bottom = 16.dp)
+            .padding(bottom = 12.dp),
+        sheetGesturesEnabled = false
     ) {
         Column(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxWidth()
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -527,13 +534,13 @@ private fun RoutineEditorSheet(
                     }
                     IconButton(
                         onClick = onDismiss,
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(28.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Close",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }
@@ -542,10 +549,9 @@ private fun RoutineEditorSheet(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f)
                     .padding(horizontal = 20.dp),
-                contentPadding = PaddingValues(top = 4.dp, bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                contentPadding = PaddingValues(top = 2.dp, bottom = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 item {
                     AppOutlinedTextField(
@@ -567,8 +573,8 @@ private fun RoutineEditorSheet(
                         textStyle = MaterialTheme.typography.bodyMedium.copy(
                             color = MaterialTheme.colorScheme.onSurface
                         ),
-                        maxLines = 3,
-                        placeholder = "Add details",
+                        maxLines = 2,
+                        placeholder = "Add details (optional)",
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -577,14 +583,14 @@ private fun RoutineEditorSheet(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(10.dp))
                             .background(MaterialTheme.colorScheme.surfaceContainerLow)
                             .border(
                                 width = 1.dp,
                                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(10.dp)
                             )
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
@@ -595,7 +601,7 @@ private fun RoutineEditorSheet(
                             Icon(
                                 imageVector = Icons.Default.Schedule,
                                 contentDescription = null,
-                                modifier = Modifier.size(18.dp),
+                                modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.primary
                             )
                             Text(
@@ -615,22 +621,14 @@ private fun RoutineEditorSheet(
                 }
 
                 item {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            text = "Repeats",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        WeekdayPicker(
-                            selected = activeWeekdays,
-                            onChange = { activeWeekdays = it }
-                        )
-                    }
+                    WeekdayPicker(
+                        selected = activeWeekdays,
+                        onChange = { activeWeekdays = it }
+                    )
                 }
 
                 item {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -666,7 +664,7 @@ private fun RoutineEditorSheet(
                         width = 1.dp,
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)
                     )
-                    .padding(horizontal = 20.dp, vertical = 12.dp)
+                    .padding(horizontal = 20.dp, vertical = 10.dp)
             ) {
                 Button(
                     onClick = {
@@ -683,13 +681,13 @@ private fun RoutineEditorSheet(
                     },
                     enabled = title.isNotBlank(),
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(10.dp)
                 ) {
                     Text(
                         text = if (state.id == null) "Create Routine" else "Save Changes",
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(vertical = 4.dp)
+                        modifier = Modifier.padding(vertical = 2.dp)
                     )
                 }
             }
@@ -710,11 +708,11 @@ private fun WeekdayPicker(
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             WeekdayPresetChip(
                 label = "Everyday",
@@ -737,13 +735,13 @@ private fun WeekdayPicker(
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)
+            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)
         ) {
             DayOfWeek.entries.forEach { day ->
                 val isSelected = day in selected
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(34.dp)
                         .clip(CircleShape)
                         .background(
                             if (isSelected) {
@@ -761,7 +759,7 @@ private fun WeekdayPicker(
                 ) {
                     Text(
                         text = day.shortName().take(2),
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = if (isSelected) {
                             MaterialTheme.colorScheme.onPrimary
@@ -791,7 +789,7 @@ private fun WeekdayPresetChip(
 ) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
+            .clip(RoundedCornerShape(8.dp))
             .background(
                 if (isSelected) {
                     MaterialTheme.colorScheme.primaryContainer
@@ -800,12 +798,12 @@ private fun WeekdayPresetChip(
                 }
             )
             .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
+            .padding(vertical = 5.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.SemiBold,
             color = if (isSelected) {
                 MaterialTheme.colorScheme.onPrimaryContainer
@@ -865,17 +863,17 @@ private fun RoutineStepsEditor(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerLow)
             .border(
                 width = 1.dp,
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
-                shape = RoundedCornerShape(16.dp)
+                shape = RoundedCornerShape(12.dp)
             )
     ) {
         Column(
-            modifier = Modifier.padding(10.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             steps.forEach { step ->
                 key(step.id) {
@@ -944,7 +942,7 @@ private fun RoutineStepsEditor(
                                     }
                                 )
                             }
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(10.dp))
                             .background(
                                 if (isDragging) MaterialTheme.colorScheme.surfaceContainerHigh
                                 else MaterialTheme.colorScheme.surface
@@ -953,23 +951,23 @@ private fun RoutineStepsEditor(
                                 width = 1.dp,
                                 color = if (isDragging) MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
                                 else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f),
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(10.dp)
                             )
                     ) {
                         Column(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.DragHandle,
                                     contentDescription = "Reorder",
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(16.dp)
                                 )
                                 BasicTextField(
                                     value = step.title,
@@ -1002,7 +1000,7 @@ private fun RoutineStepsEditor(
                                 )
                                 Box(
                                     modifier = Modifier
-                                        .size(28.dp)
+                                        .size(24.dp)
                                         .clip(CircleShape)
                                         .clickable {
                                             onStepsChange(steps.filterNot { row -> row.id == step.id })
@@ -1013,7 +1011,7 @@ private fun RoutineStepsEditor(
                                         Icons.Default.Delete,
                                         contentDescription = "Remove step",
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                        modifier = Modifier.size(16.dp)
+                                        modifier = Modifier.size(15.dp)
                                     )
                                 }
                             }
@@ -1028,7 +1026,7 @@ private fun RoutineStepsEditor(
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(start = 26.dp),
+                                    .padding(start = 22.dp),
                                 textStyle = detailStyle,
                                 singleLine = false,
                                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
@@ -1053,15 +1051,15 @@ private fun RoutineStepsEditor(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(10.dp))
                     .background(MaterialTheme.colorScheme.surface)
                     .border(
                         width = 1.dp,
                         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(10.dp)
                     )
                     .clickable(onClick = { addStep() })
-                    .padding(vertical = 10.dp, horizontal = 12.dp),
+                    .padding(vertical = 8.dp, horizontal = 12.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Row(
@@ -1071,7 +1069,7 @@ private fun RoutineStepsEditor(
                     Icon(
                         Icons.Default.Add,
                         contentDescription = null,
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(16.dp),
                         tint = MaterialTheme.colorScheme.primary
                     )
                     Spacer(modifier = Modifier.width(6.dp))
