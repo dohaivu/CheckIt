@@ -21,10 +21,13 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.rounded.CheckBox
+import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -202,37 +205,46 @@ private fun RoutineCard(
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                Text(
-                    text = "$percent%",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
                 IconButton(onClick = onEdit) {
-                    Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit routine")
+                    Icon(imageVector = Icons.AutoMirrored.Filled.OpenInNew, contentDescription = "Edit routine",
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
                 }
             }
-            routine.reminderMinutes?.let { minutes ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Schedule,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                routine.reminderMinutes?.let { minutes ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Schedule,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = minutes.toClockLabel(),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                if (routine.steps.isNotEmpty()) {
+                    LinearProgressIndicator(
+                        progress = { percent / 100f },
+                        modifier = Modifier.weight(1f)
                     )
                     Text(
-                        text = minutes.toClockLabel(),
-                        style = MaterialTheme.typography.bodyMedium,
+                        text = "$percent%",
+                        style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-            }
-            if (routine.steps.isNotEmpty()) {
-                LinearProgressIndicator(
-                    progress = { percent / 100f },
-                    modifier = Modifier.fillMaxWidth()
-                )
             }
             routine.steps.forEach { step ->
                 val checked = step.id in checkedStepIds
@@ -240,11 +252,22 @@ private fun RoutineCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onToggleStep(step.id) },
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Checkbox(
-                        checked = checked,
-                        onCheckedChange = { onToggleStep(step.id) }
+                    Icon(
+                        imageVector = if (checked) Icons.Rounded.CheckBox else Icons.Rounded.CheckBoxOutlineBlank,
+                        contentDescription = null,
+                        tint = if (checked) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        },
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clickable {
+                                onToggleStep(step.id)
+                            }
                     )
                     Text(
                         text = step.title,
@@ -281,22 +304,6 @@ private fun RoutineEditorSheet(
             .fillMaxHeight(0.9f)
             .padding(bottom = 24.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = if (state.id == null) "New routine" else "Edit routine",
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            if (state.id != null) {
-                DeleteOverflowMenu(onDelete = { onDelete(state.id) })
-            }
-        }
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
@@ -340,17 +347,32 @@ private fun RoutineEditorSheet(
                 }
             }
         }
-        Button(
-            onClick = {
-                if (title.isNotBlank()) {
-                    onSave(state.id, title.trim(), reminderMinutes, steps.filter { it.title.isNotBlank() })
-                }
-            },
-            enabled = title.isNotBlank(),
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Save routine")
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Button(
+                    onClick = {
+                        if (title.isNotBlank()) {
+                            onSave(state.id, title.trim(), reminderMinutes, steps.filter { it.title.isNotBlank() })
+                        }
+                    },
+                    enabled = title.isNotBlank(),
+                    modifier = Modifier
+                ) {
+                    Text("Save")
+                }
+            }
+
+            if (state.id != null) {
+                DeleteOverflowMenu(onDelete = { onDelete(state.id) })
+            }
         }
+
     }
 }
 
