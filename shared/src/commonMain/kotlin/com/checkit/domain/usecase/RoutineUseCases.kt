@@ -46,10 +46,11 @@ class SaveRoutineUseCase(
     suspend operator fun invoke(
         id: String?,
         title: String,
+        description: String,
         reminderMinutes: Int?,
         steps: List<RoutineStepTemplate>
     ): String {
-        val routineId = repository.saveRoutine(id, title, reminderMinutes, steps)
+        val routineId = repository.saveRoutine(id, title, description, reminderMinutes, steps)
         val trimmedTitle = title.trim()
         if (reminderMinutes != null) {
             reminderScheduler.scheduleRoutineReminder(

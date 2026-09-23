@@ -31,6 +31,7 @@ data class RoutineStepTemplate(
 data class Routine(
     val id: String,
     val title: String,
+    val description: String = "",
     val reminderMinutes: Int? = null,
     val sortOrder: Int = 0,
     val steps: List<RoutineStepTemplate> = emptyList(),

@@ -129,9 +129,10 @@ class MyDayViewModel(
     fun saveRoutine(
         id: String?,
         title: String,
+        description: String,
         reminderMinutes: Int?,
         steps: List<RoutineStepTemplate>
-    ) = routines.saveRoutine(id, title, reminderMinutes, steps)
+    ) = routines.saveRoutine(id, title, description, reminderMinutes, steps)
     fun deleteRoutine(id: String) = routines.deleteRoutine(id)
 
     // Day review

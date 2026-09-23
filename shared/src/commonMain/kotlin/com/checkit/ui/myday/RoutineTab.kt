@@ -85,6 +85,7 @@ import kotlin.uuid.Uuid
 private data class RoutineEditorState(
     val id: String?,
     val title: String,
+    val description: String,
     val reminderMinutes: Int?,
     val steps: List<RoutineStepTemplate>
 )
@@ -94,7 +95,7 @@ internal fun RoutineTab(
     routines: List<Routine>,
     checks: Map<String, Set<String>>,
     onToggleStep: (String, String) -> Unit,
-    onSaveRoutine: (String?, String, Int?, List<RoutineStepTemplate>) -> Unit,
+    onSaveRoutine: (String?, String, String, Int?, List<RoutineStepTemplate>) -> Unit,
     onDeleteRoutine: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -125,7 +126,7 @@ internal fun RoutineTab(
                 }
                 FilledTonalButton(
                     onClick = {
-                        editor = RoutineEditorState(id = null, title = "", reminderMinutes = null, steps = emptyList())
+                        editor = RoutineEditorState(id = null, title = "", description = "", reminderMinutes = null, steps = emptyList())
                     },
                     shape = CircleShape,
                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
@@ -198,7 +199,7 @@ internal fun RoutineTab(
                         }
                         Button(
                             onClick = {
-                                editor = RoutineEditorState(id = null, title = "", reminderMinutes = null, steps = emptyList())
+                                editor = RoutineEditorState(id = null, title = "", description = "", reminderMinutes = null, steps = emptyList())
                             },
                             shape = RoundedCornerShape(10.dp),
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
@@ -224,6 +225,7 @@ internal fun RoutineTab(
                         editor = RoutineEditorState(
                             id = routine.id,
                             title = routine.title,
+                            description = routine.description,
                             reminderMinutes = routine.reminderMinutes,
                             steps = routine.steps
                         )
@@ -240,8 +242,8 @@ internal fun RoutineTab(
         RoutineEditorSheet(
             state = state,
             onDismiss = { editor = null },
-            onSave = { id, title, reminderMinutes, steps ->
-                onSaveRoutine(id, title, reminderMinutes, steps)
+            onSave = { id, title, description, reminderMinutes, steps ->
+                onSaveRoutine(id, title, description, reminderMinutes, steps)
                 editor = null
             },
             onDelete = { id ->
@@ -334,6 +336,13 @@ private fun RoutineCard(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
                 }
+            }
+            if (routine.description.isNotBlank()) {
+                Text(
+                    text = routine.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
             if (routine.steps.isNotEmpty()) {
@@ -441,10 +450,11 @@ private fun RoutineCard(
 private fun RoutineEditorSheet(
     state: RoutineEditorState,
     onDismiss: () -> Unit,
-    onSave: (String?, String, Int?, List<RoutineStepTemplate>) -> Unit,
+    onSave: (String?, String, String, Int?, List<RoutineStepTemplate>) -> Unit,
     onDelete: (String) -> Unit
 ) {
     var title by remember(state) { mutableStateOf(state.title) }
+    var description by remember(state) { mutableStateOf(state.description) }
     var reminderMinutes by remember(state) { mutableStateOf(state.reminderMinutes) }
     var steps by remember(state) { mutableStateOf(state.steps) }
 
@@ -506,6 +516,18 @@ private fun RoutineEditorSheet(
                         ),
                         maxLines = 2,
                         placeholder = "Routine name",
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                item {
+                    AppOutlinedTextField(
+                        value = description,
+                        onValueChange = { description = it },
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(
+                            color = MaterialTheme.colorScheme.onSurface
+                        ),
+                        maxLines = 3,
+                        placeholder = "Add details",
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -593,7 +615,13 @@ private fun RoutineEditorSheet(
                 Button(
                     onClick = {
                         if (title.isNotBlank()) {
-                            onSave(state.id, title.trim(), reminderMinutes, steps.filter { it.title.isNotBlank() })
+                            onSave(
+                                state.id,
+                                title.trim(),
+                                description.trim(),
+                                reminderMinutes,
+                                steps.filter { it.title.isNotBlank() }
+                            )
                         }
                     },
                     enabled = title.isNotBlank(),

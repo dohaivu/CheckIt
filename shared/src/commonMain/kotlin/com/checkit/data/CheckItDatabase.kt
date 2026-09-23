@@ -686,6 +686,7 @@ data class RoutineEntity(
     @PrimaryKey
     val id: String,
     val title: String,
+    val description: String = "",
     val reminderMinutes: Int? = null,
     val sortOrder: Int = 0,
     /** Inline JSON list of RoutineStepTemplate; history keeps percent only. */

@@ -92,6 +92,7 @@ class RoutineUseCasesTest {
         val id = save(
             id = null,
             title = " Morning ",
+            description = " Daily reset ",
             reminderMinutes = 8 * 60,
             steps = listOf(
                 RoutineStepTemplate(id = "s1", title = "Water"),
@@ -111,6 +112,7 @@ class RoutineUseCasesTest {
             scheduler.scheduled
         )
         assertTrue(scheduler.cancelled.isEmpty())
+        assertEquals("Daily reset", repo.routines.single().description)
     }
 
     @Test
@@ -120,6 +122,7 @@ class RoutineUseCasesTest {
         SaveRoutineUseCase(repo, scheduler)(
             id = "r1",
             title = "Evening",
+            description = "",
             reminderMinutes = null,
             steps = emptyList()
         )

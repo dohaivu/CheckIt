@@ -48,12 +48,13 @@ internal class RoutineController(
     fun saveRoutine(
         id: String?,
         title: String,
+        description: String,
         reminderMinutes: Int?,
         steps: List<RoutineStepTemplate>
     ) {
         scope.launch {
             try {
-                deps.saveRoutine(id, title, reminderMinutes, steps)
+                deps.saveRoutine(id, title, description, reminderMinutes, steps)
             } catch (error: Exception) {
                 state.sendEvent(UiEvent.ShowSnackbar(error.message ?: "Unable to save routine"))
             }

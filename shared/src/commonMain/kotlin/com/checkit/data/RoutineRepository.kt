@@ -16,6 +16,7 @@ interface RoutineRepository {
     suspend fun saveRoutine(
         id: String?,
         title: String,
+        description: String,
         reminderMinutes: Int?,
         steps: List<RoutineStepTemplate>
     ): String
@@ -38,6 +39,7 @@ class RoomRoutineRepository(
     override suspend fun saveRoutine(
         id: String?,
         title: String,
+        description: String,
         reminderMinutes: Int?,
         steps: List<RoutineStepTemplate>
     ): String {
@@ -59,6 +61,7 @@ class RoomRoutineRepository(
             RoutineEntity(
                 id = routineId,
                 title = trimmed,
+                description = description.trim(),
                 reminderMinutes = reminderMinutes,
                 sortOrder = existing?.sortOrder ?: dao.nextRoutineSortOrder(),
                 stepsJson = encodeRoutineSteps(normalizedSteps),
@@ -89,6 +92,7 @@ class RoomRoutineRepository(
 fun RoutineEntity.toDomain(): Routine = Routine(
     id = id,
     title = title,
+    description = description,
     reminderMinutes = reminderMinutes,
     sortOrder = sortOrder,
     steps = decodeRoutineSteps(stepsJson).sortedBy { it.sortOrder },

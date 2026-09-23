@@ -23,12 +23,13 @@ internal class FakeRoutineRepository(initial: List<Routine> = emptyList()) : Rou
     override suspend fun saveRoutine(
         id: String?,
         title: String,
+        description: String,
         reminderMinutes: Int?,
         steps: List<RoutineStepTemplate>
     ): String {
         val routineId = id ?: "generated"
         routines.removeAll { it.id == routineId }
-        routines.add(Routine(id = routineId, title = title, reminderMinutes = reminderMinutes, steps = steps))
+        routines.add(Routine(id = routineId, title = title.trim(), description = description.trim(), reminderMinutes = reminderMinutes, steps = steps))
         routinesFlow.value = routines.toList()
         return routineId
     }
