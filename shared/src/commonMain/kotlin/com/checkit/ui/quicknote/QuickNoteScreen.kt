@@ -109,6 +109,7 @@ import com.checkit.domain.CountdownDisplay
 import com.checkit.domain.CountdownState
 import com.checkit.domain.DurationRules
 import com.checkit.domain.QuickNote
+import com.checkit.domain.QuickNoteDisplayText
 import com.checkit.domain.QuickNoteRules
 import com.checkit.domain.QuickNoteType
 import com.checkit.domain.TaskPriority
@@ -807,6 +808,10 @@ private fun NextRow(
         }
 
         // Foreground Content Card (tap selects the row, revealing the star)
+        val now = Clock.System.now().toEpochMilliseconds()
+        val remainingMillis = note.createdAt + QuickNoteRules.INACTIVITY_AFTER_MILLIS - now
+        val isSoonToBeTrashed = remainingMillis < 5 * 60 * 60 * 1000L
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -818,8 +823,11 @@ private fun NextRow(
                     shape = RoundedCornerShape(16.dp),
                 )
                 .background(
-                    color = if (note.priority == TaskPriority.High) Color(0xFFFFB300).copy(alpha = 0.14f)
-                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    color = when {
+                        isSoonToBeTrashed -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f)
+                        note.priority == TaskPriority.High -> Color(0xFFFFB300).copy(alpha = 0.14f)
+                        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                    },
                     shape = RoundedCornerShape(16.dp),
                 )
                 .clickable(onClick = onSelect)
@@ -1163,13 +1171,13 @@ private fun QuickNoteHeaderBanner(
 }
 
 internal fun formatRemaining(deleteAt: Long?): String =
-    com.checkit.domain.QuickNoteDisplayText.remainingText(
+    QuickNoteDisplayText.remainingText(
         deleteAt,
         Clock.System.now().toEpochMilliseconds()
     )
 
 internal fun formatReminder(remindAt: Long): String =
-    com.checkit.domain.QuickNoteDisplayText.reminderText(
+    QuickNoteDisplayText.reminderText(
         remindAt,
         Clock.System.now().toEpochMilliseconds()
     )
