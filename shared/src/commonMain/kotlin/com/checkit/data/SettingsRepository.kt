@@ -28,7 +28,9 @@ data class UserSettings(
     val recentLabels: List<String> = emptyList(),
     val backupFolderUri: String? = null,
     val backupFolderName: String? = null,
-    val lastBackupAtMillis: Long? = null
+    val lastBackupAtMillis: Long? = null,
+    val checklistFolderUri: String? = null,
+    val checklistFolderName: String? = null
 )
 
 interface SettingsRepository {
@@ -55,4 +57,5 @@ interface SettingsRepository {
     suspend fun addRecentLabel(label: String)
     suspend fun setBackupFolder(uri: String?, name: String?)
     suspend fun setLastBackupAtMillis(millis: Long)
+    suspend fun setChecklistFolder(uri: String?, name: String?)
 }

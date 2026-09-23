@@ -27,6 +27,8 @@ data class SettingsUiState(
     val backupFolderUri: String? = null,
     val backupFolderName: String? = null,
     val lastBackupAtMillis: Long? = null,
+    val checklistFolderUri: String? = null,
+    val checklistFolderName: String? = null,
 )
 
 enum class TagUsageSort {

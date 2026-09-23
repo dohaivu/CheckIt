@@ -53,6 +53,8 @@ class SettingsViewModel(
                         backupFolderUri = stored.backupFolderUri,
                         backupFolderName = stored.backupFolderName,
                         lastBackupAtMillis = stored.lastBackupAtMillis,
+                        checklistFolderUri = stored.checklistFolderUri,
+                        checklistFolderName = stored.checklistFolderName,
                     )
                 }
                 appReminderScheduler.applySettings(stored)
@@ -161,6 +163,16 @@ class SettingsViewModel(
 
     fun clearBackupFolder() {
         setBackupFolderUri(null, null)
+    }
+
+    fun setChecklistFolder(uri: String?, name: String?) {
+        viewModelScope.launch {
+            settingsRepository.setChecklistFolder(uri, name)
+        }
+    }
+
+    fun clearChecklistFolder() {
+        setChecklistFolder(null, null)
     }
 
     fun markBackupCompleted() {

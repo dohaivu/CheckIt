@@ -39,6 +39,8 @@ import com.checkit.data.SettingsRepository
 import com.checkit.domain.usecase.AutoAddTodayTasksToMyDayUseCase
 import com.checkit.domain.usecase.RebuildReflectStatsUseCase
 import com.checkit.ui.calendar.CalendarScreen
+import com.checkit.ui.checklist.CheckListScreen
+import com.checkit.ui.checklist.ChecklistDocumentsScreen
 import com.checkit.ui.components.LocalSnackbarHostState
 import com.checkit.ui.journal.JournalEntryEditorSheet
 import com.checkit.ui.journal.JournalHistorySheet
@@ -343,7 +345,29 @@ fun CheckItApp(
                                         val reflectState by viewModels.reflect.uiState.collectAsState()
                                         ReflectScreen(
                                             state = reflectState,
-                                            viewModel = viewModels.reflect
+                                            viewModel = viewModels.reflect,
+                                            onOpenChecklist = { navState.push(AppRoute.ChecklistDocuments) }
+                                        )
+                                    }
+                                    AppRoute.ChecklistDocuments -> {
+                                        ChecklistDocumentsScreen(
+                                            viewModel = viewModels.checklist,
+                                            onNavigateBack = { navState.pop() },
+                                            onOpenSettings = { navState.push(AppRoute.Settings) },
+                                            onOpenDocument = { document ->
+                                                navState.push(
+                                                    AppRoute.ChecklistDetail(
+                                                        uri = document.uri,
+                                                        name = document.name
+                                                    )
+                                                )
+                                            }
+                                        )
+                                    }
+                                    is AppRoute.ChecklistDetail -> {
+                                        CheckListScreen(
+                                            viewModel = viewModels.checklist,
+                                            onNavigateBack = { navState.pop() }
                                         )
                                     }
 

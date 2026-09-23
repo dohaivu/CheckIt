@@ -78,6 +78,7 @@ import com.checkit.ui.components.AppHorizontalDivider
 import com.checkit.ui.components.TinyTopAppBar
 import com.checkit.domain.usecase.RebuildReflectStatsUseCase
 import com.checkit.notifications.CheckInReminderForceRunner
+import com.checkit.ui.checklist.ChecklistFolderSettingsSection
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -204,6 +205,7 @@ private fun SettingsHomeScreen(
                     )
                 }
                 item { BackupSettingsSection() }
+                item { ChecklistFolderSettingsSection() }
                 item {
                     SettingsRow(
                         title = "Dev options",
